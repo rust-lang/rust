@@ -1,4 +1,3 @@
-//@ no-prefer-dynamic
 //@ aux-build: decl.rs
 #![crate_type = "rlib"]
 #![feature(extern_item_impls)]

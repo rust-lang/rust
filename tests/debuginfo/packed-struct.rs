@@ -30,16 +30,16 @@
 //@ lldb-command:run
 
 //@ lldb-command:v packed
-//@ lldb-check:[...] { x = 123 y = 234 z = 345 }
+//@ lldb-check:[...] {x:123, y:234, z:345}
 
 //@ lldb-command:v packedInPacked
-//@ lldb-check:[...] { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
+//@ lldb-check:[...] {a:1111, b:{x:2222, y:3333, z:4444}, c:5555, d:{x:6666, y:7777, z:8888}}
 
 //@ lldb-command:v packedInUnpacked
-//@ lldb-check:[...] { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
+//@ lldb-check:[...] {a:-1111, b:{x:-2222, y:-3333, z:-4444}, c:-5555, d:{x:-6666, y:-7777, z:-8888}}
 
 //@ lldb-command:v unpackedInPacked
-//@ lldb-check:[...] { a = 987 b = { x = 876 y = 765 z = 654 w = 543 } c = { x = 432 y = 321 z = 210 w = 109 } d = -98 }
+//@ lldb-check:[...] {a:987, b:{x:876, y:765, z:654, w:543}, c:{x:432, y:321, z:210, w:109}, d:-98}
 
 //@ lldb-command:expr sizeof(packed)
 //@ lldb-check:[...] 14

@@ -146,6 +146,45 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
+            // Signed saturating doubling multiply returning the high half.
+            //
+            // Used by the `vqdmulh*` functions.
+            //
+            // This LLVM intrinsic multiplies the values of corresponding elements of the two source
+            // vector registers (which are signed integers), doubles the results, places the most significant half of the
+            // final results (using a saturating cast to fit the element type) into a vector, and writes the vector to the destination register.
+            //
+            // https://developer.arm.com/architectures/instruction-sets/intrinsics#f:@navigationhierarchiessimdisa=[Neon]&q=vqdmulh
+            name if name.starts_with("neon.sqdmulh.") => {
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, right_len) = this.project_to_simd(right)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+                assert_eq!(left_len, right_len);
+                assert_eq!(left_len, dest_len);
+
+                let elem_size = dest.layout.field(this, 0).size;
+                let bits = elem_size.bits();
+                let min = elem_size.signed_int_min();
+                let max = elem_size.signed_int_max();
+
+                for i in 0..dest_len {
+                    let a = this.read_scalar(&this.project_index(&left, i)?)?.to_int(elem_size)?;
+                    let b = this.read_scalar(&this.project_index(&right, i)?)?.to_int(elem_size)?;
+
+                    // Uses i128 arithmetic, which cannot overflow because the intrinsic takes at most i32.
+                    let doubled = a.strict_mul(b).strict_mul(2);
+                    let res = (doubled >> bits).clamp(min, max);
+
+                    this.write_scalar(
+                        Scalar::from_int(res, elem_size),
+                        &this.project_index(&dest, i)?,
+                    )?;
+                }
+            }
+
             // Vector table lookup: each index selects a byte from the 16-byte table, out-of-range -> 0.
             // Used to implement vtbl1_u8 function.
             // LLVM does not have a portable shuffle that takes non-const indices
@@ -196,10 +235,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let left = this.read_scalar(left)?;
-                let right = this.read_scalar(right)?;
+                let [crc, data] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let crc = this.read_scalar(crc)?;
+                let data = this.read_scalar(data)?;
 
                 // The CRC accumulator is always u32. The data argument is u32 for
                 // b/h/w variants and u64 for the x variant, per the LLVM intrinsic
@@ -207,13 +245,36 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/IntrinsicsAArch64.td
                 // If the higher bits are non-zero, `compute_crc32` will panic. We should probably
                 // raise a proper error instead, but outside stdarch nobody can trigger this anyway.
-                let crc = left.to_u32()?;
-                let data =
-                    if bit_size == 64 { right.to_u64()? } else { u64::from(right.to_u32()?) };
+                let crc = crc.to_u32()?;
+                let data = if bit_size == 64 { data.to_u64()? } else { u64::from(data.to_u32()?) };
 
                 let result = compute_crc32(crc, data, bit_size, polynomial);
                 this.write_scalar(Scalar::from_u32(result), dest)?;
             }
+            // Polynomial multiply long (64-bit x 64-bit -> 128-bit).
+            //
+            // This is the same as "carryless" multiplication, see
+            // <https://en.wikipedia.org/wiki/Carry-less_product#Multiplication_of_polynomials>.
+            //
+            // Used to implement the vmull_p64 and vmull_high_p64 functions.
+            // https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_p64
+            "neon.pmull64" => {
+                // LLVM and GCC group pmull with the AES intrinsics.
+                // Also see <https://gcc.gnu.org/pipermail/gcc-patches/2023-February/612088.html>.
+                this.expect_target_feature_for_intrinsic(link_name, "aes")?;
+
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let left = this.read_scalar(left)?.to_u64()?;
+                let right = this.read_scalar(right)?.to_u64()?;
+
+                let result = left.widening_carryless_mul(right);
+
+                // dest is int8x16_t, transmute to u128 for the write.
+                let dest = dest.transmute(this.machine.layouts.u128, this)?;
+                this.write_scalar(Scalar::from_u128(result), &dest)?;
+            }
+
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
         interp_ok(EmulateItemResult::NeedsReturn)

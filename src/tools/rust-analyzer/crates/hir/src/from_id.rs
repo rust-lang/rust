@@ -254,14 +254,9 @@ impl TryFrom<AssocItem> for GenericDefId {
     }
 }
 
-impl From<(ExpressionStoreOwnerId, BindingId)> for Local {
-    fn from((parent, binding_id): (ExpressionStoreOwnerId, BindingId)) -> Self {
-        Local { parent, binding_id }
-    }
-}
 impl From<(DefWithBodyId, BindingId)> for Local {
     fn from((parent, binding_id): (DefWithBodyId, BindingId)) -> Self {
-        Local { parent: parent.into(), binding_id }
+        Local { parent: parent.into(), parent_infer: parent.into(), binding_id }
     }
 }
 

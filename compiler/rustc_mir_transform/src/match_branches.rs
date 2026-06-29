@@ -72,7 +72,9 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         }) {
             Some(StatementKind::Assign(Box::new((
                 dest,
-                Rvalue::Use(Operand::Constant(Box::new(first_const.clone()))),
+                // We didn't remember the `WithRetag` of the original assignments, so in case
+                // one of them had "no", we also have to use "no" here.
+                Rvalue::Use(Operand::Constant(Box::new(first_const.clone())), WithRetag::No),
             ))))
         } else {
             None
@@ -202,7 +204,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         }) {
             let operand = Operand::Copy(Place::from(self.discr_local()));
             let rval = if first_const.ty() == self.discr_ty {
-                Rvalue::Use(operand)
+                Rvalue::Use(operand, WithRetag::No)
             } else {
                 Rvalue::Cast(CastKind::IntToInt, operand, first_const.ty())
             };
@@ -238,7 +240,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         // _2 = discriminant(*_1); // "*_1" is the expected the copy source.
         // switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
         let &Statement {
-            kind: StatementKind::Assign(box (discr_place, Rvalue::Discriminant(copy_src_place))),
+            kind: StatementKind::Assign((discr_place, Rvalue::Discriminant(copy_src_place))),
             ..
         } = bbs[self.switch_bb].statements.last()?
         else {
@@ -262,7 +264,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         for &(case, rvalue) in rvals.iter() {
             match rvalue {
                 // Check if `_3 = const Foo::B` can be transformed to `_3 = copy *_1`.
-                Rvalue::Use(Operand::Constant(box constant))
+                Rvalue::Use(Operand::Constant(constant), _)
                     if let Const::Val(const_, ty) = constant.const_ =>
                 {
                     let (ecx, op) = mk_eval_cx_for_const_val(
@@ -280,9 +282,9 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
                         return None;
                     }
                 }
-                Rvalue::Use(Operand::Copy(src_place)) if *src_place == copy_src_place => {}
+                Rvalue::Use(Operand::Copy(src_place), _) if *src_place == copy_src_place => {}
                 // Check if `_3 = Foo::B` can be transformed to `_3 = copy *_1`.
-                Rvalue::Aggregate(box AggregateKind::Adt(_, variant_index, _, _, None), fields)
+                Rvalue::Aggregate(AggregateKind::Adt(_, variant_index, _, _, None), fields)
                     if fields.is_empty()
                         && let Some(Discr { val, .. }) =
                             src_ty.ty.discriminant_for_variant(self.tcx, *variant_index)
@@ -290,7 +292,12 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
                 _ => return None,
             }
         }
-        Some(StatementKind::Assign(Box::new((dest, Rvalue::Use(Operand::Copy(copy_src_place))))))
+        // We didn't remember the `WithRetag` of the original assignments, so in case
+        // one of them had "no", we also have to use "no" here.
+        Some(StatementKind::Assign(Box::new((
+            dest,
+            Rvalue::Use(Operand::Copy(copy_src_place), WithRetag::No),
+        ))))
     }
 
     /// Returns a new statement if we can use the statement replace all statements.
@@ -427,7 +434,7 @@ fn simplify_match<'tcx>(
     let mut patch = simplify_match.patch;
     if let Some(discr_local) = simplify_match.discr_local {
         patch.add_statement(parent_end, StatementKind::StorageLive(discr_local));
-        patch.add_assign(parent_end, Place::from(discr_local), Rvalue::Use(discr));
+        patch.add_assign(parent_end, Place::from(discr_local), Rvalue::Use(discr, WithRetag::No));
     }
     for new_stmt in new_stmts {
         patch.add_statement(parent_end, new_stmt);
@@ -501,19 +508,20 @@ fn candidate_const<'tcx, 'a>(
     rvals: &'a [(u128, &'a Rvalue<'tcx>)],
     otherwise: Option<&'a Rvalue<'tcx>>,
 ) -> Option<(Vec<(u128, &'a ConstOperand<'tcx>)>, Option<&'a ConstOperand<'tcx>>)> {
+    // We ignore the retag mode here, which means the `Use` we insert later must be without retag.
     let otherwise = if let Some(otherwise) = otherwise {
-        let Rvalue::Use(Operand::Constant(box const_)) = otherwise else {
+        let Rvalue::Use(Operand::Constant(const_), _) = otherwise else {
             return None;
         };
-        Some(const_)
+        Some(&**const_)
     } else {
         None
     };
     let consts = rvals
         .into_iter()
         .map(|&(case, rval)| {
-            let Rvalue::Use(Operand::Constant(box const_)) = rval else { return None };
-            Some((case, const_))
+            let Rvalue::Use(Operand::Constant(const_), _) = rval else { return None };
+            Some((case, &**const_))
         })
         .try_collect()?;
     Some((consts, otherwise))

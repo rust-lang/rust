@@ -1,14 +1,6 @@
 #![warn(clippy::manual_map)]
-#![allow(
-    clippy::no_effect,
-    clippy::map_identity,
-    clippy::unit_arg,
-    clippy::match_ref_pats,
-    clippy::redundant_pattern_matching,
-    clippy::unnecessary_map_on_constructor,
-    for_loops_over_fallibles,
-    dead_code
-)]
+#![allow(clippy::map_identity, clippy::match_ref_pats, clippy::unnecessary_map_on_constructor)]
+#![expect(clippy::redundant_pattern_matching, clippy::unit_arg)]
 
 fn main() {
     Some(0).map(|_| 2);

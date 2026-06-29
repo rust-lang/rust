@@ -5,16 +5,16 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_path};
 use rustc_hir::{
     FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItemId, ImplItemKind, Item, ItemKind, PatKind, Path,
-    PathSegment, Ty, TyKind,
+    PathSegment, Ty as HirTy, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter::OnlyBodies;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, Symbol};
@@ -78,8 +78,10 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && span_is_local(item.span)
             && let middle_trait_ref = cx.tcx.impl_trait_ref(item.owner_id).instantiate_identity().skip_norm_wip()
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
-            && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::AliasTy { kind: ty::Opaque{..} , .. }))
+            && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(_, ty::AliasTy { kind: ty::Opaque{..} , .. }))
             && self.msrv.meets(cx, msrvs::RE_REBALANCING_COHERENCE)
+            // skip if there's a blanket From impl, the suggested impl would conflict
+            && !has_blanket_from_impl(cx, middle_trait_ref.self_ty())
         {
             span_lint_and_then(
                 cx,
@@ -163,11 +165,21 @@ impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
     }
 }
 
+fn has_blanket_from_impl<'tcx>(cx: &LateContext<'tcx>, self_ty: Ty<'tcx>) -> bool {
+    let Some(from_def_id) = cx.tcx.get_diagnostic_item(sym::From) else {
+        return false;
+    };
+    cx.tcx.non_blanket_impls_for_ty(from_def_id, self_ty).any(|impl_id| {
+        let impl_trait_ref = cx.tcx.impl_trait_ref(impl_id).instantiate_identity().skip_norm_wip();
+        matches!(impl_trait_ref.args.type_at(1).kind(), ty::Param(_))
+    })
+}
+
 fn convert_to_from(
     cx: &LateContext<'_>,
     into_trait_seg: &PathSegment<'_>,
-    target_ty: &Ty<'_>,
-    self_ty: &Ty<'_>,
+    target_ty: &HirTy<'_>,
+    self_ty: &HirTy<'_>,
     impl_item_ref: ImplItemId,
 ) -> Option<Vec<(Span, String)>> {
     if !target_ty.find_self_aliases().is_empty() {
@@ -185,8 +197,8 @@ fn convert_to_from(
         return None;
     };
 
-    let from = self_ty.span.get_source_text(cx)?;
-    let into = target_ty.span.get_source_text(cx)?;
+    let from = self_ty.span.get_text(cx)?;
+    let into = target_ty.span.get_text(cx)?;
 
     let mut suggestions = vec![
         // impl Into<T> for U  ->  impl From<T> for U

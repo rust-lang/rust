@@ -40,13 +40,13 @@ error: useless conversion to the same type: `std::str::Lines<'_>`
 LL |     if Some("ok") == text.lines().into_iter().next() {}
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `text.lines()`
 
-error: useless conversion to the same type: `std::ops::Range<i32>`
+error: useless conversion to the same type: `std::iter::Empty<i32>`
   --> tests/ui/useless_conversion.rs:76:13
    |
 LL |     let _ = NUMBERS.into_iter().next();
    |             ^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `NUMBERS`
 
-error: useless conversion to the same type: `std::ops::Range<i32>`
+error: useless conversion to the same type: `std::iter::Empty<i32>`
   --> tests/ui/useless_conversion.rs:82:17
    |
 LL |     let mut n = NUMBERS.into_iter();
@@ -421,32 +421,50 @@ LL -             takes_into_iter(self.my_field.into_iter());
 LL +             takes_into_iter(&mut *self.my_field);
    |
 
-error: useless conversion to the same type: `std::ops::Range<u32>`
-  --> tests/ui/useless_conversion.rs:435:5
+error: useless conversion to the same type: `std::iter::Empty<u32>`
+  --> tests/ui/useless_conversion.rs:433:5
    |
 LL |     R.into_iter().for_each(|_x| {});
    |     ^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `R`
 
-error: useless conversion to the same type: `std::ops::Range<u32>`
-  --> tests/ui/useless_conversion.rs:437:13
+error: useless conversion to the same type: `std::iter::Empty<u32>`
+  --> tests/ui/useless_conversion.rs:435:13
    |
 LL |     let _ = R.into_iter().map(|_x| 0);
    |             ^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `R`
 
+error: useless conversion to the same type: `std::ops::Range<i32>`
+  --> tests/ui/useless_conversion.rs:458:14
+   |
+LL |     for _ in (0..10).into_iter() {}
+   |              ^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `(0..10)`
+
+error: useless conversion to the same type: `std::ops::RangeInclusive<i32>`
+  --> tests/ui/useless_conversion.rs:459:14
+   |
+LL |     for _ in (0..=10).into_iter() {}
+   |              ^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `(0..=10)`
+
+error: useless conversion to the same type: `std::ops::RangeFrom<i32>`
+  --> tests/ui/useless_conversion.rs:460:14
+   |
+LL |     for _ in (0..).into_iter() {
+   |              ^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `(0..)`
+
 error: useless conversion to the same type: `std::slice::Iter<'_, i32>`
-  --> tests/ui/useless_conversion.rs:448:14
+  --> tests/ui/useless_conversion.rs:473:14
    |
 LL |     for _ in mac!(iter [1, 2]).into_iter() {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `mac!(iter [1, 2])`
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:461:27
+  --> tests/ui/useless_conversion.rs:486:27
    |
 LL |     takes_into_iter_usize(b.into_iter());
    |                           ^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:452:34
+  --> tests/ui/useless_conversion.rs:477:34
    |
 LL | fn takes_into_iter_usize(_: impl IntoIterator<Item = usize>) {}
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -457,13 +475,13 @@ LL +     takes_into_iter_usize(b);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:470:31
+  --> tests/ui/useless_conversion.rs:495:31
    |
 LL |         takes_into_iter_usize(b.clone().into_iter());
    |                               ^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:452:34
+  --> tests/ui/useless_conversion.rs:477:34
    |
 LL | fn takes_into_iter_usize(_: impl IntoIterator<Item = usize>) {}
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -474,13 +492,13 @@ LL +         takes_into_iter_usize(b.clone());
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:478:34
+  --> tests/ui/useless_conversion.rs:503:34
    |
 LL |     takes_into_iter_usize_result(b.clone().into_iter())?;
    |                                  ^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:453:41
+  --> tests/ui/useless_conversion.rs:478:41
    |
 LL | fn takes_into_iter_usize_result(_: impl IntoIterator<Item = usize>) -> Result<(), ()> {
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -490,5 +508,5 @@ LL -     takes_into_iter_usize_result(b.clone().into_iter())?;
 LL +     takes_into_iter_usize_result(b.clone())?;
    |
 
-error: aborting due to 48 previous errors
+error: aborting due to 51 previous errors
 

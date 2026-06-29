@@ -259,3 +259,45 @@ fn issue16518_msrv(opt: Option<i32>) {
 
     opt.filter(|x| condition(x)).is_none();
 }
+
+fn ok_is_some_and(res: Result<i32, ()>) {
+    let _ = res.is_ok_and(|x| x > 0);
+    //~^ manual_is_variant_and
+
+    let _ = res.is_ok_and(|x| x > 0) || res.is_err();
+    //~^ manual_is_variant_and
+
+    // Already an `Option`: must not be rewritten to `is_ok_and`.
+    let opt: Option<i32> = Some(1);
+    let _ = opt.is_some_and(|x| x > 0);
+
+    // Bare `is_some_and` (no `.ok()` receiver): don't touch.
+    let it = [1, 2, 3].iter();
+    let _ = it.peekable().peek().is_some_and(|&&x| x > 0);
+
+    // A custom `.ok()` returning an `Option` on a non-`Result` type: don't touch.
+    struct NotResult;
+    impl NotResult {
+        fn ok(self) -> Option<i32> {
+            Some(0)
+        }
+    }
+    let _ = NotResult.ok().is_some_and(|x| x > 0);
+}
+
+trait CustomOk {
+    fn ok(&self) -> Option<i32>;
+}
+
+impl CustomOk for Result<i32, ()> {
+    fn ok(&self) -> Option<i32> {
+        Some(0)
+    }
+}
+
+fn ok_trait_method_via_ref(res: &Result<i32, ()>) {
+    // `res` is a reference, so `.ok()` resolves to the `CustomOk` trait method, not the
+    // by-value `Result::ok`. The receiver type is still `Result`, so a type-based check would
+    // wrongly fire; resolving the called method's `DefId` keeps this correct. Don't touch.
+    let _ = res.ok().is_some_and(|x| x > 0);
+}

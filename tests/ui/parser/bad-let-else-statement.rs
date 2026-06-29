@@ -93,10 +93,10 @@ fn i() {
 fn j() {
     let mut bar = 0;
     let foo = bar = {
-        //~^ WARN irrefutable `let...else` pattern
         1
     } else {
-        //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
+        //~^ WARN unreachable `else` clause
+        //~| ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
         return;
     };
 }
@@ -158,21 +158,21 @@ fn o() -> Result<(), ()> {
 
 fn q() {
     let foo = |x: i32| {
-        //~^ WARN irrefutable `let...else` pattern
         x
     } else {
-        //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
+        //~^ WARN unreachable `else` clause
+        //~| ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
         return;
     };
 }
 
 fn r() {
     let ok = format_args!("") else { return; };
-    //~^ WARN irrefutable `let...else` pattern
+    //~^ WARN unreachable `else` clause
 
     let bad = format_args! {""} else { return; };
     //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
-    //~| WARN irrefutable `let...else` pattern
+    //~| WARN unreachable `else` clause
 }
 
 fn s() {
@@ -202,10 +202,10 @@ fn t() {
     }
 
     let foo = &std::ptr::null as &'static dyn std::ops::Fn() -> *const primitive! {
-        //~^ WARN irrefutable `let...else` pattern
         8
     } else {
-        //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
+        //~^ WARN unreachable `else` clause
+        //~| ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
         return;
     };
 }

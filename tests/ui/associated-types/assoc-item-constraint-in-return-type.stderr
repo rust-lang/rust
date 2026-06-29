@@ -1,0 +1,22 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/assoc-item-constraint-in-return-type.rs:7:11
+   |
+LL | /           N=
+LL | |           Self::N> {
+   | |_________________^ associated item constraint not allowed here
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/assoc-item-constraint-in-return-type.rs:13:13
+   |
+LL |            <N=()>
+   |             ^^^^ associated item constraint not allowed here
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/assoc-item-constraint-in-return-type.rs:17:13
+   |
+LL |         u32<N=()>
+   |             ^^^^ associated item constraint not allowed here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0229`.

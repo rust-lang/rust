@@ -2,7 +2,7 @@
 #![crate_type = "dylib"]
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
-#![allow(dead_code, non_snake_case)]
+#![expect(non_snake_case)]
 
 type Typedef = String;
 pub type PubTypedef = String;

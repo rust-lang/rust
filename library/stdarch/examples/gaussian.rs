@@ -296,13 +296,14 @@ fn main() {
     // Run reference
     gaussian3x3u8_reference(&src.0, WIDTH, WIDTH, HEIGHT, &mut dst_ref);
 
-    // Verify HVX matches reference (allowing small rounding differences)
+    // Verify HVX matches reference (allowing small rounding differences).
+    use core_arch::arch::hexagon::scalar::{Q6_R_abs_R, Q6_R_max_RR};
     let mut max_diff = 0i32;
     for y in 1..HEIGHT - 1 {
         for x in 1..WIDTH - 1 {
             let idx = y * WIDTH + x;
-            let diff = (dst_hvx.0[idx] as i32 - dst_ref[idx] as i32).abs();
-            max_diff = max_diff.max(diff);
+            let diff = unsafe { Q6_R_abs_R(dst_hvx.0[idx] as i32 - dst_ref[idx] as i32) };
+            max_diff = unsafe { Q6_R_max_RR(max_diff, diff) };
             // Allow up to 1 LSB difference due to rounding
             assert!(
                 diff <= 1,

@@ -51,10 +51,10 @@ use std::fmt;
 use std::hash::Hash;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
-use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hash::{StableHasher, StableOrd};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
 
 use super::{KeyFingerprintStyle, SerializedDepNodeIndex};
@@ -218,7 +218,7 @@ pub struct DepKindVTable<'tcx> {
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
 #[derive(
-    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, HashStable
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, StableHash
 )]
 pub struct WorkProductId {
     hash: Fingerprint,
@@ -231,13 +231,7 @@ impl WorkProductId {
         WorkProductId { hash: hasher.finish() }
     }
 }
-impl<Hcx> ToStableHashKey<Hcx> for WorkProductId {
-    type KeyType = Fingerprint;
-    #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> Self::KeyType {
-        self.hash
-    }
-}
+
 impl StableOrd for WorkProductId {
     // Fingerprint can use unstable (just a tuple of `u64`s), so WorkProductId can as well
     const CAN_USE_UNSTABLE_SORT: bool = true;

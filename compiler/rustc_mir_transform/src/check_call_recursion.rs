@@ -10,7 +10,7 @@ use rustc_middle::ty::{self, GenericArg, GenericArgs, Instance, Ty, TyCtxt, Unno
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 
-use crate::errors::UnconditionalRecursion;
+use crate::diagnostics::UnconditionalRecursion;
 use crate::pass_manager::MirLint;
 
 pub(super) struct CheckCallRecursion;

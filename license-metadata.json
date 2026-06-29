@@ -6,6 +6,28 @@
           {
             "children": [
               {
+                "license": {
+                  "copyright": [
+                    "The Rust Project Developers (see https://thanks.rust-lang.org)"
+                  ],
+                  "spdx": "Apache-2.0 OR MIT"
+                },
+                "name": "mod.rs",
+                "type": "file"
+              }
+            ],
+            "license": {
+              "copyright": [
+                "1991-2024 Unicode, Inc"
+              ],
+              "spdx": "Unicode-3.0"
+            },
+            "name": "library/core/src/unicode",
+            "type": "directory"
+          },
+          {
+            "children": [
+              {
                 "children": [
                   {
                     "children": [
@@ -177,16 +199,6 @@
             },
             "name": "library/backtrace",
             "type": "directory"
-          },
-          {
-            "license": {
-              "copyright": [
-                "1991-2024 Unicode, Inc"
-              ],
-              "spdx": "Unicode-3.0"
-            },
-            "name": "library/core/src/unicode/unicode_data.rs",
-            "type": "file"
           },
           {
             "children": [],

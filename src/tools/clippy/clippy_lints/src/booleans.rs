@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::higher::has_let_expr;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::source::{SpanExt, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{eq_expr_value, sym};
@@ -11,7 +11,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, RustcVersion, UnOp};
-use rustc_lint::{LateContext, LateLintPass, Level};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, SyntaxContext};
@@ -157,30 +157,30 @@ fn check_inverted_bool_in_condition(
 
     let suggestion = match (left.kind, right.kind) {
         (ExprKind::Unary(UnOp::Not, left_sub), ExprKind::Unary(UnOp::Not, right_sub)) => {
-            let Some(left) = left_sub.span.get_source_text(cx) else {
+            let Some(left) = left_sub.span.get_text(cx) else {
                 return;
             };
-            let Some(right) = right_sub.span.get_source_text(cx) else {
+            let Some(right) = right_sub.span.get_text(cx) else {
                 return;
             };
             let Some(op) = bin_op_eq_str(op) else { return };
             format!("{left} {op} {right}")
         },
         (ExprKind::Unary(UnOp::Not, left_sub), _) => {
-            let Some(left) = left_sub.span.get_source_text(cx) else {
+            let Some(left) = left_sub.span.get_text(cx) else {
                 return;
             };
-            let Some(right) = right.span.get_source_text(cx) else {
+            let Some(right) = right.span.get_text(cx) else {
                 return;
             };
             let Some(op) = inverted_bin_op_eq_str(op) else { return };
             format!("{left} {op} {right}")
         },
         (_, ExprKind::Unary(UnOp::Not, right_sub)) => {
-            let Some(left) = left.span.get_source_text(cx) else {
+            let Some(left) = left.span.get_text(cx) else {
                 return;
             };
-            let Some(right) = right_sub.span.get_source_text(cx) else {
+            let Some(right) = right_sub.span.get_text(cx) else {
                 return;
             };
             let Some(op) = inverted_bin_op_eq_str(op) else { return };
@@ -204,7 +204,7 @@ fn check_simplify_not(cx: &LateContext<'_>, msrv: Msrv, expr: &Expr<'_>) {
         && !expr.span.from_expansion()
         && !inner.span.from_expansion()
         && let Some(suggestion) = simplify_not(cx, msrv, inner)
-        && cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).level != Level::Allow
+        && !cx.tcx.lint_level_spec_at_node(NONMINIMAL_BOOL, expr.hir_id).is_allow()
     {
         use clippy_utils::sugg::{Sugg, has_enclosing_paren};
         let maybe_par = if let Some(sug) = Sugg::hir_opt(cx, inner) {
@@ -297,8 +297,9 @@ impl<'v> Hir2Qmm<'_, '_, 'v> {
             return Err("contains never type".to_owned());
         }
 
+        let ctxt = e.span.ctxt();
         for (n, expr) in self.terminals.iter().enumerate() {
-            if eq_expr_value(self.cx, e, expr) {
+            if eq_expr_value(self.cx, ctxt, e, expr) {
                 #[expect(clippy::cast_possible_truncation)]
                 return Ok(Bool::Term(n as u8));
             }
@@ -307,8 +308,8 @@ impl<'v> Hir2Qmm<'_, '_, 'v> {
                 && implements_ord(self.cx, e_lhs)
                 && let ExprKind::Binary(expr_binop, expr_lhs, expr_rhs) = &expr.kind
                 && negate(e_binop.node) == Some(expr_binop.node)
-                && eq_expr_value(self.cx, e_lhs, expr_lhs)
-                && eq_expr_value(self.cx, e_rhs, expr_rhs)
+                && eq_expr_value(self.cx, ctxt, e_lhs, expr_lhs)
+                && eq_expr_value(self.cx, ctxt, e_rhs, expr_rhs)
             {
                 #[expect(clippy::cast_possible_truncation)]
                 return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
@@ -360,7 +361,7 @@ impl SuggestContext<'_, '_, '_> {
                         if app != Applicability::MachineApplicable {
                             return None;
                         }
-                        let _cannot_fail = write!(&mut self.output, "{}", &(!snip));
+                        let _cannot_fail = write!(&mut self.output, "{}", !snip);
                     }
                 },
                 True | False | Not(_) => {
@@ -391,12 +392,8 @@ impl SuggestContext<'_, '_, '_> {
                 }
             },
             &Term(n) => {
-                self.output.push_str(
-                    &self.terminals[n as usize]
-                        .span
-                        .source_callsite()
-                        .get_source_text(self.cx)?,
-                );
+                self.output
+                    .push_str(&self.terminals[n as usize].span.source_callsite().get_text(self.cx)?);
             },
         }
         Some(())
@@ -451,10 +448,7 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
                         .map(|arg| simplify_not(cx, curr_msrv, arg))
                         .collect::<Option<Vec<_>>>()?
                         .join(", ");
-                    Some(format!(
-                        "{}.{neg_method}({negated_args})",
-                        receiver.span.get_source_text(cx)?
-                    ))
+                    Some(format!("{}.{neg_method}({negated_args})", receiver.span.get_text(cx)?))
                 })
         },
         ExprKind::Closure(closure) => {
@@ -462,13 +456,13 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
             let params = body
                 .params
                 .iter()
-                .map(|param| param.span.get_source_text(cx).map(|t| t.to_string()))
+                .map(|param| param.span.get_text(cx).map(|t| t.to_string()))
                 .collect::<Option<Vec<_>>>()?
                 .join(", ");
             let negated = simplify_not(cx, curr_msrv, body.value)?;
             Some(format!("|{params}| {negated}"))
         },
-        ExprKind::Unary(UnOp::Not, expr) => expr.span.get_source_text(cx).map(|t| t.to_string()),
+        ExprKind::Unary(UnOp::Not, expr) => expr.span.get_text(cx).map(|t| t.to_string()),
         _ => None,
     }
 }
@@ -611,7 +605,12 @@ impl<'tcx> NonminimalBoolVisitor<'_, 'tcx> {
                 }
             }
             let nonminimal_bool_lint = |mut suggestions: Vec<_>| {
-                if self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, e.hir_id).level != Level::Allow {
+                if !self
+                    .cx
+                    .tcx
+                    .lint_level_spec_at_node(NONMINIMAL_BOOL, e.hir_id)
+                    .is_allow()
+                {
                     suggestions.sort();
                     span_lint_hir_and_then(
                         self.cx,

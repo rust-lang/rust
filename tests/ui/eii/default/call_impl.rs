@@ -1,4 +1,3 @@
-//@ no-prefer-dynamic
 //@ aux-build: decl_with_default.rs
 //@ aux-build: impl1.rs
 //@ run-pass

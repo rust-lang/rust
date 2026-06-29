@@ -1,12 +1,13 @@
 use either::Either;
 use hir::ModuleDef;
+use ide_db::imports::insert_use::insert_use_with_editor;
 use ide_db::text_edit::TextRange;
 use ide_db::{
-    FxHashSet,
+    FileId, FxHashSet,
     assists::AssistId,
     defs::Definition,
-    helpers::mod_path_to_ast,
-    imports::insert_use::{ImportScope, insert_use},
+    helpers::mod_path_to_ast_with_factory,
+    imports::insert_use::ImportScope,
     search::{FileReference, UsageSearchResult},
     source_change::SourceChangeBuilder,
 };
@@ -52,7 +53,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn convert_bool_to_enum(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_bool_to_enum(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let BoolNodeData { target_node, name, ty_annotation, initializer, definition } =
         find_bool_node(ctx)?;
     let target_module = ctx.sema.scope(&target_node)?.module().nearest_non_block_module(ctx.db());
@@ -85,8 +86,10 @@ pub(crate) fn convert_bool_to_enum(acc: &mut Assists, ctx: &AssistContext<'_>) -
                 &mut delayed_mutations,
                 &make,
             );
-            for (scope, path) in delayed_mutations {
-                insert_use(&scope, path, &ctx.config.insert_use);
+            for (file_id, scope, path) in delayed_mutations {
+                let editor = edit.make_editor(scope.as_syntax_node());
+                insert_use_with_editor(&scope, path, &ctx.config.insert_use, &editor);
+                edit.add_file_edits(file_id, editor);
             }
         },
     )
@@ -101,7 +104,7 @@ struct BoolNodeData {
 }
 
 /// Attempts to find an appropriate node to apply the action to.
-fn find_bool_node(ctx: &AssistContext<'_>) -> Option<BoolNodeData> {
+fn find_bool_node(ctx: &AssistContext<'_, '_>) -> Option<BoolNodeData> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
 
     if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
@@ -208,15 +211,16 @@ fn bool_expr_to_enum_expr(expr: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
 /// Replaces all usages of the target identifier, both when read and written to.
 fn replace_usages(
     edit: &mut SourceChangeBuilder,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     usages: UsageSearchResult,
     target_definition: Definition,
     target_module: &hir::Module,
-    delayed_mutations: &mut Vec<(ImportScope, ast::Path)>,
+    delayed_mutations: &mut Vec<(FileId, ImportScope, ast::Path)>,
     make: &SyntaxFactory,
 ) {
     for (file_id, references) in usages {
-        edit.edit_file(file_id.file_id(ctx.db()));
+        let vfs_file_id = file_id.file_id(ctx.db());
+        edit.edit_file(vfs_file_id);
 
         let refs_with_imports =
             augment_references_with_imports(ctx, references, target_module, make);
@@ -323,8 +327,7 @@ fn replace_usages(
 
                 // add imports across modules where needed
                 if let Some((scope, path)) = import_data {
-                    let scope = edit.make_import_scope_mut(scope);
-                    delayed_mutations.push((scope, path));
+                    delayed_mutations.push((vfs_file_id, scope, path));
                 }
             },
         )
@@ -338,7 +341,7 @@ struct FileReferenceWithImport {
 }
 
 fn augment_references_with_imports(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     references: Vec<FileReference>,
     target_module: &hir::Module,
     make: &SyntaxFactory,
@@ -373,7 +376,7 @@ fn augment_references_with_imports(
                             )
                             .map(|mod_path| {
                                 make.path_concat(
-                                    mod_path_to_ast(&mod_path, edition),
+                                    mod_path_to_ast_with_factory(make, &mod_path, edition),
                                     make.path_from_text("Bool"),
                                 )
                             })?;
@@ -469,7 +472,7 @@ fn find_method_call_expr_usage(name: &ast::NameLike) -> Option<ast::Expr> {
 /// Adds the definition of the new enum before the target node.
 fn add_enum_def(
     edit: &mut SourceChangeBuilder,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     usages: &UsageSearchResult,
     target_node: SyntaxNode,
     target_module: &hir::Module,

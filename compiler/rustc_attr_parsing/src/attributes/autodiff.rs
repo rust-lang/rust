@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use rustc_ast::LitKind;
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
-use rustc_feature::{AttributeTemplate, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{AttributeKind, RustcAutodiff};
 use rustc_hir::{MethodKind, Target};
 use rustc_span::{Symbol, sym};
@@ -10,15 +10,16 @@ use thin_vec::ThinVec;
 
 use crate::attributes::SingleAttributeParser;
 use crate::attributes::prelude::Allow;
-use crate::context::{AcceptContext, Stage};
+use crate::context::AcceptContext;
 use crate::parser::{ArgParser, MetaItemOrLitParser};
 use crate::target_checking::AllowedTargets;
+use crate::{AttributeTemplate, template, unstable};
 
 pub(crate) struct RustcAutodiffParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcAutodiffParser {
+impl SingleAttributeParser for RustcAutodiffParser {
     const PATH: &[Symbol] = &[sym::rustc_autodiff];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
@@ -29,8 +30,9 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAutodiffParser {
         List: &["MODE", "WIDTH", "INPUT_ACTIVITIES", "OUTPUT_ACTIVITY"],
         "https://doc.rust-lang.org/std/autodiff/index.html"
     );
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let list = match args {
             ArgParser::NoArgs => return Some(AttributeKind::RustcAutodiff(None)),
             ArgParser::List(list) => list,
@@ -52,10 +54,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAutodiffParser {
             cx.adcx().expected_identifier(mode.span());
             return None;
         };
-        let Ok(()) = mode.args().no_args() else {
-            cx.adcx().expected_identifier(mode.span());
-            return None;
-        };
+        cx.expect_no_args(mode.args())?;
         let Some(mode) = mode.path().word() else {
             cx.adcx().expected_identifier(mode.span());
             return None;
@@ -85,11 +84,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAutodiffParser {
                     .expected_specific_argument(activity.span(), DiffActivity::all_activities());
                 return None;
             };
-            let Ok(()) = activity.args().no_args() else {
-                cx.adcx()
-                    .expected_specific_argument(activity.span(), DiffActivity::all_activities());
-                return None;
-            };
+            cx.expect_no_args(activity.args())?;
             let Some(activity) = activity.path().word() else {
                 cx.adcx()
                     .expected_specific_argument(activity.span(), DiffActivity::all_activities());

@@ -1,6 +1,6 @@
 //@check-pass
 
-#![allow(clippy::redundant_pattern_matching)]
+#![expect(clippy::redundant_pattern_matching)]
 
 struct S<'a> {
     s: &'a str,

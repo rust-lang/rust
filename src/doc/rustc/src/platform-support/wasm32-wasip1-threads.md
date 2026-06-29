@@ -19,7 +19,6 @@ with native multi threading capabilities.
 ## Target maintainers
 
 [@g0djan](https://github.com/g0djan)
-[@abrown](https://github.com/abrown)
 [@loganek](https://github.com/loganek)
 
 ## Requirements

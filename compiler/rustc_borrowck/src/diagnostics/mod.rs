@@ -34,6 +34,7 @@ use tracing::debug;
 
 use super::MirBorrowckCtxt;
 use super::borrow_set::BorrowData;
+use crate::LocalMutationIsAllowed;
 use crate::constraints::OutlivesConstraint;
 use crate::nll::ConstraintDescription;
 use crate::session_diagnostics::{
@@ -115,11 +116,42 @@ impl<'infcx, 'tcx> BorrowckDiagnosticsBuffer<'infcx, 'tcx> {
     pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
         self.buffered_diags.push(BufferedDiag::NonError(diag));
     }
+    pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
+        self.buffered_diags.push(BufferedDiag::Error(diag));
+    }
+
+    pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
+        let mut res = None;
+
+        // Buffer any move errors that we collected and de-duplicated.
+        for (_, (_, diag)) in std::mem::take(&mut self.buffered_move_errors) {
+            // We have already set tainted for this error, so just buffer it.
+            self.buffer_error(diag);
+        }
+        for (_, (mut diag, count)) in std::mem::take(&mut self.buffered_mut_errors) {
+            if count > 10 {
+                diag.note(format!("...and {} other attempted mutable borrows", count - 10));
+            }
+            self.buffer_error(diag);
+        }
+
+        if !self.buffered_diags.is_empty() {
+            self.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
+            for buffered_diag in self.buffered_diags.drain(..) {
+                match buffered_diag {
+                    BufferedDiag::Error(diag) => res = Some(diag.emit()),
+                    BufferedDiag::NonError(diag) => diag.emit(),
+                }
+            }
+        }
+
+        res
+    }
 }
 
 impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
-        self.diags_buffer.buffered_diags.push(BufferedDiag::Error(diag));
+        self.diags_buffer.buffer_error(diag);
     }
 
     pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
@@ -149,34 +181,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     pub(crate) fn buffer_mut_error(&mut self, span: Span, diag: Diag<'infcx>, count: usize) {
         self.diags_buffer.buffered_mut_errors.insert(span, (diag, count));
-    }
-
-    pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
-        let mut res = self.infcx.tainted_by_errors();
-
-        // Buffer any move errors that we collected and de-duplicated.
-        for (_, (_, diag)) in std::mem::take(&mut self.diags_buffer.buffered_move_errors) {
-            // We have already set tainted for this error, so just buffer it.
-            self.buffer_error(diag);
-        }
-        for (_, (mut diag, count)) in std::mem::take(&mut self.diags_buffer.buffered_mut_errors) {
-            if count > 10 {
-                diag.note(format!("...and {} other attempted mutable borrows", count - 10));
-            }
-            self.buffer_error(diag);
-        }
-
-        if !self.diags_buffer.buffered_diags.is_empty() {
-            self.diags_buffer.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
-            for buffered_diag in self.diags_buffer.buffered_diags.drain(..) {
-                match buffered_diag {
-                    BufferedDiag::Error(diag) => res = Some(diag.emit()),
-                    BufferedDiag::NonError(diag) => diag.emit(),
-                }
-            }
-        }
-
-        res
     }
 
     pub(crate) fn has_buffered_diags(&self) -> bool {
@@ -243,7 +247,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let mut target = place.local_or_deref_local();
         for stmt in &self.body[location.block].statements[location.statement_index..] {
             debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
-            if let StatementKind::Assign(box (into, Rvalue::Use(from))) = &stmt.kind {
+            if let StatementKind::Assign((into, Rvalue::Use(from, _))) = &stmt.kind {
                 debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
                 match from {
                     Operand::Copy(place) | Operand::Move(place)
@@ -260,7 +264,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let terminator = self.body[location.block].terminator();
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
-            func: Operand::Constant(box ConstOperand { const_, .. }),
+            func: Operand::Constant(ConstOperand { const_, .. }),
             args,
             ..
         } = &terminator.kind
@@ -537,9 +541,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     Some(self.infcx.tcx.hir_name(var_id).to_string())
                 }
                 _ => {
-                    // Might need a revision when the fields in trait RFC is implemented
-                    // (https://github.com/rust-lang/rfcs/pull/1546)
-                    bug!("End-user description not implemented for field access on `{:?}`", ty);
+                    // This can happen for field accesses on `Box<T>`: the field is
+                    // described from the boxed type, which may have no named fields
+                    Some(field.index().to_string())
                 }
             }
         }
@@ -1030,7 +1034,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         };
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
-        if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind
+        if let StatementKind::Assign((_, Rvalue::Aggregate(kind, places))) = &stmt.kind
             && let AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _) = **kind
         {
             debug!("move_spans: def_id={:?} places={:?}", def_id, places);
@@ -1044,7 +1048,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         // StatementKind::FakeRead only contains a def_id if they are introduced as a result
         // of pattern matching within a closure.
-        if let StatementKind::FakeRead(box (cause, place)) = stmt.kind {
+        if let StatementKind::FakeRead((cause, place)) = stmt.kind {
             match cause {
                 FakeReadCause::ForMatchedPlace(Some(closure_def_id))
                 | FakeReadCause::ForLet(Some(closure_def_id)) => {
@@ -1084,7 +1088,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // that has a `self` parameter.
 
         let target_temp = match stmt.kind {
-            StatementKind::Assign(box (temp, _)) if temp.as_local().is_some() => {
+            StatementKind::Assign((temp, _)) if temp.as_local().is_some() => {
                 temp.as_local().unwrap()
             }
             _ => return normal_ret,
@@ -1131,7 +1135,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         use self::UseSpans::*;
         debug!("borrow_spans: use_span={:?} location={:?}", use_span, location);
 
-        let Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) =
+        let Some(Statement { kind: StatementKind::Assign((place, _)), .. }) =
             self.body[location.block].statements.get(location.statement_index)
         else {
             return OtherUse(use_span);
@@ -1157,10 +1161,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             self.body[location.block].statements[location.statement_index + 1..].iter();
 
         for stmt in statements.chain(maybe_additional_statement) {
-            if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
+            if let StatementKind::Assign((_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
                 let (&def_id, is_coroutine) = match kind {
-                    box AggregateKind::Closure(def_id, _) => (def_id, false),
-                    box AggregateKind::Coroutine(def_id, _) => (def_id, true),
+                    AggregateKind::Closure(def_id, _) => (def_id, false),
+                    AggregateKind::Coroutine(def_id, _) => (def_id, true),
                     _ => continue,
                 };
                 let def_id = def_id.expect_local();
@@ -1426,11 +1430,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         if let ty::Ref(_, _, hir::Mutability::Mut) =
                             moved_place.ty(self.body, self.infcx.tcx).ty.kind()
                         {
+                            // The `&mut *place` reborrow suggestion is `MachineApplicable`, so
+                            // only offer it where `*place` can be borrowed mutably: a value
+                            // captured by an `Fn` closure (held via `&self`) cannot, and the
+                            // suggestion would otherwise fail to compile with E0596.
+                            let reborrow_place = self.infcx.tcx.mk_place_deref(moved_place);
+                            let reborrow_is_valid = self
+                                .is_mutable(reborrow_place.as_ref(), LocalMutationIsAllowed::No)
+                                .is_ok();
                             // Suggest `reborrow` in other place for following situations:
                             // 1. If we are in a loop this will be suggested later.
                             // 2. If the moved value is a mut reference, it is used in a
                             // generic function and the corresponding arg's type is generic param.
-                            if !is_loop_move && !has_suggest_reborrow {
+                            if !is_loop_move && !has_suggest_reborrow && reborrow_is_valid {
                                 self.suggest_reborrow(
                                     err,
                                     move_span.shrink_to_lo(),

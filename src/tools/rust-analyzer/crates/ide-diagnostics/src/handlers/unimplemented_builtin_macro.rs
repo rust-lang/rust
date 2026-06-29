@@ -4,7 +4,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 //
 // This diagnostic is shown for builtin macros which are not yet implemented by rust-analyzer
 pub(crate) fn unimplemented_builtin_macro(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnimplementedBuiltinMacro,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(

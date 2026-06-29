@@ -279,25 +279,25 @@ LL |         asm!("", out("v16") _, out("f16") _);
 error: register class `vreg` requires the `vector` target feature
   --> $DIR/bad-reg.rs:71:18
    |
-LL |         asm!("", in("v0") v); // requires vector & asm_experimental_reg
+LL |         asm!("", in("v0") v);
    |                  ^^^^^^^^^^
 
 error: register class `vreg` requires the `vector` target feature
   --> $DIR/bad-reg.rs:73:18
    |
-LL |         asm!("", out("v0") v); // requires vector & asm_experimental_reg
+LL |         asm!("", out("v0") v);
    |                  ^^^^^^^^^^^
 
 error: register class `vreg` requires the `vector` target feature
   --> $DIR/bad-reg.rs:75:18
    |
-LL |         asm!("", in("v0") x); // requires vector & asm_experimental_reg
+LL |         asm!("", in("v0") x);
    |                  ^^^^^^^^^^
 
 error: register class `vreg` requires the `vector` target feature
   --> $DIR/bad-reg.rs:77:18
    |
-LL |         asm!("", out("v0") x); // requires vector & asm_experimental_reg
+LL |         asm!("", out("v0") x);
    |                  ^^^^^^^^^^^
 
 error: register class `vreg` requires the `vector` target feature
@@ -315,13 +315,13 @@ LL |         asm!("", out("v0") b);
 error: register class `vreg` requires the `vector` target feature
   --> $DIR/bad-reg.rs:85:26
    |
-LL |         asm!("/* {} */", in(vreg) v); // requires vector & asm_experimental_reg
+LL |         asm!("/* {} */", in(vreg) v);
    |                          ^^^^^^^^^^
 
 error: register class `vreg` requires the `vector` target feature
   --> $DIR/bad-reg.rs:87:26
    |
-LL |         asm!("/* {} */", in(vreg) x); // requires vector & asm_experimental_reg
+LL |         asm!("/* {} */", in(vreg) x);
    |                          ^^^^^^^^^^
 
 error: register class `vreg` requires the `vector` target feature
@@ -333,7 +333,7 @@ LL |         asm!("/* {} */", in(vreg) b);
 error: register class `vreg` requires the `vector` target feature
   --> $DIR/bad-reg.rs:92:26
    |
-LL |         asm!("/* {} */", out(vreg) _); // requires vector & asm_experimental_reg
+LL |         asm!("/* {} */", out(vreg) _);
    |                          ^^^^^^^^^^^
 
 error: type `i32` cannot be used with this register class

@@ -1,7 +1,7 @@
 //! The IR of the `#[query_group]` macro.
 
 use quote::{ToTokens, format_ident, quote, quote_spanned};
-use syn::{FnArg, Ident, PatType, Path, Receiver, ReturnType, Type, parse_quote, spanned::Spanned};
+use syn::{FnArg, Ident, PatType, Path, Receiver, ReturnType, parse_quote, spanned::Spanned};
 
 use crate::Cycle;
 
@@ -266,80 +266,11 @@ impl ToTokens for Transparent {
         method.to_tokens(tokens);
     }
 }
-pub(crate) struct Intern {
-    pub(crate) signature: syn::Signature,
-    pub(crate) pat_and_tys: Vec<PatType>,
-    pub(crate) interned_struct_path: Path,
-}
-
-impl ToTokens for Intern {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let sig = &self.signature;
-
-        let ty = self.pat_and_tys.to_vec();
-
-        let interned_pat = ty.first().expect("at least one pat; this is a bug");
-        let interned_pat = &interned_pat.pat;
-
-        let wrapper_struct = self.interned_struct_path.to_token_stream();
-
-        let method = quote! {
-            #sig {
-                #wrapper_struct::new(self, #interned_pat)
-            }
-        };
-
-        method.to_tokens(tokens);
-    }
-}
-
-pub(crate) struct Lookup {
-    pub(crate) signature: syn::Signature,
-    pub(crate) pat_and_tys: Vec<PatType>,
-    pub(crate) return_ty: Type,
-    pub(crate) interned_struct_path: Path,
-}
-
-impl Lookup {
-    pub(crate) fn prepare_signature(&mut self) {
-        let sig = &self.signature;
-
-        let ident = format_ident!("lookup_{}", sig.ident);
-
-        let ty = self.pat_and_tys.to_vec();
-
-        let interned_key = &self.return_ty;
-
-        let interned_pat = ty.first().expect("at least one pat; this is a bug");
-        let interned_return_ty = &interned_pat.ty;
-
-        self.signature = parse_quote!(
-            fn #ident(&self, id: #interned_key) -> #interned_return_ty
-        );
-    }
-}
-
-impl ToTokens for Lookup {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let sig = &self.signature;
-
-        let wrapper_struct = self.interned_struct_path.to_token_stream();
-        let method = quote! {
-            #sig {
-                let zalsa = self.zalsa();
-                #wrapper_struct::ingredient(zalsa).data(zalsa, id.as_id()).0.clone()
-            }
-        };
-
-        method.to_tokens(tokens);
-    }
-}
 
 #[allow(clippy::large_enum_variant)]
 pub(crate) enum Queries {
     TrackedQuery(TrackedQuery),
     InputQuery(InputQuery),
-    Intern(Intern),
     Transparent(Transparent),
 }
 
@@ -349,7 +280,6 @@ impl ToTokens for Queries {
             Queries::TrackedQuery(tracked_query) => tracked_query.to_tokens(tokens),
             Queries::InputQuery(input_query) => input_query.to_tokens(tokens),
             Queries::Transparent(transparent) => transparent.to_tokens(tokens),
-            Queries::Intern(intern) => intern.to_tokens(tokens),
         }
     }
 }

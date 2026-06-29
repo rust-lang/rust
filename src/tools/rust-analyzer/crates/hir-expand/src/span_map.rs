@@ -2,7 +2,6 @@
 
 use span::Span;
 use syntax::{AstNode, TextRange, ast};
-use triomphe::Arc;
 
 pub use span::RealSpanMap;
 
@@ -11,35 +10,21 @@ use crate::{HirFileId, MacroCallId, db::ExpandDatabase};
 pub type ExpansionSpanMap = span::SpanMap;
 
 /// Spanmap for a macro file or a real file
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SpanMap {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SpanMap<'db> {
     /// Spanmap for a macro file
-    ExpansionSpanMap(Arc<ExpansionSpanMap>),
+    ExpansionSpanMap(&'db ExpansionSpanMap),
     /// Spanmap for a real file
-    RealSpanMap(Arc<RealSpanMap>),
+    RealSpanMap(&'db RealSpanMap),
 }
 
-#[derive(Copy, Clone)]
-pub enum SpanMapRef<'a> {
-    /// Spanmap for a macro file
-    ExpansionSpanMap(&'a ExpansionSpanMap),
-    /// Spanmap for a real file
-    RealSpanMap(&'a RealSpanMap),
-}
-
-impl syntax_bridge::SpanMapper for SpanMap {
+impl syntax_bridge::SpanMapper for SpanMap<'_> {
     fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }
 }
 
-impl syntax_bridge::SpanMapper for SpanMapRef<'_> {
-    fn span_for(&self, range: TextRange) -> Span {
-        self.span_for_range(range)
-    }
-}
-
-impl SpanMap {
+impl<'db> SpanMap<'db> {
     pub fn span_for_range(&self, range: TextRange) -> Span {
         match self {
             // FIXME: Is it correct for us to only take the span at the start? This feels somewhat
@@ -51,37 +36,22 @@ impl SpanMap {
         }
     }
 
-    pub fn as_ref(&self) -> SpanMapRef<'_> {
-        match self {
-            Self::ExpansionSpanMap(span_map) => SpanMapRef::ExpansionSpanMap(span_map),
-            Self::RealSpanMap(span_map) => SpanMapRef::RealSpanMap(span_map),
-        }
-    }
-
     #[inline]
-    pub(crate) fn new(db: &dyn ExpandDatabase, file_id: HirFileId) -> SpanMap {
+    pub(crate) fn new(db: &'db dyn ExpandDatabase, file_id: HirFileId) -> SpanMap<'db> {
         match file_id {
             HirFileId::FileId(file_id) => SpanMap::RealSpanMap(db.real_span_map(file_id)),
             HirFileId::MacroFile(m) => {
-                SpanMap::ExpansionSpanMap(db.parse_macro_expansion(m).value.1)
+                SpanMap::ExpansionSpanMap(&db.parse_macro_expansion(m).value.1)
             }
         }
     }
 }
 
-impl SpanMapRef<'_> {
-    pub fn span_for_range(self, range: TextRange) -> Span {
-        match self {
-            Self::ExpansionSpanMap(span_map) => span_map.span_at(range.start()),
-            Self::RealSpanMap(span_map) => span_map.span_for_range(range),
-        }
-    }
-}
-
+#[salsa_macros::tracked(returns(ref))]
 pub(crate) fn real_span_map(
     db: &dyn ExpandDatabase,
     editioned_file_id: base_db::EditionedFileId,
-) -> Arc<RealSpanMap> {
+) -> RealSpanMap {
     use syntax::ast::HasModuleItem;
     let mut pairs = vec![(syntax::TextSize::new(0), span::ROOT_ERASED_FILE_AST_ID)];
     let ast_id_map = db.ast_id_map(editioned_file_id.into());
@@ -134,16 +104,16 @@ pub(crate) fn real_span_map(
         _ => (),
     });
 
-    Arc::new(RealSpanMap::from_file(
+    RealSpanMap::from_file(
         editioned_file_id.span_file_id(db),
         pairs.into_boxed_slice(),
         tree.syntax().text_range().end(),
-    ))
+    )
 }
 
 pub(crate) fn expansion_span_map(
     db: &dyn ExpandDatabase,
     file_id: MacroCallId,
-) -> Arc<ExpansionSpanMap> {
-    db.parse_macro_expansion(file_id).value.1
+) -> &ExpansionSpanMap {
+    &db.parse_macro_expansion(file_id).value.1
 }

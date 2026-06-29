@@ -33,7 +33,6 @@
     x86_amx_intrinsics,
     f16,
     aarch64_unstable_target_feature,
-    target_feature_inline_always,
     funnel_shifts,
     avx10_target_feature,
     const_trait_impl,
@@ -41,6 +40,7 @@
     const_eval_select,
     maybe_uninit_as_bytes,
     movrs_target_feature,
+    clflushopt_target_feature,
     min_adt_const_params
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]

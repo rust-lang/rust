@@ -1,7 +1,7 @@
 // FIXME(f16_f128): add tests when exp is available
 
 #![warn(clippy::imprecise_flops)]
-#![allow(clippy::unnecessary_cast)]
+#![expect(clippy::unnecessary_cast)]
 
 fn main() {
     let x = 2f32;

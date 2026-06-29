@@ -1,6 +1,5 @@
 #![warn(clippy::cloned_instead_of_copied)]
-#![allow(unused)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 
 fn main() {
     // yay

@@ -32,7 +32,7 @@ use crate::{
     AstId,
     db::ExpandDatabase,
     mod_path::ModPath,
-    span_map::SpanMapRef,
+    span_map::SpanMap,
     tt::{self, TopSubtree},
 };
 
@@ -422,7 +422,7 @@ impl AttrId {
         ));
         let tt = syntax_bridge::syntax_node_to_token_tree(
             tt.syntax(),
-            SpanMapRef::RealSpanMap(&span_map),
+            SpanMap::RealSpanMap(&span_map),
             span_map.span_for_range(tt.syntax().text_range()),
             DocCommentDesugarMode::ProcMacro,
         );

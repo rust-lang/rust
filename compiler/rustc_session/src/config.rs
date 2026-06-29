@@ -14,17 +14,16 @@ use std::{cmp, fs, iter};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hash::{StableHasher, StableOrd};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtFlags};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
-use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
-    FileName, HashStableContext, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm,
-    Symbol, sym,
+    FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, Symbol, sym,
 };
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
@@ -89,7 +88,7 @@ pub enum CFProtection {
     Full,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, StableHash, Encodable, Decodable)]
 pub enum OptLevel {
     /// `-Copt-level=0`
     No,
@@ -201,6 +200,15 @@ pub enum Offload {
     Test,
 }
 
+/// The different settings that the `-Z codegen-emit-retag` flag can have.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Hash, Encodable, Decodable)]
+pub struct CodegenRetagOptions {
+    /// Track interior mutable data on the level of references, instead of on the byte level.
+    pub no_precise_im: bool,
+    /// Track `UnsafePinned` data on the level of references, instead of on the byte level.
+    pub no_precise_pin: bool,
+}
+
 /// The different settings that the `-Z autodiff` flag can have.
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum AutoDiff {
@@ -245,6 +253,17 @@ pub enum AnnotateMoves {
     /// `-Z annotate-moves` or `-Z annotate-moves=yes` (use default size limit)
     /// `-Z annotate-moves=SIZE` (use specified size limit)
     Enabled(Option<u64>),
+}
+
+/// The different settings that the `-Z Instrument-mcount` flag can have.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum InstrumentMcount {
+    /// `-Z instrument-mcount=no`
+    Disabled,
+    /// `-Z instrument-mcount=yes`
+    Mcount,
+    /// `-Z instrument-mcount=fentry`
+    Fentry,
 }
 
 /// Settings for `-Z instrument-xray` flag.
@@ -544,7 +563,7 @@ impl SwitchWithOptPath {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash)]
 #[derive(Encodable, BlobDecodable)]
 pub enum SymbolManglingVersion {
     Legacy,
@@ -620,7 +639,7 @@ macro_rules! define_output_types {
             }
         ),* $(,)?
     ) => {
-        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, HashStable_Generic)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, StableHash)]
         #[derive(Encodable, Decodable)]
         pub enum OutputType {
             $(
@@ -629,22 +648,12 @@ macro_rules! define_output_types {
             )*
         }
 
-
         impl StableOrd for OutputType {
             const CAN_USE_UNSTABLE_SORT: bool = true;
 
             // Trivial C-Style enums have a stable sort order across compilation sessions.
             const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
         }
-
-        impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OutputType {
-            type KeyType = Self;
-
-            fn to_stable_hash_key(&self, _: &mut Hcx) -> Self::KeyType {
-                *self
-            }
-        }
-
 
         impl OutputType {
             pub fn iter_all() -> impl Iterator<Item = OutputType> {
@@ -841,7 +850,7 @@ pub enum ResolveDocLinks {
 /// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
 /// dependency tracking for command-line arguments. Also only hash keys, since tracking
 /// should only depend on the output types, not the paths they're written to.
-#[derive(Clone, Debug, Hash, HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, Debug, Hash, StableHash, Encodable, Decodable)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<OutFileName>>);
 
 impl OutputTypes {
@@ -1055,7 +1064,7 @@ impl Input {
     }
 }
 
-#[derive(Clone, Hash, Debug, HashStable_Generic, PartialEq, Eq, Encodable, Decodable)]
+#[derive(Clone, Hash, Debug, StableHash, PartialEq, Eq, Encodable, Decodable)]
 pub enum OutFileName {
     Real(PathBuf),
     Stdout,
@@ -1108,13 +1117,10 @@ impl OutFileName {
         outputs: &OutputFilenames,
         flavor: OutputType,
         codegen_unit_name: &str,
-        invocation_temp: Option<&str>,
     ) -> PathBuf {
         match *self {
             OutFileName::Real(ref path) => path.clone(),
-            OutFileName::Stdout => {
-                outputs.temp_path_for_cgu(flavor, codegen_unit_name, invocation_temp)
-            }
+            OutFileName::Stdout => outputs.temp_path_for_cgu(flavor, codegen_unit_name),
         }
     }
 
@@ -1130,7 +1136,7 @@ impl OutFileName {
     }
 }
 
-#[derive(Clone, Hash, Debug, HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, Hash, Debug, StableHash, Encodable, Decodable)]
 pub struct OutputFilenames {
     pub(crate) out_directory: PathBuf,
     /// Crate name. Never contains '-'.
@@ -1139,6 +1145,17 @@ pub struct OutputFilenames {
     filestem: String,
     pub single_output_file: Option<OutFileName>,
     temps_directory: Option<PathBuf>,
+
+    /// A random string generated per invocation of rustc.
+    ///
+    /// This is prepended to all temporary files so that they do not collide
+    /// during concurrent invocations of rustc, or past invocations that were
+    /// preserved with a flag like `-C save-temps`, since these files may be
+    /// hard linked.
+    // This does not affect incr comp outputs, only where temp files are stored.
+    #[stable_hash(ignore)]
+    invocation_temp: Option<String>,
+
     explicit_dwo_out_directory: Option<PathBuf>,
     pub outputs: OutputTypes,
 }
@@ -1181,6 +1198,7 @@ impl OutputFilenames {
         out_filestem: String,
         single_output_file: Option<OutFileName>,
         temps_directory: Option<PathBuf>,
+        invocation_temp: Option<String>,
         explicit_dwo_out_directory: Option<PathBuf>,
         extra: String,
         outputs: OutputTypes,
@@ -1189,6 +1207,7 @@ impl OutputFilenames {
             out_directory,
             single_output_file,
             temps_directory,
+            invocation_temp,
             explicit_dwo_out_directory,
             outputs,
             crate_stem: format!("{out_crate_name}{extra}"),
@@ -1205,6 +1224,7 @@ impl OutputFilenames {
     }
 
     pub fn interface_path(&self) -> PathBuf {
+        debug!("using crate_name={} for interface_path", self.crate_stem);
         self.out_directory.join(format!("lib{}.rs", self.crate_stem))
     }
 
@@ -1214,6 +1234,7 @@ impl OutputFilenames {
         let extension = flavor.extension();
         match flavor {
             OutputType::Metadata => {
+                debug!("using crate_name={} for {extension}", self.crate_stem);
                 self.out_directory.join(format!("lib{}.{}", self.crate_stem, extension))
             }
             _ => self.with_directory_and_extension(&self.out_directory, extension),
@@ -1223,23 +1244,14 @@ impl OutputFilenames {
     /// Gets the path where a compilation artifact of the given type for the
     /// given codegen unit should be placed on disk. If codegen_unit_name is
     /// None, a path distinct from those of any codegen unit will be generated.
-    pub fn temp_path_for_cgu(
-        &self,
-        flavor: OutputType,
-        codegen_unit_name: &str,
-        invocation_temp: Option<&str>,
-    ) -> PathBuf {
+    pub fn temp_path_for_cgu(&self, flavor: OutputType, codegen_unit_name: &str) -> PathBuf {
         let extension = flavor.extension();
-        self.temp_path_ext_for_cgu(extension, codegen_unit_name, invocation_temp)
+        self.temp_path_ext_for_cgu(extension, codegen_unit_name)
     }
 
     /// Like `temp_path`, but specifically for dwarf objects.
-    pub fn temp_path_dwo_for_cgu(
-        &self,
-        codegen_unit_name: &str,
-        invocation_temp: Option<&str>,
-    ) -> PathBuf {
-        let p = self.temp_path_ext_for_cgu(DWARF_OBJECT_EXT, codegen_unit_name, invocation_temp);
+    pub fn temp_path_dwo_for_cgu(&self, codegen_unit_name: &str) -> PathBuf {
+        let p = self.temp_path_ext_for_cgu(DWARF_OBJECT_EXT, codegen_unit_name);
         if let Some(dwo_out) = &self.explicit_dwo_out_directory {
             let mut o = dwo_out.clone();
             o.push(p.file_name().unwrap());
@@ -1251,16 +1263,11 @@ impl OutputFilenames {
 
     /// Like `temp_path`, but also supports things where there is no corresponding
     /// OutputType, like noopt-bitcode or lto-bitcode.
-    pub fn temp_path_ext_for_cgu(
-        &self,
-        ext: &str,
-        codegen_unit_name: &str,
-        invocation_temp: Option<&str>,
-    ) -> PathBuf {
+    pub fn temp_path_ext_for_cgu(&self, ext: &str, codegen_unit_name: &str) -> PathBuf {
         let mut extension = codegen_unit_name.to_string();
 
         // Append `.{invocation_temp}` to ensure temporary files are unique.
-        if let Some(rng) = invocation_temp {
+        if let Some(rng) = &self.invocation_temp {
             extension.push('.');
             extension.push_str(rng);
         }
@@ -1288,6 +1295,7 @@ impl OutputFilenames {
     }
 
     pub fn with_directory_and_extension(&self, directory: &Path, extension: &str) -> PathBuf {
+        debug!("using filestem={} for {extension}", self.filestem);
         let mut path = directory.join(&self.filestem);
         path.set_extension(extension);
         path
@@ -1300,10 +1308,9 @@ impl OutputFilenames {
         split_debuginfo_kind: SplitDebuginfo,
         split_dwarf_kind: SplitDwarfKind,
         cgu_name: &str,
-        invocation_temp: Option<&str>,
     ) -> Option<PathBuf> {
-        let obj_out = self.temp_path_for_cgu(OutputType::Object, cgu_name, invocation_temp);
-        let dwo_out = self.temp_path_dwo_for_cgu(cgu_name, invocation_temp);
+        let obj_out = self.temp_path_for_cgu(OutputType::Object, cgu_name);
+        let dwo_out = self.temp_path_dwo_for_cgu(cgu_name);
         match (split_debuginfo_kind, split_dwarf_kind) {
             (SplitDebuginfo::Off, SplitDwarfKind::Single | SplitDwarfKind::Split) => None,
             // Single mode doesn't change how DWARF is emitted, but does add Split DWARF attributes
@@ -1388,9 +1395,21 @@ pub fn host_tuple() -> &'static str {
 
 fn file_path_mapping(
     remap_path_prefix: Vec<(PathBuf, PathBuf)>,
+    remap_cwd_prefix: Option<&Path>,
     remap_path_scope: RemapPathScopeComponents,
 ) -> FilePathMapping {
-    FilePathMapping::new(remap_path_prefix.clone(), remap_path_scope)
+    // Apply `-Zremap-cwd-prefix` here rather than in `parse_remap_path_prefix`, so the
+    // absolute cwd is never stored in the tracked `remap_path_prefix` option (#132132).
+    let cwd_remap = if let Some(to) = remap_cwd_prefix
+        && let Ok(cwd) = std::env::current_dir()
+    {
+        Some((cwd, to.to_path_buf()))
+    } else {
+        None
+    };
+    // The cwd remapping is appended last: `map_prefix` tries entries in reverse order, so this
+    // keeps `-Zremap-cwd-prefix` taking precedence over `--remap-path-prefix`, as documented.
+    FilePathMapping::new(remap_path_prefix.into_iter().chain(cwd_remap).collect(), remap_path_scope)
 }
 
 impl Default for Options {
@@ -1402,7 +1421,8 @@ impl Default for Options {
         // to create a default working directory.
         let working_dir = {
             let working_dir = std::env::current_dir().unwrap();
-            let file_mapping = file_path_mapping(Vec::new(), RemapPathScopeComponents::empty());
+            let file_mapping =
+                file_path_mapping(Vec::new(), None, RemapPathScopeComponents::empty());
             file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
         };
 
@@ -1463,7 +1483,11 @@ impl Options {
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
-        file_path_mapping(self.remap_path_prefix.clone(), self.remap_path_scope)
+        file_path_mapping(
+            self.remap_path_prefix.clone(),
+            self.unstable_opts.remap_cwd_prefix.as_deref(),
+            self.remap_path_scope,
+        )
     }
 
     /// Returns `true` if there will be an output file generated.
@@ -1484,11 +1508,7 @@ impl Options {
     }
 
     pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
-        self.cg.symbol_mangling_version.unwrap_or(if self.unstable_features.is_nightly_build() {
-            SymbolManglingVersion::V0
-        } else {
-            SymbolManglingVersion::Legacy
-        })
+        self.cg.symbol_mangling_version.unwrap_or(SymbolManglingVersion::V0)
     }
 
     #[inline]
@@ -1525,7 +1545,7 @@ impl UnstableOptions {
 }
 
 // The type of entry function, so users can have their own entry functions
-#[derive(Copy, Clone, PartialEq, Hash, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Hash, Debug, StableHash)]
 pub enum EntryFnType {
     Main {
         /// Specifies what to do with `SIGPIPE` before calling `fn main()`.
@@ -2401,9 +2421,8 @@ pub fn parse_externs(
 fn parse_remap_path_prefix(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
-    unstable_opts: &UnstableOptions,
 ) -> Vec<(PathBuf, PathBuf)> {
-    let mut mapping: Vec<(PathBuf, PathBuf)> = matches
+    matches
         .opt_strs("remap-path-prefix")
         .into_iter()
         .map(|remap| match remap.rsplit_once('=') {
@@ -2412,15 +2431,7 @@ fn parse_remap_path_prefix(
             }
             Some((from, to)) => (PathBuf::from(from), PathBuf::from(to)),
         })
-        .collect();
-    match &unstable_opts.remap_cwd_prefix {
-        Some(to) => match std::env::current_dir() {
-            Ok(cwd) => mapping.push((cwd, to.clone())),
-            Err(_) => (),
-        },
-        None => (),
-    };
-    mapping
+        .collect()
 }
 
 fn parse_logical_env(
@@ -2473,6 +2484,22 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let mut collected_options = Default::default();
 
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
+
+    if unstable_opts.staticlib_hide_internal_symbols && !crate_types.contains(&CrateType::StaticLib)
+    {
+        early_dcx.early_warn(
+            "-Zstaticlib-hide-internal-symbols has no effect without `--crate-type staticlib`",
+        );
+    }
+
+    if unstable_opts.staticlib_rename_internal_symbols
+        && !crate_types.contains(&CrateType::StaticLib)
+    {
+        early_dcx.early_warn(
+            "-Zstaticlib-rename-internal-symbols has no effect without `--crate-type staticlib`",
+        );
+    }
+
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
     if !unstable_opts.unstable_options && json_timings {
@@ -2496,11 +2523,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         cg.codegen_units,
     );
 
-    if unstable_opts.threads == 0 {
-        early_dcx.early_fatal("value for threads must be a positive non-zero integer");
-    }
-
-    if unstable_opts.threads == parse::MAX_THREADS_CAP {
+    if unstable_opts.threads == Some(parse::MAX_THREADS_CAP) {
         early_dcx.early_warn(format!("number of threads was capped at {}", parse::MAX_THREADS_CAP));
     }
 
@@ -2682,7 +2705,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
 
-    let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches, &unstable_opts);
+    let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches);
     let remap_path_scope = parse_remap_path_scope(early_dcx, matches, &unstable_opts);
 
     let pretty = parse_pretty(early_dcx, &unstable_opts);
@@ -2750,7 +2773,11 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
         });
 
-        let file_mapping = file_path_mapping(remap_path_prefix.clone(), remap_path_scope);
+        let file_mapping = file_path_mapping(
+            remap_path_prefix.clone(),
+            unstable_opts.remap_cwd_prefix.as_deref(),
+            remap_path_scope,
+        );
         file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
     };
 
@@ -2808,7 +2835,6 @@ fn parse_pretty(early_dcx: &EarlyDiagCtxt, unstable_opts: &UnstableOptions) -> O
 
     let first = match unstable_opts.unpretty.as_deref()? {
         "normal" => Source(PpSourceMode::Normal),
-        "identified" => Source(PpSourceMode::Identified),
         "expanded" => Source(PpSourceMode::Expanded),
         "expanded,identified" => Source(PpSourceMode::ExpandedIdentified),
         "expanded,hygiene" => Source(PpSourceMode::ExpandedHygiene),
@@ -2824,7 +2850,7 @@ fn parse_pretty(early_dcx: &EarlyDiagCtxt, unstable_opts: &UnstableOptions) -> O
         "stable-mir" => StableMir,
         "mir-cfg" => MirCFG,
         name => early_dcx.early_fatal(format!(
-            "argument to `unpretty` must be one of `normal`, `identified`, \
+            "argument to `unpretty` must be one of `normal`, \
                             `expanded`, `expanded,identified`, `expanded,hygiene`, \
                             `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
                             `hir,typed`, `hir-tree`, `thir-tree`, `thir-flat`, `mir`, `stable-mir`, or \
@@ -2954,8 +2980,6 @@ pub enum PpSourceMode {
     Normal,
     /// `-Zunpretty=expanded`
     Expanded,
-    /// `-Zunpretty=identified`
-    Identified,
     /// `-Zunpretty=expanded,identified`
     ExpandedIdentified,
     /// `-Zunpretty=expanded,hygiene`
@@ -3003,7 +3027,7 @@ impl PpMode {
         use PpMode::*;
         use PpSourceMode::*;
         match *self {
-            Source(Normal | Identified) | AstTree => false,
+            Source(Normal) | AstTree => false,
 
             Source(Expanded | ExpandedIdentified | ExpandedHygiene)
             | AstTreeExpanded
@@ -3054,8 +3078,9 @@ pub(crate) mod dep_tracking {
     use std::path::PathBuf;
 
     use rustc_abi::Align;
+    use rustc_ast::attr::version::RustcVersion;
     use rustc_data_structures::fx::FxIndexMap;
-    use rustc_data_structures::stable_hasher::StableHasher;
+    use rustc_data_structures::stable_hash::StableHasher;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;
@@ -3069,12 +3094,13 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CoverageOptions,
-        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
-        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
-        OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CodegenRetagOptions,
+        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount, InstrumentXRay,
+        LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload,
+        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
+        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3136,6 +3162,7 @@ pub(crate) mod dep_tracking {
         TlsModel,
         InstrumentCoverage,
         CoverageOptions,
+        InstrumentMcount,
         InstrumentXRay,
         CrateType,
         MergeFunctions,
@@ -3178,6 +3205,8 @@ pub(crate) mod dep_tracking {
         InliningThreshold,
         FunctionReturn,
         Align,
+        CodegenRetagOptions,
+        RustcVersion,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

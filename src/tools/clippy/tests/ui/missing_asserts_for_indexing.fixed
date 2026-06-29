@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![expect(clippy::manual_assert_eq)]
 #![warn(clippy::missing_asserts_for_indexing)]
 
 // ok

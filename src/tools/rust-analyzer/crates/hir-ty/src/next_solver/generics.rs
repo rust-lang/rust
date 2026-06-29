@@ -1,117 +1,77 @@
 //! Things related to generics in the next-trait-solver.
 
-use hir_def::{
-    ConstParamId, GenericDefId, GenericParamId, LifetimeParamId, TypeOrConstParamId, TypeParamId,
-    hir::generics::{GenericParams, TypeOrConstParamData},
-};
-use rustc_type_ir::inherent::GenericsOf;
+use hir_def::{GenericDefId, GenericParamId};
 
-use crate::generics::parent_generic_def;
+use crate::db::HirDatabase;
 
 use super::SolverDefId;
 
 use super::DbInterner;
 
-pub(crate) fn generics(interner: DbInterner<'_>, def: SolverDefId) -> Generics {
-    let mk_lt = |parent, index, local_id| {
-        let id = GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id });
-        GenericParamDef { index, id }
-    };
-    let mk_ty = |parent, index, local_id, p: &TypeOrConstParamData| {
-        let id = TypeOrConstParamId { parent, local_id };
-        let id = match p {
-            TypeOrConstParamData::TypeParamData(_) => {
-                GenericParamId::TypeParamId(TypeParamId::from_unchecked(id))
-            }
-            TypeOrConstParamData::ConstParamData(_) => {
-                GenericParamId::ConstParamId(ConstParamId::from_unchecked(id))
-            }
-        };
-        GenericParamDef { index, id }
-    };
-    let own_params_for_generic_params = |parent, params: &GenericParams| {
-        let mut result = Vec::with_capacity(params.len());
-        let mut type_and_consts = params.iter_type_or_consts();
-        let mut index = 0;
-        if let Some(self_param) = params.trait_self_param() {
-            result.push(mk_ty(parent, 0, self_param, &params[self_param]));
-            type_and_consts.next();
-            index += 1;
-        }
-        result.extend(params.iter_lt().map(|(local_id, _data)| {
-            let lt = mk_lt(parent, index, local_id);
-            index += 1;
-            lt
-        }));
-        result.extend(type_and_consts.map(|(local_id, data)| {
-            let ty = mk_ty(parent, index, local_id, data);
-            index += 1;
-            ty
-        }));
-        result
-    };
-
+pub(crate) fn generics(interner: DbInterner<'_>, def: SolverDefId) -> Generics<'_> {
     let db = interner.db;
-    let (parent, own_params) = match (def.try_into(), def) {
-        (Ok(def), _) => (
-            parent_generic_def(db, def),
-            own_params_for_generic_params(def, GenericParams::of(db, def)),
-        ),
-        (_, SolverDefId::InternedOpaqueTyId(id)) => {
-            match db.lookup_intern_impl_trait_id(id) {
-                crate::ImplTraitId::ReturnTypeImplTrait(function_id, _) => {
-                    // The opaque type itself does not have generics - only the parent function
-                    (Some(GenericDefId::FunctionId(function_id)), vec![])
-                }
-                crate::ImplTraitId::TypeAliasImplTrait(type_alias_id, _) => {
-                    (Some(type_alias_id.into()), Vec::new())
-                }
-            }
-        }
+    let def = match (def.try_into(), def) {
+        (Ok(def), _) => def,
+        (_, SolverDefId::InternedOpaqueTyId(id)) => match id.loc(db) {
+            crate::ImplTraitId::ReturnTypeImplTrait(function_id, _) => function_id.into(),
+            crate::ImplTraitId::TypeAliasImplTrait(type_alias_id, _) => type_alias_id.into(),
+        },
         (_, SolverDefId::BuiltinDeriveImplId(id)) => {
             return crate::builtin_derive::generics_of(interner, id);
         }
+        (_, SolverDefId::AnonConstId(id)) => {
+            let loc = id.loc(db);
+            let generic_def = loc.owner.generic_def(db);
+            return if loc.allow_using_generic_params {
+                Generics::from_generic_def(db, generic_def)
+            } else {
+                #[expect(
+                    deprecated,
+                    reason = "`Generics` only exposes an iterator over `GenericParamId`, \
+                        so you cannot exploit the erroneous `crate::generics::Generics`"
+                )]
+                Generics {
+                    generics: crate::generics::Generics::empty(generic_def),
+                    additional_param: None,
+                }
+            };
+        }
         _ => panic!("No generics for {def:?}"),
     };
-    let parent_generics = parent.map(|def| Box::new(generics(interner, def.into())));
 
-    Generics {
-        parent,
-        parent_count: parent_generics.map_or(0, |g| g.parent_count + g.own_params.len()),
-        own_params,
-    }
+    Generics::from_generic_def(db, def)
 }
 
 #[derive(Debug)]
-pub struct Generics {
-    pub parent: Option<GenericDefId>,
-    pub parent_count: usize,
-    pub own_params: Vec<GenericParamDef>,
+pub struct Generics<'db> {
+    generics: crate::generics::Generics<'db>,
+    /// This is used for builtin derives, specifically `CoercePointee`.
+    additional_param: Option<GenericParamId>,
 }
 
-impl Generics {
-    pub(crate) fn push_param(&mut self, id: GenericParamId) {
-        let index = self.count() as u32;
-        self.own_params.push(GenericParamDef { index, id });
+impl<'db> Generics<'db> {
+    pub(crate) fn from_generic_def(db: &'db dyn HirDatabase, def: GenericDefId) -> Generics<'db> {
+        Generics { generics: crate::generics::generics(db, def), additional_param: None }
+    }
+
+    pub(crate) fn from_generic_def_plus_one(
+        db: &'db dyn HirDatabase,
+        def: GenericDefId,
+        additional_param: GenericParamId,
+    ) -> Generics<'db> {
+        Generics {
+            generics: crate::generics::generics(db, def),
+            additional_param: Some(additional_param),
+        }
+    }
+
+    pub(super) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> {
+        self.generics.iter_id().chain(self.additional_param)
     }
 }
 
-#[derive(Debug)]
-pub struct GenericParamDef {
-    index: u32,
-    pub(crate) id: GenericParamId,
-}
-
-impl GenericParamDef {
-    /// Returns the index of the param on the self generics only
-    /// (i.e. not including parent generics)
-    pub fn index(&self) -> u32 {
-        self.index
-    }
-}
-
-impl<'db> rustc_type_ir::inherent::GenericsOf<DbInterner<'db>> for Generics {
+impl<'db> rustc_type_ir::inherent::GenericsOf<DbInterner<'db>> for Generics<'db> {
     fn count(&self) -> usize {
-        self.parent_count + self.own_params.len()
+        self.generics.len() + usize::from(self.additional_param.is_some())
     }
 }

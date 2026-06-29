@@ -10,7 +10,7 @@ use std::marker::Destruct;
 
 struct S<'a>(&'a mut u8);
 
-impl<'a> const Drop for S<'a> {
+const impl<'a> Drop for S<'a> {
     fn drop(&mut self) {
         *self.0 += 1;
     }
@@ -42,7 +42,7 @@ mod t {
     pub fn foo() {}
     pub struct ConstDrop;
 
-    impl const Drop for ConstDrop {
+    const impl Drop for ConstDrop {
         fn drop(&mut self) {}
     }
 
@@ -52,7 +52,7 @@ mod t {
     pub const trait SomeTrait {
         fn foo();
     }
-    impl const SomeTrait for () {
+    const impl SomeTrait for () {
         fn foo() {}
     }
     // non-const impl
@@ -62,7 +62,7 @@ mod t {
 
     pub struct ConstDropWithBound<T: const SomeTrait>(pub core::marker::PhantomData<T>);
 
-    impl<T: const SomeTrait> const Drop for ConstDropWithBound<T> {
+    const impl<T: const SomeTrait> Drop for ConstDropWithBound<T> {
         fn drop(&mut self) {
             T::foo();
         }
@@ -70,7 +70,7 @@ mod t {
 
     pub struct ConstDropWithNonconstBound<T: SomeTrait>(pub core::marker::PhantomData<T>);
 
-    impl<T: SomeTrait> const Drop for ConstDropWithNonconstBound<T> {
+    const impl<T: SomeTrait> Drop for ConstDropWithNonconstBound<T> {
         fn drop(&mut self) {
             // Note: we DON'T use the `T: SomeTrait` bound
         }

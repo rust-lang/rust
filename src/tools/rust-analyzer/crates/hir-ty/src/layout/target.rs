@@ -3,17 +3,17 @@
 use base_db::{Crate, target::TargetLoadError};
 use hir_def::layout::TargetDataLayout;
 use rustc_abi::{AddressSpace, AlignFromBytesError, TargetDataLayoutError};
-use triomphe::Arc;
 
 use crate::db::HirDatabase;
 
+#[salsa_macros::tracked(returns(ref))]
 pub fn target_data_layout_query(
     db: &dyn HirDatabase,
     krate: Crate,
-) -> Result<Arc<TargetDataLayout>, TargetLoadError> {
+) -> Result<TargetDataLayout, TargetLoadError> {
     match &krate.workspace_data(db).target {
         Ok(target) => match TargetDataLayout::parse_from_llvm_datalayout_string(&target.data_layout, AddressSpace::ZERO) {
-            Ok(it) => Ok(Arc::new(it)),
+            Ok(it) => Ok(it),
             Err(e) => {
                 Err(match e {
                     TargetDataLayoutError::InvalidAddressSpace { addr_space, cause, err } => {

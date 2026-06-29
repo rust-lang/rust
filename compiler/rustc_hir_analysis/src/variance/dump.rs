@@ -38,18 +38,16 @@ pub(crate) fn variances(tcx: TyCtxt<'_>) {
         }
 
         match tcx.def_kind(id) {
-            DefKind::AssocFn | DefKind::Fn | DefKind::Enum | DefKind::Struct | DefKind::Union => {}
-            DefKind::TyAlias if tcx.type_alias_is_lazy(id) => {}
+            DefKind::AssocFn | DefKind::Fn | DefKind::Enum | DefKind::Struct | DefKind::Union => {
+                tcx.dcx().span_err(tcx.def_span(id), format_variances(tcx, id.def_id));
+            }
             kind => {
                 let message = format!(
                     "attr parsing didn't report an error for `#[{}]` on {kind:?}",
                     rustc_span::sym::rustc_dump_variances,
                 );
                 tcx.dcx().span_delayed_bug(tcx.def_span(id), message);
-                continue;
             }
         }
-
-        tcx.dcx().span_err(tcx.def_span(id), format_variances(tcx, id.def_id));
     }
 }

@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use rustc_abi::{
     Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
     TyAndLayout, Variants,
@@ -147,12 +148,7 @@ fn classify_arg<'a, Ty, C>(
     let mut double_words = [DoubleWord::Words([Word::Integer; 2]); ARGUMENT_REGISTERS / 2];
     classify(cx, &arg.layout, Size::ZERO, &mut double_words);
 
-    let mut regs = [None; ARGUMENT_REGISTERS];
-    let mut i = 0;
-    let mut push = |reg| {
-        regs[i] = Some(reg);
-        i += 1;
-    };
+    let mut regs = ArrayVec::new();
     let mut attrs = ArgAttribute::empty();
 
     for (index, double_word) in double_words.into_iter().enumerate() {
@@ -162,7 +158,7 @@ fn classify_arg<'a, Ty, C>(
         match double_word {
             // `f128` must be aligned to be assigned a float register.
             DoubleWord::F128Start if (start_double_word_count + index).is_multiple_of(2) => {
-                push(Reg::f128());
+                regs.push(Reg::f128());
             }
             DoubleWord::F128Start => {
                 // Clang currently handles this case nonsensically, always returning a packed
@@ -170,30 +166,27 @@ fn classify_arg<'a, Ty, C>(
                 // the `long double` isn't aligned on the stack, which also makes all future
                 // arguments get passed in the wrong registers. This passes the `f128` in integer
                 // registers when it is unaligned, same as with `f32` and `f64`.
-                push(Reg::i64());
-                push(Reg::i64());
+                regs.push(Reg::i64());
+                regs.push(Reg::i64());
             }
             DoubleWord::F128End => {} // Already handled by `F128Start`
-            DoubleWord::F64 => push(Reg::f64()),
-            DoubleWord::Words([Word::Integer, Word::Integer]) => push(Reg::i64()),
+            DoubleWord::F64 => regs.push(Reg::f64()),
+            DoubleWord::Words([Word::Integer, Word::Integer]) => regs.push(Reg::i64()),
             DoubleWord::Words(words) => {
                 attrs |= ArgAttribute::InReg;
                 for word in words {
                     match word {
-                        Word::F32 => push(Reg::f32()),
-                        Word::Integer => push(Reg::i32()),
+                        Word::F32 => regs.push(Reg::f32()),
+                        Word::Integer => regs.push(Reg::i32()),
                     }
                 }
             }
         }
     }
 
-    let cast_target = match regs {
-        [Some(reg), None, rest @ ..] => {
-            // Just a single register is needed for this value.
-            debug_assert!(rest.iter().all(|x| x.is_none()));
-            CastTarget::from(reg)
-        }
+    let cast_target = match regs.as_slice() {
+        // Just a single register is needed for this value.
+        [reg] => CastTarget::from(*reg),
         _ => CastTarget::prefixed(regs, Uniform::new(Reg::i8(), Size::ZERO)),
     };
 

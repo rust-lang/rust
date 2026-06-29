@@ -164,7 +164,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             interp_ok(Scalar::from_i32(0)) // return zero on success
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            this.set_last_error_and_return_i32(LibcError("EINVAL"))
+            this.set_errno_and_return_neg1_i32(LibcError("EINVAL"))
         }
     }
 
@@ -188,7 +188,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             interp_ok(Scalar::from_i32(0))
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            this.set_last_error_and_return_i32(LibcError("EINVAL"))
+            this.set_errno_and_return_neg1_i32(LibcError("EINVAL"))
         }
     }
 
@@ -227,7 +227,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`chdir`", reject_with)?;
-            return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
+            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
         let result = env::set_current_dir(path).map(|()| 0);
@@ -269,7 +269,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // For most platforms the return type is an `i32`, but some are unsigned. The TID
         // will always be positive so we don't need to differentiate.
-        interp_ok(Scalar::from_u32(this.get_current_tid()))
+        interp_ok(Scalar::from_u32(this.get_tid(this.active_thread())))
     }
 
     /// `fields_size`, if present, says how large each field of the struct is.
@@ -288,7 +288,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         if this.ptr_is_null(uname_ptr)? {
-            return this.set_last_error_and_return_i32(LibcError("EFAULT"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
         let uname = this.deref_pointer_as(uname, this.libc_ty_layout("utsname"))?;
@@ -323,7 +323,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// allows querying the ID for arbitrary threads, identified by their pthread_t.
     ///
     /// API documentation: <https://www.manpagez.com/man/3/pthread_threadid_np/>.
-    fn apple_pthread_threadip_np(
+    fn apple_pthread_threadid_np(
         &mut self,
         thread_op: &OpTy<'tcx>,
         tid_op: &OpTy<'tcx>,
@@ -349,6 +349,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             thread
         };
 
+        // This returns an `int`, not a `pthread_t`, so we treat it like we treat `gettid` on Linux.
         let tid = this.get_tid(thread);
         let tid_dest = this.deref_pointer_as(tid_op, this.machine.layouts.u64)?;
         this.write_int(tid, &tid_dest)?;

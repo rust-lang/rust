@@ -5,56 +5,9 @@ mod tests;
 
 use crate::fmt;
 use crate::io::{
-    self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write,
+    self, BorrowedCursor, BufRead, Empty, IoSlice, IoSliceMut, Read, Repeat, Seek, SeekFrom, Sink,
+    SizeHint, Write,
 };
-
-/// `Empty` ignores any data written via [`Write`], and will always be empty
-/// (returning zero bytes) when read via [`Read`].
-///
-/// This struct is generally created by calling [`empty()`]. Please
-/// see the documentation of [`empty()`] for more details.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug, Default)]
-pub struct Empty;
-
-/// Creates a value that is always at EOF for reads, and ignores all data written.
-///
-/// All calls to [`write`] on the returned instance will return [`Ok(buf.len())`]
-/// and the contents of the buffer will not be inspected.
-///
-/// All calls to [`read`] from the returned reader will return [`Ok(0)`].
-///
-/// [`Ok(buf.len())`]: Ok
-/// [`Ok(0)`]: Ok
-///
-/// [`write`]: Write::write
-/// [`read`]: Read::read
-///
-/// # Examples
-///
-/// ```rust
-/// use std::io::{self, Write};
-///
-/// let buffer = vec![1, 2, 3, 5, 8];
-/// let num_bytes = io::empty().write(&buffer).unwrap();
-/// assert_eq!(num_bytes, 5);
-/// ```
-///
-///
-/// ```rust
-/// use std::io::{self, Read};
-///
-/// let mut buffer = String::new();
-/// io::empty().read_to_string(&mut buffer).unwrap();
-/// assert!(buffer.is_empty());
-/// ```
-#[must_use]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
-pub const fn empty() -> Empty {
-    Empty
-}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Empty {
@@ -64,7 +17,7 @@ impl Read for Empty {
     }
 
     #[inline]
-    fn read_buf(&mut self, _cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, _cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         Ok(())
     }
 
@@ -86,7 +39,7 @@ impl Read for Empty {
     }
 
     #[inline]
-    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         if cursor.capacity() != 0 { Err(io::Error::READ_EXACT_EOF) } else { Ok(()) }
     }
 
@@ -234,36 +187,6 @@ impl Write for &Empty {
     }
 }
 
-/// A reader which yields one byte over and over and over and over and over and...
-///
-/// This struct is generally created by calling [`repeat()`]. Please
-/// see the documentation of [`repeat()`] for more details.
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct Repeat {
-    byte: u8,
-}
-
-/// Creates an instance of a reader that infinitely repeats one byte.
-///
-/// All reads from this reader will succeed by filling the specified buffer with
-/// the given byte.
-///
-/// # Examples
-///
-/// ```
-/// use std::io::{self, Read};
-///
-/// let mut buffer = [0; 3];
-/// io::repeat(0b101).read_exact(&mut buffer).unwrap();
-/// assert_eq!(buffer, [0b101, 0b101, 0b101]);
-/// ```
-#[must_use]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
-pub const fn repeat(byte: u8) -> Repeat {
-    Repeat { byte }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Repeat {
     #[inline]
@@ -279,7 +202,7 @@ impl Read for Repeat {
     }
 
     #[inline]
-    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         // SAFETY: No uninit bytes are being written.
         unsafe { buf.as_mut() }.write_filled(self.byte);
         // SAFETY: the entire unfilled portion of buf has been initialized.
@@ -288,7 +211,7 @@ impl Read for Repeat {
     }
 
     #[inline]
-    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.read_buf(buf)
     }
 
@@ -327,46 +250,6 @@ impl SizeHint for Repeat {
     fn upper_bound(&self) -> Option<usize> {
         None
     }
-}
-
-#[stable(feature = "std_debug", since = "1.16.0")]
-impl fmt::Debug for Repeat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Repeat").finish_non_exhaustive()
-    }
-}
-
-/// A writer which will move data into the void.
-///
-/// This struct is generally created by calling [`sink()`]. Please
-/// see the documentation of [`sink()`] for more details.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug, Default)]
-pub struct Sink;
-
-/// Creates an instance of a writer which will successfully consume all data.
-///
-/// All calls to [`write`] on the returned instance will return [`Ok(buf.len())`]
-/// and the contents of the buffer will not be inspected.
-///
-/// [`write`]: Write::write
-/// [`Ok(buf.len())`]: Ok
-///
-/// # Examples
-///
-/// ```rust
-/// use std::io::{self, Write};
-///
-/// let buffer = vec![1, 2, 3, 5, 8];
-/// let num_bytes = io::sink().write(&buffer).unwrap();
-/// assert_eq!(num_bytes, 5);
-/// ```
-#[must_use]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
-pub const fn sink() -> Sink {
-    Sink
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

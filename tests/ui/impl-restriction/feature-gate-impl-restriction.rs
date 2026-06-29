@@ -3,7 +3,6 @@
 //@[with_gate] check-pass
 
 #![cfg_attr(with_gate, feature(impl_restriction))]
-#![cfg_attr(with_gate, allow(incomplete_features))]
 #![feature(auto_traits, const_trait_impl)]
 
 pub impl(crate) trait Bar {} //[without_gate]~ ERROR `impl` restrictions are experimental

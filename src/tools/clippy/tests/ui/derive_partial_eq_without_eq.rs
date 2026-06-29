@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::derive_partial_eq_without_eq)]
 
 // Don't warn on structs that aren't PartialEq

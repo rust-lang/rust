@@ -45,7 +45,7 @@ LL | const fn rpit() -> impl [const] MyTrait { Local }
 error[E0658]: use of unstable const library feature `unstable`
   --> $DIR/syntactical-unstable.rs:28:12
    |
-LL | impl const MyTrait for Local {
+LL | const impl MyTrait for Local {
    |            ^^^^^^^ trait is not stable as const yet
    |
    = help: add `#![feature(unstable)]` to the crate attributes to enable

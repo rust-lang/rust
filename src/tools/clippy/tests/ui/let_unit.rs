@@ -1,10 +1,5 @@
 #![warn(clippy::let_unit_value)]
-#![allow(
-    clippy::no_effect,
-    clippy::needless_late_init,
-    path_statements,
-    clippy::match_single_binding
-)]
+#![expect(clippy::match_single_binding, clippy::needless_late_init, clippy::no_effect)]
 
 macro_rules! let_and_return {
     ($n:expr) => {{

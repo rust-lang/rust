@@ -5,6 +5,7 @@ use rustc_hir::{AssignOpKind, BinOpKind, Block, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
+use rustc_span::SyntaxContext;
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {
@@ -60,7 +61,7 @@ impl LateLintPass<'_> for ManualCheckedOps {
             && let Some(block) = branch_block(then, r#else, branch)
         {
             let mut eq = SpanlessEq::new(cx).deny_side_effects().paths_by_resolution();
-            if !eq.eq_expr(divisor, divisor) {
+            if !eq.eq_expr(SyntaxContext::root(), divisor, divisor) {
                 return;
             }
 
@@ -70,7 +71,7 @@ impl LateLintPass<'_> for ManualCheckedOps {
             let found_early_use = for_each_expr_without_closures(block, |e| {
                 if let ExprKind::Binary(binop, lhs, rhs) = e.kind
                     && binop.node == BinOpKind::Div
-                    && eq.eq_expr(rhs, divisor)
+                    && eq.eq_expr(SyntaxContext::root(), rhs, divisor)
                     && is_unsigned_integer(cx, lhs)
                 {
                     match first_use {
@@ -84,7 +85,7 @@ impl LateLintPass<'_> for ManualCheckedOps {
                     ControlFlow::<(), _>::Continue(Descend::No)
                 } else if let ExprKind::AssignOp(op, lhs, rhs) = e.kind
                     && op.node == AssignOpKind::DivAssign
-                    && eq.eq_expr(rhs, divisor)
+                    && eq.eq_expr(SyntaxContext::root(), rhs, divisor)
                     && is_unsigned_integer(cx, lhs)
                 {
                     match first_use {
@@ -96,7 +97,7 @@ impl LateLintPass<'_> for ManualCheckedOps {
                     division_spans.push(e.span);
 
                     ControlFlow::<(), _>::Continue(Descend::No)
-                } else if eq.eq_expr(e, divisor) {
+                } else if eq.eq_expr(SyntaxContext::root(), e, divisor) {
                     if first_use.is_none() {
                         first_use = Some(UseKind::Other);
                         return ControlFlow::Break(());

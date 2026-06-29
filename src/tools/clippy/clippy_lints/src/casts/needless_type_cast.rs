@@ -249,7 +249,7 @@ fn can_coerce_to_target_type(expr: &Expr<'_>) -> bool {
 fn check_binding_usages<'a>(cx: &LateContext<'a>, body: &Body<'a>, hir_id: HirId, binding_info: &BindingInfo<'a>) {
     let mut usages = Vec::new();
 
-    for_each_expr(cx, body.value, |expr| {
+    for_each_expr(cx.tcx, body.value, |expr| {
         if let ExprKind::Path(ref qpath) = expr.kind
             && !expr.span.from_expansion()
             && let Res::Local(id) = cx.qpath_res(qpath, expr.hir_id)

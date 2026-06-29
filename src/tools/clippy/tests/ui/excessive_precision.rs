@@ -1,12 +1,5 @@
 #![warn(clippy::excessive_precision)]
-#![allow(
-    dead_code,
-    overflowing_literals,
-    unused_variables,
-    clippy::print_literal,
-    clippy::useless_vec,
-    clippy::approx_constant
-)]
+#![expect(overflowing_literals, clippy::approx_constant)]
 
 macro_rules! make_pi {
     ($i:ident : $t:ty) => {

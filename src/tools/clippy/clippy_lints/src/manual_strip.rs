@@ -188,7 +188,7 @@ fn eq_pattern_length<'tcx>(
     {
         constant_length(cx, pattern, ctxt).is_some_and(|length| n == length)
     } else {
-        len_arg(cx, expr).is_some_and(|arg| eq_expr_value(cx, pattern, arg))
+        len_arg(cx, expr).is_some_and(|arg| eq_expr_value(cx, SyntaxContext::root(), pattern, arg))
     }
 }
 

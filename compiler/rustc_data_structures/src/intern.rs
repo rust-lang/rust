@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::ptr;
 
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 
 mod private {
     #[derive(Clone, Copy, Debug)]
@@ -103,12 +103,12 @@ where
     }
 }
 
-impl<T, Hcx> HashStable<Hcx> for Interned<'_, T>
+impl<T> StableHash for Interned<'_, T>
 where
-    T: HashStable<Hcx>,
+    T: StableHash,
 {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.0.hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.0.stable_hash(hcx, hasher);
     }
 }
 

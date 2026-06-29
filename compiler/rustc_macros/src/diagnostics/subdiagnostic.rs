@@ -1,5 +1,7 @@
 #![deny(unused_must_use)]
 
+use std::collections::HashSet;
+
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use syn::parse::ParseStream;
@@ -61,6 +63,8 @@ impl SubdiagnosticDerive {
                 }
             }
 
+            let mut used_fields: HashSet<proc_macro2::Ident> = HashSet::new();
+
             structure.bind_with(|_| synstructure::BindStyle::Move);
             let variants_ = structure.each_variant(|variant| {
                 let mut builder = SubdiagnosticDeriveVariantBuilder {
@@ -74,6 +78,7 @@ impl SubdiagnosticDerive {
                     has_suggestion_parts: false,
                     has_subdiagnostic: false,
                     is_enum,
+                    used_fields: &mut used_fields,
                 };
                 builder.into_tokens().unwrap_or_else(|v| v.to_compile_error())
             });
@@ -142,6 +147,8 @@ struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
     /// Set to true when this variant is an enum variant rather than just the body of a struct.
     is_enum: bool,
+
+    used_fields: &'parent mut HashSet<proc_macro2::Ident>,
 }
 
 /// Provides frequently-needed information about the diagnostic kinds being derived for this type.
@@ -190,7 +197,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
         for attr in self.variant.ast().attrs {
             let Some(SubdiagnosticVariant { kind, message }) =
-                SubdiagnosticVariant::from_attr(attr, &self.fields)?
+                SubdiagnosticVariant::from_attr(attr, &self.fields, &mut self.used_fields)?
             else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
                 // subdiagnostics.
@@ -301,7 +308,6 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let name = name.as_str();
 
         match name {
-            "skip_arg" => Ok(quote! {}),
             "primary_span" => {
                 if kind_stats.has_multipart_suggestion {
                     invalid_attr(attr)
@@ -391,7 +397,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
                 invalid_attr(attr)
                     .help(format!(
-                        "only `{}`, `applicability` and `skip_arg` are valid field attributes",
+                        "only `{}`, `applicability` is a valid field attribute",
                         span_attrs.join(", ")
                     ))
                     .emit();
@@ -490,11 +496,15 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     span_attrs.push("primary_span")
                 }
                 diag.help(format!(
-                    "only `{}`, `applicability` and `skip_arg` are valid field attributes",
+                    "only `{}`, `applicability` is a valid field attribute",
                     span_attrs.join(", ")
                 ))
             }),
         }
+    }
+
+    fn is_used_in_message(&self, binding: &BindingInfo<'_>) -> bool {
+        binding.ast().ident.as_ref().is_some_and(|ident| self.used_fields.contains(ident))
     }
 
     pub(crate) fn into_tokens(&mut self) -> Result<TokenStream, DiagnosticDeriveError> {
@@ -533,8 +543,13 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .variant
             .bindings()
             .iter()
-            .filter(|binding| should_generate_arg(binding.ast()))
-            .map(|binding| self.generate_field_arg(binding))
+            .filter_map(|binding| {
+                if should_generate_arg(binding.ast()) && self.is_used_in_message(binding) {
+                    Some(self.generate_field_arg(binding))
+                } else {
+                    None
+                }
+            })
             .collect();
         let plain_args = quote! {
             let mut sub_args = rustc_errors::DiagArgMap::default();
@@ -546,7 +561,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let mut calls = TokenStream::new();
         for (kind, messages) in kind_messages {
             let message = format_ident!("__message");
-            let message_stream = messages.diag_message(Some(self.variant));
+            let message_stream = messages.diag_message();
             calls.extend(quote! { let #message = rustc_errors::format_diag_message(&#message_stream, &sub_args); });
 
             let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);

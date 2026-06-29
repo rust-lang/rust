@@ -190,8 +190,8 @@ impl<'a> SymbolCollector<'a> {
                     let enum_name = Symbol::intern(EnumSignature::of(this.db, id).name.as_str());
                     this.with_container_name(Some(enum_name), |this| {
                         let variants = id.enum_variants(this.db);
-                        for (variant_id, variant_name, _) in &variants.variants {
-                            this.push_decl(*variant_id, variant_name, true, None);
+                        for (variant_name, (variant_id, _)) in &variants.variants {
+                            this.push_decl(*variant_id, variant_name, false, None);
                         }
                     });
                 }
@@ -401,7 +401,7 @@ impl<'a> SymbolCollector<'a> {
     fn collect_from_impl(&mut self, impl_id: ImplId) {
         let impl_data = ImplSignature::of(self.db, impl_id);
         let impl_name = Some(
-            hir_display_with_store(impl_data.self_ty, &impl_data.store)
+            hir_display_with_store(impl_data.self_ty, impl_id.into(), &impl_data.store)
                 .display(
                     self.db,
                     crate::Impl::from(impl_id).krate(self.db).to_display_target(self.db),

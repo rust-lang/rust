@@ -231,6 +231,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Loop(..)
             | ast::ExprKind::MacCall(..)
             | ast::ExprKind::MethodCall(..)
+            | ast::ExprKind::Move(..)
             | ast::ExprKind::Paren(..)
             | ast::ExprKind::Underscore
             | ast::ExprKind::Path(..)
@@ -896,7 +897,14 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
                     .cx
                     .typeck_results()
                     .type_dependent_def_id(parent_expr.hir_id)
-                    .map(|did| self.cx.tcx.fn_sig(did).instantiate_identity().skip_norm_wip().skip_binder())
+                    .map(|did| {
+                        self.cx
+                            .tcx
+                            .fn_sig(did)
+                            .instantiate_identity()
+                            .skip_norm_wip()
+                            .skip_binder()
+                    })
                 {
                     std::iter::once(receiver)
                         .chain(call_args.iter())

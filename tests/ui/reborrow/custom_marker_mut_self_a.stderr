@@ -1,0 +1,28 @@
+error[E0499]: cannot borrow `a` as mutable more than once at a time
+  --> $DIR/custom_marker_mut_self_a.rs:14:20
+   |
+LL |     let b = method(a);
+   |                    - first mutable borrow occurs here
+LL |     let _ = method(a);
+   |                    ^ second mutable borrow occurs here
+LL |
+LL |     let _ = (a, b);
+   |                 - first borrow later used here
+
+error[E0505]: cannot move out of `a` because it is borrowed
+  --> $DIR/custom_marker_mut_self_a.rs:16:14
+   |
+LL |     let a = CustomMarker(PhantomData);
+   |         - binding `a` declared here
+LL |     let b = method(a);
+   |                    - borrow of `a` occurs here
+...
+LL |     let _ = (a, b);
+   |              ^  - borrow later used here
+   |              |
+   |              move out of `a` occurs here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0499, E0505.
+For more information about an error, try `rustc --explain E0499`.

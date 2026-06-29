@@ -1,5 +1,4 @@
 #![feature(impl_restriction, auto_traits, const_trait_impl)]
-#![expect(incomplete_features)]
 
 mod foo {
     pub impl(crate::foo) trait Baz {} //~ ERROR incorrect `impl` restriction

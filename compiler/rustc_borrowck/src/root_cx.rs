@@ -72,7 +72,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
     }
 
     pub(super) fn used_mut_upvars(
-        &mut self,
+        &self,
         nested_body_def_id: LocalDefId,
     ) -> &SmallVec<[FieldIdx; 8]> {
         &self.propagated_borrowck_results[&nested_body_def_id].used_mut_upvars

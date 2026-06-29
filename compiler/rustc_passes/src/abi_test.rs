@@ -9,7 +9,7 @@ use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
 
 use super::layout_test::ensure_wf;
-use crate::errors::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedArgument};
+use crate::diagnostics::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedArgument};
 
 pub fn test_abi(tcx: TyCtxt<'_>) {
     if !tcx.features().rustc_attrs() {

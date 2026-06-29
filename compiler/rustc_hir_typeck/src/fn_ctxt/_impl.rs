@@ -27,8 +27,8 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
-    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, Unnormalized,
-    UserArgs, UserSelfTy,
+    SizedTraitKind, SplattedDef, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt,
+    Unnormalized, UserArgs, UserSelfTy,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -42,7 +42,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 
 use crate::callee::{self, DeferredCallResolution};
-use crate::errors::{self, CtorIsPrivate};
+use crate::diagnostics::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 
@@ -143,7 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
     // FIXME(-Znext-solver): A lot of the calls to this method should
-    // probably be `try_structurally_resolve_type` or `structurally_resolve_type` instead.
+    // probably be `resolve_vars_with_obligations` or `structurally_resolve_type` instead.
     #[instrument(skip(self), level = "debug", ret)]
     pub(crate) fn resolve_vars_with_obligations<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
@@ -237,6 +237,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
+    pub(crate) fn write_splatted_resolution(
+        &self,
+        hir_id: HirId,
+        r: Result<SplattedDef, ErrorGuaranteed>,
+    ) {
+        self.typeck_results.borrow_mut().splatted_defs_mut().insert(hir_id, r);
+    }
+
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn write_method_call_and_enforce_effects(
         &self,
         hir_id: HirId,
@@ -246,6 +255,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.enforce_context_effects(Some(hir_id), span, method.def_id, method.args);
         self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_args(hir_id, method.args);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn write_splatted_call(
+        &self,
+        hir_id: HirId,
+        span: Span,
+        callee_def_id: Option<DefId>,
+        callee_generic_args: Option<GenericArgsRef<'tcx>>,
+        first_tupled_arg_index: u16,
+        tupled_args_count: u16,
+    ) {
+        // FIXME(const_trait_impl): enforce constness using enforce_context_effects() and add
+        // _and_enforce_effects to this method's name
+
+        self.write_splatted_resolution(
+            hir_id,
+            Ok(SplattedDef {
+                def_id: callee_def_id,
+                arg_index: first_tupled_arg_index,
+                arg_count: tupled_args_count,
+            }),
+        );
+        if let Some(callee_generic_args) = callee_generic_args {
+            self.write_args(hir_id, callee_generic_args);
+        }
     }
 
     fn write_args(&self, node_id: HirId, args: GenericArgsRef<'tcx>) {
@@ -321,8 +356,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for a in &adj {
             match a.kind {
                 Adjust::NeverToAny => {
-                    if a.target.is_ty_var() {
-                        self.diverging_type_vars.borrow_mut().insert(a.target);
+                    if let ty::Infer(ty::TyVar(a_id)) = a.target.kind() {
+                        self.diverging_type_vars.borrow_mut().push(*a_id);
                         debug!("apply_adjustments: adding `{:?}` as diverging type var", a.target);
                     }
                 }
@@ -342,6 +377,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Adjust::Pointer(_pointer_coercion) => {
                     // FIXME(const_trait_impl): We should probably enforce these.
+                }
+                Adjust::GenericReborrow(_) => {
+                    // FIXME(reborrow): figure out if we have effects to enforce here.
                 }
                 Adjust::Borrow(_) => {
                     // No effects to enforce here.
@@ -470,13 +508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let tail = self.tcx.struct_tail_raw(
                 ty,
                 &self.misc(span),
-                |ty| {
-                    if self.next_trait_solver() {
-                        self.try_structurally_resolve_type(span, ty)
-                    } else {
-                        self.normalize(span, Unnormalized::new_wip(ty))
-                    }
-                },
+                |ty| self.normalize(span, ty),
                 || {},
             );
             // Sized types have static alignment, and so do slices.
@@ -647,7 +679,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: &'tcx ty::FieldDef,
         args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        self.normalize(span, Unnormalized::new_wip(field.ty(self.tcx, args)))
+        self.normalize(span, field.ty(self.tcx, args))
     }
 
     /// Drain all obligations that are stalled on coroutines defined in this body.
@@ -660,13 +692,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.select_obligations_where_possible(|_| {});
 
         let defining_opaque_types_and_generators = match self.typing_mode() {
-            ty::TypingMode::Analysis { defining_opaque_types_and_generators } => {
+            ty::TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
             ty::TypingMode::Coherence
-            | ty::TypingMode::Borrowck { .. }
-            | ty::TypingMode::PostBorrowckAnalysis { .. }
-            | ty::TypingMode::PostAnalysis => {
+            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostBorrowck { .. }
+            | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::Codegen => {
                 bug!()
             }
         };
@@ -1013,10 +1046,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!(?def_id, ?container, ?container_id);
                 match container {
                     ty::AssocContainer::Trait => {
+                        let arg_span = if let hir::Node::Expr(call_expr) =
+                            self.tcx.parent_hir_node(hir_id)
+                            && let hir::ExprKind::Call(_, args) = call_expr.kind
+                            && let Some(first_arg) = args.first()
+                        {
+                            let mut arg = first_arg;
+                            while let hir::ExprKind::AddrOf(_, _, inner) = arg.kind {
+                                arg = inner;
+                            }
+                            Some(arg.span)
+                        } else {
+                            None
+                        };
+
                         if let Err(e) = callee::check_legal_trait_for_method_call(
                             tcx,
                             path_span,
-                            None,
+                            arg_span,
                             span,
                             container_id,
                             self.body_id.to_def_id(),
@@ -1146,7 +1193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .all(|def_id| def_id != impl_def_id)
             {
-                let sugg = ty.normalized.ty_adt_def().map(|def| errors::ReplaceWithName {
+                let sugg = ty.normalized.ty_adt_def().map(|def| diagnostics::ReplaceWithName {
                     span: path_span,
                     name: self.tcx.item_name(def.did()).to_ident_string(),
                 });
@@ -1154,13 +1201,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .tcx
                     .hir_node_by_def_id(self.tcx.hir_get_parent_item(hir_id).def_id)
                 {
-                    hir::Node::Item(item) => Some(errors::InnerItem {
+                    hir::Node::Item(item) => Some(diagnostics::InnerItem {
                         span: item.kind.ident().map(|i| i.span).unwrap_or(item.span),
                     }),
                     _ => None,
                 };
                 if ty.raw.has_param() {
-                    let guar = self.dcx().emit_err(errors::SelfCtorFromOuterItem {
+                    let guar = self.dcx().emit_err(diagnostics::SelfCtorFromOuterItem {
                         span: path_span,
                         impl_span: tcx.def_span(impl_def_id),
                         sugg,
@@ -1172,7 +1219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
                         hir_id,
                         path_span,
-                        errors::SelfCtorFromOuterItemLint {
+                        diagnostics::SelfCtorFromOuterItemLint {
                             impl_span: tcx.def_span(impl_def_id),
                             sugg,
                             item,
@@ -1432,35 +1479,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Try to resolve `ty` to a structural type, normalizing aliases.
-    ///
-    /// In case there is still ambiguity, the returned type may be an inference
-    /// variable. This is different from `structurally_resolve_type` which errors
-    /// in this case.
-    #[instrument(level = "debug", skip(self, sp), ret)]
-    pub(crate) fn try_structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if self.next_trait_solver()
-            && let ty::Alias(..) = ty.kind()
-        {
-            // We need to use a separate variable here as otherwise the temporary for
-            // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
-            // in a reentrant borrow, causing an ICE.
-            let result = self.at(&self.misc(sp), self.param_env).structurally_normalize_ty(
-                Unnormalized::new_wip(ty),
-                &mut **self.fulfillment_cx.borrow_mut(),
-            );
-            match result {
-                Ok(normalized_ty) => normalized_ty,
-                Err(errors) => {
-                    let guar = self.err_ctxt().report_fulfillment_errors(errors);
-                    return Ty::new_error(self.tcx, guar);
-                }
-            }
-        } else {
-            self.resolve_vars_with_obligations(ty)
-        }
-    }
-
     #[instrument(level = "debug", skip(self, sp), ret)]
     pub(crate) fn try_structurally_resolve_const(
         &self,
@@ -1470,7 +1488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ct = self.resolve_vars_with_obligations(ct);
 
         if self.next_trait_solver()
-            && let ty::ConstKind::Unevaluated(..) = ct.kind()
+            && let ty::ConstKind::Alias(..) = ct.kind()
         {
             // We need to use a separate variable here as otherwise the temporary for
             // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
@@ -1502,7 +1520,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// If no resolution is possible, then an error is reported.
     /// Numeric inference variables may be left unresolved.
     pub(crate) fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.try_structurally_resolve_type(sp, ty);
+        let ty = self.resolve_vars_with_obligations(ty);
 
         if !ty.is_ty_var() { ty } else { self.type_must_be_known_at_this_point(sp, ty) }
     }

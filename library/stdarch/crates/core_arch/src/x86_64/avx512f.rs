@@ -527,7 +527,7 @@ pub fn _mm_cvtt_roundss_u64<const SAE: i32>(a: __m128) -> u64 {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.avx512.vcvtss2si64"]
     fn vcvtss2si64(a: f32x4, rounding: i32) -> i64;
     #[link_name = "llvm.x86.avx512.vcvtss2usi64"]

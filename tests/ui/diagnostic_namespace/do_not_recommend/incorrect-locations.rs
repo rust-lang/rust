@@ -5,39 +5,39 @@
 //@ reference: attributes.diagnostic.do_not_recommend.allowed-positions
 
 #[diagnostic::do_not_recommend]
-//~^WARN `#[diagnostic::do_not_recommend]` can only be placed
+//~^WARN cannot be used on
 const CONST: () = ();
 
 #[diagnostic::do_not_recommend]
-//~^WARN `#[diagnostic::do_not_recommend]` can only be placed
+//~^WARN cannot be used on
 static STATIC: () = ();
 
 #[diagnostic::do_not_recommend]
-//~^WARN `#[diagnostic::do_not_recommend]` can only be placed
+//~^WARN cannot be used on
 type Type = ();
 
 #[diagnostic::do_not_recommend]
-//~^WARN `#[diagnostic::do_not_recommend]` can only be placed
+//~^WARN cannot be used on
 enum Enum {}
 
 #[diagnostic::do_not_recommend]
-//~^WARN `#[diagnostic::do_not_recommend]` can only be placed
+//~^WARN cannot be used on
 impl Enum {}
 
 #[diagnostic::do_not_recommend]
-//~^WARN `#[diagnostic::do_not_recommend]` can only be placed
+//~^WARN cannot be used on
 extern "C" {}
 
 #[diagnostic::do_not_recommend]
-//~^WARN `#[diagnostic::do_not_recommend]` can only be placed
+//~^WARN cannot be used on
 fn fun() {}
 
 #[diagnostic::do_not_recommend]
-//~^WARN `#[diagnostic::do_not_recommend]` can only be placed
+//~^WARN cannot be used on
 struct Struct {}
 
 #[diagnostic::do_not_recommend]
-//~^WARN `#[diagnostic::do_not_recommend]` can only be placed
+//~^WARN cannot be used on
 trait Trait {}
 
 #[diagnostic::do_not_recommend]

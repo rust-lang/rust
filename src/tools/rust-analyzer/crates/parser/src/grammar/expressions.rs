@@ -1,7 +1,5 @@
 mod atom;
 
-use crate::grammar::attributes::ATTRIBUTE_FIRST;
-
 use super::*;
 
 pub(super) use atom::{EXPR_RECOVERY_SET, LITERAL_FIRST, literal, parse_asm_expr};
@@ -324,7 +322,7 @@ fn expr_bp(
 }
 
 const LHS_FIRST: TokenSet =
-    atom::ATOM_EXPR_FIRST.union(TokenSet::new(&[T![&], T![*], T![!], T![.], T![-], T![_]]));
+    atom::ATOM_EXPR_FIRST.union(TokenSet::new(&[T![&], T![*], T![!], T![.], T![-], T![_], T![#]]));
 
 fn lhs(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     let m;
@@ -653,7 +651,7 @@ fn arg_list(p: &mut Parser<'_>) {
         T![')'],
         T![,],
         || "expected expression".into(),
-        EXPR_FIRST.union(ATTRIBUTE_FIRST),
+        EXPR_FIRST,
         |p| expr(p).is_some(),
     );
     m.complete(p, ARG_LIST);

@@ -172,6 +172,10 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
                 // vst1q_p64_x4_nop : #instructions = 33 >= 22 (limit)
                 "nop" if fnname.contains("vst1q_p64") => 34,
 
+                // AMX intrinsics generate a lot of move instructions to load/store the tile registers
+                // due to Rust ABI
+                _ if fnname.contains("___tile") => 165,
+
                 // Original limit was 20 instructions, but ARM DSP Intrinsics
                 // are exactly 20 instructions long. So, bump the limit to 22
                 // instead of adding here a long list of exceptions.

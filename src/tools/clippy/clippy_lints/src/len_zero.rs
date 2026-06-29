@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::source::{SpanExt, snippet_with_context};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{parent_item_name, peel_ref_operators, sym};
@@ -261,7 +261,7 @@ impl LenZero {
 }
 
 fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
-    let Some(snippet) = span.get_source_text(cx) else {
+    let Some(snippet) = span.get_text(cx) else {
         return span;
     };
     if has_enclosing_paren(snippet) {
@@ -336,7 +336,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) -> bool {
                     .filter_by_name_unhygienic(sym::is_empty)
                     .any(|item| is_is_empty_and_stable(cx, item, msrv))
             }),
-            &ty::Alias(ty::AliasTy {
+            &ty::Alias(_, ty::AliasTy {
                 kind: ty::Projection { def_id },
                 ..
             }) => has_is_empty_impl(cx, def_id, msrv),

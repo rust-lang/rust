@@ -11,13 +11,14 @@ use rustc_ast_ir::visit::VisitorResult;
 use rustc_type_ir::{
     BoundVar, BoundVarIndexKind, ConstVid, DebruijnIndex, FlagComputation, Flags,
     GenericTypeVisitable, InferConst, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, WithCachedTypeInfo, inherent::IntoKind, relate::Relate,
+    TypeVisitable, TypeVisitableExt, WithCachedTypeInfo, inherent::IntoKind, relate::Relate,
 };
 
 use crate::{
     ParamEnvAndCrate,
     next_solver::{
-        AllocationData, impl_foldable_for_interned_slice, impl_stored_interned, interned_slice,
+        AllocationData, ClauseKind, ParamEnv, impl_foldable_for_interned_slice,
+        impl_stored_interned, interned_slice,
     },
 };
 
@@ -143,6 +144,40 @@ pub struct ParamConst {
 impl std::fmt::Debug for ParamConst {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "#{}", self.index)
+    }
+}
+
+impl ParamConst {
+    pub fn find_const_ty_from_env<'db>(self, env: ParamEnv<'db>) -> Ty<'db> {
+        let mut candidates = env.clauses.iter().filter_map(|clause| {
+            // `ConstArgHasType` are never desugared to be higher ranked.
+            match clause.kind().skip_binder() {
+                ClauseKind::ConstArgHasType(param_ct, ty) => {
+                    assert!(!(param_ct, ty).has_escaping_bound_vars());
+
+                    match param_ct.kind() {
+                        ConstKind::Param(param_ct) if param_ct.index == self.index => Some(ty),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        });
+
+        // N.B. it may be tempting to fix ICEs by making this function return
+        // `Option<Ty<'db>>` instead of `Ty<'db>`; however, this is generally
+        // considered to be a bandaid solution, since it hides more important
+        // underlying issues with how we construct generics and predicates of
+        // items. It's advised to fix the underlying issue rather than trying
+        // to modify this function.
+        let ty = candidates.next().unwrap_or_else(|| {
+            panic!("cannot find `{self:?}` in param-env: {env:#?}");
+        });
+        assert!(
+            candidates.next().is_none(),
+            "did not expect duplicate `ConstParamHasTy` for `{self:?}` in param-env: {env:#?}"
+        );
+        ty
     }
 }
 

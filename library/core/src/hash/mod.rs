@@ -784,7 +784,7 @@ impl<H> Clone for BuildHasherDefault<H> {
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<H> const Default for BuildHasherDefault<H> {
+const impl<H> Default for BuildHasherDefault<H> {
     fn default() -> BuildHasherDefault<H> {
         Self::new()
     }

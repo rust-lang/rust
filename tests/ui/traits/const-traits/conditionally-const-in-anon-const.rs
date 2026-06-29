@@ -3,7 +3,7 @@
 struct S;
 const trait Trait<const N: u32> {}
 
-impl const Trait<0> for () {}
+const impl Trait<0> for () {}
 
 const fn f<
     T: Trait<
@@ -19,7 +19,9 @@ const fn f<
             0
         },
     >,
->(x: &T) {
+>(
+    x: &T,
+) {
     // Should be allowed here
     let y: &impl [const] Trait<0> = x;
 }

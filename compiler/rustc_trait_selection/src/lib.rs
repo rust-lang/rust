@@ -11,22 +11,22 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(strip_circumfix))]
 #![feature(associated_type_defaults)]
-#![feature(box_patterns)]
 #![feature(default_field_values)]
+#![feature(deref_patterns)]
 #![feature(hash_set_entry)]
 #![feature(iter_intersperse)]
 #![feature(iterator_try_reduce)]
 #![feature(never_type)]
-#![feature(strip_circumfix)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
 #![feature(yeet_expr)]
 #![recursion_limit = "512"] // For rustdoc
 // tidy-alphabetical-end
 
+pub mod diagnostics;
 pub mod error_reporting;
-pub mod errors;
 pub mod infer;
 pub mod opaque_types;
 pub mod regions;

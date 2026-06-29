@@ -21,13 +21,13 @@ impl Tidy {
 }
 
 fn check_lsp_extensions_docs(sh: &Shell) {
-    let expected_hash = {
+    let actual_hash = {
         let lsp_ext_rs =
             sh.read_file(project_root().join("crates/rust-analyzer/src/lsp/ext.rs")).unwrap();
         stable_hash(lsp_ext_rs.as_str())
     };
 
-    let actual_hash = {
+    let expected_hash = {
         let lsp_extensions_md = sh
             .read_file(project_root().join("docs/book/src/contributing/lsp-extensions.md"))
             .unwrap();
@@ -135,7 +135,6 @@ fn check_licenses(sh: &Shell) {
         "(MIT OR Apache-2.0) AND Unicode-3.0",
         "0BSD OR MIT OR Apache-2.0",
         "Apache-2.0 / MIT",
-        "Apache-2.0 OR BSL-1.0",
         "Apache-2.0 OR MIT",
         "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
         "Apache-2.0 WITH LLVM-exception",
@@ -155,6 +154,7 @@ fn check_licenses(sh: &Shell) {
         "Unlicense OR MIT",
         "Unlicense/MIT",
         "Zlib",
+        "Zlib OR Apache-2.0 OR MIT",
     ];
 
     let meta = cmd!(sh, "cargo metadata --format-version 1").read().unwrap();

@@ -20,4 +20,8 @@ fn main() {
     //~^ ERROR invalid format string: expected alignment specifier after `:` in format string; example: `{:>?}`
     println!("{0:#X>18}", 12345);
     //~^ ERROR invalid format string: expected alignment specifier after `:` in format string; example: `{:>?}`
+    format!("{+:}");
+    //~^ ERROR invalid format string: the `+` sign flag must appear after `:` in a format string
+    format!("{bar+:}");
+    //~^ ERROR invalid format string: the `+` sign flag must appear after `:` in a format string
 }

@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::str::FromStr;
 
@@ -260,7 +260,7 @@ impl<T> SetOnce<T> for SpannedOption<T> {
     }
 }
 
-pub(super) type FieldMap = HashMap<String, TokenStream>;
+pub(super) type FieldMap = HashMap<String, (syn::Ident, TokenStream)>;
 
 /// In the strings in the attributes supplied to this macro, we want callers to be able to
 /// reference fields in the format string. For example:
@@ -344,7 +344,7 @@ pub(super) fn build_format(
     let args = referenced_fields.into_iter().map(|field: String| {
         let field_ident = format_ident!("{}", field);
         let value = match field_map.get(&field) {
-            Some(value) => value.clone(),
+            Some(value) => value.1.clone(),
             // This field doesn't exist. Emit a diagnostic.
             None => {
                 span_err(span.unwrap(), format!("`{field}` doesn't refer to a field on this type"))
@@ -408,11 +408,11 @@ impl quote::ToTokens for Applicability {
 
 /// Build the mapping of field names to fields. This allows attributes to peek values from
 /// other fields.
-pub(super) fn build_field_mapping(variant: &VariantInfo<'_>) -> HashMap<String, TokenStream> {
+pub(super) fn build_field_mapping(variant: &VariantInfo<'_>) -> FieldMap {
     let mut fields_map = FieldMap::new();
     for binding in variant.bindings() {
         if let Some(ident) = &binding.ast().ident {
-            fields_map.insert(ident.to_string(), quote! { #binding });
+            fields_map.insert(ident.to_string(), (ident.clone(), quote! { #binding }));
         }
     }
     fields_map
@@ -598,6 +598,7 @@ impl SubdiagnosticVariant {
     pub(super) fn from_attr(
         attr: &Attribute,
         fields: &FieldMap,
+        used_fields: &mut HashSet<proc_macro2::Ident>,
     ) -> Result<Option<SubdiagnosticVariant>, DiagnosticDeriveError> {
         // Always allow documentation comments.
         if is_doc_comment(attr) {
@@ -708,7 +709,13 @@ impl SubdiagnosticVariant {
                     }
                     if !input.is_empty() { input.parse::<Token![,]>()?; }
                     if is_first {
-                        message = Some(Message { attr_span: attr.span(), message_span: inline_message.span(), value: inline_message.value() });
+                        message = Some(Message::new(
+                            attr.span(),
+                            inline_message.span(),
+                            inline_message.value(),
+                            fields,
+                            used_fields,
+                        ));
                         is_first = false;
                     } else {
                         span_err(inline_message.span().unwrap(), "a diagnostic message must be the first argument to the attribute").emit();

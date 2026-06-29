@@ -7,7 +7,7 @@ use crate::{
     AssistContext, AssistId, Assists,
     utils::{
         self, DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl,
-        generate_impl_with_factory, generate_trait_impl_intransitive,
+        generate_trait_impl_intransitive,
     },
 };
 
@@ -45,7 +45,7 @@ fn insert_impl(editor: &SyntaxEditor, impl_: &ast::Impl, nominal: &impl AstNodeE
 //
 // impl<T: Clone> Ctx<T> {$0}
 // ```
-pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let nominal = ctx.find_node_at_offset::<ast::Adt>()?;
     let name = nominal.name()?;
     let target = nominal.syntax().text_range();
@@ -61,7 +61,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
         |edit| {
             let editor = edit.make_editor(nominal.syntax());
             let make = editor.make();
-            let impl_ = generate_impl_with_factory(make, &nominal);
+            let impl_ = utils::generate_impl(make, &nominal);
 
             let impl_ = insert_impl(&editor, &impl_, &nominal);
             // Add a tabstop after the left curly brace
@@ -93,7 +93,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
 //
 // impl<T: Clone> ${1:_} for Ctx<T> {$0}
 // ```
-pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let nominal = ctx.find_node_at_offset::<ast::Adt>()?;
     let name = nominal.name()?;
     let target = nominal.syntax().text_range();
@@ -149,7 +149,7 @@ pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 //     }
 // }
 // ```
-pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let trait_ = ast::Trait::cast(name.syntax().parent()?)?;
     let target_scope = ctx.sema.scope(trait_.syntax())?;

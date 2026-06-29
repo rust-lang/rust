@@ -128,10 +128,10 @@ pub(super) fn check<'tcx>(
                     (SuggestedKind::AndThen, _) => "and_then",
                     (SuggestedKind::IsVariantAnd, sym::Result) => "is_ok_and",
                     (SuggestedKind::IsVariantAnd, sym::Option) => "is_some_and",
-                    (SuggestedKind::Other, _)
-                        if unwrap_arg_ty.peel_refs().is_array()
-                            && cx.typeck_results().expr_ty_adjusted(unwrap_arg).peel_refs().is_slice() =>
-                    {
+                    (SuggestedKind::Other, _) if unwrap_arg_ty != cx.typeck_results().expr_ty_adjusted(unwrap_arg) => {
+                        // If the `unwrap_or` argument needs an adjustment, moving it into `map_or`'s
+                        // first argument can make type inference pick the unadjusted type and reject
+                        // the closure return type. Keep the lint, but don't emit a rustfix.
                         return;
                     },
                     _ => "map_or",

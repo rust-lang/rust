@@ -169,14 +169,12 @@ impl EarlyLintPass for NonCamelCaseTypes {
         }
 
         match &it.kind {
-            ast::ItemKind::TyAlias(box ast::TyAlias { ident, .. })
+            ast::ItemKind::TyAlias(ast::TyAlias { ident, .. })
             | ast::ItemKind::Enum(ident, ..)
             | ast::ItemKind::Struct(ident, ..)
             | ast::ItemKind::Union(ident, ..) => self.check_case(cx, "type", ident),
-            ast::ItemKind::Trait(box ast::Trait { ident, .. }) => {
-                self.check_case(cx, "trait", ident)
-            }
-            ast::ItemKind::TraitAlias(box ast::TraitAlias { ident, .. }) => {
+            ast::ItemKind::Trait(ast::Trait { ident, .. }) => self.check_case(cx, "trait", ident),
+            ast::ItemKind::TraitAlias(ast::TraitAlias { ident, .. }) => {
                 self.check_case(cx, "trait alias", ident)
             }
 
@@ -313,18 +311,18 @@ impl NonSnakeCase {
                                 suggestion: sc_ident,
                             }
                         } else {
-                            NonSnakeCaseDiagSub::SuggestionAndNote { span }
+                            NonSnakeCaseDiagSub::SuggestionAndNote { sc, span }
                         }
                     } else {
-                        NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion: sc.clone() }
+                        NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion: sc }
                     }
                 } else {
-                    NonSnakeCaseDiagSub::Help
+                    NonSnakeCaseDiagSub::Help { sc }
                 }
             } else {
                 NonSnakeCaseDiagSub::Label { span }
             };
-            cx.emit_span_lint(NON_SNAKE_CASE, span, NonSnakeCaseDiag { sort, name, sc, sub });
+            cx.emit_span_lint(NON_SNAKE_CASE, span, NonSnakeCaseDiag { sort, name, sub });
         }
     }
 }

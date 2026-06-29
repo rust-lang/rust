@@ -13,9 +13,9 @@ fn test_struct_info_roundtrip() {
     let de_s = serde_json::from_str(&struct_json).unwrap();
     assert_eq!(s, de_s);
 
-    // Bincode
-    let encoded: Vec<u8> = bincode::serialize(&s).unwrap();
-    let decoded: ItemEnum = bincode::deserialize(&encoded).unwrap();
+    // Postcard
+    let encoded: Vec<u8> = postcard::to_allocvec(&s).unwrap();
+    let decoded: ItemEnum = postcard::from_bytes(&encoded).unwrap();
     assert_eq!(s, decoded);
 }
 
@@ -33,9 +33,9 @@ fn test_union_info_roundtrip() {
     let de_u = serde_json::from_str(&union_json).unwrap();
     assert_eq!(u, de_u);
 
-    // Bincode
-    let encoded: Vec<u8> = bincode::serialize(&u).unwrap();
-    let decoded: ItemEnum = bincode::deserialize(&encoded).unwrap();
+    // Postcard
+    let encoded: Vec<u8> = postcard::to_allocvec(&u).unwrap();
+    let decoded: ItemEnum = postcard::from_bytes(&encoded).unwrap();
     assert_eq!(u, decoded);
 }
 
@@ -59,7 +59,7 @@ mod rkyv {
     /// A test to exercise the (de)serialization roundtrip for a representative selection of types,
     /// covering most of the rkyv-specific attributes we had to had.
     fn test_rkyv_roundtrip() {
-        // Standard derives: a plain struct and union, mirroring the existing serde/bincode tests.
+        // Standard derives: a plain struct and union, mirroring the existing serde/postcard tests.
         let s = ItemEnum::Struct(Struct {
             generics: Generics { params: vec![], where_predicates: vec![] },
             kind: StructKind::Plain { fields: vec![Id(1), Id(2)], has_stripped_fields: false },

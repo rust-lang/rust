@@ -297,6 +297,7 @@ pub fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
 /// assert_eq!(3, msg + msg2);
 /// ```
 #[unstable(feature = "mpmc_channel", issue = "126840")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "MpmcSender")]
 pub struct Sender<T> {
     flavor: SenderFlavor<T>,
 }
@@ -722,6 +723,7 @@ impl<T> fmt::Debug for Sender<T> {
 /// rx_thread_2.join().unwrap();
 /// ```
 #[unstable(feature = "mpmc_channel", issue = "126840")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "MpmcReceiver")]
 pub struct Receiver<T> {
     flavor: ReceiverFlavor<T>,
 }

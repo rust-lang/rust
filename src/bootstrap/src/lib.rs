@@ -1500,7 +1500,7 @@ impl Build {
         if let Some(path) = finder.maybe_have("wasmtime")
             && let Ok(mut path) = path.into_os_string().into_string()
         {
-            path.push_str(" run -C cache=n --dir .");
+            path.push_str(" run -Wexceptions -C cache=n --dir .");
             // Make sure that tests have access to RUSTC_BOOTSTRAP. This (for example) is
             // required for libtest to work on beta/stable channels.
             //
@@ -1679,6 +1679,9 @@ impl Build {
 
     /// Returns the `a.b.c` version that the given package is at.
     fn release_num(&self, package: &str) -> String {
+        if self.config.dry_run() {
+            return "0.0.0 (dry-run)".into();
+        }
         let toml_file_name = self.src.join(format!("src/tools/{package}/Cargo.toml"));
         let toml = t!(fs::read_to_string(toml_file_name));
         for line in toml.lines() {
@@ -2117,9 +2120,11 @@ impl Compiler {
 }
 
 fn envify(s: &str) -> String {
+    // Converting foo-bar to FOO_BAR is a fairly idomatic mapping to an environment variable name.
+    // We also convert '.' to '_' to fix https://github.com/rust-lang/rust/issues/158090
     s.chars()
         .map(|c| match c {
-            '-' => '_',
+            '-' | '.' => '_',
             c => c,
         })
         .flat_map(|c| c.to_uppercase())

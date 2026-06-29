@@ -17,7 +17,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     _ = 2 + 2;
 // }
 // ```
-pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let parens = ctx.find_node_at_offset::<ast::ParenExpr>()?;
 
     let cursor_in_range =

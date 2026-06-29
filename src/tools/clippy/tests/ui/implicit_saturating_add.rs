@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::implicit_saturating_add)]
 
 fn main() {

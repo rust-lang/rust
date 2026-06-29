@@ -4,8 +4,9 @@ use either::Either;
 use hir::{ExprKind, Param};
 use rustc_abi::FieldIdx;
 use rustc_errors::{Applicability, Diag};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, BindingMode, ByRef, Node};
+use rustc_hir::{self as hir, BindingMode, ByRef, Expr, Node};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::visit::PlaceContext;
@@ -314,7 +315,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if let Some(mir::Statement {
                     source_info,
                     kind:
-                        mir::StatementKind::Assign(box (
+                        mir::StatementKind::Assign((
                             _,
                             mir::Rvalue::Ref(
                                 _,
@@ -668,7 +669,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 err: &'a mut Diag<'infcx>,
                 ty: Ty<'tcx>,
                 suggested: bool,
+                infcx: &'a rustc_infer::infer::InferCtxt<'tcx>,
             }
+
             impl<'a, 'infcx, 'tcx> Visitor<'tcx> for SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx> {
                 fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
                     hir::intravisit::walk_stmt(self, stmt);
@@ -679,60 +682,166 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             return;
                         }
                     };
+
+                    // Because of TypeChecking and indexing, we know: index is &Q
+                    // with K: Eq + Hash + Borrow<Q>,
+                    // with Q: Eq + Hash + ?Sized,
+                    //
+                    // which fulfill the requirements of `get_mut`. If Q=K or Q=&{n}K, the requirements
+                    // of `entry` and `insert` are fulfilled too after dereferencing. If K is not
+                    // copy, a subsequent `clone` call may be needed.
+
+                    /// Taken straight from https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/fn.peel_hir_ty_refs.html
+                    /// Adapted to mid using https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.peel_refs
+                    /// Simplified to counting only
+                    /// Peels off all references on the type. Returns the number of references
+                    /// removed.
+                    fn count_ty_refs<'tcx>(mut ty: Ty<'tcx>) -> usize {
+                        let mut count = 0;
+                        while let ty::Ref(_, inner_ty, _) = ty.kind() {
+                            ty = *inner_ty;
+                            count += 1;
+                        }
+                        count
+                    }
+
+                    /// Try to strip `n` `&` reference from an expression.
+                    /// If the expression does not have enough leading `&`, return an Error
+                    /// containing a count of the successfully stripped ones and the stripped
+                    /// expression.
+                    fn strip_n_refs<'a, 'b>(
+                        mut expr: &'a Expr<'b>,
+                        n: usize,
+                    ) -> Result<&'a Expr<'b>, (usize, &'a Expr<'b>)> {
+                        for count in 0..n {
+                            match expr {
+                                Expr {
+                                    kind: ExprKind::AddrOf(hir::BorrowKind::Ref, _, inner),
+                                    ..
+                                } => expr = inner,
+                                _ => return Err((count, expr)),
+                            }
+                        }
+                        Ok(expr)
+                    }
+
+                    // we know ty is a map, with a key type at walk distance 2.
+                    let key_ty = self.ty.walk().nth(1).unwrap().expect_ty();
+
                     if let hir::ExprKind::Assign(place, rv, _sp) = expr.kind
                         && let hir::ExprKind::Index(val, index, _) = place.kind
                         && (expr.span == self.assign_span || place.span == self.assign_span)
                     {
                         // val[index] = rv;
-                        // ---------- place
-                        self.err.multipart_suggestions(
-                            format!(
-                                "use `.insert()` to insert a value into a `{}`, `.get_mut()` \
-                                to modify it, or the entry API for more flexibility",
-                                self.ty,
-                            ),
-                            vec![
+                        let index_ty =
+                            self.infcx.tcx.typeck(val.hir_id.owner.def_id).expr_ty(index);
+
+                        let (borrowed_prefix, borrowed_index);
+
+                        // only suggest `insert` and `entry` if index is of type K or &{n}K or *{n}K (when there is a Borrow impl for this case).
+                        // We use `peel_refs` because borrow lifetimes may differ in both index and
+                        // key. I.e, if they are of the same base type:
+                        if index_ty.peel_refs() == key_ty.peel_refs() {
+                            let (index_refs, key_refs) =
+                                (count_ty_refs(index_ty), count_ty_refs(key_ty));
+
+                            let (deref_prefix, deref_index) = if index_refs >= key_refs {
+                                // index is &{n}K
+                                strip_n_refs(index, index_refs - key_refs)
+                                    .map(|val| ("".to_string(), val))
+                                    .unwrap_or_else(|(depth, val)| {
+                                        (
+                                            if key_refs == 0 {
+                                                "*".repeat(
+                                                    (index_refs-key_refs).checked_sub(depth).expect("return depth from strip_n_refs should be smaller than the input")
+                                                )
+                                            } else {
+                                                String::new() //if key K is a ref, autoderef finish this for us.
+                                            },
+                                            val,
+                                        )
+                                    })
+                            } else {
+                                // in this case the minimal ref addition works for all subcases
+                                ("&".repeat(key_refs - index_refs), index)
+                            };
+
+                            self.err.multipart_suggestion(
+                                format!("use `.insert()` to insert a value into a `{}`", self.ty),
                                 vec![
-                                    // val.insert(index, rv);
+                                    // val.insert({deref_prefix}{deref_index}, rv);
                                     (
-                                        val.span.shrink_to_hi().with_hi(index.span.lo()),
-                                        ".insert(".to_string(),
+                                        val.span.shrink_to_hi().with_hi(deref_index.span.lo()),
+                                        format!(".insert({deref_prefix}"),
                                     ),
                                     (
-                                        index.span.shrink_to_hi().with_hi(rv.span.lo()),
+                                        deref_index.span.shrink_to_hi().with_hi(rv.span.lo()),
                                         ", ".to_string(),
                                     ),
                                     (rv.span.shrink_to_hi(), ")".to_string()),
                                 ],
+                                Applicability::MaybeIncorrect,
+                            );
+                            self.err.multipart_suggestion(
+                                format!(
+                                    "use the entry API to modify a `{}` for more flexibility",
+                                    self.ty
+                                ),
                                 vec![
-                                    // if let Some(v) = val.get_mut(index) { *v = rv; }
-                                    (val.span.shrink_to_lo(), "if let Some(val) = ".to_string()),
-                                    (
-                                        val.span.shrink_to_hi().with_hi(index.span.lo()),
-                                        ".get_mut(".to_string(),
-                                    ),
-                                    (
-                                        index.span.shrink_to_hi().with_hi(place.span.hi()),
-                                        ") { *val".to_string(),
-                                    ),
-                                    (rv.span.shrink_to_hi(), "; }".to_string()),
-                                ],
-                                vec![
-                                    // let x = val.entry(index).or_insert(rv);
+                                    // let x = val.entry({deref_prefix}{deref_index}).insert_entry(rv);
                                     (val.span.shrink_to_lo(), "let val = ".to_string()),
                                     (
-                                        val.span.shrink_to_hi().with_hi(index.span.lo()),
-                                        ".entry(".to_string(),
+                                        val.span.shrink_to_hi().with_hi(deref_index.span.lo()),
+                                        format!(".entry({deref_prefix}"),
                                     ),
                                     (
-                                        index.span.shrink_to_hi().with_hi(rv.span.lo()),
-                                        ").or_insert(".to_string(),
+                                        deref_index.span.shrink_to_hi().with_hi(rv.span.lo()),
+                                        ").insert_entry(".to_string(),
                                     ),
                                     (rv.span.shrink_to_hi(), ")".to_string()),
                                 ],
+                                Applicability::MaybeIncorrect,
+                            );
+
+                            // we can make the next suggestions nicer by stripping as many leading `&` as
+                            // we can, autoderef will do the rest
+                            (borrowed_prefix, borrowed_index) = (
+                                String::new(),
+                                if index_refs > key_refs {
+                                    strip_n_refs(index, index_refs - key_refs - 1)
+                                        .unwrap_or_else(|(_depth, val)| val)
+                                    // even if we tried to strip more, we can stop there thanks to autoderef
+                                } else {
+                                    // when the diff is negative or zero, we already are in the index=&Q case.
+                                    index
+                                },
+                            );
+                        } else {
+                            (borrowed_prefix, borrowed_index) = (String::new(), index)
+                        }
+                        // in all cases, suggest get_mut because K:Borrow<K> or Q:Borrow<K> as a
+                        // requirement of indexing.
+                        self.err.multipart_suggestion(
+                            format!(
+                                "use `.get_mut()` to modify an existing key in a `{}`",
+                                self.ty,
+                            ),
+                            vec![
+                                // if let Some(v) = val.get_mut({borrowed_prefix}{borrowed_index}) { *v = rv; }
+                                (val.span.shrink_to_lo(), "if let Some(val) = ".to_string()),
+                                (
+                                    val.span.shrink_to_hi().with_hi(borrowed_index.span.lo()),
+                                    format!(".get_mut({borrowed_prefix}"),
+                                ),
+                                (
+                                    borrowed_index.span.shrink_to_hi().with_hi(place.span.hi()),
+                                    ") { *val".to_string(),
+                                ),
+                                (rv.span.shrink_to_hi(), "; }".to_string()),
                             ],
-                            Applicability::MachineApplicable,
+                            Applicability::MaybeIncorrect,
                         );
+
                         self.suggested = true;
                     } else if let hir::ExprKind::MethodCall(_path, receiver, _, sp) = expr.kind
                         && let hir::ExprKind::Index(val, index, _) = receiver.kind
@@ -768,6 +877,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 err,
                 ty,
                 suggested: false,
+                infcx: self.infcx,
             };
             v.visit_body(&body);
             if !v.suggested {
@@ -1092,42 +1202,65 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let mut look_at_return = true;
 
         err.span_label(closure_span, "in this closure");
-        // If the HIR node is a function or method call, get the DefId
-        // of the callee function or method, the span, and args of the call expr
-        let get_call_details = || {
-            let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
-                return None;
+        let closure_arg_has_fn_trait_bound =
+            |callee_def_id, input_index, generic_args: ty::GenericArgsRef<'tcx>| {
+                let sig = tcx.fn_sig(callee_def_id).instantiate(tcx, generic_args).skip_binder();
+                let Some(input_ty): Option<Ty<'tcx>> = sig.inputs().get(input_index).copied()
+                else {
+                    return false;
+                };
+
+                tcx.predicates_of(callee_def_id)
+                    .instantiate(tcx, generic_args)
+                    .predicates
+                    .iter()
+                    .any(|predicate| {
+                        predicate.as_trait_clause().is_some_and(|trait_pred| {
+                            trait_pred.polarity() == ty::PredicatePolarity::Positive
+                                && tcx.fn_trait_kind_from_def_id(trait_pred.def_id())
+                                    == Some(ty::ClosureKind::Fn)
+                                && trait_pred.self_ty().skip_binder().peel_refs()
+                                    == input_ty.peel_refs()
+                        })
+                    })
             };
 
-            let typeck_results = tcx.typeck(def_id);
+        // If the HIR node is a function or method call, get the DefId
+        // of the callee function or method, the span, and argument info for the call expr.
+        let get_call_details =
+            || -> Option<(DefId, Span, usize, usize, ty::GenericArgsRef<'tcx>)> {
+                let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
+                    return None;
+                };
 
-            match kind {
-                hir::ExprKind::Call(expr, args) => {
-                    if let Some(ty::FnDef(def_id, _)) =
-                        typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
-                    {
-                        Some((*def_id, expr.span, *args))
-                    } else {
-                        None
+                let typeck_results = tcx.typeck(def_id);
+
+                match kind {
+                    hir::ExprKind::Call(expr, args) => {
+                        if let Some(ty::FnDef(def_id, generic_args)) =
+                            typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
+                        {
+                            let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
+                            Some((*def_id, expr.span, arg_pos, arg_pos, generic_args))
+                        } else {
+                            None
+                        }
                     }
+                    hir::ExprKind::MethodCall(_, _, args, span) => {
+                        let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
+                        let def_id = typeck_results.type_dependent_def_id(*hir_id)?;
+                        let generic_args = typeck_results.node_args_opt(*hir_id)?;
+                        Some((def_id, *span, arg_pos, arg_pos + 1, generic_args))
+                    }
+                    _ => None,
                 }
-                hir::ExprKind::MethodCall(_, _, args, span) => typeck_results
-                    .type_dependent_def_id(*hir_id)
-                    .map(|def_id| (def_id, *span, *args)),
-                _ => None,
-            }
-        };
+            };
 
         // If we can detect the expression to be a function or method call where the closure was
         // an argument, we point at the function or method definition argument...
-        if let Some((callee_def_id, call_span, call_args)) = get_call_details() {
-            let arg_pos = call_args
-                .iter()
-                .enumerate()
-                .filter(|(_, arg)| arg.hir_id == closure_id)
-                .map(|(pos, _)| pos)
-                .next();
-
+        if let Some((callee_def_id, call_span, arg_pos, input_index, generic_args)) =
+            get_call_details()
+        {
             let arg = match tcx.hir_get_if_local(callee_def_id) {
                 Some(
                     hir::Node::Item(hir::Item {
@@ -1144,16 +1277,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ..
                     }),
                 ) => Some(
-                    arg_pos
-                        .and_then(|pos| {
-                            sig.decl.inputs.get(
-                                pos + if sig.decl.implicit_self().has_implicit_self() {
-                                    1
-                                } else {
-                                    0
-                                },
-                            )
-                        })
+                    sig.decl
+                        .inputs
+                        .get(
+                            arg_pos
+                                + if sig.decl.implicit_self().has_implicit_self() { 1 } else { 0 },
+                        )
                         .map(|arg| arg.span)
                         .unwrap_or(ident.span),
                 ),
@@ -1161,6 +1290,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             };
             if let Some(span) = arg {
                 err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
+                err.span_label(call_span, "expects `Fn` instead of `FnMut`");
+                look_at_return = false;
+            } else if closure_arg_has_fn_trait_bound(callee_def_id, input_index, generic_args) {
+                // The callee is not local, so we cannot point at its argument declaration, but we
+                // can still explain that this call site expects an `Fn` closure. Avoid falling
+                // through to the enclosing function's return type, which is misleading in cases
+                // like `flat_map(|_| external::map(|_| ...))`.
                 err.span_label(call_span, "expects `Fn` instead of `FnMut`");
                 look_at_return = false;
             }
@@ -1282,7 +1418,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if let Some(mir::Statement {
                     source_info: _,
                     kind:
-                        mir::StatementKind::Assign(box (_, mir::Rvalue::Use(mir::Operand::Copy(place)))),
+                        mir::StatementKind::Assign((_, mir::Rvalue::Use(mir::Operand::Copy(place), _))),
                     ..
                 }) = first_assignment_stmt
                 {
@@ -1740,7 +1876,7 @@ fn suggest_ampmut<'tcx>(
     //                ^^ lifetime annotation not allowed
     //
     if let Some(rhs_stmt) = opt_assignment_rhs_stmt
-        && let StatementKind::Assign(box (lhs, rvalue)) = &rhs_stmt.kind
+        && let StatementKind::Assign((lhs, rvalue)) = &rhs_stmt.kind
         && let mut rhs_span = rhs_stmt.source_info.span
         && let Ok(mut rhs_str) = tcx.sess.source_map().span_to_snippet(rhs_span)
     {
@@ -1761,7 +1897,7 @@ fn suggest_ampmut<'tcx>(
                 && let [user_ty_proj] = user_ty_projs.contents.as_slice()
                 && user_ty_proj.projs.is_empty()
                 && let Either::Left(rhs_stmt_new) = body.stmt_at(*assign)
-                && let StatementKind::Assign(box (_, rvalue_new)) = &rhs_stmt_new.kind
+                && let StatementKind::Assign((_, rvalue_new)) = &rhs_stmt_new.kind
                 && let rhs_span_new = rhs_stmt_new.source_info.span
                 && let Ok(rhs_str_new) = tcx.sess.source_map().span_to_snippet(rhs_span_new)
             {
@@ -1769,9 +1905,8 @@ fn suggest_ampmut<'tcx>(
             }
 
             if let Either::Right(call) = body.stmt_at(*assign)
-                && let TerminatorKind::Call {
-                    func: Operand::Constant(box const_operand), args, ..
-                } = &call.kind
+                && let TerminatorKind::Call { func: Operand::Constant(const_operand), args, .. } =
+                    &call.kind
                 && let ty::FnDef(method_def_id, method_args) = *const_operand.ty().kind()
                 && let Some(trait_) = tcx.trait_of_assoc(method_def_id)
                 && tcx.is_lang_item(trait_, hir::LangItem::Index)

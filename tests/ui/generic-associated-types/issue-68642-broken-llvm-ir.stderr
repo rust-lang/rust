@@ -1,4 +1,4 @@
-error[E0277]: expected a `Fn()` closure, found `T`
+error[E0277]: expected an `Fn()` closure, found `T`
   --> $DIR/issue-68642-broken-llvm-ir.rs:12:18
    |
 LL |     type F<'a> = Self;

@@ -5,13 +5,15 @@ use std::hash::Hash;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hash::{
+    StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
+};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
 use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::SymbolVisibility;
@@ -19,9 +21,8 @@ use tracing::debug;
 
 use crate::dep_graph::dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
-use crate::ich::StableHashingContext;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::{self, GenericArgs, Instance, InstanceKind, SymbolName, Ty, TyCtxt};
+use crate::ty::{self, GenericArgs, Instance, InstanceKind, ShimKind, SymbolName, Ty, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq)]
@@ -48,10 +49,10 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, StableHash, TyEncodable, TyDecodable)]
 pub struct NormalizationErrorInMono;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, StableHash, TyEncodable, TyDecodable)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
@@ -69,7 +70,7 @@ fn opt_incr_drop_glue_mode<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Instantiati
     let Some(dtor) = adt_def.destructor(tcx) else {
         // We use LocalCopy for drops of enums only; this code is inherited from
         // https://github.com/rust-lang/rust/pull/67332 and the theory is that we get to optimize
-        // out code like drop_in_place(Option::None) before crate-local ThinLTO, which improves
+        // out code like `drop_glue(&mut Option::None)` before crate-local ThinLTO, which improves
         // compile time. At the time of writing, simply removing this entire check does seem to
         // regress incr-opt compile times. But it sure seems like a more sophisticated check could
         // do better here.
@@ -80,8 +81,8 @@ fn opt_incr_drop_glue_mode<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Instantiati
         }
     };
 
-    // We've gotten to a drop_in_place for a type that directly implements Drop.
-    // The drop glue is a wrapper for the Drop::drop impl, and we are an optimized build, so in an
+    // We've gotten to a `drop_glue` for a type that directly implements Drop.
+    // The drop glue is a wrapper for the `Drop::drop` impl, and we are an optimized build, so in an
     // effort to coordinate with the mode that the actual impl will get, we make the glue also
     // LocalCopy.
     if tcx.cross_crate_inlinable(dtor.did) {
@@ -172,7 +173,7 @@ impl<'tcx> MonoItem<'tcx> {
         // incrementality (which wants small CGUs with as many things GloballyShared as possible).
         // The heuristics implemented here do better than a completely naive approach in the
         // compiler benchmark suite, but there is no reason to believe they are optimal.
-        if let InstanceKind::DropGlue(_, Some(ty)) = instance.def {
+        if let InstanceKind::Shim(ShimKind::DropGlue(_, Some(ty))) = instance.def {
             if tcx.sess.opts.optimize == OptLevel::No {
                 return InstantiationMode::GloballyShared { may_conflict: false };
             }
@@ -325,23 +326,23 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
     }
 }
 
-impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
+impl ToStableHashKey for MonoItem<'_> {
     type KeyType = Fingerprint;
 
-    fn to_stable_hash_key(&self, hcx: &mut StableHashingContext<'_>) -> Self::KeyType {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> Self::KeyType {
         let mut hasher = StableHasher::new();
-        self.hash_stable(hcx, &mut hasher);
+        self.stable_hash(hcx, &mut hasher);
         hasher.finish()
     }
 }
 
-#[derive(Debug, HashStable, Copy, Clone)]
+#[derive(Debug, StableHash, Copy, Clone)]
 pub struct MonoItemPartitions<'tcx> {
     pub codegen_units: &'tcx [CodegenUnit<'tcx>],
     pub all_mono_items: &'tcx DefIdSet,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Debug, StableHash)]
 pub struct CodegenUnit<'tcx> {
     /// A name for this CGU. Incremental compilation requires that
     /// name be unique amongst **all** crates. Therefore, it should
@@ -357,7 +358,7 @@ pub struct CodegenUnit<'tcx> {
 }
 
 /// Auxiliary info about a `MonoItem`.
-#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, StableHash)]
 pub struct MonoItemData {
     /// A cached copy of the result of `MonoItem::instantiation_mode`, where
     /// `GloballyShared` maps to `false` and `LocalCopy` maps to `true`.
@@ -375,7 +376,7 @@ pub struct MonoItemData {
 /// Visibility doesn't have any effect when linkage is internal.
 ///
 /// DSO means dynamic shared object, that is a dynamically linked executable or dylib.
-#[derive(Copy, Clone, PartialEq, Debug, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Debug, StableHash, TyEncodable, TyDecodable)]
 pub enum Visibility {
     /// Export the symbol from the DSO and apply overrides of the symbol by outside DSOs to within
     /// the DSO if the object file format supports this.
@@ -522,20 +523,20 @@ impl<'tcx> CodegenUnit<'tcx> {
             match item {
                 MonoItem::Fn(ref instance) => match instance.def {
                     InstanceKind::Item(def) => def.as_local().map(|_| def),
-                    InstanceKind::VTableShim(..)
-                    | InstanceKind::ReifyShim(..)
-                    | InstanceKind::Intrinsic(..)
-                    | InstanceKind::FnPtrShim(..)
+                    InstanceKind::Intrinsic(..)
                     | InstanceKind::Virtual(..)
-                    | InstanceKind::ClosureOnceShim { .. }
-                    | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                    | InstanceKind::DropGlue(..)
-                    | InstanceKind::CloneShim(..)
-                    | InstanceKind::ThreadLocalShim(..)
-                    | InstanceKind::FnPtrAddrShim(..)
-                    | InstanceKind::AsyncDropGlue(..)
-                    | InstanceKind::FutureDropPollShim(..)
-                    | InstanceKind::AsyncDropGlueCtorShim(..) => None,
+                    | InstanceKind::Shim(ShimKind::VTable(..))
+                    | InstanceKind::Shim(ShimKind::Reify(..))
+                    | InstanceKind::Shim(ShimKind::FnPtr(..))
+                    | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
+                    | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
+                    | InstanceKind::Shim(ShimKind::DropGlue(..))
+                    | InstanceKind::Shim(ShimKind::Clone(..))
+                    | InstanceKind::Shim(ShimKind::ThreadLocal(..))
+                    | InstanceKind::Shim(ShimKind::FnPtrAddr(..))
+                    | InstanceKind::Shim(ShimKind::AsyncDropGlue(..))
+                    | InstanceKind::Shim(ShimKind::FutureDropPoll(..))
+                    | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(..)) => None,
                 },
                 MonoItem::Static(def_id) => def_id.as_local().map(|_| def_id),
                 MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.to_def_id()),
@@ -581,10 +582,10 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 }
 
-impl ToStableHashKey<StableHashingContext<'_>> for CodegenUnit<'_> {
+impl ToStableHashKey for CodegenUnit<'_> {
     type KeyType = String;
 
-    fn to_stable_hash_key(&self, _: &mut StableHashingContext<'_>) -> Self::KeyType {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> Self::KeyType {
         // Codegen unit names are conceptually required to be stable across
         // compilation session so that object file names match up.
         self.name.to_string()
@@ -691,7 +692,7 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
 }
 
 /// See module-level docs of `rustc_monomorphize::collector` on some context for "mentioned" items.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 pub enum CollectionMode {
     /// Collect items that are used, i.e., actually needed for codegen.
     ///

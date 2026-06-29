@@ -312,7 +312,7 @@ fn attempt_toolchain_link(builder: &Builder<'_>, stage_path: &str) {
         eprintln!(
             "To manually link stage 1 build to `stage1` toolchain, run:\n
             `rustup toolchain link stage1 {}`",
-            &stage_path
+            stage_path
         );
     }
 }

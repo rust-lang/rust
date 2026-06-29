@@ -40,7 +40,7 @@ warning: unresolved link to `Qux:Y`
   --> $DIR/warning.rs:14:13
    |
 LL |        /// [Qux:Y]
-   |             ^^^^^ no item named `Qux:Y` in scope
+   |             ^^^^^ invalid path separator
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 

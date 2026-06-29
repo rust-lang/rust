@@ -26,5 +26,21 @@ LL |     use std::{error::Error, vec::Vec, fs::File};
    = note: `-D clippy::std-instead-of-alloc` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::std_instead_of_alloc)]`
 
-error: aborting due to 3 previous errors
+error: used import from `std` instead of `alloc`
+  --> tests/ui/std_instead_of_core_unfixable.rs:21:17
+   |
+LL |         borrow::Cow,
+   |                 ^^^
+   |
+   = help: consider importing the item from `alloc`
+
+error: used import from `std` instead of `alloc`
+  --> tests/ui/std_instead_of_core_unfixable.rs:23:22
+   |
+LL |         collections::BTreeSet,
+   |                      ^^^^^^^^
+   |
+   = help: consider importing the item from `alloc`
+
+error: aborting due to 5 previous errors
 

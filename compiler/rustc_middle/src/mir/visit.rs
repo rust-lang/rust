@@ -170,15 +170,6 @@ macro_rules! make_mir_visitor {
                 self.super_coverage(kind, location);
             }
 
-            fn visit_retag(
-                &mut self,
-                kind: $(& $mutability)? RetagKind,
-                place: & $($mutability)? Place<'tcx>,
-                location: Location,
-            ) {
-                self.super_retag(kind, place, location);
-            }
-
             fn visit_place(
                 &mut self,
                 place: & $($mutability)? Place<'tcx>,
@@ -356,27 +347,27 @@ macro_rules! make_mir_visitor {
                         ty::InstanceKind::Item(_def_id) => {}
 
                         ty::InstanceKind::Intrinsic(_def_id)
-                        | ty::InstanceKind::VTableShim(_def_id)
-                        | ty::InstanceKind::ReifyShim(_def_id, _)
+                        | ty::InstanceKind::Shim(ty::ShimKind::VTable(_def_id))
+                        | ty::InstanceKind::Shim(ty::ShimKind::Reify(_def_id, _))
                         | ty::InstanceKind::Virtual(_def_id, _)
-                        | ty::InstanceKind::ThreadLocalShim(_def_id)
-                        | ty::InstanceKind::ClosureOnceShim { call_once: _def_id, track_caller: _ }
-                        | ty::InstanceKind::ConstructCoroutineInClosureShim {
+                        | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(_def_id))
+                        | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnce { call_once: _def_id, closure: _, track_caller: _ })
+                        | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,
-                        }
-                        | ty::InstanceKind::DropGlue(_def_id, None) => {}
+                        })
+                        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_def_id, None)) => {}
 
-                        ty::InstanceKind::FnPtrShim(_def_id, ty)
-                        | ty::InstanceKind::DropGlue(_def_id, Some(ty))
-                        | ty::InstanceKind::CloneShim(_def_id, ty)
-                        | ty::InstanceKind::FnPtrAddrShim(_def_id, ty)
-                        | ty::InstanceKind::AsyncDropGlue(_def_id, ty)
-                        | ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, ty) => {
+                        ty::InstanceKind::Shim(ty::ShimKind::FnPtr(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_def_id, Some(ty)))
+                        | ty::InstanceKind::Shim(ty::ShimKind::Clone(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_def_id, ty)) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }
-                        ty::InstanceKind::FutureDropPollShim(_def_id, proxy_ty, impl_ty) => {
+                        ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_def_id, proxy_ty, impl_ty)) => {
                             self.visit_ty($(& $mutability)? *proxy_ty, TyContext::Location(location));
                             self.visit_ty($(& $mutability)? *impl_ty, TyContext::Location(location));
                         }
@@ -428,10 +419,10 @@ macro_rules! make_mir_visitor {
                     self.visit_statement_debuginfo(debuginfo, location);
                 }
                 match kind {
-                    StatementKind::Assign(box (place, rvalue)) => {
+                    StatementKind::Assign((place, rvalue)) => {
                         self.visit_assign(place, rvalue, location);
                     }
-                    StatementKind::FakeRead(box (_, place)) => {
+                    StatementKind::FakeRead((_, place)) => {
                         self.visit_place(
                             place,
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
@@ -459,9 +450,6 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::Retag(kind, place) => {
-                        self.visit_retag($(& $mutability)? *kind, place, location);
-                    }
                     StatementKind::PlaceMention(place) => {
                         self.visit_place(
                             place,
@@ -469,7 +457,7 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::AscribeUserType(box (place, user_ty), variance) => {
+                    StatementKind::AscribeUserType((place, user_ty), variance) => {
                         self.visit_ascribe_user_ty(
                             place,
                             $(& $mutability)? *variance,
@@ -483,7 +471,7 @@ macro_rules! make_mir_visitor {
                             location
                         )
                     }
-                    StatementKind::Intrinsic(box intrinsic) => {
+                    StatementKind::Intrinsic(intrinsic) => {
                         match intrinsic {
                             NonDivergingIntrinsic::Assume(op) => self.visit_operand(op, location),
                             NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
@@ -528,7 +516,7 @@ macro_rules! make_mir_visitor {
                 terminator: &$($mutability)? Terminator<'tcx>,
                 location: Location
             ) {
-                let Terminator { source_info, kind } = terminator;
+                let Terminator { source_info, kind, attributes: _ } = terminator;
 
                 self.visit_source_info(source_info);
                 match kind {
@@ -567,20 +555,12 @@ macro_rules! make_mir_visitor {
                         unwind: _,
                         replace: _,
                         drop: _,
-                        async_fut,
                     } => {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
                             location
                         );
-                        if let Some(async_fut) = async_fut {
-                            self.visit_local(
-                                $(&$mutability)? *async_fut,
-                                PlaceContext::MutatingUse(MutatingUseContext::Borrow),
-                                location
-                            );
-                        }
                     }
 
                     TerminatorKind::Call {
@@ -704,7 +684,7 @@ macro_rules! make_mir_visitor {
                 location: Location
             ) {
                 match rvalue {
-                    Rvalue::Use(operand) => {
+                    Rvalue::Use(operand, _with_retag) => {
                         self.visit_operand(operand, location);
                     }
 
@@ -728,6 +708,18 @@ macro_rules! make_mir_visitor {
                                 PlaceContext::MutatingUse(MutatingUseContext::Borrow),
                         };
                         self.visit_place(path, ctx, location);
+                    }
+
+                    Rvalue::Reborrow(target, mutability, place) => {
+                        self.visit_ty($(& $mutability)? *target, TyContext::Location(location));
+                        self.visit_place(
+                            place,
+                            match mutability {
+                                Mutability::Not => PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow),
+                                Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::Borrow),
+                            },
+                            location
+                        );
                     }
 
                     Rvalue::CopyForDeref(place) => {
@@ -758,7 +750,7 @@ macro_rules! make_mir_visitor {
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
 
-                    Rvalue::BinaryOp(_bin_op, box(lhs, rhs)) => {
+                    Rvalue::BinaryOp(_bin_op, (lhs, rhs)) => {
                         self.visit_operand(lhs, location);
                         self.visit_operand(rhs, location);
                     }
@@ -814,6 +806,8 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(op, location);
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
+
+
                 }
             }
 
@@ -868,19 +862,6 @@ macro_rules! make_mir_visitor {
             ) {
             }
 
-            fn super_retag(
-                &mut self,
-                _kind: $(& $mutability)? RetagKind,
-                place: & $($mutability)? Place<'tcx>,
-                location: Location
-            ) {
-                self.visit_place(
-                    place,
-                    PlaceContext::MutatingUse(MutatingUseContext::Retag),
-                    location,
-                );
-            }
-
             fn super_local_decl(
                 &mut self,
                 local: Local,
@@ -929,7 +910,7 @@ macro_rules! make_mir_visitor {
 
                 self.visit_source_info(source_info);
                 let location = Location::START;
-                if let Some(box VarDebugInfoFragment {
+                if let Some(VarDebugInfoFragment {
                     ty,
                     projection
                 }) = composite {

@@ -26,6 +26,15 @@ labels_blocking_approval = [
     "S-waiting-on-t-clippy",
     # PR manually set to blocked
     "S-blocked",
+    # Needs a Crater run before being approved
+    "needs-crater",
+    # Needs a formal decision to be made
+    "needs-rfc",
+    "needs-fcp",
+    "needs-acp",
+    "needs-mcp",
+    # A PR in the Rust reference must be done first
+    "needs-reference-pr"
 ]
 
 # If CI runs quicker than this duration, consider it to be a failure

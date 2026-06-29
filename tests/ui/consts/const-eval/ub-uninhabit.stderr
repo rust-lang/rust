@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value of type Bar: encountered a value of uninhabited type `Bar`
+error[E0080]: constructing invalid value of type Bar: encountered a value of zero-variant enum `Bar`
   --> $DIR/ub-uninhabit.rs:20:35
    |
 LL | const BAD_BAD_BAD: Bar = unsafe { MaybeUninit { uninit: () }.init };
@@ -15,7 +15,7 @@ LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value of type [Bar; 1]: at [0], encountered a value of uninhabited type `Bar`
+error[E0080]: constructing invalid value of type [Bar; 1]: at [0], encountered a value of zero-variant enum `Bar`
   --> $DIR/ub-uninhabit.rs:26:42
    |
 LL | const BAD_BAD_ARRAY: [Bar; 1] = unsafe { MaybeUninit { uninit: () }.init };

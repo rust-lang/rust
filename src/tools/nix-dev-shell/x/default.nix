@@ -1,5 +1,4 @@
 {
-  pkgs,
   lib,
   stdenv,
   rustc,
@@ -16,7 +15,6 @@
   # LLVM Deps
   ninja,
   cmake,
-  glibc,
 }:
 stdenv.mkDerivation (self: {
   strictDeps = true;

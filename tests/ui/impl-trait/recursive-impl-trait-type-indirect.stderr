@@ -53,19 +53,19 @@ LL | fn coroutine_sig() -> impl Sized {
    |                       ^^^^^^^^^^
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:57:27
+  --> $DIR/recursive-impl-trait-type-indirect.rs:58:27
    |
 LL | fn coroutine_capture() -> impl Sized {
    |                           ^^^^^^^^^^
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:68:35
+  --> $DIR/recursive-impl-trait-type-indirect.rs:69:35
    |
 LL | fn substs_change<T: 'static>() -> impl Sized {
    |                                   ^^^^^^^^^^
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:78:26
+  --> $DIR/recursive-impl-trait-type-indirect.rs:79:26
    |
 LL | fn mutual_recursion() -> impl Sync {
    |                          ^^^^^^^^^ recursive opaque type
@@ -77,7 +77,7 @@ LL | fn mutual_recursion_b() -> impl Sized {
    |                            ---------- returning this opaque type `impl Sized`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:83:28
+  --> $DIR/recursive-impl-trait-type-indirect.rs:84:28
    |
 LL | fn mutual_recursion() -> impl Sync {
    |                          --------- returning this opaque type `impl Sync`

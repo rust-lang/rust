@@ -41,6 +41,7 @@ mod matching_brace;
 mod moniker;
 mod move_item;
 mod parent_module;
+mod predicate_eval;
 mod references;
 mod rename;
 mod runnables;
@@ -59,6 +60,7 @@ mod view_mir;
 mod view_syntax_tree;
 
 use std::panic::{AssertUnwindSafe, UnwindSafe};
+use std::time::Duration;
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
@@ -70,7 +72,7 @@ use ide_db::ra_fixture::RaFixtureAnalysis;
 use ide_db::{
     FxHashMap, FxIndexSet,
     base_db::{
-        CrateOrigin, CrateWorkspaceData, Env, FileSet, SourceDatabase, VfsPath,
+        AbsPathBuf, CrateOrigin, CrateWorkspaceData, Env, FileSet, SourceDatabase, VfsPath,
         salsa::{Cancelled, Database},
     },
     prime_caches, symbol_index,
@@ -122,7 +124,7 @@ pub use crate::{
     },
     test_explorer::{TestItem, TestItemKind},
 };
-pub use hir::Semantics;
+pub use hir::{PredicateEvaluationResult, PredicateEvaluationStatus, Semantics};
 pub use ide_assists::{
     Assist, AssistConfig, AssistId, AssistKind, AssistResolveStrategy, SingleResolve,
 };
@@ -196,8 +198,8 @@ impl AnalysisHost {
 
     /// Applies changes to the current state of the world. If there are
     /// outstanding snapshots, they will be canceled.
-    pub fn apply_change(&mut self, change: ChangeWithProcMacros) {
-        self.db.apply_change(change);
+    pub fn apply_change(&mut self, change: ChangeWithProcMacros) -> Duration {
+        self.db.apply_change(change)
     }
 
     /// NB: this clears the database
@@ -253,7 +255,7 @@ impl Analysis {
     // Creates an analysis instance for a single file, without any external
     // dependencies, stdlib support or ability to apply changes. See
     // `AnalysisHost` for creating a fully-featured analysis.
-    pub fn from_single_file(text: String) -> (Analysis, FileId) {
+    pub fn from_single_file(text: String, proc_macro_cwd: Arc<AbsPathBuf>) -> (Analysis, FileId) {
         let mut host = AnalysisHost::default();
         let file_id = FileId::from_raw(0);
         let mut file_set = FileSet::default();
@@ -267,11 +269,6 @@ impl Analysis {
         // Default to enable test for single file.
         let mut cfg_options = CfgOptions::default();
 
-        // FIXME: This is less than ideal
-        let proc_macro_cwd = Arc::new(
-            TryFrom::try_from(&*std::env::current_dir().unwrap().as_path().to_string_lossy())
-                .unwrap(),
-        );
         let crate_attrs = Vec::new();
         cfg_options.insert_atom(sym::test);
         crate_graph.add_crate_root(
@@ -394,6 +391,14 @@ impl Analysis {
 
     pub fn view_hir(&self, position: FilePosition) -> Cancellable<String> {
         self.with_db(|db| view_hir::view_hir(db, position))
+    }
+
+    pub fn evaluate_predicate(
+        &self,
+        text: String,
+        position: FilePosition,
+    ) -> Cancellable<PredicateEvaluationResult> {
+        self.with_db(|db| predicate_eval::evaluate_predicate(db, text, position))
     }
 
     pub fn view_mir(&self, position: FilePosition) -> Cancellable<String> {

@@ -45,11 +45,11 @@
 - 
 -     bb4: {
 +         StorageLive(_7);
-+         _7 = move _6;
++         _7 = no_retag move _6;
 +         _5 = Ne(copy _7, const false);
 +         StorageDead(_7);
 +         StorageLive(_8);
-+         _8 = move _5;
++         _8 = no_retag move _5;
           StorageDead(_6);
 -         _4 = const true;
 -         goto -> bb6;
@@ -69,7 +69,7 @@
 +         _4 = Ne(copy _8, const false);
 +         StorageDead(_8);
 +         StorageLive(_9);
-+         _9 = move _4;
++         _9 = no_retag move _4;
           StorageDead(_5);
 -         _3 = const true;
 -         goto -> bb9;
@@ -89,7 +89,7 @@
 +         _3 = Ne(copy _9, const false);
 +         StorageDead(_9);
 +         StorageLive(_10);
-+         _10 = move _3;
++         _10 = no_retag move _3;
           StorageDead(_4);
           StorageDead(_3);
 -         _1 = const true;

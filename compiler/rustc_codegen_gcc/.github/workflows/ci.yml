@@ -101,7 +101,7 @@ jobs:
 
     - name: Run y.sh cargo build
       run: |
-        ./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml
+        CARGO_PROFILE_DEV_LTO=no ./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml
 
     - name: Clean
       run: |
@@ -119,7 +119,7 @@ jobs:
 
     - name: Run tests
       run: |
-        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}
+        ./y.sh test --release --clean --build-sysroot --no-builtins-tests ${{ matrix.commands }}
 
   duplicates:
     runs-on: ubuntu-24.04

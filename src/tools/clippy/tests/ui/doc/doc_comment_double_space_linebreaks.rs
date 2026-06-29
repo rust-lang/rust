@@ -2,7 +2,7 @@
 #![rustfmt::skip]
 
 #![warn(clippy::doc_comment_double_space_linebreaks)]
-#![allow(unused, clippy::empty_docs)]
+#![expect(clippy::empty_docs)]
 
 //~v doc_comment_double_space_linebreaks
 //! Should warn on double space linebreaks  

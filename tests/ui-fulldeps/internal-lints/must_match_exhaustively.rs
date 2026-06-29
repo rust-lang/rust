@@ -46,6 +46,9 @@ fn foo(f: Foo) {
 
     let Foo::A { .. } = f else { loop {} };
     //~^ ERROR match is not exhaustive
+
+    matches!(f, Foo::A { .. });
+    //~^ ERROR match is not exhaustive
 }
 
 fn main() {}

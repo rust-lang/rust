@@ -1,5 +1,5 @@
 #![warn(clippy::borrow_as_ptr)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 
 fn a() -> i32 {
     0

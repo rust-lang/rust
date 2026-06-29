@@ -4,8 +4,8 @@ error: `#[inline]` attribute cannot be used on required trait methods
 LL |     #[inline]
    |     ^^^^^^^^^
    |
+   = help: `#[inline]` can only be applied to functions with a body
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[inline]` can be applied to closures, functions, inherent methods, provided trait methods, and trait methods in impl blocks
 note: the lint level is defined here
   --> $DIR/warn-unused-inline-on-fn-prototypes.rs:1:9
    |
@@ -18,8 +18,8 @@ error: `#[inline]` attribute cannot be used on foreign functions
 LL |     #[inline]
    |     ^^^^^^^^^
    |
+   = help: `#[inline]` can only be applied to functions with a body
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[inline]` can be applied to closures, functions, and methods
 
 error: aborting due to 2 previous errors
 

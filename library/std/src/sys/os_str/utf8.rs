@@ -226,8 +226,14 @@ impl Slice {
 
     #[track_caller]
     #[inline]
+    pub fn try_check_public_boundary(&self, index: usize) -> Option<()> {
+        if self.inner.is_char_boundary(index) { Some(()) } else { None }
+    }
+
+    #[track_caller]
+    #[inline]
     pub fn check_public_boundary(&self, index: usize) {
-        if !self.inner.is_char_boundary(index) {
+        if self.try_check_public_boundary(index).is_none() {
             panic!("byte index {index} is not an OsStr boundary");
         }
     }

@@ -79,7 +79,7 @@ pub fn start(_: isize, _: *const *const u8) -> isize {
     // with drop
     let droppable = &PresentDrop;
     //~ MONO_ITEM fn <PresentDrop as std::ops::Drop>::drop @@ unsizing-cgu.0[Internal]
-    //~ MONO_ITEM fn std::ptr::drop_in_place::<PresentDrop> - shim(Some(PresentDrop)) @@ unsizing-cgu.0[Internal]
+    //~ MONO_ITEM fn std::ptr::drop_glue::<PresentDrop> - shim(Some(PresentDrop)) @@ unsizing-cgu.0[Internal]
     //~ MONO_ITEM fn <PresentDrop as Trait>::foo
     let droppable = droppable as &dyn Trait;
 

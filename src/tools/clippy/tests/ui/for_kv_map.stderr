@@ -84,5 +84,53 @@ LL -     for (_, v) in test_map!(wrapped) {
 LL +     for v in test_map!(wrapped).values() {
    |
 
-error: aborting due to 7 previous errors
+error: you seem to want to iterate on a map's values
+  --> tests/ui/for_kv_map.rs:91:19
+   |
+LL |     for (_, v) in x.iter() {
+   |                   ^^^^^^^^
+   |
+help: use the corresponding method
+   |
+LL -     for (_, v) in x.iter() {
+LL +     for v in x.values() {
+   |
+
+error: you seem to want to iterate on a map's values
+  --> tests/ui/for_kv_map.rs:96:19
+   |
+LL |     for (_, v) in x.iter_mut() {
+   |                   ^^^^^^^^^^^^
+   |
+help: use the corresponding method
+   |
+LL -     for (_, v) in x.iter_mut() {
+LL +     for v in x.values_mut() {
+   |
+
+error: you seem to want to iterate on a map's keys
+  --> tests/ui/for_kv_map.rs:101:19
+   |
+LL |     for (k, _) in x.iter() {
+   |                   ^^^^^^^^
+   |
+help: use the corresponding method
+   |
+LL -     for (k, _) in x.iter() {
+LL +     for k in x.keys() {
+   |
+
+error: you seem to want to iterate on a map's keys
+  --> tests/ui/for_kv_map.rs:106:19
+   |
+LL |     for (k, _) in x.iter_mut() {
+   |                   ^^^^^^^^^^^^
+   |
+help: use the corresponding method
+   |
+LL -     for (k, _) in x.iter_mut() {
+LL +     for k in x.keys() {
+   |
+
+error: aborting due to 11 previous errors
 

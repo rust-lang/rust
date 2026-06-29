@@ -22,7 +22,10 @@ use crate::{AssistContext, AssistId, Assists};
 //     "Hello, World!"
 // }
 // ```
-pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn inline_const_as_literal(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let variable = ctx.find_node_at_offset::<ast::PathExpr>()?;
 
     if let hir::PathResolution::Def(hir::ModuleDef::Const(konst)) =
@@ -57,7 +60,7 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
 }
 
 fn validate_type_recursively(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     ty_hir: Option<&hir::Type<'_>>,
     refed: bool,
     fuel: i32,

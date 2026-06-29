@@ -7,7 +7,7 @@ use ::std::prelude::rust_2015::*;
 //@ edition: 2015
 
 #[attr = OnUnimplemented {directive: Directive {is_rustc_attr: false,
-subcommands: [],
+filters: [],
 message: FormatString {input: "My Message for `ImportantTrait<{A}>` implemented for `{Self}`",
 pieces: [Lit("My Message for `ImportantTrait<"),
 Arg(GenericParam {generic_param: "A"}), Lit(">` implemented for `"),
@@ -22,7 +22,7 @@ impl <T> ImportantTrait<T> for T where T: Clone { }
 
 struct X;
 
-#[attr = OnConst {directive: Directive {is_rustc_attr: false, subcommands: [],
+#[attr = OnConst {directive: Directive {is_rustc_attr: false, filters: [],
 message: FormatString {input: "My Message for `ImportantTrait<u8>` implemented for `{Self}`",
 pieces: [Lit("My Message for `ImportantTrait<u8>` implemented for `"),
 Arg(SelfUpper), Lit("`")]}, label: FormatString {input: "My Label",

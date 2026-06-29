@@ -5,16 +5,16 @@ use std::task::{RawWaker, RawWakerVTable, Waker};
 fn test_waker_getters() {
     let raw_waker = RawWaker::new(ptr::without_provenance_mut(42usize), &WAKER_VTABLE);
     let waker = unsafe { Waker::from_raw(raw_waker) };
-    assert_eq!(waker.data() as usize, 42);
+    assert_eq!(waker.data().addr(), 42);
     assert!(ptr::eq(waker.vtable(), &WAKER_VTABLE));
 
     let waker2 = waker.clone();
-    assert_eq!(waker2.data() as usize, 43);
+    assert_eq!(waker2.data().addr(), 43);
     assert!(ptr::eq(waker2.vtable(), &WAKER_VTABLE));
 }
 
 static WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
-    |data| RawWaker::new(ptr::without_provenance_mut(data as usize + 1), &WAKER_VTABLE),
+    |data| RawWaker::new(ptr::without_provenance_mut(data.addr() + 1), &WAKER_VTABLE),
     |_| {},
     |_| {},
     |_| {},

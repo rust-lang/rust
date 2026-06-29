@@ -196,7 +196,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             apply_shared_opts(&mut cmd, opts);
             cmd.run(builder);
 
-            println!("You can find the results at `{}`", &results_dir.display());
+            println!("You can find the results at `{}`", results_dir.display());
         }
         PerfCommand::Benchmark { id, opts } => {
             cmd.arg("bench_local");

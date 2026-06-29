@@ -282,21 +282,22 @@ When using `cargo dev new_lint`, the lint is automatically registered and
 nothing more has to be done.
 
 When declaring a new lint by hand and `cargo dev update_lints` is used, the lint
-pass may have to be registered manually in the `register_lints` function in
-`clippy_lints/src/lib.rs`:
+pass may have to be registered manually by adding an entry to the
+`early_lint_methods!` macro invocation in `clippy_lints/src/lib.rs`, at the
+`// add early passes here` marker:
 
 ```rust,ignore
-store.register_early_pass(|| Box::new(foo_functions::FooFunctions));
+FooFunctions: foo_functions::FooFunctions = foo_functions::FooFunctions,
 ```
 
-As one may expect, there is a corresponding `register_late_pass` method
-available as well. Without a call to one of `register_early_pass` or
-`register_late_pass`, the lint pass in question will not be run.
+As one may expect, there is a corresponding `late_lint_methods!` macro available
+as well. Without an entry in one of `early_lint_methods!` or `late_lint_methods!`,
+the lint pass in question will not be run.
 
 One reason that `cargo dev update_lints` does not automate this step is that
 multiple lints can use the same lint pass, so registering the lint pass may
 already be done when adding a new lint. Another reason that this step is not
-automated is that the order that the passes are registered determines the order
+automated is that the order that the passes are listed determines the order
 the passes actually run, which in turn affects the order that any emitted lints
 are output in.
 

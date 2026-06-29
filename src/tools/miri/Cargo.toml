@@ -1,5 +1,4 @@
 [package]
-authors = ["Miri Team"]
 description = "An experimental interpreter for Rust MIR (core driver)."
 license = "MIT OR Apache-2.0"
 name = "miri"
@@ -18,10 +17,10 @@ test = false    # we have no unit tests
 doctest = false # and no doc tests
 
 [dependencies]
-getrandom = { version = "0.3", features = ["std"] }
-rand = "0.9"
+getrandom = { version = "0.4", features = ["std"] }
+rand = "0.10"
 smallvec = { version = "1.7", features = ["drain_filter"] }
-aes = { version = "0.8.3", features = ["hazmat"] }
+aes = { version = "0.9", features = ["hazmat"] }
 measureme = "12"
 chrono = { version = "0.4.38", default-features = false }
 chrono-tz = "0.10"
@@ -39,7 +38,7 @@ serde = { version = "1.0.219", features = ["derive"], optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 nix = { version = "0.30.1", features = ["mman", "ptrace", "signal"], optional = true }
-ipc-channel = { version = "0.20.0", optional = true }
+ipc-channel = { version = "0.22.0", optional = true }
 capstone = { version = "0.14", features = ["arch_x86", "full"], default-features = false, optional = true}
 
 [target.'cfg(all(target_os = "linux", target_pointer_width = "64", target_endian = "little"))'.dependencies]
@@ -73,7 +72,7 @@ check_only = ["libffi?/check_only", "capstone?/check_only", "genmc-sys?/check_on
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(bootstrap)']
+check-cfg = ['cfg(bootstrap)', 'cfg(target_has_reliable_f16_math)']
 
 # Be aware that this file is inside a workspace when used via the
 # submodule in the rustc repo. That means there are many cargo features

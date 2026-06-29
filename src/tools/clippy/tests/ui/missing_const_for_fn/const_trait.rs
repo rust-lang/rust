@@ -11,7 +11,7 @@ impl ConstTrait for u32 {
     fn method(self) {}
 }
 
-impl const ConstTrait for u64 {
+const impl ConstTrait for u64 {
     fn method(self) {}
 }
 

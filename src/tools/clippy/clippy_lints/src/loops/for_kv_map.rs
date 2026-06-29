@@ -23,7 +23,20 @@ pub(super) fn check<'tcx>(
         && pat.len() == 2
     {
         let arg_span = arg.span;
-        let (new_pat_span, kind, ty, mutbl) = match *cx.typeck_results().expr_ty(arg).kind() {
+        let (arg, arg_ty) = match arg.kind {
+            // `for x in &expr` or `for x in &mut expr`
+            ExprKind::AddrOf(BorrowKind::Ref, _, expr) => (expr, cx.typeck_results().expr_ty(arg)),
+            // `for x in receiver.iter()` or `for x in receiver.iter_mut()`
+            ExprKind::MethodCall(path, receiver, [], ..)
+                if path.ident.name == sym::iter || path.ident.name == sym::iter_mut =>
+            {
+                // Use `expr_ty_adjusted` because `.iter()` / `.iter_mut()` may introduce auto deferences
+                (receiver, cx.typeck_results().expr_ty_adjusted(receiver))
+            },
+            _ => (arg, cx.typeck_results().expr_ty(arg)),
+        };
+
+        let (new_pat_span, kind, ty, mutbl) = match *arg_ty.kind() {
             ty::Ref(_, ty, mutbl) => match (&pat[0].kind, &pat[1].kind) {
                 (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value", ty, mutbl),
                 (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key", ty, Mutability::Not),
@@ -34,10 +47,6 @@ pub(super) fn check<'tcx>(
         let mutbl = match mutbl {
             Mutability::Not => "",
             Mutability::Mut => "_mut",
-        };
-        let arg = match arg.kind {
-            ExprKind::AddrOf(BorrowKind::Ref, _, expr) => expr,
-            _ => arg,
         };
 
         if matches!(ty.opt_diag_name(cx), Some(sym::HashMap | sym::BTreeMap))

@@ -12,7 +12,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 // This diagnostic is shown when generic arguments are provided for a type that does not accept
 // generic arguments.
 pub(crate) fn generic_args_prohibited(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::GenericArgsProhibited,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
@@ -42,7 +42,7 @@ fn describe_reason(reason: GenericArgsProhibitedReason) -> String {
     format!("generic arguments are not allowed on {kind}")
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::GenericArgsProhibited) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::GenericArgsProhibited) -> Option<Vec<Assist>> {
     let file_id = d.args.file_id.file_id()?;
     let syntax = d.args.to_node(ctx.sema.db);
     let range = match &syntax {

@@ -1,5 +1,5 @@
 #![warn(clippy::iter_next_slice)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 
 fn main() {
     // test code goes here
@@ -25,4 +25,13 @@ fn main() {
     let o = Some(5);
     o.iter().next();
     // Shouldn't be linted since this is not a Slice or an Array
+
+    let mut s_mut = [1, 2, 3];
+    let mut v_mut = vec![1, 2, 3];
+
+    let _: Option<&mut i32> = s_mut.iter_mut().next();
+    //~^ iter_next_slice
+
+    let _ = v_mut.iter_mut().next();
+    //~^ iter_next_slice
 }

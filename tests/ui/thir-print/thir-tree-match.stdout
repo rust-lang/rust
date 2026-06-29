@@ -246,6 +246,7 @@ body:
                                                                         span: $DIR/thir-tree-match.rs:19:9: 19:28 (#0)
                                                                     }
                                                                 ]
+                                                                match_source: Normal
                                                             }
                                                     }
                                             }

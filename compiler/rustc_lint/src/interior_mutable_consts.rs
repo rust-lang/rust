@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for InteriorMutableConsts {
             // Let's do the attribute check after the other checks for perf reasons
             && find_attr!(
                 cx.tcx, method_did,
-                RustcShouldNotBeCalledOnConstItems(_)
+                RustcShouldNotBeCalledOnConstItems
             )
             && let Some(method_name) = cx.tcx.opt_item_ident(method_did)
             && let Some(const_name) = cx.tcx.opt_item_ident(const_did)

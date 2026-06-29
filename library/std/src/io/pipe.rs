@@ -40,8 +40,6 @@ use crate::sys::{FromInner, IntoInner, pipe as imp};
 /// # Example
 ///
 /// ```no_run
-/// # #[cfg(miri)] fn main() {}
-/// # #[cfg(not(miri))]
 /// # fn main() -> std::io::Result<()> {
 /// use std::io::{Read, Write, pipe};
 /// use std::process::Command;
@@ -126,8 +124,6 @@ impl PipeReader {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[cfg(miri)] fn main() {}
-    /// # #[cfg(not(miri))]
     /// # fn main() -> std::io::Result<()> {
     /// use std::fs;
     /// use std::io::{pipe, Write};
@@ -185,8 +181,6 @@ impl PipeWriter {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[cfg(miri)] fn main() {}
-    /// # #[cfg(not(miri))]
     /// # fn main() -> std::io::Result<()> {
     /// use std::process::Command;
     /// use std::io::{pipe, Read};
@@ -233,7 +227,7 @@ impl io::Read for &PipeReader {
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         self.0.read_to_end(buf)
     }
-    fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: io::BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0.read_buf(buf)
     }
 }
@@ -253,7 +247,7 @@ impl io::Read for PipeReader {
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         self.0.read_to_end(buf)
     }
-    fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: io::BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0.read_buf(buf)
     }
 }

@@ -46,7 +46,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for PossibleOriginVisitor<'_, 'tcx> {
             mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, borrowed) |
             // _2: &mut _;
             // _3 = move _2
-            mir::Rvalue::Use(mir::Operand::Move(borrowed))  |
+            mir::Rvalue::Use(mir::Operand::Move(borrowed), _)  |
             // _3 = move _2 as &mut _;
             mir::Rvalue::Cast(_, mir::Operand::Move(borrowed), _)
                 => {

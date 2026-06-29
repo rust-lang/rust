@@ -1,11 +1,13 @@
 //@no-rustfix: overlapping suggestions
 // does not test any rustfixable lints
 
-#![warn(clippy::mixed_case_hex_literals)]
-#![warn(clippy::zero_prefixed_literal)]
-#![warn(clippy::unseparated_literal_suffix)]
-#![warn(clippy::separated_literal_suffix)]
-#![allow(dead_code, overflowing_literals)]
+#![warn(
+    clippy::mixed_case_hex_literals,
+    clippy::separated_literal_suffix,
+    clippy::unseparated_literal_suffix,
+    clippy::zero_prefixed_literal
+)]
+#![expect(overflowing_literals)]
 
 fn main() {
     let ok1 = 0xABCD;

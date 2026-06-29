@@ -14,6 +14,11 @@ note: ...and refers to the module `foo` which is defined here
    |
 LL | mod foo {
    | ^^^^^^^
+help: consider importing this function instead
+   |
+LL -     use crate::foo::bar::f as g;
+LL +     use foo::f as g;
+   |
 
 error[E0603]: module import `f` is private
   --> $DIR/shadowed-use-visibility.rs:15:10
@@ -31,6 +36,11 @@ note: ...and refers to the module `foo` which is defined here
    |
 LL | mod foo {
    | ^^^^^^^
+help: consider importing this function through its public re-export instead
+   |
+LL - use bar::f::f;
+LL + use bar::f;
+   |
 
 error: aborting due to 2 previous errors
 

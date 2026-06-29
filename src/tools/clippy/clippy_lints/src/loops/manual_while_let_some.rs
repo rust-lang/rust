@@ -65,7 +65,7 @@ fn is_vec_pop_unwrap(cx: &LateContext<'_>, expr: &Expr<'_>, is_empty_recv: &Expr
         && let ExprKind::MethodCall(_, pop_recv, ..) = unwrap_recv.kind
     {
         // make sure they're the same `Vec`
-        SpanlessEq::new(cx).eq_expr(pop_recv, is_empty_recv)
+        SpanlessEq::new(cx).eq_expr(expr.span.ctxt(), pop_recv, is_empty_recv)
     } else {
         false
     }

@@ -1336,7 +1336,7 @@ where
 {
     fn f(&self) {
         let x = self.field.foo();
-          //^ impl Baz<<<T as Foo>::Assoc as Bar>::Target> + Bar
+          //^ impl Baz<<<… as Foo>::Assoc as Bar>::Target> + Bar
     }
 }
 "#,

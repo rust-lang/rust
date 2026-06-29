@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{IntoSpan, SpanRangeExt};
+use clippy_utils::source::{IntoSpan, SpanExt};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::ty_from_hir_ty;
 use rustc_errors::{Applicability, Diag};

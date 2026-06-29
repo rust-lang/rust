@@ -4,7 +4,7 @@ use ide_db::{
     FxHashSet,
     assists::AssistId,
     defs::Definition,
-    helpers::mod_path_to_ast,
+    helpers::mod_path_to_ast_with_factory,
     imports::insert_use::{ImportScope, insert_use_with_editor},
     search::{FileReference, UsageSearchResult},
     source_change::SourceChangeBuilder,
@@ -51,7 +51,7 @@ use crate::assist_context::{AssistContext, Assists};
 // ```
 pub(crate) fn convert_tuple_return_type_to_struct(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
     let type_ref = ret_type.ty()?;
@@ -104,7 +104,7 @@ pub(crate) fn convert_tuple_return_type_to_struct(
 /// Replaces tuple usages with the corresponding tuple struct pattern.
 fn replace_usages(
     edit: &mut SourceChangeBuilder,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     usages: &UsageSearchResult,
     struct_name: &str,
     target_module: &hir::Module,
@@ -176,8 +176,8 @@ fn node_to_pats(node: SyntaxNode) -> Option<Vec<ast::Pat>> {
 }
 
 fn augment_references_with_imports(
-    syntax_factory: &SyntaxFactory,
-    ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
+    ctx: &AssistContext<'_, '_>,
     references: &[FileReference],
     struct_name: &str,
     target_module: &hir::Module,
@@ -208,12 +208,13 @@ fn augment_references_with_imports(
                         cfg,
                     )
                     .map(|mod_path| {
-                        syntax_factory.path_concat(
-                            mod_path_to_ast(
+                        make.path_concat(
+                            mod_path_to_ast_with_factory(
+                                make,
                                 &mod_path,
                                 target_module.krate(ctx.db()).edition(ctx.db()),
                             ),
-                            syntax_factory.path_from_text(struct_name),
+                            make.path_from_text(struct_name),
                         )
                     });
 
@@ -231,7 +232,7 @@ fn augment_references_with_imports(
 fn add_tuple_struct_def(
     edit: &mut SourceChangeBuilder,
     syntax_factory: &SyntaxFactory,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     usages: &UsageSearchResult,
     parent: &SyntaxNode,
     tuple_ty: &ast::TupleType,

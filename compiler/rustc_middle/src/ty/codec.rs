@@ -513,9 +513,8 @@ macro_rules! __impl_decoder_methods {
 }
 
 macro_rules! impl_arena_allocatable_decoder {
-    ([]$args:tt) => {};
-    ([decode $(, $attrs:ident)*]
-     [$name:ident: $ty:ty]) => {
+    ([]       $name:ident: $ty:ty) => {};
+    ([decode] $name:ident: $ty:ty) => {
         impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
             #[inline]
             fn decode(decoder: &mut D) -> &'tcx Self {
@@ -535,7 +534,7 @@ macro_rules! impl_arena_allocatable_decoder {
 macro_rules! impl_arena_allocatable_decoders {
     ([$($a:tt $name:ident: $ty:ty,)*]) => {
         $(
-            impl_arena_allocatable_decoder!($a [$name: $ty]);
+            impl_arena_allocatable_decoder!($a $name: $ty);
         )*
     }
 }

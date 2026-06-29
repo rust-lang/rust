@@ -114,19 +114,22 @@ use syntax::{
 };
 use tt::TextRange;
 
-use crate::{InFile, InlineAsmOperand, db::HirDatabase, semantics::child_by_source::ChildBySource};
+use crate::{
+    InFile, InlineAsmOperand, SemanticsImpl, db::HirDatabase,
+    semantics::child_by_source::ChildBySource,
+};
 
 #[derive(Default)]
-pub(super) struct SourceToDefCache {
+pub(super) struct SourceToDefCache<'db> {
     pub(super) dynmap_cache: FxHashMap<(ChildContainer, HirFileId), DynMap>,
-    expansion_info_cache: FxHashMap<MacroCallId, ExpansionInfo>,
+    expansion_info_cache: FxHashMap<MacroCallId, ExpansionInfo<'db>>,
     pub(super) file_to_def_cache: FxHashMap<FileId, SmallVec<[ModuleId; 1]>>,
     pub(super) included_file_cache: FxHashMap<EditionedFileId, Option<MacroCallId>>,
     /// Rootnode to HirFileId cache
     pub(super) root_to_file_cache: FxHashMap<SyntaxNode, HirFileId>,
 }
 
-impl SourceToDefCache {
+impl<'db> SourceToDefCache<'db> {
     pub(super) fn cache(
         root_to_file_cache: &mut FxHashMap<SyntaxNode, HirFileId>,
         root_node: SyntaxNode,
@@ -156,9 +159,9 @@ impl SourceToDefCache {
 
     pub(super) fn get_or_insert_expansion(
         &mut self,
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         macro_file: MacroCallId,
-    ) -> &ExpansionInfo {
+    ) -> &ExpansionInfo<'db> {
         self.expansion_info_cache.entry(macro_file).or_insert_with(|| {
             let exp_info = macro_file.expansion_info(db);
 
@@ -172,7 +175,7 @@ impl SourceToDefCache {
 
 pub(super) struct SourceToDefCtx<'db, 'cache> {
     pub(super) db: &'db dyn HirDatabase,
-    pub(super) cache: &'cache mut SourceToDefCache,
+    pub(super) cache: &'cache mut SourceToDefCache<'db>,
 }
 
 impl SourceToDefCtx<'_, '_> {
@@ -345,14 +348,16 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn bind_pat_to_def(
         &mut self,
         src: InFile<&ast::IdentPat>,
-    ) -> Option<(ExpressionStoreOwnerId, BindingId)> {
+        semantics: &SemanticsImpl<'_>,
+    ) -> Option<crate::Local> {
         let container = self.find_container(src.syntax_ref())?.as_expression_store_owner()?;
         let (store, source_map) = ExpressionStore::with_source_map(self.db, container);
         let src = src.cloned().map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         // the pattern could resolve to a constant, verify that this is not the case
         if let crate::Pat::Bind { id, .. } = store[pat_id.as_pat()?] {
-            Some((container, id))
+            let parent_infer = semantics.infer_body_for_expr_or_pat(container, store, pat_id)?;
+            Some(crate::Local { parent: container, parent_infer, binding_id: id })
         } else {
             None
         }
@@ -366,7 +371,7 @@ impl SourceToDefCtx<'_, '_> {
             .as_expression_store_owner()?
             .as_def_with_body()?;
         let body = Body::of(self.db, container);
-        Some((container, body.self_param?))
+        Some((container, body.self_param()?))
     }
     pub(super) fn label_to_def(
         &mut self,

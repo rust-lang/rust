@@ -276,7 +276,50 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:298:5
+  --> tests/ui/needless_late_init.rs:199:5
+   |
+LL |     let x;
+   |     ^^^^^^
+   |
+help: move the declaration `x` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let x = if true {
+LL |         let mut y = 5;
+LL |         y = 6;
+LL ~         y
+LL |     } else {
+LL ~         2
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:190:5
+   |
+LL | /     if true {
+LL | |
+LL | |         x = 1;
+LL | |         y = 2;
+...  |
+LL | |         y = 4;
+LL | |     }
+   | |_____^
+   |
+help: move the declarations here and remove the assignments from the branches
+   |
+LL ~     
+LL ~     
+LL ~     let (x, y) = if true {
+LL |
+LL ~         (1, 2)
+LL |     } else {
+LL ~         (3, 4)
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:299:5
    |
 LL |     let r;
    |     ^^^^^^ created here
@@ -291,5 +334,153 @@ LL |
 LL ~     let r = 5;
    |
 
-error: aborting due to 17 previous errors
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:305:5
+   |
+LL |     let z;
+   |     ^^^^^^
+   |
+help: move the declaration `z` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let z = if true {
+LL ~         1
+LL |     } else {
+LL ~         2
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:455:5
+   |
+LL |     let c;
+   |     ^^^^^^
+   |
+help: move the declaration `c` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let c = if true {
+LL |         a = 1;
+LL |         b = a + 1;
+LL ~         b + 1
+LL |     } else {
+LL |         a = 4;
+LL |         b = a + 2;
+LL ~         b + 2
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:318:5
+   |
+LL | /     if true {
+LL | |
+LL | |         a = 1;
+LL | |         b = 2;
+...  |
+LL | |         b = 4;
+LL | |     }
+   | |_____^
+   |
+help: move the declarations here and remove the assignments from the branches
+   |
+LL ~     
+LL ~     
+LL ~     let (a, b) = if true {
+LL |
+LL ~         (1, 2)
+LL |     } else {
+LL ~         (3, 4)
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:361:5
+   |
+LL | /     match 1 {
+LL | |
+LL | |         1 => {
+LL | |             a = 1;
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: move the declarations here and remove the assignments from the `match` arms
+   |
+LL ~     
+LL ~     
+LL ~     
+LL ~     let (a, b, c) = match 1 {
+LL |
+LL |         1 => {
+LL ~             (1, 2, 3)
+LL |         },
+LL |         _ if false => {
+LL ~             (4, 5, 6)
+LL |         },
+LL |         _ => {
+LL ~             (7, 8, 9)
+LL |         },
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:384:5
+   |
+LL | /     if true {
+LL | |
+LL | |         a = 1;
+LL | |         b = 2;
+...  |
+LL | |         c = 9;
+LL | |     }
+   | |_____^
+   |
+help: move the declarations here and remove the assignments from the branches
+   |
+LL ~     
+LL ~     
+LL ~     
+LL ~     let (a, b, c) = if true {
+LL |
+LL ~         (1, 2, 3)
+LL |     } else if false {
+LL ~         (4, 5, 6)
+LL |     } else {
+LL ~         (7, 8, 9)
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:470:5
+   |
+LL | /     if true {
+LL | |
+LL | |         a = 1;
+LL | |         b = a + 1;
+...  |
+LL | |         d = 2;
+LL | |     }
+   | |_____^
+   |
+help: move the declarations here and remove the assignments from the branches
+   |
+LL ~     
+LL ~     
+LL ~     let (c, d) = if true {
+LL |
+LL |         a = 1;
+LL |         b = a + 1;
+LL ~         (b + 1, 1)
+LL |     } else {
+LL |         a = 4;
+LL |         b = a + 2;
+LL ~         (b + 2, 2)
+LL ~     };
+   |
+
+error: aborting due to 25 previous errors
 

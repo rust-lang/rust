@@ -53,20 +53,21 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
             // Types with identity (print the module path).
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
             | ty::FnDef(def_id, args)
-            | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { def_id } | ty::Opaque { def_id },
-                args,
-                ..
-            })
+            | ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { def_id } | ty::Opaque { def_id }, args, ..
+                },
+            )
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
-            ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) => {
                 bug!("type_name: unexpected free alias")
             }
-            ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
                 bug!("type_name: unexpected inherent projection")
             }
             ty::CoroutineWitness(..) => bug!("type_name: unexpected `CoroutineWitness`"),

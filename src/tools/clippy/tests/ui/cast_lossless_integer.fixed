@@ -1,4 +1,4 @@
-#![allow(clippy::no_effect, clippy::unnecessary_operation, dead_code)]
+#![allow(clippy::no_effect)]
 #![warn(clippy::cast_lossless)]
 
 type I64Alias = i64;

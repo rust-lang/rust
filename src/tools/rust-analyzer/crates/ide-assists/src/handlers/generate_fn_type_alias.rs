@@ -36,7 +36,7 @@ use crate::{AssistContext, Assists};
 // unsafe fn foo(n: i32) -> i32 { 42i32 }
 // ```
 
-pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let func = &name.syntax().parent()?;
     let func_node = ast::Fn::cast(func.clone())?;

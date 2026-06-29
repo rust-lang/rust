@@ -23,7 +23,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     let x = 42 * (4 + 2);
 // }
 // ```
-pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let (editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
     let make = editor.make();
     let macro_calls = if ctx.has_empty_selection() {

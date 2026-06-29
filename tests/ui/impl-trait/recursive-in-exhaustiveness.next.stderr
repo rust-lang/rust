@@ -21,10 +21,10 @@ LL |     let (x,): ((_,),) = (build2(x),);
    |             +++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/recursive-in-exhaustiveness.rs:40:5
+  --> $DIR/recursive-in-exhaustiveness.rs:37:23
    |
-LL |     build3(x)
-   |     ^^^^^^^^^ cannot infer type
+LL | fn build3<T>(x: T) -> impl Sized {
+   |                       ^^^^^^^^^^ cannot infer type
 
 error: aborting due to 3 previous errors
 

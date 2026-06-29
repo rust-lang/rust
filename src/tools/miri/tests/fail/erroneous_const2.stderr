@@ -24,6 +24,14 @@ note: erroneous constant encountered
 LL |     println!("{}", FOO);
    |                    ^^^
 
+note: erroneous constant encountered
+  --> tests/fail/erroneous_const2.rs:LL:CC
+   |
+LL |     println!("{}", FOO);
+   |                    ^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

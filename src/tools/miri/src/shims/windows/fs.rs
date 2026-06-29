@@ -1,67 +1,15 @@
-use std::fs::{Metadata, OpenOptions};
+use std::fs::{self, Dir};
 use std::io;
 use std::io::SeekFrom;
-use std::path::PathBuf;
 use std::time::SystemTime;
 
 use bitflags::bitflags;
 use rustc_abi::Size;
 use rustc_target::spec::Os;
 
-use crate::shims::files::{FdId, FileDescription, FileHandle};
+use crate::shims::files::{DirHandle, FileHandle};
 use crate::shims::windows::handle::{EvalContextExt as _, Handle};
 use crate::*;
-
-#[derive(Debug)]
-pub struct DirHandle {
-    pub(crate) path: PathBuf,
-}
-
-impl FileDescription for DirHandle {
-    fn name(&self) -> &'static str {
-        "directory"
-    }
-
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
-        interp_ok(self.path.metadata())
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
-    }
-}
-
-/// Windows supports handles without any read/write/delete permissions - these handles can get
-/// metadata, but little else. We represent that by storing the metadata from the time the handle
-/// was opened.
-#[derive(Debug)]
-pub struct MetadataHandle {
-    pub(crate) meta: Metadata,
-}
-
-impl FileDescription for MetadataHandle {
-    fn name(&self) -> &'static str {
-        "metadata-only"
-    }
-
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
-        interp_ok(Ok(self.meta.clone()))
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
-    }
-}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum CreationDisposition {
@@ -209,27 +157,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("CreateFileW: Template files are not supported");
         }
 
-        // We need to know if the file is a directory to correctly open directory handles.
-        // This is racy, but currently the stdlib doesn't appear to offer a better solution.
-        let is_dir = file_name.is_dir();
-
-        // BACKUP_SEMANTICS is how Windows calls the act of opening a directory handle.
-        if !attributes.contains(FileAttributes::BACKUP_SEMANTICS) && is_dir {
-            this.set_last_error(IoError::WindowsError("ERROR_ACCESS_DENIED"))?;
-            return interp_ok(Handle::Invalid);
-        }
-
-        let desired_read = desired_access & generic_read != 0;
-        let desired_write = desired_access & generic_write != 0;
-
-        let mut options = OpenOptions::new();
-        if desired_read {
+        // Parse desired_access
+        let mut desired_read = false;
+        if desired_access & generic_read != 0 {
+            desired_read = true;
             desired_access &= !generic_read;
-            options.read(true);
         }
-        if desired_write {
+        let mut desired_write = false;
+        if desired_access & generic_write != 0 {
+            desired_write = true;
             desired_access &= !generic_write;
-            options.write(true);
         }
 
         if desired_access != 0 {
@@ -238,70 +175,150 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        // Per the documentation:
-        // If the specified file exists and is writable, the function truncates the file,
-        // the function succeeds, and last-error code is set to ERROR_ALREADY_EXISTS.
-        // If the specified file does not exist and is a valid path, a new file is created,
-        // the function succeeds, and the last-error code is set to zero.
-        // https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew
-        //
-        // This is racy, but there doesn't appear to be an std API that both succeeds if a
-        // file exists but tells us it isn't new. Either we accept racing one way or another,
-        // or we use an iffy heuristic like file creation time. This implementation prefers
-        // to fail in the direction of erroring more often.
-        if let CreateAlways | OpenAlways = creation_disposition
-            && file_name.exists()
-        {
-            this.set_last_error(IoError::WindowsError("ERROR_ALREADY_EXISTS"))?;
-        }
+        // We start a retry loop to deal with the `is_dir` and `exists_already` race, see below.
+        // We add a retry counter to avoid infinite loops when things go wrong.
+        let mut counter = 0u32;
+        loop {
+            if counter >= 100 {
+                panic!(
+                    "CreateFileW seems stuck in an infinite retry loop. \
+                    If you can reproduce this, please file a bug."
+                );
+            }
+            counter = counter.strict_add(1);
 
-        let handle = if is_dir {
-            // Open this as a directory.
-            let fd_num = this.machine.fds.insert_new(DirHandle { path: file_name });
-            Ok(Handle::File(fd_num))
-        } else if creation_disposition == OpenExisting && !(desired_read || desired_write) {
-            // Windows supports handles with no permissions. These allow things such as reading
-            // metadata, but not file content.
-            file_name.metadata().map(|meta| {
-                let fd_num = this.machine.fds.insert_new(MetadataHandle { meta });
-                Handle::File(fd_num)
-            })
-        } else {
-            // Open this as a standard file.
-            match creation_disposition {
-                CreateAlways | OpenAlways => {
-                    options.create(true);
-                    if creation_disposition == CreateAlways {
+            // We need to know if the file is a directory to correctly open directory handles.
+            // The standard library only lets us open something as a file or a directory, so
+            // we check for that and then retry if we end up with the wrong thing.
+            let is_dir = file_name.is_dir();
+
+            // BACKUP_SEMANTICS is how Windows calls the act of opening a directory handle.
+            if !attributes.contains(FileAttributes::BACKUP_SEMANTICS) && is_dir {
+                this.set_last_error(IoError::WindowsError("ERROR_ACCESS_DENIED"))?;
+                return interp_ok(Handle::Invalid);
+            }
+
+            if is_dir {
+                // Open this as a directory.
+                // FIXME: shouldn't we check `creation_disposition` here? We do know that it already
+                // exists.
+                let dir = match Dir::open(&file_name) {
+                    Ok(dir) => dir,
+                    Err(e) => {
+                        if e.kind() == io::ErrorKind::NotADirectory {
+                            // This changed from a directory to a file. Retry.
+                            continue;
+                        }
+                        this.set_last_error(e)?;
+                        return interp_ok(Handle::Invalid);
+                    }
+                };
+                #[cfg(not(bootstrap))]
+                if !dir.metadata().unwrap().is_dir() {
+                    // This changed from a directory to a file. Retry.
+                    continue;
+                }
+
+                // Windows communicates information via the error code on success.
+                if let CreateAlways | OpenAlways = creation_disposition {
+                    this.set_last_error(IoError::WindowsError("ERROR_ALREADY_EXISTS"))?;
+                }
+
+                let fd_num = this.machine.fds.insert_new(DirHandle { dir, path: file_name });
+                return interp_ok(Handle::File(fd_num));
+            } else {
+                // Per the documentation:
+                // If the specified file exists and is writable, the function truncates the file,
+                // the function succeeds, and last-error code is set to ERROR_ALREADY_EXISTS.
+                // If the specified file does not exist and is a valid path, a new file is created,
+                // the function succeeds, and the last-error code is set to zero.
+                // https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew
+                //
+                // We check whether it exists before trying to open it. This is racy, but there
+                // doesn't appear to be an std API that both succeeds whether or not a file already
+                // exists and tells us whether it is new. So instead we will open the file in a way
+                // that we can verify whether our guess is correct, and retry if it is not.
+                let exists_already = file_name.exists();
+
+                // Open this as a standard file.
+                let mut options = fs::OpenOptions::new();
+                options.read(desired_read);
+                options.write(desired_write);
+                match creation_disposition {
+                    CreateAlways | OpenAlways => {
+                        // We verify `exists_already`: if we expect it to already exist, we set no
+                        // flag, thus failing if it doesn't exist. If we expect the file to not
+                        // exist, we use `create_new` to fail if it does exist.
+                        if !exists_already {
+                            options.create_new(true);
+                        }
+                        if creation_disposition == CreateAlways {
+                            options.truncate(true);
+                        }
+                    }
+                    CreateNew => {
+                        options.create_new(true);
+                        // Per `create_new` documentation:
+                        // The file must be opened with write or append access in order to create a new file.
+                        // https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new
+                        if !desired_write {
+                            options.append(true);
+                        }
+                    }
+                    OpenExisting => {
+                        if !desired_read && !desired_write {
+                            // Windows supports handles with no permissions. These allow things such as
+                            // reading metadata, but not file content. This is used by `Path::metadata`.
+                            // `std` does not support this. To ensure we behave correctly as often as
+                            // possible, we open the file for reading and live with the fact that this
+                            // might incorrectly return `PermissionDenied`.
+                            // FIXME: We could probably use `OpenOptionsExt`? On a Unix host,
+                            // `O_PATH` apparently can open files for metadata use only.
+                            options.read(true);
+                        }
+                    }
+                    TruncateExisting => {
                         options.truncate(true);
                     }
                 }
-                CreateNew => {
-                    options.create_new(true);
-                    // Per `create_new` documentation:
-                    // The file must be opened with write or append access in order to create a new file.
-                    // https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new
-                    if !desired_write {
-                        options.append(true);
+
+                let file = match options.open(&file_name) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        let kind = e.kind();
+                        if kind == io::ErrorKind::IsADirectory {
+                            // This changed from a file to a directory. Retry.
+                            continue;
+                        }
+                        if exists_already && kind == io::ErrorKind::NotFound {
+                            // The file disappeared. Retry.
+                            continue;
+                        }
+                        if !exists_already && kind == io::ErrorKind::AlreadyExists {
+                            // The file got created by something else. Retry.
+                            continue;
+                        }
+                        this.set_last_error(e)?;
+                        return interp_ok(Handle::Invalid);
                     }
+                };
+                if file.metadata().unwrap().is_dir() {
+                    // This changed from a file to a directory. Retry.
+                    continue;
                 }
-                OpenExisting => {} // Default options
-                TruncateExisting => {
-                    options.truncate(true);
+
+                // Windows communicates information via the error code on success.
+                if let CreateAlways | OpenAlways = creation_disposition
+                    && exists_already
+                {
+                    this.set_last_error(IoError::WindowsError("ERROR_ALREADY_EXISTS"))?;
                 }
-            }
-
-            options.open(file_name).map(|file| {
-                let fd_num =
-                    this.machine.fds.insert_new(FileHandle { file, writable: desired_write });
-                Handle::File(fd_num)
-            })
-        };
-
-        match handle {
-            Ok(handle) => interp_ok(handle),
-            Err(e) => {
-                this.set_last_error(e)?;
-                interp_ok(Handle::Invalid)
+                let fd_num = this.machine.fds.insert_new(FileHandle {
+                    file,
+                    writable: desired_write,
+                    readable: desired_read,
+                });
+                return interp_ok(Handle::File(fd_num));
             }
         }
     }
@@ -329,11 +346,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let metadata = match desc.metadata()? {
-            Ok(meta) => meta,
-            Err(e) => {
+            Either::Left(Ok(meta)) => meta,
+            Either::Left(Err(e)) => {
                 this.set_last_error(e)?;
                 return interp_ok(this.eval_windows("c", "FALSE"));
             }
+            Either::Right(_mode) =>
+                throw_unsup_format!(
+                    "`GetFileInformationByHandle` is not supported on non-file-backed handles"
+                ),
         };
 
         let size = metadata.len();

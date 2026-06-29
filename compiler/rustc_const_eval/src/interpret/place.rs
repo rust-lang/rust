@@ -844,17 +844,20 @@ where
     ) -> InterpResult<'tcx> {
         // These are technically *two* typed copies: `src` is a not-yet-loaded value,
         // so we're doing a typed copy at `src` type from there to some intermediate storage.
-        // And then we're doing a second typed copy from that intermediate storage to `dest`.
-        // But as an optimization, we only make a single direct copy here.
+        // And then we're doing a second typed copy at `dest` type from that intermediate storage to
+        // `dest`. But as an optimization, we only make a single direct copy here.
 
         // Do the actual copy.
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
         if M::enforce_validity(self, dest.layout()) {
             let dest = dest.to_place();
-            // Given that there were two typed copies, we have to ensure this is valid at both types,
-            // and we have to ensure this loses provenance and padding according to both types.
-            // But if the types are identical, we only do one pass.
+            // Given that there were two typed copies, we have to ensure this is valid at both
+            // types, and we have to ensure this loses provenance and padding according to both
+            // types. We also transmute both ways: when transmuting `*ptr` from `&T` to `*const T`,
+            // it seems nice to ensure that the resulting pointer value indeed is derived from a
+            // shared reference.
+            // But if the types are identical, that is strictly redundant so we only do one pass.
             if src.layout().ty != dest.layout().ty {
                 self.validate_operand(
                     &dest.transmute(src.layout(), self)?,

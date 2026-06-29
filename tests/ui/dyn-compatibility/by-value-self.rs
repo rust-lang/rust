@@ -1,6 +1,6 @@
 // Check that a trait with by-value self is considered dyn-compatible.
 
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 #![allow(dead_code)]
 #![allow(trivial_casts)]
 

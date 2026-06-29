@@ -7,7 +7,7 @@ use std::ops::{Bound, Index, IndexMut, RangeBounds};
 
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
-use crate::stable_hasher::{HashStable, StableHasher, StableOrd};
+use crate::stable_hash::{StableHash, StableHashCtxt, StableHasher, StableOrd};
 
 mod index_map;
 
@@ -347,10 +347,10 @@ impl<K: Ord, V> FromIterator<(K, V)> for SortedMap<K, V> {
     }
 }
 
-impl<K: HashStable<Hcx> + StableOrd, V: HashStable<Hcx>, Hcx> HashStable<Hcx> for SortedMap<K, V> {
+impl<K: StableHash + StableOrd, V: StableHash> StableHash for SortedMap<K, V> {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.data.hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.data.stable_hash(hcx, hasher);
     }
 }
 

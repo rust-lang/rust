@@ -15,7 +15,7 @@ fn issue_11524() -> Vec<i32> {
 fn issue_11524_2() -> Vec<i32> {
     let mut vec = vec![1, 2, 3];
 
-    // Should lint and suggest `vec.sort_by_key(|b| core::cmp::Reverse(b + 1));`
+    // Should lint and suggest `vec.sort_by_key(|a| core::cmp::Reverse(a + 1));`
     vec.sort_by(|a, b| (b + 1).cmp(&(a + 1)));
     //~^ unnecessary_sort_by
     vec

@@ -4,7 +4,7 @@
 //@ compile-flags: -Cpanic=abort --print=native-static-libs
 //@ build-pass
 //@ dont-check-compiler-stderr (libcore links `/defaultlib:msvcrt` or `/defaultlib:libcmt` on MSVC)
-//@ ignore-pass (the note is emitted later in the compilation pipeline, needs build)
+//@ no-pass-override (the note is emitted later in the compilation pipeline, needs build)
 
 #![crate_type = "staticlib"]
 #![no_std]

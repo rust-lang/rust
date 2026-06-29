@@ -12,7 +12,6 @@ const EXTERNAL_IGNORES_LIST: &[&str] = &[
     "ignore-gdb-version",
     "ignore-llvm-version",
     "ignore-parallel-frontend",
-    "ignore-pass",
     // tidy-alphabetical-end
 ];
 

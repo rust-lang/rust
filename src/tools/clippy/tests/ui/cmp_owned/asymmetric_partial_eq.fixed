@@ -1,9 +1,4 @@
-#![allow(
-    unused,
-    clippy::needless_ifs,
-    clippy::redundant_clone,
-    clippy::derive_partial_eq_without_eq
-)] // See #5700
+#![expect(clippy::needless_ifs)]
 
 // Define the types in each module to avoid trait impls leaking between modules.
 macro_rules! impl_types {

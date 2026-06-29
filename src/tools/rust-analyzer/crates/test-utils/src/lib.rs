@@ -260,7 +260,7 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
                         let &(_, idx) = prev_line_annotations
                             .iter()
                             .find(|&&(off, _idx)| off == offset)
-                            .unwrap();
+                            .expect("annotation continuation not found");
                         res[idx].1.push('\n');
                         res[idx].1.push_str(&content);
                         res[idx].1.push('\n');

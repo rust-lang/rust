@@ -1,0 +1,37 @@
+error[E0438]: const `FOO` is not a member of trait `Trait2`
+  --> $DIR/trivial-const-ice-149278.rs:4:5
+   |
+LL | /     const FOO: () = {
+LL | |
+LL | |
+LL | |         type Assoc = impl Copy;
+LL | |     };
+   | |______^ not a member of trait `Trait2`
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/trivial-const-ice-149278.rs:7:22
+   |
+LL |         type Assoc = impl Copy;
+   |                      ^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: item does not constrain `Assoc::{opaque#0}`
+  --> $DIR/trivial-const-ice-149278.rs:4:11
+   |
+LL |     const FOO: () = {
+   |           ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/trivial-const-ice-149278.rs:7:22
+   |
+LL |         type Assoc = impl Copy;
+   |                      ^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0438, E0658.
+For more information about an error, try `rustc --explain E0438`.

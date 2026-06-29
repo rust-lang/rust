@@ -62,6 +62,15 @@ LL - #[doc(cfg(foo, bar))]
 LL + #[doc(cfg(any(foo, bar)))]
    |
 
-error: aborting due to 4 previous errors
+error[E0565]: malformed `doc` attribute input
+  --> $DIR/doc-cfg.rs:9:1
+   |
+LL | #[doc(auto_cfg(hide(foo::bar)))]
+   | ^^^^^^^^^^^^^^^^^^^^--------^^^^
+   |                     |
+   |                     expected a valid identifier here
 
-For more information about this error, try `rustc --explain E0805`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0565, E0805.
+For more information about an error, try `rustc --explain E0565`.

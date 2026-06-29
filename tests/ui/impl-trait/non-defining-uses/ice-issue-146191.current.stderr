@@ -16,7 +16,7 @@ LL | fn create_complex_future() -> impl Future<Output = impl ReturnsSend> {
    |                                                         ^^^^^^^^^^^
 
 error[E0733]: recursion in an async block requires boxing
-  --> $DIR/ice-issue-146191.rs:8:5
+  --> $DIR/ice-issue-146191.rs:9:5
    |
 LL |     async { create_complex_future().await }
    |     ^^^^^   ----------------------------- recursive call here

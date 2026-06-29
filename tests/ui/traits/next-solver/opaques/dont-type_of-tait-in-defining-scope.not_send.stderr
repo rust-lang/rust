@@ -1,8 +1,8 @@
 error[E0282]: type annotations needed
-  --> $DIR/dont-type_of-tait-in-defining-scope.rs:15:12
+  --> $DIR/dont-type_of-tait-in-defining-scope.rs:16:5
    |
-LL | fn test(_: Foo) {
-   |            ^^^ cannot infer type
+LL |     needs_send::<Foo>();
+   |     ^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `needs_send`
 
 error: aborting due to 1 previous error
 

@@ -102,7 +102,7 @@ LL - #[proc_macro_derive(d6 = "")]
 LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
    |
 
-error[E0539]: malformed `proc_macro_derive` attribute input
+error[E0565]: malformed `proc_macro_derive` attribute input
   --> $DIR/attribute.rs:45:1
    |
 LL | #[proc_macro_derive(m::d7)]
@@ -138,7 +138,7 @@ LL - #[proc_macro_derive(d8(a))]
 LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
    |
 
-error[E0539]: malformed `proc_macro_derive` attribute input
+error[E0565]: malformed `proc_macro_derive` attribute input
   --> $DIR/attribute.rs:57:1
    |
 LL | #[proc_macro_derive(self)]
@@ -192,7 +192,7 @@ LL - #[proc_macro_derive(d12, attributes)]
 LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
    |
 
-error[E0539]: malformed `proc_macro_derive` attribute input
+error[E0565]: malformed `proc_macro_derive` attribute input
   --> $DIR/attribute.rs:78:1
    |
 LL | #[proc_macro_derive(d13, attributes("a"))]
@@ -228,7 +228,7 @@ LL - #[proc_macro_derive(d14, attributes(a = ""))]
 LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
    |
 
-error[E0539]: malformed `proc_macro_derive` attribute input
+error[E0565]: malformed `proc_macro_derive` attribute input
   --> $DIR/attribute.rs:90:1
    |
 LL | #[proc_macro_derive(d15, attributes(m::a))]
@@ -264,7 +264,7 @@ LL - #[proc_macro_derive(d16, attributes(a(b)))]
 LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
    |
 
-error[E0539]: malformed `proc_macro_derive` attribute input
+error[E0565]: malformed `proc_macro_derive` attribute input
   --> $DIR/attribute.rs:102:1
    |
 LL | #[proc_macro_derive(d17, attributes(self))]

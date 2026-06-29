@@ -1,10 +1,11 @@
 //@ check-pass
+//@ compile-flags: -Znext-solver
 #![feature(generic_const_items, min_generic_const_args, generic_const_args)]
 #![expect(incomplete_features)]
 
 // computing different values with the same type const item should be fine
 
-type const ADD1<const N: usize>: usize = const { N + 1 };
+const ADD1<const N: usize>: usize = N + 1;
 
 trait Trait {}
 

@@ -11,9 +11,8 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = copy _1;
--         _2 = Eq(copy _1, const 'x');
+          _2 = Eq(copy _1, const 'x');
 -         switchInt(move _2) -> [0: bb2, otherwise: bb1];
-+         nop;
 +         switchInt(copy _1) -> [120: bb1, otherwise: bb2];
       }
   

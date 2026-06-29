@@ -1,7 +1,7 @@
 //@no-rustfix: suggestions have an error margin placeholder
 #![warn(clippy::float_cmp_const)]
-#![allow(clippy::float_cmp)]
-#![allow(unused, clippy::no_effect, clippy::unnecessary_operation)]
+#![expect(clippy::float_cmp)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation)]
 
 const ONE: f32 = 1.0;
 const TWO: f32 = 2.0;

@@ -48,8 +48,8 @@ use super::{
     DefIdOrName, FindExprBySpan, ImplCandidate, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation,
 };
+use crate::diagnostics;
 use crate::error_reporting::TypeErrCtxt;
-use crate::errors;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt, SelectionContext};
@@ -128,7 +128,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     msg: &str,
     err: &mut Diag<'_, G>,
     fn_sig: Option<&hir::FnSig<'_>>,
-    projection: Option<ty::AliasTy<'_>>,
+    projection: Option<ty::ProjectionAliasTy<'_>>,
     trait_pred: ty::PolyTraitPredicate<'tcx>,
     // When we are dealing with a trait, `super_traits` will be `Some`:
     // Given `trait T: A + B + C {}`
@@ -140,11 +140,8 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     if hir_generics.where_clause_span.from_expansion()
         || hir_generics.where_clause_span.desugaring_kind().is_some()
         || projection.is_some_and(|projection| {
-            (tcx.is_impl_trait_in_trait(projection.kind.def_id())
-                && !tcx.features().return_type_notation())
-                || tcx
-                    .lookup_stability(projection.kind.def_id())
-                    .is_some_and(|stab| stab.is_unstable())
+            (tcx.is_impl_trait_in_trait(projection.kind) && !tcx.features().return_type_notation())
+                || tcx.lookup_stability(projection.kind).is_some_and(|stab| stab.is_unstable())
         })
     {
         return;
@@ -152,7 +149,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     let generics = tcx.generics_of(item_id);
     // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...
     if let Some((param, bound_str, fn_sig)) =
-        fn_sig.zip(projection).and_then(|(sig, p)| match *p.self_ty().kind() {
+        fn_sig.zip(projection).and_then(|(sig, p)| match *p.projection_self_ty().kind() {
             // Shenanigans to get the `Trait` from the `impl Trait`.
             ty::Param(param) => {
                 let param_def = generics.type_param(param, tcx);
@@ -365,7 +362,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .unwrap_or_else(|| self.tcx.def_span(field_def.did));
 
             if field_def.vis.is_accessible_from(def_scope, self.tcx) {
-                let accessible_field_ty = field_def.ty(self.tcx, args);
+                let accessible_field_ty = field_def.ty(self.tcx, args).skip_norm_wip();
                 if let Some((private_base_ty, private_field_ty, private_field_span)) =
                     private_candidate
                     && !self.can_eq(param_env, private_field_ty, accessible_field_ty)
@@ -457,7 +454,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             private_candidate.get_or_insert((
                 deref_base_ty,
-                field_def.ty(self.tcx, args),
+                field_def.ty(self.tcx, args).skip_norm_wip(),
                 field_span,
             ));
         }
@@ -479,8 +476,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let self_ty = trait_pred.skip_binder().self_ty();
         let (param_ty, projection) = match *self_ty.kind() {
             ty::Param(_) => (true, None),
-            ty::Alias(projection @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
-                (false, Some(projection))
+            ty::Alias(_, alias) => {
+                if let Some(projection) = alias.try_to_projection() {
+                    (false, Some(projection))
+                } else {
+                    (false, None)
+                }
             }
             _ => (false, None),
         };
@@ -494,7 +495,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let node = self.tcx.hir_node_by_def_id(body_id);
             match node {
                 hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, _, _, ident, generics, bounds, _),
+                    kind: hir::ItemKind::Trait { ident, generics, bounds, .. },
                     ..
                 }) if self_ty == self.tcx.types.self_param => {
                     assert!(param_ty);
@@ -557,7 +558,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 hir::Node::Item(hir::Item {
                     kind:
-                        hir::ItemKind::Trait(_, _, _, _, _, generics, ..)
+                        hir::ItemKind::Trait { generics, .. }
                         | hir::ItemKind::Impl(hir::Impl { generics, .. }),
                     ..
                 }) if projection.is_some() => {
@@ -581,7 +582,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         hir::ItemKind::Struct(_, generics, _)
                         | hir::ItemKind::Enum(_, generics, _)
                         | hir::ItemKind::Union(_, generics, _)
-                        | hir::ItemKind::Trait(_, _, _, _, _, generics, ..)
+                        | hir::ItemKind::Trait { generics, .. }
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics, _)
@@ -661,7 +662,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         hir::ItemKind::Struct(_, generics, _)
                         | hir::ItemKind::Enum(_, generics, _)
                         | hir::ItemKind::Union(_, generics, _)
-                        | hir::ItemKind::Trait(_, _, _, _, _, generics, ..)
+                        | hir::ItemKind::Trait { generics, .. }
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics, _)
@@ -1483,7 +1484,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         sig_parts.map_bound(|sig| sig.tupled_inputs_ty.tuple_fields().as_slice()),
                     ))
                 }
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                     self.tcx
                         .item_self_bounds(def_id)
                         .instantiate(self.tcx, args)
@@ -1493,7 +1494,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
-                                .is_lang_item(proj.projection_term.def_id(), LangItem::FnOnceOutput)
+                                .is_lang_item(proj.def_id(), LangItem::FnOnceOutput)
                             // args tuple will always be args[1]
                             && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
                             {
@@ -1537,7 +1538,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
-                                .is_lang_item(proj.projection_term.def_id(), LangItem::FnOnceOutput)
+                                .is_lang_item(proj.def_id(), LangItem::FnOnceOutput)
                             && proj.projection_term.self_ty() == found
                             // args tuple will always be args[1]
                             && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
@@ -2648,7 +2649,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         ) -> Ty<'tcx> {
             let inputs = trait_ref.args.type_at(1);
             let sig = match inputs.kind() {
-                ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id) => {
+                ty::Tuple(inputs) if infcx.tcx.is_callable_trait(trait_ref.def_id) => {
                     infcx.tcx.mk_fn_sig_safe_rust_abi(*inputs, infcx.next_ty_var(DUMMY_SP))
                 }
                 _ => infcx.tcx.mk_fn_sig_safe_rust_abi([inputs], infcx.next_ty_var(DUMMY_SP)),
@@ -3642,27 +3643,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     already implement it",
                                     with_no_trimmed_paths!(tcx.def_path_str(def_id)),
                                 ));
-                                let impls_of = tcx.trait_impls_of(def_id);
-                                let impls = impls_of
-                                    .non_blanket_impls()
-                                    .values()
-                                    .flatten()
-                                    .chain(impls_of.blanket_impls().iter())
+                                let mut types = tcx
+                                    .all_impls(def_id)
+                                    .map(|t| {
+                                        with_no_trimmed_paths!(format!(
+                                            "  {}",
+                                            tcx.type_of(t).instantiate_identity().skip_norm_wip(),
+                                        ))
+                                    })
                                     .collect::<Vec<_>>();
-                                if !impls.is_empty() {
-                                    let len = impls.len();
-                                    let mut types = impls
-                                        .iter()
-                                        .map(|&&t| {
-                                            with_no_trimmed_paths!(format!(
-                                                "  {}",
-                                                tcx.type_of(t)
-                                                    .instantiate_identity()
-                                                    .skip_norm_wip(),
-                                            ))
-                                        })
-                                        .collect::<Vec<_>>();
-                                    let post = if types.len() > 9 {
+                                if !types.is_empty() {
+                                    let len = types.len();
+                                    let post = if len > 9 {
                                         types.truncate(8);
                                         format!("\nand {} others", len - 8)
                                     } else {
@@ -4059,7 +4051,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 }
                             }
                         }
-                        ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+                        ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
                             // If the previous type is async fn, this is the future generated by the body of an async function.
                             // Avoid printing it twice (it was already printed in the `ty::Coroutine` arm below).
                             let is_future = tcx.ty_is_opaque_future(ty);
@@ -4184,7 +4176,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut is_auto_trait = false;
                 match tcx.hir_get_if_local(data.impl_or_alias_def_id) {
                     Some(Node::Item(hir::Item {
-                        kind: hir::ItemKind::Trait(_, _, is_auto, _, ident, _, _, _),
+                        kind: hir::ItemKind::Trait { is_auto, ident, .. },
                         ..
                     })) => {
                         // FIXME: we should do something else so that it works even on crate foreign
@@ -4542,6 +4534,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let projection_ty = trait_pred.map_bound(|trait_pred| {
             Ty::new_projection(
                 self.tcx,
+                ty::IsRigid::No,
                 item_def_id,
                 // Future::Output has no args
                 [trait_pred.self_ty()],
@@ -4639,7 +4632,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         is_derivable_trait &&
             // Ensure all fields impl the trait.
             adt.all_fields().all(|field| {
-                let field_ty = ty::GenericArg::from(field.ty(self.tcx, args));
+                let field_ty = ty::GenericArg::from(field.ty(self.tcx, args).skip_norm_wip());
                 let trait_args = match diagnostic_name {
                     sym::PartialEq | sym::PartialOrd => {
                         Some(field_ty)
@@ -4885,8 +4878,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         expected: where_pred
                             .skip_binder()
                             .projection_term
-                            .expect_ty(self.tcx)
-                            .to_ty(self.tcx),
+                            .expect_ty()
+                            .to_ty(self.tcx, ty::IsRigid::No),
                         found,
                     })];
                 }
@@ -4969,6 +4962,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let fn_sig @ ty::FnSig {
                 ..
             } = fn_ty.fn_sig(tcx).skip_binder()
+            // FIXME(splat): this might need to change if the Fn* traits start using/supporting splat
             && fn_sig.abi() == ExternAbi::Rust
             && !fn_sig.c_variadic()
             && fn_sig.safety() == hir::Safety::Safe
@@ -4984,7 +4978,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             // Extract `<U as Deref>::Target` assoc type and check that it is `T`
             && let Some(deref_target_did) = tcx.lang_items().deref_target()
-            && let projection = Ty::new_projection_from_args(tcx,deref_target_did, tcx.mk_args(&[ty::GenericArg::from(found_ty)]))
+            && let projection = Ty::new_projection_from_args(tcx,ty::IsRigid::No, deref_target_did, tcx.mk_args(&[ty::GenericArg::from(found_ty)]))
             && let InferOk { value: deref_target, obligations } = infcx.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(projection))
             && obligations.iter().all(|obligation| infcx.predicate_must_hold_modulo_regions(obligation))
             && infcx.can_eq(param_env, deref_target, target_ty)
@@ -5346,7 +5340,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let TypeError::Sorts(expected_found) = diff else {
                 continue;
             };
-            let &ty::Alias(ty::AliasTy { kind: kind @ ty::Projection { def_id }, .. }) =
+            let &ty::Alias(_, ty::AliasTy { kind: kind @ ty::Projection { def_id }, .. }) =
                 expected_found.expected.kind()
             else {
                 continue;
@@ -5674,7 +5668,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         // Look for an RPITIT
-        let ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) =
+        let ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) =
             trait_pred.self_ty().skip_binder().kind()
         else {
             return;
@@ -6128,11 +6122,11 @@ fn hint_missing_borrow<'tcx>(
     }
 
     if !to_borrow.is_empty() {
-        err.subdiagnostic(errors::AdjustSignatureBorrow::Borrow { to_borrow });
+        err.subdiagnostic(diagnostics::AdjustSignatureBorrow::Borrow { to_borrow });
     }
 
     if !remove_borrow.is_empty() {
-        err.subdiagnostic(errors::AdjustSignatureBorrow::RemoveBorrow { remove_borrow });
+        err.subdiagnostic(diagnostics::AdjustSignatureBorrow::RemoveBorrow { remove_borrow });
     }
 }
 
@@ -6434,12 +6428,12 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
         return;
     };
     let Some(name) = tcx
-        .opt_rpitit_info(proj.projection_term.def_id())
+        .opt_rpitit_info(proj.def_id())
         .and_then(|data| match data {
             ty::ImplTraitInTraitData::Trait { fn_def_id, .. } => Some(tcx.item_name(fn_def_id)),
             ty::ImplTraitInTraitData::Impl { .. } => None,
         })
-        .or_else(|| tcx.opt_item_name(proj.projection_term.def_id()))
+        .or_else(|| tcx.opt_item_name(proj.def_id()))
     else {
         return;
     };

@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![allow(clippy::never_loop)]
+#![expect(clippy::never_loop)]
 
 async fn f() {
     loop {

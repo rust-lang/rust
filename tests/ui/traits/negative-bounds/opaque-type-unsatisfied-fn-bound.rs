@@ -1,4 +1,4 @@
-//@ compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver -Zinternal-testing-features
 
 #![feature(negative_bounds, unboxed_closures)]
 

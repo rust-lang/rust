@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::manual_while_let_some)]
 
 struct VecInStruct {

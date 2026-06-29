@@ -8,7 +8,7 @@ use crate::{CompletionItem, CompletionItemKind, context::CompletionContext};
 
 use super::Completions;
 
-pub(crate) fn complete_extern_crate(acc: &mut Completions, ctx: &CompletionContext<'_>) {
+pub(crate) fn complete_extern_crate(acc: &mut Completions, ctx: &CompletionContext<'_, '_>) {
     let imported_extern_crates: Vec<Name> = ctx.scope.extern_crate_decls().collect();
 
     for (name, module) in ctx.scope.extern_crates() {

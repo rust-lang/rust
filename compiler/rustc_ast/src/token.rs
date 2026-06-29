@@ -5,7 +5,7 @@ pub use LitKind::*;
 pub use NtExprKind::*;
 pub use NtPatKind::*;
 pub use TokenKind::*;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::IdentPrintMode;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, kw, sym};
@@ -17,7 +17,7 @@ use crate::ast;
 use crate::util::case::Case;
 
 /// Represents the kind of doc comment it is, ie `///` or `#[doc = ""]`.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Debug, StableHash)]
 pub enum DocFragmentKind {
     /// A sugared doc comment: `///` or `//!` or `/**` or `/*!`.
     Sugared(CommentKind),
@@ -40,13 +40,13 @@ impl DocFragmentKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Debug, StableHash)]
 pub enum CommentKind {
     Line,
     Block,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable, StableHash)]
 pub enum InvisibleOrigin {
     // From the expansion of a metavariable in a declarative macro.
     MetaVar(MetaVarKind),
@@ -69,7 +69,7 @@ impl InvisibleOrigin {
 }
 
 /// Annoyingly similar to `NonterminalKind`, but the slight differences are important.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, StableHash)]
 pub enum MetaVarKind {
     Item,
     Block,
@@ -125,7 +125,7 @@ impl fmt::Display for MetaVarKind {
 /// Describes how a sequence of token trees is delimited.
 /// Cannot use `proc_macro::Delimiter` directly because this
 /// structure should implement some additional traits.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub enum Delimiter {
     /// `( ... )`
     Parenthesis,
@@ -188,7 +188,7 @@ impl Delimiter {
 // type. This means that float literals like `1f32` are classified by this type
 // as `Int`. Only upon conversion to `ast::LitKind` will such a literal be
 // given the `Float` kind.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Debug, StableHash)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
@@ -205,7 +205,7 @@ pub enum LitKind {
 }
 
 /// A literal token.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Debug, StableHash)]
 pub struct Lit {
     pub kind: LitKind,
     pub symbol: Symbol,
@@ -351,7 +351,7 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: IdentIsRaw) -> bool {
             .contains(&name)
 }
 
-#[derive(PartialEq, Eq, Encodable, Decodable, Hash, Debug, Copy, Clone, HashStable_Generic)]
+#[derive(PartialEq, Eq, Encodable, Decodable, Hash, Debug, Copy, Clone, StableHash)]
 pub enum IdentIsRaw {
     No,
     Yes,
@@ -378,7 +378,7 @@ impl From<bool> for IdentIsRaw {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Debug, StableHash)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     /// `=`
@@ -528,7 +528,7 @@ pub enum TokenKind {
     Eof,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Debug, StableHash)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
@@ -688,10 +688,10 @@ impl Token {
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
             OpenInvisible(InvisibleOrigin::MetaVar(
-                MetaVarKind::Block |
-                MetaVarKind::Expr { .. } |
-                MetaVarKind::Literal |
-                MetaVarKind::Path
+                MetaVarKind::Block
+                | MetaVarKind::Expr { .. }
+                | MetaVarKind::Literal
+                | MetaVarKind::Path,
             )) => true,
             _ => false,
         }
@@ -717,12 +717,12 @@ impl Token {
             Shl => true,                         // path (double UFCS)
             Or => matches!(pat_kind, PatWithOr), // leading vert `|` or-pattern
             OpenInvisible(InvisibleOrigin::MetaVar(
-                MetaVarKind::Expr { .. } |
-                MetaVarKind::Literal |
-                MetaVarKind::Meta { .. } |
-                MetaVarKind::Pat(_) |
-                MetaVarKind::Path |
-                MetaVarKind::Ty { .. }
+                MetaVarKind::Expr { .. }
+                | MetaVarKind::Literal
+                | MetaVarKind::Meta { .. }
+                | MetaVarKind::Pat(_)
+                | MetaVarKind::Path
+                | MetaVarKind::Ty { .. },
             )) => true,
             _ => false,
         }
@@ -733,20 +733,19 @@ impl Token {
         match self.uninterpolate().kind {
             Ident(name, is_raw) =>
                 ident_can_begin_type(name, self.span, is_raw), // type name or keyword
-            OpenParen                         | // tuple
-            OpenBracket                       | // array
-            Bang                              | // never
-            Star                              | // raw pointer
-            And                               | // reference
-            AndAnd                            | // double reference
-            Question                          | // maybe bound in trait object
-            Lifetime(..)                      | // lifetime bound in trait object
-            Lt | Shl                          | // associated path
-            PathSep => true,                    // global path
-            OpenInvisible(InvisibleOrigin::MetaVar(
-                MetaVarKind::Ty { .. } |
-                MetaVarKind::Path
-            )) => true,
+            OpenParen          // tuple
+            | OpenBracket      // array
+            | Bang             // never
+            | Star             // raw pointer
+            | And              // reference
+            | AndAnd           // double reference
+            | Question         // maybe bound in trait object
+            | Lifetime(..)     // lifetime bound in trait object
+            | Lt | Shl         // associated path
+            | PathSep => true, // global path
+            OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Ty { .. } | MetaVarKind::Path)) => {
+                true
+            }
             // For anonymous structs or unions, which only appear in specific positions
             // (type of struct fields or union fields), we don't consider them as regular types
             _ => false,
@@ -1090,7 +1089,7 @@ impl PartialEq<TokenKind> for Token {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, StableHash)]
 pub enum NtPatKind {
     // Matches or-patterns. Was written using `pat` in edition 2021 or later.
     PatWithOr,
@@ -1100,7 +1099,7 @@ pub enum NtPatKind {
     PatParam { inferred: bool },
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, StableHash)]
 pub enum NtExprKind {
     // Matches expressions using the post-edition 2024. Was written using
     // `expr` in edition 2024 or later.
@@ -1112,7 +1111,7 @@ pub enum NtExprKind {
 }
 
 /// A macro nonterminal, known in documentation as a fragment specifier.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, StableHash)]
 pub enum NonterminalKind {
     Item,
     Block,

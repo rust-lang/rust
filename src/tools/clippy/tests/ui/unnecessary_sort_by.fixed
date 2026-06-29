@@ -19,9 +19,9 @@ fn unnecessary_sort_by() {
     //~^ unnecessary_sort_by
     // Reverse examples
     vec.sort_by(|a, b| b.cmp(a)); // not linted to avoid suggesting `Reverse(b)` which would borrow
-    vec.sort_by_key(|b| std::cmp::Reverse((b + 5).abs()));
+    vec.sort_by_key(|a| std::cmp::Reverse((a + 5).abs()));
     //~^ unnecessary_sort_by
-    vec.sort_unstable_by_key(|b| std::cmp::Reverse(id(-b)));
+    vec.sort_unstable_by_key(|a| std::cmp::Reverse(id(-a)));
     //~^ unnecessary_sort_by
     // Negative examples (shouldn't be changed)
     let c = &7;
@@ -99,9 +99,9 @@ mod issue_6001 {
         args.sort_unstable_by_key(|a| a.name());
         //~^ unnecessary_sort_by
         // Reverse
-        args.sort_by_key(|b| std::cmp::Reverse(b.name()));
+        args.sort_by_key(|a| std::cmp::Reverse(a.name()));
         //~^ unnecessary_sort_by
-        args.sort_unstable_by_key(|b| std::cmp::Reverse(b.name()));
+        args.sort_unstable_by_key(|a| std::cmp::Reverse(a.name()));
         //~^ unnecessary_sort_by
     }
 }

@@ -1,5 +1,5 @@
 #![warn(clippy::map_err_ignore)]
-#![allow(clippy::unnecessary_wraps)]
+#![expect(clippy::unnecessary_wraps)]
 use std::error::Error;
 use std::fmt;
 

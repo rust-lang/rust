@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if SpanlessEq::new(cx).eq_expr(arg1, arg2) {
+    if SpanlessEq::new(cx).eq_expr(expr.span.ctxt(), arg1, arg2) {
         span_lint(cx, NO_EFFECT_REPLACE, expr.span, "replacing text with itself");
     }
 }

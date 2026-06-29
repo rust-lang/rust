@@ -184,7 +184,7 @@ LL + #[unsafe(naked)]
 LL | async unsafe extern "custom" fn no_async_fn() {
    |
 
-error[E0277]: expected a `Fn()` closure, found `unsafe extern "custom" fn()`
+error[E0277]: expected an `Fn()` closure, found `unsafe extern "custom" fn()`
   --> $DIR/bad-custom.rs:102:64
    |
 LL | fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn()  {
@@ -194,8 +194,8 @@ LL |     f
    |     - return type was inferred to be `unsafe extern "custom" fn()` here
    |
    = help: the trait `Fn()` is not implemented for `unsafe extern "custom" fn()`
-   = note: unsafe function cannot be called generically without an unsafe block
    = note: wrap the `unsafe extern "custom" fn()` in a closure with no arguments: `|| { /* code */ }`
+   = note: unsafe function cannot be called generically without an unsafe block
 
 error: items with the "custom" ABI can only be declared externally or defined via naked functions
   --> $DIR/bad-custom.rs:25:1

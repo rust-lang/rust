@@ -3,7 +3,7 @@ use std::ptr;
 use rustc_hashes::Hash128;
 
 use super::*;
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hash::{StableHash, StableHasher};
 
 /// A tag type used in [`TaggedRef`] tests.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -32,9 +32,13 @@ unsafe impl Tag for Tag2 {
     }
 }
 
-impl<Hcx> crate::stable_hasher::HashStable<Hcx> for Tag2 {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut crate::stable_hasher::StableHasher) {
-        (*self as u8).hash_stable(hcx, hasher);
+impl StableHash for Tag2 {
+    fn stable_hash<Hcx: StableHashCtxt>(
+        &self,
+        hcx: &mut Hcx,
+        hasher: &mut crate::stable_hash::StableHasher,
+    ) {
+        (*self as u8).stable_hash(hcx, hasher);
     }
 }
 
@@ -65,13 +69,13 @@ fn smoke() {
 fn stable_hash_hashes_as_tuple() {
     let hash_packed = {
         let mut hasher = StableHasher::new();
-        TaggedRef::new(&12, Tag2::B11).hash_stable(&mut (), &mut hasher);
+        TaggedRef::new(&12, Tag2::B11).stable_hash(&mut (), &mut hasher);
         hasher.finish::<Hash128>()
     };
 
     let hash_tupled = {
         let mut hasher = StableHasher::new();
-        (&12, Tag2::B11).hash_stable(&mut (), &mut hasher);
+        (&12, Tag2::B11).stable_hash(&mut (), &mut hasher);
         hasher.finish::<Hash128>()
     };
 

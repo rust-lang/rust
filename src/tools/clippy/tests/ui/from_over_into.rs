@@ -1,7 +1,5 @@
 #![feature(type_alias_impl_trait)]
 #![warn(clippy::from_over_into)]
-#![allow(non_local_definitions)]
-#![allow(unused)]
 
 // this should throw an error
 struct StringWrapper(String);
@@ -111,6 +109,26 @@ fn issue_112502() {
     impl Into<i64> for MyInt {
         //~^ from_over_into
         fn into(self: MyInt) -> i64 {
+            self.0
+        }
+    }
+}
+
+fn issue_16823() {
+    pub struct Foo(pub String);
+
+    impl<T> From<T> for Foo
+    where
+        String: From<T>,
+    {
+        fn from(val: T) -> Self {
+            Self(String::from(val))
+        }
+    }
+
+    // no lint, From<Foo> for String would conflict with the blanket impl above
+    impl Into<String> for Foo {
+        fn into(self) -> String {
             self.0
         }
     }

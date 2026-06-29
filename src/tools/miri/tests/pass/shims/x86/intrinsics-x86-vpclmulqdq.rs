@@ -3,6 +3,7 @@
 //@only-target: x86_64 i686
 //@[avx512]compile-flags: -C target-feature=+vpclmulqdq,+avx512f
 //@[avx]compile-flags: -C target-feature=+vpclmulqdq,+avx2
+//@run-native
 
 // The constants in the tests below are just bit patterns. They should not
 // be interpreted as integers; signedness does not make sense for them, but

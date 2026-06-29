@@ -10,11 +10,11 @@ use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHi
 use rustc_middle::ty::{self, GenericArgsRef, RePlaceholder, Region, TyCtxt};
 use tracing::{debug, instrument};
 
-use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{
+use crate::diagnostics::{
     ActualImplExpectedKind, ActualImplExpectedLifetimeKind, ActualImplExplNotes,
     TraitPlaceholderMismatch, TyOrSig,
 };
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace, ValuePairs};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 
@@ -28,7 +28,7 @@ pub(crate) struct Highlighted<'tcx, T> {
 
 impl<'tcx, T> IntoDiagArg for Highlighted<'tcx, T>
 where
-    T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>>,
+    T: for<'a> Print<FmtPrinter<'a, 'tcx>>,
 {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         rustc_errors::DiagArgValue::Str(self.to_string().into())
@@ -43,7 +43,7 @@ impl<'tcx, T> Highlighted<'tcx, T> {
 
 impl<'tcx, T> fmt::Display for Highlighted<'tcx, T>
 where
-    T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>>,
+    T: for<'a> Print<FmtPrinter<'a, 'tcx>>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut p = ty::print::FmtPrinter::new(self.tcx, self.ns);
@@ -71,7 +71,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sub_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
@@ -87,7 +87,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sub_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
                 _,
@@ -103,7 +103,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 _,
                 _,
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
@@ -121,7 +121,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 _,
                 _,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
@@ -136,7 +136,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 vid,
                 _,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
                 Some(ty::Region::new_var(self.tcx(), *vid)),
@@ -147,7 +147,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             ),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sub_region @ Region(Interned(RePlaceholder(_), _)),
                 sup_region @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
@@ -159,7 +159,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             ),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sub_region @ Region(Interned(RePlaceholder(_), _)),
                 sup_region,
             )) => self.try_report_trait_placeholder_mismatch(
@@ -171,7 +171,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             ),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sub_region,
                 sup_region @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
@@ -332,7 +332,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             leading_ellipsis,
         );
 
-        self.tcx().dcx().create_err(TraitPlaceholderMismatch {
+        let mut err = self.tcx().dcx().create_err(TraitPlaceholderMismatch {
             span,
             satisfy_span,
             where_span,
@@ -340,7 +340,46 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             def_id,
             trait_def_id: self.tcx().def_path_str(trait_def_id),
             actual_impl_expl_notes,
-        })
+        });
+
+        let mut current_code = cause.code();
+        let mut coroutine_def_id = None;
+
+        loop {
+            match current_code {
+                ObligationCauseCode::MatchImpl(inner_cause, _) => {
+                    current_code = inner_cause.code();
+                }
+                ObligationCauseCode::BuiltinDerived(derived) => {
+                    let self_ty = derived.parent_trait_pred.skip_binder().self_ty();
+
+                    if let ty::Coroutine(def_id, _) | ty::CoroutineWitness(def_id, _) =
+                        self_ty.kind()
+                    {
+                        coroutine_def_id = Some(*def_id);
+                        break;
+                    }
+
+                    current_code = &derived.parent_code;
+                }
+                _ => break,
+            }
+        }
+
+        if let Some(def_id) = coroutine_def_id {
+            if self.tcx().trait_is_auto(trait_def_id) {
+                let c_span = self.tcx().def_span(def_id);
+                let descr = self.tcx().def_descr(def_id);
+                let trait_name = self.tcx().def_path_str(trait_def_id);
+
+                err.span_label(
+                    c_span,
+                    format!("this {descr} captures a value whose type is not `{trait_name}`"),
+                );
+            }
+        }
+
+        err
     }
 
     /// Add notes with details about the expected and actual trait refs, with attention to cases

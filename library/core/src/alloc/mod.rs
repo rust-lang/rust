@@ -377,7 +377,7 @@ pub const unsafe trait Allocator {
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-unsafe impl<A> const Allocator for &A
+const unsafe impl<A> Allocator for &A
 where
     A: [const] Allocator + ?Sized,
 {

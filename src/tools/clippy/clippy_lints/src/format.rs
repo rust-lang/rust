@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, root_macro_call_first_node};
-use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, first_node_in_macro, matching_root_macro_call};
+use clippy_utils::source::{SpanExt, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use rustc_ast::{FormatArgsPiece, FormatOptions, FormatTrait};
 use rustc_errors::Applicability;
@@ -53,8 +53,13 @@ impl UselessFormat {
 
 impl<'tcx> LateLintPass<'tcx> for UselessFormat {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some(macro_call) = root_macro_call_first_node(cx, expr)
-            && cx.tcx.is_diagnostic_item(sym::format_macro, macro_call.def_id)
+        // Loosened from `root_macro_call_first_node` so the lint also fires when `format!` is
+        // the tail of a block emitted by another macro. The `!= macro_call.expn` check filters
+        // HIR nodes inside `format!`'s own expansion (its outer block's tail, its nested
+        // `format_args!`), which would otherwise also pass `first_node_in_macro` and cause the
+        // lint to fire multiple times per call.
+        if let Some(macro_call) = matching_root_macro_call(cx, expr.span, sym::format_macro)
+            && first_node_in_macro(cx, expr).is_some_and(|p_expn| p_expn != macro_call.expn)
             && let Some(format_args) = self.format_args.get(cx, expr, macro_call.expn)
         {
             let mut applicability = Applicability::MachineApplicable;
@@ -64,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                 ([], []) => span_useless_format_empty(cx, call_site, "String::new()".to_owned(), applicability),
                 ([], [_]) => {
                     // Simulate macro expansion, converting {{ and }} to { and }.
-                    let Some(snippet) = format_args.span.get_source_text(cx) else {
+                    let Some(snippet) = format_args.span.get_text(cx) else {
                         return;
                     };
                     let s_expand = snippet.replace("{{", "{").replace("}}", "}");

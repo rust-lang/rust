@@ -4,7 +4,6 @@
 // We have two variants, one where we send such a pointer to GenMC, and one where we make it on the GenMC side.
 
 #![no_main]
-#![feature(box_as_ptr)]
 
 use std::sync::atomic::AtomicPtr;
 use std::sync::atomic::Ordering::*;

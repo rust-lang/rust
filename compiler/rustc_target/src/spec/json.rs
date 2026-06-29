@@ -116,6 +116,7 @@ impl Target {
         forward!(asm_args);
         forward!(cpu);
         forward!(need_explicit_cpu);
+        forward!(unsupported_cpus);
         forward!(features);
         forward!(dynamic_linking);
         forward_opt!(direct_access_external_data);
@@ -152,7 +153,6 @@ impl Target {
         forward!(is_like_vexos);
         forward!(binary_format);
         forward!(default_dwarf_version);
-        forward!(allows_weak_linkage);
         forward!(has_rpath);
         forward!(no_default_libraries);
         forward!(position_independent_executables);
@@ -223,6 +223,7 @@ impl Target {
         forward!(supports_stack_protector);
         forward!(small_data_threshold_support);
         forward!(entry_name);
+        forward!(supports_fentry);
         forward!(supports_xray);
 
         // we're going to run `update_from_cli`, but that won't change the target's AbiMap
@@ -252,7 +253,7 @@ impl ToJson for Target {
             };
             ($attr:ident, $json_name:expr) => {{
                 let name = $json_name;
-                d.insert(name.into(), target.$attr.to_json());
+                d.insert(name.to_string(), target.$attr.to_json());
             }};
         }
 
@@ -262,7 +263,7 @@ impl ToJson for Target {
                 let name = $json_name;
                 #[allow(rustc::bad_opt_access)]
                 if default.$attr != target.$attr {
-                    d.insert(name.into(), target.$attr.to_json());
+                    d.insert(name.to_string(), target.$attr.to_json());
                 }
             }};
             (link_args - $attr:ident, $json_name:expr) => {{
@@ -320,6 +321,7 @@ impl ToJson for Target {
         target_option_val!(asm_args);
         target_option_val!(cpu);
         target_option_val!(need_explicit_cpu);
+        target_option_val!(unsupported_cpus);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
         target_option_val!(direct_access_external_data);
@@ -350,7 +352,6 @@ impl ToJson for Target {
         target_option_val!(is_like_vexos);
         target_option_val!(binary_format);
         target_option_val!(default_dwarf_version);
-        target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
         target_option_val!(no_default_libraries);
         target_option_val!(position_independent_executables);
@@ -407,6 +408,7 @@ impl ToJson for Target {
         target_option_val!(small_data_threshold_support);
         target_option_val!(entry_name);
         target_option_val!(entry_abi);
+        target_option_val!(supports_fentry);
         target_option_val!(supports_xray);
 
         // Serializing `-Clink-self-contained` needs a dynamic key to support the
@@ -447,7 +449,6 @@ impl schemars::JsonSchema for EndianWrapper {
             "type": "string",
             "enum": ["big", "little"]
         })
-        .into()
     }
 }
 
@@ -473,7 +474,6 @@ impl schemars::JsonSchema for ExternAbiWrapper {
             "type": "string",
             "enum": all,
         })
-        .into()
     }
 }
 
@@ -543,6 +543,7 @@ struct TargetSpecJson {
     asm_args: Option<StaticCow<[StaticCow<str>]>>,
     cpu: Option<StaticCow<str>>,
     need_explicit_cpu: Option<bool>,
+    unsupported_cpus: Option<StaticCow<[StaticCow<str>]>>,
     features: Option<StaticCow<str>>,
     dynamic_linking: Option<bool>,
     direct_access_external_data: Option<bool>,
@@ -572,7 +573,6 @@ struct TargetSpecJson {
     is_like_vexos: Option<bool>,
     binary_format: Option<BinaryFormat>,
     default_dwarf_version: Option<u32>,
-    allows_weak_linkage: Option<bool>,
     has_rpath: Option<bool>,
     no_default_libraries: Option<bool>,
     position_independent_executables: Option<bool>,
@@ -628,6 +628,7 @@ struct TargetSpecJson {
     supports_stack_protector: Option<bool>,
     small_data_threshold_support: Option<SmallDataThresholdSupport>,
     entry_name: Option<StaticCow<str>>,
+    supports_fentry: Option<bool>,
     supports_xray: Option<bool>,
     entry_abi: Option<ExternAbiWrapper>,
 }

@@ -36,9 +36,10 @@ Then, you can generate the manifest and add it to `build/dist`:
 cargo +nightly run --release -p build-manifest build/dist build/dist 1970-01-01 http://localhost:8000 nightly
 ```
 
-After that, generate a SHA256 stamp for the manifest file:
+After that, generate a SHA256 stamp for the manifest file, and create a symlink to point to the right directory:
 ```sh
 sha256sum build/dist/channel-rust-nightly.toml > build/dist/channel-rust-nightly.toml.sha256
+ln -s ${PWD}/build/dist build/1970-01-01
 ```
 
 And start a HTTP server from the `build` directory:

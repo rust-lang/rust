@@ -1,0 +1,10 @@
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/gca-anon-const-rejected.rs:7:49
+   |
+LL | type const FOO<const N: usize>: usize = const { N + 1 };
+   |                                                 ^
+   |
+   = help: consider factoring the expression into a `type const` item and use it as the const argument instead
+
+error: aborting due to 1 previous error
+

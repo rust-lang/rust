@@ -44,7 +44,13 @@ pub fn extract_verify_if_eq<'tcx>(
     assert!(!verify_if_eq_b.has_escaping_bound_vars());
     let mut m = MatchAgainstHigherRankedOutlives::new(tcx);
     let verify_if_eq = verify_if_eq_b.skip_binder();
-    m.relate(verify_if_eq.ty, test_ty).ok()?;
+    // FIXME(#155345): Region handling should generally only
+    // deal with rigid aliases, making sure we do so correctly
+    // everywhere is effort, so we're just using `No` everywhere
+    // for now. This should change soon.
+    let (verify_ty, test_ty) =
+        ty::set_aliases_to_non_rigid(tcx, (verify_if_eq.ty, test_ty)).skip_norm_wip();
+    m.relate(verify_ty, test_ty).ok()?;
 
     if let ty::RegionKind::ReBound(index_kind, br) = verify_if_eq.bound.kind() {
         assert!(matches!(index_kind, ty::BoundVarIndexKind::Bound(ty::INNERMOST)));
@@ -80,6 +86,11 @@ pub(super) fn can_match_erased_ty<'tcx>(
     assert!(!outlives_predicate.has_escaping_bound_vars());
     let erased_outlives_predicate = tcx.erase_and_anonymize_regions(outlives_predicate);
     let outlives_ty = erased_outlives_predicate.skip_binder().0;
+    // FIXME(#155345): Region handling should generally only
+    // deal with rigid aliases, making sure we do so correctly
+    // everywhere is effort, so we're just using `No` everywhere
+    // for now. This should change soon.
+    let outlives_ty = ty::set_aliases_to_non_rigid(tcx, outlives_ty).skip_normalization();
     if outlives_ty == erased_ty {
         // pointless micro-optimization
         true

@@ -330,7 +330,7 @@ impl GlobalState {
         this
     }
 
-    pub(crate) fn process_changes(&mut self) -> bool {
+    pub(crate) fn process_changes(&mut self) -> (bool, Option<Duration>) {
         let _p = span!(Level::INFO, "GlobalState::process_changes").entered();
         // We cannot directly resolve a change in a ratoml file to a format
         // that can be used by the config module because config talks
@@ -343,7 +343,7 @@ impl GlobalState {
         let mut guard = self.vfs.write();
         let changed_files = guard.0.take_changes();
         if changed_files.is_empty() {
-            return false;
+            return (false, None);
         }
 
         let (change, modified_rust_files, workspace_structure_change) =
@@ -439,7 +439,7 @@ impl GlobalState {
                 (change, modified_rust_files, workspace_structure_change)
             });
 
-        self.analysis_host.apply_change(change);
+        let cancellation_time = self.analysis_host.apply_change(change);
 
         if !modified_ratoml_files.is_empty()
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
@@ -561,7 +561,7 @@ impl GlobalState {
             }
         }
 
-        true
+        (true, Some(cancellation_time))
     }
 
     pub(crate) fn snapshot(&self) -> GlobalStateSnapshot {

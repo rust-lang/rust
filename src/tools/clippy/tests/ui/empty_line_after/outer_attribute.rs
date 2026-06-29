@@ -1,5 +1,6 @@
 //@aux-build:../auxiliary/proc_macro_attr.rs
-#![warn(clippy::empty_line_after_outer_attr, clippy::empty_line_after_doc_comments)]
+#![warn(clippy::empty_line_after_outer_attr)]
+#![deny(clippy::empty_line_after_doc_comments)]
 
 //~v empty_line_after_outer_attr
 #[crate_type = "lib"]

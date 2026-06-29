@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
+use rustc_span::SyntaxContext;
 
 use super::EAGER_TRANSMUTE;
 
@@ -54,9 +55,9 @@ fn binops_with_local(cx: &LateContext<'_>, local_expr: &Expr<'_>, expr: &Expr<'_
                     lang_items.range_to_struct()
                 ].into_iter().any(|did| did == Some(receiver_adt.did())) =>
         {
-            eq_expr_value(cx, local_expr, arg.peel_borrows())
+            eq_expr_value(cx, SyntaxContext::root(), local_expr, arg.peel_borrows())
         },
-        _ => eq_expr_value(cx, local_expr, expr),
+        _ => eq_expr_value(cx, SyntaxContext::root(), local_expr, expr),
     }
 }
 

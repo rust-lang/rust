@@ -1,10 +1,9 @@
 use super::TRANSMUTE_UNDEFINED_REPR;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_c_void;
-use rustc_middle::ty::Unnormalized;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, GenericArgsRef, IntTy, Ty, UintTy};
+use rustc_middle::ty::{self, GenericArgsRef, IntTy, Ty, UintTy, Unnormalized};
 
 #[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
@@ -241,7 +240,10 @@ enum ReducedTy<'tcx> {
 /// Reduce structs containing a single non-zero sized field to it's contained type.
 fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> {
     loop {
-        ty = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty)).unwrap_or(ty);
+        ty = cx
+            .tcx
+            .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty))
+            .unwrap_or(ty);
         return match *ty.kind() {
             ty::Pat(base, _) => {
                 ty = base;
@@ -298,7 +300,9 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
 }
 
 fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty))
+    if let Ok(ty) = cx
+        .tcx
+        .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty))
         && let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(ty))
     {
         layout.layout.size().bytes() == 0

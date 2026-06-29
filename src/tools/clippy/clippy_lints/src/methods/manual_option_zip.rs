@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::peel_blocks;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::visitors::for_each_expr_without_closures;
+use clippy_utils::usage::local_used_in;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
-use std::ops::ControlFlow;
 
 use super::MANUAL_OPTION_ZIP;
 
@@ -30,14 +30,10 @@ pub(super) fn check<'tcx>(
         && let ExprKind::MethodCall(method_path, map_recv, [map_arg], _) = peel_blocks(outer_value).kind
         && method_path.ident.name == sym::map
         && cx.typeck_results().expr_ty(map_recv).is_diag_item(cx, sym::Option)
+        // `b` is not lazy evaluated
+        && switch_to_eager_eval(cx, map_recv)
         // `b` does not reference the outer closure parameter `a`.
-        && for_each_expr_without_closures(map_recv, |e| {
-            if e.res_local_id() == Some(outer_param_id) {
-                ControlFlow::Break(())
-            } else {
-                ControlFlow::Continue(())
-            }
-        }).is_none()
+        && !local_used_in(cx, outer_param_id, map_recv)
         // `|b| (a, b)`
         && let ExprKind::Closure(&hir::Closure { body: inner_body_id, .. }) = map_arg.kind
         && let hir::Body { params: [inner_param], value: inner_value, .. } = cx.tcx.hir_body(inner_body_id)

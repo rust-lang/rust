@@ -22,5 +22,17 @@ error: using `Result.and_then(Ok)`, which is a no-op
 LL |     let _ = x.and_then(Ok);
    |             ^^^^^^^^^^^^^^ help: use the expression directly: `x`
 
-error: aborting due to 3 previous errors
+error: using `Result.or_else(|x| Err(y))`, which is more succinctly expressed as `map_err(|x| y)`
+  --> tests/ui/bind_instead_of_map.rs:32:31
+   |
+LL |     let _: Result<u32, u32> = res.or_else(|_| if b { panic!("should not happen") } else { Err(42) });
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_err` instead
+   |
+LL -     let _: Result<u32, u32> = res.or_else(|_| if b { panic!("should not happen") } else { Err(42) });
+LL +     let _: Result<u32, u32> = res.map_err(|_| if b { panic!("should not happen") } else { 42 });
+   |
+
+error: aborting due to 4 previous errors
 

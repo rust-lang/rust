@@ -115,12 +115,50 @@ where
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
 
-        (_, ty::Alias(..)) | (ty::Alias(..), _) if infcx.next_trait_solver() => {
-            match relation.structurally_relate_aliases() {
-                StructurallyRelateAliases::Yes => structurally_relate_tys(relation, a, b),
-                StructurallyRelateAliases::No => {
-                    relation.register_alias_relate_predicate(a, b);
-                    Ok(a)
+        (ty::Alias(is_rigid_a, _), ty::Alias(is_rigid_b, _)) if infcx.next_trait_solver() => {
+            match (is_rigid_a, is_rigid_b) {
+                (ty::IsRigid::Yes, ty::IsRigid::Yes) => structurally_relate_tys(relation, a, b),
+                _ => match relation.structurally_relate_aliases() {
+                    StructurallyRelateAliases::Yes => structurally_relate_tys(relation, a, b),
+                    StructurallyRelateAliases::No => {
+                        relation.register_alias_relate_predicate(a, b);
+                        Ok(a)
+                    }
+                },
+            }
+        }
+
+        (other, ty::Alias(is_rigid, _)) | (ty::Alias(is_rigid, _), other)
+            if infcx.next_trait_solver() =>
+        {
+            if let StructurallyRelateAliases::No = relation.structurally_relate_aliases()
+                && is_rigid == ty::IsRigid::No
+            {
+                relation.register_alias_relate_predicate(a, b);
+                Ok(a)
+            } else {
+                match other {
+                    ty::Infer(infer_ty) => match infer_ty {
+                        // Normally, we shouldn't be combining an infer ty with an alias here. But
+                        // when we evaluate a `Projection(assoc_ty, expected)` goal, we normalize
+                        // the projection term and structurally equate it with the expected term. If
+                        // the normalized term is an alias type and the expected term is a ty var,
+                        // the ty var just instantiated with the alias type without combining them.
+                        // However, if the expected term is either an int var or a float var, e.g.,
+                        // when the expected term is an int literal that only can be fully inferred
+                        // after the fallback, they are passed to this function because int/float
+                        // vars can't be instantiated. As we can't structurally relate infer ty with
+                        // another type, we just error them out here instead.
+                        ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(_) => {
+                            Err(TypeError::Sorts(ExpectedFound::new(a, b)))
+                        }
+
+                        ty::InferTy::TyVar(_)
+                        | ty::InferTy::FreshTy(_)
+                        | ty::InferTy::FreshIntTy(_)
+                        | ty::InferTy::FreshFloatTy(_) => unreachable!(),
+                    },
+                    _ => structurally_relate_tys(relation, a, b),
                 }
             }
         }
@@ -128,10 +166,10 @@ where
         // All other cases of inference are errors
         (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
-        (ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
-        | (_, ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
+        (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
+        | (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
             assert!(!infcx.next_trait_solver());
-            match infcx.typing_mode() {
+            match infcx.typing_mode_raw().assert_not_erased() {
                 // During coherence, opaque types should be treated as *possibly*
                 // equal to any other type. This is an
                 // extremely heavy hammer, but can be relaxed in a forwards-compatible
@@ -140,10 +178,11 @@ where
                     relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                     Ok(a)
                 }
-                TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => structurally_relate_tys(relation, a, b),
+                TypingMode::Typeck { .. }
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostBorrowck { .. }
+                | TypingMode::PostAnalysis
+                | TypingMode::Codegen => structurally_relate_tys(relation, a, b),
             }
         }
 
@@ -200,7 +239,13 @@ where
             Ok(a)
         }
 
-        (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
+        (ty::ConstKind::Alias(ty::IsRigid::Yes, _), ty::ConstKind::Alias(ty::IsRigid::Yes, _))
+            if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver()) =>
+        {
+            structurally_relate_consts(relation, a, b)
+        }
+
+        (ty::ConstKind::Alias(..), _) | (_, ty::ConstKind::Alias(..))
             if infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver() =>
         {
             match relation.structurally_relate_aliases() {

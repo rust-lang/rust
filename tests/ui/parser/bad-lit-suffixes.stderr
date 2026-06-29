@@ -160,20 +160,12 @@ error: suffixes on string literals are invalid
 LL | #[link(name = "string"suffix)]
    |               ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
-error: invalid suffix `suffix` for number literal
-  --> $DIR/bad-lit-suffixes.rs:43:41
-   |
-LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
-   |                                         ^^^^^^^ invalid suffix `suffix`
-   |
-   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
-
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:48:25
+  --> $DIR/bad-lit-suffixes.rs:46:25
    |
 LL |     #[rustc_confusables("blah"suffix)]
    |                         ^^^^^^^^^^^^ invalid suffix `suffix`
 
-error: aborting due to 22 previous errors; 2 warnings emitted
+error: aborting due to 21 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0539`.

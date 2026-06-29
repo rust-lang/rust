@@ -7,7 +7,7 @@ use syntax::{SmolStr, ToSmolStr};
 use crate::{item::CompletionItem, render::RenderContext};
 
 pub(crate) fn render_type_alias(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     type_alias: hir::TypeAlias,
 ) -> Option<CompletionItem> {
     let _p = tracing::info_span!("render_type_alias").entered();
@@ -15,7 +15,7 @@ pub(crate) fn render_type_alias(
 }
 
 pub(crate) fn render_type_alias_with_eq(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     type_alias: hir::TypeAlias,
 ) -> Option<CompletionItem> {
     let _p = tracing::info_span!("render_type_alias_with_eq").entered();
@@ -23,7 +23,7 @@ pub(crate) fn render_type_alias_with_eq(
 }
 
 fn render(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     type_alias: hir::TypeAlias,
     with_eq: bool,
 ) -> Option<CompletionItem> {

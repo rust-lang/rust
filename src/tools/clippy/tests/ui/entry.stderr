@@ -1,5 +1,5 @@
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:24:5
+  --> tests/ui/entry.rs:23:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |
@@ -11,7 +11,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:30:5
+  --> tests/ui/entry.rs:29:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |
@@ -34,7 +34,7 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:40:5
+  --> tests/ui/entry.rs:39:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |
@@ -58,7 +58,7 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:50:5
+  --> tests/ui/entry.rs:49:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |
@@ -82,7 +82,7 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:61:5
+  --> tests/ui/entry.rs:60:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |
@@ -101,7 +101,7 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:68:5
+  --> tests/ui/entry.rs:67:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |
@@ -128,7 +128,7 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:81:5
+  --> tests/ui/entry.rs:80:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |
@@ -153,7 +153,7 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:92:5
+  --> tests/ui/entry.rs:91:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |
@@ -194,7 +194,7 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:127:5
+  --> tests/ui/entry.rs:126:5
    |
 LL | /     if !m.contains_key(&m!(k)) {
 LL | |
@@ -203,7 +203,7 @@ LL | |     }
    | |_____^ help: try: `m.entry(m!(k)).or_insert_with(|| m!(v));`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:160:5
+  --> tests/ui/entry.rs:159:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |
@@ -224,7 +224,7 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:194:5
+  --> tests/ui/entry.rs:193:5
    |
 LL | /     if !map.contains_key(&1) {
 LL | |
@@ -247,7 +247,7 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:285:5
+  --> tests/ui/entry.rs:284:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |

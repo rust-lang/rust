@@ -14,11 +14,15 @@ use super::SUBOPTIMAL_FLOPS;
 /// test is positive or an expression which tests whether or not test
 /// is nonnegative.
 /// Used for check-custom-abs function below
-fn is_testing_positive(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
+fn is_testing_positive(cx: &LateContext<'_>, ctxt: SyntaxContext, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
-            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, right, expr.span.ctxt()) && eq_expr_value(cx, left, test),
-            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, left, expr.span.ctxt()) && eq_expr_value(cx, right, test),
+            BinOpKind::Gt | BinOpKind::Ge => {
+                is_zero(cx, right, expr.span.ctxt()) && eq_expr_value(cx, ctxt, left, test)
+            },
+            BinOpKind::Lt | BinOpKind::Le => {
+                is_zero(cx, left, expr.span.ctxt()) && eq_expr_value(cx, ctxt, right, test)
+            },
             _ => false,
         }
     } else {
@@ -27,11 +31,15 @@ fn is_testing_positive(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -
 }
 
 /// See [`is_testing_positive`]
-fn is_testing_negative(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
+fn is_testing_negative(cx: &LateContext<'_>, ctxt: SyntaxContext, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
-            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, left, expr.span.ctxt()) && eq_expr_value(cx, right, test),
-            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, right, expr.span.ctxt()) && eq_expr_value(cx, left, test),
+            BinOpKind::Gt | BinOpKind::Ge => {
+                is_zero(cx, left, expr.span.ctxt()) && eq_expr_value(cx, ctxt, right, test)
+            },
+            BinOpKind::Lt | BinOpKind::Le => {
+                is_zero(cx, right, expr.span.ctxt()) && eq_expr_value(cx, ctxt, left, test)
+            },
             _ => false,
         }
     } else {
@@ -55,14 +63,21 @@ fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: SyntaxContext) -> bool {
 /// one of the two expressions
 /// If the two expressions are not negations of each other, then it
 /// returns None.
-fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
+fn are_negated<'a>(
+    cx: &LateContext<'_>,
+    ctxt: SyntaxContext,
+    expr1: &'a Expr<'a>,
+    expr2: &'a Expr<'a>,
+) -> Option<(bool, &'a Expr<'a>)> {
     if let ExprKind::Unary(UnOp::Neg, expr1_negated) = expr1.kind
-        && eq_expr_value(cx, expr1_negated, expr2)
+        && expr1_negated.span.ctxt() == ctxt
+        && eq_expr_value(cx, ctxt, expr1_negated, expr2)
     {
         return Some((false, expr2));
     }
     if let ExprKind::Unary(UnOp::Neg, expr2_negated) = expr2.kind
-        && eq_expr_value(cx, expr1, expr2_negated)
+        && expr2_negated.span.ctxt() == ctxt
+        && eq_expr_value(cx, ctxt, expr1, expr2_negated)
     {
         return Some((true, expr1));
     }
@@ -77,11 +92,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }) = higher::If::hir(expr)
         && let if_body_expr = peel_blocks(then)
         && let else_body_expr = peel_blocks(r#else)
-        && let Some((if_expr_positive, body)) = are_negated(cx, if_body_expr, else_body_expr)
+        && let ctxt = expr.span.ctxt()
+        && let Some((if_expr_positive, body)) = are_negated(cx, ctxt, if_body_expr, else_body_expr)
     {
-        let sugg_positive_abs = if is_testing_positive(cx, cond, body) {
+        let sugg_positive_abs = if is_testing_positive(cx, ctxt, cond, body) {
             if_expr_positive
-        } else if is_testing_negative(cx, cond, body) {
+        } else if is_testing_negative(cx, ctxt, cond, body) {
             !if_expr_positive
         } else {
             return;

@@ -5,7 +5,7 @@ use std::{fmt, iter};
 use rustc_abi::{Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
@@ -14,7 +14,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_span::sym;
 use rustc_type_ir::solve::SizedTraitKind;
 use smallvec::{SmallVec, smallvec};
@@ -138,7 +138,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         self.with_stable_hashing_context(|mut hcx| {
             let mut hasher = StableHasher::new();
-            hcx.while_hashing_spans(false, |hcx| ty.hash_stable(hcx, &mut hasher));
+            hcx.while_hashing_spans(false, |hcx| ty.stable_hash(hcx, &mut hasher));
             hasher.finish()
         })
     }
@@ -216,11 +216,11 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Ty<'tcx> {
-        let tcx = self;
-        tcx.struct_tail_raw(
+        self.assert_fully_normalized(typing_env, ty);
+        self.struct_tail_raw(
             ty,
             &ObligationCause::dummy(),
-            |ty| tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)),
+            |ty| self.normalize_erasing_regions(typing_env, ty),
             || {},
         )
     }
@@ -255,7 +255,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         mut ty: Ty<'tcx>,
         cause: &ObligationCause<'tcx>,
-        mut normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+        mut normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
         // This is currently used to allow us to walk a ValTree
         // in lockstep with the type in order to get the ValTree branch that
         // corresponds to an unsized field.
@@ -283,7 +283,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     match def.non_enum_variant().tail_opt() {
                         Some(field) => {
                             f();
-                            ty = field.ty(self, args);
+                            ty = normalize(field.ty(self, args));
                         }
                         None => break,
                     }
@@ -299,15 +299,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Pat(inner, _) => {
                     f();
                     ty = inner;
-                }
-
-                ty::Alias(..) => {
-                    let normalized = normalize(ty);
-                    if ty == normalized {
-                        return ty;
-                    } else {
-                        ty = normalized;
-                    }
                 }
 
                 _ => {
@@ -333,9 +324,9 @@ impl<'tcx> TyCtxt<'tcx> {
         target: Ty<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> (Ty<'tcx>, Ty<'tcx>) {
-        let tcx = self;
-        tcx.struct_lockstep_tails_raw(source, target, |ty| {
-            tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
+        self.assert_fully_normalized(typing_env, (source, target));
+        self.struct_lockstep_tails_raw(source, target, |ty| {
+            self.normalize_erasing_regions(typing_env, ty)
         })
     }
 
@@ -351,7 +342,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         source: Ty<'tcx>,
         target: Ty<'tcx>,
-        normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>,
+        normalize: impl Fn(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
     ) -> (Ty<'tcx>, Ty<'tcx>) {
         let (mut a, mut b) = (source, target);
         loop {
@@ -360,8 +351,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     if a_def == b_def && a_def.is_struct() =>
                 {
                     if let Some(f) = a_def.non_enum_variant().tail_opt() {
-                        a = f.ty(self, a_args);
-                        b = f.ty(self, b_args);
+                        a = normalize(f.ty(self, a_args));
+                        b = normalize(f.ty(self, b_args));
                     } else {
                         break;
                     }
@@ -372,20 +363,6 @@ impl<'tcx> TyCtxt<'tcx> {
                         b = *b_tys.last().unwrap();
                     } else {
                         break;
-                    }
-                }
-                (ty::Alias(..), _) | (_, ty::Alias(..)) => {
-                    // If either side is a projection, attempt to
-                    // progress via normalization. (Should be safe to
-                    // apply to both sides as normalization is
-                    // idempotent.)
-                    let a_norm = normalize(a);
-                    let b_norm = normalize(b);
-                    if a == a_norm && b == b_norm {
-                        break;
-                    } else {
-                        a = a_norm;
-                        b = b_norm;
                     }
                 }
 
@@ -917,18 +894,20 @@ impl<'tcx> TyCtxt<'tcx> {
     /// [free]: ty::Free
     /// [expand_free_alias_tys]: Self::expand_free_alias_tys
     pub fn peel_off_free_alias_tys(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) = ty.kind() else { return ty };
+        let ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) = ty.kind() else {
+            return ty;
+        };
 
         let limit = self.recursion_limit();
         let mut depth = 0;
 
-        while let &ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind() {
+        while let &ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind() {
             if !limit.value_within_limit(depth) {
                 let guar = self.dcx().delayed_bug("overflow expanding free alias type");
                 return Ty::new_error(self, guar);
             }
 
-            ty = self.type_of(def_id).instantiate(self, args).skip_norm_wip();
+            ty = self.type_of(def_id).instantiate(self, args).skip_normalization();
             depth += 1;
         }
 
@@ -954,7 +933,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasTermKind::InherentConst { .. }
             | ty::AliasTermKind::FreeTy { .. }
             | ty::AliasTermKind::FreeConst { .. }
-            | ty::AliasTermKind::UnevaluatedConst { .. }
+            | ty::AliasTermKind::AnonConst { .. }
             | ty::AliasTermKind::ProjectionConst { .. } => None,
         }
     }
@@ -990,7 +969,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
                 Some(expanded_ty) => *expanded_ty,
                 None => {
                     let generic_ty = self.tcx.type_of(def_id);
-                    let concrete_ty = generic_ty.instantiate(self.tcx, args).skip_norm_wip();
+                    let concrete_ty = generic_ty.instantiate(self.tcx, args).skip_normalization();
                     let expanded_ty = self.fold_ty(concrete_ty);
                     self.expanded_cache.insert((def_id, args), expanded_ty);
                     expanded_ty
@@ -1016,7 +995,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *t.kind() {
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *t.kind() {
             self.expand_opaque_ty(def_id, args).unwrap_or(t)
         } else if t.has_opaque_types() {
             t.super_fold_with(self)
@@ -1060,7 +1039,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
         if !ty.has_type_flags(ty::TypeFlags::HAS_TY_FREE_ALIAS) {
             return ty;
         }
-        let &ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind() else {
+        let &ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind() else {
             return ty.super_fold_with(self);
         };
         if !self.tcx.recursion_limit().value_within_limit(self.depth) {
@@ -1070,7 +1049,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
 
         self.depth += 1;
         let ty = ensure_sufficient_stack(|| {
-            self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().fold_with(self)
+            self.tcx
+                .type_of(def_id)
+                .instantiate(self.tcx, args)
+                .skip_normalization()
+                .fold_with(self)
         });
         self.depth -= 1;
         ty
@@ -1657,7 +1640,7 @@ where
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, StableHash, TyEncodable, TyDecodable)]
 pub struct AlwaysRequiresDrop;
 
 /// Reveals all opaque types in the given value, replacing them

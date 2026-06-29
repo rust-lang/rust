@@ -22,6 +22,7 @@ pub(crate) fn target() -> Target {
     base.supported_sanitizers = SanitizerSet::ADDRESS;
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
     base.stack_probes = StackProbeType::Inline;
+    base.supports_fentry = true;
 
     Target {
         llvm_target: "i686-unknown-linux-gnu".into(),

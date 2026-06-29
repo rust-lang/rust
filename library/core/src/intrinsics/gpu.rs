@@ -47,7 +47,7 @@
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[unstable(feature = "gpu_launch_sized_workgroup_mem", issue = "135513")]
-#[cfg(any(target_arch = "amdgpu", target_arch = "nvptx64"))]
+#[cfg(any(doc, target_arch = "amdgpu", target_arch = "nvptx64"))]
 pub fn gpu_launch_sized_workgroup_mem<T>() -> *mut T;
 
 /// Returns a pointer to the HSA kernel dispatch packet.
@@ -63,6 +63,6 @@ pub fn gpu_launch_sized_workgroup_mem<T>() -> *mut T;
 /// [hsa.h]: https://github.com/ROCm/rocm-systems/blob/rocm-7.1.0/projects/rocr-runtime/runtime/hsa-runtime/inc/hsa.h#L2959
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[cfg(target_arch = "amdgpu")]
+#[cfg(any(doc, target_arch = "amdgpu"))]
 #[must_use = "returns a pointer that does nothing unless used"]
 pub fn amdgpu_dispatch_ptr() -> *const ();

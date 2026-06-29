@@ -91,7 +91,7 @@ fn download_crate_for_training(sh: &Shell, pgo_dir: &Path, repo: &str) -> anyhow
     let target_path = pgo_dir.join(normalized_path);
     cmd!(sh, "git clone --depth 1 https://github.com/{repo} {revision...} {target_path}")
         .run()
-        .with_context(|| "cannot download PGO training crate from {repo}")?;
+        .with_context(|| format!("cannot download PGO training crate from {repo}"))?;
 
     Ok(target_path)
 }

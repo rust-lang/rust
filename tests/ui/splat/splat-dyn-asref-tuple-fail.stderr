@@ -1,0 +1,24 @@
+error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a &'?3 dyn [Binder { value: Trait(std::convert::AsRef<std::string::String>), bound_vars: [] }] + '?3 (&'?3 dyn [Binder { value: Trait(std::convert::AsRef<std::string::String>), bound_vars: [] }] + '?3)
+  --> $DIR/splat-dyn-asref-tuple-fail.rs:7:36
+   |
+LL | fn dyn_asref_splat<T>(#[splat] _t: &dyn AsRef<T>) where T: std::marker::Tuple {}
+   |                                    ^^^^^^^^^^^^^
+...
+LL |     dyn_asref_splat::<String>(&s);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `String` is not a tuple
+  --> $DIR/splat-dyn-asref-tuple-fail.rs:12:23
+   |
+LL |     dyn_asref_splat::<String>(&s);
+   |                       ^^^^^^ the nightly-only, unstable trait `std::marker::Tuple` is not implemented for `String`
+   |
+note: required by a bound in `dyn_asref_splat`
+  --> $DIR/splat-dyn-asref-tuple-fail.rs:7:60
+   |
+LL | fn dyn_asref_splat<T>(#[splat] _t: &dyn AsRef<T>) where T: std::marker::Tuple {}
+   |                                                            ^^^^^^^^^^^^^^^^^^ required by this bound in `dyn_asref_splat`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

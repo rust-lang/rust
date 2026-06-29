@@ -216,16 +216,19 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
     let mut saw_comma = false;
     let mut saw_expr = false;
 
-    // test_err tuple_expr_leading_comma
-    // fn foo() {
-    //     (,);
-    // }
-    if p.eat(T![,]) {
-        p.error("expected expression");
-        saw_comma = true;
-    }
-
     while !p.at(EOF) && !p.at(T![')']) {
+        // test_err tuple_expr_empty_expr
+        // fn foo() {
+        //     (,);
+        //     (a, , b);
+        // }
+        if p.current() == T![,] {
+            p.error("expected expression");
+            p.bump(T![,]);
+            saw_comma = true;
+            continue;
+        }
+
         saw_expr = true;
 
         // test tuple_attrs
@@ -317,6 +320,10 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         //     builtin#naked_asm("");
         // }
         parse_asm_expr(p, m)
+    } else if p.eat_contextual_kw(T![include_bytes]) {
+        // test include_bytes
+        // fn foo() { builtin # include_bytes }
+        Some(m.complete(p, INCLUDE_BYTES_EXPR))
     } else {
         m.abandon(p);
         None
@@ -888,6 +895,10 @@ fn return_expr(p: &mut Parser<'_>) -> CompletedMarker {
     let m = p.start();
     p.bump(T![return]);
     if p.at_ts(EXPR_FIRST) {
+        // test return_attr
+        // fn foo() {
+        //     return #[attr] 1;
+        // }
         expr(p);
     }
     m.complete(p, RETURN_EXPR)

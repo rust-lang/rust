@@ -21,7 +21,7 @@ use crate::{
 // use std::fmt::{Debug};
 // use std::fmt::Display;
 // ```
-pub(crate) fn unmerge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn unmerge_imports(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let (editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
     let make = editor.make();
     let tree = ctx.find_node_at_offset::<ast::UseTree>()?;

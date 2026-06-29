@@ -25,7 +25,7 @@ const fn rpit() -> impl [const] MyTrait { Local }
 //~^ ERROR use of unstable const library feature `unstable`
 
 struct Local;
-impl const MyTrait for Local {
+const impl MyTrait for Local {
 //~^ ERROR use of unstable const library feature `unstable`
     fn func() {}
 }

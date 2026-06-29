@@ -37,27 +37,26 @@ SOURCE_FILE
               MATCH_ARM
                 ATTR
                   POUND "#"
-                ERROR
+                NOT_NULL
                   BANG "!"
-                ARRAY_EXPR
-                  L_BRACK "["
-                  CALL_EXPR
-                    PATH_EXPR
+                  SLICE_PAT
+                    L_BRACK "["
+                    TUPLE_STRUCT_PAT
                       PATH
                         PATH_SEGMENT
                           NAME_REF
                             IDENT "doc"
-                    ARG_LIST
                       L_PAREN "("
-                      LITERAL
-                        STRING "\"Not allowed here\""
+                      LITERAL_PAT
+                        LITERAL
+                          STRING "\"Not allowed here\""
                       R_PAREN ")"
-                  R_BRACK "]"
-              WHITESPACE "\n        "
-              MATCH_ARM
-                WILDCARD_PAT
+                    R_BRACK "]"
+                WHITESPACE "\n        "
+                UNDERSCORE_EXPR
                   UNDERSCORE "_"
-                WHITESPACE " "
+              WHITESPACE " "
+              MATCH_ARM
                 FAT_ARROW "=>"
                 WHITESPACE " "
                 TUPLE_EXPR
@@ -103,22 +102,21 @@ SOURCE_FILE
               MATCH_ARM
                 ATTR
                   POUND "#"
-                ERROR
+                NOT_NULL
                   BANG "!"
-                ARRAY_EXPR
-                  L_BRACK "["
-                  CALL_EXPR
-                    PATH_EXPR
+                  SLICE_PAT
+                    L_BRACK "["
+                    TUPLE_STRUCT_PAT
                       PATH
                         PATH_SEGMENT
                           NAME_REF
                             IDENT "doc"
-                    ARG_LIST
                       L_PAREN "("
-                      LITERAL
-                        STRING "\"Nor here\""
+                      LITERAL_PAT
+                        LITERAL
+                          STRING "\"Nor here\""
                       R_PAREN ")"
-                  R_BRACK "]"
+                    R_BRACK "]"
               WHITESPACE "\n    "
               R_CURLY "}"
         WHITESPACE "\n\n    "
@@ -146,27 +144,26 @@ SOURCE_FILE
               WHITESPACE "\n        "
               ATTR
                 POUND "#"
-              ERROR
+              NOT_NULL
                 BANG "!"
-              ARRAY_EXPR
-                L_BRACK "["
-                CALL_EXPR
-                  PATH_EXPR
+                SLICE_PAT
+                  L_BRACK "["
+                  TUPLE_STRUCT_PAT
                     PATH
                       PATH_SEGMENT
                         NAME_REF
                           IDENT "doc"
-                  ARG_LIST
                     L_PAREN "("
-                    LITERAL
-                      STRING "\"Nor here\""
+                    LITERAL_PAT
+                      LITERAL
+                        STRING "\"Nor here\""
                     R_PAREN ")"
-                R_BRACK "]"
-            WHITESPACE "\n        "
-            MATCH_ARM
-              WILDCARD_PAT
+                  R_BRACK "]"
+              WHITESPACE "\n        "
+              UNDERSCORE_EXPR
                 UNDERSCORE "_"
-              WHITESPACE " "
+            WHITESPACE " "
+            MATCH_ARM
               FAT_ARROW "=>"
               WHITESPACE " "
               TUPLE_EXPR
@@ -190,13 +187,13 @@ SOURCE_FILE
         R_CURLY "}"
   WHITESPACE "\n"
 error 52: expected L_BRACK
-error 52: expected pattern
-error 53: expected FAT_ARROW
-error 78: expected `,`
+error 78: expected FAT_ARROW
+error 88: expected `,`
+error 89: expected pattern
 error 161: expected L_BRACK
-error 161: expected pattern
-error 162: expected FAT_ARROW
+error 179: expected FAT_ARROW
+error 179: expected expression
 error 232: expected L_BRACK
-error 232: expected pattern
-error 233: expected FAT_ARROW
-error 250: expected `,`
+error 250: expected FAT_ARROW
+error 260: expected `,`
+error 261: expected pattern

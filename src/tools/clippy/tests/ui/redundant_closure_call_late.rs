@@ -1,9 +1,8 @@
 // non rustfixable, see redundant_closure_call_fixable.rs
-
-#![warn(clippy::redundant_closure_call)]
-#![allow(clippy::needless_late_init)]
+#![expect(unused_assignments)]
 
 fn main() {
+    #[expect(unused_variables)]
     let mut i = 1;
 
     // don't lint here, the closure is used more than once
@@ -31,6 +30,7 @@ fn main() {
     i = shadowed_closure();
 
     // Fix FP in #5916
+    #[expect(unused_variables)]
     let mut x;
     let create = || 2 * 2;
     x = create();

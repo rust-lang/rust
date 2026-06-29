@@ -171,7 +171,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
     /// Scan for a `cfg="foo"` attribute and check whether we have a
     /// cfg flag called `foo`.
     fn check_config(&self, value: Symbol) -> bool {
-        let config = &self.tcx.sess.psess.config;
+        let config = &self.tcx.sess.config;
         debug!("check_config(config={:?}, value={:?})", config, value);
         if config.iter().any(|&(name, _)| name == value) {
             debug!("check_config: matched");

@@ -69,6 +69,24 @@ fn while_zero_times() -> bool {
     }
 }
 
+fn while_let_binding() -> bool {
+    while let x = false {
+    //~^ ERROR mismatched types
+        if x {
+            return true;
+        }
+    }
+}
+
+fn while_let_tuple() -> bool {
+    while let (x, _) = (false, true) {
+    //~^ ERROR mismatched types
+        if x {
+            return true;
+        }
+    }
+}
+
 fn while_never_type() -> ! {
     while true {
     //~^ ERROR mismatched types

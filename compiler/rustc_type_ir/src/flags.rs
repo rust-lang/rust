@@ -79,17 +79,17 @@ bitflags::bitflags! {
         const HAS_TY_OPAQUE               = 1 << 12;
         /// Does this have `Inherent`?
         const HAS_TY_INHERENT             = 1 << 13;
-        /// Does this have `ConstKind::Unevaluated`?
-        const HAS_CT_PROJECTION           = 1 << 14;
+        /// Does this have `ConstKind::Alias`?
+        const HAS_CONST_ALIAS           = 1 << 14;
 
-        /// Does this have `Alias` or `ConstKind::Unevaluated`?
+        /// Does this have `Alias` or `ConstKind::Alias`?
         ///
         /// Rephrased, could this term be normalized further?
         const HAS_ALIAS                   = TypeFlags::HAS_TY_PROJECTION.bits()
                                           | TypeFlags::HAS_TY_FREE_ALIAS.bits()
                                           | TypeFlags::HAS_TY_OPAQUE.bits()
                                           | TypeFlags::HAS_TY_INHERENT.bits()
-                                          | TypeFlags::HAS_CT_PROJECTION.bits();
+                                          | TypeFlags::HAS_CONST_ALIAS.bits();
 
         /// Is a type or const error reachable?
         const HAS_NON_REGION_ERROR          = 1 << 15;
@@ -118,6 +118,11 @@ bitflags::bitflags! {
         /// Does this have any `ReErased` regions?
         const HAS_RE_ERASED               = 1 << 21;
 
+        /// Does this have any regions of any kind?
+        const HAS_REGIONS                 = TypeFlags::HAS_FREE_REGIONS.bits()
+                                          | TypeFlags::HAS_RE_BOUND.bits()
+                                          | TypeFlags::HAS_RE_ERASED.bits();
+
         /// Does this value have parameters/placeholders/inference variables which could be
         /// replaced later, in a way that would change the results of `impl` specialization?
         const STILL_FURTHER_SPECIALIZABLE = TypeFlags::HAS_TY_PARAM.bits()
@@ -139,8 +144,20 @@ bitflags::bitflags! {
         /// Does this type have any coroutines in it?
         const HAS_TY_CORO                 = 1 << 25;
 
-        /// Does this have have a `Bound(BoundVarIndexKind::Canonical, _)`?
+        /// Does this have a `Bound(BoundVarIndexKind::Canonical, _)`?
         const HAS_CANONICAL_BOUND         = 1 << 26;
+
+        /// Does this have any aliases with `IsRigid::Yes`?
+        ///
+        /// We have both rigid and non-rigid flags because both can be true for a single
+        /// subject. E.g. one arg is rigid while another is non-rigid for some ADTs.
+        const HAS_RIGID_ALIAS         = 1 << 27;
+
+        /// Does this have any aliases with `IsRigid::No`?
+        ///
+        /// We have a separate flag from `HAS_ALIAS` because `HAS_ALIAS` doesn't care
+        /// about rigidness while we rely on rigidness to skip renormalization.
+        const HAS_NON_RIGID_ALIAS         = 1 << 28;
     }
 }
 
@@ -192,7 +209,7 @@ impl<I: Interner> FlagComputation<I> {
     }
 
     fn add_flags(&mut self, flags: TypeFlags) {
-        self.flags = self.flags | flags;
+        self.flags |= flags;
     }
 
     /// indicates that `self` refers to something at binding level `binder`
@@ -290,14 +307,14 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_args(args.as_slice());
             }
 
-            ty::Alias(alias) => {
+            ty::Alias(is_rigid, alias) => {
+                self.add_is_rigid(is_rigid);
                 self.add_flags(match alias.kind {
                     ty::Projection { .. } => TypeFlags::HAS_TY_PROJECTION,
                     ty::Free { .. } => TypeFlags::HAS_TY_FREE_ALIAS,
                     ty::Opaque { .. } => TypeFlags::HAS_TY_OPAQUE,
                     ty::Inherent { .. } => TypeFlags::HAS_TY_INHERENT,
                 });
-
                 self.add_alias_ty(alias);
             }
 
@@ -415,8 +432,8 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_term(term);
             }
             ty::PredicateKind::DynCompatible(_def_id) => {}
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
-                self.add_const(uv);
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(alias_const)) => {
+                self.add_const(alias_const);
             }
             ty::PredicateKind::ConstEquate(expected, found) => {
                 self.add_const(expected);
@@ -460,9 +477,10 @@ impl<I: Interner> FlagComputation<I> {
 
     fn add_const_kind(&mut self, c: &ty::ConstKind<I>) {
         match *c {
-            ty::ConstKind::Unevaluated(uv) => {
-                self.add_args(uv.args.as_slice());
-                self.add_flags(TypeFlags::HAS_CT_PROJECTION);
+            ty::ConstKind::Alias(is_rigid, alias_const) => {
+                self.add_is_rigid(is_rigid);
+                self.add_args(alias_const.args.as_slice());
+                self.add_flags(TypeFlags::HAS_CONST_ALIAS);
             }
             ty::ConstKind::Infer(infer) => match infer {
                 ty::InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
@@ -521,6 +539,13 @@ impl<I: Interner> FlagComputation<I> {
                 ty::GenericArgKind::Lifetime(lt) => self.add_region(lt),
                 ty::GenericArgKind::Const(ct) => self.add_const(ct),
             }
+        }
+    }
+
+    fn add_is_rigid(&mut self, is_rigid: ty::IsRigid) {
+        match is_rigid {
+            ty::IsRigid::Yes => self.add_flags(TypeFlags::HAS_RIGID_ALIAS),
+            ty::IsRigid::No => self.add_flags(TypeFlags::HAS_NON_RIGID_ALIAS),
         }
     }
 

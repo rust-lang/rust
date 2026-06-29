@@ -1,6 +1,6 @@
 //@require-annotations-for-level: ERROR
 #![warn(clippy::map_identity)]
-#![allow(clippy::needless_return, clippy::disallowed_names)]
+#![expect(clippy::disallowed_names, clippy::needless_return)]
 
 fn main() {
     let x: [u16; 3] = [1, 2, 3];
@@ -95,7 +95,6 @@ fn issue13904() {
     //~| HELP: remove the call to `map`, and make `subindex` mutable
 
     // lint
-    #[allow(unused_mut)]
     let mut it = [1, 2, 3].into_iter();
     let _ = it.map(|x| x).next();
     //~^ map_identity

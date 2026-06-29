@@ -206,6 +206,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             })
         });
         llvm::set_linkage(g2, llvm::Linkage::InternalLinkage);
+        llvm::set_unnamed_address(g2, llvm::UnnamedAddr::Global);
         llvm::set_initializer(g2, g1);
         g2
     } else if cx.tcx.sess.target.arch == Arch::X86

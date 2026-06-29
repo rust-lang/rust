@@ -2,7 +2,7 @@ use rustc_ast::{
     self as ast, AttrVec, DUMMY_NODE_ID, GenericBounds, GenericParam, GenericParamKind, TyKind,
     WhereClause, token,
 };
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::ThinVec;
 
@@ -592,25 +592,47 @@ impl<'a> Parser<'a> {
         // * `for<'a> for<'b> Trait1<'a, 'b>: Trait2<'a /* ok */, 'b /* not ok */>`
         let (bound_vars, _) = self.parse_higher_ranked_binder()?;
 
-        // Parse type with mandatory colon and (possibly empty) bounds,
-        // or with mandatory equality sign and the second type.
         let ty = self.parse_ty_for_where_clause()?;
+
         if self.eat(exp!(Colon)) {
+            // The bounds may be empty; we intentionally accept predicates like  `Ty:`.
             let bounds = self.parse_generic_bounds()?;
-            Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
+
+            return Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                 bound_generic_params: bound_vars,
                 bounded_ty: ty,
                 bounds,
-            }))
-        // FIXME: Decide what should be used here, `=` or `==`.
-        // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
-        } else if self.eat(exp!(Eq)) || self.eat(exp!(EqEq)) {
-            let rhs_ty = self.parse_ty()?;
-            Ok(ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate { lhs_ty: ty, rhs_ty }))
-        } else {
-            self.maybe_recover_bounds_doubled_colon(&ty)?;
-            self.unexpected_any()
+            }));
         }
+
+        // NOTE: If we ever end up impl'ing and stabilizing equality predicates (#20041),
+        //       we need to pick between `=` and `==`, both is not an option!
+        if self.eat(exp!(Eq)) || self.eat(exp!(EqEq)) {
+            let lhs_ty = ty;
+            let rhs_ty = self.parse_ty()?;
+
+            // NOTE: If we ever end up impl'ing equality predicates,
+            //       we ought to track the binder in the AST node!
+            let _ = bound_vars;
+
+            let mut diag = self.dcx().struct_span_err(
+                lhs_ty.span.to(rhs_ty.span),
+                "general type equality constraints are not supported",
+            );
+            diag.note(
+                "see issue #20041 <https://github.com/rust-lang/rust/issues/20041> \
+                 for more information",
+            );
+            diag.span(lhs_ty.span.to(rhs_ty.span));
+            diag.span_label(lhs_ty.span.to(rhs_ty.span), "not supported");
+
+            suggest_replacing_equality_pred_with_assoc_item_constraint(&mut diag, *lhs_ty, *rhs_ty);
+
+            return Err(diag);
+        }
+
+        self.maybe_recover_bounds_doubled_colon(&ty)?;
+        self.unexpected_any()
     }
 
     pub(super) fn choose_generics_over_qpath(&self, start: usize) -> bool {
@@ -643,4 +665,62 @@ impl<'a> Parser<'a> {
                     })
                 || self.is_keyword_ahead(start + 1, &[kw::Const]))
     }
+}
+
+fn suggest_replacing_equality_pred_with_assoc_item_constraint(
+    diag: &mut Diag<'_>,
+    lhs_ty: ast::Ty,
+    rhs_ty: ast::Ty,
+) {
+    let TyKind::Path(qself, ast::Path { segments, .. }) = lhs_ty.kind else { return };
+
+    let mut parts = Vec::new();
+    let applicability = match qself {
+        // We have something like `Ty::Item<i32> = Rhs`.
+        None if let [self_ty_seg, assoc_item_seg] = &segments[..]
+            && self_ty_seg.ident.name != kw::PathRoot =>
+        {
+            parts.push((
+                self_ty_seg.span().between(assoc_item_seg.span()),
+                ": /* Trait */</* ... */".into(),
+            ));
+            Applicability::HasPlaceholders
+        }
+        Some(qself) if let [assoc_item_seg] = &segments[qself.position..] => {
+            parts.push((lhs_ty.span.until(qself.ty.span), String::new()));
+
+            // We have something like `<Option<usize> as self::Trait<i32>>::Item = Rhs`.
+            if let trait_segs @ [.., final_trait_seg] = &segments[..qself.position] {
+                parts.push((qself.ty.span.between(trait_segs[0].span()), ": ".into()));
+                let (span, snippet) = match &final_trait_seg.args {
+                    Some(args) => {
+                        let ast::GenericArgs::AngleBracketed(args) = args else { return };
+                        let Some(args) = args.args.last() else { return };
+                        (args.span(), ", ")
+                    }
+                    None => (final_trait_seg.span(), "<"),
+                };
+                parts.push((span.between(assoc_item_seg.span()), snippet.into()));
+                Applicability::MaybeIncorrect
+            }
+            // We have something like `<[u8]>::Item == Rhs`.
+            else {
+                parts.push((
+                    qself.ty.span.between(assoc_item_seg.span()),
+                    ": /* Trait */</* ... */".into(),
+                ));
+                Applicability::HasPlaceholders
+            }
+        }
+        _ => return,
+    };
+
+    parts.push((lhs_ty.span.between(rhs_ty.span), " = ".into()));
+    parts.push((rhs_ty.span.shrink_to_hi(), ">".into()));
+
+    diag.multipart_suggestion(
+        "replace it with an associated item constraint if possible",
+        parts,
+        applicability,
+    );
 }

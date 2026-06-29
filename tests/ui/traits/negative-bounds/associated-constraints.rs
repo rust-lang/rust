@@ -1,3 +1,4 @@
+//@ compile-flags: -Zinternal-testing-features
 #![feature(negative_bounds)]
 
 trait Trait {

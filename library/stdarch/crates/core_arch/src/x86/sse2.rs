@@ -29,6 +29,12 @@ pub fn _mm_pause() {
 /// the cache hierarchy.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clflush)
+///
+/// # Safety
+///
+/// Unlike the prefetch intrinsics, `CLFLUSH` is subject to all the permission
+/// checking and faults associated with a byte load, so `p` must point to a
+/// byte that is valid for reads.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(clflush))]
@@ -3236,7 +3242,7 @@ pub const fn _mm_unpacklo_pd(a: __m128d, b: __m128d) -> __m128d {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.sse2.pause"]
     fn pause();
     #[link_name = "llvm.x86.sse2.clflush"]

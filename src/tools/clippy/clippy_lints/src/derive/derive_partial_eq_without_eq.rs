@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
         && adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, args))
-            .all(|ty| implements_trait_with_env(cx.tcx, typing_env, ty, eq_trait_def_id, None, &[]))
+            .all(|ty| implements_trait_with_env(cx.tcx, typing_env, ty.skip_norm_wip(), eq_trait_def_id, None, &[]))
     {
         span_lint_hir_and_then(
             cx,

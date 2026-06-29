@@ -367,14 +367,15 @@ impl<'a> Parser<'a> {
         match (is_end_ahead, &self.token.kind) {
             (true, token::Or | token::OrOr) => {
                 // A `|` or possibly `||` token shouldn't be here. Ban it.
+                let token = pprust::token_to_string(&self.token);
                 self.dcx().emit_err(TrailingVertNotAllowed {
                     span: self.token.span,
                     start: lo,
                     suggestion: TrailingVertSuggestion {
                         span: self.prev_token.span.shrink_to_hi().with_hi(self.token.span.hi()),
-                        token: self.token,
+                        token: token.clone(),
                     },
-                    token: self.token,
+                    token,
                     note_double_vert: self.token.kind == token::OrOr,
                 });
                 self.bump();
@@ -496,18 +497,14 @@ impl<'a> Parser<'a> {
                 && self.look_ahead(1, Token::is_range_separator);
 
         let span = expr.span;
+        let mut diag = self.dcx().create_err(UnexpectedExpressionInPattern { span, is_bound });
+        // The unexpected expr's precedence. Not used directly in the error message, but
+        // needed for the stashing of this error to work correctly. We store a `u32` rather
+        // than an `ExprPrecedence` to avoid having to impl `IntoDiagArg` for
+        // `ExprPrecedence`.
+        diag.arg("expr_precedence", expr.precedence() as u32);
 
-        Some((
-            self.dcx()
-                .create_err(UnexpectedExpressionInPattern {
-                    span,
-                    is_bound,
-                    expr_precedence: expr.precedence(),
-                })
-                .stash(span, StashKey::ExprInPat)
-                .unwrap(),
-            span,
-        ))
+        Some((diag.stash(span, StashKey::ExprInPat).unwrap(), span))
     }
 
     /// Called by [`Parser::parse_stmt_without_recovery`], used to add statement-aware subdiagnostics to the errors stashed
@@ -919,7 +916,7 @@ impl<'a> Parser<'a> {
             // The user probably mistook `...` for a rest pattern `..`.
             self.dcx().emit_err(DotDotDotRestPattern {
                 span: lo,
-                suggestion: Some(lo.with_lo(lo.hi() - BytePos(1))),
+                suggestion: Some(lo),
                 var_args: None,
             });
             PatKind::Rest
@@ -1225,7 +1222,7 @@ impl<'a> Parser<'a> {
     pub(super) fn inclusive_range_with_incorrect_end(&mut self) -> ErrorGuaranteed {
         let tok = &self.token;
         let span = self.prev_token.span;
-        // If the user typed "..==" instead of "..=", we want to give them
+        // If the user typed "..==" or "...=" instead of "..=", we want to give them
         // a specific error message telling them to use "..=".
         // If they typed "..=>", suggest they use ".. =>".
         // Otherwise, we assume that they meant to type a half open exclusive
@@ -1243,14 +1240,10 @@ impl<'a> Parser<'a> {
 
                 self.dcx().emit_err(InclusiveRangeExtraEquals { span: span_with_eq })
             }
-            token::Gt if no_space => {
-                let after_pat = span.with_hi(span.hi() - BytePos(1)).shrink_to_hi();
-                self.dcx().emit_err(InclusiveRangeMatchArrow { span, arrow: tok.span, after_pat })
+            token::Gt if self.prev_token.kind == token::DotDotEq && no_space => {
+                self.dcx().emit_err(InclusiveRangeMatchArrow { span, arrow: tok.span })
             }
-            _ => self.dcx().emit_err(InclusiveRangeNoEnd {
-                span,
-                suggestion: span.with_lo(span.hi() - BytePos(1)),
-            }),
+            _ => self.dcx().emit_err(InclusiveRangeNoEnd { span }),
         }
     }
 

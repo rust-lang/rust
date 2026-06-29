@@ -1,27 +1,28 @@
 //! Attributes that are only used on function prototypes.
 
-use rustc_feature::{AttributeTemplate, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, MirDialect, MirPhase};
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::SingleAttributeParser;
-use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
-use crate::session_diagnostics;
+use crate::context::AcceptContext;
+use crate::parser::{ArgParser, NameValueParser};
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::Allow;
+use crate::{AttributeTemplate, session_diagnostics, template, unstable};
 
 pub(crate) struct CustomMirParser;
 
-impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
+impl SingleAttributeParser for CustomMirParser {
     const PATH: &[rustc_span::Symbol] = &[sym::custom_mir];
+    const STABILITY: AttributeStability = unstable!(custom_mir);
 
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
 
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"dialect = "...", phase = "...""#]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let list = cx.expect_list(args, cx.attr_span)?;
 
         let mut dialect = None;
@@ -29,23 +30,23 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
         let mut failed = false;
 
         for item in list.mixed() {
-            let Some(meta_item) = item.meta_item() else {
-                cx.adcx().expected_name_value(item.span(), None);
+            let Some((path, arg)) = cx.expect_name_value(item, item.span(), None) else {
                 failed = true;
                 break;
             };
 
-            if let Some(arg) = meta_item.word_is(sym::dialect) {
-                extract_value(cx, sym::dialect, arg, meta_item.span(), &mut dialect, &mut failed);
-            } else if let Some(arg) = meta_item.word_is(sym::phase) {
-                extract_value(cx, sym::phase, arg, meta_item.span(), &mut phase, &mut failed);
-            } else if let Some(..) = meta_item.path().word() {
-                cx.adcx().expected_specific_argument(meta_item.span(), &[sym::dialect, sym::phase]);
-                failed = true;
-            } else {
-                cx.adcx().expected_name_value(meta_item.span(), None);
-                failed = true;
-            };
+            match path.name {
+                sym::dialect => {
+                    extract_value(cx, sym::dialect, arg, item.span(), &mut dialect, &mut failed)
+                }
+                sym::phase => {
+                    extract_value(cx, sym::phase, arg, item.span(), &mut phase, &mut failed)
+                }
+                _ => {
+                    cx.adcx().expected_specific_argument(item.span(), &[sym::dialect, sym::phase]);
+                    failed = true;
+                }
+            }
         }
 
         let dialect = parse_dialect(cx, dialect, &mut failed);
@@ -56,14 +57,14 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
             return None;
         }
 
-        Some(AttributeKind::CustomMir(dialect, phase, cx.attr_span))
+        Some(AttributeKind::CustomMir(dialect, phase))
     }
 }
 
-fn extract_value<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn extract_value(
+    cx: &mut AcceptContext<'_, '_>,
     key: Symbol,
-    arg: &ArgParser,
+    val: &NameValueParser,
     span: Span,
     out_val: &mut Option<(Symbol, Span)>,
     failed: &mut bool,
@@ -74,14 +75,7 @@ fn extract_value<S: Stage>(
         return;
     }
 
-    let Some(val) = arg.name_value() else {
-        cx.adcx().expected_name_value(span, Some(key));
-        *failed = true;
-        return;
-    };
-
-    let Some(value_sym) = val.value_as_str() else {
-        cx.adcx().expected_string_literal(val.value_span, Some(val.value_as_lit()));
+    let Some(value_sym) = cx.expect_string_literal(val) else {
         *failed = true;
         return;
     };
@@ -89,8 +83,8 @@ fn extract_value<S: Stage>(
     *out_val = Some((value_sym, val.value_span));
 }
 
-fn parse_dialect<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn parse_dialect(
+    cx: &mut AcceptContext<'_, '_>,
     dialect: Option<(Symbol, Span)>,
     failed: &mut bool,
 ) -> Option<(MirDialect, Span)> {
@@ -111,8 +105,8 @@ fn parse_dialect<S: Stage>(
     Some((dialect, span))
 }
 
-fn parse_phase<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn parse_phase(
+    cx: &mut AcceptContext<'_, '_>,
     phase: Option<(Symbol, Span)>,
     failed: &mut bool,
 ) -> Option<(MirPhase, Span)> {
@@ -136,8 +130,8 @@ fn parse_phase<S: Stage>(
     Some((phase, span))
 }
 
-fn check_custom_mir<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn check_custom_mir(
+    cx: &mut AcceptContext<'_, '_>,
     dialect: Option<(MirDialect, Span)>,
     phase: Option<(MirPhase, Span)>,
     failed: &mut bool,

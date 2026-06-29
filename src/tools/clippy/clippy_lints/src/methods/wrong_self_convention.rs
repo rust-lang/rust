@@ -121,7 +121,7 @@ pub(super) fn check<'tcx>(
 
                     format!("methods with the following characteristics: ({s})")
                 } else {
-                    format!("methods called {}", &conventions[0])
+                    format!("methods called {}", conventions[0])
                 }
             };
 

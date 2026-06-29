@@ -16,7 +16,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 // fn foo() -> i32 { 42i32 }
 // ```
-pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let (fn_type, tail_expr, builder_edit_pos) = extract_tail(ctx)?;
     let module = ctx.sema.scope(tail_expr.syntax())?.module();
     let ty = ctx.sema.type_of_expr(&peel_blocks(tail_expr.clone()))?.adjusted();
@@ -133,7 +133,7 @@ fn peel_blocks(mut expr: ast::Expr) -> ast::Expr {
     expr
 }
 
-fn extract_tail(ctx: &AssistContext<'_>) -> Option<(FnType, ast::Expr, InsertOrReplace)> {
+fn extract_tail(ctx: &AssistContext<'_, '_>) -> Option<(FnType, ast::Expr, InsertOrReplace)> {
     let node = ctx.find_node_at_offset::<Either<ast::ClosureExpr, ast::Fn>>()?;
     let (fn_type, tail_expr, return_type_range, action) = match node {
         Either::Left(closure) => {

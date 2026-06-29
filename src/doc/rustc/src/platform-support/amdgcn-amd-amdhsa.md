@@ -59,11 +59,6 @@ Build the library as `cdylib`:
 # Cargo.toml
 [lib]
 crate-type = ["cdylib"]
-
-[profile.dev]
-lto = true # LTO must be explicitly enabled for now
-[profile.release]
-lto = true
 ```
 
 The target-cpu must be from the list [supported by LLVM] (or printed with `rustc --target amdgcn-amd-amdhsa --print target-cpus`).

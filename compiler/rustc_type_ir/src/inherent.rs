@@ -53,22 +53,30 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
 
-    fn new_alias(interner: I, alias_ty: ty::AliasTy<I>) -> Self;
+    fn new_alias(interner: I, is_rigid: ty::IsRigid, alias_ty: ty::AliasTy<I>) -> Self;
 
-    fn new_projection_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self {
+    fn new_projection_from_args(
+        interner: I,
+        is_rigid: ty::IsRigid,
+        def_id: I::TraitAssocTyId,
+        args: I::GenericArgs,
+    ) -> Self {
         Self::new_alias(
             interner,
+            is_rigid,
             ty::AliasTy::new_from_args(interner, ty::AliasTyKind::Projection { def_id }, args),
         )
     }
 
     fn new_projection(
         interner: I,
-        def_id: I::DefId,
+        is_rigid: ty::IsRigid,
+        def_id: I::TraitAssocTyId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> Self {
         Self::new_alias(
             interner,
+            is_rigid,
             ty::AliasTy::new(interner, ty::AliasTyKind::Projection { def_id }, args),
         )
     }
@@ -186,7 +194,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Alias(_)
+            | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Placeholder(_)
@@ -203,42 +211,6 @@ pub trait Tys<I: Interner<Tys = Self>>:
     fn inputs(self) -> I::FnInputTys;
 
     fn output(self) -> I::Ty;
-}
-
-#[rust_analyzer::prefer_underscore_import]
-pub trait FSigKind<I: Interner<FSigKind = Self>>: Copy + Debug + Hash + Eq {
-    /// The identity function.
-    fn fn_sig_kind(self) -> Self;
-
-    /// Create a new FnSigKind with the given ABI, safety, and C-style variadic flag.
-    fn new(abi: I::Abi, safety: I::Safety, c_variadic: bool) -> Self;
-
-    /// Returns the ABI.
-    fn abi(self) -> I::Abi;
-
-    /// Returns the safety mode.
-    fn safety(self) -> I::Safety;
-
-    /// Do the function arguments end with a C-style variadic argument?
-    fn c_variadic(self) -> bool;
-}
-
-#[rust_analyzer::prefer_underscore_import]
-pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
-    /// The identity function.
-    fn abi(self) -> Self;
-
-    /// The ABI `extern "Rust"`.
-    fn rust() -> I::Abi;
-
-    /// Whether this ABI is `extern "Rust"`.
-    fn is_rust(self) -> bool;
-
-    /// Pack the ABI into a small dense integer, so it can be stored as packed `FnSigKind` flags.
-    fn pack_abi(self) -> u8;
-
-    /// Unpack the ABI from packed `FnSigKind` flags.
-    fn unpack_abi(abi_index: u8) -> Self;
 }
 
 #[rust_analyzer::prefer_underscore_import]
@@ -308,7 +280,7 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_placeholder(interner: I, param: ty::PlaceholderConst<I>) -> Self;
 
-    fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
+    fn new_alias(interner: I, is_rigid: ty::IsRigid, alias_const: ty::AliasConst<I>) -> Self;
 
     fn new_expr(interner: I, expr: I::ExprConst) -> Self;
 
@@ -432,17 +404,28 @@ pub trait Term<I: Interner<Term = Self>>:
         }
     }
 
-    fn to_alias_term(self, interner: I) -> Option<ty::AliasTerm<I>> {
+    fn to_alias_term(self) -> Option<ty::AliasTerm<I>> {
         match self.kind() {
             ty::TermKind::Ty(ty) => match ty.kind() {
-                ty::Alias(alias_ty) => Some(alias_ty.into()),
+                ty::Alias(_, alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => {
-                    Some(ty::AliasTerm::from_unevaluated_const(interner, uv))
-                }
+                ty::ConstKind::Alias(_, alias_const) => Some(alias_const.into()),
                 _ => None,
+            },
+        }
+    }
+
+    fn is_non_rigid_alias(self) -> bool {
+        match self.kind() {
+            ty::TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(is_rigid, _) => is_rigid == ty::IsRigid::No,
+                _ => false,
+            },
+            ty::TermKind::Const(ct) => match ct.kind() {
+                ty::ConstKind::Alias(is_rigid, _) => is_rigid == ty::IsRigid::No,
+                _ => false,
             },
         }
     }
@@ -506,20 +489,13 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitPredicate<I>>
+    + UpcastFrom<I, ty::ProjectionPredicate<I>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
     + Elaboratable<I>
 {
     fn as_clause(self) -> Option<I::Clause>;
-
-    fn as_normalizes_to(self) -> Option<ty::Binder<I, ty::NormalizesTo<I>>> {
-        let kind = self.kind();
-        match kind.skip_binder() {
-            ty::PredicateKind::NormalizesTo(pred) => Some(kind.rebind(pred)),
-            _ => None,
-        }
-    }
 
     fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
@@ -562,6 +538,18 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + Elaboratable<I>
 {
     fn as_predicate(self) -> I::Predicate;
+
+    fn as_type_outlives_clause(self) -> Option<ty::Binder<I, ty::OutlivesPredicate<I, I::Ty>>> {
+        self.kind()
+            .map_bound(|clause| {
+                if let ty::ClauseKind::TypeOutlives(outlives) = clause {
+                    Some(outlives)
+                } else {
+                    None
+                }
+            })
+            .transpose()
+    }
 
     fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitPredicate<I>>> {
         self.kind()
@@ -665,25 +653,32 @@ pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
 
+    fn generic_const_args(self) -> bool;
+
     fn coroutine_clone(self) -> bool;
 
     fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
 }
 
 #[rust_analyzer::prefer_underscore_import]
-pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+pub trait DefId<I: Interner, Local = <I as Interner>::LocalDefId>:
+    Copy + Debug + Hash + Eq + TypeFoldable<I>
+{
     fn is_local(self) -> bool;
 
-    fn as_local(self) -> Option<I::LocalDefId>;
+    fn as_local(self) -> Option<Local>;
 }
 
-pub trait SpecificDefId<I: Interner>:
-    DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>
+pub trait SpecificDefId<I: Interner, Local = <I as Interner>::LocalDefId>:
+    DefId<I, Local> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>
 {
 }
 
-impl<I: Interner, T: DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>>
-    SpecificDefId<I> for T
+impl<
+    I: Interner,
+    T: DefId<I, Local> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>,
+    Local,
+> SpecificDefId<I, Local> for T
 {
 }
 
@@ -713,6 +708,12 @@ pub trait OpaqueTypeStorageEntries: Debug + Copy + Default {
     /// reevaluating a goal. For now, this is only when the number of non-duplicated
     /// entries changed.
     fn needs_reevaluation(self, canonicalized: usize) -> bool;
+}
+
+pub trait BoundVarKinds<I: Interner>:
+    Copy + Debug + Hash + Eq + SliceLike<Item = ty::BoundVariableKind<I>> + Default
+{
+    fn from_vars(cx: I, iter: impl IntoIterator<Item = ty::BoundVariableKind<I>>) -> Self;
 }
 
 pub trait SliceLike: Sized + Copy {

@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 
 use arrayvec::ArrayVec;
 use clippy_config::Conf;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{
     FormatArgsStorage, FormatParamUsage, MacroCall, find_format_arg_expr, format_arg_removal_span,
     format_placeholder_format_span, is_assert_macro, is_format_macro, is_panic, matching_root_macro_call,
@@ -10,14 +10,14 @@ use clippy_utils::macros::{
 };
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanRangeExt, snippet};
+use clippy_utils::source::{SpanExt, snippet, snippet_opt};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_from_proc_macro, is_in_test, sym, trait_ref_of_method};
+use clippy_utils::{is_from_proc_macro, is_in_test, peel_hir_expr_while, sym, trait_ref_of_method};
 use itertools::Itertools;
-use rustc_middle::ty::Unnormalized;
+use rustc_ast::FormatTrait::{Binary, Debug, Display, LowerExp, LowerHex, Octal, Pointer, UpperExp, UpperHex};
 use rustc_ast::{
-    FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
-    FormatPlaceholder, FormatTrait,
+    BorrowKind, FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount,
+    FormatOptions, FormatPlaceholder, Mutability,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -25,7 +25,7 @@ use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
 use rustc_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
-use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Unnormalized, Upcast};
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition::Edition2021;
 use rustc_span::{BytePos, Pos, Span, Symbol};
@@ -172,6 +172,11 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `Debug` formatting (`{:?}`) applied to an `OsStr` or `Path`.
     ///
+    /// This includes:
+    /// - Format specifiers on `format_args!()` (width, precision have no effect)
+    /// - Format width too small for the format trait (e.g. `{:#02x}` outputs "0x1"
+    ///   so width 2 has no effect; minimum is 4 for alternate hex/octal/binary)
+    ///
     /// ### Why is this bad?
     /// Rust doesn't guarantee what `Debug` formatting looks like, and it could
     /// change in the future. `OsStr`s and `Path`s can be `Display` formatted
@@ -232,6 +237,11 @@ declare_clippy_lint! {
     /// Detects [formatting parameters] that have no effect on the output of
     /// `format!()`, `println!()` or similar macros.
     ///
+    /// This includes:
+    /// - Format specifiers on `format_args!()` (width, precision have no effect)
+    /// - Format width too small for the format trait (e.g. `{:#02x}` outputs "0x1"
+    ///   so width 2 has no effect; minimum is 4 for alternate hex/octal/binary)
+    ///
     /// ### Why is this bad?
     /// Shorter format specifiers are easier to read, it may also indicate that
     /// an expected formatting operation such as adding padding isn't happening.
@@ -241,6 +251,9 @@ declare_clippy_lint! {
     /// println!("{:.}", 1.0);
     ///
     /// println!("not padded: {:5}", format_args!("..."));
+    ///
+    /// // width 2 has no effect for alternate hex (outputs "0x1")
+    /// format!("{:#02x}", 1_u8);
     /// ```
     /// Use instead:
     /// ```no_run
@@ -249,6 +262,8 @@ declare_clippy_lint! {
     /// println!("not padded: {}", format_args!("..."));
     /// // OR
     /// println!("padded: {:5}", format!("..."));
+    ///
+    /// format!("{:#04x}", 1_u8);  // width 4 for two-digit zero-padded hex
     /// ```
     ///
     /// [formatting parameters]: https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters
@@ -256,6 +271,34 @@ declare_clippy_lint! {
     pub UNUSED_FORMAT_SPECS,
     complexity,
     "use of a format specifier that has no effect"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects format!-style macros (e.g. `format!`, `println!`, `write!`) where an argument
+    /// is passed with an explicit `&` but the value is already a reference, resulting in a
+    /// double reference (e.g. `&&T`).
+    ///
+    /// ### Why is this bad?
+    /// The extra `&` is redundant and can make the code less clear. Format macros take
+    /// references to the arguments internally, so passing `&x` when `x` is already a
+    /// reference produces a double reference. The compiler is currently unable to
+    /// optimize double references, which results in about 6% degradation per call.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let s: &str = "hello";
+    /// println!("{}", &s);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let s: &str = "hello";
+    /// println!("{}", s);
+    /// ```
+    #[clippy::version = "1.97.0"]
+    pub USELESS_BORROWS_IN_FORMATTING,
+    perf,
+    "redundant reference in format args causes double reference"
 }
 
 impl_lint_pass!(FormatArgs<'_> => [
@@ -266,6 +309,7 @@ impl_lint_pass!(FormatArgs<'_> => [
     UNNECESSARY_DEBUG_FORMATTING,
     UNNECESSARY_TRAILING_COMMA,
     UNUSED_FORMAT_SPECS,
+    USELESS_BORROWS_IN_FORMATTING,
 ]);
 
 #[expect(clippy::struct_field_names)]
@@ -336,7 +380,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
     /// Check if there is a comma after the last format macro arg.
     fn check_trailing_comma(&self) {
         let span = self.macro_call.span;
-        if let Some(src) = span.get_source_text(self.cx)
+        if let Some(src) = span.get_text(self.cx)
             && let Some(src) = src.strip_suffix([')', ']', '}'])
             && let src = src.trim_end_matches(|c: char| c.is_whitespace() && c != '\n')
             && let Some(src) = src.strip_suffix(',')
@@ -364,8 +408,21 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 && let Some(arg_expr) = find_format_arg_expr(self.expr, arg)
             {
                 self.check_unused_format_specifier(placeholder, arg_expr);
+                self.check_useless_format_width(placeholder);
+                self.check_useless_borrows_in_formatting(placeholder, arg_expr);
 
-                if placeholder.format_trait == FormatTrait::Display
+                // Check width and precision arguments the same way as the value
+                for opt in [&placeholder.format_options.width, &placeholder.format_options.precision] {
+                    if let Some(FormatCount::Argument(position)) = opt.as_ref()
+                        && let Ok(pos_index) = position.index
+                        && let Some(pos_arg) = self.format_args.arguments.all_args().get(pos_index)
+                        && let Some(pos_arg_expr) = find_format_arg_expr(self.expr, pos_arg)
+                    {
+                        self.check_useless_borrows_in_formatting(placeholder, pos_arg_expr);
+                    }
+                }
+
+                if placeholder.format_trait == Display
                     && placeholder.format_options == FormatOptions::default()
                     && !self.is_aliased(index)
                 {
@@ -374,7 +431,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                     self.check_to_string_in_format_args(name, arg_expr);
                 }
 
-                if placeholder.format_trait == FormatTrait::Debug {
+                if placeholder.format_trait == Debug {
                     let name = self.cx.tcx.item_name(self.macro_call.def_id);
                     self.check_unnecessary_debug_formatting(name, arg_expr);
                     if let Some(span) = placeholder.span
@@ -384,12 +441,62 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                     }
                 }
 
-                if placeholder.format_trait == FormatTrait::Pointer
+                if placeholder.format_trait == Pointer
                     && let Some(span) = placeholder.span
                 {
                     span_lint(self.cx, POINTER_FORMAT, span, "pointer formatting detected");
                 }
             }
+        }
+    }
+
+    fn check_useless_borrows_in_formatting(&self, placeholder: &FormatPlaceholder, arg_expr: &Expr<'tcx>) {
+        // Updated while peeling:
+        let mut only_mutable = true;
+        let mut has_mutable = false;
+
+        if !arg_expr.span.from_expansion()
+            && !is_from_proc_macro(self.cx, arg_expr)
+            && let Some(fmt_trait) = match placeholder.format_trait {
+                Display => self.cx.tcx.get_diagnostic_item(sym::Display),
+                Debug => self.cx.tcx.get_diagnostic_item(sym::Debug),
+                _ => None,
+            }
+            && let Some(sized_trait) = self.cx.tcx.lang_items().sized_trait()
+            && let peeled_expr = peel_hir_expr_while(arg_expr, |e| {
+                // Need to handle `&&&T` to `&T` when a single ref is still required
+                if let ExprKind::AddrOf(BorrowKind::Ref, m, e) = e.kind
+                    && let ty = self.cx.typeck_results().expr_ty(e)
+                    && implements_trait(self.cx, ty, sized_trait, &[])
+                    && implements_trait(self.cx, ty, fmt_trait, &[])
+                {
+                    only_mutable = only_mutable && m == Mutability::Mut;
+                    has_mutable = has_mutable || m == Mutability::Mut;
+                    Some(e)
+                } else {
+                    None
+                }
+            })
+            && !std::ptr::eq(arg_expr, peeled_expr)
+            && let Some(peeled_snippet) = snippet_opt(self.cx, peeled_expr.span)
+        {
+            let name = self.cx.tcx.item_name(self.macro_call.def_id);
+            let message = if only_mutable {
+                "remove the redundant `&mut`"
+            } else if has_mutable {
+                "remove the redundant `&`/`&mut`"
+            } else {
+                "remove the redundant `&`"
+            };
+            span_lint_and_sugg(
+                self.cx,
+                USELESS_BORROWS_IN_FORMATTING,
+                arg_expr.span,
+                format!("redundant reference in `{name}!` argument"),
+                message,
+                peeled_snippet,
+                Applicability::MachineApplicable,
+            );
         }
     }
 
@@ -439,6 +546,30 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                         );
                     }
                 },
+            );
+        }
+    }
+
+    /// Lint when format width has no effect on the output because the format trait's
+    /// minimum output is larger (e.g. `{:#02X}` outputs "0x1" so width 2 has no effect).
+    fn check_useless_format_width(&self, placeholder: &FormatPlaceholder) {
+        let min_width = match placeholder.format_trait {
+            // 0x prefix, e.g. 0x1, 0o1, 0b1
+            LowerHex | UpperHex | Octal | Binary if placeholder.format_options.alternate => 4,
+            LowerExp | UpperExp | Pointer => 4, // e.g. 1e0 with exponent, 0x1 for pointer
+            _ => return,
+        };
+        if let Some(FormatCount::Literal(width_value)) = placeholder.format_options.width
+            && width_value < min_width
+            && let Some(placeholder_span) = placeholder.span
+        {
+            span_lint_and_help(
+                self.cx,
+                UNUSED_FORMAT_SPECS,
+                placeholder_span,
+                "format width has no effect on the output for this format trait",
+                None,
+                format!("consider removing the width or increasing it to at least {min_width}"),
             );
         }
     }
@@ -563,7 +694,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
             && implements_trait(cx, target, display_trait_id, &[])
             && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
-            && let Some(receiver_snippet) = receiver.span.source_callsite().get_source_text(cx)
+            && let Some(receiver_snippet) = receiver.span.source_callsite().get_text(cx)
         {
             let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
             if n_needed_derefs == 0 && !needs_ref {
@@ -716,7 +847,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                     };
                     let selection = SelectionContext::new(&infcx).select(&obligation);
                     let derived = if let Ok(Some(Selection::UserDefined(data))) = selection {
-                        find_attr!(tcx, data.impl_def_id, AutomaticallyDerived(..))
+                        find_attr!(tcx, data.impl_def_id, AutomaticallyDerived)
                     } else {
                         false
                     };
@@ -725,13 +856,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 };
                 let pointer_debug = derived_debug
                     && adt.all_fields().any(|f| {
-                        self.has_pointer_debug(
-                            tcx.normalize_erasing_regions(
-                                typing_env,
-                                Unnormalized::new_wip(f.ty(tcx, args))
-                            ),
-                            depth,
-                        )
+                        self.has_pointer_debug(tcx.normalize_erasing_regions(typing_env, f.ty(tcx, args)), depth)
                     });
                 self.has_pointer_format.insert(ty, pointer_debug);
                 pointer_debug

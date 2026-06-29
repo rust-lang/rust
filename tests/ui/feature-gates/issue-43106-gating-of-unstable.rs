@@ -6,29 +6,43 @@
 
 #![unstable()]
 //~^ ERROR stability attributes may not be used outside of the standard library
+//~| ERROR missing 'issue'
+//~| ERROR missing 'feature'
 
 #[unstable()]
 //~^ ERROR stability attributes may not be used outside of the standard library
+//~| ERROR missing 'issue'
+//~| ERROR missing 'feature'
 mod unstable {
     mod inner {
         #![unstable()]
         //~^ ERROR stability attributes may not be used outside of the standard library
+        //~| ERROR missing 'issue'
+        //~| ERROR missing 'feature'
     }
 
     #[unstable()]
     //~^ ERROR stability attributes may not be used outside of the standard library
+    //~| ERROR missing 'issue'
+    //~| ERROR missing 'feature'
     fn f() {}
 
     #[unstable()]
     //~^ ERROR stability attributes may not be used outside of the standard library
+    //~| ERROR missing 'issue'
+    //~| ERROR missing 'feature'
     struct S;
 
     #[unstable()]
     //~^ ERROR stability attributes may not be used outside of the standard library
+    //~| ERROR missing 'issue'
+    //~| ERROR missing 'feature'
     type T = S;
 
     #[unstable()]
     //~^ ERROR stability attributes may not be used outside of the standard library
+    //~| ERROR missing 'issue'
+    //~| ERROR missing 'feature'
     impl S {}
 }
 

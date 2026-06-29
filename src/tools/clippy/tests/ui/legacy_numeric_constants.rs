@@ -1,12 +1,12 @@
 //@aux-build:proc_macros.rs
-//@require-annotations-for-level: WARN
-#![allow(clippy::no_effect, deprecated, unused)]
-#![allow(clippy::legacy_numeric_constants)] // For imports.
+#![warn(clippy::legacy_numeric_constants)]
+#![expect(renamed_and_removed_lints, clippy::no_effect, clippy::useless_attribute)]
 
 #[macro_use]
 extern crate proc_macros;
 
 pub mod a {
+    #[expect(legacy_numeric_constants)]
     pub use std::u128;
 }
 
@@ -16,58 +16,42 @@ macro_rules! b {
             #[warn(clippy::legacy_numeric_constants)]
             fn b() {
                 let x = std::u64::MAX;
-                //~^ ERROR: usage of a legacy numeric constant
-                //~| HELP: use the associated constant instead
+                //~^ legacy_numeric_constants
             }
         }
     };
 }
 
-use std::u8::MIN;
-use std::u32::MAX;
-use std::{f64, u32};
+#[expect(legacy_numeric_constants)]
+use std::{f64, u8::MIN, u32, u32::MAX};
 
-#[warn(clippy::legacy_numeric_constants)]
 fn main() {
     std::f32::EPSILON;
-    //~^ ERROR: usage of a legacy numeric constant
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     std::u8::MIN;
-    //~^ ERROR: usage of a legacy numeric constant
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     std::usize::MIN;
-    //~^ ERROR: usage of a legacy numeric constant
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     std::u32::MAX;
-    //~^ ERROR: usage of a legacy numeric constant
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     core::u32::MAX;
-    //~^ ERROR: usage of a legacy numeric constant
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     MAX;
-    //~^ ERROR: usage of a legacy numeric constant
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     i32::max_value();
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     u8::max_value();
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     u8::min_value();
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     ::std::u8::MIN;
-    //~^ ERROR: usage of a legacy numeric constant
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     ::std::primitive::u8::min_value();
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     std::primitive::i32::max_value();
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     self::a::u128::MAX;
-    //~^ ERROR: usage of a legacy numeric constant
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     u32::MAX;
     u128::MAX;
     f32::EPSILON;
@@ -80,33 +64,24 @@ fn main() {
     b!();
 
     <std::primitive::i32>::max_value();
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     [(0, "", std::i128::MAX)];
-    //~^ ERROR: usage of a legacy numeric constant
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     (i32::max_value());
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     assert_eq!(0, -(i32::max_value()));
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     (std::i128::MAX);
-    //~^ ERROR: usage of a legacy numeric constant
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     (<u32>::max_value());
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     ((i32::max_value)());
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
     type Ω = i32;
     Ω::max_value();
-    //~^ ERROR: usage of a legacy numeric method
-    //~| HELP: use the associated constant instead
+    //~^ legacy_numeric_constants
 }
 
-#[warn(clippy::legacy_numeric_constants)]
 fn ext() {
     external! {
         ::std::primitive::u8::MIN;
@@ -126,15 +101,13 @@ fn allow() {
     use std::u64;
 }
 
-#[warn(clippy::legacy_numeric_constants)]
 #[clippy::msrv = "1.42.0"]
 fn msrv_too_low() {
     std::u32::MAX;
 }
 
-#[warn(clippy::legacy_numeric_constants)]
 #[clippy::msrv = "1.43.0"]
 fn msrv_juust_right() {
     std::u32::MAX;
-    //~^ ERROR: usage of a legacy numeric constant
+    //~^ legacy_numeric_constants
 }

@@ -1,11 +1,11 @@
-//! This test exercises the combined effect of the `cfg(target_has_atomic_equal_alignment = "...")`
-//! implementation in the compiler plus usage of said `cfg(target_has_atomic_equal_alignment)` in
-//! `core` for the `Atomic64::from_mut` API.
+//! This test exercises the combined effect of the
+//! `cfg(target_has_atomic_primitive_alignment = "...")` implementation in the compiler plus usage
+//! of said `cfg(target_has_atomic_primitive_alignment)` in `core` for the `Atomic64::from_mut` API.
 //!
 //! This test is a basic smoke test: that `AtomicU64::from_mut` is gated by
-//! `#[cfg(target_has_atomic_equal_alignment = "8")]`, which is only available on platforms where
-//! `AtomicU64` has the same alignment as `u64`. This is notably *not* satisfied by `x86_32`, where
-//! they have differing alignments. Thus, `AtomicU64::from_mut` should *not* be available on
+//! `#[cfg(target_has_atomic_primitive_alignment = "64")]`, which is only available on platforms
+//! where `AtomicU64` has the same alignment as `u64`. This is notably *not* satisfied by `x86_32`,
+//! where they have differing alignments. Thus, `AtomicU64::from_mut` should *not* be available on
 //! `x86_32` linux and should report assoc item not found, if the `cfg` is working correctly.
 //! Conversely, `AtomicU64::from_mut` *should* be available on `x86_64` linux where the alignment
 //! matches.

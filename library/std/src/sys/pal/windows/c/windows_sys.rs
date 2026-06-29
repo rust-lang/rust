@@ -27,6 +27,10 @@ windows_link::link!("kernel32.dll" "system" fn ExitProcess(uexitcode : u32) -> !
 windows_link::link!("kernel32.dll" "system" fn FindClose(hfindfile : HANDLE) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn FindFirstFileExW(lpfilename : PCWSTR, finfolevelid : FINDEX_INFO_LEVELS, lpfindfiledata : *mut core::ffi::c_void, fsearchop : FINDEX_SEARCH_OPS, lpsearchfilter : *const core::ffi::c_void, dwadditionalflags : FIND_FIRST_EX_FLAGS) -> HANDLE);
 windows_link::link!("kernel32.dll" "system" fn FindNextFileW(hfindfile : HANDLE, lpfindfiledata : *mut WIN32_FIND_DATAW) -> BOOL);
+windows_link::link!("kernel32.dll" "system" fn FlsAlloc(lpcallback : PFLS_CALLBACK_FUNCTION) -> u32);
+windows_link::link!("kernel32.dll" "system" fn FlsFree(dwflsindex : u32) -> BOOL);
+windows_link::link!("kernel32.dll" "system" fn FlsGetValue(dwflsindex : u32) -> *mut core::ffi::c_void);
+windows_link::link!("kernel32.dll" "system" fn FlsSetValue(dwflsindex : u32, lpflsdata : *const core::ffi::c_void) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn FlushFileBuffers(hfile : HANDLE) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn FormatMessageW(dwflags : FORMAT_MESSAGE_OPTIONS, lpsource : *const core::ffi::c_void, dwmessageid : u32, dwlanguageid : u32, lpbuffer : PWSTR, nsize : u32, arguments : *const *const i8) -> u32);
 windows_link::link!("kernel32.dll" "system" fn FreeEnvironmentStringsW(penv : PCWSTR) -> BOOL);
@@ -52,6 +56,7 @@ windows_link::link!("kernel32.dll" "system" fn GetFullPathNameW(lpfilename : PCW
 windows_link::link!("kernel32.dll" "system" fn GetLastError() -> WIN32_ERROR);
 windows_link::link!("kernel32.dll" "system" fn GetModuleFileNameW(hmodule : HMODULE, lpfilename : PWSTR, nsize : u32) -> u32);
 windows_link::link!("kernel32.dll" "system" fn GetModuleHandleA(lpmodulename : PCSTR) -> HMODULE);
+windows_link::link!("kernel32.dll" "system" fn GetModuleHandleExW(dwflags : u32, lpmodulename : PCWSTR, phmodule : *mut HMODULE) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn GetModuleHandleW(lpmodulename : PCWSTR) -> HMODULE);
 windows_link::link!("kernel32.dll" "system" fn GetOverlappedResult(hfile : HANDLE, lpoverlapped : *const OVERLAPPED, lpnumberofbytestransferred : *mut u32, bwait : BOOL) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn GetProcAddress(hmodule : HMODULE, lpprocname : PCSTR) -> FARPROC);
@@ -67,6 +72,7 @@ windows_link::link!("kernel32.dll" "system" fn GetWindowsDirectoryW(lpbuffer : P
 windows_link::link!("kernel32.dll" "system" fn InitOnceBeginInitialize(lpinitonce : *mut INIT_ONCE, dwflags : u32, fpending : *mut BOOL, lpcontext : *mut *mut core::ffi::c_void) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn InitOnceComplete(lpinitonce : *mut INIT_ONCE, dwflags : u32, lpcontext : *const core::ffi::c_void) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn InitializeProcThreadAttributeList(lpattributelist : LPPROC_THREAD_ATTRIBUTE_LIST, dwattributecount : u32, dwflags : u32, lpsize : *mut usize) -> BOOL);
+windows_link::link!("kernel32.dll" "system" fn IsThreadAFiber() -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn LocalFree(hmem : HLOCAL) -> HLOCAL);
 windows_link::link!("kernel32.dll" "system" fn LockFileEx(hfile : HANDLE, dwflags : LOCK_FILE_FLAGS, dwreserved : u32, nnumberofbytestolocklow : u32, nnumberofbytestolockhigh : u32, lpoverlapped : *mut OVERLAPPED) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn MoveFileExW(lpexistingfilename : PCWSTR, lpnewfilename : PCWSTR, dwflags : MOVE_FILE_FLAGS) -> BOOL);
@@ -2667,6 +2673,7 @@ impl Default for FLOATING_SAVE_AREA {
         unsafe { core::mem::zeroed() }
     }
 }
+pub const FLS_OUT_OF_INDEXES: u32 = 4294967295u32;
 pub const FORMAT_MESSAGE_ALLOCATE_BUFFER: FORMAT_MESSAGE_OPTIONS = 256u32;
 pub const FORMAT_MESSAGE_ARGUMENT_ARRAY: FORMAT_MESSAGE_OPTIONS = 8192u32;
 pub const FORMAT_MESSAGE_FROM_HMODULE: FORMAT_MESSAGE_OPTIONS = 2048u32;
@@ -2710,6 +2717,8 @@ pub const GENERIC_EXECUTE: GENERIC_ACCESS_RIGHTS = 536870912u32;
 pub const GENERIC_READ: GENERIC_ACCESS_RIGHTS = 2147483648u32;
 pub const GENERIC_WRITE: GENERIC_ACCESS_RIGHTS = 1073741824u32;
 pub type GETFINALPATHNAMEBYHANDLE_FLAGS = u32;
+pub const GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS: u32 = 4u32;
+pub const GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT: u32 = 2u32;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct GUID {
@@ -3037,6 +3046,8 @@ pub struct OVERLAPPED_0_0 {
 }
 pub type PCSTR = *const u8;
 pub type PCWSTR = *const u16;
+pub type PFLS_CALLBACK_FUNCTION =
+    Option<unsafe extern "system" fn(lpflsdata: *const core::ffi::c_void)>;
 pub type PIO_APC_ROUTINE = Option<
     unsafe extern "system" fn(
         apccontext: *mut core::ffi::c_void,
@@ -3189,6 +3200,7 @@ pub const SOCK_STREAM: WINSOCK_SOCKET_TYPE = 1i32;
 pub const SOL_SOCKET: i32 = 65535i32;
 pub const SO_BROADCAST: i32 = 32i32;
 pub const SO_ERROR: i32 = 4103i32;
+pub const SO_KEEPALIVE: i32 = 8i32;
 pub const SO_LINGER: i32 = 128i32;
 pub const SO_RCVTIMEO: i32 = 4102i32;
 pub const SO_SNDTIMEO: i32 = 4101i32;

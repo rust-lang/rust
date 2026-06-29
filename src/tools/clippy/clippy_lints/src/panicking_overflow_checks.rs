@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for PanickingOverflowChecks {
             && ty == typeck.expr_ty(op_rhs)
             && ty == typeck.expr_ty(other)
             && !expr.span.in_external_macro(cx.tcx.sess.source_map())
-            && (eq_expr_value(cx, op_lhs, other) || (commutative && eq_expr_value(cx, op_rhs, other)))
+            && (eq_expr_value(cx, ctxt, op_lhs, other) || (commutative && eq_expr_value(cx, ctxt, op_rhs, other)))
         {
             span_lint(
                 cx,

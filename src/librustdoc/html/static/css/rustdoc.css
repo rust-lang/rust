@@ -731,7 +731,8 @@ ul.block, .block li, .block ul {
 }
 
 .block ul a {
-	padding-left: 1rem;
+	/* extend click target to far edge of screen (mile wide bar) */
+	padding-left: calc(1rem + var(--sidebar-elems-left-padding));
 }
 
 .sidebar-elems a,
@@ -740,7 +741,7 @@ ul.block, .block li, .block ul {
 	padding: 0.25rem; /* 4px */
 	margin-right: 0.25rem;
 	/* extend click target to far edge of screen (mile wide bar) */
-	border-left: solid var(--sidebar-elems-left-padding) transparent;
+	padding-left: calc(0.25rem + var(--sidebar-elems-left-padding));
 	margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
 	background-clip: border-box;
 }
@@ -861,7 +862,7 @@ ul.block, .block li, .block ul {
 		|        └─────┘
 		*/
 	margin-top: -16px;
-	border-top: solid 16px transparent;
+	padding-top: 16px;
 	box-sizing: content-box;
 	position: relative;
 	background-clip: border-box;
@@ -870,8 +871,6 @@ ul.block, .block li, .block ul {
 
 .sidebar-crate h2 a {
 	display: block;
-	/* extend click target to far edge of screen (mile wide bar) */
-	border-left: solid var(--sidebar-elems-left-padding) transparent;
 	background-clip: border-box;
 	margin: 0 calc(-24px + 0.25rem) 0 calc(-0.2rem - var(--sidebar-elems-left-padding));
 	/* Align the sidebar crate link with the search bar, which have different
@@ -888,7 +887,8 @@ ul.block, .block li, .block ul {
 		x = ( 16px - 0.57rem ) / 2
 	*/
 	padding: calc( ( 16px - 0.57rem ) / 2 ) 0.25rem;
-	padding-left: 0.2rem;
+	/* extend click target to far edge of screen (mile wide bar) */
+	padding-left: calc(0.2rem + var(--sidebar-elems-left-padding));
 }
 
 .sidebar-crate h2 .version {
@@ -1177,6 +1177,10 @@ div.where {
 .impl-items > .item-info {
 	/* Margin of docblocks + margin of impl block items. */
 	margin-left: calc(var(--docblock-indent) + var(--impl-items-indent));
+}
+
+.impl-restriction {
+	margin-bottom: 0.75em;
 }
 
 #synthetic-implementors-list:not(.loaded), #implementors-list:not(.loaded) {

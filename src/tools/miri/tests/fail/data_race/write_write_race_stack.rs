@@ -39,7 +39,7 @@ fn main() {
 
             pointer.store(&mut stack_var as *mut _, Ordering::Release);
 
-            sleep(Duration::from_millis(200));
+            sleep(Duration::from_millis(100));
 
             stack_var = 1usize; //~ ERROR: Data race detected between (1) non-atomic write on thread `unnamed-2` and (2) non-atomic write on thread `unnamed-1`
 

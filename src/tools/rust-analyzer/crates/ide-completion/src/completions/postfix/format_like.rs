@@ -44,7 +44,7 @@ static SNIPPET_RETURNS_NON_UNIT: &[&str] = &["format"];
 
 pub(crate) fn add_format_like_completions(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     dot_receiver: &ast::Expr,
     cap: SnippetCap,
     receiver_text: &ast::String,
@@ -73,7 +73,7 @@ pub(crate) fn add_format_like_completions(
                 format!(r#"{}({}, {}){semi}"#, macro_name, out, exprs.join(", "))
             };
 
-            postfix_snippet(label, macro_name, &snippet).add_to(acc, ctx.db);
+            postfix_snippet(label, macro_name, snippet).add_to(acc, ctx.db);
         }
     }
 }

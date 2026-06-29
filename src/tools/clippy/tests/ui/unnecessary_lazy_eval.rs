@@ -240,6 +240,18 @@ fn main() {
     let _: Result<usize, usize> = res.or_else(|err| Ok(err));
 }
 
+fn issue11672() {
+    // needs turbofish to disambiguate
+    let _ = true.then(|| -> &[u8] { &[] });
+    //~^ unnecessary_lazy_evaluations
+}
+
+fn issue11672_as() {
+    // Return type annotation helps type inference and removing it can break code
+    let _ = None.get_or_insert_with(|| -> &[u8] { &[] });
+    //~^ unnecessary_lazy_evaluations
+}
+
 #[allow(unused)]
 fn issue9485() {
     // should not lint, is in proc macro

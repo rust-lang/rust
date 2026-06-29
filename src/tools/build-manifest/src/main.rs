@@ -26,6 +26,7 @@ static DOCS_FALLBACK: &[(&str, &str)] = &[
     ("-apple-", "aarch64-apple-darwin"),
     ("aarch64", "aarch64-unknown-linux-gnu"),
     ("arm-", "aarch64-unknown-linux-gnu"),
+    ("i686-pc-windows", "x86_64-pc-windows-msvc"),
     ("", "x86_64-unknown-linux-gnu"),
 ];
 
@@ -37,8 +38,24 @@ fn is_nightly_only(pkg: &PkgType) -> bool {
         | PkgType::JsonDocs
         | PkgType::RustcCodegenCranelift
         | PkgType::RustcCodegenGcc
-        | PkgType::Gcc { .. } => true,
-        _ => false,
+        | PkgType::Gcc { .. }
+        | PkgType::Enzyme => true,
+        PkgType::Rust
+        | PkgType::RustSrc
+        | PkgType::Rustc
+        | PkgType::RustcDev
+        | PkgType::RustcDocs
+        | PkgType::ReproducibleArtifacts
+        | PkgType::RustMingw
+        | PkgType::RustStd
+        | PkgType::Cargo
+        | PkgType::HtmlDocs
+        | PkgType::RustAnalysis
+        | PkgType::RustAnalyzer
+        | PkgType::Clippy
+        | PkgType::Rustfmt
+        | PkgType::LlvmTools
+        | PkgType::LlvmBitcodeLinker => false,
     }
 }
 
@@ -313,7 +330,8 @@ impl Builder {
                 | PkgType::RustcCodegenCranelift
                 | PkgType::RustcCodegenGcc
                 | PkgType::Gcc { .. }
-                | PkgType::LlvmBitcodeLinker => {
+                | PkgType::LlvmBitcodeLinker
+                | PkgType::Enzyme => {
                     extensions.push(host_component(pkg));
                 }
                 PkgType::RustcDev => {

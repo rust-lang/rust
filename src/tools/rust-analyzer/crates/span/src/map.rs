@@ -6,8 +6,8 @@ use std::{fmt, hash::Hash};
 use stdx::{always, itertools::Itertools};
 
 use crate::{
-    EditionedFileId, ErasedFileAstId, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext,
-    TextRange, TextSize,
+    EditionedFileId, ErasedFileAstId, ROOT_ERASED_FILE_AST_ID, Span, SyntaxContext, TextRange,
+    TextSize,
 };
 
 /// Maps absolute text ranges for the corresponding file to the relevant span data.
@@ -220,6 +220,7 @@ impl RealSpanMap {
         Self { file_id, pairs, end }
     }
 
+    #[cfg(feature = "salsa")]
     pub fn span_for_range(&self, range: TextRange) -> Span {
         assert!(
             range.end() <= self.end,
@@ -234,7 +235,7 @@ impl RealSpanMap {
         let (offset, ast_id) = self.pairs[idx - 1];
         Span {
             range: range - offset,
-            anchor: SpanAnchor { file_id: self.file_id, ast_id },
+            anchor: crate::SpanAnchor { file_id: self.file_id, ast_id },
             ctx: SyntaxContext::root(self.file_id.edition()),
         }
     }

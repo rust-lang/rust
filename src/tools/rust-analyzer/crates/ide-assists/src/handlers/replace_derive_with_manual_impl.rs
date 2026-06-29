@@ -1,10 +1,13 @@
 use hir::{InFile, ModuleDef};
-use ide_db::{helpers::mod_path_to_ast, imports::import_assets::NameToImport, items_locator};
+use ide_db::{
+    helpers::mod_path_to_ast_with_factory, imports::import_assets::NameToImport, items_locator,
+};
 use itertools::Itertools;
 use syntax::{
+    Edition,
     SyntaxKind::WHITESPACE,
     T,
-    ast::{self, AstNode, HasName},
+    ast::{self, AstNode, HasName, syntax_factory::SyntaxFactory},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -41,7 +44,7 @@ use crate::{
 // ```
 pub(crate) fn replace_derive_with_manual_impl(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let attr = ctx.find_node_at_offset_with_descend::<ast::Attr>()?;
     let path = attr.path()?;
@@ -87,13 +90,12 @@ pub(crate) fn replace_derive_with_manual_impl(
     .flat_map(|trait_| {
         current_module
             .find_path(ctx.sema.db, hir::ModuleDef::Trait(trait_), cfg)
-            .as_ref()
-            .map(|path| mod_path_to_ast(path, current_edition))
-            .zip(Some(trait_))
+            .map(|path| (path, trait_))
     });
 
-    let mut no_traits_found = true;
-    for (replace_trait_path, trait_) in found_traits.inspect(|_| no_traits_found = false) {
+    let found_traits = found_traits.collect::<Vec<_>>();
+    let no_traits_found = found_traits.is_empty();
+    for (replace_trait_mod_path, trait_) in found_traits {
         add_assist(
             acc,
             ctx,
@@ -101,35 +103,58 @@ pub(crate) fn replace_derive_with_manual_impl(
             &current_derives,
             &args,
             &path,
-            &replace_trait_path,
+            Some(replace_trait_mod_path),
             Some(trait_),
             &adt,
+            current_edition,
         )?;
     }
     if no_traits_found {
-        add_assist(acc, ctx, &attr, &current_derives, &args, &path, &path, None, &adt)?;
+        add_assist(
+            acc,
+            ctx,
+            &attr,
+            &current_derives,
+            &args,
+            &path,
+            None,
+            None,
+            &adt,
+            current_edition,
+        )?;
     }
     Some(())
 }
 
 fn add_assist(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     attr: &ast::Attr,
     old_derives: &[ast::Path],
     old_tree: &ast::TokenTree,
     old_trait_path: &ast::Path,
-    replace_trait_path: &ast::Path,
+    replace_trait_mod_path: Option<hir::ModPath>,
     trait_: Option<hir::Trait>,
     adt: &ast::Adt,
+    current_edition: Edition,
 ) -> Option<()> {
     let target = attr.syntax().text_range();
     let annotated_name = adt.name()?;
-    let label = format!("Convert to manual `impl {replace_trait_path} for {annotated_name}`");
+    let label_trait_path = match replace_trait_mod_path.as_ref() {
+        Some(path) => {
+            mod_path_to_ast_with_factory(&SyntaxFactory::without_mappings(), path, current_edition)
+        }
+        None => old_trait_path.clone(),
+    };
+    let label = format!("Convert to manual `impl {label_trait_path} for {annotated_name}`");
 
     acc.add(AssistId::refactor("replace_derive_with_manual_impl"), label, target, |builder| {
         let editor = builder.make_editor(attr.syntax());
         let make = editor.make();
+        let replace_trait_path = match replace_trait_mod_path.as_ref() {
+            Some(path) => mod_path_to_ast_with_factory(make, path, current_edition),
+            None => old_trait_path.clone(),
+        };
         let insert_after = Position::after(adt.syntax());
         let impl_is_unsafe = trait_.map(|s| s.is_unsafe(ctx.db())).unwrap_or(false);
         let impl_def = impl_def_from_trait(
@@ -139,7 +164,7 @@ fn add_assist(
             adt,
             &annotated_name,
             trait_,
-            replace_trait_path,
+            &replace_trait_path,
             impl_is_unsafe,
         );
         update_attribute(&editor, old_derives, old_tree, old_trait_path, attr);

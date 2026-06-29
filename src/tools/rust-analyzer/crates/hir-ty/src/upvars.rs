@@ -3,7 +3,7 @@
 use hir_def::{
     DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
     expr_store::{ExpressionStore, path::Path},
-    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId},
     resolver::{HasResolver, Resolver, ValueNs},
 };
 use hir_expand::mod_path::PathKind;
@@ -110,10 +110,7 @@ pub fn upvars_mentioned_impl(
     owner: ExpressionStoreOwnerId,
 ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
     let store = ExpressionStore::of(db, owner);
-    if store.const_expr_origins().is_empty() {
-        // Save constructing a Resolver.
-        return None;
-    }
+    store.expr_roots().next()?;
     let mut resolver = owner.resolver(db);
     let mut result = FxHashMap::default();
     for root_expr in store.expr_roots() {
@@ -180,22 +177,6 @@ pub fn upvars_mentioned_impl(
                     upvars,
                     path,
                 );
-            }
-            &Expr::Assignment { target, .. } => {
-                body.walk_pats(target, &mut |pat| {
-                    let Pat::Path(path) = &body[pat] else { return };
-                    resolve_maybe_upvar(
-                        db,
-                        resolver,
-                        owner,
-                        body,
-                        current_closure,
-                        expr,
-                        pat.into(),
-                        upvars,
-                        path,
-                    );
-                });
             }
             &Expr::Closure { body: body_expr, .. } => {
                 let mut closure_upvars = FxHashSet::default();

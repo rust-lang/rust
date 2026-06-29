@@ -7,8 +7,8 @@ LL |     println!("{}", path);
    |               required by this formatting parameter
    |
    = help: the trait `std::fmt::Display` is not implemented for `Path`
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: call `.display()` or `.to_string_lossy()` to safely print paths, as they may contain non-Unicode data
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: required for `&Path` to implement `std::fmt::Display`
 
 error[E0277]: `PathBuf` doesn't implement `std::fmt::Display`
@@ -20,8 +20,8 @@ LL |     println!("{}", path);
    |               required by this formatting parameter
    |
    = help: the trait `std::fmt::Display` is not implemented for `PathBuf`
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: call `.display()` or `.to_string_lossy()` to safely print paths, as they may contain non-Unicode data
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 
 error: aborting due to 2 previous errors
 

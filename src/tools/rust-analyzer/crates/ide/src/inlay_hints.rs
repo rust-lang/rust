@@ -687,21 +687,21 @@ impl fmt::Debug for InlayHintLabelPart {
 }
 
 #[derive(Debug)]
-struct InlayHintLabelBuilder<'a> {
-    sema: &'a Semantics<'a, RootDatabase>,
+struct InlayHintLabelBuilder<'a, 'db> {
+    sema: &'a Semantics<'db, RootDatabase>,
     result: InlayHintLabel,
     last_part: String,
     resolve: bool,
     location: Option<LazyProperty<FileRange>>,
 }
 
-impl fmt::Write for InlayHintLabelBuilder<'_> {
+impl fmt::Write for InlayHintLabelBuilder<'_, '_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.last_part.write_str(s)
     }
 }
 
-impl HirWrite for InlayHintLabelBuilder<'_> {
+impl HirWrite for InlayHintLabelBuilder<'_, '_> {
     fn start_location_link(&mut self, def: ModuleDefId) {
         never!(self.location.is_some(), "location link is already started");
         self.make_new_part();
@@ -737,7 +737,7 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
     }
 }
 
-impl InlayHintLabelBuilder<'_> {
+impl InlayHintLabelBuilder<'_, '_> {
     fn make_new_part(&mut self) {
         let text = take(&mut self.last_part);
         if !text.is_empty() {
@@ -755,18 +755,18 @@ impl InlayHintLabelBuilder<'_> {
     }
 }
 
-fn label_of_ty(
-    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
+fn label_of_ty<'db>(
+    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, 'db>,
     config: &InlayHintsConfig<'_>,
-    ty: &hir::Type<'_>,
+    ty: &hir::Type<'db>,
     display_target: DisplayTarget,
 ) -> Option<InlayHintLabel> {
-    fn rec(
-        sema: &Semantics<'_, RootDatabase>,
-        famous_defs: &FamousDefs<'_, '_>,
+    fn rec<'db>(
+        sema: &Semantics<'db, RootDatabase>,
+        famous_defs: &FamousDefs<'_, 'db>,
         mut max_length: Option<usize>,
-        ty: &hir::Type<'_>,
-        label_builder: &mut InlayHintLabelBuilder<'_>,
+        ty: &hir::Type<'db>,
+        label_builder: &mut InlayHintLabelBuilder<'_, '_>,
         config: &InlayHintsConfig<'_>,
         display_target: DisplayTarget,
     ) -> Result<(), HirDisplayError> {
@@ -790,7 +790,7 @@ fn label_of_ty(
                     )
                 });
 
-                let module_def_location = |label_builder: &mut InlayHintLabelBuilder<'_>,
+                let module_def_location = |label_builder: &mut InlayHintLabelBuilder<'_, '_>,
                                            def: ModuleDef,
                                            name| {
                     let def = def.try_into();

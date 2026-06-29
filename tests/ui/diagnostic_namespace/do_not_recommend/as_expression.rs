@@ -55,5 +55,49 @@ impl<T> Foo for T where T: Expression {}
 fn main() {
     SelectInt.check("bar");
     //~^ ERROR the trait bound `&str: AsExpression<Integer>` is not satisfied
-    //[next]~| ERROR the trait bound `&str: AsExpression<Integer>` is not satisfied
+
+    // Regression test for https://github.com/rust-lang/rust/issues/156475.
+    X.start().foo().finish();
+    //~^ ERROR the trait bound `X: A` is not satisfied
+}
+
+trait A {}
+trait B {}
+
+#[diagnostic::do_not_recommend]
+impl<T: B> A for T {}
+
+struct X;
+
+trait Start {
+    fn start(self) -> Self;
+}
+
+trait Ext {
+    fn foo(self) -> Self
+    where
+        Self: Sized + A;
+}
+
+trait Finish {
+    fn finish(self);
+}
+
+impl<T> Start for T {
+    fn start(self) -> Self {
+        self
+    }
+}
+
+impl<T> Ext for T {
+    fn foo(self) -> Self
+    where
+        Self: Sized + A,
+    {
+        self
+    }
+}
+
+impl<T> Finish for T {
+    fn finish(self) {}
 }

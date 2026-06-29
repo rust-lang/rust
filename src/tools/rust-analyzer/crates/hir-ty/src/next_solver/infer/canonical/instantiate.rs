@@ -404,13 +404,17 @@ impl<'db> InferCtxt<'db> {
                 if kind.universe() != UniverseIndex::ROOT {
                     // A variable from inside a binder of the query. While ideally these shouldn't
                     // exist at all, we have to deal with them for now.
-                    self.instantiate_canonical_var(kind, var_values, |u| universe_map[u.as_usize()])
+                    self.instantiate_canonical_var(cause.span(), kind, var_values, |u| {
+                        universe_map[u.as_usize()]
+                    })
                 } else if kind.is_existential() {
                     match opt_values[BoundVar::new(var_values.len())] {
                         Some(k) => k,
-                        None => self.instantiate_canonical_var(kind, var_values, |u| {
-                            universe_map[u.as_usize()]
-                        }),
+                        None => {
+                            self.instantiate_canonical_var(cause.span(), kind, var_values, |u| {
+                                universe_map[u.as_usize()]
+                            })
+                        }
                     }
                 } else {
                     // For placeholders which were already part of the input, we simply map this
@@ -433,7 +437,7 @@ impl<'db> InferCtxt<'db> {
             // the generic args of the opaque with the generic params of its hidden type version.
             obligations.extend(
                 self.at(cause, param_env)
-                    .eq(Ty::new_opaque(self.interner, a.def_id, a.args), b)?
+                    .eq(Ty::new_opaque(self.interner, a.def_id.0, a.args), b)?
                     .obligations,
             );
         }

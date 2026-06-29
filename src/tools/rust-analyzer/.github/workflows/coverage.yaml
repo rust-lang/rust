@@ -12,19 +12,17 @@ env:
 jobs:
   coverage:
     runs-on: ubuntu-latest
+    env:
+      RUSTC_BOOTSTRAP: 1
     steps:
       - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         run: |
-          rustup update --no-self-update nightly
-          rustup default nightly
-          rustup component add --toolchain nightly rust-src rustc-dev rustfmt
-          # We also install a nightly rustfmt, because we use `--file-lines` in
-          # a test.
-          rustup toolchain install nightly --profile minimal --component rustfmt
-
-          rustup toolchain install nightly --component llvm-tools-preview
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add --toolchain stable rust-src rustc-dev rustfmt
+          rustup toolchain install stable --component llvm-tools-preview
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov

@@ -9,7 +9,9 @@ pub mod link;
 pub(crate) mod linker;
 pub mod lto;
 pub mod metadata;
+pub mod rmeta_link;
 pub(crate) mod rpath;
+mod symbol_edit;
 pub mod symbol_export;
 pub mod write;
 

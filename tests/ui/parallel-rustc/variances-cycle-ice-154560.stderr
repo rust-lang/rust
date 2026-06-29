@@ -1,0 +1,24 @@
+error[E0391]: cycle detected when computing the variances for items in this crate
+   |
+note: ...which requires computing function signature of `f`...
+  --> $DIR/variances-cycle-ice-154560.rs:8:1
+   |
+LL | pub fn f<T>() -> _ {
+   | ^^^^^^^^^^^^^^^^^^
+   = note: ...which requires type-checking `f`...
+note: ...which requires computing the variances of `T`...
+  --> $DIR/variances-cycle-ice-154560.rs:6:1
+   |
+LL | pub struct T<'a>(&'a str);
+   | ^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing the variances for items in this crate, completing the cycle
+note: cycle used when computing the variances of `T`
+  --> $DIR/variances-cycle-ice-154560.rs:6:1
+   |
+LL | pub struct T<'a>(&'a str);
+   | ^^^^^^^^^^^^^^^^
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

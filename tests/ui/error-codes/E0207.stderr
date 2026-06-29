@@ -3,6 +3,13 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T: Default> Foo {
    |      ^ unconstrained type parameter
+   |
+help: use the type parameter `T` in the `Foo` type and use it in the type definition
+   |
+LL ~ struct Foo<T>;
+LL |
+LL ~ impl<T: Default> Foo<T> {
+   |
 
 error: aborting due to 1 previous error
 

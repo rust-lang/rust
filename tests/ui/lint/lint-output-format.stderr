@@ -8,10 +8,10 @@ LL | extern crate lint_output_format;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-output-format.rs:7:26
+  --> $DIR/lint-output-format.rs:7:5
    |
 LL | use lint_output_format::{foo, bar};
-   |                          ^^^
+   |     ^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

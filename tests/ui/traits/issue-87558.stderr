@@ -32,7 +32,7 @@ LL | impl Fn(&isize) for Error {
    |
    = help: implement the missing item: `fn call(&self, _: (&isize,)) -> <Self as FnOnce<(&isize,)>>::Output { todo!() }`
 
-error[E0277]: expected a `FnMut(&isize)` closure, found `Error`
+error[E0277]: expected an `FnMut(&isize)` closure, found `Error`
   --> $DIR/issue-87558.rs:3:21
    |
 LL | impl Fn(&isize) for Error {

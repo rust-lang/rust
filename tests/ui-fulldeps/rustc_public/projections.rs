@@ -73,7 +73,7 @@ fn test_place_projections() -> ControlFlow<()> {
             Rvalue::Use(rustc_public::mir::Operand::Copy(rustc_public::mir::Place {
                 local: _,
                 projection: r_proj,
-            })),
+            }), _),
         ) => {
             // We can't match on vecs, only on slices. Comparing for equality wouldn't be any easier
             // since we'd then have to add in the expected local values instead of matching on

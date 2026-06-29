@@ -46,13 +46,6 @@ LL |         fn foo<U>(&self)
 LL |             Self: Trait0,
    |                   ^^^^^^ required by this bound in `Trait1::foo`
 
-error[E0282]: type annotations needed
-  --> $DIR/impl-to-trait-method.rs:38:22
-   |
-LL |         reuse Trait::foo { &self.0 }
-   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0277, E0282.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

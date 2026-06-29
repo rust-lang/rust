@@ -1,4 +1,4 @@
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
 use smallvec::SmallVec;
 use tracing::instrument;
 
@@ -9,7 +9,7 @@ use crate::ty::{self, DefId, OpaqueTypeKey, Ty, TyCtxt, TypingEnv, Unnormalized}
 /// containing either of those types.
 /// A type's inhabitedness may depend on the `ParamEnv` as well as what types
 /// are visible in the current module.
-#[derive(Clone, Copy, Debug, PartialEq, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, StableHash)]
 pub enum InhabitedPredicate<'tcx> {
     /// Inhabited
     True,
@@ -243,7 +243,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     fn instantiate_opt(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> Option<Self> {
         match self {
             Self::ConstIsZero(c) => {
-                let c = ty::EarlyBinder::bind(c).instantiate(tcx, args).skip_norm_wip();
+                let c = ty::EarlyBinder::bind(tcx, c).instantiate(tcx, args).skip_norm_wip();
                 let pred = match c.try_to_target_usize(tcx) {
                     Some(0) => Self::True,
                     Some(1..) => Self::False,
@@ -252,7 +252,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 Some(pred)
             }
             Self::GenericType(t) => Some(
-                ty::EarlyBinder::bind(t)
+                ty::EarlyBinder::bind(tcx, t)
                     .instantiate(tcx, args)
                     .skip_norm_wip()
                     .inhabited_predicate(tcx),

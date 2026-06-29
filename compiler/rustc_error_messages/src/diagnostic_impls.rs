@@ -5,8 +5,6 @@ use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
-use rustc_ast as ast;
-use rustc_ast_pretty::pprust;
 use rustc_span::edition::Edition;
 
 use crate::{DiagArgValue, IntoDiagArg};
@@ -69,7 +67,6 @@ macro_rules! into_diag_arg_for_number {
 }
 
 into_diag_arg_using_display!(
-    ast::ParamKindOrd,
     std::io::Error,
     Box<dyn std::error::Error>,
     std::num::NonZero<u32>,
@@ -142,30 +139,6 @@ impl IntoDiagArg for PathBuf {
     }
 }
 
-impl IntoDiagArg for ast::Expr {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Str(Cow::Owned(pprust::expr_to_string(&self)))
-    }
-}
-
-impl IntoDiagArg for ast::Path {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Str(Cow::Owned(pprust::path_to_string(&self)))
-    }
-}
-
-impl IntoDiagArg for ast::token::Token {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Str(pprust::token_to_string(&self))
-    }
-}
-
-impl IntoDiagArg for ast::token::TokenKind {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Str(pprust::token_kind_to_string(&self))
-    }
-}
-
 impl IntoDiagArg for std::ffi::CString {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.to_string_lossy().into_owned()))
@@ -178,28 +151,8 @@ impl IntoDiagArg for rustc_data_structures::small_c_str::SmallCStr {
     }
 }
 
-impl IntoDiagArg for ast::Visibility {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        let s = pprust::vis_to_string(&self);
-        let s = s.trim_end().to_string();
-        DiagArgValue::Str(Cow::Owned(s))
-    }
-}
-
 impl IntoDiagArg for Backtrace {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::from(self.to_string()))
-    }
-}
-
-impl IntoDiagArg for ast::util::parser::ExprPrecedence {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Number(self as i32)
-    }
-}
-
-impl IntoDiagArg for ast::FloatTy {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Str(Cow::Borrowed(self.name_str()))
     }
 }

@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `impl Trait + ?Sized` cannot be known at compilation time
-  --> $DIR/unsized_coercion3.rs:15:32
+  --> $DIR/unsized_coercion3.rs:16:32
    |
 LL |         let y: Box<dyn Send> = x;
    |                                ^ doesn't have a size known at compile-time

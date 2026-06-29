@@ -6,7 +6,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::util::check_builtin_macro_attribute;
 
 pub(crate) fn expand(
@@ -31,7 +31,7 @@ pub(crate) fn expand(
     {
         (item, fn_kind.ident, true, ecx.with_def_site_ctxt(fn_kind.sig.span))
     } else {
-        ecx.dcx().emit_err(errors::AllocErrorMustBeFn { span: item.span() });
+        ecx.dcx().emit_err(diagnostics::AllocErrorMustBeFn { span: item.span() });
         return vec![orig_item];
     };
 

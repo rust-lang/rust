@@ -5,9 +5,9 @@ LL | fn you_dont_see_me() {
    | ^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> tests/ui-toml/private-doc-errors/doc_lints.rs:2:5
+  --> tests/ui-toml/private-doc-errors/doc_lints.rs:4:5
    |
-LL |     clippy::unnecessary_safety_doc,
+LL |     clippy::unnecessary_safety_doc
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: safe function's docs have unnecessary `# Safety` section
@@ -23,7 +23,7 @@ LL |     pub fn only_crate_wide_accessible() -> Result<(), ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> tests/ui-toml/private-doc-errors/doc_lints.rs:3:5
+  --> tests/ui-toml/private-doc-errors/doc_lints.rs:2:5
    |
 LL |     clippy::missing_errors_doc,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,9 +46,9 @@ note: first possible panic found here
 LL |         panic!();
    |         ^^^^^^^^
 note: the lint level is defined here
-  --> tests/ui-toml/private-doc-errors/doc_lints.rs:4:5
+  --> tests/ui-toml/private-doc-errors/doc_lints.rs:3:5
    |
-LL |     clippy::missing_panics_doc
+LL |     clippy::missing_panics_doc,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsafe function's docs are missing a `# Safety` section

@@ -32,5 +32,13 @@ LL | fn _bxed_foo() -> Box<Foo> {
    |
    = help: changing this also requires a change to the return expressions in this function
 
-error: aborting due to 4 previous errors
+error: boxed return of the sized type `std::vec::Vec<T>`
+  --> tests/ui/unnecessary_box_returns.rs:86:42
+   |
+LL | fn generic_vec<T>(value: Box<Vec<T>>) -> Box<Vec<T>> {
+   |                                          ^^^^^^^^^^^ help: try: `std::vec::Vec<T>`
+   |
+   = help: changing this also requires a change to the return expressions in this function
+
+error: aborting due to 5 previous errors
 

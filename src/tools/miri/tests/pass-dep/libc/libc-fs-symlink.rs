@@ -2,6 +2,7 @@
 //@ignore-host: windows # creating symlinks requires admin permissions on Windows
 //@ignore-target: windows # File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 use std::ffi::CString;
 use std::io::ErrorKind;

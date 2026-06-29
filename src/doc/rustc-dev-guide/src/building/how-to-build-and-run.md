@@ -45,6 +45,12 @@ git clone https://github.com/rust-lang/rust.git
 cd rust
 ```
 
+> **NOTE**: On Windows, antivirus scanning can make Git and build commands
+> noticeably slower in a large checkout. If that happens, consider adding only
+> the Rust checkout directory to the
+> [Windows Security exclusion list][windows-security-exclusions].
+> Avoid adding broader exclusions than needed.
+
 ### Partial clone the repository
 
 Due to the size of the repository, cloning on a slower internet connection can take a long time,
@@ -97,6 +103,7 @@ This chapter focuses on the basics to be productive, but
 if you want to learn more about `x.py`, [read this chapter][bootstrap].
 
 [bootstrap]: ./bootstrapping/intro.md
+[windows-security-exclusions]: https://support.microsoft.com/windows/add-an-exclusion-to-windows-security-811816c0-4dfd-af4a-47e4-c301afe13b26
 
 Also, using `x` rather than `x.py` is recommended as:
 
@@ -278,6 +285,16 @@ Instead, you can build a specific component by providing its name, like this:
 
 If you choose the `library` profile when running `x setup`, you can omit `--stage 1` (it's the
 default).
+
+If you want to build a tool, you can use:
+
+```bash
+./x build src/tools/cargo
+```
+
+You can also check the [the section on tool tests][tool-tests-link].
+
+[tool-tests-link]: ../tests/intro.md#tool-tests
 
 ## Creating a rustup toolchain
 

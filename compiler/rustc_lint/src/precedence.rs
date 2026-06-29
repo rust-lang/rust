@@ -43,7 +43,7 @@ impl EarlyLintPass for Precedence {
 
         let mut arg = operand;
         let mut at_least_one = false;
-        while let ExprKind::MethodCall(box MethodCall { receiver, .. }) = &arg.kind {
+        while let ExprKind::MethodCall(MethodCall { receiver, .. }) = &arg.kind {
             at_least_one = true;
             arg = receiver;
         }

@@ -16,12 +16,12 @@
 //! relate them structurally.
 
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::solve::GoalSource;
+use rustc_type_ir::solve::{GoalSource, QueryResultOrRerunNonErased};
 use rustc_type_ir::{self as ty, Interner};
 use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{Certainty, EvalCtxt, Goal, QueryResult};
+use crate::solve::{Certainty, EvalCtxt, Goal};
 
 impl<D, I> EvalCtxt<'_, D>
 where
@@ -32,7 +32,7 @@ where
     pub(super) fn compute_alias_relate_goal(
         &mut self,
         goal: Goal<I, (I::Term, I::Term, ty::AliasRelationDirection)>,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
 
@@ -41,31 +41,31 @@ where
         // `{type error}` if the alias still contains infer vars, so we also
         // accept alias-relate goals where one of the terms is an error.
         debug_assert!(
-            lhs.to_alias_term(self.cx()).is_some()
-                || rhs.to_alias_term(self.cx()).is_some()
+            lhs.to_alias_term().is_some()
+                || rhs.to_alias_term().is_some()
                 || lhs.is_error()
                 || rhs.is_error()
         );
 
         // Structurally normalize the lhs.
-        let lhs = if let Some(alias) = lhs.to_alias_term(self.cx()) {
-            let term = self.next_term_infer_of_kind(lhs);
+        let lhs = if let Some(alias) = lhs.to_alias_term() {
+            let term = self.next_term_infer_of_alias_kind(alias);
             self.add_goal(
                 GoalSource::TypeRelating,
-                goal.with(cx, ty::NormalizesTo { alias, term }),
-            );
+                goal.with(cx, ty::ProjectionPredicate { projection_term: alias, term }),
+            )?;
             term
         } else {
             lhs
         };
 
         // Structurally normalize the rhs.
-        let rhs = if let Some(alias) = rhs.to_alias_term(self.cx()) {
-            let term = self.next_term_infer_of_kind(rhs);
+        let rhs = if let Some(alias) = rhs.to_alias_term() {
+            let term = self.next_term_infer_of_alias_kind(alias);
             self.add_goal(
                 GoalSource::TypeRelating,
-                goal.with(cx, ty::NormalizesTo { alias, term }),
-            );
+                goal.with(cx, ty::ProjectionPredicate { projection_term: alias, term }),
+            )?;
             term
         } else {
             rhs
@@ -87,30 +87,7 @@ where
             ty::AliasRelationDirection::Equate => ty::Invariant,
             ty::AliasRelationDirection::Subtype => ty::Covariant,
         };
-        match (lhs.to_alias_term(self.cx()), rhs.to_alias_term(self.cx())) {
-            (None, None) => {
-                self.relate(param_env, lhs, variance, rhs)?;
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            }
-
-            (Some(alias), None) => {
-                self.relate_rigid_alias_non_alias(param_env, alias, variance, rhs)?;
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            }
-            (None, Some(alias)) => {
-                self.relate_rigid_alias_non_alias(
-                    param_env,
-                    alias,
-                    variance.xform(ty::Contravariant),
-                    lhs,
-                )?;
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            }
-
-            (Some(alias_lhs), Some(alias_rhs)) => {
-                self.relate(param_env, alias_lhs, variance, alias_rhs)?;
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            }
-        }
+        self.relate(param_env, lhs, variance, rhs)?;
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

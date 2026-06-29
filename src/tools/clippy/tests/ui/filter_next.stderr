@@ -1,0 +1,78 @@
+error: called `filter(..).next()` on an `Iterator`
+  --> tests/ui/filter_next.rs:16:13
+   |
+LL |     let _ = v.iter().filter(|&x| *x < 0).next();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::filter-next` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::filter_next)]`
+help: use `.find(..)` instead
+   |
+LL -     let _ = v.iter().filter(|&x| *x < 0).next();
+LL +     let _ = v.iter().find(|&x| *x < 0);
+   |
+
+error: called `filter(..).next_back()` on an `DoubleEndedIterator`
+  --> tests/ui/filter_next.rs:19:13
+   |
+LL |     let _ = v.iter().filter(|&x| *x < 0).next_back();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `.rfind(..)` instead
+   |
+LL -     let _ = v.iter().filter(|&x| *x < 0).next_back();
+LL +     let _ = v.iter().rfind(|&x| *x < 0);
+   |
+
+error: called `filter(..).next()` on an `Iterator`
+  --> tests/ui/filter_next.rs:24:13
+   |
+LL |       let _ = v.iter().filter(|&x| {
+   |  _____________^
+LL | |
+LL | |                                 *x < 0
+LL | |                             }
+LL | |                    ).next();
+   | |___________________________^
+   |
+help: use `.find(..)` instead
+   |
+LL ~     let _ = v.iter().find(|&x| {
+LL +
+LL +                                 *x < 0
+LL ~                             });
+   |
+
+error: called `filter(..).next_back()` on an `DoubleEndedIterator`
+  --> tests/ui/filter_next.rs:31:13
+   |
+LL |       let _ = v.iter().filter(|&x| {
+   |  _____________^
+LL | |
+LL | |                                 *x < 0
+LL | |                             }
+LL | |                    ).next_back();
+   | |________________________________^
+   |
+help: use `.rfind(..)` instead
+   |
+LL ~     let _ = v.iter().rfind(|&x| {
+LL +
+LL +                                 *x < 0
+LL ~                             });
+   |
+
+error: called `filter(..).next_back()` on an `DoubleEndedIterator`
+  --> tests/ui/filter_next.rs:58:13
+   |
+LL |     let _ = vec![1].into_iter().filter(|&x| x < 0).next_back();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `.rfind(..)` instead
+   |
+LL -     let _ = vec![1].into_iter().filter(|&x| x < 0).next_back();
+LL +     let _ = vec![1].into_iter().rfind(|&x| x < 0);
+   |
+
+error: aborting due to 5 previous errors
+

@@ -1,15 +1,13 @@
+//! Without the `new_range` feature enabled, `..` syntax resolves to the legacy types.
 //@ check-pass
-
-#![feature(new_range_api_legacy)]
 
 fn main() {
     // Unchanged
     let a: core::ops::RangeFull = ..;
     let b: core::ops::RangeTo<u8> = ..2;
 
-    // FIXME(#125687): re-exports temporarily removed
-    // let _: core::range::RangeFull = a;
-    // let _: core::range::RangeTo<u8> = b;
+    let _: core::range::RangeFull = a;
+    let _: core::range::RangeTo<u8> = b;
 
     // Changed
     let a: core::range::legacy::RangeFrom<u8> = 1..;

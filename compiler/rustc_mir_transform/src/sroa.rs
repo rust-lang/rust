@@ -87,7 +87,7 @@ fn escaping_locals<'tcx>(
     };
 
     let mut set = DenseBitSet::new_empty(body.local_decls.len());
-    set.insert_range(RETURN_PLACE..=Local::from_usize(body.arg_count));
+    set.insert_range(RETURN_PLACE..Local::arg(body.arg_count));
     for (local, decl) in body.local_decls().iter_enumerated() {
         if excluded.contains(local) || is_excluded_ty(decl.ty) {
             set.insert(local);
@@ -337,7 +337,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             // a_1 = y
             // ...
             // ```
-            StatementKind::Assign(box (place, Rvalue::Aggregate(_, ref mut operands))) => {
+            StatementKind::Assign((place, Rvalue::Aggregate(_, ref mut operands))) => {
                 if let Some(local) = place.as_local()
                     && let Some(final_locals) = &self.replacements.fragments[local]
                 {
@@ -348,7 +348,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                             // Replace mentions of SROA'd locals that appear in the operand.
                             self.visit_operand(&mut operand, location);
 
-                            let rvalue = Rvalue::Use(operand);
+                            let rvalue = Rvalue::Use(operand, WithRetag::Yes);
                             self.patch.add_statement(
                                 location,
                                 StatementKind::Assign(Box::new((new_local.into(), rvalue))),
@@ -368,13 +368,13 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             // ...
             // ```
             // ConstProp will pick up the pieces and replace them by actual constants.
-            StatementKind::Assign(box (place, Rvalue::Use(Operand::Constant(_)))) => {
+            StatementKind::Assign((place, Rvalue::Use(Operand::Constant(_), retag))) => {
                 if let Some(final_locals) = self.replacements.place_fragments(place) {
                     // Put the deaggregated statements *after* the original one.
                     let location = location.successor_within_block();
                     for (field, ty, new_local) in final_locals {
                         let rplace = self.tcx.mk_place_field(place, field, ty);
-                        let rvalue = Rvalue::Use(Operand::Move(rplace));
+                        let rvalue = Rvalue::Use(Operand::Move(rplace), retag);
                         self.patch.add_statement(
                             location,
                             StatementKind::Assign(Box::new((new_local.into(), rvalue))),
@@ -392,9 +392,9 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             // a_1 = move? place.1
             // ...
             // ```
-            StatementKind::Assign(box (
+            StatementKind::Assign((
                 lhs,
-                Rvalue::Use(ref op @ (Operand::Copy(rplace) | Operand::Move(rplace))),
+                Rvalue::Use(ref op @ (Operand::Copy(rplace) | Operand::Move(rplace)), retag),
             )) => {
                 let copy = match *op {
                     Operand::Copy(_) => true,
@@ -411,9 +411,9 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                             .unwrap_or(rplace);
                         debug!(?rplace);
                         let rvalue = if copy {
-                            Rvalue::Use(Operand::Copy(rplace))
+                            Rvalue::Use(Operand::Copy(rplace), retag)
                         } else {
-                            Rvalue::Use(Operand::Move(rplace))
+                            Rvalue::Use(Operand::Move(rplace), retag)
                         };
                         self.patch.add_statement(
                             location,

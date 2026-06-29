@@ -3,7 +3,7 @@
 
 #![feature(doc_cfg)]
 #![doc(auto_cfg(hide(
-    target_pointer_width = "64",
+    target_pointer_width, values("64"),
 )))]
 
 #![crate_name = "foo"]
@@ -36,7 +36,7 @@ pub struct X;
 //@count - '//*[@id="impl-Trait-for-X"]' 1
 //@count - '//*[@id="impl-Trait-for-X"]/*[@class="item-info"]' 0
 #[doc(cfg(any(target_pointer_width = "64", target_arch = "wasm32")))]
-#[doc(auto_cfg(hide(target_arch = "wasm32")))]
+#[doc(auto_cfg(hide(target_arch, values("wasm32"))))]
 mod imp {
     impl super::Trait for super::X { fn f(&self) {} }
 }
@@ -64,7 +64,7 @@ pub struct Y;
 //@count - '//*[@id="implementations-list"]/*[@class="impl-items"]' 1
 //@count - '//*[@id="implementations-list"]/*[@class="impl-items"]/*[@class="item-info"]' 0
 #[doc(cfg(any(target_pointer_width = "64", target_arch = "wasm32")))]
-#[doc(auto_cfg(hide(target_arch = "wasm32")))]
+#[doc(auto_cfg(hide(target_arch, values("wasm32"))))]
 mod imp4 {
     impl super::Y { pub fn plain_auto() {} }
 }

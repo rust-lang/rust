@@ -8,7 +8,7 @@ use smallvec::{SmallVec, smallvec};
 use crate::data_structures::SsoHashSet;
 use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _, TypeVisitor};
-use crate::{self as ty, Interner};
+use crate::{self as ty, AliasTy, Interner, OutlivesPredicate, Unnormalized};
 
 #[derive_where(Debug; I: Interner)]
 pub enum Component<I: Interner> {
@@ -148,7 +148,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Alias(alias_ty) => {
+            ty::Alias(_, alias_ty) => {
                 if !alias_ty.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
@@ -236,4 +236,46 @@ pub fn compute_alias_components_recursive<I: Interner>(
         }
         child.visit_with(&mut visitor);
     }
+}
+
+/// Given a projection like `<T as Foo<'x>>::Bar`, returns any bounds
+/// declared in the trait definition. For example, if the trait were
+///
+/// ```rust
+/// trait Foo<'a> {
+///     type Bar: 'a;
+/// }
+/// ```
+///
+/// If we were given `<T as Foo<'b>>::Bar`, we would return
+/// `'b`. This doesn't work for higher-ranked bounds such as:
+///
+/// ```ignore (this does compile today, previously was marked as compile_fail,E0311)
+/// trait Foo<'a, 'b>
+/// where for<'x> <Self as Foo<'x, 'b>>::Bar: 'x
+/// {
+///     type Bar;
+/// }
+/// ```
+///
+/// This is for simplicity, and because we are not really smart
+/// enough to cope with such bounds anywhere.
+pub fn declared_bounds_from_definition<I: Interner>(
+    cx: I,
+    alias_ty: AliasTy<I>,
+) -> impl Iterator<Item = I::Region> {
+    let def_id = match alias_ty.kind {
+        ty::AliasTyKind::Projection { def_id } => def_id.into(),
+        ty::AliasTyKind::Inherent { def_id } => def_id.into(),
+        ty::AliasTyKind::Opaque { def_id } => def_id.into(),
+        ty::AliasTyKind::Free { def_id } => def_id.into(),
+    };
+
+    let bounds = cx.item_self_bounds(def_id);
+    bounds
+        .iter_instantiated(cx, alias_ty.args)
+        .map(Unnormalized::skip_norm_wip)
+        .filter_map(|p| p.as_type_outlives_clause())
+        .filter_map(|p| p.no_bound_vars())
+        .map(|OutlivesPredicate(_, r)| r)
 }

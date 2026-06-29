@@ -75,7 +75,8 @@ pub(crate) struct Cycle {
     #[subdiagnostic]
     pub cycle_usage: Option<CycleUsage>,
     #[note(
-        "see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information"
+        "for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> \
+         and <https://rustc-dev-guide.rust-lang.org/query.html>"
     )]
     pub note_span: (),
 }

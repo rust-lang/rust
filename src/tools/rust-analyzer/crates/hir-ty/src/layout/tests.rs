@@ -1,7 +1,7 @@
 use base_db::target::TargetData;
 use either::Either;
 use hir_def::{
-    DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, HasModule,
+    DefWithBodyId, HasModule,
     expr_store::Body,
     signatures::{
         EnumSignature, FunctionSignature, StructSignature, TypeAliasSignature, UnionSignature,
@@ -90,15 +90,12 @@ fn eval_goal(
                 adt_id,
                 GenericArgs::identity_for_item(interner, adt_id.into()),
             ),
-            Either::Right(ty_id) => db.ty(ty_id.into()).instantiate_identity(),
+            Either::Right(ty_id) => db.ty(ty_id.into()).instantiate_identity().skip_norm_wip(),
         };
-        let param_env = db.trait_environment(
-            match adt_or_type_alias_id {
-                Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
-                Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
-            }
-            .into(),
-        );
+        let param_env = db.trait_environment(match adt_or_type_alias_id {
+            Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
+            Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
+        });
         let krate = match adt_or_type_alias_id {
             Either::Left(it) => it.krate(&db),
             Either::Right(it) => it.krate(&db),
@@ -145,8 +142,7 @@ fn eval_expr(
             .0;
         let infer = InferenceResult::of(&db, DefWithBodyId::from(function_id));
         let goal_ty = infer.type_of_binding[b].clone();
-        let param_env =
-            db.trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(function_id)));
+        let param_env = db.trait_environment(function_id.into());
         let krate = function_id.krate(&db);
         db.layout_of_ty(goal_ty, ParamEnvAndCrate { param_env, krate }.store())
     })
@@ -182,6 +178,7 @@ fn check_fail(#[rust_analyzer::rust_fixture] ra_fixture: &str, e: LayoutError) {
     assert_eq!(r, Err(e));
 }
 
+#[rust_analyzer::macro_style(braces)]
 macro_rules! size_and_align {
     (minicore: $($x:tt),*;$($t:tt)*) => {
         {
@@ -444,6 +441,7 @@ fn return_position_impl_trait() {
             // but rustc actually runs this code.
             let pinned = pin!(inp);
             struct EmptyWaker;
+            #[expect(clippy::manual_noop_waker, reason = "we don't have access to std here")]
             impl Wake for EmptyWaker {
                 fn wake(self: Arc<Self>) {
                 }
@@ -535,6 +533,23 @@ fn non_zero_and_non_null() {
         use core::{num::NonZeroU8, ptr::NonNull};
         struct Goal(Option<NonZeroU8>, Option<NonNull<i32>>);
     }
+    check_size_and_align(
+        r#"
+    const END: usize = 10;
+    struct Goal(core::pattern_type!(usize is 0..=END));
+        "#,
+        "//- minicore: pat\n",
+        8,
+        8,
+    );
+    check_size_and_align(
+        r#"
+pub struct Goal(core::pattern_type!(i32 is ..0 | 1..));
+    "#,
+        "//- minicore: pat\n",
+        4,
+        4,
+    );
 }
 
 #[test]
@@ -565,8 +580,6 @@ fn const_eval_simple() {
 }
 
 #[test]
-// FIXME
-#[should_panic]
 fn const_eval_complex() {
     size_and_align! {
         struct Goal([i32; 2 + 2]);

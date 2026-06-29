@@ -1,5 +1,4 @@
 #![warn(clippy::empty_enum_variants_with_brackets)]
-#![allow(dead_code)]
 #![feature(more_qualified_paths)]
 
 pub enum PublicTestEnum {
@@ -93,7 +92,7 @@ enum TestEnumWithFeatures {
 enum Foo {
     Variant1(i32),
     Variant2,
-    Variant3(), //~ ERROR: enum variant has empty brackets
+    Variant3(), //~ empty_enum_variants_with_brackets
 }
 
 #[derive(Clone)]

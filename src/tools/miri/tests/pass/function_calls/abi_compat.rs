@@ -63,13 +63,20 @@ fn test_abi_newtype<T: Copy + Default>() {
     #[repr(transparent)]
     #[derive(Copy, Clone)]
     struct Wrapper3<T>(Zst, T, [u8; 0]);
+    #[repr(transparent)]
+    #[derive(Copy, Clone)]
+    enum Wrapper4<T> {
+        V(Zst, T, [u8; 0]),
+    }
 
     let t = T::default();
     test_abi_compat(t, Wrapper(t));
     test_abi_compat(t, Wrapper2(t, ()));
     test_abi_compat(t, Wrapper2a((), t));
     test_abi_compat(t, Wrapper3(Zst, t, []));
-    test_abi_compat(t, mem::MaybeUninit::new(t)); // MaybeUninit is `repr(transparent)`
+    test_abi_compat(t, Wrapper4::V(Zst, t, []));
+    // MaybeUninit is `repr(transparent)`; that covers the `union` case.
+    test_abi_compat(t, mem::MaybeUninit::new(t));
 }
 
 fn main() {
@@ -144,4 +151,9 @@ fn main() {
     let rc = Rc::new(0);
     let rc_ptr: *mut i32 = unsafe { mem::transmute_copy(&rc) };
     test_abi_compat(rc, rc_ptr);
+
+    // Non-capturing closures are special because we rely on them being `PassMode::Ignore`.
+    // Make sure that does not break newtype wrapping for them.
+    let non_capturing_closure = || {};
+    test_abi_compat(non_capturing_closure.clone(), Wrapper(non_capturing_closure));
 }

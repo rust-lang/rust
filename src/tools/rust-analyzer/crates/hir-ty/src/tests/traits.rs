@@ -124,6 +124,25 @@ async fn test() {
 }
 
 #[test]
+fn infer_async_gen_closure() {
+    check(
+        r#"
+//- minicore: async_iterator, fn, add, builtin_impls
+//- /main.rs edition:2024
+fn test() {
+    let f = async gen move |x: i32| {
+        yield x + 42;
+            //^^^^^^ expected Poll<Option<{unknown}>>, got i32
+    };
+    let a = f(4);
+    a;
+//  ^ type: impl AsyncIterator<Item = {unknown}>
+}
+"#,
+    );
+}
+
+#[test]
 fn auto_sized_async_block() {
     check_no_mismatches(
         r#"
@@ -1271,7 +1290,6 @@ fn bar() {
             241..245 'R::B': fn B<(), i32>(i32) -> R<(), i32>
             241..248 'R::B(7)': R<(), i32>
             246..247 '7': i32
-            46..47 '2': usize
         "#]],
     );
 }
@@ -1472,7 +1490,7 @@ fn test(x: Box<dyn Trait<u64>>, y: &dyn Trait<u64>) {
         expect![[r#"
             29..33 'self': &'? Self
             54..58 'self': &'? Self
-            206..208 '{}': Box<dyn Trait<u64> + 'static>
+            206..208 '{}': Box<dyn Trait<u64> + '?>
             218..219 'x': Box<dyn Trait<u64> + 'static>
             242..243 'y': &'? (dyn Trait<u64> + 'static)
             262..379 '{     ...2(); }': ()
@@ -1553,7 +1571,7 @@ fn test(x: Trait, y: &Trait) -> u64 {
 }"#,
         expect![[r#"
             26..30 'self': &'? Self
-            60..62 '{}': dyn Trait + 'static
+            60..62 '{}': dyn Trait + '?
             72..73 'x': dyn Trait + 'static
             82..83 'y': &'? (dyn Trait + 'static)
             100..175 '{     ...o(); }': u64
@@ -1694,7 +1712,7 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
 }"#,
         expect![[r#"
             81..82 't': T
-            109..111 '{}': <T as Trait>::Type
+            109..111 '{}': ()
             143..144 't': T
             154..156 '{}': U
             186..187 't': T
@@ -3009,13 +3027,13 @@ fn test() {
             140..146 'IsCopy': IsCopy
             140..153 'IsCopy.test()': bool
             159..166 'NotCopy': NotCopy
-            159..173 'NotCopy.test()': bool
+            159..173 'NotCopy.test()': {unknown}
             179..195 '(IsCop...sCopy)': (IsCopy, IsCopy)
             179..202 '(IsCop...test()': bool
             180..186 'IsCopy': IsCopy
             188..194 'IsCopy': IsCopy
             208..225 '(IsCop...tCopy)': (IsCopy, NotCopy)
-            208..232 '(IsCop...test()': bool
+            208..232 '(IsCop...test()': {unknown}
             209..215 'IsCopy': IsCopy
             217..224 'NotCopy': NotCopy
         "#]],
@@ -3108,7 +3126,7 @@ fn test() {
             79..194 '{     ...ized }': ()
             85..88 '1u8': u8
             85..95 '1u8.test()': bool
-            101..116 '(*"foo").test()': bool
+            101..116 '(*"foo").test()': {unknown}
             102..108 '*"foo"': str
             103..108 '"foo"': &'static str
             135..145 '(1u8, 1u8)': (u8, u8)
@@ -3116,7 +3134,7 @@ fn test() {
             136..139 '1u8': u8
             141..144 '1u8': u8
             158..171 '(1u8, *"foo")': (u8, str)
-            158..178 '(1u8, ...test()': bool
+            158..178 '(1u8, ...test()': {unknown}
             159..162 '1u8': u8
             164..170 '*"foo"': str
             165..170 '"foo"': &'static str
@@ -3783,8 +3801,6 @@ fn main() {
             371..373 'v4': usize
             376..378 'v3': [u8; 4]
             376..389 'v3.do_thing()': usize
-            86..87 '4': usize
-            192..193 '2': usize
         "#]],
     )
 }
@@ -3824,9 +3840,6 @@ fn main() {
             240..242 'v2': [u8; 2]
             245..246 'v': [u8; 2]
             245..257 'v.do_thing()': [u8; 2]
-            130..131 'L': usize
-            102..103 'L': usize
-            130..131 'L': usize
         "#]],
     )
 }
@@ -4056,7 +4069,7 @@ fn f<F: Foo>() {
             212..295 '{     ...ZED; }': ()
             218..239 'F::Exp..._SIZED': Yes
             245..266 'F::Imp..._SIZED': Yes
-            272..292 'F::Rel..._SIZED': Yes
+            272..292 'F::Rel..._SIZED': {unknown}
         "#]],
     );
 }
@@ -4911,6 +4924,7 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
     "#,
         expect![[r#"
             37..38 'a': T
+            37..38 'a': T
             43..83 '{     ...ait; }': ()
             53..57 'fut1': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             60..61 'a': T
@@ -4919,6 +4933,7 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
             70..74 'fut1': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             70..80 'fut1.await': i32
             124..129 'mut b': T
+            124..129 'mut b': T
             134..174 '{     ...ait; }': ()
             144..148 'fut2': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             151..152 'b': T
@@ -4926,6 +4941,7 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
             153..154 '0': u32
             161..165 'fut2': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             161..171 'fut2.await': i32
+            216..217 'c': T
             216..217 'c': T
             222..262 '{     ...ait; }': ()
             232..236 'fut3': <T as AsyncFnOnce<(u32,)>>::CallOnceFuture
@@ -5002,7 +5018,7 @@ where
 "#,
         expect![[r#"
             84..86 'de': D
-            135..138 '{ }': <D as Deserializer<'de>>::Error
+            135..138 '{ }': ()
         "#]],
     );
 }
@@ -5067,7 +5083,7 @@ fn main() {
     let _ = iter.into_iter();
 }"#,
         expect![[r#"
-            10..313 '{     ...r(); }': ()
+            10..313 '{     ...r(); }': !
             223..227 'iter': Box<dyn Iterator<Item = &'? [u8]> + 'static>
             273..280 'loop {}': !
             278..280 '{}': ()

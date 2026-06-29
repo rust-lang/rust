@@ -1,3 +1,4 @@
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -53,7 +54,7 @@ macro_rules! parse_by_kind {
                 } => $call_expr,
             )*
             $(
-                ExprKind::Adt(box AdtExpr { adt_def, variant_index, .. }) if {
+                ExprKind::Adt(AdtExpr { adt_def, variant_index, .. }) if {
                     $self.tcx.is_diagnostic_item(rustc_span::sym::$adt, adt_def.did()) &&
                     adt_def.variants()[*variant_index].name == rustc_span::sym::$variant
                 } => $variant_expr,
@@ -318,6 +319,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         data.terminator = Some(Terminator {
             source_info: SourceInfo { span, scope: self.source_scope },
             kind: terminator,
+            attributes: ThinVec::new(),
         });
 
         Ok(data)

@@ -26,7 +26,7 @@ use rustc_span::Span;
 struct NotIntoDiagArg;
 
 #[derive(Diagnostic)]
-#[diag("example message")]
+#[diag("example message {$arg}")]
 struct Test {
     #[primary_span]
     span: Span,
@@ -36,7 +36,7 @@ struct Test {
 }
 
 #[derive(Subdiagnostic)]
-#[label("example message")]
+#[label("example message {$arg}")]
 struct SubTest {
     #[primary_span]
     span: Span,

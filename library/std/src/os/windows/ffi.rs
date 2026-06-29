@@ -58,16 +58,12 @@ use alloc::wtf8::Wtf8Buf;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::iter::FusedIterator;
-use crate::sealed::Sealed;
 use crate::sys::os_str::Buf;
 use crate::sys::{AsInner, FromInner};
 
 /// Windows-specific extensions to [`OsString`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStringExt: Sealed {
+pub impl(self) trait OsStringExt {
     /// Creates an `OsString` from a potentially ill-formed UTF-16 slice of
     /// 16-bit code units.
     ///
@@ -97,11 +93,8 @@ impl OsStringExt for OsString {
 }
 
 /// Windows-specific extensions to [`OsStr`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStrExt: Sealed {
+pub impl(self) trait OsStrExt {
     /// Re-encodes an `OsStr` as a wide character sequence, i.e., potentially
     /// ill-formed UTF-16.
     ///

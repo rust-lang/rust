@@ -1,5 +1,5 @@
 #![warn(clippy::suboptimal_flops)]
-#![allow(clippy::unnecessary_cast)]
+#![expect(clippy::unnecessary_cast)]
 
 fn main() {
     let one = 1;

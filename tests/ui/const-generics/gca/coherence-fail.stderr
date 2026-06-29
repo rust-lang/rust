@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Trait1` for type `[(); 2]`
-  --> $DIR/coherence-fail.rs:9:1
+  --> $DIR/coherence-fail.rs:10:1
    |
 LL | impl Trait1 for [(); FOO::<1>] {}
    | ------------------------------ first implementation here
@@ -7,7 +7,7 @@ LL | impl Trait1 for [(); BAR::<1>] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[(); 2]`
 
 error[E0119]: conflicting implementations of trait `Trait2` for type `[(); 1]`
-  --> $DIR/coherence-fail.rs:16:1
+  --> $DIR/coherence-fail.rs:17:1
    |
 LL | impl Trait2 for [(); DIV2::<2>] {}
    | ------------------------------- first implementation here
@@ -15,7 +15,7 @@ LL | impl Trait2 for [(); DIV2::<3>] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[(); 1]`
 
 error[E0119]: conflicting implementations of trait `Trait3` for type `[(); 2]`
-  --> $DIR/coherence-fail.rs:25:1
+  --> $DIR/coherence-fail.rs:26:1
    |
 LL | impl Trait3 for [(); ADD1::<1>] {}
    | ------------------------------- first implementation here

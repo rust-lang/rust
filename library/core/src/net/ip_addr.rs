@@ -1136,7 +1136,7 @@ impl fmt::Debug for IpAddr {
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<Ipv4Addr> for IpAddr {
+const impl From<Ipv4Addr> for IpAddr {
     /// Copies this address to a new `IpAddr::V4`.
     ///
     /// # Examples
@@ -1159,7 +1159,7 @@ impl const From<Ipv4Addr> for IpAddr {
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<Ipv6Addr> for IpAddr {
+const impl From<Ipv6Addr> for IpAddr {
     /// Copies this address to a new `IpAddr::V6`.
     ///
     /// # Examples
@@ -1232,7 +1232,7 @@ impl PartialEq<IpAddr> for Ipv4Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const PartialOrd for Ipv4Addr {
+const impl PartialOrd for Ipv4Addr {
     #[inline]
     fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -1263,7 +1263,7 @@ impl PartialOrd<IpAddr> for Ipv4Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const Ord for Ipv4Addr {
+const impl Ord for Ipv4Addr {
     #[inline]
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
         self.octets.cmp(&other.octets)
@@ -1272,7 +1272,7 @@ impl const Ord for Ipv4Addr {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<Ipv4Addr> for u32 {
+const impl From<Ipv4Addr> for u32 {
     /// Uses [`Ipv4Addr::to_bits`] to convert an IPv4 address to a host byte order `u32`.
     #[inline]
     fn from(ip: Ipv4Addr) -> u32 {
@@ -1282,7 +1282,7 @@ impl const From<Ipv4Addr> for u32 {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<u32> for Ipv4Addr {
+const impl From<u32> for Ipv4Addr {
     /// Uses [`Ipv4Addr::from_bits`] to convert a host byte order `u32` into an IPv4 address.
     #[inline]
     fn from(ip: u32) -> Ipv4Addr {
@@ -1292,7 +1292,7 @@ impl const From<u32> for Ipv4Addr {
 
 #[stable(feature = "from_slice_v4", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<[u8; 4]> for Ipv4Addr {
+const impl From<[u8; 4]> for Ipv4Addr {
     /// Creates an `Ipv4Addr` from a four element byte array.
     ///
     /// # Examples
@@ -1311,7 +1311,7 @@ impl const From<[u8; 4]> for Ipv4Addr {
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<[u8; 4]> for IpAddr {
+const impl From<[u8; 4]> for IpAddr {
     /// Creates an `IpAddr::V4` from a four element byte array.
     ///
     /// # Examples
@@ -2237,7 +2237,7 @@ impl PartialEq<Ipv6Addr> for IpAddr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const PartialOrd for Ipv6Addr {
+const impl PartialOrd for Ipv6Addr {
     #[inline]
     fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -2268,7 +2268,7 @@ impl PartialOrd<IpAddr> for Ipv6Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const Ord for Ipv6Addr {
+const impl Ord for Ipv6Addr {
     #[inline]
     fn cmp(&self, other: &Ipv6Addr) -> Ordering {
         self.segments().cmp(&other.segments())
@@ -2277,7 +2277,7 @@ impl const Ord for Ipv6Addr {
 
 #[stable(feature = "i128", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<Ipv6Addr> for u128 {
+const impl From<Ipv6Addr> for u128 {
     /// Uses [`Ipv6Addr::to_bits`] to convert an IPv6 address to a host byte order `u128`.
     #[inline]
     fn from(ip: Ipv6Addr) -> u128 {
@@ -2286,7 +2286,7 @@ impl const From<Ipv6Addr> for u128 {
 }
 #[stable(feature = "i128", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<u128> for Ipv6Addr {
+const impl From<u128> for Ipv6Addr {
     /// Uses [`Ipv6Addr::from_bits`] to convert a host byte order `u128` to an IPv6 address.
     #[inline]
     fn from(ip: u128) -> Ipv6Addr {
@@ -2296,7 +2296,7 @@ impl const From<u128> for Ipv6Addr {
 
 #[stable(feature = "ipv6_from_octets", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<[u8; 16]> for Ipv6Addr {
+const impl From<[u8; 16]> for Ipv6Addr {
     /// Creates an `Ipv6Addr` from a sixteen element byte array.
     ///
     /// # Examples
@@ -2324,7 +2324,7 @@ impl const From<[u8; 16]> for Ipv6Addr {
 
 #[stable(feature = "ipv6_from_segments", since = "1.16.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<[u16; 8]> for Ipv6Addr {
+const impl From<[u16; 8]> for Ipv6Addr {
     /// Creates an `Ipv6Addr` from an eight element 16-bit array.
     ///
     /// # Examples
@@ -2353,7 +2353,7 @@ impl const From<[u16; 8]> for Ipv6Addr {
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<[u8; 16]> for IpAddr {
+const impl From<[u8; 16]> for IpAddr {
     /// Creates an `IpAddr::V6` from a sixteen element byte array.
     ///
     /// # Examples
@@ -2381,7 +2381,7 @@ impl const From<[u8; 16]> for IpAddr {
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<[u16; 8]> for IpAddr {
+const impl From<[u16; 8]> for IpAddr {
     /// Creates an `IpAddr::V6` from an eight element 16-bit array.
     ///
     /// # Examples
@@ -2409,7 +2409,7 @@ impl const From<[u16; 8]> for IpAddr {
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Not for Ipv4Addr {
+const impl Not for Ipv4Addr {
     type Output = Ipv4Addr;
 
     #[inline]
@@ -2425,7 +2425,7 @@ impl const Not for Ipv4Addr {
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Not for &'_ Ipv4Addr {
+const impl Not for &'_ Ipv4Addr {
     type Output = Ipv4Addr;
 
     #[inline]
@@ -2436,7 +2436,7 @@ impl const Not for &'_ Ipv4Addr {
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Not for Ipv6Addr {
+const impl Not for Ipv6Addr {
     type Output = Ipv6Addr;
 
     #[inline]
@@ -2452,7 +2452,7 @@ impl const Not for Ipv6Addr {
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Not for &'_ Ipv6Addr {
+const impl Not for &'_ Ipv6Addr {
     type Output = Ipv6Addr;
 
     #[inline]
@@ -2468,7 +2468,7 @@ macro_rules! bitop_impls {
     )*) => {
         $(
             $(#[$attr])*
-            impl const $BitOpAssign for $ty {
+            const impl $BitOpAssign for $ty {
                 fn $bitop_assign(&mut self, rhs: $ty) {
                     let mut idx = 0;
                     while idx < self.octets.len() {
@@ -2479,14 +2479,14 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl const $BitOpAssign<&'_ $ty> for $ty {
+            const impl $BitOpAssign<&'_ $ty> for $ty {
                 fn $bitop_assign(&mut self, rhs: &'_ $ty) {
                     self.$bitop_assign(*rhs);
                 }
             }
 
             $(#[$attr])*
-            impl const $BitOp for $ty {
+            const impl $BitOp for $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2497,7 +2497,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl const $BitOp<&'_ $ty> for $ty {
+            const impl $BitOp<&'_ $ty> for $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2508,7 +2508,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl const $BitOp<$ty> for &'_ $ty {
+            const impl $BitOp<$ty> for &'_ $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2520,7 +2520,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl const $BitOp<&'_ $ty> for &'_ $ty {
+            const impl $BitOp<&'_ $ty> for &'_ $ty {
                 type Output = $ty;
 
                 #[inline]

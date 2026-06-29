@@ -3,6 +3,7 @@ use rustc_middle::{bug, span_bug, ty};
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
+use crate::mir::retag;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -11,10 +12,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.codegen_stmt_debuginfos(bx, &statement.debuginfos);
         self.set_debug_loc(bx, statement.source_info);
         match statement.kind {
-            mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
+            mir::StatementKind::Assign((ref place, ref rvalue)) => {
+                let needs_retag = bx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some()
+                    && retag::rvalue_needs_retag(rvalue);
+
                 if let Some(index) = place.as_local() {
                     match self.locals[index] {
-                        LocalRef::Place(cg_dest) => self.codegen_rvalue(bx, cg_dest, rvalue),
+                        LocalRef::Place(cg_dest) => {
+                            self.codegen_rvalue(bx, cg_dest, rvalue);
+                            if needs_retag {
+                                self.codegen_retag_place(bx, cg_dest, false);
+                            }
+                        }
                         LocalRef::UnsizedPlace(cg_indirect_dest) => {
                             let ty = cg_indirect_dest.layout.ty;
                             span_bug!(
@@ -24,7 +33,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             );
                         }
                         LocalRef::PendingOperand => {
-                            let operand = self.codegen_rvalue_operand(bx, rvalue);
+                            let mut operand = self.codegen_rvalue_operand(bx, rvalue);
+                            if needs_retag {
+                                operand = self.codegen_retag_operand(bx, operand, false);
+                            }
                             self.overwrite_local(index, LocalRef::Operand(operand));
                             self.debug_introduce_local(bx, index);
                         }
@@ -39,16 +51,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                             // If the type is zero-sized, it's already been set here,
                             // but we still need to make sure we codegen the operand
-                            self.codegen_rvalue_operand(bx, rvalue);
+                            // and emit a retag.
+                            let operand = self.codegen_rvalue_operand(bx, rvalue);
+                            if needs_retag {
+                                self.codegen_retag_operand(bx, operand, false);
+                            }
                         }
                     }
                 } else {
                     let cg_dest = self.codegen_place(bx, place.as_ref());
                     self.codegen_rvalue(bx, cg_dest, rvalue);
+                    if needs_retag {
+                        self.codegen_retag_place(bx, cg_dest, false);
+                    }
                 }
             }
-            mir::StatementKind::SetDiscriminant { box ref place, variant_index } => {
-                self.codegen_place(bx, place.as_ref()).codegen_set_discr(bx, variant_index);
+            mir::StatementKind::SetDiscriminant { ref place, variant_index } => {
+                self.codegen_place(bx, (**place).as_ref()).codegen_set_discr(bx, variant_index);
             }
             mir::StatementKind::StorageLive(local) => {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
@@ -67,11 +86,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::StatementKind::Coverage(ref kind) => {
                 self.codegen_coverage(bx, kind, statement.source_info.scope);
             }
-            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
+            mir::StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(ref op)) => {
                 let op_val = self.codegen_operand(bx, op);
                 bx.assume(op_val.immediate());
             }
-            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+            mir::StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(
                 mir::CopyNonOverlapping { ref count, ref src, ref dst },
             )) => {
                 let dst_val = self.codegen_operand(bx, dst);
@@ -86,7 +105,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .layout_of(bx.typing_env().as_query_input(pointee))
                     .expect("expected pointee to have a layout");
                 let elem_size = pointee_layout.layout.size().bytes();
-                let bytes = bx.mul(count, bx.const_usize(elem_size));
+                let bytes = bx.unchecked_sumul(count, bx.const_usize(elem_size));
 
                 let align = pointee_layout.layout.align.abi;
                 let dst = dst_val.immediate();
@@ -95,7 +114,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty(), None);
             }
             mir::StatementKind::FakeRead(..)
-            | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::ConstEvalCounter
             | mir::StatementKind::PlaceMention(..)

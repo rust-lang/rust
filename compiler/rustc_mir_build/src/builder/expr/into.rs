@@ -15,10 +15,10 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
 use crate::builder::expr::category::{Category, RvalueFunc};
-use crate::builder::matches::{DeclareLetBindings, HasMatchGuard};
+use crate::builder::matches::{DeclareLetBindings, Exhaustive, HasMatchGuard};
 use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
-use crate::errors::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
+use crate::diagnostics::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -238,7 +238,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let tmp = this.get_unit_temp();
                     // Execute the body, branching back to the test.
                     let body_block_end = this.expr_into_dest(tmp, body_block, body).into_block();
-                    this.cfg.goto(body_block_end, source_info, loop_block);
+
+                    let goto = this.cfg.goto(body_block_end, source_info, loop_block);
+                    if let Some(attrs) = this.thir.attributes.get(&expr_id) {
+                        goto.attributes = attrs.clone();
+                    }
 
                     // Loops are only exited by `break` expressions.
                     None
@@ -247,7 +251,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::LoopMatch {
                 state,
                 region_scope,
-                match_data: box LoopMatchMatchData { box ref arms, span: match_span, scrutinee },
+                match_data: LoopMatchMatchData { ref arms, span: match_span, scrutinee },
             } => {
                 // Intuitively, this is a combination of a loop containing a labeled block
                 // containing a match.
@@ -322,40 +326,66 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         &scrutinee_place_builder,
                         match_start_span,
                         patterns,
-                        false,
+                        Exhaustive::Yes,
                     );
 
                     let state_place = scrutinee_place_builder.to_place(this);
+                    let state_result = this.temp(state_ty, expr_span);
+                    let state_result_place = Place::from(state_result);
 
                     // This is logic for the labeled block: a block is a drop scope, hence
                     // `in_scope`, and a labeled block can be broken out of with a `break 'label`,
                     // hence the `in_breakable_scope`.
                     //
+                    // The state update is still modeled like `state = 'blk: { ... }`: normal
+                    // match arm results and ordinary breaks to the block are first written to
+                    // `state_result_place`, then written back to `state_place`. This avoids
+                    // building an overlapping assignment like `state = state`.
+                    //
                     // Then `in_const_continuable_scope` stores information for the lowering of
-                    // `#[const_continue]`, and finally the match is lowered in the standard way.
+                    // `#[const_continue]`, which still updates the actual `state_place` directly
+                    // so it can jump to the statically known next match branch.
                     unpack!(
                         body_block = this.in_scope(
                             (region_scope, source_info),
                             LintLevel::Inherited,
                             move |this| {
-                                this.in_breakable_scope(None, state_place, expr_span, |this| {
-                                    Some(this.in_const_continuable_scope(
-                                        Box::from(arms),
-                                        built_tree.clone(),
-                                        state_place,
-                                        expr_span,
-                                        |this| {
-                                            this.lower_match_arms(
-                                                state_place,
-                                                scrutinee_place_builder,
-                                                scrutinee_span,
-                                                arms,
-                                                built_tree,
-                                                this.source_info(match_span),
+                                this.in_const_continuable_scope(
+                                    arms.clone(),
+                                    built_tree.clone(),
+                                    state_place,
+                                    expr_span,
+                                    |this| {
+                                        let block = this
+                                            .in_breakable_scope(
+                                                None,
+                                                state_result_place,
+                                                expr_span,
+                                                |this| {
+                                                    Some(this.lower_match_arms(
+                                                        state_result_place,
+                                                        scrutinee_place_builder,
+                                                        scrutinee_span,
+                                                        arms,
+                                                        built_tree,
+                                                        this.source_info(match_span),
+                                                    ))
+                                                },
                                             )
-                                        },
-                                    ))
-                                })
+                                            .into_block();
+
+                                        this.cfg.push_assign(
+                                            block,
+                                            source_info,
+                                            state_place,
+                                            Rvalue::Use(
+                                                this.consume_by_copy_or_move(state_result_place),
+                                                WithRetag::Yes,
+                                            ),
+                                        );
+                                        block.unit()
+                                    },
+                                )
                             }
                         )
                     );
@@ -440,7 +470,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             source_info,
                             destination,
                             // Move from `b` so that does not get dropped any more.
-                            Rvalue::Use(Operand::Move(b)),
+                            Rvalue::Use(Operand::Move(b), WithRetag::Yes),
                         );
                         block.unit()
                     }
@@ -493,7 +523,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         destination,
-                        Rvalue::Use(Operand::Copy(place)),
+                        Rvalue::Use(Operand::Copy(place), WithRetag::Yes),
                     );
                     block.unit()
                 } else if this.infcx.type_is_use_cloned_modulo_regions(this.param_env, ty) {
@@ -530,7 +560,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         destination,
-                        Rvalue::Use(Operand::Move(place)),
+                        Rvalue::Use(Operand::Move(place), WithRetag::Yes),
                     );
                     block.unit()
                 }
@@ -561,7 +591,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
-            ExprKind::Adt(box AdtExpr {
+            ExprKind::Adt(AdtExpr {
                 adt_def,
                 variant_index,
                 args,
@@ -672,7 +702,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
-            ExprKind::InlineAsm(box InlineAsmExpr {
+            ExprKind::InlineAsm(InlineAsmExpr {
                 asm_macro,
                 template,
                 ref operands,
@@ -812,7 +842,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr_id));
-                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place), WithRetag::Yes);
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
@@ -827,7 +857,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 let place = unpack!(block = this.as_place(block, expr_id));
-                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place), WithRetag::Yes);
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
@@ -880,6 +910,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let rvalue = unpack!(block = this.as_local_rvalue(block, expr_id));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
+                block.unit()
+            }
+            ExprKind::Reborrow { source, mutability, target } => {
+                let place = unpack!(block = this.as_place(block, source));
+                this.cfg.push_assign(
+                    block,
+                    source_info,
+                    destination,
+                    Rvalue::Reborrow(target, mutability, place),
+                );
                 block.unit()
             }
         };

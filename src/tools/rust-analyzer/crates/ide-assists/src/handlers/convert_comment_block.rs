@@ -21,7 +21,7 @@ use crate::{AssistContext, AssistId, Assists};
 //   comment
 //   */
 // ```
-pub(crate) fn convert_comment_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_comment_block(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let comment = ctx.find_token_at_offset::<ast::Comment>()?;
     // Only allow comments which are alone on their line
     if let Some(prev) = comment.syntax().prev_token() {

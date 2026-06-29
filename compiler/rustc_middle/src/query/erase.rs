@@ -147,6 +147,14 @@ impl<T0, T1> Erasable for (&'_ T0, &'_ T1) {
     type Storage = [u8; size_of::<(&'_ (), &'_ ())>()];
 }
 
+impl<T0, T1, T2> Erasable for (&'_ T0, &'_ T1, &'_ T2) {
+    type Storage = [u8; size_of::<(&'_ (), &'_ (), &'_ ())>()];
+}
+
+impl<T0, T1> Erasable for (&'_ [T0], &'_ [T1]) {
+    type Storage = [u8; size_of::<(&'_ [()], &'_ [()])>()];
+}
+
 macro_rules! impl_erasable_for_types_with_no_type_params {
     ($($ty:ty),+ $(,)?) => {
         $(
@@ -214,6 +222,7 @@ impl_erasable_for_types_with_no_type_params! {
     rustc_hir::OpaqueTyOrigin<rustc_hir::def_id::DefId>,
     rustc_hir::def::DefKind,
     rustc_hir::def_id::DefId,
+    rustc_middle::hir::ProjectedMaybeOwner<'_>,
     rustc_middle::middle::codegen_fn_attrs::SanitizerFnAttrs,
     rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault,
     rustc_middle::mir::ConstQualifs,

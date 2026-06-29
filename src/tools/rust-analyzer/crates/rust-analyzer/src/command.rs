@@ -13,7 +13,7 @@ use std::{
 use anyhow::Context;
 use crossbeam_channel::Sender;
 use paths::Utf8PathBuf;
-use process_wrap::std::{StdChildWrapper, StdCommandWrap};
+use process_wrap::std::{ChildWrapper, CommandWrap};
 use stdx::process::streaming_output;
 
 /// This trait abstracts parsing one line of JSON output into a Rust
@@ -120,7 +120,7 @@ impl<T: Sized + Send + 'static> CommandActor<T> {
 /// 'Join On Drop' wrapper for a child process.
 ///
 /// This wrapper kills the process when the wrapper is dropped.
-struct JodGroupChild(Box<dyn StdChildWrapper>);
+struct JodGroupChild(Box<dyn ChildWrapper>);
 
 impl Drop for JodGroupChild {
     fn drop(&mut self) {
@@ -164,7 +164,7 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
         let arguments = command.get_args().map(|arg| arg.into()).collect::<Vec<OsString>>();
         let current_dir = command.get_current_dir().map(|arg| arg.to_path_buf());
 
-        let mut child = StdCommandWrap::from(command);
+        let mut child = CommandWrap::from(command);
         #[cfg(unix)]
         child.wrap(process_wrap::std::ProcessSession);
         #[cfg(windows)]

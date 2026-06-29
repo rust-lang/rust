@@ -1,4 +1,4 @@
-#![allow(clippy::print_literal)]
+#![expect(clippy::print_literal)]
 #![warn(clippy::print_with_newline)]
 
 fn main() {

@@ -11,7 +11,7 @@ struct Point {
 // EMIT_MIR optimizes_into_variable.main.ScalarReplacementOfAggregates.diff
 // EMIT_MIR optimizes_into_variable.main.GVN.diff
 // EMIT_MIR optimizes_into_variable.main.SimplifyLocals-final.after.mir
-// EMIT_MIR optimizes_into_variable.main.PreCodegen.after.mir
+// EMIT_MIR optimizes_into_variable.main.runtime-optimized.after.mir
 fn main() {
     let x = 2 + 2;
     let y = [0, 1, 2, 3, 4, 5][3];

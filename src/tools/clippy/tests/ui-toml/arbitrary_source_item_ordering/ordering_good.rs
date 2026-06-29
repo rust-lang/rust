@@ -18,7 +18,6 @@
 //@[bad_conf_6] error-in-other-file:
 //@compile-flags: --test
 
-#![allow(dead_code)]
 #![warn(clippy::arbitrary_source_item_ordering)]
 
 /// This module gets linted before clippy gives up.

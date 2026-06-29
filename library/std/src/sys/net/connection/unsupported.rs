@@ -39,7 +39,7 @@ impl TcpStream {
         self.0
     }
 
-    pub fn read_buf(&self, _buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, _buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0
     }
 
@@ -84,6 +84,14 @@ impl TcpStream {
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
+        self.0
+    }
+
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
         self.0
     }
 

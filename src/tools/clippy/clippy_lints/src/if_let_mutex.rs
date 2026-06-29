@@ -7,6 +7,7 @@ use rustc_errors::Diag;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::SyntaxContext;
 use rustc_span::edition::Edition::Edition2024;
 
 declare_clippy_lint! {
@@ -61,9 +62,10 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
             if_else: Some(if_else),
             ..
         }) = higher::IfLet::hir(cx, expr)
-            && let Some(op_mutex) = for_each_expr_without_closures(let_expr, |e| mutex_lock_call(cx, e, None))
+            && let ctxt = expr.span.ctxt()
+            && let Some(op_mutex) = for_each_expr_without_closures(let_expr, |e| mutex_lock_call(cx, ctxt, e, None))
             && let Some(arm_mutex) =
-                for_each_expr_without_closures((if_then, if_else), |e| mutex_lock_call(cx, e, Some(op_mutex)))
+                for_each_expr_without_closures((if_then, if_else), |e| mutex_lock_call(cx, ctxt, e, Some(op_mutex)))
         {
             let diag = |diag: &mut Diag<'_, ()>| {
                 diag.span_label(
@@ -89,6 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
 
 fn mutex_lock_call<'tcx>(
     cx: &LateContext<'tcx>,
+    ctxt: SyntaxContext,
     expr: &'tcx Expr<'_>,
     op_mutex: Option<&'tcx Expr<'_>>,
 ) -> ControlFlow<&'tcx Expr<'tcx>> {
@@ -96,7 +99,7 @@ fn mutex_lock_call<'tcx>(
         && path.ident.name == sym::lock
         && let ty = cx.typeck_results().expr_ty(self_arg).peel_refs()
         && ty.is_diag_item(cx, sym::Mutex)
-        && op_mutex.is_none_or(|op| eq_expr_value(cx, self_arg, op))
+        && op_mutex.is_none_or(|op| eq_expr_value(cx, ctxt, self_arg, op))
     {
         ControlFlow::Break(self_arg)
     } else {

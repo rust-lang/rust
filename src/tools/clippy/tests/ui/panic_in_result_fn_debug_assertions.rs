@@ -9,7 +9,7 @@ struct A;
 
 impl A {
     fn result_with_debug_assert_with_message(x: i32) -> Result<bool, String> {
-        debug_assert!(x == 5, "wrong argument");
+        debug_assert!(x.is_positive(), "wrong argument");
         Ok(true)
     }
 
@@ -24,7 +24,7 @@ impl A {
     }
 
     fn other_with_debug_assert_with_message(x: i32) {
-        debug_assert!(x == 5, "wrong argument");
+        debug_assert!(x.is_positive(), "wrong argument");
     }
 
     fn other_with_debug_assert_eq(x: i32) {

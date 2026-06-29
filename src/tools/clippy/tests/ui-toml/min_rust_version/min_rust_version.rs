@@ -1,5 +1,5 @@
-#![allow(clippy::redundant_clone, clippy::unnecessary_operation, clippy::incompatible_msrv)]
-#![warn(clippy::manual_non_exhaustive, clippy::borrow_as_ptr, clippy::manual_bits)]
+#![allow(clippy::incompatible_msrv, clippy::redundant_clone, clippy::unnecessary_operation)]
+#![warn(clippy::borrow_as_ptr, clippy::manual_bits, clippy::manual_non_exhaustive)]
 
 use std::mem::{size_of, size_of_val};
 use std::ops::Deref;

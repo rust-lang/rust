@@ -161,6 +161,14 @@ impl Process {
         }
     }
 
+    pub fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
+        // See note in `send_signal` regarding recycled PIDs.
+        if self.status.is_some() {
+            return Ok(());
+        }
+        cvt(unsafe { libc::killpg(self.pid, signal) }).map(drop)
+    }
+
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         use crate::sys::cvt_r;
         if let Some(status) = self.status {

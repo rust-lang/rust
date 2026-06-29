@@ -15,5 +15,5 @@ fn init_to_offset_of() {
     //~^ WARN irrefutable `if let` pattern
 
     let x = offset_of!(Foo, field) else { return; };
-    //~^ WARN irrefutable `let...else` pattern
+    //~^ WARN unreachable `else` clause
 }

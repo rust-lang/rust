@@ -1,0 +1,141 @@
+// MIR for `hello_world::{closure#0}` 0 coroutine_drop
+
+fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
+    debug _task_context => _2;
+    let mut _0: ();
+    let mut _2: std::future::ResumeTy;
+    let _3: [u8; 1];
+    let _5: &[u8];
+    let mut _6: &[u8; 1];
+    let mut _7: std::ops::RangeFull;
+    let _9: ();
+    let mut _10: std::option::Option<()>;
+    let mut _11: {async fn body of read_exact()};
+    let mut _12: {async fn body of read_exact()};
+    let mut _13: &mut &[u8];
+    let mut _14: &mut &[u8];
+    let mut _15: &mut [u8];
+    let mut _16: &mut [u8; 1];
+    let mut _17: &mut [u8; 1];
+    let mut _19: ();
+    let _20: ();
+    let mut _21: std::task::Poll<std::option::Option<()>>;
+    let mut _22: std::pin::Pin<&mut {async fn body of read_exact()}>;
+    let mut _23: &mut {async fn body of read_exact()};
+    let mut _24: &mut {async fn body of read_exact()};
+    let mut _25: &mut std::task::Context<'_>;
+    let mut _26: &mut std::task::Context<'_>;
+    let mut _27: std::future::ResumeTy;
+    let mut _28: isize;
+    let mut _30: !;
+    let mut _31: std::future::ResumeTy;
+    let mut _32: ();
+    let mut _33: ();
+    let mut _34: u32;
+    scope 1 {
+        debug data => (((*_1) as variant#3).0: [u8; 1]);
+        let mut _4: &[u8];
+        scope 2 {
+            debug reader => (((*_1) as variant#3).1: &[u8]);
+            let mut _8: [u8; 1];
+            scope 3 {
+                debug marker => (((*_1) as variant#3).2: [u8; 1]);
+                let mut _18: {async fn body of read_exact()};
+                scope 4 {
+                    debug __awaitee => (((*_1) as variant#3).3: {async fn body of read_exact()});
+                    let _29: std::option::Option<()>;
+                    scope 5 {
+                        debug result => _29;
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _34 = discriminant((*_1));
+        switchInt(move _34) -> [0: bb9, 3: bb12, otherwise: bb13];
+    }
+
+    bb1: {
+        StorageDead(_32);
+        StorageDead(_31);
+        drop((((*_1) as variant#3).3: {async fn body of read_exact()})) -> [return: bb2, unwind: bb6];
+    }
+
+    bb2: {
+        nop;
+        StorageDead(_10);
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_17);
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_9);
+        nop;
+        StorageDead(_5);
+        nop;
+        nop;
+        goto -> bb10;
+    }
+
+    bb4: {
+        return;
+    }
+
+    bb5 (cleanup): {
+        resume;
+    }
+
+    bb6 (cleanup): {
+        nop;
+        StorageDead(_10);
+        goto -> bb7;
+    }
+
+    bb7 (cleanup): {
+        StorageDead(_17);
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_9);
+        nop;
+        StorageDead(_5);
+        nop;
+        nop;
+        goto -> bb5;
+    }
+
+    bb8: {
+        return;
+    }
+
+    bb9: {
+        goto -> bb11;
+    }
+
+    bb10: {
+        goto -> bb4;
+    }
+
+    bb11: {
+        goto -> bb8;
+    }
+
+    bb12: {
+        StorageLive(_5);
+        StorageLive(_9);
+        StorageLive(_10);
+        StorageLive(_11);
+        StorageLive(_14);
+        StorageLive(_17);
+        StorageLive(_31);
+        StorageLive(_32);
+        goto -> bb1;
+    }
+
+    bb13: {
+        return;
+    }
+}

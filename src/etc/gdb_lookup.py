@@ -103,6 +103,7 @@ if gdb_version[0] < 7 or (gdb_version[0] == 7 and gdb_version[1] < 12):
 printer.add(RustType.StdString, StdStringProvider)
 printer.add(RustType.StdOsString, StdOsStringProvider)
 printer.add(RustType.StdStr, StdStrProvider)
+printer.add(RustType.StdBoxStr, StdBoxStrProvider)
 printer.add(RustType.StdSlice, StdSliceProvider)
 printer.add(RustType.StdVec, StdVecProvider)
 printer.add(RustType.StdVecDeque, StdVecDequeProvider)

@@ -21,8 +21,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{
-    InterpErrorKind, InvalidMetaKind, Misalignment, Provenance, UnsupportedOpInfo, alloc_range,
-    interp_ok,
+    InterpErrorKind, InvalidMetaKind, Misalignment, Provenance, alloc_range, interp_ok,
 };
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -108,17 +107,17 @@ macro_rules! try_validation {
     }};
 }
 
-#[derive(Debug, Clone, Copy)]
-enum PointerKind {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PtrKind {
     Ref(Mutability),
     Box,
 }
 
-impl fmt::Display for PointerKind {
+impl fmt::Display for PtrKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let str = match self {
-            PointerKind::Ref(_) => "reference",
-            PointerKind::Box => "box",
+            PtrKind::Ref(_) => "reference",
+            PtrKind::Box => "box",
         };
         write!(f, "{str}")
     }
@@ -154,11 +153,11 @@ impl fmt::Display for ExpectedKind {
     }
 }
 
-impl From<PointerKind> for ExpectedKind {
-    fn from(x: PointerKind) -> ExpectedKind {
+impl From<PtrKind> for ExpectedKind {
+    fn from(x: PtrKind) -> ExpectedKind {
         match x {
-            PointerKind::Box => ExpectedKind::Box,
-            PointerKind::Ref(_) => ExpectedKind::Reference,
+            PtrKind::Box => ExpectedKind::Box,
+            PtrKind::Ref(_) => ExpectedKind::Reference,
         }
     }
 }
@@ -346,55 +345,7 @@ fn write_path(out: &mut String, path: &[PathElem<'_>]) {
     }
 }
 
-/// Represents a set of `Size` values as a sorted list of ranges.
-// These are (offset, length) pairs, and they are sorted and mutually disjoint,
-// and never adjacent (i.e. there's always a gap between two of them).
-#[derive(Debug, Clone)]
-pub struct RangeSet(Vec<(Size, Size)>);
-
-impl RangeSet {
-    fn add_range(&mut self, offset: Size, size: Size) {
-        if size.bytes() == 0 {
-            // No need to track empty ranges.
-            return;
-        }
-        let v = &mut self.0;
-        // We scan for a partition point where the left partition is all the elements that end
-        // strictly before we start. Those are elements that are too "low" to merge with us.
-        let idx =
-            v.partition_point(|&(other_offset, other_size)| other_offset + other_size < offset);
-        // Now we want to either merge with the first element of the second partition, or insert ourselves before that.
-        if let Some(&(other_offset, other_size)) = v.get(idx)
-            && offset + size >= other_offset
-        {
-            // Their end is >= our start (otherwise it would not be in the 2nd partition) and
-            // our end is >= their start. This means we can merge the ranges.
-            let new_start = other_offset.min(offset);
-            let mut new_end = (other_offset + other_size).max(offset + size);
-            // We grew to the right, so merge with overlapping/adjacent elements.
-            // (We also may have grown to the left, but that can never make us adjacent with
-            // anything there since we selected the first such candidate via `partition_point`.)
-            let mut scan_right = 1;
-            while let Some(&(next_offset, next_size)) = v.get(idx + scan_right)
-                && new_end >= next_offset
-            {
-                // Increase our size to absorb the next element.
-                new_end = new_end.max(next_offset + next_size);
-                // Look at the next element.
-                scan_right += 1;
-            }
-            // Update the element we grew.
-            v[idx] = (new_start, new_end - new_start);
-            // Remove the elements we absorbed (if any).
-            if scan_right > 1 {
-                drop(v.drain((idx + 1)..(idx + scan_right)));
-            }
-        } else {
-            // Insert new element.
-            v.insert(idx, (offset, size));
-        }
-    }
-}
+pub type RangeSet = rustc_data_structures::range_set::RangeSet<Size>;
 
 struct ValidityVisitor<'rt, 'tcx, M: Machine<'tcx>> {
     /// The `path` may be pushed to, but the part that is present when a function
@@ -545,34 +496,30 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         interp_ok(self.read_immediate(val, expected)?.to_scalar())
     }
 
-    fn deref_pointer(
+    /// Given a place and a pointer loaded from that place, ensure that the place does
+    /// not store any more provenance than the pointer does. IOW, if any provenance
+    /// was discarded when loading the pointer, it will also get discarded in-memory.
+    fn reset_pointer_provenance(
         &mut self,
-        val: &PlaceTy<'tcx, M::Provenance>,
-        expected: ExpectedKind,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        // Not using `ecx.deref_pointer` since we want to use our `read_immediate` wrapper.
-        let imm = self.read_immediate(val, expected)?;
-        // Reset provenance: ensure slice tail metadata does not preserve provenance,
-        // and ensure all pointers do not preserve partial provenance.
-        if self.reset_provenance_and_padding {
-            if matches!(imm.layout.backend_repr, BackendRepr::Scalar(..)) {
-                // A thin pointer. If it has provenance, we don't have to do anything.
-                // If it does not, ensure we clear the provenance in memory.
-                if matches!(imm.to_scalar(), Scalar::Int(..)) {
-                    self.ecx.clear_provenance(val)?;
-                }
-            } else {
-                // A wide pointer. This means we have to worry both about the pointer itself and the
-                // metadata. We do the lazy thing and just write back the value we got. Just
-                // clearing provenance in a targeted manner would be more efficient, but unless this
-                // is a perf hotspot it's just not worth the effort.
-                self.ecx.write_immediate_no_validate(*imm, val)?;
+        place: &PlaceTy<'tcx, M::Provenance>,
+        ptr: &ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        if matches!(ptr.layout.backend_repr, BackendRepr::Scalar(..)) {
+            // A thin pointer. If it has provenance, we don't have to do anything.
+            // If it does not, ensure we clear the provenance in memory.
+            if !matches!(ptr.to_scalar(), Scalar::Ptr(..)) {
+                // The loaded pointer has no provenance. Some bytes of its representation still
+                // might have provenance, which we have to clear.
+                self.ecx.clear_provenance(place)?;
             }
-            // The entire thing is data, not padding.
-            self.add_data_range_place(val);
+        } else {
+            // A wide pointer. This means we have to worry both about the pointer itself and the
+            // metadata. We do the lazy thing and just write back the value we got. Just
+            // clearing provenance in a targeted manner would be more efficient, but unless this
+            // is a perf hotspot it's just not worth the effort.
+            self.ecx.write_immediate_no_validate(**ptr, place)?;
         }
-        // Now turn it into a place.
-        self.ecx.imm_ptr_to_mplace(&imm)
+        interp_ok(())
     }
 
     fn check_wide_ptr_meta(
@@ -610,12 +557,22 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     }
 
     /// Check a reference or `Box`.
+    ///
+    /// `ty` is the actual type of `value`; for a Box, `value` will be just the inner raw pointer.
     fn check_safe_pointer(
         &mut self,
         value: &PlaceTy<'tcx, M::Provenance>,
-        ptr_kind: PointerKind,
+        ty: Ty<'tcx>,
+        ptr_kind: PtrKind,
     ) -> InterpResult<'tcx> {
-        let place = self.deref_pointer(value, ptr_kind.into())?;
+        let ptr = self.read_immediate(value, ptr_kind.into())?;
+        if self.reset_provenance_and_padding {
+            // There's no padding in a pointer.
+            self.add_data_range_place(value);
+            // Resetting provenance is done below, together with retagging, to avoid
+            // redundant writes.
+        }
+        let place = self.ecx.imm_ptr_to_mplace(&ptr)?;
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
         if place.layout.is_unsized() {
@@ -640,8 +597,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             // alignment should take attributes into account).
             .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
 
-        // If we're not allow to dangle, make sure this is dereferenceable.
-        if !self.may_dangle {
+        // If we're not allow to dangle, make sure this is dereferenceable and retag it for
+        // the aliasing model.
+        let adjusted_ptr = if !self.may_dangle {
             try_validation!(
                 self.ecx.check_ptr_access(
                     place.ptr(),
@@ -661,7 +619,44 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 Ub(PointerUseAfterFree(..)) =>
                     format!("encountered a dangling {ptr_kind} (use-after-free)"),
             );
+            if self.reset_provenance_and_padding {
+                M::retag_ptr_value(self.ecx, &ptr, ty).map_err_kind(|e| match e {
+                    Ub(WriteToReadOnly(_)) => {
+                        err_validation_failure!(
+                            self.path,
+                            format!(
+                                "encountered {} pointing to read-only memory",
+                                if ptr_kind == PtrKind::Box { "box" } else { "mutable reference" },
+                            )
+                        )
+                    }
+                    InterpErrorKind::MachineStop(mut machine_err) => {
+                        // Enhance the aliasing model error with the current path.
+                        if !self.path.projs.is_empty() {
+                            let mut path = String::new();
+                            write_path(&mut path, &self.path.projs);
+                            machine_err.with_validation_path(path);
+                        }
+                        InterpErrorKind::MachineStop(machine_err)
+                    }
+                    e => e,
+                })?
+            } else {
+                // We can't retag if we're not resetting provenance.
+                None
+            }
+        } else {
+            // Pointer remains unchanged.
+            None
+        };
+        // If the pointer needs adjusting, write back adjusted pointer. This automatically
+        // also clears any excess provenance. Otherwise, just clear the provenance.
+        if let Some(ptr) = adjusted_ptr {
+            self.ecx.write_immediate_no_validate(*ptr, value)?;
+        } else if self.reset_provenance_and_padding {
+            self.reset_pointer_provenance(value, &ptr)?;
         }
+
         // Check alignment after dereferenceable (if both are violated, trigger the error above).
         try_validation!(
             self.ecx.check_ptr_align(
@@ -779,8 +774,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     if size != Size::ZERO {
                         // Determine whether this pointer expects to be pointing to something mutable.
                         let ptr_expected_mutbl = match ptr_kind {
-                            PointerKind::Box => Mutability::Mut,
-                            PointerKind::Ref(mutbl) => {
+                            PtrKind::Box => Mutability::Mut,
+                            PtrKind::Ref(mutbl) => {
                                 // We do not take into account interior mutability here since we cannot know if
                                 // there really is an `UnsafeCell` inside `Option<UnsafeCell>` -- so we check
                                 // that in the recursive descent behind this reference (controlled by
@@ -882,15 +877,26 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 }
                 interp_ok(true)
             }
-            ty::RawPtr(..) => {
-                let place = self.deref_pointer(value, ExpectedKind::RawPtr)?;
-                if place.layout.is_unsized() {
+            ty::RawPtr(pointee, ..) => {
+                let ptr = self.read_immediate(value, ExpectedKind::RawPtr)?;
+                if self.reset_provenance_and_padding {
+                    self.reset_pointer_provenance(value, &ptr)?;
+                    // There's no padding in a pointer.
+                    self.add_data_range_place(value);
+                }
+
+                if !pointee.is_sized(*self.ecx.tcx, self.ecx.typing_env) {
+                    // Raw pointers to unsized types need to have their metadata checked.
+                    // We avoid creating this place for sized types to match codegen: those types
+                    // might actually be invalid (i.e., too big)!
+                    let place = self.ecx.imm_ptr_to_mplace(&ptr)?;
+                    assert!(place.layout.is_unsized());
                     self.check_wide_ptr_meta(place.meta(), place.layout)?;
                 }
                 interp_ok(true)
             }
             ty::Ref(_, _ty, mutbl) => {
-                self.check_safe_pointer(value, PointerKind::Ref(*mutbl))?;
+                self.check_safe_pointer(value, ty, PtrKind::Ref(*mutbl))?;
                 interp_ok(true)
             }
             ty::FnPtr(..) => {
@@ -1140,7 +1146,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         assert!(layout.is_sized(), "there are no unsized unions");
         let layout_cx = LayoutCx::new(*ecx.tcx, ecx.typing_env);
         return M::cached_union_data_range(ecx, layout.ty, || {
-            let mut out = RangeSet(Vec::new());
+            let mut out = RangeSet::new();
             union_data_range_uncached(&layout_cx, layout, Size::ZERO, &mut out);
             out
         });
@@ -1296,11 +1302,21 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
     #[inline]
     fn visit_box(
         &mut self,
-        _box_ty: Ty<'tcx>,
+        box_ty: Ty<'tcx>,
         val: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        self.check_safe_pointer(val, PointerKind::Box)?;
+        self.check_safe_pointer(&val, box_ty, PtrKind::Box)?;
         interp_ok(())
+    }
+
+    #[inline]
+    fn visit_variantless(&mut self, val: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+        let ty = val.layout.ty;
+        assert!(ty.is_enum(), "encountered non-enum variantless type `{ty}`");
+        throw_validation_failure!(
+            self.path,
+            format!("encountered a value of zero-variant enum `{ty}`")
+        );
     }
 
     #[inline]
@@ -1442,7 +1458,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // First check that the base type is valid
                 self.visit_value(&val.transmute(self.ecx.layout_of(*base)?, self.ecx)?)?;
                 // When you extend this match, make sure to also add tests to
-                // tests/ui/type/pattern_types/validity.rs((
+                // tests/ui/type/pattern_types/validity.rs
                 match **pat {
                     // Range and non-null patterns are precisely reflected into `valid_range` and thus
                     // handled fully by `visit_scalar` (called below).
@@ -1456,6 +1472,34 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     // The consolation here is that codegen also will miss that UB, so at least
                     // we won't see optimizations actually breaking such programs.
                     ty::PatternKind::Or(_patterns) => {}
+                }
+                // FIXME(pattern_types): handle everything based on the pattern, not on the layout.
+                // it's ok to run scalar validation even if the pattern type is `u8 is 0..=255` and thus
+                // allows uninit values, because that's rare and so not a perf issue.
+                match val.layout.backend_repr {
+                    BackendRepr::Scalar(scalar_layout) => {
+                        if !scalar_layout.is_uninit_valid() {
+                            // There is something to check here.
+                            // We read directly via `ecx` since the read cannot fail -- we already read
+                            // this field above when recursing into the field.
+                            let scalar = self.ecx.read_scalar(val)?;
+                            self.visit_scalar(scalar, scalar_layout)?;
+                        }
+                    }
+                    BackendRepr::ScalarPair(a_layout, b_layout) => {
+                        // We can only proceed if *both* scalars need to be initialized.
+                        // FIXME: find a way to also check ScalarPair when one side can be uninit but
+                        // the other must be init.
+                        if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
+                            // We read directly via `ecx` since the read cannot fail -- we already read
+                            // this field above when recursing into the field.
+                            let (a, b) = self.ecx.read_immediate(val)?.to_scalar_pair();
+                            self.visit_scalar(a, a_layout)?;
+                            self.visit_scalar(b, b_layout)?;
+                        }
+                    }
+                    BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => unreachable!(),
+                    BackendRepr::Memory { .. } => unreachable!()
                 }
             }
             ty::Adt(adt, _) if adt.is_maybe_dangling() => {
@@ -1479,51 +1523,46 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
             }
         }
 
-        // *After* all of this, check further information stored in the layout. We need to check
-        // this to handle types like `NonNull` where the `Scalar` info is more restrictive than what
-        // the fields say (`rustc_layout_scalar_valid_range_start`). But in most cases, this will
-        // just propagate what the fields say, and then we want the error to point at the field --
-        // so, we first recurse, then we do this check.
-        //
-        // FIXME: We could avoid some redundant checks here. For newtypes wrapping
-        // scalars, we do the same check on every "level" (e.g., first we check
-        // MyNewtype and then the scalar in there).
-        if val.layout.is_uninhabited() {
-            let ty = val.layout.ty;
-            throw_validation_failure!(
-                self.path,
-                format!("encountered a value of uninhabited type `{ty}`")
-            );
-        }
-        match val.layout.backend_repr {
-            BackendRepr::Scalar(scalar_layout) => {
-                if !scalar_layout.is_uninit_valid() {
-                    // There is something to check here.
-                    // We read directly via `ecx` since the read cannot fail -- we already read
-                    // this field above when recursing into the field.
-                    let scalar = self.ecx.read_scalar(val)?;
-                    self.visit_scalar(scalar, scalar_layout)?;
+        // Assert that we checked everything there is to check about this type.
+        assert!(
+            !val.layout.is_uninhabited(),
+            "a value of type `{}` passed validation but that type is uninhabited",
+            val.layout.ty
+        );
+        if cfg!(debug_assertions) {
+            // Only run expensive checks when debug assertions are enabled.
+            match val.layout.backend_repr {
+                BackendRepr::Scalar(scalar_layout) => {
+                    if !scalar_layout.is_uninit_valid() {
+                        // There is something to check here.
+                        // We read directly via `ecx` since the read cannot fail -- we already read
+                        // this field above when recursing into the field.
+                        let scalar = self
+                            .ecx
+                            .read_scalar(val)
+                            .expect("the above checks should have fully handled this situation");
+                        self.visit_scalar(scalar, scalar_layout)
+                            .expect("the above checks should have fully handled this situation");
+                    }
                 }
-            }
-            BackendRepr::ScalarPair(a_layout, b_layout) => {
-                // We can only proceed if *both* scalars need to be initialized.
-                // FIXME: find a way to also check ScalarPair when one side can be uninit but
-                // the other must be init.
-                if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
-                    // We read directly via `ecx` since the read cannot fail -- we already read
-                    // this field above when recursing into the field.
-                    let (a, b) = self.ecx.read_immediate(val)?.to_scalar_pair();
-                    self.visit_scalar(a, a_layout)?;
-                    self.visit_scalar(b, b_layout)?;
+                BackendRepr::ScalarPair(a_layout, b_layout) => {
+                    // We can only proceed if *both* scalars need to be initialized.
+                    // FIXME: find a way to also check ScalarPair when one side can be uninit but
+                    // the other must be init.
+                    if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
+                        let (a, b) = self
+                            .ecx
+                            .read_immediate(val)
+                            .expect("the above checks should have fully handled this situation")
+                            .to_scalar_pair();
+                        self.visit_scalar(a, a_layout)
+                            .expect("the above checks should have fully handled this situation");
+                        self.visit_scalar(b, b_layout)
+                            .expect("the above checks should have fully handled this situation");
+                    }
                 }
-            }
-            BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => {
-                // No checks here, we assume layout computation gets this right.
-                // (This is harder to check since Miri does not represent these as `Immediate`. We
-                // also cannot use field projections since this might be a newtype around a vector.)
-            }
-            BackendRepr::Memory { .. } => {
-                // Nothing to do.
+                BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => {}
+                BackendRepr::Memory { .. } => {}
             }
         }
 
@@ -1557,7 +1596,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ctfe_mode,
                 ecx,
                 reset_provenance_and_padding,
-                data_bytes: reset_padding.then_some(RangeSet(Vec::new())),
+                data_bytes: reset_padding.then_some(RangeSet::new()),
                 may_dangle: start_in_may_dangle,
             };
             v.visit_value(val)?;
@@ -1567,9 +1606,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         .map_err_info(|err| {
             if !matches!(
                 err.kind(),
-                err_ub!(ValidationError { .. })
+                InterpErrorKind::UndefinedBehavior(ValidationError { .. })
                     | InterpErrorKind::InvalidProgram(_)
-                    | InterpErrorKind::Unsupported(UnsupportedOpInfo::ExternTypeField)
+                    | InterpErrorKind::Unsupported(_)
+                // We have to also ignore machine-specific errors since we do retagging
+                // during validation.
+                | InterpErrorKind::MachineStop(_)
             ) {
                 bug!("Unexpected error during validation: {}", format_interp_error(err));
             }

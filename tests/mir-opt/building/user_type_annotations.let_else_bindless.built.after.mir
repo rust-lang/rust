@@ -29,7 +29,7 @@ fn let_else_bindless() -> () {
     }
 
     bb1: {
-        _1 = core::panicking::panic(const "internal error: entered unreachable code") -> bb6;
+        _1 = core::panicking::panic(const "internal error: entered unreachable code") -> [return: bb2, unwind: bb6];
     }
 
     bb2: {

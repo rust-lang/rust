@@ -1,0 +1,14 @@
+error[E0425]: cannot find type `Path` in this scope
+  --> $DIR/suggest-import-before-outer-attrs-issue-69733.rs:8:14
+   |
+LL | type Ident = Path;
+   |              ^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::path::Path;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

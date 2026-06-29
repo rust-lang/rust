@@ -1,11 +1,6 @@
 //@ check-pass
 
-#![allow(
-    unused_variables,
-    clippy::disallowed_names,
-    clippy::needless_pass_by_value,
-    dead_code
-)]
+#![expect(clippy::disallowed_names, clippy::needless_pass_by_value)]
 
 // This should not compile-fail with:
 //

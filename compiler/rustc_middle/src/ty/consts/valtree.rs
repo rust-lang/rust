@@ -5,7 +5,7 @@ use rustc_abi::{FIRST_VARIANT, VariantIdx};
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def::Namespace;
 use rustc_macros::{
-    HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension,
+    Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension,
 };
 
 use super::ScalarInt;
@@ -26,7 +26,7 @@ impl<'tcx> ty::ValTreeKind<TyCtxt<'tcx>> {
 ///
 /// [dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html#valtrees
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 // FIXME(mgca): Try not interning here. We already intern `ty::Const` which `ValTreeKind`
 // recurses through
 pub struct ValTree<'tcx>(pub(crate) Interned<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>);
@@ -97,7 +97,7 @@ pub type ConstToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, Er
 /// Note that this is also used by pattern elaboration to represent values which cannot occur in types,
 /// such as raw pointers and floats.
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
-#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(StableHash, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable, Lift)]
 pub struct Value<'tcx> {
     pub ty: Ty<'tcx>,
     pub valtree: ValTree<'tcx>,
@@ -238,9 +238,8 @@ impl<'tcx> rustc_type_ir::inherent::ValueConst<TyCtxt<'tcx>> for Value<'tcx> {
 impl<'tcx> fmt::Display for Value<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(move |tcx| {
-            let cv = tcx.lift(*self).unwrap();
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
-            p.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
+            p.pretty_print_const_valtree(tcx.lift(*self), /*print_ty*/ true)?;
             f.write_str(&p.into_buffer())
         })
     }

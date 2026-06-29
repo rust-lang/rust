@@ -1,3 +1,5 @@
+use crate::pin::Pin;
+
 /// Custom code within the destructor.
 ///
 /// When a value is no longer needed, Rust will run a "destructor" on that value.
@@ -237,5 +239,30 @@ pub const trait Drop {
     /// [`mem::drop`]: drop
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn drop(&mut self);
+    #[rustc_default_body_unstable(feature = "pin_ergonomics", issue = "130494")]
+    fn drop(&mut self) {
+        // SAFETY: `self` is pinned till after dropped.
+        unsafe { Drop::pin_drop(Pin::new_unchecked(self)) }
+    }
+
+    /// Execute the destructor for this type, but different to [`Drop::drop`], it requires `self`
+    /// to be pinned.
+    ///
+    /// By implementing this method instead of [`Drop::drop`], the receiver type [`Pin<&mut Self>`]
+    /// makes sure that the value is pinned until it is deallocated (See [`std::pin` module docs] for
+    /// more details), which enables us to support field projections of `Self` type safely.
+    ///
+    /// For types that support pin-projection (i.e., marked with `#[pin_v2]`), this method must be used.
+    ///
+    /// For any type, at least and at most one of [`Drop::drop`] and [`Drop::pin_drop`] should be
+    /// implemented.
+    ///
+    /// See also [`Drop::drop`] for more details.
+    ///
+    /// [`Drop::drop`]: crate::ops::Drop::drop
+    /// [`Drop::pin_drop`]: crate::ops::Drop::pin_drop
+    /// [`Pin<&mut Self>`]: crate::pin::Pin
+    /// [`std::pin` module docs]: crate::pin
+    #[unstable(feature = "pin_ergonomics", issue = "130494")]
+    fn pin_drop(self: Pin<&mut Self>) {}
 }

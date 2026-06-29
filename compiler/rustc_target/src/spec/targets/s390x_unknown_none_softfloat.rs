@@ -20,6 +20,7 @@ pub(crate) fn target() -> Target {
         rustc_abi: Some(RustcAbi::Softfloat),
         stack_probes: StackProbeType::Inline,
         supported_sanitizers: SanitizerSet::KERNELADDRESS,
+        supports_fentry: true,
         ..Default::default()
     };
 

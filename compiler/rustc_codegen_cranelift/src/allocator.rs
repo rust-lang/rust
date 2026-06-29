@@ -5,20 +5,11 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_ast::expand::allocator::{
     AllocatorMethod, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, default_fn_name, global_fn_name,
 };
-use rustc_codegen_ssa::base::{allocator_kind_for_codegen, allocator_shim_contents};
 use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::prelude::*;
 
-/// Returns whether an allocator shim was created
-pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut dyn Module) -> bool {
-    let Some(kind) = allocator_kind_for_codegen(tcx) else { return false };
-    let methods = allocator_shim_contents(tcx, kind);
-    codegen_inner(tcx, module, &methods);
-    true
-}
-
-fn codegen_inner(tcx: TyCtxt<'_>, module: &mut dyn Module, methods: &[AllocatorMethod]) {
+pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut dyn Module, methods: &[AllocatorMethod]) {
     let usize_ty = module.target_config().pointer_type();
 
     for method in methods {

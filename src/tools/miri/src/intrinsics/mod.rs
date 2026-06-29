@@ -7,7 +7,7 @@ mod simd;
 pub use self::atomic::AtomicRmwOp;
 
 #[rustfmt::skip] // prevent `use` reordering
-use rand::Rng;
+use rand::RngExt;
 use rustc_abi::Size;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;

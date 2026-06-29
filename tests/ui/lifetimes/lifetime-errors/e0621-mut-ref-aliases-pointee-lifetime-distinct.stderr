@@ -1,0 +1,14 @@
+error[E0621]: explicit lifetime required in the type of `y`
+  --> $DIR/e0621-mut-ref-aliases-pointee-lifetime-distinct.rs:6:5
+   |
+LL |     x.push(y);
+   |     ^^^^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `y`
+   |
+LL | pub fn push<'a>(x: &mut Vec<&'a u8>, y: &'a u8) {
+   |                                          ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0621`.

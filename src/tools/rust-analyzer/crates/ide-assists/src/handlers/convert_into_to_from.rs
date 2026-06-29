@@ -1,4 +1,6 @@
-use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast, traits::resolve_target_trait};
+use ide_db::{
+    famous_defs::FamousDefs, helpers::mod_path_to_ast_with_factory, traits::resolve_target_trait,
+};
 use syntax::ast::{self, AstNode, HasGenericArgs, HasName};
 
 use crate::{AssistContext, AssistId, Assists};
@@ -31,7 +33,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     }
 // }
 // ```
-pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let impl_ = ctx.find_node_at_offset::<ast::Impl>()?;
     let src_type = impl_.self_ty()?;
     let ast_trait = impl_.trait_()?;
@@ -44,17 +46,15 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
     }
 
     let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate(ctx.sema.db)));
+    let current_edition = module.krate(ctx.db()).edition(ctx.db());
 
-    let src_type_path = {
+    let src_type_mod_path = {
         let src_type_path = src_type.syntax().descendants().find_map(ast::Path::cast)?;
         let src_type_def = match ctx.sema.resolve_path(&src_type_path) {
             Some(hir::PathResolution::Def(module_def)) => module_def,
             _ => return None,
         };
-        mod_path_to_ast(
-            &module.find_path(ctx.db(), src_type_def, cfg)?,
-            module.krate(ctx.db()).edition(ctx.db()),
-        )
+        module.find_path(ctx.db(), src_type_def, cfg)?
     };
 
     let dest_type = match &ast_trait {
@@ -89,19 +89,45 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
         "Convert Into to From",
         impl_.syntax().text_range(),
         |builder| {
-            builder.replace(src_type.syntax().text_range(), dest_type.to_string());
-            builder.replace(ast_trait.syntax().text_range(), format!("From<{src_type}>"));
-            builder.replace(into_fn_return.syntax().text_range(), "-> Self");
-            builder.replace(into_fn_params.syntax().text_range(), format!("(val: {src_type})"));
-            builder.replace(into_fn_name.syntax().text_range(), "from");
+            let editor = builder.make_editor(impl_.syntax());
+            let make = editor.make();
+            let src_type_path =
+                mod_path_to_ast_with_factory(make, &src_type_mod_path, current_edition);
+
+            editor.replace(src_type.syntax(), make.ty(&dest_type.to_string()).syntax());
+            editor.replace(ast_trait.syntax(), make.ty(&format!("From<{src_type}>")).syntax());
+            editor.replace(into_fn_return.syntax(), make.ret_type(make.ty("Self")).syntax());
+
+            editor.replace(
+                into_fn_params.syntax(),
+                make.param_list(
+                    None,
+                    [make.param(make.simple_ident_pat(make.name("val")).into(), src_type.clone())],
+                )
+                .syntax(),
+            );
+            editor.replace(into_fn_name.syntax(), make.name("from").syntax());
 
             for s in selfs {
                 match s.text().as_ref() {
-                    "self" => builder.replace(s.syntax().text_range(), "val"),
-                    "Self" => builder.replace(s.syntax().text_range(), src_type_path.to_string()),
+                    "self" => editor.replace(s.syntax(), make.name_ref("val").syntax()),
+                    "Self" => {
+                        if let Some(path_segment) =
+                            s.syntax().parent().and_then(ast::PathSegment::cast)
+                        {
+                            let self_path = path_segment.parent_path();
+                            if self_path.qualifier().is_none()
+                                && path_segment.generic_arg_list().is_none()
+                            {
+                                editor.replace(self_path.syntax(), src_type_path.syntax());
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
+
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

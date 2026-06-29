@@ -372,7 +372,7 @@ fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'
         }
     }
 
-    assert!(from_sig.inputs_and_output.len() == to_sig.inputs_and_output.len());
+    assert_eq!(from_sig.inputs_and_output.len(), to_sig.inputs_and_output.len());
     from_sig
         .inputs_and_output
         .iter()

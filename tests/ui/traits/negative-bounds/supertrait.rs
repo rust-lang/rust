@@ -1,3 +1,4 @@
+//@ compile-flags: -Zinternal-testing-features
 //@ check-pass
 
 #![feature(negative_bounds)]

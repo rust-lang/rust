@@ -7,7 +7,7 @@ const trait Main {
     fn compute<T: [const] Aux>() -> u32;
 }
 
-impl const Main for () {
+const impl Main for () {
     fn compute<T: [const] Aux>() -> u32 {
         T::generate()
     }
@@ -17,7 +17,7 @@ const trait Aux {
     fn generate() -> u32;
 }
 
-impl const Aux for () {
+const impl Aux for () {
     fn generate() -> u32 { 1024 }
 }
 

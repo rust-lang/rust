@@ -5,7 +5,6 @@ use std::collections::hash_map::Entry;
 use std::default::Default;
 use std::ops::Not;
 use std::rc::Rc;
-use std::time::Duration;
 use std::{fmt, iter};
 
 use rustc_abi::Size;
@@ -684,7 +683,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         condvar_ref: CondvarRef,
         mutex_ref: MutexRef,
-        timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
+        deadline: Option<Deadline>,
         retval_succ: Scalar,
         retval_timeout: Scalar,
         dest: MPlaceTy<'tcx>,
@@ -706,7 +705,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         condvar_ref.0.borrow_mut().waiters.push_back(thread);
         this.block_thread(
             BlockReason::Condvar,
-            timeout,
+            deadline,
             callback!(
                 @capture<'tcx> {
                     condvar_ref: CondvarRef,
@@ -763,7 +762,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         futex_ref: FutexRef,
         bitset: u32,
-        timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
+        deadline: Option<Deadline>,
         callback: DynUnblockCallback<'tcx>,
     ) {
         let this = self.eval_context_mut();
@@ -776,7 +775,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.block_thread(
             BlockReason::Futex,
-            timeout,
+            deadline,
             callback!(
                 @capture<'tcx> {
                     futex_ref: FutexRef,

@@ -44,7 +44,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     };
 // }
 // ```
-pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let (expr_type, expr) = get_replacement_node(ctx)?;
 
     acc.add(
@@ -74,7 +74,7 @@ enum ParentType {
     Assignment,
 }
 
-fn get_replacement_node(ctx: &AssistContext<'_>) -> Option<(ParentType, ast::Expr)> {
+fn get_replacement_node(ctx: &AssistContext<'_, '_>) -> Option<(ParentType, ast::Expr)> {
     let node = ctx.find_node_at_offset::<Either<ast::MatchArm, ast::ClosureExpr>>();
     let (parent_type, body) = if let Some(eq_token) = ctx.find_token_syntax_at_offset(T![=]) {
         let parent = eq_token.parent()?;

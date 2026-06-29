@@ -11,10 +11,10 @@ use syntax::{
     ast::{
         self, HasArgList, HasGenericParams, HasName,
         edit::{AstNodeEdit, IndentLevel},
-        make,
+        syntax_factory::SyntaxFactory,
     },
     hacks::parse_expr_from_str,
-    ted,
+    syntax_editor::SyntaxEditor,
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -51,7 +51,7 @@ use crate::assist_context::{AssistContext, Assists};
 //     closure("abc", &mut s);
 // }
 // ```
-pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let closure = ctx.find_node_at_offset::<ast::ClosureExpr>()?;
     if ctx.find_node_at_offset::<ast::Expr>() != Some(ast::Expr::ClosureExpr(closure.clone())) {
         // Not inside the parameter list.
@@ -64,6 +64,10 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
             _ => None,
         }
     });
+
+    let (editor, source_root) = SyntaxEditor::new(ctx.source_file().syntax().clone());
+    let make = editor.make();
+
     let module = ctx.sema.scope(closure.syntax())?.module();
     let closure_ty = ctx.sema.type_of_expr(&closure.clone().into())?;
     let callable = closure_ty.original.as_callable(ctx.db())?;
@@ -85,14 +89,15 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
                     let ty = param_ty
                         .display_source_code(ctx.db(), module.into(), true)
                         .unwrap_or_else(|_| "_".to_owned());
-                    Some(make::param(node.pat()?, make::ty(&ty)))
+                    Some(make.param(node.pat()?, make.ty(&ty)))
                 }
             }
         })
         .collect::<Option<Vec<_>>>()?;
     let capture_params_start = params.len();
 
-    let mut body = closure.body()?.clone_for_update();
+    let closure_param_list = syntax::AstPtr::new(&closure.param_list()?);
+    let body = closure.body()?;
     let mut is_gen = false;
     let mut is_async = closure.async_token().is_some();
     if is_async {
@@ -107,37 +112,30 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
         {
             is_async = true;
             ret_ty = ret_ty.future_output(ctx.db())?;
-            let token_idx = async_token.index();
-            let whitespace_tokens_after_count = async_token
+            let end = async_token
                 .siblings_with_tokens(Direction::Next)
                 .skip(1)
-                .take_while(|token| token.kind() == SyntaxKind::WHITESPACE)
-                .count();
-            body.syntax().splice_children(
-                token_idx..token_idx + whitespace_tokens_after_count + 1,
-                Vec::new(),
-            );
+                .take_while(|it| it.kind() == SyntaxKind::WHITESPACE)
+                .last()
+                .unwrap_or_else(|| async_token.clone().into());
+            editor.delete_all(async_token.into()..=end);
         }
         if let Some(gen_token) = block.gen_token() {
             is_gen = true;
             ret_ty = ret_ty.iterator_item(ctx.db())?;
-            let token_idx = gen_token.index();
-            let whitespace_tokens_after_count = gen_token
+            let end = gen_token
                 .siblings_with_tokens(Direction::Next)
                 .skip(1)
-                .take_while(|token| token.kind() == SyntaxKind::WHITESPACE)
-                .count();
-            body.syntax().splice_children(
-                token_idx..token_idx + whitespace_tokens_after_count + 1,
-                Vec::new(),
-            );
+                .take_while(|it| it.kind() == SyntaxKind::WHITESPACE)
+                .last()
+                .unwrap_or_else(|| gen_token.clone().into());
+            editor.delete_all(gen_token.into()..=end);
         }
 
         if block.try_block_modifier().is_none()
             && block.unsafe_token().is_none()
             && block.label().is_none()
             && block.const_token().is_none()
-            && block.async_token().is_none()
         {
             wrap_body_in_block = false;
         }
@@ -148,17 +146,17 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
         "Convert closure to fn",
         closure.param_list()?.syntax().text_range(),
         |builder| {
+            let make = editor.make();
             let closure_name_or_default = closure_name
                 .as_ref()
                 .map(|(_, _, it)| it.clone())
-                .unwrap_or_else(|| make::name("fun_name"));
+                .unwrap_or_else(|| make.name("fun_name"));
             let captures = closure_ty.captured_items(ctx.db());
             let capture_tys =
                 captures.iter().map(|capture| capture.captured_ty(ctx.db())).collect::<Vec<_>>();
 
             let mut captures_as_args = Vec::with_capacity(captures.len());
 
-            let body_root = body.syntax().ancestors().last().unwrap();
             // We need to defer this work because otherwise the text range of elements is being messed up, and
             // replacements for the next captures won't work.
             let mut capture_usages_replacement_map = Vec::with_capacity(captures.len());
@@ -167,9 +165,9 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 // FIXME: Allow configuring the replacement of `self`.
                 let is_self = capture.local().is_self(ctx.db()) && !capture.has_field_projections();
                 let capture_name = if is_self {
-                    make::name("this")
+                    make.name("this")
                 } else {
-                    make::name(&capture.place_to_name(ctx.db(), ctx.edition()))
+                    make.name(&capture.place_to_name(ctx.db(), ctx.edition()))
                 };
 
                 closure_mentioned_generic_params.extend(capture_ty.generic_params(ctx.db()));
@@ -177,9 +175,9 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 let capture_ty = capture_ty
                     .display_source_code(ctx.db(), module.into(), true)
                     .unwrap_or_else(|_| "_".to_owned());
-                let param = make::param(
-                    ast::Pat::IdentPat(make::ident_pat(false, false, capture_name.clone_subtree())),
-                    make::ty(&capture_ty),
+                let param = make.param(
+                    ast::Pat::IdentPat(make.ident_pat(false, false, capture_name.clone())),
+                    make.ty(&capture_ty),
                 );
                 if is_self {
                     // Always put `this` first.
@@ -195,7 +193,7 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
                     }
 
                     let capture_usage_source = capture_usage.source();
-                    let capture_usage_source = capture_usage_source.to_node(&body_root);
+                    let capture_usage_source = capture_usage_source.to_node(&source_root);
                     let mut expr = match capture_usage_source {
                         Either::Left(expr) => expr,
                         Either::Right(pat) => {
@@ -207,16 +205,16 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
                         expr = peel_ref(expr);
                     }
                     let replacement = wrap_capture_in_deref_if_needed(
+                        make,
                         &expr,
                         &capture_name,
                         capture.kind(),
                         matches!(expr, ast::Expr::RefExpr(_)) || capture_usage.is_ref(),
-                    )
-                    .clone_for_update();
+                    );
                     capture_usages_replacement_map.push((expr, replacement));
                 }
 
-                let capture_as_arg = capture_as_arg(ctx, capture);
+                let capture_as_arg = capture_as_arg(make, ctx, capture);
                 if is_self {
                     captures_as_args.insert(0, capture_as_arg);
                 } else {
@@ -225,32 +223,38 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
             }
 
             let (closure_type_params, closure_where_clause) =
-                compute_closure_type_params(ctx, closure_mentioned_generic_params, &closure);
+                compute_closure_type_params(make, ctx, closure_mentioned_generic_params, &closure);
 
             for (old, new) in capture_usages_replacement_map {
-                if old == body {
-                    body = new;
-                } else {
-                    ted::replace(old.syntax(), new.syntax());
-                }
+                editor.replace(old.syntax(), new.syntax());
             }
 
+            let body = closure_param_list
+                .to_node(editor.finish().new_root())
+                .syntax()
+                .parent()
+                .and_then(ast::ClosureExpr::cast)
+                .and_then(|closure| closure.body())
+                .unwrap();
+
+            let make = SyntaxFactory::without_mappings();
+
             let body = if wrap_body_in_block {
-                make::block_expr([], Some(body.reset_indent().indent(1.into())))
+                make.block_expr([], Some(body.reset_indent().indent(1.into())))
             } else {
                 ast::BlockExpr::cast(body.syntax().clone()).unwrap()
             };
 
-            let params = make::param_list(None, params);
+            let params = make.param_list(None, params);
             let ret_ty = if ret_ty.is_unit() {
                 None
             } else {
                 let ret_ty = ret_ty
                     .display_source_code(ctx.db(), module.into(), true)
                     .unwrap_or_else(|_| "_".to_owned());
-                Some(make::ret_type(make::ty(&ret_ty)))
+                Some(make.ret_type(make.ty(&ret_ty)))
             };
-            let mut fn_ = make::fn_(
+            let mut fn_ = make.fn_(
                 None,
                 None,
                 closure_name_or_default.clone(),
@@ -266,7 +270,6 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
             );
             fn_ = fn_.dedent(IndentLevel::from_token(&fn_.syntax().last_token().unwrap()));
 
-            builder.edit_file(ctx.vfs_file_id());
             match &closure_name {
                 Some((closure_decl, _, _)) => {
                     fn_ = fn_.indent(closure_decl.indent_level());
@@ -346,7 +349,8 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
 }
 
 fn compute_closure_type_params(
-    ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
+    ctx: &AssistContext<'_, '_>,
     mentioned_generic_params: FxHashSet<hir::GenericParam>,
     closure: &ast::ClosureExpr,
 ) -> (Option<ast::GenericParamList>, Option<ast::WhereClause>) {
@@ -472,11 +476,11 @@ fn compute_closure_type_params(
         }))
         .collect::<Vec<_>>();
     let where_clause =
-        (!include_where_bounds.is_empty()).then(|| make::where_clause(include_where_bounds));
+        (!include_where_bounds.is_empty()).then(|| make.where_clause(include_where_bounds));
 
     // FIXME: Consider generic parameters that do not appear in params/return type/captures but
     // written explicitly inside the closure.
-    (Some(make::generic_param_list(include_params)), where_clause)
+    (Some(make.generic_param_list(include_params)), where_clause)
 }
 
 fn peel_parens(mut expr: ast::Expr) -> ast::Expr {
@@ -497,12 +501,13 @@ fn peel_ref(mut expr: ast::Expr) -> ast::Expr {
 }
 
 fn wrap_capture_in_deref_if_needed(
+    make: &SyntaxFactory,
     expr: &ast::Expr,
     capture_name: &ast::Name,
     capture_kind: CaptureKind,
     is_ref: bool,
 ) -> ast::Expr {
-    let capture_name = make::expr_path(make::path_from_text(&capture_name.text()));
+    let capture_name = make.expr_path(make.path_from_text(&capture_name.text()));
     if capture_kind == CaptureKind::Move || is_ref {
         return capture_name;
     }
@@ -524,10 +529,14 @@ fn wrap_capture_in_deref_if_needed(
     if does_autoderef {
         return capture_name;
     }
-    make::expr_prefix(T![*], capture_name).into()
+    make.expr_prefix(T![*], capture_name).into()
 }
 
-fn capture_as_arg(ctx: &AssistContext<'_>, capture: &ClosureCapture<'_>) -> ast::Expr {
+fn capture_as_arg(
+    make: &SyntaxFactory,
+    ctx: &AssistContext<'_, '_>,
+    capture: &ClosureCapture<'_>,
+) -> ast::Expr {
     let place = parse_expr_from_str(
         &capture.display_place_source_code(ctx.db(), ctx.edition()),
         ctx.edition(),
@@ -543,12 +552,12 @@ fn capture_as_arg(ctx: &AssistContext<'_>, capture: &ClosureCapture<'_>) -> ast:
     {
         return expr.expr().expect("`display_place_source_code()` produced an invalid expr");
     }
-    make::expr_ref(place, needs_mut)
+    make.expr_ref(place, needs_mut)
 }
 
 fn handle_calls(
     builder: &mut SourceChangeBuilder,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     closure_name: Option<&ast::IdentPat>,
     captures_as_args: &[ast::Expr],
     closure: &ast::ClosureExpr,
@@ -590,7 +599,7 @@ fn handle_calls(
 
 fn handle_call(
     builder: &mut SourceChangeBuilder,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     closure_ref: ast::Expr,
     captures_as_args: &[ast::Expr],
 ) -> Option<()> {

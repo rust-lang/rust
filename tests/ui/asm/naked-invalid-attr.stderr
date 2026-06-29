@@ -18,7 +18,7 @@ error: `#[naked]` attribute cannot be used on foreign functions
 LL |     #[unsafe(naked)]
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: `#[naked]` can be applied to functions and methods
+   = help: `#[naked]` can only be applied to functions with a body
 
 error: `#[naked]` attribute cannot be used on structs
   --> $DIR/naked-invalid-attr.rs:14:1
@@ -42,7 +42,7 @@ error: `#[naked]` attribute cannot be used on required trait methods
 LL |     #[unsafe(naked)]
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: `#[naked]` can be applied to functions, inherent methods, provided trait methods, and trait methods in impl blocks
+   = help: `#[naked]` can only be applied to functions with a body
 
 error: `#[naked]` attribute cannot be used on closures
   --> $DIR/naked-invalid-attr.rs:52:5

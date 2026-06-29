@@ -26,6 +26,7 @@
 
 use itertools::Itertools;
 use rustc_data_structures::graph::{DirectedGraph, Successors};
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::{bug, ty};
@@ -72,6 +73,7 @@ impl<'tcx> MockBlocks<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(Span::with_root_ctxt(next_lo, next_hi)),
                 kind,
+                attributes: ThinVec::new(),
             }),
             false,
         ))

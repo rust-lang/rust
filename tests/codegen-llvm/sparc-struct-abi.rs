@@ -31,7 +31,7 @@ pub struct BoolFloat {
 
 // CHECK: define inreg { i32, float } @structboolfloat()
 // CHECK-NEXT: start:
-// CHECK-NEXT: ret { i32, float } { i32 16777216, float 0x40091EB860000000 }
+// CHECK-NEXT: ret { i32, float } { i32 16777216, float {{0x40091EB860000000|3.140000e\+00}} }
 #[no_mangle]
 pub extern "C" fn structboolfloat() -> BoolFloat {
     BoolFloat { b: true, f: 3.14 }
@@ -70,7 +70,7 @@ pub struct FloatLongFloat {
 
 // CHECK: define inreg { float, i32, i64, float, i32 } @structfloatlongfloat()
 // CHECK-NEXT: start:
-// CHECK-NEXT: ret { float, i32, i64, float, i32 } { float 0x3FB99999A0000000, i32 undef, i64 123, float 0x40091EB860000000, i32 undef }
+// CHECK-NEXT: ret { float, i32, i64, float, i32 } { float {{0x3FB99999A0000000|1.000000e-01}}, i32 undef, i64 123, float {{0x40091EB860000000|3.140000e\+00}}, i32 undef }
 #[no_mangle]
 pub extern "C" fn structfloatlongfloat() -> FloatLongFloat {
     FloatLongFloat { f: 0.1, i: 123, g: 3.14 }
@@ -90,7 +90,7 @@ pub struct NestedStructs {
 
 // CHECK: define inreg { float, float, float, float } @structnestestructs()
 // CHECK-NEXT: start:
-// CHECK-NEXT: ret { float, float, float, float } { float 0x3FB99999A0000000, float 0x3FF19999A0000000, float 0x40019999A0000000, float 0x400A666660000000 }
+// CHECK-NEXT: ret { float, float, float, float } { float {{0x3FB99999A0000000|1.000000e-01}}, float {{0x3FF19999A0000000|1.100000e\+00}}, float {{0x40019999A0000000|2.200000e\+00}}, float {{0x400A666660000000|3.300000e\+00}} }
 #[no_mangle]
 pub extern "C" fn structnestestructs() -> NestedStructs {
     NestedStructs { a: FloatFloat { f: 0.1, g: 1.1 }, b: FloatFloat { f: 2.2, g: 3.3 } }

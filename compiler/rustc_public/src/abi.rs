@@ -455,8 +455,11 @@ pub enum CallConvention {
     PreserveMost,
     PreserveAll,
     PreserveNone,
+    Tail,
 
     Custom,
+
+    Swift,
 
     // Target-specific calling conventions.
     ArmAapcs,

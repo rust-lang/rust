@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![deny(single_use_lifetimes)]
 
 pub enum Data<'a> {
@@ -7,7 +9,6 @@ pub enum Data<'a> {
 
 impl<'a> Data<'a> {
     pub fn get<'b: 'a>(&'b self) -> &'a str {
-        //~^ ERROR lifetime parameter `'b` only used once
         match &self {
             Self::Borrowed(val) => val,
             Self::Owned(val) => &val,

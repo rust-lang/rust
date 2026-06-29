@@ -9,7 +9,7 @@
 pub(crate) mod checks;
 pub mod constructor;
 #[cfg(feature = "rustc")]
-pub mod errors;
+pub mod diagnostics;
 #[cfg(feature = "rustc")]
 pub(crate) mod lints;
 pub mod pat;
@@ -24,9 +24,6 @@ pub use rustc_index::{Idx, IndexVec}; // re-exported to avoid rustc_index versio
 
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::DeconstructedPat;
-
-pub trait Captures<'a> {}
-impl<'a, T: ?Sized> Captures<'a> for T {}
 
 /// `bool` newtype that indicates whether this is a privately uninhabited field that we should skip
 /// during analysis.

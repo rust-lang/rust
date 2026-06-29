@@ -440,7 +440,7 @@ impl Definition {
         }
     }
 
-    pub fn usages<'a>(self, sema: &'a Semantics<'_, RootDatabase>) -> FindUsages<'a> {
+    pub fn usages<'a, 'db>(self, sema: &'a Semantics<'db, RootDatabase>) -> FindUsages<'a, 'db> {
         FindUsages {
             def: self,
             rename: None,
@@ -456,10 +456,10 @@ impl Definition {
 }
 
 #[derive(Clone)]
-pub struct FindUsages<'a> {
+pub struct FindUsages<'a, 'db> {
     def: Definition,
     rename: Option<&'a Rename>,
-    sema: &'a Semantics<'a, RootDatabase>,
+    sema: &'a Semantics<'db, RootDatabase>,
     scope: Option<&'a SearchScope>,
     /// The container of our definition should it be an assoc item
     assoc_item_container: Option<hir::AssocItemContainer>,
@@ -473,7 +473,7 @@ pub struct FindUsages<'a> {
     exclude_library_files: bool,
 }
 
-impl<'a> FindUsages<'a> {
+impl<'a, 'db> FindUsages<'a, 'db> {
     /// Enable searching for `Self` when the definition is a type or `self` for modules.
     pub fn include_self_refs(mut self) -> Self {
         self.include_self_kw_refs = def_to_ty(self.sema, &self.def);
@@ -858,7 +858,7 @@ impl<'a> FindUsages<'a> {
         }
 
         fn search(
-            this: &FindUsages<'_>,
+            this: &FindUsages<'_, '_>,
             finder: &Finder<'_>,
             name: &str,
             files: impl Iterator<Item = (Arc<str>, EditionedFileId, TextRange)>,

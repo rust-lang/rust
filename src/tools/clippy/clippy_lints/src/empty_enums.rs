@@ -51,7 +51,7 @@ declare_clippy_lint! {
     /// [visibility]: https://doc.rust-lang.org/reference/visibility-and-privacy.html
     #[clippy::version = "pre 1.29.0"]
     pub EMPTY_ENUMS,
-    pedantic,
+    nursery,
     "enum with no variants"
 }
 

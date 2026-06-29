@@ -30,7 +30,7 @@ use syntax::{
 
 pub(crate) fn extract_expressions_from_format_string(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let fmt_string = ctx.find_token_at_offset::<ast::String>()?;
     let tt = fmt_string.syntax().parent().and_then(ast::TokenTree::cast)?;

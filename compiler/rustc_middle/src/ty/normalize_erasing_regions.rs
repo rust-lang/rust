@@ -7,7 +7,7 @@
 //! `normalize_generic_arg_after_erasing_regions` query for each type
 //! or constant found within. (This underlying query is what is cached.)
 
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use tracing::{debug, instrument};
 
 use crate::traits::query::NoSolution;
@@ -16,7 +16,7 @@ use crate::ty::{
     TypeVisitableExt, Unnormalized,
 };
 
-#[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, StableHash, TyEncodable, TyDecodable)]
 pub enum NormalizationError<'tcx> {
     Type(Ty<'tcx>),
     Const(ty::Const<'tcx>),
@@ -63,6 +63,30 @@ impl<'tcx> TyCtxt<'tcx> {
             value
         } else {
             value.fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, typing_env })
+        }
+    }
+
+    pub fn assert_fully_normalized(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        value: impl TypeFoldable<TyCtxt<'tcx>> + Eq,
+    ) {
+        let value = self.erase_and_anonymize_regions(value);
+        if value.has_aliases() {
+            assert_eq!(
+                value.clone(),
+                value.fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, typing_env })
+            )
+        }
+    }
+
+    pub fn debug_assert_fully_normalized(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        value: impl TypeFoldable<TyCtxt<'tcx>> + Eq,
+    ) {
+        if cfg!(debug_assertions) {
+            self.assert_fully_normalized(typing_env, value);
         }
     }
 

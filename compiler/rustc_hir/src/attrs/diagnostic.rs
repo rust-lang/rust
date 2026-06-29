@@ -3,18 +3,19 @@ use std::fmt;
 use std::fmt::Debug;
 
 pub use rustc_ast::attr::data_structures::*;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
+use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::{DesugaringKind, Span, Symbol, kw};
 use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::attrs::PrintAttribute;
 
-#[derive(Clone, Default, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Default, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct Directive {
     pub is_rustc_attr: bool,
-    pub condition: Option<OnUnimplementedCondition>,
-    pub subcommands: ThinVec<Directive>,
+    /// This is never nested more than once, i.e. the directives in this
+    /// thinvec have no filters of their own.
+    pub filters: ThinVec<(Filter, Directive)>,
     pub message: Option<(Span, FormatString)>,
     pub label: Option<(Span, FormatString)>,
     pub notes: ThinVec<FormatString>,
@@ -28,11 +29,8 @@ impl Directive {
     /// We can't check this while parsing the attribute because `rustc_attr_parsing` doesn't have
     /// access to the item an attribute is on. Instead we later call this function in `check_attr`.
     pub fn visit_params(&self, visit: &mut impl FnMut(Symbol, Span)) {
-        if let Some(condition) = &self.condition {
-            condition.visit_params(visit);
-        }
-
-        for subcommand in &self.subcommands {
+        for (filter, subcommand) in &self.filters {
+            filter.visit_params(visit);
             subcommand.visit_params(visit);
         }
 
@@ -54,61 +52,33 @@ impl Directive {
 
     pub fn eval(
         &self,
-        condition_options: Option<&ConditionOptions>,
+        filter_options: Option<&FilterOptions>,
         args: &FormatArgs,
     ) -> CustomDiagnostic {
         let this = &args.this;
         debug!(
-            "Directive::eval({self:?}, this={this}, options={condition_options:?}, args ={args:?})"
+            "Directive::eval({self:?}, this={this}, options={filter_options:?}, args ={args:?})"
         );
 
-        let Some(condition_options) = condition_options else {
+        let mut ret = CustomDiagnostic::default();
+
+        if let Some(filter_options) = filter_options {
+            for (filter, directive) in &self.filters {
+                if filter.matches_predicate(filter_options) {
+                    debug!("eval: {filter:?} succeeded");
+                    ret.update(directive, args);
+                } else {
+                    debug!("eval: skipping {filter:?} due to {filter_options:?}");
+                }
+            }
+        } else {
             debug_assert!(
                 !self.is_rustc_attr,
-                "Directive::eval called for `rustc_on_unimplemented` without `condition_options`"
+                "Directive::eval called for `rustc_on_unimplemented` without `filter_options`"
             );
-            return CustomDiagnostic {
-                label: self.label.as_ref().map(|l| l.1.format(args)),
-                message: self.message.as_ref().map(|m| m.1.format(args)),
-                notes: self.notes.iter().map(|n| n.format(args)).collect(),
-                parent_label: None,
-            };
         };
-        let mut message = None;
-        let mut label = None;
-        let mut notes = Vec::new();
-        let mut parent_label = None;
-
-        for command in self.subcommands.iter().chain(Some(self)).rev() {
-            debug!(?command);
-            if let Some(ref condition) = command.condition
-                && !condition.matches_predicate(condition_options)
-            {
-                debug!("eval: skipping {command:?} due to condition");
-                continue;
-            }
-            debug!("eval: {command:?} succeeded");
-            if let Some(ref message_) = command.message {
-                message = Some(message_.clone());
-            }
-
-            if let Some(ref label_) = command.label {
-                label = Some(label_.clone());
-            }
-
-            notes.extend(command.notes.clone());
-
-            if let Some(ref parent_label_) = command.parent_label {
-                parent_label = Some(parent_label_.clone());
-            }
-        }
-
-        CustomDiagnostic {
-            label: label.map(|l| l.1.format(args)),
-            message: message.map(|m| m.1.format(args)),
-            notes: notes.into_iter().map(|n| n.format(args)).collect(),
-            parent_label: parent_label.map(|e_s| e_s.format(args)),
-        }
+        ret.update(self, args);
+        ret
     }
 }
 
@@ -121,9 +91,25 @@ pub struct CustomDiagnostic {
     pub parent_label: Option<String>,
 }
 
+impl CustomDiagnostic {
+    pub fn update(&mut self, di: &Directive, args: &FormatArgs) {
+        if self.message.is_none() {
+            self.message = di.message.as_ref().map(|m| m.1.format(args));
+        }
+        if self.label.is_none() {
+            self.label = di.label.as_ref().map(|l| l.1.format(args));
+        }
+        if self.parent_label.is_none() {
+            self.parent_label = di.parent_label.as_ref().map(|p| p.format(args));
+        }
+
+        self.notes.extend(di.notes.iter().map(|n| n.format(args)))
+    }
+}
+
 /// Like [std::fmt::Arguments] this is a string that has been parsed into "pieces",
 /// either as string pieces or dynamic arguments.
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct FormatString {
     pub input: Symbol,
     pub span: Span,
@@ -161,11 +147,19 @@ impl FormatString {
                     };
                     ret.push_str(&slf);
                 }
+                Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
+
+                // only for on_type_error
+                Piece::Arg(FormatArg::Found) => ret.push_str(&args.found),
+                Piece::Arg(FormatArg::Expected) => ret.push_str(&args.expected),
+
+                // only for on_unknown
+                Piece::Arg(FormatArg::Unresolved) => ret.push_str(&args.unresolved),
 
                 // It's only `rustc_onunimplemented` from here
-                Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
-                Piece::Arg(FormatArg::Trait) => {
-                    let _ = fmt::write(&mut ret, format_args!("{}", &args.this_sugared));
+                Piece::Arg(FormatArg::ThisPath) => ret.push_str(&args.this_path),
+                Piece::Arg(FormatArg::ThisResolved) => {
+                    let _ = fmt::write(&mut ret, format_args!("{}", &args.this_resolved));
                 }
                 Piece::Arg(FormatArg::ItemContext) => ret.push_str(args.item_context),
             }
@@ -211,26 +205,31 @@ impl FormatString {
 /// ```rust,ignore (just an example)
 /// FormatArgs {
 ///     this: "FromResidual",
-///     this_sugared: "FromResidual<Option<Infallible>>",
+///     this_resolved: "FromResidual<Option<Infallible>>",
 ///     item_context: "an async function",
 ///     generic_args: [("Self", "u32"), ("R", "Option<Infallible>")],
 /// }
 /// ```
 #[derive(Debug)]
 pub struct FormatArgs {
+    /// The name of the item the attribute is on.
     pub this: String,
-    pub this_sugared: String,
-    pub item_context: &'static str,
-    pub generic_args: Vec<(Symbol, String)>,
+    pub this_resolved: String = String::new(),
+    pub this_path: String = String::new(),
+    pub found: String = String::new(),
+    pub expected: String = String::new(),
+    pub unresolved: String = String::new(),
+    pub item_context: &'static str = "",
+    pub generic_args: Vec<(Symbol, String)> = Vec::new(),
 }
 
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum Piece {
     Lit(Symbol),
     Arg(FormatArg),
 }
 
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum FormatArg {
     // A generic parameter, like `{T}` if we're on the `From<T>` trait.
     GenericParam {
@@ -239,24 +238,32 @@ pub enum FormatArg {
     },
     // `{Self}`
     SelfUpper,
-    /// `{This}` or `{TraitName}`
+    /// `{This}` and `{This:name}`.
     This,
-    /// The sugared form of the trait
-    Trait,
+    /// The sugared form: `{This:sugared}`.
+    ThisResolved,
+    /// The full path: `{This:path}`.
+    ThisPath,
     /// what we're in, like a function, method, closure etc.
     ItemContext,
     /// What the user typed, if it doesn't match anything we can use.
     AsIs(Symbol),
+    /// {Found} in diagnostic::on_type_error
+    Found,
+    /// {Expected} in diagnostic::on_type_error
+    Expected,
+    /// {Unresolved} in diagnostic::on_unknown
+    Unresolved,
 }
 
 /// Represents the `on` filter in `#[rustc_on_unimplemented]`.
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
-pub struct OnUnimplementedCondition {
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
+pub struct Filter {
     pub span: Span,
     pub pred: Predicate,
 }
-impl OnUnimplementedCondition {
-    pub fn matches_predicate(self: &OnUnimplementedCondition, options: &ConditionOptions) -> bool {
+impl Filter {
+    pub fn matches_predicate(&self, options: &FilterOptions) -> bool {
         self.pred.eval(&mut |p| match p {
             FlagOrNv::Flag(b) => options.has_flag(*b),
             FlagOrNv::NameValue(NameValue { name, value }) => {
@@ -271,11 +278,11 @@ impl OnUnimplementedCondition {
     }
 }
 
-/// Predicate(s) in `#[rustc_on_unimplemented]`'s `on` filter. See [`OnUnimplementedCondition`].
+/// Predicate(s) in `#[rustc_on_unimplemented]`'s `on` filter. See [`Filter`].
 ///
 /// It is similar to the predicate in the `cfg` attribute,
 /// and may contain nested predicates.
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum Predicate {
     /// A condition like `on(crate_local)`.
     Flag(Flag),
@@ -313,7 +320,7 @@ impl Predicate {
 }
 
 /// Represents a `MetaWord` in an `on`-filter.
-#[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum Flag {
     /// Whether the code causing the trait bound to not be fulfilled
     /// is part of the user's crate.
@@ -328,7 +335,7 @@ pub enum Flag {
 /// A `MetaNameValueStr` in an `on`-filter.
 ///
 /// For example, `#[rustc_on_unimplemented(on(name = "value", message = "hello"))]`.
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct NameValue {
     pub name: Name,
     /// Something like `"&str"` or `"alloc::string::String"`,
@@ -347,7 +354,7 @@ impl NameValue {
 }
 
 /// The valid names of the `on` filter.
-#[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum Name {
     Cause,
     FromDesugaring,
@@ -367,7 +374,7 @@ pub enum FlagOrNv<'p> {
 /// If it is a simple literal like this then `pieces` will be `[LitOrArg::Lit("value")]`.
 /// The `Arg` variant is used when it contains formatting like
 /// `#[rustc_on_unimplemented(on(Self = "&[{A}]", message = "hello"))]`.
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct FilterFormatString {
     pub pieces: ThinVec<LitOrArg>,
 }
@@ -399,14 +406,13 @@ impl FilterFormatString {
     }
 }
 
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum LitOrArg {
     Lit(Symbol),
     Arg(Symbol),
 }
 
-/// Used with `OnUnimplementedCondition::matches_predicate` to evaluate the
-/// [`OnUnimplementedCondition`].
+/// Used with `Filter::matches_predicate` to evaluate the [`Filter`].
 ///
 /// For example, given a
 /// ```rust,ignore (just an example)
@@ -432,7 +438,7 @@ pub enum LitOrArg {
 /// it will look like this:
 ///
 /// ```rust,ignore (just an example)
-/// ConditionOptions {
+/// FilterOptions {
 ///     self_types: ["u32", "{integral}"],
 ///     from_desugaring: Some("QuestionMark"),
 ///     cause: None,
@@ -445,7 +451,7 @@ pub enum LitOrArg {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ConditionOptions {
+pub struct FilterOptions {
     /// All the self types that may apply.
     pub self_types: Vec<String>,
     // The kind of compiler desugaring.
@@ -459,7 +465,7 @@ pub struct ConditionOptions {
     pub generic_args: Vec<(Symbol, String)>,
 }
 
-impl ConditionOptions {
+impl FilterOptions {
     pub fn has_flag(&self, name: Flag) -> bool {
         match name {
             Flag::CrateLocal => self.crate_local,

@@ -4,7 +4,6 @@ use crate::ffi::OsStr;
 use crate::os::net::linux_ext;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
-use crate::sealed::Sealed;
 use crate::sys::cvt;
 use crate::{fmt, io, mem, ptr};
 
@@ -252,9 +251,6 @@ impl SocketAddr {
         }
     }
 }
-
-#[stable(feature = "unix_socket_abstract", since = "1.70.0")]
-impl Sealed for SocketAddr {}
 
 #[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin")))]
 #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]

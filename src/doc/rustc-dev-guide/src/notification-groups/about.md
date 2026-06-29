@@ -22,6 +22,7 @@ Here's the list of the notification groups:
 - [Apple](./apple.md)
 - [ARM](./arm.md)
 - [Emscripten](./emscripten.md)
+- [Fuchsia](./fuchsia.md)
 - [LoongArch](./loongarch.md)
 - [RISC-V](./risc-v.md)
 - [WASI](./wasi.md)

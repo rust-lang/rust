@@ -1,33 +1,38 @@
-warning: irrefutable `let...else` pattern
-  --> $DIR/let-else-irrefutable.rs:4:5
+warning: unreachable `else` clause
+  --> $DIR/let-else-irrefutable.rs:4:15
    |
 LL |     let x = 1 else { return };
-   |     ^^^^^^^^^
+   |     --------- ^^^^
+   |     |
+   |     assigning to binding pattern will always succeed
    |
    = note: this pattern always matches, so the else clause is unreachable
-help: remove this `else` block
-  --> $DIR/let-else-irrefutable.rs:4:20
-   |
-LL |     let x = 1 else { return };
-   |                    ^^^^^^^^^^
    = note: `#[warn(irrefutable_let_patterns)]` on by default
 
-warning: irrefutable `let...else` pattern
-  --> $DIR/let-else-irrefutable.rs:7:5
+warning: unreachable `else` clause
+  --> $DIR/let-else-irrefutable.rs:7:15
    |
 LL |     let x = 1 else {
-   |     ^^^^^^^^^
+   |     --------- ^^^^
+   |     |
+   |     assigning to binding pattern will always succeed
    |
    = note: this pattern always matches, so the else clause is unreachable
-help: remove this `else` block
-  --> $DIR/let-else-irrefutable.rs:7:20
-   |
-LL |       let x = 1 else {
-   |  ____________________^
-LL | |         eprintln!("problem case encountered");
-LL | |         return
-LL | |     };
-   | |_____^
 
-warning: 2 warnings emitted
+warning: unreachable `else` clause
+  --> $DIR/let-else-irrefutable.rs:13:27
+   |
+LL |     let name = Some(case) else {
+   |     --------------------- ^^^^
+   |     |
+   |     assigning to binding pattern will always succeed
+   |
+   = note: this pattern always matches, so the else clause is unreachable
+help: consider using `let Some(name) = case` to match on a specific variant
+   |
+LL -     let name = Some(case) else {
+LL +     let Some(name) = case else {
+   |
+
+warning: 3 warnings emitted
 

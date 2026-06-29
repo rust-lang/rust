@@ -1,4 +1,4 @@
-warning: `#[diagnostic::on_move]` can only be applied to enums, structs or unions
+warning: `#[diagnostic::on_move]` attribute cannot be used on traits
   --> $DIR/report_warning_on_non_adt.rs:9:1
    |
 LL | / #[diagnostic::on_move(
@@ -8,6 +8,7 @@ LL | |     label = "Bar",
 LL | | )]
    | |__^
    |
+   = help: `#[diagnostic::on_move]` can only be applied to data types
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 error[E0382]: Foo

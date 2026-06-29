@@ -1,0 +1,244 @@
+error[E0308]: mismatched types
+  --> $DIR/index-mut-help2.rs:40:16
+   |
+LL |     map.insert(*index, 23);
+   |         ------ ^^^^^^ expected `A`, found `&&&&A`
+   |         |
+   |         arguments to this method are incorrect
+   |
+note: method defined here
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+
+error[E0308]: mismatched types
+  --> $DIR/index-mut-help2.rs:71:16
+   |
+LL |     map.insert(*index, 23);
+   |         ------ ^^^^^^ expected `ACopy`, found `&&&&ACopy`
+   |         |
+   |         arguments to this method are incorrect
+   |
+note: method defined here
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+help: consider dereferencing the borrow
+   |
+LL |     map.insert(*****index, 23);
+   |                ++++
+
+error[E0277]: the trait bound `&B: Borrow<&&&&B>` is not satisfied
+  --> $DIR/index-mut-help2.rs:95:9
+   |
+LL |     map[index] = 23;
+   |         ^^^^^ the trait `Borrow<&&&&B>` is not implemented for `&B`
+   |
+   = note: required for `HashMap<&B, u32>` to implement `Index<&&&&&B>`
+
+error[E0277]: the trait bound `&B: Borrow<&&&&B>` is not satisfied
+  --> $DIR/index-mut-help2.rs:98:36
+   |
+LL |     if let Some(val) = map.get_mut(index) {
+   |                            ------- ^^^^^ the trait `Borrow<&&&&B>` is not implemented for `&B`
+   |                            |
+   |                            required by a bound introduced by this call
+   |
+note: required by a bound in `HashMap::<K, V, S, A>::get_mut`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+
+error[E0277]: the trait bound `D: Borrow<&&&&D>` is not satisfied
+  --> $DIR/index-mut-help2.rs:131:9
+   |
+LL |     map[index] = 23;
+   |         ^^^^^ unsatisfied trait bound
+   |
+help: the trait `Borrow<&&&&D>` is not implemented for `D`
+      but trait `Borrow<C>` is implemented for it
+  --> $DIR/index-mut-help2.rs:18:1
+   |
+LL | impl Borrow<C> for D {
+   | ^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `C`, found `&&&&D`
+   = note: required for `HashMap<D, u32>` to implement `Index<&&&&&D>`
+
+error[E0277]: the trait bound `D: Borrow<&&&&D>` is not satisfied
+  --> $DIR/index-mut-help2.rs:134:36
+   |
+LL |     if let Some(val) = map.get_mut(index) {
+   |                            ------- ^^^^^ unsatisfied trait bound
+   |                            |
+   |                            required by a bound introduced by this call
+   |
+help: the trait `Borrow<&&&&D>` is not implemented for `D`
+      but trait `Borrow<C>` is implemented for it
+  --> $DIR/index-mut-help2.rs:18:1
+   |
+LL | impl Borrow<C> for D {
+   | ^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `C`, found `&&&&D`
+note: required by a bound in `HashMap::<K, V, S, A>::get_mut`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+
+error[E0594]: cannot assign to data in an index of `HashMap<A, u32>`
+  --> $DIR/index-mut-help2.rs:30:5
+   |
+LL |     map[index] = 23;
+   |     ^^^^^^^^^^^^^^^ cannot assign
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<A, u32>`
+help: use `.insert()` to insert a value into a `HashMap<A, u32>`
+   |
+LL -     map[index] = 23;
+LL +     map.insert(*****index, 23);
+   |
+help: use the entry API to modify a `HashMap<A, u32>` for more flexibility
+   |
+LL -     map[index] = 23;
+LL +     let val = map.entry(*****index).insert_entry(23);
+   |
+help: use `.get_mut()` to modify an existing key in a `HashMap<A, u32>`
+   |
+LL -     map[index] = 23;
+LL +     if let Some(val) = map.get_mut(index) { *val = 23; };
+   |
+
+error[E0594]: cannot assign to data in an index of `HashMap<A, u32>`
+  --> $DIR/index-mut-help2.rs:31:5
+   |
+LL |     map[&&&&&&&&index] = 23;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot assign
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<A, u32>`
+help: use `.insert()` to insert a value into a `HashMap<A, u32>`
+   |
+LL -     map[&&&&&&&&index] = 23;
+LL +     map.insert(*****index, 23);
+   |
+help: use the entry API to modify a `HashMap<A, u32>` for more flexibility
+   |
+LL -     map[&&&&&&&&index] = 23;
+LL +     let val = map.entry(*****index).insert_entry(23);
+   |
+help: use `.get_mut()` to modify an existing key in a `HashMap<A, u32>`
+   |
+LL -     map[&&&&&&&&index] = 23;
+LL +     if let Some(val) = map.get_mut(index) { *val = 23; };
+   |
+
+error[E0507]: cannot move out of `*****index` which is behind a shared reference
+  --> $DIR/index-mut-help2.rs:53:16
+   |
+LL |     map.insert(*****index, 23);
+   |                ^^^^^^^^^^ move occurs because `*****index` has type `A`, which does not implement the `Copy` trait
+   |
+note: if `A` implemented `Clone`, you could clone the value
+  --> $DIR/index-mut-help2.rs:8:1
+   |
+LL | struct A {}
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     map.insert(*****index, 23);
+   |                ---------- you could clone this value
+
+error[E0594]: cannot assign to data in an index of `HashMap<ACopy, u32>`
+  --> $DIR/index-mut-help2.rs:62:5
+   |
+LL |     map[index] = 23;
+   |     ^^^^^^^^^^^^^^^ cannot assign
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<ACopy, u32>`
+help: use `.insert()` to insert a value into a `HashMap<ACopy, u32>`
+   |
+LL -     map[index] = 23;
+LL +     map.insert(*****index, 23);
+   |
+help: use the entry API to modify a `HashMap<ACopy, u32>` for more flexibility
+   |
+LL -     map[index] = 23;
+LL +     let val = map.entry(*****index).insert_entry(23);
+   |
+help: use `.get_mut()` to modify an existing key in a `HashMap<ACopy, u32>`
+   |
+LL -     map[index] = 23;
+LL +     if let Some(val) = map.get_mut(index) { *val = 23; };
+   |
+
+error[E0594]: cannot assign to data in an index of `HashMap<C, u32>`
+  --> $DIR/index-mut-help2.rs:113:5
+   |
+LL |     map[index] = 23;
+   |     ^^^^^^^^^^^^^^^ cannot assign
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<C, u32>`
+help: use `.insert()` to insert a value into a `HashMap<C, u32>`
+   |
+LL -     map[index] = 23;
+LL +     map.insert(*****index, 23);
+   |
+help: use the entry API to modify a `HashMap<C, u32>` for more flexibility
+   |
+LL -     map[index] = 23;
+LL +     let val = map.entry(*****index).insert_entry(23);
+   |
+help: use `.get_mut()` to modify an existing key in a `HashMap<C, u32>`
+   |
+LL -     map[index] = 23;
+LL +     if let Some(val) = map.get_mut(index) { *val = 23; };
+   |
+
+error[E0594]: cannot assign to data in an index of `HashMap<&&&S, usize>`
+  --> $DIR/index-mut-help2.rs:158:5
+   |
+LL |     map[index] = 12;
+   |     ^^^^^^^^^^^^^^^ cannot assign
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&&&S, usize>`
+help: use `.insert()` to insert a value into a `HashMap<&&&S, usize>`
+   |
+LL -     map[index] = 12;
+LL +     map.insert(&&index, 12);
+   |
+help: use the entry API to modify a `HashMap<&&&S, usize>` for more flexibility
+   |
+LL -     map[index] = 12;
+LL +     let val = map.entry(&&index).insert_entry(12);
+   |
+help: use `.get_mut()` to modify an existing key in a `HashMap<&&&S, usize>`
+   |
+LL -     map[index] = 12;
+LL +     if let Some(val) = map.get_mut(index) { *val = 12; };
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/index-mut-help2.rs:159:17
+   |
+LL |     map.insert(&&index, 12);
+   |                 ^^^^^^     - temporary value is freed at the end of this statement
+   |                 |
+   |                 creates a temporary value which is freed while still in use
+LL |     let val = map.entry(&&index).insert_entry(12);
+   |               --- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = &index;
+LL ~     map.insert(&binding, 12);
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/index-mut-help2.rs:160:26
+   |
+LL |     let val = map.entry(&&index).insert_entry(12);
+   |                          ^^^^^^                  - temporary value is freed at the end of this statement
+   |                          |
+   |                          creates a temporary value which is freed while still in use
+LL |     if let Some(val) = map.get_mut(index) {
+   |                        --- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = &index;
+LL ~     let val = map.entry(&binding).insert_entry(12);
+   |
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0507, E0594, E0716.
+For more information about an error, try `rustc --explain E0277`.

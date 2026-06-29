@@ -71,7 +71,7 @@ fn synthesize_auto_trait_impl<'tcx>(
 ) -> Option<clean::Item> {
     let tcx = cx.tcx;
     let trait_ref = ty::Binder::dummy(ty::TraitRef::new(tcx, trait_def_id, [ty]));
-    if !cx.generated_synthetics.insert((ty, trait_def_id)) {
+    if !cx.synthetic_auto_trait_impls.insert((ty, trait_def_id)) {
         debug!("already generated, aborting");
         return None;
     }
@@ -202,7 +202,7 @@ fn clean_param_env<'tcx>(
         .collect();
 
     let mut generics = clean::Generics { params, where_predicates };
-    simplify::sized_bounds(cx, &mut generics);
+    simplify::sizedness_bounds(cx, &mut generics);
     generics.where_predicates = simplify::where_clauses(cx.tcx, generics.where_predicates);
     generics
 }

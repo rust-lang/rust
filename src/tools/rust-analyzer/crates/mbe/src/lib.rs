@@ -374,6 +374,13 @@ impl<T, E> ValueResult<T, E> {
         ValueResult { value: f(self.value), err: self.err }
     }
 
+    pub fn as_ref(&self) -> ValueResult<&T, E>
+    where
+        E: Clone,
+    {
+        ValueResult { value: &self.value, err: self.err.clone() }
+    }
+
     pub fn map_err<E2>(self, f: impl FnOnce(E) -> E2) -> ValueResult<T, E2> {
         ValueResult { value: self.value, err: self.err.map(f) }
     }

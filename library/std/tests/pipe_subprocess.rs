@@ -1,4 +1,5 @@
 fn main() {
+    // No `Command` on Miri and emscripten
     #[cfg(all(not(miri), any(unix, windows), not(target_os = "emscripten")))]
     {
         use std::io::{Read, pipe};

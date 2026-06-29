@@ -23,12 +23,12 @@ trait Copy {}
 trait Sync {}
 impl Sync for bool {}
 
-#[lang = "drop_in_place"]
-//~^ ERROR: `drop_in_place` lang item must be applied to a function with at least 1 generic argument
+#[lang = "drop_glue"]
+//~^ ERROR: `drop_glue` lang item must be applied to a function with 1 generic argument
 fn drop_fn() {
     while false {}
 }
 
 #[lang = "start"]
 //~^ ERROR: `start` lang item must be applied to a function with 1 generic argument
-fn start(){}
+fn start() {}

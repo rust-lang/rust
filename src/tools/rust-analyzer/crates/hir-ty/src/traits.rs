@@ -1,12 +1,15 @@
 //! Trait solving using next trait solver.
 
-use std::hash::Hash;
+use std::{cell::OnceCell, hash::Hash};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, AssocItemId, HasModule, ImplId, Lookup, TraitId,
+    AdtId, AssocItemId, ExpressionStoreOwnerId, GenericDefId, HasModule, ImplId, Lookup, TraitId,
+    expr_store::ExpressionStore,
+    hir::generics::WherePredicate,
     lang_item::LangItems,
     nameres::DefMap,
+    resolver::Resolver,
     signatures::{
         ConstFlags, ConstSignature, EnumFlags, EnumSignature, FnFlags, FunctionSignature,
         StructFlags, StructSignature, TraitFlags, TraitSignature, TypeAliasFlags,
@@ -15,20 +18,21 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::sym;
-use rustc_next_trait_solver::solve::{HasChanged, SolverDelegateEvalExt};
 use rustc_type_ir::{
-    TypingMode,
-    inherent::{AdtDef, BoundExistentialPredicates, IntoKind, Span as _},
-    solve::Certainty,
+    TypeVisitableExt, TypingMode,
+    inherent::{BoundExistentialPredicates, IntoKind, Ty as _},
 };
 
 use crate::{
+    LifetimeElisionKind, Span, TyLoweringContext,
     db::HirDatabase,
+    generics::Generics,
+    lower::LoweringMode,
     next_solver::{
-        Canonical, DbInterner, GenericArgs, Goal, ParamEnv, Predicate, SolverContext, Span,
-        StoredClauses, Ty, TyKind,
+        DbInterner, GenericArgs, ParamEnv, StoredClauses, Ty, TyKind,
         infer::{
             DbInternerInferExt, InferCtxt,
+            select::EvaluationResult,
             traits::{Obligation, ObligationCause},
         },
         obligation_ctxt::ObligationCtxt,
@@ -79,91 +83,6 @@ pub fn structurally_normalize_ty<'db>(
     ty.replace_infer_with_error(infcx.interner)
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum NextTraitSolveResult {
-    Certain,
-    Uncertain,
-    NoSolution,
-}
-
-impl NextTraitSolveResult {
-    pub fn no_solution(&self) -> bool {
-        matches!(self, NextTraitSolveResult::NoSolution)
-    }
-
-    pub fn certain(&self) -> bool {
-        matches!(self, NextTraitSolveResult::Certain)
-    }
-
-    pub fn uncertain(&self) -> bool {
-        matches!(self, NextTraitSolveResult::Uncertain)
-    }
-}
-
-pub fn next_trait_solve_canonical_in_ctxt<'db>(
-    infer_ctxt: &InferCtxt<'db>,
-    goal: Canonical<'db, Goal<'db, Predicate<'db>>>,
-) -> NextTraitSolveResult {
-    infer_ctxt.probe(|_| {
-        let context = <&SolverContext<'db>>::from(infer_ctxt);
-
-        tracing::info!(?goal);
-
-        let (goal, var_values) = context.instantiate_canonical(&goal);
-        tracing::info!(?var_values);
-
-        let res = context.evaluate_root_goal(goal, Span::dummy(), None);
-
-        let obligation = Obligation {
-            cause: ObligationCause::dummy(),
-            param_env: goal.param_env,
-            recursion_depth: 0,
-            predicate: goal.predicate,
-        };
-        infer_ctxt.inspect_evaluated_obligation(&obligation, &res, || {
-            Some(context.evaluate_root_goal_for_proof_tree(goal, Span::dummy()).1)
-        });
-
-        let res = res.map(|r| (r.has_changed, r.certainty));
-
-        tracing::debug!("solve_nextsolver({:?}) => {:?}", goal, res);
-
-        match res {
-            Err(_) => NextTraitSolveResult::NoSolution,
-            Ok((_, Certainty::Yes)) => NextTraitSolveResult::Certain,
-            Ok((_, Certainty::Maybe { .. })) => NextTraitSolveResult::Uncertain,
-        }
-    })
-}
-
-/// Solve a trait goal using next trait solver.
-pub fn next_trait_solve_in_ctxt<'db, 'a>(
-    infer_ctxt: &'a InferCtxt<'db>,
-    goal: Goal<'db, Predicate<'db>>,
-) -> Result<(HasChanged, Certainty), rustc_type_ir::solve::NoSolution> {
-    tracing::info!(?goal);
-
-    let context = <&SolverContext<'db>>::from(infer_ctxt);
-
-    let res = context.evaluate_root_goal(goal, Span::dummy(), None);
-
-    let obligation = Obligation {
-        cause: ObligationCause::dummy(),
-        param_env: goal.param_env,
-        recursion_depth: 0,
-        predicate: goal.predicate,
-    };
-    infer_ctxt.inspect_evaluated_obligation(&obligation, &res, || {
-        Some(context.evaluate_root_goal_for_proof_tree(goal, Span::dummy()).1)
-    });
-
-    let res = res.map(|r| (r.has_changed, r.certainty));
-
-    tracing::debug!("solve_nextsolver({:?}) => {:?}", goal, res);
-
-    res
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::Update)]
 pub enum FnTrait {
     // Warning: Order is important. If something implements `x` it should also implement
@@ -208,8 +127,8 @@ pub fn implements_trait_unique<'db>(
     env: ParamEnvAndCrate<'db>,
     trait_: TraitId,
 ) -> bool {
-    implements_trait_unique_impl(db, env, trait_, &mut |infcx| {
-        infcx.fill_rest_fresh_args(trait_.into(), [ty.into()])
+    implements_trait_unique_with_infcx(db, env, trait_, &mut |infcx| {
+        infcx.fill_rest_fresh_args(Span::Dummy, trait_.into(), [ty.into()])
     })
 }
 
@@ -220,10 +139,10 @@ pub fn implements_trait_unique_with_args<'db>(
     trait_: TraitId,
     args: GenericArgs<'db>,
 ) -> bool {
-    implements_trait_unique_impl(db, env, trait_, &mut |_| args)
+    implements_trait_unique_with_infcx(db, env, trait_, &mut |_| args)
 }
 
-fn implements_trait_unique_impl<'db>(
+pub fn implements_trait_unique_with_infcx<'db>(
     db: &'db dyn HirDatabase,
     env: ParamEnvAndCrate<'db>,
     trait_: TraitId,
@@ -235,14 +154,100 @@ fn implements_trait_unique_impl<'db>(
 
     let args = create_args(&infcx);
     let trait_ref = rustc_type_ir::TraitRef::new_from_args(interner, trait_.into(), args);
-    let goal = Goal::new(interner, env.param_env, trait_ref);
+    if trait_ref.self_ty().is_ty_error() {
+        return false;
+    }
 
-    let result = crate::traits::next_trait_solve_in_ctxt(&infcx, goal);
-    matches!(result, Ok((_, Certainty::Yes)))
+    let obligation = Obligation::new(interner, ObligationCause::dummy(), env.param_env, trait_ref);
+    infcx.predicate_must_hold_modulo_regions(&obligation)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WherePredicateEvaluation {
+    Holds,
+    NotProven,
+    HasErrors,
+    NoObligations,
+}
+
+/// This should not be used in `hir-ty`, only in `hir`.
+/// This is exposed to allow the IDE to evaluate arbitrary predicates.
+pub fn where_predicate_must_hold<'db>(
+    db: &'db dyn HirDatabase,
+    resolver: &Resolver<'db>,
+    store: &ExpressionStore,
+    def: ExpressionStoreOwnerId,
+    generic_def: GenericDefId,
+    env: ParamEnvAndCrate<'db>,
+    predicate: &WherePredicate,
+) -> WherePredicateEvaluation {
+    let interner = DbInterner::new_with(db, env.krate);
+    let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+    let generics = OnceCell::<Generics<'db>>::new();
+    let mut ctx = TyLoweringContext::new(
+        db,
+        resolver,
+        store,
+        def,
+        generic_def,
+        &generics,
+        LifetimeElisionKind::Infer,
+    )
+    .with_interning_mode(LoweringMode::Ide);
+    let clauses =
+        ctx.lower_where_predicate(predicate, false).map(|(clause, _)| clause).collect::<Vec<_>>();
+
+    if !ctx.diagnostics.is_empty()
+        || clauses.iter().any(|clause| clause.as_predicate().references_error())
+    {
+        return WherePredicateEvaluation::HasErrors;
+    }
+
+    if clauses.is_empty() {
+        return if ctx.unsized_types.is_empty() {
+            WherePredicateEvaluation::HasErrors
+        } else {
+            WherePredicateEvaluation::NoObligations
+        };
+    }
+
+    let result = infcx.probe(|snapshot| {
+        let mut ocx = ObligationCtxt::new(&infcx);
+        for clause in clauses {
+            let obligation = Obligation::new(
+                interner,
+                ObligationCause::dummy(),
+                env.param_env,
+                clause.as_predicate(),
+            );
+            ocx.register_obligation(obligation);
+        }
+
+        let mut result = EvaluationResult::EvaluatedToOk;
+        for error in ocx.evaluate_obligations_error_on_ambiguity() {
+            if error.is_true_error() {
+                return EvaluationResult::EvaluatedToErr;
+            }
+            result = result.max(EvaluationResult::EvaluatedToAmbig);
+        }
+        if infcx.opaque_types_added_in_snapshot(snapshot) {
+            result.max(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)
+        } else if infcx.region_constraints_added_in_snapshot(snapshot) {
+            result.max(EvaluationResult::EvaluatedToOkModuloRegions)
+        } else {
+            result
+        }
+    });
+
+    if result.must_apply_modulo_regions() {
+        WherePredicateEvaluation::Holds
+    } else {
+        WherePredicateEvaluation::NotProven
+    }
 }
 
 pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id: ImplId) -> bool {
-    let self_ty = db.impl_self_ty(impl_id).instantiate_identity();
+    let self_ty = db.impl_self_ty(impl_id).instantiate_identity().skip_norm_wip();
     let self_ty = self_ty.kind();
     let impl_allowed = match self_ty {
         TyKind::Tuple(_)
@@ -259,7 +264,7 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
         | TyKind::Uint(_)
         | TyKind::Float(_) => def_map.is_rustc_coherence_is_core(),
 
-        TyKind::Adt(adt_def, _) => adt_def.def_id().0.module(db).krate(db) == def_map.krate(),
+        TyKind::Adt(adt_def, _) => adt_def.def_id().module(db).krate(db) == def_map.krate(),
         TyKind::Dynamic(it, _) => it
             .principal_def_id()
             .is_some_and(|trait_id| trait_id.0.module(db).krate(db) == def_map.krate()),
@@ -282,7 +287,7 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
             | TyKind::Uint(_)
             | TyKind::Float(_) => true,
 
-            TyKind::Adt(adt_def, _) => match adt_def.def_id().0 {
+            TyKind::Adt(adt_def, _) => match adt_def.def_id() {
                 hir_def::AdtId::StructId(id) => StructSignature::of(db, id)
                     .flags
                     .contains(StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
@@ -320,11 +325,11 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
 
 /// Checks whether the impl satisfies the orphan rules.
 ///
-/// Given `impl<P1..=Pn> Trait<T1..=Tn> for T0`, an `impl`` is valid only if at least one of the following is true:
+/// Given `impl<P1..=Pn> Trait<T1..=Tn> for T0`, an `impl` is valid only if at least one of the following is true:
 /// - Trait is a local trait
 /// - All of
-///   - At least one of the types `T0..=Tn`` must be a local type. Let `Ti`` be the first such type.
-///   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
+///   - At least one of the types `T0..=Tn` must be a local type. Let `Ti` be the first such type.
+///   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti` (excluding `Ti`)
 pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool {
     let Some(impl_trait) = db.impl_trait(impl_) else {
         // not a trait impl
@@ -334,7 +339,7 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
     let local_crate = impl_.lookup(db).container.krate(db);
     let is_local = |tgt_crate| tgt_crate == local_crate;
 
-    let trait_ref = impl_trait.instantiate_identity();
+    let trait_ref = impl_trait.instantiate_identity().skip_norm_wip();
     let trait_id = trait_ref.def_id.0;
     if is_local(trait_id.module(db).krate(db)) {
         // trait to be implemented is local
@@ -347,7 +352,7 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
             match ty.kind() {
                 TyKind::Ref(_, referenced, _) => ty = referenced,
                 TyKind::Adt(adt_def, subs) => {
-                    let AdtId::StructId(s) = adt_def.def_id().0 else {
+                    let AdtId::StructId(s) = adt_def.def_id() else {
                         break ty;
                     };
                     let struct_signature = StructSignature::of(db, s);
@@ -365,12 +370,12 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
             }
         }
     };
-    //   - At least one of the types `T0..=Tn`` must be a local type. Let `Ti`` be the first such type.
+    //   - At least one of the types `T0..=Tn` must be a local type. Let `Ti` be the first such type.
 
     // FIXME: param coverage
-    //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
+    //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti` (excluding `Ti`)
     let is_not_orphan = trait_ref.args.types().any(|ty| match unwrap_fundamental(ty).kind() {
-        TyKind::Adt(adt_def, _) => is_local(adt_def.def_id().0.module(db).krate(db)),
+        TyKind::Adt(adt_def, _) => is_local(adt_def.def_id().module(db).krate(db)),
         TyKind::Error(_) => true,
         TyKind::Dynamic(it, _) => {
             it.principal_def_id().is_some_and(|trait_id| is_local(trait_id.0.module(db).krate(db)))

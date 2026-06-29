@@ -61,6 +61,7 @@ fn main() {
 }
 
 // FIXME: bunch of patterns that should be linted
+#[expect(clippy::needless_late_init)]
 fn fixme() {
     let a: usize = 5;
     let b: usize = 3;

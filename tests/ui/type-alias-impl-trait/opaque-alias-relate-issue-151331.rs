@@ -5,6 +5,6 @@ type Foo = Vec<impl Send>;
 
 #[define_opaque(Foo)]
 fn make_foo() -> Foo {}
-//~^ ERROR type mismatch resolving
+//~^ ERROR: mismatched types
 
 fn main() {}

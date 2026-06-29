@@ -72,6 +72,17 @@ LL |     }
 LL |     1u32
    |     ^^^^ expected `i32`, found `u32`
    |
+help: you could change the return type to be a boxed trait object
+   |
+LL - fn foo() -> impl std::fmt::Display {
+LL + fn foo() -> Box<dyn std::fmt::Display> {
+   |
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         return Box::new(0i32);
+LL |     }
+LL ~     Box::new(1u32)
+   |
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL -     1u32
@@ -90,6 +101,17 @@ LL |     } else {
 LL |         return 1u32;
    |                ^^^^ expected `i32`, found `u32`
    |
+help: you could change the return type to be a boxed trait object
+   |
+LL - fn bar() -> impl std::fmt::Display {
+LL + fn bar() -> Box<dyn std::fmt::Display> {
+   |
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         return Box::new(0i32);
+LL |     } else {
+LL ~         return Box::new(1u32);
+   |
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL -         return 1u32;
@@ -107,6 +129,17 @@ LL |         return 0i32;
 LL |     } else {
 LL |         1u32
    |         ^^^^ expected `i32`, found `u32`
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL - fn baz() -> impl std::fmt::Display {
+LL + fn baz() -> Box<dyn std::fmt::Display> {
+   |
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         return Box::new(0i32);
+LL |     } else {
+LL ~         Box::new(1u32)
    |
 help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
    |
@@ -153,6 +186,16 @@ LL |         0 => return 0i32,
 LL |         _ => 1u32,
    |              ^^^^ expected `i32`, found `u32`
    |
+help: you could change the return type to be a boxed trait object
+   |
+LL - fn bat() -> impl std::fmt::Display {
+LL + fn bat() -> Box<dyn std::fmt::Display> {
+   |
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         0 => return Box::new(0i32),
+LL ~         _ => Box::new(1u32),
+   |
 help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
    |
 LL |     }.try_into().unwrap()
@@ -171,6 +214,17 @@ LL | |         _ => 2u32,
 LL | |     }
    | |_____^ expected `i32`, found `u32`
    |
+help: you could change the return type to be a boxed trait object
+   |
+LL - fn can() -> impl std::fmt::Display {
+LL + fn can() -> Box<dyn std::fmt::Display> {
+   |
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         0 => return Box::new(0i32),
+LL ~         1 => Box::new(1u32),
+LL ~         _ => Box::new(2u32),
+   |
 help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
    |
 LL |     }.try_into().unwrap()
@@ -187,6 +241,18 @@ LL |             return 0i32;
 ...
 LL |             1u32
    |             ^^^^ expected `i32`, found `u32`
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL - fn cat() -> impl std::fmt::Display {
+LL + fn cat() -> Box<dyn std::fmt::Display> {
+   |
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~             return Box::new(0i32);
+LL |         }
+LL |         _ => {
+LL ~             Box::new(1u32)
    |
 help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
    |

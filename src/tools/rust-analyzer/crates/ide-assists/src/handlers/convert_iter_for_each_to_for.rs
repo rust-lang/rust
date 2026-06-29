@@ -33,7 +33,7 @@ use crate::{AssistContext, AssistId, Assists, utils::wrap_paren};
 // ```
 pub(crate) fn convert_iter_for_each_to_for(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let method = ctx.find_node_at_offset::<ast::MethodCallExpr>()?;
 
@@ -98,7 +98,7 @@ pub(crate) fn convert_iter_for_each_to_for(
 // ```
 pub(crate) fn convert_for_loop_with_for_each(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let for_loop = ctx.find_node_at_offset::<ast::ForExpr>()?;
     let iterable = for_loop.iterable()?;
@@ -205,7 +205,7 @@ fn impls_core_iter(sema: &hir::Semantics<'_, ide_db::RootDatabase>, iterable: &a
 }
 
 fn validate_method_call_expr(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     expr: ast::MethodCallExpr,
 ) -> Option<(ast::Expr, ast::Expr)> {
     let name_ref = expr.name_ref()?;

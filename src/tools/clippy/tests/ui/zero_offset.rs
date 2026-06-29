@@ -29,5 +29,18 @@ fn main() {
 
         let sized = &1 as *const i32;
         sized.offset(0);
+
+        let nn = core::ptr::NonNull::<()>::dangling();
+        nn.add(0);
+        //~^ zst_offset
+
+        nn.offset(0);
+        //~^ zst_offset
+
+        nn.sub(0);
+        //~^ zst_offset
+
+        let nn_sized = core::ptr::NonNull::<i32>::dangling();
+        nn_sized.add(0);
     }
 }

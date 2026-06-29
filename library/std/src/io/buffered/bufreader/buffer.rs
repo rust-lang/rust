@@ -23,9 +23,8 @@ pub struct Buffer {
     filled: usize,
     // Whether `buf` has been fully initialized. We track this so that we can accurately tell
     // `read_buf` how many bytes of buf are initialized, to bypass as much of its defensive
-    // initialization as possible. Note that while this often the same as `filled`, it doesn't need
-    // to be. Calls to `fill_buf` are not required to actually fill the buffer, and omitting this
-    // is a huge perf regression for `Read` impls that do not.
+    // initialization as possible. Calls to `fill_buf` are not required to actually fill the buffer,
+    // and omitting this is a huge perf regression for `Read` impls that do not.
     initialized: bool,
 }
 

@@ -19,7 +19,7 @@
 
 use rustc_type_ir::{
     AliasRelationDirection, Interner, TypeVisitableExt, Upcast, Variance,
-    inherent::{IntoKind, Span as _},
+    inherent::IntoKind,
     relate::{
         Relate, StructurallyRelateAliases, TypeRelation, VarianceDiagInfo,
         combine::{
@@ -28,13 +28,16 @@ use rustc_type_ir::{
     },
 };
 
-use crate::next_solver::{
-    AliasTy, Binder, Const, DbInterner, GenericArgs, Goal, ParamEnv, Predicate, PredicateKind,
-    Region, SolverDefId, Span, Ty, TyKind,
-    infer::{
-        InferCtxt, TypeTrace,
-        relate::RelateResult,
-        traits::{Obligation, PredicateObligations},
+use crate::{
+    Span,
+    next_solver::{
+        AliasTy, Binder, Const, DbInterner, GenericArgs, Goal, ParamEnv, Predicate, PredicateKind,
+        Region, SolverDefId, Ty, TyKind,
+        infer::{
+            InferCtxt, TypeTrace,
+            relate::RelateResult,
+            traits::{Obligation, PredicateObligations},
+        },
     },
 };
 
@@ -154,12 +157,12 @@ impl<'db> TypeRelation<DbInterner<'db>> for LatticeOp<'_, 'db> {
             // iterate on the subtype obligations that are returned, but I
             // think this suffices. -nmatsakis
             (TyKind::Infer(rustc_type_ir::TyVar(..)), _) => {
-                let v = infcx.next_ty_var();
+                let v = infcx.next_ty_var(self.span());
                 self.relate_bound(v, b, a)?;
                 Ok(v)
             }
             (_, TyKind::Infer(rustc_type_ir::TyVar(..))) => {
-                let v = infcx.next_ty_var();
+                let v = infcx.next_ty_var(self.span());
                 self.relate_bound(v, a, b)?;
                 Ok(v)
             }
@@ -178,10 +181,10 @@ impl<'db> TypeRelation<DbInterner<'db>> for LatticeOp<'_, 'db> {
         let mut constraints = inner.unwrap_region_constraints();
         Ok(match self.kind {
             // GLB(&'static u8, &'a u8) == &RegionLUB('static, 'a) u8 == &'static u8
-            LatticeOpKind::Glb => constraints.lub_regions(self.cx(), a, b),
+            LatticeOpKind::Glb => constraints.lub_regions(self.cx(), self.span(), a, b),
 
             // LUB(&'static u8, &'a u8) == &RegionGLB('static, 'a) u8 == &'a u8
-            LatticeOpKind::Lub => constraints.glb_regions(self.cx(), a, b),
+            LatticeOpKind::Lub => constraints.glb_regions(self.cx(), self.span(), a, b),
         })
     }
 
@@ -239,7 +242,7 @@ impl<'infcx, 'db> LatticeOp<'infcx, 'db> {
 
 impl<'db> PredicateEmittingRelation<InferCtxt<'db>> for LatticeOp<'_, 'db> {
     fn span(&self) -> Span {
-        Span::dummy()
+        self.trace.cause.span()
     }
 
     fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
@@ -255,18 +258,13 @@ impl<'db> PredicateEmittingRelation<InferCtxt<'db>> for LatticeOp<'_, 'db> {
         preds: impl IntoIterator<Item: Upcast<DbInterner<'db>, Predicate<'db>>>,
     ) {
         self.obligations.extend(preds.into_iter().map(|pred| {
-            Obligation::new(self.infcx.interner, self.trace.cause.clone(), self.param_env, pred)
+            Obligation::new(self.infcx.interner, self.trace.cause, self.param_env, pred)
         }))
     }
 
     fn register_goals(&mut self, goals: impl IntoIterator<Item = Goal<'db, Predicate<'db>>>) {
         self.obligations.extend(goals.into_iter().map(|goal| {
-            Obligation::new(
-                self.infcx.interner,
-                self.trace.cause.clone(),
-                goal.param_env,
-                goal.predicate,
-            )
+            Obligation::new(self.infcx.interner, self.trace.cause, goal.param_env, goal.predicate)
         }))
     }
 

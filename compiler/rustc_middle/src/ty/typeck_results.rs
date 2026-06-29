@@ -13,7 +13,7 @@ use rustc_hir::{
     self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
 };
 use rustc_index::IndexVec;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::Span;
 
@@ -27,7 +27,7 @@ use crate::ty::{
     GenericArgsRef, Ty, UserArgs, tls,
 };
 
-#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
+#[derive(TyEncodable, TyDecodable, Debug, StableHash)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
     pub hir_owner: OwnerId,
@@ -35,6 +35,9 @@ pub struct TypeckResults<'tcx> {
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
     type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>>,
+
+    /// Resolved definitions for splatted function calls.
+    splatted_defs: ItemLocalMap<Result<SplattedDef, ErrorGuaranteed>>,
 
     /// Resolved field indices for field accesses in expressions (`S { field }`, `obj.field`)
     /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
@@ -229,6 +232,7 @@ impl<'tcx> TypeckResults<'tcx> {
         TypeckResults {
             hir_owner,
             type_dependent_defs: Default::default(),
+            splatted_defs: Default::default(),
             field_indices: Default::default(),
             user_provided_types: Default::default(),
             user_provided_sigs: Default::default(),
@@ -285,6 +289,21 @@ impl<'tcx> TypeckResults<'tcx> {
         &mut self,
     ) -> LocalTableInContextMut<'_, Result<(DefKind, DefId), ErrorGuaranteed>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.type_dependent_defs }
+    }
+
+    pub fn splatted_defs(&self) -> LocalTableInContext<'_, Result<SplattedDef, ErrorGuaranteed>> {
+        LocalTableInContext { hir_owner: self.hir_owner, data: &self.splatted_defs }
+    }
+
+    pub fn splatted_def(&self, id: HirId) -> Option<SplattedDef> {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.splatted_defs.get(&id.local_id).cloned().and_then(|r| r.ok())
+    }
+
+    pub fn splatted_defs_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, Result<SplattedDef, ErrorGuaranteed>> {
+        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.splatted_defs }
     }
 
     pub fn field_indices(&self) -> LocalTableInContext<'_, FieldIdx> {
@@ -405,6 +424,10 @@ impl<'tcx> TypeckResults<'tcx> {
         }
 
         matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
+    }
+
+    pub fn is_splatted_call(&self, expr: &hir::Expr<'_>) -> bool {
+        matches!(self.splatted_defs().get(expr.hir_id), Some(Ok(SplattedDef { .. })))
     }
 
     /// Returns the computed binding mode for a `PatKind::Binding` pattern
@@ -569,6 +592,18 @@ impl<'tcx> TypeckResults<'tcx> {
     }
 }
 
+/// A resolved splatted function call.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
+pub struct SplattedDef {
+    /// The function DefId, if available (FnPtrs don't have DefIds)
+    pub def_id: Option<DefId>,
+    /// The index of the first argument in the callee's splatted tuple, and the index of the
+    /// splatted tuple argument in the caller.
+    pub arg_index: u16,
+    /// The number of arguments in the splatted tuple.
+    pub arg_count: u16,
+}
+
 /// Validate that the given HirId (respectively its `local_id` part) can be
 /// safely used as a key in the maps of a TypeckResults. For that to be
 /// the case, the HirId must have the same `owner` as all the other IDs in
@@ -728,7 +763,7 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
@@ -741,7 +776,7 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Eq, Hash, StableHash, TypeFoldable, TypeVisitable)]
 pub struct UserType<'tcx> {
     pub kind: UserTypeKind<'tcx>,
     pub bounds: ty::Clauses<'tcx>,
@@ -763,7 +798,7 @@ impl<'tcx> UserType<'tcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Eq, Hash, StableHash, TypeFoldable, TypeVisitable)]
 pub enum UserTypeKind<'tcx> {
     Ty(Ty<'tcx>),
 
@@ -851,7 +886,7 @@ impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
 
 /// Information on a pattern incompatible with Rust 2024, for use by the error/migration diagnostic
 /// emitted during THIR construction.
-#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
+#[derive(TyEncodable, TyDecodable, Debug, StableHash)]
 pub struct Rust2024IncompatiblePatInfo {
     /// Labeled spans for `&`s, `&mut`s, and binding modifiers incompatible with Rust 2024.
     pub primary_labels: Vec<(Span, String)>,

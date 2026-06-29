@@ -59,7 +59,12 @@ fn is_used_as_unaligned(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             if matches!(name.ident.name, sym::read_unaligned | sym::write_unaligned)
                 && let Some(def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
                 && let Some(def_id) = cx.tcx.impl_of_assoc(def_id)
-                && cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip().is_raw_ptr()
+                && cx
+                    .tcx
+                    .type_of(def_id)
+                    .instantiate_identity()
+                    .skip_norm_wip()
+                    .is_raw_ptr()
             {
                 true
             } else {

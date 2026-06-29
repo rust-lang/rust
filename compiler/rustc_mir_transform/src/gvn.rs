@@ -116,7 +116,7 @@ use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
-use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
@@ -834,16 +834,20 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     {
                         return Some((projection_ty, value));
                     }
-                    // DO NOT reason the pointer value.
-                    // We cannot unify two pointers that dereference same local, because they may
-                    // have different lifetimes.
+                    // We cannot unify two references produced by dereferencing the same nested reference,
+                    // because they may have different lifetimes.
                     // ```
                     // let b: &T = *a;
                     // ... `a` is allowed to be modified. `c` and `b` have different borrowing lifetime.
                     // Unifying them will extend the lifetime of `b`.
                     // let c: &T = *a;
                     // ```
-                    if projection_ty.ty.is_ref() {
+                    // Furthermore, unifying them can also violate Stacked Borrows or Tree Borrows.
+                    // We can only unify all `*b` and `*c` separately
+                    // because nested shared references are not read-only.
+                    // For more, see <https://github.com/rust-lang/rust/issues/155884> and
+                    // <https://github.com/rust-lang/rust/issues/130853>.
+                    if self.ty_may_have_ref(projection_ty.ty) {
                         return None;
                     }
 
@@ -1061,7 +1065,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     ) -> Option<VnIndex> {
         let value = match *rvalue {
             // Forward values.
-            Rvalue::Use(ref mut operand) => return self.simplify_operand(operand, location),
+            Rvalue::Use(ref mut operand, _) => return self.simplify_operand(operand, location),
 
             // Roots.
             Rvalue::Repeat(ref mut op, amount) => {
@@ -1072,6 +1076,21 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
+            }
+            Rvalue::Reborrow(_, mutbl, place) => {
+                if mutbl == Mutability::Mut {
+                    // Note: this is adapted from simplify_aggregate.
+                    let mut operand = Operand::Copy(place);
+                    let val = self.simplify_operand(&mut operand, location);
+                    // FIXME(reborrow): Is it correct to make these retagging assignments?
+                    *rvalue = Rvalue::Use(Operand::Copy(place), WithRetag::Yes);
+                    return val;
+                } else {
+                    // FIXME(reborrow): CoerceShared should perform effectively a copy followed by a
+                    // transmute, or possibly something more complicated in the future. For now we
+                    // leave this unoptimised.
+                    return None;
+                }
             }
             Rvalue::RawPtr(mutbl, ref mut place) => {
                 self.simplify_place_projection(place, location);
@@ -1086,7 +1105,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Rvalue::Cast(ref mut kind, ref mut value, to) => {
                 return self.simplify_cast(kind, value, to, location);
             }
-            Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
+            Rvalue::BinaryOp(op, (ref mut lhs, ref mut rhs)) => {
                 return self.simplify_binary(op, lhs, rhs, location);
             }
             Rvalue::UnaryOp(op, ref mut arg_op) => {
@@ -1185,7 +1204,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let tcx = self.tcx;
         let ty = rvalue.ty(self.local_decls, tcx);
 
-        let Rvalue::Aggregate(box ref kind, ref mut field_ops) = *rvalue else { bug!() };
+        let Rvalue::Aggregate(ref kind, ref mut field_ops) = *rvalue else { bug!() };
 
         if field_ops.is_empty() {
             let is_zst = match *kind {
@@ -1263,7 +1282,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         if let Some(value) = self.simplify_aggregate_to_copy(ty, variant_index, &fields) {
             if let Some(place) = self.try_as_place(value, location, true) {
                 self.reused_locals.insert(place.local);
-                *rvalue = Rvalue::Use(Operand::Copy(place));
+                // FIXME: Is it correct to make these retagging assignments?
+                *rvalue = Rvalue::Use(Operand::Copy(place), WithRetag::Yes);
             }
             return Some(value);
         }
@@ -1672,6 +1692,59 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
     }
 
+    fn ty_may_have_ref(&self, ty: Ty<'tcx>) -> bool {
+        fn ty_may_have_ref_inner<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> bool {
+            if !tcx.recursion_limit().value_within_limit(depth) {
+                return true;
+            }
+            let depth = depth + 1;
+            match ty.kind() {
+                ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Bool
+                | ty::Char
+                | ty::Str
+                | ty::Never
+                | ty::FnDef(..)
+                | ty::Error(_)
+                | ty::FnPtr(..) => false,
+                ty::Tuple(fields) => {
+                    fields.iter().any(|field| ty_may_have_ref_inner(tcx, field, depth))
+                }
+                ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => {
+                    ty_may_have_ref_inner(tcx, *ty, depth)
+                }
+                ty::Adt(adt_def, args) => {
+                    adt_def.has_param()
+                        || adt_def.has_aliases()
+                        || adt_def.all_fields().any(|field| {
+                            ty_may_have_ref_inner(
+                                tcx,
+                                field.ty(tcx, args).skip_normalization(),
+                                depth,
+                            )
+                        })
+                }
+                ty::Ref(..)
+                | ty::RawPtr(_, _)
+                | ty::Bound(..)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
+                | ty::Dynamic(..)
+                | ty::Foreign(_)
+                | ty::Coroutine(..)
+                | ty::CoroutineWitness(..)
+                | ty::UnsafeBinder(_)
+                | ty::Infer(_)
+                | ty::Alias(..)
+                | ty::Param(_)
+                | ty::Placeholder(_) => true,
+            }
+        }
+        ty_may_have_ref_inner(self.tcx, ty, 0)
+    }
+
     /// Returns `false` if we're confident that the middle type doesn't have an
     /// interesting niche so we can skip that step when transmuting.
     ///
@@ -1760,7 +1833,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             && adt.repr().transparent()
             && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
         {
-            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args)))
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args).skip_norm_wip()))
         } else {
             None
         }
@@ -2022,13 +2095,13 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
 
         let value = self.simplify_rvalue(lhs, rvalue, location);
         if let Some(value) = value {
+            // FIXME: Is it correct to make these retagging assignments?
             if let Some(const_) = self.try_as_constant(value) {
-                *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
+                *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)), WithRetag::Yes);
             } else if let Some(place) = self.try_as_place(value, location, false)
-                && *rvalue != Rvalue::Use(Operand::Move(place))
-                && *rvalue != Rvalue::Use(Operand::Copy(place))
+                && !matches!(rvalue, Rvalue::Use(Operand::Move(p) | Operand::Copy(p), _) if p == &place)
             {
-                *rvalue = Rvalue::Use(Operand::Copy(place));
+                *rvalue = Rvalue::Use(Operand::Copy(place), WithRetag::Yes);
                 self.reused_locals.insert(place.local);
             }
         }

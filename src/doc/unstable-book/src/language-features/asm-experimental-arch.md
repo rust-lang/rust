@@ -18,6 +18,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 - M68k
 - CSKY
 - SPARC
+- Xtensa
 
 ## Register classes
 
@@ -46,6 +47,10 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | CSKY         | `freg`         | `f[0-31]`                          | `f`                  |
 | SPARC        | `reg`          | `r[2-29]`                          | `r`                  |
 | SPARC        | `yreg`         | `y`                                | Only clobbers        |
+| Xtensa       | `reg`          | `a[2-15]`                          | `r`                  |
+| Xtensa       | `freg`         | `f[0-15]`                          | `f`                  |
+| Xtensa       | `sreg`         | `sar`, `scompare1`, `lbeg`, `lend`, `lcount`, `acclo`, `acchi`, `m[0-3]` | Only clobbers |
+| Xtensa       | `breg`         | `b[0-15]`                          | Only clobbers        |
 
 > **Notes**:
 > - NVPTX doesn't have a fixed register set, so named registers are not supported.
@@ -77,6 +82,10 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | CSKY         | `freg`                          | None           | `f32`,                                  |
 | SPARC        | `reg`                           | None           | `i8`, `i16`, `i32`, `i64` (SPARC64 only) |
 | SPARC        | `yreg`                          | N/A            | Only clobbers                           |
+| Xtensa       | `reg`                           | None           | `i8`, `i16`, `i32`                      |
+| Xtensa       | `freg`                          | `fp`           | `f32`                                   |
+| Xtensa       | `sreg`                          | N/A            | Only clobbers                           |
+| Xtensa       | `breg`                          | `bool`         | Only clobbers                           |
 
 ## Register aliases
 
@@ -113,6 +122,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | SPARC        | `r[8-15]`     | `o[0-7]`  |
 | SPARC        | `r[16-23]`    | `l[0-7]`  |
 | SPARC        | `r[24-31]`    | `i[0-7]`  |
+| Xtensa       | `a1`          | `sp`      |
 
 > **Notes**:
 > - TI does not mandate a frame pointer for MSP430, but toolchains are allowed
@@ -145,6 +155,9 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | SPARC        | `r5`/`g5`                               | Reserved for system. (SPARC32 only) |
 | SPARC        | `r6`/`g6`, `r7`/`g7`                    | Reserved for system. |
 | SPARC        | `r31`/`i7`                              | Return address cannot be used as inputs or outputs. |
+| Xtensa       | `a0`                                    | This is the return address register and is used internally by LLVM. |
+| Xtensa       | `a1`/`sp`                               | This is the stack pointer and is used internally by LLVM. |
+| Xtensa       | `a7` (windowed ABI) / `a15` (call0 ABI) | The frame pointer cannot be used as an input or output. |
 
 
 ## Template modifiers
@@ -160,6 +173,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | SPARC        | `reg`          | None     | `%o0`          | None          |
 | CSKY         | `reg`          | None     | `r0`           | None          |
 | CSKY         | `freg`         | None     | `f0`           | None          |
+| Xtensa       | `reg`          | None     | `a2`           | None          |
+| Xtensa       | `freg`         | None     | `f0`           | None          |
 
 # Flags covered by `preserves_flags`
 

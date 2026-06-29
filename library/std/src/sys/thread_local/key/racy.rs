@@ -42,6 +42,7 @@ impl LazyKey {
         }
     }
 
+    #[cold]
     fn lazy_init(&self) -> usize {
         // POSIX allows the key created here to be KEY_SENTVAL, but the compare_exchange
         // below relies on using KEY_SENTVAL as a sentinel value to check who won the

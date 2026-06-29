@@ -115,7 +115,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
     }
 
     fn as_raw_mut_slice(&mut self) -> *mut [T] {
-        ptr::slice_from_raw_parts_mut(self.ptr.as_ptr(), self.len())
+        self.ptr.as_ptr().cast_slice(self.len())
     }
 
     /// Drops remaining elements and relinquishes the backing allocation.
@@ -282,7 +282,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let step_size = self.len().min(n);
-        let to_drop = ptr::slice_from_raw_parts_mut(self.ptr.as_ptr(), step_size);
+        let to_drop = self.ptr.as_ptr().cast_slice(step_size);
         if T::IS_ZST {
             // See `next` for why we sub `end` here.
             self.end = self.end.wrapping_byte_sub(step_size);
@@ -457,9 +457,9 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
         }
         let to_drop = if T::IS_ZST {
             // ZST may cause unalignment
-            ptr::slice_from_raw_parts_mut(ptr::NonNull::<T>::dangling().as_ptr(), step_size)
+            ptr::NonNull::<T>::dangling().as_ptr().cast_slice(step_size)
         } else {
-            ptr::slice_from_raw_parts_mut(self.end as *mut T, step_size)
+            self.end.cast::<T>().cast_mut().cast_slice(step_size)
         };
         // SAFETY: same as for advance_by()
         unsafe {

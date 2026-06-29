@@ -1,11 +1,11 @@
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_hir;
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
 
 use crate::ty::{self, Ty, TyCtxt};
 
 /// Input argument for `tcx.lit_to_const`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, StableHash)]
 pub struct LitToConstInput<'tcx> {
     /// The absolute value of the resultant constant.
     pub lit: LitKind,

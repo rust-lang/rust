@@ -1,4 +1,4 @@
-//- minicore: fn
+//- minicore: fn, iterator, try, panic
 use crate::ast::{AngleBracketedArgs, ParenthesizedArgs, AttrStyle, BareFnTy};
 use crate::ast::{GenericBound, TraitBoundModifier};
 use crate::ast::Unsafety;

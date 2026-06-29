@@ -67,7 +67,7 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                 .instantiate_mir_and_normalize_erasing_regions(
                     cx.tcx(),
                     cx.typing_env(),
-                    ty::EarlyBinder::bind(value.const_),
+                    ty::EarlyBinder::bind(cx.tcx(), value.const_),
                 )
                 .eval(cx.tcx(), cx.typing_env(), value.span)
                 .expect("erroneous constant missed by mono item collection");
@@ -75,7 +75,7 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
                 cx.tcx(),
                 cx.typing_env(),
-                ty::EarlyBinder::bind(value.ty()),
+                ty::EarlyBinder::bind(cx.tcx(), value.ty()),
             );
 
             let string = common::asm_const_to_str(
@@ -91,7 +91,7 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
                 cx.tcx(),
                 cx.typing_env(),
-                ty::EarlyBinder::bind(value.ty()),
+                ty::EarlyBinder::bind(cx.tcx(), value.ty()),
             );
 
             let instance = match mono_type.kind() {
@@ -451,7 +451,7 @@ fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_t
         PassMode::Cast { pad_i32, ref cast } => {
             // For wasm, Cast is used for single-field primitive wrappers like `struct Wrapper(i64);`
             assert!(!pad_i32, "not currently used by wasm calling convention");
-            assert!(cast.prefix[0].is_none(), "no prefix");
+            assert!(cast.prefix.is_empty(), "no prefix");
             assert_eq!(cast.rest.total, arg_abi.layout.size, "single item");
 
             let wrapped_wasm_type = match cast.rest.unit.kind {

@@ -228,8 +228,8 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
 
     // remove duplicates from both hashmaps
     for (k, v) in &same_in_both_hashmaps {
-        assert!(old_stats_deduped.remove(k) == Some(*v));
-        assert!(new_stats_deduped.remove(k) == Some(*v));
+        assert_eq!(old_stats_deduped.remove(k), Some(*v));
+        assert_eq!(new_stats_deduped.remove(k), Some(*v));
     }
 
     println!("\nStats:");

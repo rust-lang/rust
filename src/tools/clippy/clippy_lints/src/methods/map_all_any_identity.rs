@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_expr_identity_function;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -24,7 +24,7 @@ pub(super) fn check(
         && cx.ty_based_def(recv).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         && is_expr_identity_function(cx, any_arg)
         && let map_any_call_span = map_call_span.with_hi(any_call_span.hi())
-        && let Some(map_arg) = map_arg.span.get_source_text(cx)
+        && let Some(map_arg) = map_arg.span.get_text(cx)
     {
         span_lint_and_then(
             cx,

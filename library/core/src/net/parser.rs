@@ -63,11 +63,6 @@ impl<'a> Parser<'a> {
         if self.state.is_empty() { result } else { None }.ok_or(AddrParseError(kind))
     }
 
-    /// Peek the next character from the input
-    fn peek_char(&self) -> Option<char> {
-        self.state.first().map(|&b| char::from(b))
-    }
-
     /// Reads the next character from the input
     fn read_char(&mut self) -> Option<char> {
         self.state.split_first().map(|(&b, tail)| {
@@ -100,60 +95,56 @@ impl<'a> Parser<'a> {
         })
     }
 
-    // Read a number off the front of the input in the given radix, stopping
-    // at the first non-digit character or eof. Fails if the number has more
-    // digits than max_digits or if there is no number.
-    //
-    // INVARIANT: `max_digits` must be less than the number of digits that `u32`
-    // can represent.
-    fn read_number<T: ReadNumberHelper + TryFrom<u32>>(
+    /// Reads a number off the front of the input in the given radix, stopping at the first
+    /// non-digit character or eof. Fails if the number has more digits than `max_digits`, if there
+    /// is no number, if the number overflows `T`, or if there are leading zeros but
+    /// `allow_zero_prefix` is false.
+    ///
+    /// `max_digits` must be in 1..=6.
+    fn read_radix_max_digits<T: ReadNumberHelper + TryFrom<u32>>(
         &mut self,
         radix: u32,
-        max_digits: Option<usize>,
+        max_digits: u32,
         allow_zero_prefix: bool,
     ) -> Option<T> {
-        self.read_atomically(move |p| {
-            let mut digit_count = 0;
-            let has_leading_zero = p.peek_char() == Some('0');
+        debug_assert!(1 <= max_digits);
+        debug_assert!(max_digits <= 6); // Works for any radix in u32
+        self.read_atomically(|p| {
+            let first = p.read_char()?.to_digit(radix)?;
+            let mut result = first;
+            let mut digit_count = 1;
 
-            // If max_digits.is_some(), then we are parsing a `u8` or `u16` and
-            // don't need to use checked arithmetic since it fits within a `u32`.
-            let result = if let Some(max_digits) = max_digits {
-                // u32::MAX = 4_294_967_295u32, which is 10 digits long.
-                // `max_digits` must be less than 10 to not overflow a `u32`.
-                debug_assert!(max_digits < 10);
-
-                let mut result = 0_u32;
-                while let Some(digit) = p.read_atomically(|p| p.read_char()?.to_digit(radix)) {
-                    result *= radix;
-                    result += digit;
-                    digit_count += 1;
-
-                    if digit_count > max_digits {
-                        return None;
-                    }
+            while let Some(digit) = p.read_atomically(|p| p.read_char()?.to_digit(radix)) {
+                if digit_count >= max_digits {
+                    return None;
                 }
-
-                result.try_into().ok()
-            } else {
-                let mut result = T::ZERO;
-
-                while let Some(digit) = p.read_atomically(|p| p.read_char()?.to_digit(radix)) {
-                    result = result.checked_mul(radix)?;
-                    result = result.checked_add(digit)?;
-                    digit_count += 1;
-                }
-
-                Some(result)
-            };
-
-            if digit_count == 0 {
-                None
-            } else if !allow_zero_prefix && has_leading_zero && digit_count > 1 {
-                None
-            } else {
-                result
+                result *= radix;
+                result += digit;
+                digit_count += 1;
             }
+
+            if !allow_zero_prefix && first == 0 && digit_count > 1 {
+                None
+            } else {
+                result.try_into().ok()
+            }
+        })
+    }
+
+    /// Reads a decimal number off the front of the input, stopping at the first non-digit character
+    /// or eof. Fails if there is no number, or if the number overflows `T`. Allows an arbitrary
+    /// amount of leading zeros.
+    fn read_decimal<T: ReadNumberHelper>(&mut self) -> Option<T> {
+        self.read_atomically(|p| {
+            let first = p.read_char()?.to_digit(10)?;
+            let mut result = T::ZERO.checked_add(first)?;
+
+            while let Some(digit) = p.read_atomically(|p| p.read_char()?.to_digit(10)) {
+                result = result.checked_mul(10)?;
+                result = result.checked_add(digit)?;
+            }
+
+            Some(result)
         })
     }
 
@@ -166,7 +157,7 @@ impl<'a> Parser<'a> {
                 *slot = p.read_separator('.', i, |p| {
                     // Disallow octal number in IP string.
                     // https://tools.ietf.org/html/rfc6943#section-3.1.1
-                    p.read_number(10, Some(3), false)
+                    p.read_radix_max_digits(10, 3, false)
                 })?;
             }
 
@@ -198,7 +189,7 @@ impl<'a> Parser<'a> {
                     }
                 }
 
-                let group = p.read_separator(':', i, |p| p.read_number(16, Some(4), true));
+                let group = p.read_separator(':', i, |p| p.read_radix_max_digits(16, 4, true));
 
                 match group {
                     Some(g) => *slot = g,
@@ -250,7 +241,7 @@ impl<'a> Parser<'a> {
     fn read_port(&mut self) -> Option<u16> {
         self.read_atomically(|p| {
             p.read_given_char(':')?;
-            p.read_number(10, None, true)
+            p.read_decimal()
         })
     }
 
@@ -258,7 +249,7 @@ impl<'a> Parser<'a> {
     fn read_scope_id(&mut self) -> Option<u32> {
         self.read_atomically(|p| {
             p.read_given_char('%')?;
-            p.read_number(10, None, true)
+            p.read_decimal()
         })
     }
 

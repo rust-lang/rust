@@ -11,7 +11,7 @@ extern crate minicore;
 use minicore::*;
 
 struct Custom;
-impl const Add for Custom {
+const impl Add for Custom {
     type Output = ();
     fn add(self, _other: Self) {}
 }

@@ -49,7 +49,7 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// Query implementation for `coverage_attr_on`.
 fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // Check for a `#[coverage(..)]` attribute on this def.
-    if let Some(kind) = find_attr!(tcx, def_id, Coverage(_sp, kind) => kind) {
+    if let Some(kind) = find_attr!(tcx, def_id, Coverage(kind) => kind) {
         match kind {
             CoverageAttrKind::On => return true,
             CoverageAttrKind::Off => return false,

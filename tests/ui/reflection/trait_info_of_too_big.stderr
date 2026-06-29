@@ -6,7 +6,7 @@ LL |     TypeId::of::<[u8; usize::MAX]>().trait_info_of_trait_type_id(TypeId::of
    |
 note: inside `TypeId::trait_info_of_trait_type_id`
   --> $SRC_DIR/core/src/any.rs:LL:COL
-note: inside `type_info::<impl TypeId>::info`
+note: inside `type_info::<impl TypeId>::size`
   --> $SRC_DIR/core/src/mem/type_info.rs:LL:COL
 
 error[E0080]: values of the type `[u8; usize::MAX]` are too big for the target architecture
@@ -19,7 +19,7 @@ note: inside `TypeId::trait_info_of::<dyn Trait>`
   --> $SRC_DIR/core/src/any.rs:LL:COL
 note: inside `TypeId::trait_info_of_trait_type_id`
   --> $SRC_DIR/core/src/any.rs:LL:COL
-note: inside `type_info::<impl TypeId>::info`
+note: inside `type_info::<impl TypeId>::size`
   --> $SRC_DIR/core/src/mem/type_info.rs:LL:COL
 
 error: aborting due to 2 previous errors

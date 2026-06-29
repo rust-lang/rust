@@ -333,7 +333,7 @@ struct DocExprSourceCtx<'db> {
     resolver: Resolver<'db>,
     file_id: HirFileId,
     ast_id_map: &'db AstIdMap,
-    span_map: SpanMap,
+    span_map: SpanMap<'db>,
 }
 
 fn expand_doc_expr_via_macro_pipeline<'db>(
@@ -390,7 +390,7 @@ fn expand_doc_macro_call<'db>(
     .value?;
 
     expander.recursion_depth += 1;
-    let parse = expander.db.parse_macro_expansion(call_id).value.0;
+    let parse = expander.db.parse_macro_expansion(call_id).value.0.clone();
     let expr = parse.cast::<ast::Expr>().map(|parse| parse.tree())?;
     expander.recursion_depth -= 1;
 

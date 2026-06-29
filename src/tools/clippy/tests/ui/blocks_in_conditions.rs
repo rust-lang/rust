@@ -1,13 +1,7 @@
 //@aux-build:proc_macro_attr.rs
 
 #![warn(clippy::blocks_in_conditions)]
-#![allow(
-    unused,
-    unnecessary_transmutes,
-    clippy::needless_ifs,
-    clippy::missing_transmute_annotations
-)]
-#![warn(clippy::nonminimal_bool)]
+#![expect(unnecessary_transmutes, clippy::missing_transmute_annotations, clippy::needless_ifs)]
 
 macro_rules! blocky {
     () => {{ true }};
@@ -46,7 +40,6 @@ fn condition_has_block_with_single_expression() -> i32 {
 fn condition_is_normal() -> i32 {
     let x = 3;
     if true && x == 3 { 6 } else { 10 }
-    //~^ nonminimal_bool
 }
 
 fn condition_is_unsafe_block() {

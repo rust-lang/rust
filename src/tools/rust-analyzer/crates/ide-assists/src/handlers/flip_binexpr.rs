@@ -21,7 +21,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     let _ = 2 + 90;
 // }
 // ```
-pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let expr = ctx.find_node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?;
     let rhs = expr.rhs()?;
@@ -114,7 +114,7 @@ impl From<ast::BinaryOp> for FlipAction {
 //     let _ = ..90;
 // }
 // ```
-pub(crate) fn flip_range_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn flip_range_expr(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let range_expr = ctx.find_node_at_offset::<ast::RangeExpr>()?;
     let op = range_expr.op_token()?;
     let start = range_expr.start();

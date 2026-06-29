@@ -1,7 +1,7 @@
 // FIXME(f16_f128): add tests when constants are available
 
 #![warn(clippy::cast_nan_to_int)]
-#![allow(clippy::eq_op)]
+#![expect(clippy::eq_op)]
 
 fn main() {
     let _ = (0.0_f32 / -0.0) as usize;

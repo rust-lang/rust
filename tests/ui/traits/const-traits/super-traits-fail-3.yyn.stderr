@@ -38,6 +38,11 @@ error[E0277]: the trait bound `T: [const] Foo` is not satisfied
    |
 LL |     x.a();
    |       ^
+   |
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL | const fn foo<T: [const] Bar + [const] Foo>(x: &T) {
+   |                             +++++++++++++
 
 error: aborting due to 4 previous errors
 

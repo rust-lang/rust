@@ -2,8 +2,6 @@
 //! live in memory.
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-// Validation forces more things into memory, which we can't have here.
-//@compile-flags: -Zmiri-disable-validation
 
 #![feature(custom_mir, core_intrinsics)]
 

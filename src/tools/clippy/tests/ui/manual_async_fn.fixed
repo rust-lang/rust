@@ -1,5 +1,5 @@
 #![warn(clippy::manual_async_fn)]
-#![allow(clippy::needless_pub_self, unused)]
+#![expect(clippy::needless_pub_self)]
 
 use std::future::Future;
 

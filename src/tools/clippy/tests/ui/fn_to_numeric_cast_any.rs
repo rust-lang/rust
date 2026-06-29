@@ -1,5 +1,5 @@
 #![warn(clippy::fn_to_numeric_cast_any)]
-#![allow(clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation)]
+#![expect(clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation)]
 #![allow(function_casts_as_integer)]
 //@no-rustfix
 fn foo() -> u8 {

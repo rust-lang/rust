@@ -1,16 +1,15 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{self as ast, AttrStyle, Attribute, MetaItem, attr, token};
-use rustc_attr_parsing::validate_attr;
+use rustc_attr_parsing::{AttributeTemplate, validate_attr};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt};
 use rustc_expand::expand::AstFragment;
-use rustc_feature::AttributeTemplate;
 use rustc_lint_defs::builtin::DUPLICATE_MACRO_ATTRIBUTES;
 use rustc_parse::{exp, parser};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{BytePos, Span, Symbol};
 
-use crate::errors;
+use crate::diagnostics;
 
 pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
     // All the built-in macro attributes are "words" at the moment.
@@ -48,7 +47,7 @@ pub(crate) fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable,
                 DUPLICATE_MACRO_ATTRIBUTES,
                 attr.span,
                 ecx.current_expansion.lint_node_id,
-                errors::DuplicateMacroAttribute,
+                diagnostics::DuplicateMacroAttribute,
             );
         }
     }
@@ -150,7 +149,7 @@ pub(crate) fn expr_to_string(
 /// (this should be done as rarely as possible).
 pub(crate) fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str) {
     if !tts.is_empty() {
-        cx.dcx().emit_err(errors::TakesNoArguments { span, name });
+        cx.dcx().emit_err(diagnostics::TakesNoArguments { span, name });
     }
 }
 
@@ -209,7 +208,7 @@ pub(crate) fn get_single_expr_from_tts(
 ) -> ExpandResult<Result<Box<ast::Expr>, ErrorGuaranteed>, ()> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
-        let guar = cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
+        let guar = cx.dcx().emit_err(diagnostics::OnlyOneArgument { span, name });
         return ExpandResult::Ready(Err(guar));
     }
     let ret = match parse_expr(&mut p) {
@@ -219,7 +218,7 @@ pub(crate) fn get_single_expr_from_tts(
     let _ = p.eat(exp!(Comma));
 
     if p.token != token::Eof {
-        cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
+        cx.dcx().emit_err(diagnostics::OnlyOneArgument { span, name });
     }
     ExpandResult::Ready(Ok(ret))
 }
@@ -253,7 +252,7 @@ pub(crate) fn get_exprs_from_tts(
             continue;
         }
         if p.token != token::Eof {
-            let guar = cx.dcx().emit_err(errors::ExpectedCommaInList { span: p.token.span });
+            let guar = cx.dcx().emit_err(diagnostics::ExpectedCommaInList { span: p.token.span });
             return ExpandResult::Ready(Err(guar));
         }
     }

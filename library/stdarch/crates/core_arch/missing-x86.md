@@ -1,62 +1,9 @@
 
-<details><summary>["AMX-BF16"]</summary><p>
-
-  * [ ] [`__tile_dpbf16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbf16ps)
-</p></details>
-
-
-<details><summary>["AMX-COMPLEX"]</summary><p>
-
-  * [ ] [`__tile_cmmimfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_cmmimfp16ps)
-  * [ ] [`__tile_cmmrlfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_cmmrlfp16ps)
-</p></details>
-
-
-<details><summary>["AMX-FP16"]</summary><p>
-
-  * [ ] [`__tile_dpfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpfp16ps)
-</p></details>
-
-
-<details><summary>["AMX-INT8"]</summary><p>
-
-  * [ ] [`__tile_dpbssd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbssd)
-  * [ ] [`__tile_dpbsud`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbsud)
-  * [ ] [`__tile_dpbusd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbusd)
-  * [ ] [`__tile_dpbuud`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbuud)
-</p></details>
-
-
-<details><summary>["AMX-TILE"]</summary><p>
-
-  * [ ] [`__tile_loadd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_loadd)
-  * [ ] [`__tile_stored`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_stored)
-  * [ ] [`__tile_stream_loadd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_stream_loadd)
-  * [ ] [`__tile_zero`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_zero)
-</p></details>
-
-
 <details><summary>["AVX512_FP16"]</summary><p>
 
   * [ ] [`_mm256_set1_pch`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set1_pch)
   * [ ] [`_mm512_set1_pch`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set1_pch)
   * [ ] [`_mm_set1_pch`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_set1_pch)
-</p></details>
-
-
-<details><summary>["AVX512_VP2INTERSECT", "AVX512F"]</summary><p>
-
-  * [ ] [`_mm512_2intersect_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_2intersect_epi32)
-  * [ ] [`_mm512_2intersect_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_2intersect_epi64)
-</p></details>
-
-
-<details><summary>["AVX512_VP2INTERSECT", "AVX512VL"]</summary><p>
-
-  * [ ] [`_mm256_2intersect_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_2intersect_epi32)
-  * [ ] [`_mm256_2intersect_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_2intersect_epi64)
-  * [ ] [`_mm_2intersect_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_2intersect_epi32)
-  * [ ] [`_mm_2intersect_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_2intersect_epi64)
 </p></details>
 
 
@@ -83,12 +30,6 @@
 <details><summary>["CLDEMOTE"]</summary><p>
 
   * [ ] [`_mm_cldemote`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cldemote)
-</p></details>
-
-
-<details><summary>["CLFLUSHOPT"]</summary><p>
-
-  * [ ] [`_mm_clflushopt`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_clflushopt)
 </p></details>
 
 

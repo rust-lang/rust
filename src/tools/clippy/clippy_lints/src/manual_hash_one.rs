@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::sym;
 use clippy_utils::visitors::{is_local_used, local_used_once};
 use rustc_errors::Applicability;
@@ -105,8 +105,8 @@ impl LateLintPass<'_> for ManualHashOne {
                 finish_expr.span,
                 "manual implementation of `BuildHasher::hash_one`",
                 |diag| {
-                    if let Some(build_hasher) = build_hasher.span.get_source_text(cx)
-                        && let Some(hashed_value) = hashed_value.span.get_source_text(cx)
+                    if let Some(build_hasher) = build_hasher.span.get_text(cx)
+                        && let Some(hashed_value) = hashed_value.span.get_text(cx)
                     {
                         diag.multipart_suggestion(
                             "try",

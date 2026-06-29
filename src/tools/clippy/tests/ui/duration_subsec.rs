@@ -1,4 +1,4 @@
-#![allow(dead_code, clippy::needless_borrow)]
+#![expect(clippy::needless_borrow)]
 #![warn(clippy::duration_subsec)]
 
 use std::time::Duration;

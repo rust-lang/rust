@@ -97,8 +97,9 @@ impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for OccupiedEntry<'_,
 
 /// The error returned by [`try_insert`](BTreeMap::try_insert) when the key already exists.
 ///
-/// Contains the occupied entry, and the value that was not inserted.
+/// Contains the occupied entry, key, and the value that was not inserted.
 #[unstable(feature = "map_try_insert", issue = "82766")]
+#[non_exhaustive]
 pub struct OccupiedError<
     'a,
     K: 'a,
@@ -107,6 +108,8 @@ pub struct OccupiedError<
 > {
     /// The entry in the map that was already occupied.
     pub entry: OccupiedEntry<'a, K, V, A>,
+    /// The key which was not inserted, because the entry was already occupied.
+    pub key: K,
     /// The value which was not inserted, because the entry was already occupied.
     pub value: V,
 }
@@ -116,31 +119,11 @@ impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for OccupiedError<'_,
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedError")
             .field("key", self.entry.key())
+            .field("uninserted_key", &self.key)
             .field("old_value", self.entry.get())
             .field("new_value", &self.value)
             .finish()
     }
-}
-
-#[unstable(feature = "map_try_insert", issue = "82766")]
-impl<'a, K: Debug + Ord, V: Debug, A: Allocator + Clone> fmt::Display
-    for OccupiedError<'a, K, V, A>
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "failed to insert {:?}, key {:?} already exists with value {:?}",
-            self.value,
-            self.entry.key(),
-            self.entry.get(),
-        )
-    }
-}
-
-#[unstable(feature = "map_try_insert", issue = "82766")]
-impl<'a, K: core::fmt::Debug + Ord, V: core::fmt::Debug> core::error::Error
-    for crate::collections::btree_map::OccupiedError<'a, K, V>
-{
 }
 
 impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
@@ -182,9 +165,42 @@ impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+        self.or_try_insert_with(|| Result::<_, !>::Ok(default())).unwrap()
+    }
+
+    /// Ensures a value is in the entry by inserting the result of a fallible default function
+    /// if empty, and returns a mutable reference to the value in the entry.
+    ///
+    /// This method works identically to [`or_insert_with`] except that the default function
+    /// should return a `Result` and, in the case of an error, the error is propagated.
+    ///
+    /// [`or_insert_with`]: Self::or_insert_with
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_entry)]
+    /// # fn main() -> Result<(), std::num::ParseIntError> {
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// let value = "42";
+    ///
+    /// map.entry("poneyland").or_try_insert_with(|| value.parse())?;
+    ///
+    /// assert_eq!(map["poneyland"], 42);
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "try_entry", issue = "157354")]
+    pub fn or_try_insert_with<F: FnOnce() -> Result<V, E>, E>(
+        self,
+        default: F,
+    ) -> Result<&'a mut V, E> {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default()),
+            Occupied(entry) => Ok(entry.into_mut()),
+            Vacant(entry) => Ok(entry.insert(default()?)),
         }
     }
 
@@ -210,11 +226,44 @@ impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
     #[inline]
     #[stable(feature = "or_insert_with_key", since = "1.50.0")]
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
+        self.or_try_insert_with_key(|k| Result::<_, !>::Ok(default(k))).into_ok()
+    }
+
+    /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
+    /// This method allows for generating key-derived values for insertion by providing the default
+    /// function a reference to the key that was moved during the `entry(key)` method call.
+    ///
+    /// This method works identically to [`or_insert_with_key`] except that the default function
+    /// should return a `Result` and, in the case of an error, the error is propagated.
+    ///
+    /// [`or_insert_with_key`]: Self::or_insert_with_key
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_entry)]
+    /// # fn main() -> Result<(), std::num::ParseIntError> {
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    ///
+    /// map.entry("42").or_try_insert_with_key(|key| key.parse())?;
+    ///
+    /// assert_eq!(map["42"], 42);
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "try_entry", issue = "157354")]
+    pub fn or_try_insert_with_key<F: FnOnce(&K) -> Result<V, E>, E>(
+        self,
+        default: F,
+    ) -> Result<&'a mut V, E> {
         match self {
-            Occupied(entry) => entry.into_mut(),
+            Occupied(entry) => Ok(entry.into_mut()),
             Vacant(entry) => {
-                let value = default(entry.key());
-                entry.insert(value)
+                let value = default(entry.key())?;
+                Ok(entry.insert(value))
             }
         }
     }

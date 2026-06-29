@@ -1,4 +1,4 @@
-#![allow(fuzzy_provenance_casts)] // FIXME: this module systematically confuses pointers and integers
+#![allow(implicit_provenance_casts)] // FIXME: this module systematically confuses pointers and integers
 
 pub use super::common::Env;
 use crate::collections::HashMap;

@@ -386,6 +386,24 @@ impl<Node: Idx> Dominators<Node> {
             }
         }
     }
+
+    /// Returns true if `a` **strictly** dominates `b`
+    ///
+    /// # Panics
+    ///
+    /// Panics if `b` is unreachable
+    #[inline]
+    pub fn strictly_dominates(&self, a: Node, b: Node) -> bool {
+        match &self.kind {
+            Kind::Path => a.index() < b.index(),
+            Kind::General(g) => {
+                let a = g.time[a];
+                let b = g.time[b];
+                assert!(b.start != 0, "node {b:?} is not reachable");
+                a.start < b.start && b.finish < a.finish
+            }
+        }
+    }
 }
 
 /// Describes the number of vertices discovered at the time when processing of a particular vertex

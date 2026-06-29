@@ -1,5 +1,5 @@
 error: empty drop implementation
-  --> tests/ui/empty_drop.rs:7:1
+  --> tests/ui/empty_drop.rs:6:1
    |
 LL | / impl Drop for Foo {
 LL | |
@@ -12,7 +12,7 @@ LL | | }
    = help: try removing this impl
 
 error: empty drop implementation
-  --> tests/ui/empty_drop.rs:24:1
+  --> tests/ui/empty_drop.rs:23:1
    |
 LL | / impl Drop for Baz {
 LL | |

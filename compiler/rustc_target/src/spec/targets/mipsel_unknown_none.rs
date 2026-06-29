@@ -4,7 +4,7 @@
 
 use crate::spec::{
     Arch, Cc, LinkerFlavor, Lld, LlvmAbi, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions,
+    TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -25,6 +25,7 @@ pub(crate) fn target() -> Target {
             cpu: "mips32r2".into(),
             features: "+mips32r2,+soft-float,+noabicalls".into(),
             llvm_abiname: LlvmAbi::O32,
+            llvm_args: cvs!["-mno-check-zero-division"],
             max_atomic_width: Some(32),
             linker: Some("rust-lld".into()),
             panic_strategy: PanicStrategy::Abort,

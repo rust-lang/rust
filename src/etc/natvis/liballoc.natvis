@@ -23,7 +23,7 @@
           <If Condition="i == len">
             <Break/>
           </If>
-          <Item>(($T1*)buf.inner.ptr.pointer.pointer)[(i + head) % buf.inner.cap.__0]</Item>
+          <Item>(($T1*)buf.inner.ptr.pointer.pointer)[(i + head.__0) % buf.inner.cap.__0]</Item>
           <Exec>i = i + 1</Exec>
         </Loop>
       </CustomListItems>

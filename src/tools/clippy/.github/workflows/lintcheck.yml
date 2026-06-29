@@ -24,7 +24,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         fetch-depth: 2
         # Unsetting this would make so that any malicious package could get our Github Token
@@ -44,7 +44,7 @@ jobs:
 
     - name: Cache lintcheck bin
       id: cache-lintcheck-bin
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: target/debug/lintcheck
         key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
@@ -59,7 +59,7 @@ jobs:
 
     - name: Cache results JSON
       id: cache-json
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: lintcheck-logs/ci_crates_logs.json
         key: ${{ steps.key.outputs.key }}
@@ -69,7 +69,7 @@ jobs:
       run: env CLIPPY_CONF_DIR="$PWD/lintcheck/ci-config" ./target/debug/lintcheck --format json --all-lints --crates-toml ./lintcheck/ci_crates.toml
 
     - name: Upload base JSON
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: base
         path: lintcheck-logs/ci_crates_logs.json
@@ -80,14 +80,14 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false
 
     - name: Cache lintcheck bin
       id: cache-lintcheck-bin
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: target/debug/lintcheck
         key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
@@ -100,7 +100,7 @@ jobs:
       run: env CLIPPY_CONF_DIR="$PWD/lintcheck/ci-config" ./target/debug/lintcheck --format json --all-lints --crates-toml ./lintcheck/ci_crates.toml
 
     - name: Upload head JSON
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: head
         path: lintcheck-logs/ci_crates_logs.json
@@ -113,20 +113,20 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false
 
     - name: Restore lintcheck bin
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: target/debug/lintcheck
         key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
         fail-on-cache-miss: true
 
     - name: Download JSON
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
 
     - name: Store PR number
       run: echo ${{ github.event.pull_request.number }} > pr.txt
@@ -140,13 +140,13 @@ jobs:
         ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json --write-summary summary.json > full_diff.md
 
     - name: Upload full diff
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: full_diff
         path: full_diff.md
 
     - name: Upload summary
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: summary
         path: |

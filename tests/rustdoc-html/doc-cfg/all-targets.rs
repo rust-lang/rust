@@ -2,10 +2,10 @@
 
 //@ has all_targets/fn.foo.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on GNU or Catalyst or Managarm C Library or MSVC or musl or Newlib or \
-//  Neutrino 7.0 or Neutrino 7.1 or Neutrino 7.1 with io-sock or Neutrino 8.0 or \
-//  OpenHarmony or relibc or SGX or Simulator or WASIp1 or WASIp2 or WASIp3 or \
-//  uClibc or V5 or target_env=fake_env only.'
+//  'Available on target_env=fake_env or Catalyst or GNU or Managarm C Library \
+//  or MSVC or musl or Neutrino 7.0 or Neutrino 7.1 or Neutrino 7.1 with io-sock \
+//  or Neutrino 8.0 or Newlib or OpenHarmony or relibc or SGX or Simulator or \
+//  uClibc or V5 or WASIp1 or WASIp2 or WASIp3 only.'
 #[doc(cfg(any(
     target_env = "gnu",
     target_env = "macabi",
@@ -32,12 +32,12 @@ pub fn foo() {}
 
 //@ has all_targets/fn.bar.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on AArch64 or AMD GPU or ARM or ARM64EC or AVR or BPF or C-SKY or \
-//  Hexagon or LoongArch32 or LoongArch64 or Motorola 680x0 or MIPS or MIPS release \
-//  6 or MIPS-64 or MIPS-64 release 6 or MSP430 or NVidia GPU or PowerPC or \
-//  PowerPC64 or RISC-V RV32 or RISC-V RV64 or s390x or SPARC or SPARC-64 or SPIR-V \
-//  or WebAssembly or WebAssembly or x86 or x86-64 or Xtensa or \
-//  target_arch=fake_arch only.'
+//  'Available on target_arch=fake_arch or AArch64 or AMD GPU or ARM or \
+//  ARM64EC or AVR or BPF or C-SKY or Hexagon or LoongArch32 or LoongArch64 \
+//  or MIPS or MIPS release 6 or MIPS-64 or MIPS-64 release 6 or Motorola 680x0 \
+//  or MSP430 or NVidia GPU or PowerPC or PowerPC64 or RISC-V RV32 or RISC-V RV64 \
+//  or s390x or SPARC or SPARC-64 or SPIR-V or WebAssembly or WebAssembly or x86 \
+//  or x86-64 or Xtensa only.'
 #[doc(cfg(any(
     target_arch = "aarch64",
     target_arch = "amdgpu",
@@ -75,15 +75,16 @@ pub fn bar() {}
 
 //@ has all_targets/fn.baz.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on AIX and AMD HSA and Android and CUDA and Cygwin and DragonFly \
-//  BSD and Emscripten and ESP-IDF and FreeBSD and Fuchsia and Haiku and HelenOS \
-//  and Hermit and Horizon and GNU/Hurd and illumos and iOS and L4Re and Linux \
-//  and LynxOS-178 and macOS and Managarm and Motor OS and NetBSD and bare-metal \
-//  and QNX Neutrino and NuttX and OpenBSD and Play Station Portable and Play \
-//  Station 1 and QuRT and Redox OS and RTEMS OS and Solaris and SOLID ASP3 and \
-//  TEEOS and Trusty and tvOS and UEFI and VEXos and visionOS and Play Station \
-//  Vita and VxWorks and WASI and watchOS and Windows and Xous and zero knowledge \
-//  Virtual Machine and target_os=unknown and target_os=fake_os only.'
+//  'Available on target_os=fake_os and target_os=unknown and AIX and AMD HSA \
+//  and Android and bare-metal and CUDA and Cygwin and DragonFly BSD and \
+//  Emscripten and ESP-IDF and FreeBSD and Fuchsia and GNU/Hurd and Haiku \
+//  and HelenOS and Hermit and Horizon and illumos and iOS and L4Re and Linux \
+//  and LynxOS-178 and macOS and Managarm and Motor OS and NetBSD and NuttX \
+//  and OpenBSD and Play Station 1 and Play Station Portable and Play Station Vita \
+//  and QNX Neutrino and QuRT and Redox OS and RTEMS OS and Solaris and \
+//  SOLID ASP3 and TEEOS and Trusty and tvOS and UEFI and VEXos and visionOS \
+//  and VxWorks and WASI and watchOS and Windows and Xous and zero knowledge \
+//  Virtual Machine only.'
 #[doc(cfg(all(
     target_os = "aix",
     target_os = "amdhsa",

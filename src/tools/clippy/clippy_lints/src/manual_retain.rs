@@ -85,7 +85,7 @@ fn check_into_iter(
         && let Some(into_iter_def_id) = cx.typeck_results().type_dependent_def_id(into_iter_expr.hir_id)
         && Some(into_iter_def_id) == cx.tcx.lang_items().into_iter_fn()
         && match_acceptable_type(cx, left_expr, msrv)
-        && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr)
+        && SpanlessEq::new(cx).eq_expr(parent_expr_span.ctxt(), left_expr, struct_expr)
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = target_expr.kind
         && let hir::ExprKind::Closure(closure) = closure_expr.kind
         && let filter_body = cx.tcx.hir_body(closure.body)
@@ -132,7 +132,7 @@ fn check_iter(
         && let Some(iter_expr_def_id) = cx.typeck_results().type_dependent_def_id(iter_expr.hir_id)
         && match_acceptable_sym(cx, iter_expr_def_id)
         && match_acceptable_type(cx, left_expr, msrv)
-        && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr)
+        && SpanlessEq::new(cx).eq_expr(parent_expr_span.ctxt(), left_expr, struct_expr)
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
         && let hir::ExprKind::Closure(closure) = closure_expr.kind
         && let filter_body = cx.tcx.hir_body(closure.body)
@@ -190,7 +190,7 @@ fn check_to_owned(
         && cx.tcx.is_diagnostic_item(sym::str_chars, chars_expr_def_id)
         && let ty = cx.typeck_results().expr_ty(str_expr).peel_refs()
         && ty.is_lang_item(cx, hir::LangItem::String)
-        && SpanlessEq::new(cx).eq_expr(left_expr, str_expr)
+        && SpanlessEq::new(cx).eq_expr(parent_expr_span.ctxt(), left_expr, str_expr)
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
         && let hir::ExprKind::Closure(closure) = closure_expr.kind
         && let filter_body = cx.tcx.hir_body(closure.body)

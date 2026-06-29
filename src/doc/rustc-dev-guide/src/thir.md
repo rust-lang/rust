@@ -15,30 +15,37 @@ the types have been filled in, which is possible after type checking has complet
 But it has some other interesting features that distinguish it from the HIR:
 
 - Like the MIR, the THIR only represents bodies, i.e. "executable code"; this includes
-  function bodies, but also `const` initializers, for example. Specifically, all [body owners] have
-  THIR created. Consequently, the THIR has no representation for items like `struct`s or `trait`s.
+  function bodies, but also `const` initializers, for example.
+  Specifically, all [body owners] have THIR created.
+  Consequently, the THIR has no representation for items like `struct`s or `trait`s.
 
 - Each body of THIR is only stored temporarily and is dropped as soon as it's no longer
   needed, as opposed to being stored until the end of the compilation process (which
   is what is done with the HIR).
 
 - Besides making the types of all nodes available, the THIR also has additional
-  desugaring compared to the HIR. For example, automatic references and dereferences
+  desugaring compared to the HIR.
+  For example, automatic references and dereferences
   are made explicit, and method calls and overloaded operators are converted into
-  plain function calls. Destruction scopes are also made explicit.
+  plain function calls.
+  Destruction scopes are also made explicit.
 
-- Statements, expressions, and match arms are stored separately. For example, statements in the
-  `stmts` array reference expressions by their index (represented as a [`ExprId`]) in the `exprs`
-  array.
+- Statements, expressions, match arms, blocks, and parameters are stored separately.
+  For example,
+  statements in the `stmts` array reference expressions by their index (represented as a
+  [`ExprId`]) in the `exprs` array.
 
 [HIR]: ./hir.md
 [`ExprId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/thir/struct.ExprId.html
 [body owners]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.BodyOwnerKind.html
 
-The THIR lives in [`rustc_mir_build::thir`][thir-docs]. To construct a [`thir::Expr`],
+The THIR lives in [`rustc_mir_build::thir`][thir-docs].
+To construct a [`thir::Expr`],
 you can use the [`thir_body`] function, passing in the memory arena where the THIR
-will be allocated. Dropping this arena will result in the THIR being destroyed,
-which is useful to keep peak memory in check. Having a THIR representation of
+will be allocated.
+Dropping this arena will result in the THIR being destroyed,
+which is useful to keep peak memory in check.
+Having a THIR representation of
 all bodies of a crate in memory at the same time would be very heavy.
 
 You can get a debug representation of the THIR by passing the `-Zunpretty=thir-tree` flag

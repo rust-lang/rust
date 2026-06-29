@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(associated_type_defaults)]
+#![feature(default_field_values)]
 #![feature(macro_metavar_expr)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
@@ -9,7 +10,7 @@
 // tidy-alphabetical-end
 
 mod build;
-mod errors;
+mod diagnostics;
 mod mbe;
 mod placeholders;
 mod proc_macro_server;

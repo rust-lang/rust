@@ -14,7 +14,7 @@ impl Bar for () {
 
 const FOO: () = {
     (const || ().foo())();
-    //~^ ERROR the trait bound `(): const Bar` is not satisfied
+    //~^ ERROR the trait bound `(): [const] Bar` is not satisfied
 };
 
 fn main() {}

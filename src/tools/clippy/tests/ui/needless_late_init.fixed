@@ -185,25 +185,24 @@ fn does_not_lint() {
     };
 
     // using tuples would be possible, but not always preferable
-    let x;
-    let y;
-    if true {
-        x = 1;
-        y = 2;
+    
+    
+    let (x, y) = if true {
+        //~^ needless_late_init
+        (1, 2)
     } else {
-        x = 3;
-        y = 4;
-    }
+        (3, 4)
+    };
 
-    // could match with a smarter heuristic to avoid multiple assignments
-    let x;
-    if true {
+    
+    //~^ needless_late_init
+    let x = if true {
         let mut y = 5;
         y = 6;
-        x = y;
+        y
     } else {
-        x = 2;
-    }
+        2
+    };
 
     let (x, y);
     if true {
@@ -298,4 +297,168 @@ fn issue9895() {
     
     //~^ needless_late_init
     let r = 5;
+}
+
+fn if_or_match_in_block_expr() {
+    
+    //~^ needless_late_init
+    let z = if true {
+        1
+    } else {
+        2
+    };
+}
+
+fn issue16330() {
+    // Late init in both if branches, should lint
+    
+    
+    let (a, b) = if true {
+        //~^ needless_late_init
+        (1, 2)
+    } else {
+        (3, 4)
+    };
+
+    // One of the variables is not late init, should not lint
+    let a;
+    let mut b = 1;
+    let c;
+    if true {
+        b = 1;
+        a = 2;
+        c = 3;
+    } else {
+        b = 6;
+        a = 4;
+        c = 5;
+    }
+
+    // One of the variables is defined outside the block, should not lint
+    let b;
+    {
+        let a;
+        let c;
+        if true {
+            b = 1;
+            a = 2;
+            c = 3;
+        } else {
+            b = 6;
+            a = 4;
+            c = 5;
+        }
+    }
+
+    // Late init in all match arms, should lint
+    
+    
+    
+    let (a, b, c) = match 1 {
+        //~^ needless_late_init
+        1 => {
+            (1, 2, 3)
+        },
+        _ if false => {
+            (4, 5, 6)
+        },
+        _ => {
+            (7, 8, 9)
+        },
+    };
+
+    // Late init in all if branches, should lint
+    
+    
+    
+    let (a, b, c) = if true {
+        //~^ needless_late_init
+        (1, 2, 3)
+    } else if false {
+        (4, 5, 6)
+    } else {
+        (7, 8, 9)
+    };
+
+    // One of the variables is not assigned in all branches, should not lint
+    let a;
+    let b;
+    let c;
+    if true {
+        a = 1;
+        b = 2;
+        c = 3;
+    } else if false {
+        a = 4;
+        c = 6;
+    } else {
+        a = 7;
+        b = 8;
+        c = 9;
+    }
+
+    // One of the variables is assigned multiple times, should not lint
+    let mut a;
+    let b;
+    if true {
+        a = 1;
+        b = 2;
+        a = 3;
+    } else {
+        a = 4;
+        b = 5;
+    }
+
+    // One of the variables is assigned in a nested block, should not lint
+    let a;
+    let b;
+    if true {
+        a = 1;
+        b = 2;
+    } else {
+        a = 4;
+        {
+            b = 5;
+        }
+    }
+
+    // The order of the variables is different in different branches, should not lint
+    let a;
+    let b;
+    if true {
+        a = 1;
+        b = 2;
+    } else {
+        b = 5;
+        a = 4;
+    }
+
+    // Later assignments depend on the earlier ones, should only lint the last ones
+    let a;
+    let b;
+    
+    //~^ needless_late_init
+    let c = if true {
+        a = 1;
+        b = a + 1;
+        b + 1
+    } else {
+        a = 4;
+        b = a + 2;
+        b + 2
+    };
+    let a;
+    let b;
+    
+    
+    let (c, d) = if true {
+        //~^ needless_late_init
+        a = 1;
+        b = a + 1;
+        (b + 1, 1)
+    } else {
+        a = 4;
+        b = a + 2;
+        (b + 2, 2)
+    };
 }

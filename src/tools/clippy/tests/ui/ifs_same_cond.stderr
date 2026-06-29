@@ -1,5 +1,5 @@
 error: these `if` branches have the same condition
-  --> tests/ui/ifs_same_cond.rs:8:8
+  --> tests/ui/ifs_same_cond.rs:12:8
    |
 LL |     if b {
    |        ^
@@ -11,7 +11,7 @@ LL |     } else if b {
    = help: to override `-D warnings` add `#[allow(clippy::ifs_same_cond)]`
 
 error: these `if` branches have the same condition
-  --> tests/ui/ifs_same_cond.rs:13:8
+  --> tests/ui/ifs_same_cond.rs:17:8
    |
 LL |     if b {
    |        ^
@@ -22,7 +22,7 @@ LL |     } else if b {
    |               ^
 
 error: these `if` branches have the same condition
-  --> tests/ui/ifs_same_cond.rs:19:8
+  --> tests/ui/ifs_same_cond.rs:23:8
    |
 LL |     if a == 1 {
    |        ^^^^^^
@@ -31,7 +31,7 @@ LL |     } else if a == 1 {
    |               ^^^^^^
 
 error: these `if` branches have the same condition
-  --> tests/ui/ifs_same_cond.rs:24:8
+  --> tests/ui/ifs_same_cond.rs:28:8
    |
 LL |     if 2 * a == 1 {
    |        ^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     } else if 2 * a == 1 {
    |               ^^^^^^^^^^
 
 error: these `if` branches have the same condition
-  --> tests/ui/ifs_same_cond.rs:58:8
+  --> tests/ui/ifs_same_cond.rs:62:8
    |
 LL |     if a.contains("ah") {
    |        ^^^^^^^^^^^^^^^^

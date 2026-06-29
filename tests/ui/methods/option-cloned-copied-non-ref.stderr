@@ -1,0 +1,30 @@
+error[E0599]: no method named `cloned` found for enum `Option<i32>` in the current scope
+  --> $DIR/option-cloned-copied-non-ref.rs:9:7
+   |
+LL |     x.cloned().unwrap()
+   |      -^^^^^^--
+   |      ||
+   |      |this method is only available on `Option<&_>`
+   |      help: consider removing the `.cloned()` call
+
+error[E0599]: no method named `copied` found for enum `Option<i32>` in the current scope
+  --> $DIR/option-cloned-copied-non-ref.rs:15:7
+   |
+LL |     x.copied().unwrap()
+   |      -^^^^^^--
+   |      ||
+   |      |this method is only available on `Option<&_>`
+   |      help: consider removing the `.copied()` call
+
+error[E0599]: no method named `cloned` found for enum `Option<String>` in the current scope
+  --> $DIR/option-cloned-copied-non-ref.rs:21:7
+   |
+LL |     x.cloned().unwrap()
+   |      -^^^^^^--
+   |      ||
+   |      |this method is only available on `Option<&_>`
+   |      help: consider removing the `.cloned()` call
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

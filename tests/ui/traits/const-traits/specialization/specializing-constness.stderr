@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `A`
   --> $DIR/specializing-constness.rs:20:1
    |
-LL | impl<T: [const] Spec> const A for T {
+LL | const impl<T: [const] Spec> A for T {
    | ----------------------------------- first implementation here
 ...
 LL | impl<T: Spec + Sup> A for T {

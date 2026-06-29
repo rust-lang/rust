@@ -484,7 +484,31 @@ LL +     or(Ok(ext_str.some_field));
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:259:14
+  --> tests/ui/unnecessary_lazy_eval.rs:245:13
+   |
+LL |     let _ = true.then(|| -> &[u8] { &[] });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `then_some` instead
+   |
+LL -     let _ = true.then(|| -> &[u8] { &[] });
+LL +     let _ = true.then_some::<&[u8]>({ &[] });
+   |
+
+error: unnecessary closure used to substitute value for `Option::None`
+  --> tests/ui/unnecessary_lazy_eval.rs:251:13
+   |
+LL |     let _ = None.get_or_insert_with(|| -> &[u8] { &[] });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `get_or_insert` instead
+   |
+LL -     let _ = None.get_or_insert_with(|| -> &[u8] { &[] });
+LL +     let _ = None.get_or_insert({ &[] } as &[u8]);
+   |
+
+error: unnecessary closure used with `bool::then`
+  --> tests/ui/unnecessary_lazy_eval.rs:271:14
    |
 LL |     let _x = false.then(|| i32::MAX + 1);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -496,7 +520,7 @@ LL +     let _x = false.then_some(i32::MAX + 1);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:261:14
+  --> tests/ui/unnecessary_lazy_eval.rs:273:14
    |
 LL |     let _x = false.then(|| i32::MAX * 2);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -508,7 +532,7 @@ LL +     let _x = false.then_some(i32::MAX * 2);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:263:14
+  --> tests/ui/unnecessary_lazy_eval.rs:275:14
    |
 LL |     let _x = false.then(|| i32::MAX - 1);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -520,7 +544,7 @@ LL +     let _x = false.then_some(i32::MAX - 1);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:265:14
+  --> tests/ui/unnecessary_lazy_eval.rs:277:14
    |
 LL |     let _x = false.then(|| i32::MIN - 1);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -532,7 +556,7 @@ LL +     let _x = false.then_some(i32::MIN - 1);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:267:14
+  --> tests/ui/unnecessary_lazy_eval.rs:279:14
    |
 LL |     let _x = false.then(|| (1 + 2 * 3 - 2 / 3 + 9) << 2);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -544,7 +568,7 @@ LL +     let _x = false.then_some((1 + 2 * 3 - 2 / 3 + 9) << 2);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:269:14
+  --> tests/ui/unnecessary_lazy_eval.rs:281:14
    |
 LL |     let _x = false.then(|| 255u8 << 7);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -556,7 +580,7 @@ LL +     let _x = false.then_some(255u8 << 7);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:271:14
+  --> tests/ui/unnecessary_lazy_eval.rs:283:14
    |
 LL |     let _x = false.then(|| 255u8 << 8);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -568,7 +592,7 @@ LL +     let _x = false.then_some(255u8 << 8);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:273:14
+  --> tests/ui/unnecessary_lazy_eval.rs:285:14
    |
 LL |     let _x = false.then(|| 255u8 >> 8);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -580,7 +604,7 @@ LL +     let _x = false.then_some(255u8 >> 8);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:276:14
+  --> tests/ui/unnecessary_lazy_eval.rs:288:14
    |
 LL |     let _x = false.then(|| i32::MAX + -1);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -592,7 +616,7 @@ LL +     let _x = false.then_some(i32::MAX + -1);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:278:14
+  --> tests/ui/unnecessary_lazy_eval.rs:290:14
    |
 LL |     let _x = false.then(|| -i32::MAX);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -604,7 +628,7 @@ LL +     let _x = false.then_some(-i32::MAX);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:280:14
+  --> tests/ui/unnecessary_lazy_eval.rs:292:14
    |
 LL |     let _x = false.then(|| -i32::MIN);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -616,7 +640,7 @@ LL +     let _x = false.then_some(-i32::MIN);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:283:14
+  --> tests/ui/unnecessary_lazy_eval.rs:295:14
    |
 LL |     let _x = false.then(|| 255 >> -7);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -628,7 +652,7 @@ LL +     let _x = false.then_some(255 >> -7);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:285:14
+  --> tests/ui/unnecessary_lazy_eval.rs:297:14
    |
 LL |     let _x = false.then(|| 255 << -1);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -640,7 +664,7 @@ LL +     let _x = false.then_some(255 << -1);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:287:14
+  --> tests/ui/unnecessary_lazy_eval.rs:299:14
    |
 LL |     let _x = false.then(|| 1 / 0);
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -652,7 +676,7 @@ LL +     let _x = false.then_some(1 / 0);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:289:14
+  --> tests/ui/unnecessary_lazy_eval.rs:301:14
    |
 LL |     let _x = false.then(|| x << -1);
    |              ^^^^^^^^^^^^^^^^^^^^^^
@@ -664,7 +688,7 @@ LL +     let _x = false.then_some(x << -1);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:291:14
+  --> tests/ui/unnecessary_lazy_eval.rs:303:14
    |
 LL |     let _x = false.then(|| x << 2);
    |              ^^^^^^^^^^^^^^^^^^^^^
@@ -676,7 +700,7 @@ LL +     let _x = false.then_some(x << 2);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:301:14
+  --> tests/ui/unnecessary_lazy_eval.rs:313:14
    |
 LL |     let _x = false.then(|| x / 0);
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -688,7 +712,7 @@ LL +     let _x = false.then_some(x / 0);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:303:14
+  --> tests/ui/unnecessary_lazy_eval.rs:315:14
    |
 LL |     let _x = false.then(|| x % 0);
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -700,7 +724,7 @@ LL +     let _x = false.then_some(x % 0);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:306:14
+  --> tests/ui/unnecessary_lazy_eval.rs:318:14
    |
 LL |     let _x = false.then(|| 1 / -1);
    |              ^^^^^^^^^^^^^^^^^^^^^
@@ -712,7 +736,7 @@ LL +     let _x = false.then_some(1 / -1);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:308:14
+  --> tests/ui/unnecessary_lazy_eval.rs:320:14
    |
 LL |     let _x = false.then(|| i32::MIN / -1);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -724,7 +748,7 @@ LL +     let _x = false.then_some(i32::MIN / -1);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:311:14
+  --> tests/ui/unnecessary_lazy_eval.rs:323:14
    |
 LL |     let _x = false.then(|| i32::MIN / 0);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -736,7 +760,7 @@ LL +     let _x = false.then_some(i32::MIN / 0);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:313:14
+  --> tests/ui/unnecessary_lazy_eval.rs:325:14
    |
 LL |     let _x = false.then(|| 4 / 2);
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -748,7 +772,7 @@ LL +     let _x = false.then_some(4 / 2);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval.rs:321:14
+  --> tests/ui/unnecessary_lazy_eval.rs:333:14
    |
 LL |     let _x = false.then(|| f1 + f2);
    |              ^^^^^^^^^^^^^^^^^^^^^^
@@ -759,5 +783,5 @@ LL -     let _x = false.then(|| f1 + f2);
 LL +     let _x = false.then_some(f1 + f2);
    |
 
-error: aborting due to 63 previous errors
+error: aborting due to 65 previous errors
 

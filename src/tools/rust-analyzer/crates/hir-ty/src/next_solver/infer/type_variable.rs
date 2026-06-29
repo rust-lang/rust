@@ -7,13 +7,12 @@ use std::ops::Range;
 use ena::snapshot_vec as sv;
 use ena::undo_log::Rollback;
 use ena::unify as ut;
-use rustc_index::IndexVec;
 use rustc_type_ir::TyVid;
 use rustc_type_ir::UniverseIndex;
 use rustc_type_ir::inherent::Ty as _;
 use tracing::debug;
 
-use crate::next_solver::SolverDefId;
+use crate::Span;
 use crate::next_solver::Ty;
 use crate::next_solver::infer::{InferCtxtUndoLogs, iter_idx_range};
 
@@ -61,8 +60,6 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct TypeVariableStorage<'db> {
-    /// The origins of each type variable.
-    values: IndexVec<TyVid, TypeVariableData>,
     /// Two variables are unified in `eq_relations` when we have a
     /// constraint `?X == ?Y`. This table also stores, for each key,
     /// the known value.
@@ -94,20 +91,7 @@ pub(crate) struct TypeVariableTable<'a, 'db> {
     undo_log: &'a mut InferCtxtUndoLogs<'db>,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct TypeVariableOrigin {
-    /// `DefId` of the type parameter this was instantiated for, if any.
-    ///
-    /// This should only be used for diagnostics.
-    pub param_def_id: Option<SolverDefId>,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct TypeVariableData {
-    origin: TypeVariableOrigin,
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum TypeVariableValue<'db> {
     Known { value: Ty<'db> },
     Unknown { universe: UniverseIndex },
@@ -119,7 +103,7 @@ impl<'db> TypeVariableValue<'db> {
     pub(crate) fn known(&self) -> Option<Ty<'db>> {
         match self {
             TypeVariableValue::Unknown { .. } => None,
-            TypeVariableValue::Known { value } => Some(*value),
+            TypeVariableValue::Known { value, .. } => Some(*value),
         }
     }
 
@@ -145,19 +129,14 @@ impl<'db> TypeVariableStorage<'db> {
         &self.eq_relations
     }
 
-    pub(super) fn finalize_rollback(&mut self) {
-        debug_assert!(self.values.len() >= self.eq_relations.len());
-        self.values.truncate(self.eq_relations.len());
-    }
+    pub(super) fn finalize_rollback(&mut self) {}
 }
 
 impl<'db> TypeVariableTable<'_, 'db> {
-    /// Returns the origin that was given when `vid` was created.
-    ///
-    /// Note that this function does not return care whether
-    /// `vid` has been unified with something else or not.
-    pub(crate) fn var_origin(&self, vid: TyVid) -> TypeVariableOrigin {
-        self.storage.values[vid].origin
+    pub(crate) fn var_span(&mut self, vid: TyVid) -> Span {
+        // We return the span from unification and not equation, since when equating we also unify,
+        // and we want to prevent duplicate diagnostics from vars that were unified.
+        self.sub_unification_table().probe_value(vid).span
     }
 
     /// Records that `a == b`, depending on `dir`.
@@ -195,33 +174,20 @@ impl<'db> TypeVariableTable<'_, 'db> {
         self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });
     }
 
-    /// Creates a new type variable.
-    ///
-    /// - `diverging`: indicates if this is a "diverging" type
-    ///   variable, e.g.,  one created as the type of a `return`
-    ///   expression. The code in this module doesn't care if a
-    ///   variable is diverging, but the main Rust type-checker will
-    ///   sometimes "unify" such variables with the `!` or `()` types.
-    /// - `origin`: indicates *why* the type variable was created.
-    ///   The code in this module doesn't care, but it can be useful
-    ///   for improving error messages.
-    pub(crate) fn new_var(&mut self, universe: UniverseIndex, origin: TypeVariableOrigin) -> TyVid {
+    pub(crate) fn new_var(&mut self, universe: UniverseIndex, span: Span) -> TyVid {
         let eq_key = self.eq_relations().new_key(TypeVariableValue::Unknown { universe });
 
-        let sub_key = self.sub_unification_table().new_key(());
+        let sub_key = self.sub_unification_table().new_key(TypeVariableSubValue { span });
         debug_assert_eq!(eq_key.vid, sub_key.vid);
 
-        let index = self.storage.values.push(TypeVariableData { origin });
-        debug_assert_eq!(eq_key.vid, index);
+        debug!("new_var(index={:?}, universe={:?}, span={:?})", eq_key.vid, universe, span);
 
-        debug!("new_var(index={:?}, universe={:?}, origin={:?})", eq_key.vid, universe, origin);
-
-        index
+        eq_key.vid
     }
 
     /// Returns the number of type variables created thus far.
     pub(crate) fn num_vars(&self) -> usize {
-        self.storage.values.len()
+        self.storage.eq_relations.len()
     }
 
     /// Returns the "root" variable of `vid` in the `eq_relations`
@@ -268,12 +234,9 @@ impl<'db> TypeVariableTable<'_, 'db> {
     }
 
     /// Returns a range of the type variables created during the snapshot.
-    pub(crate) fn vars_since_snapshot(
-        &mut self,
-        value_count: usize,
-    ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
+    pub(crate) fn vars_since_snapshot(&mut self, value_count: usize) -> (Range<TyVid>, Vec<Span>) {
         let range = TyVid::from_usize(value_count)..TyVid::from_usize(self.num_vars());
-        (range.clone(), iter_idx_range(range).map(|index| self.var_origin(index)).collect())
+        (range.clone(), iter_idx_range(range).map(|index| self.var_span(index)).collect())
     }
 
     /// Returns indices of all variables that are not yet
@@ -324,9 +287,6 @@ impl<'db> ut::UnifyKey for TyVidEqKey<'db> {
     fn tag() -> &'static str {
         "TyVidEqKey"
     }
-    fn order_roots(a: Self, _: &Self::Value, b: Self, _: &Self::Value) -> Option<(Self, Self)> {
-        if a.vid.as_u32() < b.vid.as_u32() { Some((a, b)) } else { Some((b, a)) }
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -341,8 +301,13 @@ impl From<TyVid> for TyVidSubKey {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TypeVariableSubValue {
+    span: Span,
+}
+
 impl ut::UnifyKey for TyVidSubKey {
-    type Value = ();
+    type Value = TypeVariableSubValue;
     #[inline]
     fn index(&self) -> u32 {
         self.vid.as_u32()
@@ -353,6 +318,14 @@ impl ut::UnifyKey for TyVidSubKey {
     }
     fn tag() -> &'static str {
         "TyVidSubKey"
+    }
+}
+
+impl ut::UnifyValue for TypeVariableSubValue {
+    type Error = ut::NoError;
+
+    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
+        Ok(TypeVariableSubValue { span: Span::pick_best(value1.span, value2.span) })
     }
 }
 
@@ -369,11 +342,9 @@ impl<'db> ut::UnifyValue for TypeVariableValue<'db> {
             }
 
             // If one side is known, prefer that one.
-            (&TypeVariableValue::Known { .. }, &TypeVariableValue::Unknown { .. }) => {
-                Ok(value1.clone())
-            }
-            (&TypeVariableValue::Unknown { .. }, &TypeVariableValue::Known { .. }) => {
-                Ok(value2.clone())
+            (&TypeVariableValue::Known { value }, &TypeVariableValue::Unknown { .. })
+            | (&TypeVariableValue::Unknown { .. }, &TypeVariableValue::Known { value }) => {
+                Ok(TypeVariableValue::Known { value })
             }
 
             // If both sides are *unknown*, it hardly matters, does it?

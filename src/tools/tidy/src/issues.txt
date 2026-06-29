@@ -2442,7 +2442,6 @@ ui/span/issue-42234-unknown-receiver-type.rs
 ui/span/issue-43927-non-ADT-derive.rs
 ui/span/issue-71363.rs
 ui/span/issue-81800.rs
-ui/span/issue28498-reject-ex1.rs
 ui/span/issue28498-reject-lifetime-param.rs
 ui/span/issue28498-reject-passed-to-fn.rs
 ui/span/issue28498-reject-trait-bound.rs

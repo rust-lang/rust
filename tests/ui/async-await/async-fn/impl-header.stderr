@@ -30,7 +30,7 @@ LL | impl async Fn<()> for F {}
    |
    = help: implement the missing item: `fn call(&self, _: ()) -> <Self as FnOnce<()>>::Output { todo!() }`
 
-error[E0277]: expected a `FnMut()` closure, found `F`
+error[E0277]: expected an `FnMut()` closure, found `F`
   --> $DIR/impl-header.rs:5:23
    |
 LL | impl async Fn<()> for F {}

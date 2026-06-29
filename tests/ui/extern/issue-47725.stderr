@@ -16,8 +16,8 @@ warning: `#[link_name]` attribute cannot be used on structs
 LL | #[link_name = "foo"]
    | ^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
   --> $DIR/issue-47725.rs:2:9
    |
@@ -30,8 +30,8 @@ warning: `#[link_name]` attribute cannot be used on foreign modules
 LL | #[link_name = "foobar"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on foreign modules
   --> $DIR/issue-47725.rs:20:1
@@ -39,8 +39,8 @@ warning: `#[link_name]` attribute cannot be used on foreign modules
 LL | #[link_name]
    | ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 1 previous error; 3 warnings emitted
 

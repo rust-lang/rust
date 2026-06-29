@@ -127,7 +127,9 @@ fn is_needs_drop_and_init<'tcx>(
                     .fields
                     .iter()
                     .enumerate()
-                    .map(|(f, field)| (FieldIdx::from_usize(f), field.ty(tcx, args), mpi))
+                    .map(|(f, field)| {
+                        (FieldIdx::from_usize(f), field.ty(tcx, args).skip_norm_wip(), mpi)
+                    })
                     .any(field_needs_drop_and_init)
             })
         }
@@ -149,7 +151,7 @@ fn variant_needs_drop<'tcx>(
     variant: &VariantDef,
 ) -> bool {
     variant.fields.iter().any(|field| {
-        let f_ty = field.ty(tcx, args);
+        let f_ty = field.ty(tcx, args).skip_norm_wip();
         f_ty.needs_drop(tcx, typing_env)
     })
 }

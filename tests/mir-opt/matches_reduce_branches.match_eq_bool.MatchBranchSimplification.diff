@@ -20,7 +20,7 @@
 -     bb1: {
 -         _2 = const true;
 +         StorageLive(_4);
-+         _4 = copy _1;
++         _4 = no_retag copy _1;
 +         _2 = Ne(copy _4, const 7_i32);
           _3 = ();
 -         goto -> bb4;

@@ -14,11 +14,11 @@ LL |     std::panic::catch_unwind(|| unwind()).unwrap_err();
    = note: stack backtrace:
            0: main::{closure#0}
                at tests/fail/panic/bad_unwind.rs:LL:CC
-           1: std::panicking::catch_unwind::do_call
+           1: std::panicking::catch_unwind::do_call::<{closure@tests/fail/panic/bad_unwind.rs:LL:CC}, ()>
                at RUSTLIB/std/src/panicking.rs:LL:CC
-           2: std::panicking::catch_unwind
+           2: std::panicking::catch_unwind::<(), {closure@tests/fail/panic/bad_unwind.rs:LL:CC}>
                at RUSTLIB/std/src/panicking.rs:LL:CC
-           3: std::panic::catch_unwind
+           3: std::panic::catch_unwind::<{closure@tests/fail/panic/bad_unwind.rs:LL:CC}, ()>
                at RUSTLIB/std/src/panic.rs:LL:CC
            4: main
                at tests/fail/panic/bad_unwind.rs:LL:CC

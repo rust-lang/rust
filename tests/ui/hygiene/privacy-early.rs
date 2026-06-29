@@ -8,6 +8,7 @@ mod foo {
 
     pub macro m() {
         use f as g; //~ ERROR `f` is private, and cannot be re-exported
+                    //~| ERROR `f` is private, and cannot be re-exported
         f!();
     }
 }

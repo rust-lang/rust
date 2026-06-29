@@ -106,7 +106,6 @@ impl Sleep {
         let mut data = self.data.lock().unwrap();
         debug_assert!(data.active_threads > 0);
         debug_assert!(data.blocked_threads < data.worker_count);
-        debug_assert!(data.active_threads > 0);
         data.active_threads -= 1;
         data.blocked_threads += 1;
 

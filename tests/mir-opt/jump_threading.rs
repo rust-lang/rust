@@ -2,7 +2,7 @@
 //@ compile-flags: -Zmir-enable-passes=+Inline
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(try_trait_v2)]
+#![feature(try_trait_v2, pattern_type_macro, pattern_types)]
 #![feature(custom_mir, core_intrinsics, rustc_attrs)]
 
 use std::intrinsics::mir::*;
@@ -311,9 +311,8 @@ fn duplicate_chain(x: bool) -> u8 {
     }
 }
 
-#[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
-struct NonZeroUsize(usize);
+struct NonZeroUsize(std::pat::pattern_type!(usize is 1..=usize::MAX));
 
 /// Verify that we correctly discard threads that may mutate a discriminant by aliasing.
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
@@ -326,8 +325,9 @@ fn mutate_discriminant() -> u8 {
         let x: Option<NonZeroUsize>;
         {
             SetDiscriminant(x, 1);
+            let y = CastTransmute::<_, std::pat::pattern_type!(usize is 1..=usize::MAX)>(0_usize);
             // This assignment overwrites the niche in which the discriminant is stored.
-            place!(Field(Field(Variant(x, 1), 0), 0)) = 0_usize;
+            place!(Field(Field(Variant(x, 1), 0), 0)) = y;
             // So we cannot know the value of this discriminant.
             let a = Discriminant(x);
             match a {

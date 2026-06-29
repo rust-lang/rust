@@ -43,7 +43,8 @@ fn check_compare<'a>(cx: &LateContext<'a>, bit_op: &Expr<'a>, cmp_op: BinOpKind,
         }
         if let Some(mask) = fetch_int_literal(cx, right).or_else(|| fetch_int_literal(cx, left)) {
             let ty = cx.typeck_results().expr_ty(bit_op);
-            if !ty.is_ptr_sized_integral()
+            if ty.is_primitive()
+                && !ty.is_ptr_sized_integral()
                 && let bits = ty.primitive_size(cx.tcx)
             {
                 // Strip high bits that don't fit into the result type as they won't be used in the comparison

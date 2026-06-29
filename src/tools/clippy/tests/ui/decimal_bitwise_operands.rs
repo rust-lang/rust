@@ -1,9 +1,9 @@
-#![allow(
+#![expect(
     clippy::erasing_op,
     clippy::no_effect,
-    clippy::unnecessary_operation,
+    clippy::op_ref,
     clippy::unnecessary_cast,
-    clippy::op_ref
+    clippy::unnecessary_operation
 )]
 #![warn(clippy::decimal_bitwise_operands)]
 

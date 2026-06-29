@@ -1,5 +1,5 @@
 error: manual implementation of `Option::as_ref`
-  --> tests/ui/match_as_ref.rs:6:33
+  --> tests/ui/match_as_ref.rs:5:33
    |
 LL |       let borrowed: Option<&()> = match owned {
    |  _________________________________^
@@ -22,7 +22,7 @@ LL +     let borrowed: Option<&()> = owned.as_ref();
    |
 
 error: manual implementation of `Option::as_mut`
-  --> tests/ui/match_as_ref.rs:13:39
+  --> tests/ui/match_as_ref.rs:12:39
    |
 LL |       let borrow_mut: Option<&mut ()> = match mut_owned {
    |  _______________________________________^
@@ -43,7 +43,7 @@ LL +     let borrow_mut: Option<&mut ()> = mut_owned.as_mut();
    |
 
 error: manual implementation of `Option::as_ref`
-  --> tests/ui/match_as_ref.rs:32:13
+  --> tests/ui/match_as_ref.rs:31:13
    |
 LL | /             match self.source {
 LL | |
@@ -63,7 +63,7 @@ LL +             self.source.as_ref().map(|x| x as _)
    |
 
 error: manual implementation of `Option::as_ref`
-  --> tests/ui/match_as_ref.rs:97:13
+  --> tests/ui/match_as_ref.rs:96:13
    |
 LL |       let _ = match !S {
    |  _____________^
@@ -84,7 +84,7 @@ LL +     let _ = (!S).as_ref();
    |
 
 error: manual implementation of `Option::as_mut`
-  --> tests/ui/match_as_ref.rs:105:27
+  --> tests/ui/match_as_ref.rs:104:27
    |
 LL |       let _: Option<&u32> = match Some(0) {
    |  ___________________________^
@@ -106,7 +106,7 @@ LL +     let _: Option<&u32> = Some(0).as_ref();
    |
 
 error: manual implementation of `Option::as_mut`
-  --> tests/ui/match_as_ref.rs:111:43
+  --> tests/ui/match_as_ref.rs:110:43
    |
 LL |       let _: Option<&dyn std::fmt::Debug> = match Some(0) {
    |  ___________________________________________^
@@ -128,7 +128,7 @@ LL +     let _: Option<&dyn std::fmt::Debug> = Some(0).as_ref().map(|x| x as _);
    |
 
 error: manual implementation of `Option::as_ref`
-  --> tests/ui/match_as_ref.rs:125:27
+  --> tests/ui/match_as_ref.rs:124:27
    |
 LL |       let _: Option<&u32> = match test_expr!(42) {
    |  ___________________________^

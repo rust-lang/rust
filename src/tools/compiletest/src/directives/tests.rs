@@ -633,6 +633,21 @@ fn test_miropt_mode_forbidden_revisions() {
 }
 
 #[test]
+#[should_panic(expected = "malformed condition directive: multiple revisions aren't supported yet")]
+fn test_multiple_revisions_in_directive() {
+    let directive = "//@ [foo,bar] compile-flags: -Z hello";
+
+    // The problem: this is seen as a single revision.
+    let line_directive = line_directive(Utf8Path::new("foo.txt"), LineNumber::ZERO, directive);
+    assert!(line_directive.is_some());
+    assert_eq!(Some("foo,bar"), line_directive.unwrap().revision);
+
+    // The solution for now: forbid directives from having multiple revisions.
+    let config: Config = cfg().build();
+    parse_early_props(&config, directive);
+}
+
+#[test]
 fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
     let revisions = ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
     let modes = [
@@ -1138,7 +1153,6 @@ fn edition_order() {
 #[test]
 fn test_parse_edition_range() {
     assert_eq!(None, parse_edition_range("hello-world"));
-    assert_eq!(None, parse_edition_range("edition"));
 
     assert_eq!(Some(EditionRange::Exact(2018.into())), parse_edition_range("edition: 2018"));
     assert_eq!(Some(EditionRange::Exact(2021.into())), parse_edition_range("edition:2021"));
@@ -1253,4 +1267,18 @@ fn test_edition_range_edition_to_test() {
     assert_edition_to_test(2021, range, Some(e2021));
     assert_edition_to_test(2018, range, Some(e2024));
     assert_edition_to_test(2018, range, Some(efuture));
+}
+
+#[test]
+fn needs_asm_ret() {
+    let config_x86_64 = cfg().target("x86_64-unknown-linux-gnu").build();
+    let config_aarch64 = cfg().target("aarch64-unknown-linux-gnu").build();
+    // 32-bit ARM does not have a "ret" mnemonic.
+    let config_arm32 = cfg().target("armv7a-none-eabi").build();
+    let config_wasm = cfg().target("wasm32v1-none").build();
+
+    assert!(!check_ignore(&config_x86_64, "//@ needs-asm-ret"));
+    assert!(!check_ignore(&config_aarch64, "//@ needs-asm-ret"));
+    assert!(check_ignore(&config_arm32, "//@ needs-asm-ret"));
+    assert!(check_ignore(&config_wasm, "//@ needs-asm-ret"));
 }

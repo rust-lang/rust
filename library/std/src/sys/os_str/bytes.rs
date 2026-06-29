@@ -238,16 +238,24 @@ impl Slice {
     #[track_caller]
     #[inline]
     pub fn check_public_boundary(&self, index: usize) {
+        if self.try_check_public_boundary(index).is_none() {
+            panic!("byte index {index} is not an OsStr boundary");
+        }
+    }
+
+    #[track_caller]
+    #[inline]
+    pub fn try_check_public_boundary(&self, index: usize) -> Option<()> {
         if index == 0 || index == self.inner.len() {
-            return;
+            return Some(());
         }
         if index < self.inner.len()
             && (self.inner[index - 1].is_ascii() || self.inner[index].is_ascii())
         {
-            return;
+            return Some(());
         }
 
-        slow_path(&self.inner, index);
+        return slow_path(&self.inner, index);
 
         /// We're betting that typical splits will involve an ASCII character.
         ///
@@ -255,26 +263,26 @@ impl Slice {
         /// better assembly.
         #[track_caller]
         #[inline(never)]
-        fn slow_path(bytes: &[u8], index: usize) {
-            let (before, after) = bytes.split_at(index);
+        fn slow_path(bytes: &[u8], index: usize) -> Option<()> {
+            let (before, after) = bytes.split_at_checked(index)?;
 
             // UTF-8 takes at most 4 bytes per codepoint, so we don't
             // need to check more than that.
             let after = after.get(..4).unwrap_or(after);
             match str::from_utf8(after) {
-                Ok(_) => return,
-                Err(err) if err.valid_up_to() != 0 => return,
+                Ok(_) => return Some(()),
+                Err(err) if err.valid_up_to() != 0 => return Some(()),
                 Err(_) => (),
             }
 
             for len in 2..=4.min(index) {
                 let before = &before[index - len..];
                 if str::from_utf8(before).is_ok() {
-                    return;
+                    return Some(());
                 }
             }
 
-            panic!("byte index {index} is not an OsStr boundary");
+            None
         }
     }
 

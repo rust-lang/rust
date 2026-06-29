@@ -58,7 +58,7 @@ where
             self.reserve(additional);
 
             let written = unsafe {
-                self.write_iter_wrapping(self.to_physical_idx(self.len), iter, additional)
+                self.write_iter_wrapping(self.to_wrapped_index(self.len), iter, additional)
             };
 
             debug_assert_eq!(
@@ -83,7 +83,7 @@ impl<T, A1: Allocator, A2: Allocator> SpecExtend<T, vec::IntoIter<T, A2>> for Ve
         self.reserve(slice.len());
 
         unsafe {
-            self.copy_slice(self.to_physical_idx(self.len), slice);
+            self.copy_slice(self.to_wrapped_index(self.len), slice);
             self.len += slice.len();
         }
         iterator.forget_remaining_elements_and_dealloc();
@@ -109,7 +109,7 @@ where
         self.reserve(slice.len());
 
         unsafe {
-            self.copy_slice(self.to_physical_idx(self.len), slice);
+            self.copy_slice(self.to_wrapped_index(self.len), slice);
             self.len += slice.len();
         }
     }

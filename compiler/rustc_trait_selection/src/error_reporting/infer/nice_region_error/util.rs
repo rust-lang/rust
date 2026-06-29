@@ -16,6 +16,8 @@ pub struct AnonymousParamInfo<'tcx> {
     pub param: &'tcx hir::Param<'tcx>,
     /// The type corresponding to the anonymous region parameter.
     pub param_ty: Ty<'tcx>,
+    /// The original type before region replacement.
+    pub orig_param_ty: Ty<'tcx>,
     /// The `ty::LateParamRegionKind` corresponding to the anonymous region.
     pub kind: ty::LateParamRegionKind,
     /// The `Span` of the parameter type.
@@ -94,7 +96,14 @@ pub fn find_param_with_region<'tcx>(
                 let ty_hir_id = fn_decl.inputs[index].hir_id;
                 let param_ty_span = tcx.hir_span(ty_hir_id);
                 let is_first = index == 0;
-                AnonymousParamInfo { param, param_ty: new_param_ty, param_ty_span, kind, is_first }
+                AnonymousParamInfo {
+                    param,
+                    param_ty: new_param_ty,
+                    orig_param_ty: ty,
+                    param_ty_span,
+                    kind,
+                    is_first,
+                }
             })
         })
 }
@@ -117,12 +126,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         region_def_id: DefId,
         hir_sig: &hir::FnSig<'_>,
     ) -> Option<Span> {
-        let fn_ty = self.tcx().type_of(scope_def_id).instantiate_identity().skip_norm_wip();
+        let tcx = self.tcx();
+        let fn_ty = tcx.type_of(scope_def_id).instantiate_identity().skip_norm_wip();
         if let ty::FnDef(_, _) = fn_ty.kind() {
-            let ret_ty = fn_ty.fn_sig(self.tcx()).output();
+            let ret_ty = fn_ty.fn_sig(tcx).output();
             let span = hir_sig.decl.output.span();
             let future_output = if hir_sig.header.is_async() {
-                ret_ty.map_bound(|ty| self.cx.get_impl_future_output_ty(ty)).transpose()
+                ret_ty.map_bound(|ty| tcx.get_impl_future_output_ty(ty)).transpose()
             } else {
                 None
             };

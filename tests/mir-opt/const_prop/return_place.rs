@@ -3,7 +3,7 @@
 //@ compile-flags: -C overflow-checks=on -Zdump-mir-exclude-alloc-bytes
 
 // EMIT_MIR return_place.add.GVN.diff
-// EMIT_MIR return_place.add.PreCodegen.before.mir
+// EMIT_MIR return_place.add.runtime-optimized.after.mir
 fn add() -> u32 {
     // CHECK-LABEL: fn add(
     // CHECK: _0 = const 4_u32;

@@ -354,9 +354,9 @@ mod benches {
         len: usize,
         f: for<'a> unsafe fn(&[u8], &'a mut [u8]) -> Result<&'a str, usize>,
     ) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let input = std::iter::repeat(())
-            .map(|()| rng.r#gen::<u8>())
+            .map(|()| rng.r#random::<u8>())
             .take(len)
             .collect::<Vec<_>>();
         let mut dst = vec![0; input.len() * 2];

@@ -57,6 +57,12 @@ error: expected one of `!`, `,`, `.`, `::`, `?`, `{`, or an operator, found `=>`
    |
 LL |         asm!("{}", in(reg) foo => bar);
    |                                ^^ expected one of 7 possible tokens
+   |
+help: you might have meant to write a "greater than or equal to" comparison
+   |
+LL -         asm!("{}", in(reg) foo => bar);
+LL +         asm!("{}", in(reg) foo >= bar);
+   |
 
 error: expected a path for argument to `sym`
   --> $DIR/parse-error.rs:32:24

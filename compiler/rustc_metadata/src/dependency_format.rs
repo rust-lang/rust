@@ -65,7 +65,7 @@ use rustc_target::spec::PanicStrategy;
 use tracing::info;
 
 use crate::creader::CStore;
-use crate::errors::{
+use crate::diagnostics::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy,
     IncompatibleWithImmediateAbort, IncompatibleWithImmediateAbortCore, LibRequired,
     NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
@@ -309,7 +309,7 @@ fn add_library(
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
-                let linking_to_rustc_driver = tcx.sess.psess.unstable_features.is_nightly_build()
+                let linking_to_rustc_driver = tcx.sess.unstable_features.is_nightly_build()
                     && tcx.crates(()).iter().any(|&cnum| tcx.crate_name(cnum) == sym::rustc_driver);
                 tcx.dcx().emit_err(CrateDepMultiple {
                     crate_name: tcx.crate_name(cnum),

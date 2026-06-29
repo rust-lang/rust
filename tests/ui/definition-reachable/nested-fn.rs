@@ -1,11 +1,11 @@
-// Check that functions visible to macros through paths with >2 segments are
+// Check that functions accessible through a field visible to a macro are
 // considered reachable
 
-//@ aux-build:field-method-macro.rs
+//@ aux-build:nested-fn-macro.rs
 //@ run-pass
 
-extern crate field_method_macro;
+extern crate nested_fn_macro;
 
 fn main() {
-    assert_eq!(field_method_macro::m!(), 33);
+    assert_eq!(nested_fn_macro::m!(), 12);
 }

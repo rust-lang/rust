@@ -12,7 +12,7 @@ use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 //
 // This diagnostic is triggered when `.filter_map(..).next()` is used, rather than the more concise `.find_map(..)`.
 pub(crate) fn replace_filter_map_next_with_find_map(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::ReplaceFilterMapNextWithFindMap,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
@@ -26,7 +26,7 @@ pub(crate) fn replace_filter_map_next_with_find_map(
 }
 
 fn fixes(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::ReplaceFilterMapNextWithFindMap,
 ) -> Option<Vec<Assist>> {
     let root = ctx.sema.db.parse_or_expand(d.file);

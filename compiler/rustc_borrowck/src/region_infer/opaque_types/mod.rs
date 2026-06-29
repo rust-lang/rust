@@ -261,8 +261,8 @@ fn collect_defining_uses<'tcx>(
             DefiningScopeKind::MirBorrowck,
         ) {
             // A non-defining use. This is a hard error on stable and gets ignored
-            // with `TypingMode::Borrowck`.
-            if infcx.tcx.use_typing_mode_borrowck() {
+            // with `TypingMode::PostTypeckUntilBorrowck`.
+            if infcx.tcx.use_typing_mode_post_typeck_until_borrowck() {
                 match err {
                     NonDefiningUseReason::Tainted(guar) => add_hidden_type(
                         infcx.tcx,
@@ -327,7 +327,7 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
                     // If we're using the next solver, the unconstrained region may be resolved by a
                     // fully defining use from another body.
                     // So we don't generate error eagerly here.
-                    if rcx.infcx.tcx.use_typing_mode_borrowck() {
+                    if rcx.infcx.tcx.use_typing_mode_post_typeck_until_borrowck() {
                         unconstrained_hidden_type_errors.push(UnexpectedHiddenRegion {
                             def_id,
                             hidden_type,
@@ -366,8 +366,8 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
         // the hidden type becomes the opaque type itself. In this case, this was an opaque
         // usage of the opaque type and we can ignore it. This check is mirrored in typeck's
         // writeback.
-        if !rcx.infcx.tcx.use_typing_mode_borrowck() {
-            if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+        if !rcx.infcx.tcx.use_typing_mode_post_typeck_until_borrowck() {
+            if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
                 hidden_type.ty.skip_binder().kind()
                 && def_id == opaque_type_key.def_id.to_def_id()
                 && args == opaque_type_key.args
@@ -500,7 +500,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
                 Ty::new_coroutine(tcx, def_id, self.fold_closure_args(def_id, args)?)
             }
 
-            ty::Alias(ty::AliasTy { kind, args, .. })
+            ty::Alias(_, ty::AliasTy { kind, args, .. })
                 if let Some(variances) = tcx.opt_alias_variances(kind) =>
             {
                 let args = tcx.mk_args_from_iter(std::iter::zip(variances, args.iter()).map(
@@ -512,7 +512,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
                         }
                     },
                 ))?;
-                ty::AliasTy::new_from_args(tcx, kind, args).to_ty(tcx)
+                ty::AliasTy::new_from_args(tcx, kind, args).to_ty(tcx, ty::IsRigid::No)
             }
 
             _ => ty.try_super_fold_with(self)?,
@@ -540,8 +540,8 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     let mut errors = Vec::new();
     for &(key, hidden_type) in opaque_types {
         let Some(expected) = hidden_types.get(&key.def_id) else {
-            if !tcx.use_typing_mode_borrowck() {
-                if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+            if !tcx.use_typing_mode_post_typeck_until_borrowck() {
+                if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
                     hidden_type.ty.kind()
                     && def_id == key.def_id.to_def_id()
                     && args == key.args

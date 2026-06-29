@@ -1,5 +1,5 @@
 #![warn(clippy::needless_arbitrary_self_type)]
-#![allow(unused_mut, clippy::needless_lifetimes)]
+#![expect(clippy::needless_lifetimes)]
 
 pub enum ValType {
     A,

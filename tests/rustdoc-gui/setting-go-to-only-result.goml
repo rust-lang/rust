@@ -33,16 +33,18 @@ assert-local-storage: {"rustdoc-go-to-only-result": "true"}
 
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
 // We enter it into the search.
+click: "#search-button"
+wait-for: "#alternative-display .search-input"
 write-into: (".search-input", "HasALongTraitWithParams")
 wait-for-document-property: {"title": "HasALongTraitWithParams in lib2 - Rust"}
-assert-window-property: ({"location": "/lib2/struct.HasALongTraitWithParams.html"}, ENDS_WITH)
+assert-window-property: ({"location"."pathname": "/lib2/struct.HasALongTraitWithParams.html"}, ENDS_WITH)
 
 // Regression test for <https://github.com/rust-lang/rust/issues/112676>.
 // If "go-to-only-result" is enabled and you go back to history, it should not lead you back to the
 // page result again automatically.
 history-go-back:
 wait-for-document-property: {"title": "lib2 - Rust"}
-assert-window-property: ({"location": "/lib2/index.html"}, ENDS_WITH)
+assert-window-property: ({"location"."pathname": "/lib2/index.html"}, ENDS_WITH)
 
 // We try again to see if it goes to the only result
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=HasALongTraitWithParams"
@@ -69,3 +71,43 @@ call-function: ("check-setting", {
     "storage_value": "false",
     "setting_attribute_value": "false",
 })
+
+define-function: (
+    "search-multiple-results",
+    [location],
+    block {
+        // We wait for the search to be done.
+        wait-for: ".search-form"
+        // We ensure the page didn't change.
+        assert-window-property: {"location"."pathname": |location|}
+        // We ensure that there is more than 0 results.
+        wait-for-text: ("#search-tabs > button:nth-child(1) .count", "(2)", CONTAINS)
+        wait-for-text: ("#search-tabs > button:nth-child(2) .count", "(1)", CONTAINS)
+        wait-for-text: ("#search-tabs > button:nth-child(3) .count", "(0)", CONTAINS)
+    },
+)
+
+// This is a regression test to ensure that it works when the setting is switched in-between. It
+// could be reproduced by:
+// 1. Doing a search (with "in parameters" or "in return types" having exactly one result)
+// 2. Enabling the setting to true.
+// 3. Reloading the page.
+
+// First we go to a different page.
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
+
+// The setting should be disabled.
+assert-local-storage-false: {"rustdoc-go-to-only-result": "true"}
+store-window-property: {"location"."pathname": location}
+click: "#search-button"
+wait-for: "#alternative-display .search-input"
+write-into: (".search-input", "Whitespace")
+call-function: ("search-multiple-results", {"location": |location|})
+
+// We now toggle the setting and reload the page.
+call-function: ("open-settings-menu", {})
+click: "#go-to-only-result"
+assert-local-storage: {"rustdoc-go-to-only-result": "true"}
+
+reload:
+call-function: ("search-multiple-results", {"location": |location|})

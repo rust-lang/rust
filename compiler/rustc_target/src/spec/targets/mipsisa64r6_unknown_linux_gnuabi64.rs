@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Arch, CfgAbi, LlvmAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, CfgAbi, LlvmAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -23,6 +23,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
             llvm_abiname: LlvmAbi::N64,
+            llvm_args: cvs!["-mno-check-zero-division"],
 
             ..base::linux_gnu::opts()
         },

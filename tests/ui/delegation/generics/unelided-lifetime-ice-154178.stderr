@@ -14,6 +14,12 @@ help: add missing lifetime argument
 LL |     reuse foo::<'b, 1>;
    |                 +++
 
-error: aborting due to 1 previous error
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/unelided-lifetime-ice-154178.rs:8:11
+   |
+LL |     reuse foo::<1>;
+   |           ^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0107`.

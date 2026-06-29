@@ -56,9 +56,7 @@ fn main() {
     let _ = (f() + 1)..(f() + 1);
 
     const ONE: usize = 1;
-    // integer consts are linted, too
     for _ in 1..ONE + ONE {}
-    //~^ range_plus_one
 
     let mut vec: Vec<()> = std::vec::Vec::new();
     vec.drain(..);

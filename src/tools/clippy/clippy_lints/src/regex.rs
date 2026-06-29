@@ -5,7 +5,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::paths;
 use clippy_utils::paths::PathLookup;
 use clippy_utils::res::MaybeQPath;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{BorrowKind, Expr, ExprKind, OwnerId};
@@ -190,7 +190,7 @@ fn lint_syntax_error(cx: &LateContext<'_>, error: &regex_syntax::Error, unescape
     };
 
     if let Some((primary, auxiliary, kind)) = parts
-        && let Some(literal_snippet) = base.get_source_text(cx)
+        && let Some(literal_snippet) = base.get_text(cx)
         && let Some(inner) = literal_snippet.get(offset as usize..)
         // Only convert to native rustc spans if the parsed regex matches the
         // source snippet exactly, to ensure the span offsets are correct

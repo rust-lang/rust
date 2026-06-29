@@ -1,5 +1,5 @@
-#![allow(unused, clippy::needless_lifetimes)]
 #![warn(clippy::missing_trait_methods)]
+#![expect(clippy::needless_lifetimes)]
 
 trait A {
     fn provided() {}

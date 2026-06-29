@@ -1,5 +1,6 @@
 //@ ignore-cross-compile
 //@ needs-asm-support
+//@ needs-asm-ret
 
 use run_make_support::symbols::object_contains_any_symbol;
 use run_make_support::{bin_name, rustc};

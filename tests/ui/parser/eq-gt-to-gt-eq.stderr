@@ -109,5 +109,17 @@ LL -     match a => b {
 LL +     match a >= b {
    |
 
-error: aborting due to 7 previous errors
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `=>`
+  --> $DIR/eq-gt-to-gt-eq.rs:50:34
+   |
+LL |     let _ = [a].iter().any(|x| x => &b);
+   |                                  ^^ expected one of 8 possible tokens
+   |
+help: you might have meant to write a "greater than or equal to" comparison
+   |
+LL -     let _ = [a].iter().any(|x| x => &b);
+LL +     let _ = [a].iter().any(|x| x >= &b);
+   |
+
+error: aborting due to 8 previous errors
 

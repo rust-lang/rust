@@ -1,7 +1,7 @@
 use std::fmt;
 
 #[cfg(feature = "nightly")]
-use rustc_macros::HashStable_Generic;
+use rustc_macros::StableHash;
 
 use crate::ExternAbi;
 
@@ -18,7 +18,7 @@ use crate::ExternAbi;
 /// rather than picking the "actual" ABI.
 #[derive(Copy, Clone, Debug)]
 #[derive(PartialOrd, Ord, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum CanonAbi {
     // NOTE: the use of nested variants for some ABIs is for many targets they don't matter,
     // and this pushes the complexity of their reasoning to target-specific code,
@@ -28,9 +28,14 @@ pub enum CanonAbi {
     Rust,
     RustCold,
     RustPreserveNone,
+    RustTail,
 
     /// An ABI that rustc does not know how to call or define.
     Custom,
+
+    /// Swift calling convention, exposed via LLVM's `swiftcc`. Cross-platform
+    /// and not tied to a specific target architecture.
+    Swift,
 
     /// ABIs relevant to 32-bit Arm targets
     Arm(ArmCall),
@@ -55,9 +60,13 @@ pub enum CanonAbi {
 impl CanonAbi {
     pub fn is_rustic_abi(self) -> bool {
         match self {
-            CanonAbi::Rust | CanonAbi::RustCold | CanonAbi::RustPreserveNone => true,
+            CanonAbi::Rust
+            | CanonAbi::RustCold
+            | CanonAbi::RustPreserveNone
+            | CanonAbi::RustTail => true,
             CanonAbi::C
             | CanonAbi::Custom
+            | CanonAbi::Swift
             | CanonAbi::Arm(_)
             | CanonAbi::GpuKernel
             | CanonAbi::Interrupt(_)
@@ -76,7 +85,9 @@ impl fmt::Display for CanonAbi {
             CanonAbi::Rust => ExternAbi::Rust,
             CanonAbi::RustCold => ExternAbi::RustCold,
             CanonAbi::RustPreserveNone => ExternAbi::RustPreserveNone,
+            CanonAbi::RustTail => ExternAbi::RustTail,
             CanonAbi::Custom => ExternAbi::Custom,
+            CanonAbi::Swift => ExternAbi::Swift,
             CanonAbi::Arm(arm_call) => match arm_call {
                 ArmCall::Aapcs => ExternAbi::Aapcs { unwind: false },
                 ArmCall::CCmseNonSecureCall => ExternAbi::CmseNonSecureCall,
@@ -111,7 +122,7 @@ impl fmt::Display for CanonAbi {
 /// These only affect callee codegen. making their categorization as distinct ABIs a bit peculiar.
 #[derive(Copy, Clone, Debug)]
 #[derive(PartialOrd, Ord, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum InterruptKind {
     Avr,
     AvrNonBlocking,
@@ -126,7 +137,7 @@ pub enum InterruptKind {
 /// One of SysV64 or Win64 may alias the C ABI, and arguably Win64 is cross-platform now?
 #[derive(Clone, Copy, Debug)]
 #[derive(PartialOrd, Ord, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum X86Call {
     /// "fastcall" has both GNU and Windows variants
     Fastcall,
@@ -141,7 +152,7 @@ pub enum X86Call {
 /// ABIs defined for 32-bit Arm
 #[derive(Copy, Clone, Debug)]
 #[derive(PartialOrd, Ord, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum ArmCall {
     Aapcs,
     CCmseNonSecureCall,

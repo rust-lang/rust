@@ -85,7 +85,7 @@ fn opt_multiple_ifs(x: u32) -> u32 {
 }
 
 // EMIT_MIR if_condition_int.dont_remove_comparison.SimplifyComparisonIntegral.diff
-// test that we optimize, but do not remove the b statement, as that is used later on
+// the switchInt can be optimized but the b statement can't be removed as it's used later on
 fn dont_remove_comparison(a: i8) -> i32 {
     // CHECK-LABEL: fn dont_remove_comparison(
     // CHECK: [[b:_.*]] = Eq(copy _1, const 17_i8);
@@ -100,6 +100,42 @@ fn dont_remove_comparison(a: i8) -> i32 {
     match b {
         false => 10 + b as i32,
         true => 100 + b as i32,
+    }
+}
+
+// EMIT_MIR if_condition_int.dont_remove_moved_comparison.SimplifyComparisonIntegral.diff
+// like dont_remove_comparison above, but with switchInt(move _N) - regression test for #158206
+#[custom_mir(dialect = "runtime")]
+fn dont_remove_moved_comparison(a: i8) -> i32 {
+    // CHECK-LABEL: fn dont_remove_moved_comparison(
+    // CHECK: [[b:_.*]] = Eq(copy _1, const 17_i8);
+    // CHECK: [[cast:_.*]] = copy [[b]] as i32 (IntToInt);
+    // CHECK: switchInt(copy _1) -> [17: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: [[BB1]]:
+    // CHECK: _0 = copy [[cast]];
+    // CHECK: [[BB2]]:
+    // CHECK: _0 = Add(copy [[cast]], const 1_i32);
+    mir! {
+        let b: bool;
+        let c: i32;
+        let d: i32;
+        {
+            b = a == 17;
+            c = b as i32;
+            match Move(b) {
+                true => bb1,
+                _ => bb2,
+            }
+
+        }
+        bb1 = {
+            RET = c;
+            Return()
+        }
+        bb2 = {
+            RET = c + 1;
+            Return()
+        }
     }
 }
 

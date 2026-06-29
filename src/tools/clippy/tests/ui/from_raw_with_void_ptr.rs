@@ -1,5 +1,5 @@
 #![warn(clippy::from_raw_with_void_ptr)]
-#![allow(clippy::unnecessary_cast)]
+#![expect(clippy::unnecessary_cast)]
 
 use std::ffi::c_void;
 use std::rc::Rc;

@@ -1,0 +1,52 @@
+error: Undefined Behavior: read access through <TAG> at ALLOC[RANGE] is forbidden
+  --> tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
+   |
+LL |         let top = top_ptr.read();
+   |                   ^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
+   = help: the conflicting tag <TAG> has state Disabled which forbids this child read access
+help: the accessed tag <TAG> was created here
+  --> tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
+   |
+LL |     unsafe fn push(&self, ptr: NonNull<u8>) {
+   |                    ^^^^^
+help: the conflicting tag <TAG> was created here, in the initial state Reserved
+  --> tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
+   |
+LL |     (Box::new_in([t], a) as Box<[T], A>).into_vec()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the conflicting tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [RANGE]
+  --> tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
+   |
+LL |         self.top.set(top + 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   = help: this transition corresponds to a loss of read and write permissions
+   = note: stack backtrace:
+           0: MyBin::push
+               at tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
+           1: <MyAllocator as std::alloc::Allocator>::deallocate
+               at tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
+           2: <&MyAllocator as std::alloc::Allocator>::deallocate
+               at RUSTLIB/core/src/alloc/mod.rs:LL:CC
+           3: alloc::raw_vec::RawVecInner::<&MyAllocator>::deallocate
+               at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
+           4: <alloc::raw_vec::RawVec<usize, &MyAllocator> as std::ops::Drop>::drop
+               at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
+           5: std::ptr::drop_glue::<alloc::raw_vec::RawVec<usize, &MyAllocator>> - shim(Some(alloc::raw_vec::RawVec<usize, &MyAllocator>))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           6: std::ptr::drop_glue::<std::vec::Vec<usize, &MyAllocator>> - shim(Some(std::vec::Vec<usize, &MyAllocator>))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           7: std::ptr::drop_glue::<(std::vec::Vec<usize, &MyAllocator>, std::vec::Vec<usize, &MyAllocator>)> - shim(Some((std::vec::Vec<usize, &MyAllocator>, std::vec::Vec<usize, &MyAllocator>)))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           8: std::mem::drop::<(std::vec::Vec<usize, &MyAllocator>, std::vec::Vec<usize, &MyAllocator>)>
+               at RUSTLIB/core/src/mem/mod.rs:LL:CC
+           9: main
+               at tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

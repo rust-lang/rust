@@ -1341,7 +1341,6 @@ mod prim_f16 {}
 /// For example:
 ///
 /// ```
-/// # #![feature(float_algebraic)]
 /// # #![allow(unused_assignments)]
 /// # let mut x: f32 = 0.0;
 /// # let a: f32 = 1.0;
@@ -1360,7 +1359,7 @@ mod prim_f16 {}
 /// # let b: f32 = 2.0;
 /// # let c: f32 = 3.0;
 /// # let d: f32 = 4.0;
-/// x = a + b + c + d; // As written
+/// x = ((a + b) + c) + d; // As written
 /// x = (a + c) + (b + d); // Reordered to shorten critical path and enable vectorization
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1777,7 +1776,7 @@ mod prim_ref {}
 /// However, a direct cast back is not possible. You need to use `transmute`:
 ///
 /// ```rust
-/// # #[cfg(not(miri))] { // FIXME: use strict provenance APIs once they are stable, then remove this `cfg`
+/// # #[cfg(not(miri))] { // disabled because it fails with -Zmiri-strict-provenance
 /// # let fnptr: fn(i32) -> i32 = |x| x+2;
 /// # let fnptr_addr = fnptr as usize;
 /// let fnptr = fnptr_addr as *const ();
@@ -1794,6 +1793,7 @@ mod prim_ref {}
 /// have different sizes.
 ///
 /// ### ABI compatibility
+/// [ABI compatibility]: #abi-compatibility
 ///
 /// Generally, when a function is declared with one signature and called via a function pointer with
 /// a different signature, the two signatures must be *ABI-compatible* or else calling the function
@@ -1831,7 +1831,7 @@ mod prim_ref {}
 /// - `*const T`, `*mut T`, `&T`, `&mut T`, `Box<T>` (specifically, only `Box<T, Global>`), and
 ///   `NonNull<T>` are all ABI-compatible with each other for all `T`. They are also ABI-compatible
 ///   with each other for _different_ `T` if they have the same metadata type (`<T as
-///   Pointee>::Metadata`).
+///   Pointee>::Metadata`). However, see the [Control Flow Integrity][cfi-docs] docs for caveats.
 /// - `usize` is ABI-compatible with the `uN` integer type of the same size, and likewise `isize` is
 ///   ABI-compatible with the `iN` integer type of the same size.
 /// - `char` is ABI-compatible with `u32`.
@@ -1889,6 +1889,8 @@ mod prim_ref {}
 /// `Option<NonZero<i32>>`, and the value used for the argument is `None`, then this call is Undefined
 /// Behavior since transmuting `None::<NonZero<i32>>` to `NonZero<i32>` violates the non-zero
 /// requirement.
+///
+/// [cfi-docs]: https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html#controlflowintegrity
 ///
 /// ### Trait implementations
 ///

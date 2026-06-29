@@ -24,7 +24,6 @@ use clippy_utils::macros::macro_backtrace;
 use clippy_utils::paths::{PathNS, lookup_path_str};
 use clippy_utils::ty::{get_field_idx_by_name, implements_trait};
 use clippy_utils::{is_in_const_context, sym};
-use rustc_middle::ty::Unnormalized;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -37,7 +36,7 @@ use rustc_middle::mir::{ConstValue, UnevaluatedConst};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{
     self, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeckResults,
-    TypingEnv,
+    TypingEnv, Unnormalized,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
@@ -278,7 +277,9 @@ impl<'tcx> NonCopyConst<'tcx> {
     /// Checks if a value of the given type is `Freeze`, or may be depending on the value.
     fn is_ty_freeze(&mut self, tcx: TyCtxt<'tcx>, typing_env: TypingEnv<'tcx>, ty: Ty<'tcx>) -> IsFreeze {
         // FIXME: this should probably be using the trait solver
-        let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
+        let ty = tcx
+            .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
+            .unwrap_or(ty);
         match self.freeze_tys.entry(ty) {
             Entry::Occupied(e) => *e.get(),
             Entry::Vacant(e) => {
@@ -296,14 +297,14 @@ impl<'tcx> NonCopyConst<'tcx> {
                         IsFreeze::from_fields(
                             v.fields
                                 .iter()
-                                .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args))),
+                                .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args).skip_norm_wip())),
                         )
                     })),
                     // Workaround for `ManuallyDrop`-like unions.
                     ty::Adt(adt, args)
                         if adt.is_union()
                             && adt.non_enum_variant().fields.iter().any(|f| {
-                                tcx.layout_of(typing_env.as_query_input(f.ty(tcx, args)))
+                                tcx.layout_of(typing_env.as_query_input(f.ty(tcx, args).skip_norm_wip()))
                                     .is_ok_and(|l| l.layout.size().bytes() == 0)
                             }) =>
                     {
@@ -315,14 +316,14 @@ impl<'tcx> NonCopyConst<'tcx> {
                         adt.non_enum_variant()
                             .fields
                             .iter()
-                            .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args))),
+                            .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args).skip_norm_wip())),
                     ),
                     ty::Array(ty, _) | ty::Pat(ty, _) => self.is_ty_freeze(tcx, typing_env, ty),
                     ty::Tuple(tys) => {
                         IsFreeze::from_fields(tys.iter().map(|ty| self.is_ty_freeze(tcx, typing_env, ty)))
                     },
                     // Treat type parameters as though they were `Freeze`.
-                    ty::Param(_) | ty::Alias(..) => return IsFreeze::Yes,
+                    ty::Param(_) | ty::Alias(_, ..) => return IsFreeze::Yes,
                     // TODO: check other types.
                     _ => {
                         *e = IsFreeze::No;
@@ -346,7 +347,9 @@ impl<'tcx> NonCopyConst<'tcx> {
         ty: Ty<'tcx>,
         val: ConstValue,
     ) -> Result<bool, ()> {
-        let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
+        let ty = tcx
+            .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
+            .unwrap_or(ty);
         match self.is_ty_freeze(tcx, typing_env, ty) {
             IsFreeze::Yes => Ok(true),
             IsFreeze::Maybe if matches!(ty.kind(), ty::Adt(..) | ty::Array(..) | ty::Tuple(..)) => {
@@ -381,8 +384,10 @@ impl<'tcx> NonCopyConst<'tcx> {
         e: &'tcx Expr<'tcx>,
     ) -> bool {
         // Make sure to instantiate all types coming from `typeck` with `gen_args`.
-        let ty = EarlyBinder::bind(typeck.expr_ty(e)).instantiate(tcx, gen_args);
-        let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty.skip_norm_wip());
+        let ty = EarlyBinder::bind(tcx, typeck.expr_ty(e)).instantiate(tcx, gen_args);
+        let ty = tcx
+            .try_normalize_erasing_regions(typing_env, ty)
+            .unwrap_or(ty.skip_norm_wip());
         match self.is_ty_freeze(tcx, typing_env, ty) {
             IsFreeze::Yes => true,
             IsFreeze::No => false,
@@ -396,7 +401,9 @@ impl<'tcx> NonCopyConst<'tcx> {
                 },
                 ExprKind::Path(ref p) => {
                     let res = typeck.qpath_res(p, e.hir_id);
-                    let gen_args = EarlyBinder::bind(typeck.node_args(e.hir_id)).instantiate(tcx, gen_args).skip_norm_wip();
+                    let gen_args = EarlyBinder::bind(tcx, typeck.node_args(e.hir_id))
+                        .instantiate(tcx, gen_args)
+                        .skip_norm_wip();
                     match res {
                         Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                             if let Ok(val) =
@@ -448,7 +455,9 @@ impl<'tcx> NonCopyConst<'tcx> {
         loop {
             let ty = typeck.expr_ty(src_expr);
             // Normalized as we need to check if this is an array later.
-            let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
+            let ty = tcx
+                .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
+                .unwrap_or(ty);
             let is_freeze = self.is_ty_freeze(tcx, typing_env, ty);
             if is_freeze.is_freeze() {
                 return None;
@@ -489,7 +498,9 @@ impl<'tcx> NonCopyConst<'tcx> {
         let mut ty = typeck.expr_ty(src_expr);
         loop {
             // Normalized as we need to check if this is an array later.
-            ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
+            ty = tcx
+                .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
+                .unwrap_or(ty);
             if let [adjust, ..] = typeck.expr_adjustments(src_expr) {
                 let res = if let Some(cause) = does_adjust_borrow(adjust)
                     && !self.is_value_freeze(tcx, typing_env, ty, val)?
@@ -588,10 +599,9 @@ impl<'tcx> NonCopyConst<'tcx> {
                         init_expr = next_init;
                     },
                     ExprKind::Path(ref init_path) => {
-                        let next_init_args =
-                            EarlyBinder::bind(init_typeck.node_args(init_expr.hir_id))
-                                .instantiate(tcx, init_args)
-                                .skip_norm_wip();
+                        let next_init_args = EarlyBinder::bind(tcx, init_typeck.node_args(init_expr.hir_id))
+                            .instantiate(tcx, init_args)
+                            .skip_norm_wip();
                         match init_typeck.qpath_res(init_path, init_expr.hir_id) {
                             Res::Def(DefKind::Ctor(..), _) => return None,
                             Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
@@ -627,7 +637,9 @@ impl<'tcx> NonCopyConst<'tcx> {
             // gets cached.
             let ty = typeck.expr_ty(src_expr);
             // Normalized as we need to check if this is an array later.
-            let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
+            let ty = tcx
+                .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
+                .unwrap_or(ty);
             if self.is_ty_freeze(tcx, typing_env, ty).is_freeze() {
                 return None;
             }
@@ -745,7 +757,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Const(_, ct_rhs_opt, _) = item.kind
+        if let TraitItemKind::Const(_, ct_rhs_opt) = item.kind
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::No => true,
@@ -798,7 +810,11 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                         let ty = (ReplaceAssocFolder {
                             tcx: cx.tcx,
                             trait_id,
-                            self_ty: cx.tcx.type_of(parent_item.owner_id).instantiate_identity().skip_norm_wip(),
+                            self_ty: cx
+                                .tcx
+                                .type_of(parent_item.owner_id)
+                                .instantiate_identity()
+                                .skip_norm_wip(),
                         })
                         .fold_ty(cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip());
                         // `ty` may not be normalizable, but that should be fine.
@@ -888,6 +904,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAssocFolder<'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Alias(
+            _,
             ty @ ty::AliasTy {
                 kind: ty::Projection { .. },
                 ..
@@ -942,7 +959,7 @@ fn get_const_hir_value<'tcx>(
         {
             match tcx.hir_node(tcx.local_def_id_to_hir_id(did)) {
                 Node::ImplItem(item) if let ImplItemKind::Const(.., ct_rhs) = item.kind => (did, ct_rhs),
-                Node::TraitItem(item) if let TraitItemKind::Const(_, Some(ct_rhs), _) = item.kind => (did, ct_rhs),
+                Node::TraitItem(item) if let TraitItemKind::Const(_, Some(ct_rhs)) = item.kind => (did, ct_rhs),
                 _ => return None,
             }
         },

@@ -12,7 +12,7 @@ impl Foo for S {
     fn a(&self) {}
 }
 
-impl const Bar for S {}
+const impl Bar for S {}
 //~^ ERROR the trait bound
 
 fn main() {}

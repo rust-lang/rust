@@ -8,7 +8,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use crate::errors::{
+use crate::diagnostics::{
     NakedFunctionsAsmBlock, NakedFunctionsMustNakedAsm, NoPatterns, ParamsNotAllowed,
 };
 

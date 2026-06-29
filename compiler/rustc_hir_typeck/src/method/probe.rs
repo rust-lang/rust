@@ -2050,7 +2050,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         // HACK: opaque types will match anything for which their bounds hold.
                         // Thus we need to prevent them from trying to match the `&_` autoref
                         // candidates that get created for `&self` trait methods.
-                        &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. })
+                        &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. })
                             if !self.next_trait_solver()
                                 && self.infcx.can_define_opaque_ty(def_id)
                                 && !xform_self_ty.is_ty_var() =>
@@ -2112,21 +2112,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         // `WhereClauseCandidate` requires that the self type is a param,
                         // because it has special behavior with candidate preference as an
                         // inherent pick.
-                        match ocx.structurally_normalize_ty(
+                        let ty = ocx.normalize(
                             cause,
                             self.param_env,
                             Unnormalized::new_wip(trait_ref.self_ty()),
-                        ) {
-                            Ok(ty) => {
-                                if !matches!(ty.kind(), ty::Param(_)) {
-                                    debug!("--> not a param ty: {xform_self_ty:?}");
-                                    return ProbeResult::NoMatch;
-                                }
-                            }
-                            Err(errors) => {
-                                debug!("--> cannot relate self-types {:?}", errors);
-                                return ProbeResult::NoMatch;
-                            }
+                        );
+                        if !matches!(ty.kind(), ty::Param(_)) {
+                            debug!("--> not a param ty: {xform_self_ty:?}");
+                            return ProbeResult::NoMatch;
                         }
                     }
 
@@ -2365,6 +2358,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// Much like `collapse_candidates_to_trait_pick`, this method allows us to collapse
     /// multiple conflicting picks if there is one pick whose trait container is a subtrait
     /// of the trait containers of all of the other picks.
+    ///
+    /// This is the method-probe analogue of
+    /// `rustc_hir_analysis::hir_ty_lowering::HirTyLowerer::collapse_candidates_to_subtrait_pick`;
+    /// keep both implementations in sync.
     ///
     /// This implements RFC #3624.
     fn collapse_candidates_to_subtrait_pick(

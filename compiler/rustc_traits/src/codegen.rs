@@ -6,7 +6,7 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::traits::CodegenObligationError;
-use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
@@ -27,10 +27,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
 ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
     let PseudoCanonicalInput { typing_env, value: trait_ref } = key;
     // We expect the input to be fully normalized.
-    debug_assert_eq!(
-        trait_ref,
-        tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(trait_ref))
-    );
+    tcx.debug_assert_fully_normalized(typing_env, trait_ref);
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.

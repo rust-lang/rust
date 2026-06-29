@@ -6,18 +6,15 @@ use std::vec;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use queries::{
-    GeneratedInputStruct, InputQuery, InputSetter, InputSetterWithDurability, Intern, Lookup,
-    Queries, SetterKind, TrackedQuery, Transparent,
+    GeneratedInputStruct, InputQuery, InputSetter, InputSetterWithDurability, Queries, SetterKind,
+    TrackedQuery, Transparent,
 };
 use quote::{ToTokens, format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
-use syn::{
-    Attribute, FnArg, ItemTrait, Path, Token, TraitItem, TraitItemFn, parse_quote,
-    parse_quote_spanned,
-};
+use syn::{Attribute, FnArg, ItemTrait, Path, Token, TraitItem, parse_quote, parse_quote_spanned};
 
 mod queries;
 
@@ -106,7 +103,6 @@ enum QueryKind {
     Tracked,
     TrackedWithSalsaStruct,
     Transparent,
-    Interned,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -190,7 +186,6 @@ pub(crate) fn query_group_impl(
     let mut trait_methods = vec![];
     let mut setter_trait_methods = vec![];
     let mut lookup_signatures = vec![];
-    let mut lookup_methods = vec![];
 
     for item in &mut item_trait.items {
         if let syn::TraitItem::Fn(method) = item {
@@ -202,7 +197,6 @@ pub(crate) fn query_group_impl(
             let mut query_kind = QueryKind::TrackedWithSalsaStruct;
             let mut invoke = None;
             let mut cycle = None;
-            let mut interned_struct_path = None;
             let mut lru = None;
 
             let params: Vec<FnArg> = signature.inputs.clone().into_iter().collect();
@@ -229,22 +223,6 @@ pub(crate) fn query_group_impl(
                             ));
                         }
                         query_kind = QueryKind::Input;
-                    }
-                    "interned" => {
-                        let syn::ReturnType::Type(_, ty) = &signature.output else {
-                            return Err(syn::Error::new(
-                                span,
-                                "interned queries must have return type",
-                            ));
-                        };
-                        let syn::Type::Path(path) = &**ty else {
-                            return Err(syn::Error::new(
-                                span,
-                                "interned queries must have return type",
-                            ));
-                        };
-                        interned_struct_path = Some(path.path.clone());
-                        query_kind = QueryKind::Interned;
                     }
                     "invoke_interned" => {
                         let path = syn::parse::<Parenthesized<Path>>(tts)?;
@@ -317,28 +295,6 @@ pub(crate) fn query_group_impl(
                     };
                     setter_trait_methods.push(SetterKind::WithDurability(setter));
                 }
-                (QueryKind::Interned, None) => {
-                    let interned_struct_path = interned_struct_path.unwrap();
-                    let method = Intern {
-                        signature: signature.clone(),
-                        pat_and_tys: pat_and_tys.clone(),
-                        interned_struct_path: interned_struct_path.clone(),
-                    };
-
-                    trait_methods.push(Queries::Intern(method));
-
-                    let mut method = Lookup {
-                        signature: signature.clone(),
-                        pat_and_tys: pat_and_tys.clone(),
-                        return_ty: *return_ty,
-                        interned_struct_path,
-                    };
-                    method.prepare_signature();
-
-                    lookup_signatures
-                        .push(TraitItem::Fn(make_trait_method(method.signature.clone())));
-                    lookup_methods.push(method);
-                }
                 // tracked function. it might have an invoke, or might not.
                 (QueryKind::Tracked, invoke) => {
                     let method = TrackedQuery {
@@ -379,13 +335,6 @@ pub(crate) fn query_group_impl(
                         default: method.default.take(),
                     };
                     trait_methods.push(Queries::Transparent(method));
-                }
-                // error/invalid constructions
-                (QueryKind::Interned, Some(path)) => {
-                    return Err(syn::Error::new(
-                        path.span(),
-                        "Interned queries cannot be used with an `#[invoke]`".to_string(),
-                    ));
                 }
                 (QueryKind::Input, Some(path)) => {
                     return Err(syn::Error::new(
@@ -451,8 +400,6 @@ pub(crate) fn query_group_impl(
             #(#trait_methods)*
 
             #(#setter_methods)*
-
-            #(#lookup_methods)*
         }
     };
     RemoveAttrsFromTraitMethods.visit_item_trait_mut(&mut item_trait);
@@ -482,15 +429,6 @@ where
         let content;
         syn::parenthesized!(content in input);
         content.parse::<T>().map(Parenthesized)
-    }
-}
-
-fn make_trait_method(sig: syn::Signature) -> TraitItemFn {
-    TraitItemFn {
-        attrs: vec![],
-        sig: sig.clone(),
-        semi_token: Some(syn::Token![;](sig.span())),
-        default: None,
     }
 }
 

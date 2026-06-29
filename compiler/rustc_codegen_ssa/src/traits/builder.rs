@@ -2,6 +2,7 @@ use std::assert_matches;
 use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
+use rustc_hir::attrs::AttributeKind;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
@@ -77,6 +78,9 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);
+    fn br_with_attrs(&mut self, dest: Self::BasicBlock, _attributes: &[AttributeKind]) {
+        self.br(dest)
+    }
     fn cond_br(
         &mut self,
         cond: Self::Value,
@@ -238,7 +242,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn alloca_with_ty(&mut self, layout: TyAndLayout<'tcx>) -> Self::Value;
 
     fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
-    fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
+    fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
     fn atomic_load(
         &mut self,
         ty: Self::Type,
@@ -472,6 +476,11 @@ pub trait BuilderMethods<'a, 'tcx>:
         flags: MemFlags,
     );
 
+    // Produce a value from calling the `vscale` intrinsic (containing the `vscale` multiplier that
+    // a scalable vector's element size and count can be multiplied by to get the real size of the
+    // vector)
+    fn vscale(&mut self, ty: Self::Type) -> Self::Value;
+
     /// *Typed* copy for non-overlapping places.
     ///
     /// Has a default implementation in terms of `memcpy`, but specific backends
@@ -509,6 +518,12 @@ pub trait BuilderMethods<'a, 'tcx>:
             temp.val.store_with_flags(self, dst.with_type(layout), flags);
         } else if !layout.is_zst() {
             let bytes = self.const_usize(layout.size.bytes());
+            let bytes = if layout.peel_transparent_wrappers(self).ty.is_scalable_vector() {
+                let vscale = self.vscale(self.type_i64());
+                self.mul(vscale, bytes)
+            } else {
+                bytes
+            };
             self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, None);
         }
     }
@@ -552,12 +567,12 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn set_personality_fn(&mut self, personality: Self::Function);
 
-    // These are used by everyone except msvc
+    // These are used by everyone except msvc and wasm EH
     fn cleanup_landing_pad(&mut self, pers_fn: Self::Function) -> (Self::Value, Self::Value);
     fn filter_landing_pad(&mut self, pers_fn: Self::Function);
     fn resume(&mut self, exn0: Self::Value, exn1: Self::Value);
 
-    // These are used only by msvc
+    // These are used by msvc and wasm EH
     fn cleanup_pad(&mut self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
     fn cleanup_ret(&mut self, funclet: &Self::Funclet, unwind: Option<Self::BasicBlock>);
     fn catch_pad(&mut self, parent: Self::Value, args: &[Self::Value]) -> Self::Funclet;
@@ -567,6 +582,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         unwind: Option<Self::BasicBlock>,
         handlers: &[Self::BasicBlock],
     ) -> Self::Value;
+    fn get_funclet_cleanuppad(&self, funclet: &Self::Funclet) -> Self::Value;
 
     fn atomic_cmpxchg(
         &mut self,

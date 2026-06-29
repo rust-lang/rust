@@ -13,7 +13,6 @@
     unused
 )]
 #![warn(clippy::needless_ifs)]
-
 extern crate proc_macros;
 use proc_macros::{external, with_span};
 
@@ -113,4 +112,13 @@ fn issue15960() -> i32 {
     //~^ needless_ifs
 
     1 // put something here so that `if` is a statement not an expression
+}
+
+#[rustfmt::skip]
+fn issue_16845() {
+
+    // Vertical tab (U+000B) should be treated as whitespace,
+    if true {}
+    //~^ needless_ifs
+    let () = if maybe_side_effect() {};
 }

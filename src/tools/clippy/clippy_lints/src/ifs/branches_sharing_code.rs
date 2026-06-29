@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::{IntoSpan, SpanRangeExt, first_line_of_span, indent_of, reindent_multiline, snippet};
+use clippy_utils::source::{IntoSpan, SpanExt, first_line_of_span, indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{
@@ -13,7 +13,7 @@ use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, ItemKind, LetStmt, Node,
 use rustc_lint::LateContext;
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, SyntaxContext};
 
 use super::BRANCHES_SHARING_CODE;
 
@@ -196,7 +196,12 @@ fn eq_stmts(
             .all(|b| get_stmt(b).is_some_and(|s| eq_binding_names(cx, s, new_bindings)))
     } else {
         true
-    }) && blocks.iter().all(|b| get_stmt(b).is_some_and(|s| eq.eq_stmt(s, stmt)))
+    }) && blocks.iter().all(|b| {
+        get_stmt(b).is_some_and(|s| {
+            eq.set_eval_ctxt(SyntaxContext::root());
+            eq.eq_stmt(s, stmt)
+        })
+    })
 }
 
 #[expect(clippy::too_many_lines)]
@@ -207,7 +212,7 @@ fn scan_block_for_eq<'tcx>(
     blocks: &[&'tcx Block<'_>],
 ) -> BlockEq {
     let mut eq = SpanlessEq::new(cx);
-    let mut eq = eq.inter_expr();
+    let mut eq = eq.inter_expr(SyntaxContext::root());
     let mut moved_locals = Vec::new();
 
     let mut cond_locals = HirIdSet::default();
@@ -334,6 +339,7 @@ fn scan_block_for_eq<'tcx>(
         });
     if let Some(e) = block.expr {
         for block in blocks {
+            eq.set_eval_ctxt(SyntaxContext::root());
             if block.expr.is_some_and(|expr| !eq.eq_expr(expr, e)) {
                 moved_locals.truncate(moved_locals_at_start);
                 return BlockEq {

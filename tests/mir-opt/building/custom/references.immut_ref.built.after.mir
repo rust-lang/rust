@@ -7,7 +7,6 @@ fn immut_ref(_1: &i32) -> &i32 {
     bb0: {
         _2 = &raw const (*_1);
         _0 = &(*_2);
-        Retag(_0);
         return;
     }
 }

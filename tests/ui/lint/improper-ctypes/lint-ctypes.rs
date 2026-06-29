@@ -37,9 +37,6 @@ pub struct TransparentRef<'a>(&'a TransparentInt);
 pub struct TransparentLifetime<'a>(*const u8, PhantomData<&'a ()>);
 #[repr(transparent)]
 pub struct TransparentUnit<U>(f32, PhantomData<U>);
-#[repr(transparent)]
-#[allow(repr_transparent_non_zst_fields)]
-pub struct TransparentCustomZst(i32, ZeroSize);
 
 #[repr(C)]
 pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
@@ -88,7 +85,6 @@ extern "C" {
     pub fn good14(p: TransparentRef);
     pub fn good15(p: TransparentLifetime);
     pub fn good16(p: TransparentUnit<ZeroSize>);
-    pub fn good17(p: TransparentCustomZst);
     #[allow(improper_ctypes)]
     pub fn good18(_: &String);
     pub fn good20(arr: *const [u8; 8]);

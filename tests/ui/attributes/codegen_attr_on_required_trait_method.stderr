@@ -4,8 +4,8 @@ error: `#[cold]` attribute cannot be used on required trait methods
 LL |     #[cold]
    |     ^^^^^^^
    |
+   = help: `#[cold]` can be applied to foreign functions and functions with a body
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[cold]` can be applied to closures, foreign functions, functions, inherent methods, provided trait methods, and trait methods in impl blocks
 note: the lint level is defined here
   --> $DIR/codegen_attr_on_required_trait_method.rs:1:9
    |
@@ -18,8 +18,8 @@ error: `#[link_section]` attribute cannot be used on required trait methods
 LL |     #[link_section = "__TEXT,__text"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: `#[link_section]` can be applied to functions with a body and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to functions, inherent methods, provided trait methods, statics, and trait methods in impl blocks
 
 error: `#[linkage]` attribute cannot be used on required trait methods
   --> $DIR/codegen_attr_on_required_trait_method.rs:14:5
@@ -27,8 +27,8 @@ error: `#[linkage]` attribute cannot be used on required trait methods
 LL |     #[linkage = "common"]
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: `#[linkage]` can be applied to foreign functions, foreign statics, functions with a body, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[linkage]` can be applied to foreign functions, foreign statics, functions, inherent methods, provided trait methods, statics, and trait methods in impl blocks
 
 error: aborting due to 3 previous errors
 

@@ -16,6 +16,10 @@ pub use super::{
 
 #[rustfmt::skip]
 #[doc(no_inline)]
+pub use super::{f16x1, f16x2, f16x4, f16x8, f16x16, f16x32, f16x64};
+
+#[rustfmt::skip]
+#[doc(no_inline)]
 pub use super::{f32x1, f32x2, f32x4, f32x8, f32x16, f32x32, f32x64};
 
 #[rustfmt::skip]

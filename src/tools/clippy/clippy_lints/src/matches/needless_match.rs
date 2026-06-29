@@ -12,10 +12,10 @@ use rustc_hir::{
     Arm, BindingMode, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatExpr, PatExprKind, PatKind, Path, QPath,
 };
 use rustc_lint::LateContext;
-use rustc_span::sym;
+use rustc_span::{SyntaxContext, sym};
 
 pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
-    if arms.len() > 1 && expr_ty_matches_p_ty(cx, ex, expr) && check_all_arms(cx, ex, arms) {
+    if arms.len() > 1 && expr_ty_matches_p_ty(cx, ex, expr) && check_all_arms(cx, expr.span.ctxt(), ex, arms) {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
             cx,
@@ -49,7 +49,10 @@ pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>],
 /// }
 /// ```
 pub(crate) fn check_if_let<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'_>, if_let: &higher::IfLet<'tcx>) {
-    if !is_else_clause(cx.tcx, ex) && expr_ty_matches_p_ty(cx, if_let.let_expr, ex) && check_if_let_inner(cx, if_let) {
+    if !is_else_clause(cx.tcx, ex)
+        && expr_ty_matches_p_ty(cx, if_let.let_expr, ex)
+        && check_if_let_inner(cx, ex.span.ctxt(), if_let)
+    {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
             cx,
@@ -63,7 +66,7 @@ pub(crate) fn check_if_let<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'_>, if_let: 
     }
 }
 
-fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>]) -> bool {
+fn check_all_arms(cx: &LateContext<'_>, ctxt: SyntaxContext, match_expr: &Expr<'_>, arms: &[Arm<'_>]) -> bool {
     for arm in arms {
         let arm_expr = peel_blocks_with_stmt(arm.body);
 
@@ -74,7 +77,7 @@ fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>])
         }
 
         if let PatKind::Wild = arm.pat.kind {
-            if !eq_expr_value(cx, match_expr, arm_expr) {
+            if !eq_expr_value(cx, ctxt, match_expr, arm_expr) {
                 return false;
             }
         } else if !pat_same_as_expr(arm.pat, arm_expr) {
@@ -85,7 +88,7 @@ fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>])
     true
 }
 
-fn check_if_let_inner(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
+fn check_if_let_inner(cx: &LateContext<'_>, ctxt: SyntaxContext, if_let: &higher::IfLet<'_>) -> bool {
     if let Some(if_else) = if_let.if_else {
         if !pat_same_as_expr(if_let.let_pat, peel_blocks_with_stmt(if_let.if_then)) {
             return false;
@@ -93,9 +96,9 @@ fn check_if_let_inner(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool 
 
         // Recursively check for each `else if let` phrase,
         if let Some(ref nested_if_let) = higher::IfLet::hir(cx, if_else)
-            && SpanlessEq::new(cx).eq_expr(nested_if_let.let_expr, if_let.let_expr)
+            && SpanlessEq::new(cx).eq_expr(ctxt, nested_if_let.let_expr, if_let.let_expr)
         {
-            return check_if_let_inner(cx, nested_if_let);
+            return check_if_let_inner(cx, ctxt, nested_if_let);
         }
 
         if matches!(if_else.kind, ExprKind::Block(..)) {
@@ -106,9 +109,9 @@ fn check_if_let_inner(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool 
             let let_expr_ty = cx.typeck_results().expr_ty(if_let.let_expr);
             if let_expr_ty.is_diag_item(cx, sym::Option) {
                 return else_expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
-                    || eq_expr_value(cx, if_let.let_expr, else_expr);
+                    || eq_expr_value(cx, ctxt, if_let.let_expr, else_expr);
             }
-            return eq_expr_value(cx, if_let.let_expr, else_expr);
+            return eq_expr_value(cx, ctxt, if_let.let_expr, else_expr);
         }
     }
 

@@ -6,7 +6,7 @@ use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_errors::ErrorGuaranteed;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
 
 use super::{ConstValue, SourceInfo};
@@ -20,24 +20,23 @@ rustc_index::newtype_index! {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub struct CoroutineSavedTy<'tcx> {
     pub ty: Ty<'tcx>,
     /// Source info corresponding to the local in the original MIR body.
     pub source_info: SourceInfo,
     /// Whether the local should be ignored for trait bound computations.
     pub ignore_for_traits: bool,
+    /// The name for debuginfo.
+    pub debuginfo_name: Option<Symbol>,
 }
 
 /// The layout of coroutine state.
 #[derive(Clone, PartialEq, Eq)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub struct CoroutineLayout<'tcx> {
     /// The type of every local stored inside the coroutine.
     pub field_tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'tcx>>,
-
-    /// The name for debuginfo.
-    pub field_names: IndexVec<CoroutineSavedLocal, Option<Symbol>>,
 
     /// Which of the above fields are in each variant. Note that one field may
     /// be stored in multiple variants.
@@ -87,7 +86,7 @@ impl Debug for CoroutineLayout<'_> {
 /// Each field (except `tainted_by_errors`) corresponds to an implementer of the `Qualif` trait in
 /// `rustc_const_eval/src/transform/check_consts/qualifs.rs`. See that file for more information on each
 /// `Qualif`.
-#[derive(Clone, Copy, Debug, Default, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Copy, Debug, Default, TyEncodable, TyDecodable, StableHash)]
 pub struct ConstQualifs {
     pub has_mut_interior: bool,
     pub needs_drop: bool,
@@ -100,7 +99,7 @@ pub struct ConstQualifs {
 ///
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
+#[derive(TyEncodable, TyDecodable, StableHash, TypeVisitable, TypeFoldable)]
 pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
@@ -151,17 +150,21 @@ pub enum ConstraintCategory<'tcx> {
         #[type_visitable(ignore)]
         ty::RegionVid,
     ),
+
+    // FIXME(-Zassumptions-on-binders): this is a temporary hack until we support
+    // proper diagnostics for solver region constraints.
+    SolverRegionConstraint(Span),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
+#[derive(TyEncodable, TyDecodable, StableHash, TypeVisitable, TypeFoldable)]
 pub enum ReturnConstraint {
     Normal,
     ClosureUpvar(FieldIdx),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
+#[derive(TyEncodable, TyDecodable, StableHash, TypeVisitable, TypeFoldable)]
 pub enum AnnotationSource {
     Ascription,
     Declaration,
@@ -170,7 +173,7 @@ pub enum AnnotationSource {
 }
 
 /// The constituent parts of a mir constant of kind ADT or array.
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, StableHash)]
 pub struct DestructuredConstant<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [(ConstValue, Ty<'tcx>)],

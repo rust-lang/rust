@@ -109,12 +109,15 @@
 //@ cdb-check:    [10]             : 103 'g' [Type: char]
 //@ cdb-check:    [11]             : 33 '!' [Type: char]
 
-//@ cdb-command: dx os_string
-// NOTE: OSString is WTF-8 encoded which Windows debuggers don't understand. Verify the UTF-8
-//       portion displays correctly.
-//@ cdb-check:os_string        : "IAMA OS string [...]" [Type: std::ffi::os_str::OsString]
-//@ cdb-check:    [<Raw View>]     [Type: std::ffi::os_str::OsString]
-//@ cdb-check:    [chars]          : "IAMA OS string [...]"
+// FIXME(#88840, #148743, #88796): since approx. Windows SDK 20348, the corresponding cdb (and/or
+// its underlying WinDbg engine) changed or regressed the `OsStr`/`OsString` visualization, and no
+// longer renders the emoji. Since approx. 26100, the output formatting of the string containing
+// UTF-8 (i.e. the multi-byte emoji grapheme) seems to have further regressed (e.g. the end
+// quotation mark is no longer shown and command output becomes garbled).
+//(DISABLED) @ cdb-command: dx os_string
+//(DISABLED) @ cdb-check:os_string        : "IAMA OS string 😃" [Type: std::ffi::os_str::OsString]
+//(DISABLED) @ cdb-check:    [<Raw View>]     [Type: std::ffi::os_str::OsString]
+//(DISABLED) @ cdb-check:    [chars]          : "IAMA OS string 😃"
 
 //@ cdb-command: dx some
 //@ cdb-check:some             : Some [Type: enum2$<core::option::Option<i16> >]

@@ -33,6 +33,7 @@
 //! debugging, you can make changes inside those crates and quickly run main.rs
 //! to read the debug logs.
 
+use std::cell::Cell;
 use std::env::{self, VarError};
 use std::fmt::{self, Display};
 use std::fs::File;
@@ -40,12 +41,12 @@ use std::io::{self, IsTerminal};
 use std::sync::Mutex;
 
 use tracing::dispatcher::SetGlobalDefaultError;
-use tracing::{Event, Subscriber};
+use tracing::{Event, Subscriber, span};
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
 use tracing_subscriber::fmt::FmtContext;
 use tracing_subscriber::fmt::format::{self, FmtSpan, FormatEvent, FormatFields};
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
-use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::layer::{Context, SubscriberExt};
 use tracing_subscriber::{Layer, Registry};
 // Re-export tracing
 pub use {tracing, tracing_core, tracing_subscriber};
@@ -175,6 +176,7 @@ where
             .with_thread_ids(verbose_thread_ids)
             .with_thread_names(verbose_thread_ids)
             .with_span_events(FmtSpan::ACTIVE);
+        let fmt_layer = NonrecursiveLayer { inner: fmt_layer };
         Layer::boxed(fmt_layer)
     } else {
         let mut layer = tracing_tree::HierarchicalLayer::default()
@@ -284,5 +286,107 @@ impl Display for Error {
 impl From<SetGlobalDefaultError> for Error {
     fn from(tracing_error: SetGlobalDefaultError) -> Self {
         Error::AlreadyInit(tracing_error)
+    }
+}
+
+thread_local! {
+    static NONRECURSIVE_GUARD_LOCK: Cell<bool> = const { Cell::new(false) };
+}
+
+struct NonrecursiveGuard;
+
+impl NonrecursiveGuard {
+    fn lock() -> Option<NonrecursiveGuard> {
+        if !NONRECURSIVE_GUARD_LOCK.replace(true) { Some(NonrecursiveGuard) } else { None }
+    }
+}
+
+impl Drop for NonrecursiveGuard {
+    fn drop(&mut self) {
+        NONRECURSIVE_GUARD_LOCK.set(false);
+    }
+}
+
+/// Many debug messages that rustc emits produce additional debug messages when formatting the
+/// arguments to the original debug message. [`tracing_tree::HierarchicalLayer`] (used by the
+/// default output format) filters these out, but [`tracing_subscriber::fmt::format::Json`] (used by
+/// `RUSTC_LOG_FORMAT_JSON`) does not. So, implement a simple recursion check to filter these
+/// messages out.
+struct NonrecursiveLayer<S> {
+    inner: S,
+}
+
+impl<S: Subscriber, L: Layer<S>> Layer<S> for NonrecursiveLayer<L> {
+    fn on_register_dispatch(&self, subscriber: &tracing::Dispatch) {
+        self.inner.on_register_dispatch(subscriber)
+    }
+
+    fn on_layer(&mut self, subscriber: &mut S) {
+        self.inner.on_layer(subscriber)
+    }
+
+    fn register_callsite(
+        &self,
+        metadata: &'static tracing::Metadata<'static>,
+    ) -> tracing_core::Interest {
+        self.inner.register_callsite(metadata)
+    }
+
+    fn enabled(&self, metadata: &tracing::Metadata<'_>, ctx: Context<'_, S>) -> bool {
+        self.inner.enabled(metadata, ctx)
+    }
+
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        if let Some(_) = NonrecursiveGuard::lock() {
+            self.inner.on_new_span(attrs, id, ctx)
+        }
+    }
+
+    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+        if let Some(_) = NonrecursiveGuard::lock() {
+            self.inner.on_record(span, values, ctx)
+        }
+    }
+
+    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
+        if let Some(_) = NonrecursiveGuard::lock() {
+            self.inner.on_follows_from(span, follows, ctx)
+        }
+    }
+
+    fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, S>) -> bool {
+        if let Some(_) = NonrecursiveGuard::lock() {
+            self.inner.event_enabled(event, ctx)
+        } else {
+            false
+        }
+    }
+
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+        if let Some(_) = NonrecursiveGuard::lock() {
+            self.inner.on_event(event, ctx)
+        }
+    }
+
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if let Some(_) = NonrecursiveGuard::lock() {
+            self.inner.on_enter(id, ctx)
+        }
+    }
+
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if let Some(_) = NonrecursiveGuard::lock() {
+            self.inner.on_exit(id, ctx)
+        }
+    }
+
+    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        if let Some(_) = NonrecursiveGuard::lock() {
+            self.inner.on_close(id, ctx)
+        }
+    }
+
+    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
+        self.inner.on_id_change(old, new, ctx)
     }
 }

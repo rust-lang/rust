@@ -18,7 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::debug;
 
-use crate::{FnCtxt, errors};
+use crate::{FnCtxt, diagnostics};
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Performs type inference fallback, setting [`FnCtxt::diverging_fallback_has_occurred`]
@@ -147,6 +147,14 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// foo(1.0);
     /// ```
     fn calculate_fallback_to_f32(&self, unresolved_variables: &[Ty<'tcx>]) -> UnordSet<FloatVid> {
+        // Short-circuit: if no unresolved variable is a float, no f32 fallback can apply,
+        // so we can skip the (potentially very expensive) work in `from_float_for_f32_root_vids`.
+        // Under the new solver, that function walks `visit_proof_tree` for every pending
+        // obligation, which is O(N × proof_tree_size) and can dominate type-checking on crates
+        // with many large pending obligations and no f32 involvement.
+        if unresolved_variables.iter().all(|ty| ty.float_vid().is_none()) {
+            return UnordSet::new();
+        }
         let roots: UnordSet<ty::FloatVid> = self.from_float_for_f32_root_vids();
         if roots.is_empty() {
             // Most functions have no `f32: From<{float}>` predicates, so short-circuit and return
@@ -163,12 +171,18 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .inspect(|vid| {
                 let origin = self.float_var_origin(*vid);
                 // Show the entire literal in the suggestion to make it clearer.
-                let literal = self.tcx.sess.source_map().span_to_snippet(origin.span).ok();
+                let mut literal = self.tcx.sess.source_map().span_to_snippet(origin.span).ok();
+                // A `.` at the end of the literal is no longer necessary if `f32` is explicitly specified
+                if let Some(ref mut literal) = literal
+                    && literal.ends_with('.')
+                {
+                    literal.pop();
+                }
                 self.tcx.emit_node_span_lint(
                     FLOAT_LITERAL_F32_FALLBACK,
                     origin.lint_id.unwrap_or(CRATE_HIR_ID),
                     origin.span,
-                    errors::FloatLiteralF32Fallback {
+                    diagnostics::FloatLiteralF32Fallback {
                         span: literal.as_ref().map(|_| origin.span),
                         literal: literal.unwrap_or_default(),
                     },
@@ -211,8 +225,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let diverging_roots: UnordSet<ty::TyVid> = self
             .diverging_type_vars
             .borrow()
-            .items()
-            .map(|&ty| self.shallow_resolve(ty))
+            .iter()
+            .map(|&ty_id| self.shallow_resolve(Ty::new_var(self.tcx, ty_id)))
             .filter_map(|ty| ty.ty_vid())
             .map(|vid| self.root_var(vid))
             .collect();
@@ -298,21 +312,25 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 span,
                 match reason {
                     UnsafeUseReason::Call => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::Call { sugg: sugg.clone() }
+                        diagnostics::NeverTypeFallbackFlowingIntoUnsafe::Call { sugg: sugg.clone() }
                     }
                     UnsafeUseReason::Method => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::Method { sugg: sugg.clone() }
+                        diagnostics::NeverTypeFallbackFlowingIntoUnsafe::Method {
+                            sugg: sugg.clone(),
+                        }
                     }
                     UnsafeUseReason::Path => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::Path { sugg: sugg.clone() }
+                        diagnostics::NeverTypeFallbackFlowingIntoUnsafe::Path { sugg: sugg.clone() }
                     }
                     UnsafeUseReason::UnionField => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField {
+                        diagnostics::NeverTypeFallbackFlowingIntoUnsafe::UnionField {
                             sugg: sugg.clone(),
                         }
                     }
                     UnsafeUseReason::Deref => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::Deref { sugg: sugg.clone() }
+                        diagnostics::NeverTypeFallbackFlowingIntoUnsafe::Deref {
+                            sugg: sugg.clone(),
+                        }
                     }
                 },
             );
@@ -362,7 +380,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
                 self.tcx.local_def_id_to_hir_id(self.body_id),
                 self.tcx.def_span(self.body_id),
-                errors::DependencyOnUnitNeverTypeFallback {
+                diagnostics::DependencyOnUnitNeverTypeFallback {
                     obligation_span: never_error.obligation.cause.span,
                     obligation: never_error.obligation.predicate,
                     sugg,
@@ -427,7 +445,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         &self,
         diverging_vids: &[ty::TyVid],
         coercions: &VecGraph<ty::TyVid, true>,
-    ) -> errors::SuggestAnnotations {
+    ) -> diagnostics::SuggestAnnotations {
         let body =
             self.tcx.hir_maybe_body_owned_by(self.body_id).expect("body id must have an owner");
         // For each diverging var, look through the HIR for a place to give it
@@ -444,7 +462,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                     .break_value()
             })
             .collect();
-        errors::SuggestAnnotations { suggestions }
+        diagnostics::SuggestAnnotations { suggestions }
     }
 }
 
@@ -465,7 +483,7 @@ impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
         arg_segment: &'tcx hir::PathSegment<'tcx>,
         def_id: DefId,
         id: HirId,
-    ) -> ControlFlow<errors::SuggestAnnotation> {
+    ) -> ControlFlow<diagnostics::SuggestAnnotation> {
         if arg_segment.args.is_none()
             && let Some(all_args) = self.fcx.typeck_results.borrow().node_args_opt(id)
             && let generics = self.fcx.tcx.generics_of(def_id)
@@ -483,7 +501,7 @@ impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
                     && let Some(vid) = self.fcx.root_vid(ty)
                     && self.reachable_vids.contains(&vid)
                 {
-                    return ControlFlow::Break(errors::SuggestAnnotation::Turbo(
+                    return ControlFlow::Break(diagnostics::SuggestAnnotation::Turbo(
                         arg_segment.ident.span.shrink_to_hi(),
                         n_tys,
                         idx,
@@ -495,7 +513,7 @@ impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
     }
 }
 impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
-    type Result = ControlFlow<errors::SuggestAnnotation>;
+    type Result = ControlFlow<diagnostics::SuggestAnnotation>;
 
     fn visit_infer(
         &mut self,
@@ -509,7 +527,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             && self.reachable_vids.contains(&vid)
             && inf_span.can_be_used_for_suggestions()
         {
-            return ControlFlow::Break(errors::SuggestAnnotation::Unit(inf_span));
+            return ControlFlow::Break(diagnostics::SuggestAnnotation::Unit(inf_span));
         }
 
         ControlFlow::Continue(())
@@ -556,7 +574,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             && expr.span.can_be_used_for_suggestions()
         {
             let span = path.span.shrink_to_lo().to(trait_segment.ident.span);
-            return ControlFlow::Break(errors::SuggestAnnotation::Path(span));
+            return ControlFlow::Break(diagnostics::SuggestAnnotation::Path(span));
         }
 
         // Or else, try suggesting turbofishing the method args.
@@ -580,7 +598,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             && self.reachable_vids.contains(&vid)
             && local.span.can_be_used_for_suggestions()
         {
-            return ControlFlow::Break(errors::SuggestAnnotation::Local(
+            return ControlFlow::Break(diagnostics::SuggestAnnotation::Local(
                 local.pat.span.shrink_to_hi(),
             ));
         }

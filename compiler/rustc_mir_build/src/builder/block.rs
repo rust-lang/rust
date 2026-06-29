@@ -335,7 +335,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if destination_ty.is_unit()
                 || matches!(
                     destination_ty.kind(),
-                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
+                    ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })
                 )
             {
                 // We only want to assign an implicit `()` as the return value of the block if the

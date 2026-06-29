@@ -1,4 +1,4 @@
-error[E0734]: stability attributes may not be used outside of the standard library
+error[E0658]: stability attributes may not be used outside of the standard library
   --> $DIR/unstable_removed.rs:9:1
    |
 LL | / #![unstable_removed(
@@ -30,5 +30,5 @@ LL | #![feature(concat_idents)]
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0557, E0734.
+Some errors have detailed explanations: E0557, E0658.
 For more information about an error, try `rustc --explain E0557`.

@@ -17,7 +17,7 @@ use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
 
 use super::{DocTestVisitor, ScrapedDocTest};
 use crate::clean::{Attributes, CfgInfo, extract_cfg_from_attrs};
-use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
+use crate::html::markdown::{self, CodeLineMapping, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
     source_map: Arc<SourceMap>,
@@ -41,7 +41,13 @@ impl RustCollector {
 }
 
 impl DocTestVisitor for RustCollector {
-    fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine) {
+    fn visit_test(
+        &mut self,
+        test: String,
+        config: LangString,
+        rel_line: MdRelLine,
+        code_mappings: Vec<CodeLineMapping>,
+    ) {
         let base_line = self.get_base_line();
         let line = base_line + rel_line.offset();
         let count = Cell::new(base_line);
@@ -69,6 +75,7 @@ impl DocTestVisitor for RustCollector {
             config,
             test,
             span,
+            code_mappings,
             self.global_crate_attrs.clone(),
         ));
     }
@@ -199,7 +206,12 @@ impl HirCollector<'_> {
                 &doc,
                 &mut self.collector,
                 self.codes,
-                Some(&crate::html::markdown::ExtraInfo::new(self.tcx, def_id, span)),
+                Some(&crate::html::markdown::ExtraInfo::new(
+                    self.tcx,
+                    def_id,
+                    span,
+                    Some(&attrs.doc_strings),
+                )),
             );
         }
 

@@ -2,7 +2,7 @@
 
 **Tier: 2 (with host tools)**
 
-Windows targets similar to `*-windows-gnu` but using UCRT as the runtime and various LLVM tools/libraries instead of
+Windows targets similar to `*-windows-gnu` but using Universal C Runtime (UCRT) as the runtime and various LLVM tools/libraries instead of
 GCC/Binutils.
 
 Target triples available so far:

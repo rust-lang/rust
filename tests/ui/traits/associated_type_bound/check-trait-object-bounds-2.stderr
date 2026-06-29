@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce(&i32)` closure, found `i32`
+error[E0277]: expected an `FnOnce(&i32)` closure, found `i32`
   --> $DIR/check-trait-object-bounds-2.rs:13:9
    |
 LL |     f::<dyn for<'x> X<'x, F = i32>>();

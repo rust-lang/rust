@@ -40,5 +40,8 @@ check-cfg = [
     'cfg(target_has_reliable_f128)',
     'cfg(target_has_reliable_f128_math)',
     'cfg(llvm_enzyme)',
+    # Prevents use of a static variable for providing platform specific RawOsError
+    # functionality
+    'cfg(no_io_statics)',
 
 ]

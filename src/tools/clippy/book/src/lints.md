@@ -5,18 +5,19 @@ and idiomatic Rust code. A full list of all lints, that can be filtered by
 category, lint level or keywords, can be found in the [Clippy lint
 documentation].
 
-This chapter will give an overview of the different lint categories, which kind
-of lints they offer and recommended actions when you should see a lint out of
+This chapter provides details about the different lint categories, which kind
+of lints they offer, and recommended actions when you should see a lint out of
 that category. For examples, see the [Clippy lint documentation] and filter by
-category.
+category. For an overview of these categories, see the
+[introduction](index.md).
 
 The different lint groups were defined in the [Clippy 1.0 RFC].
 
 ## Correctness
 
-The `clippy::correctness` group is the only lint group in Clippy which lints are
+The `clippy::correctness` group is the only lint group in Clippy whose lints are
 deny-by-default and abort the compilation when triggered. This is for good
-reason: If you see a `correctness` lint, it means that your code is outright
+reason: if you see a `correctness` lint, it means that your code is outright
 wrong or useless, and you should try to fix it.
 
 Lints in this category are carefully picked and should be free of false

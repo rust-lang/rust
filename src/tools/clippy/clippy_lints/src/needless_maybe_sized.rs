@@ -92,7 +92,9 @@ fn path_to_sized_bound(cx: &LateContext<'_>, trait_bound: &PolyTraitRef<'_>) -> 
             return true;
         }
 
-        for (predicate, _) in cx.tcx.explicit_super_predicates_of(trait_def_id)
+        for (predicate, _) in cx
+            .tcx
+            .explicit_super_predicates_of(trait_def_id)
             .iter_identity_copied()
             .map(Unnormalized::skip_norm_wip)
         {

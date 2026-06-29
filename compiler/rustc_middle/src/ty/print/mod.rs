@@ -15,7 +15,7 @@ use super::Lift;
 
 pub type PrintError = std::fmt::Error;
 
-pub trait Print<'tcx, P> {
+pub trait Print<P> {
     fn print(&self, p: &mut P) -> Result<(), PrintError>;
 }
 
@@ -350,62 +350,69 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
     characteristic_def_id_of_type_cached(ty, &mut SsoHashSet::new())
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'tcx> {
+impl<'tcx, P: Printer<'tcx>> Print<P> for ty::Region<'tcx> {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
         p.print_region(*self)
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
+impl<'tcx, P: Printer<'tcx>> Print<P> for Ty<'tcx> {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
         p.print_type(*self)
     }
 }
 
-impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<'tcx, P> for ty::Instance<'tcx> {
+impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::Instance<'tcx> {
     fn print(&self, cx: &mut P) -> Result<(), PrintError> {
         cx.print_def_path(self.def_id(), self.args)?;
         match self.def {
             ty::InstanceKind::Item(_) => {}
-            ty::InstanceKind::VTableShim(_) => cx.write_str(" - shim(vtable)")?,
-            ty::InstanceKind::ReifyShim(_, None) => cx.write_str(" - shim(reify)")?,
-            ty::InstanceKind::ReifyShim(_, Some(ty::ReifyReason::FnPtr)) => {
-                cx.write_str(" - shim(reify-fnptr)")?
-            }
-            ty::InstanceKind::ReifyShim(_, Some(ty::ReifyReason::Vtable)) => {
-                cx.write_str(" - shim(reify-vtable)")?
-            }
-            ty::InstanceKind::ThreadLocalShim(_) => cx.write_str(" - shim(tls)")?,
             ty::InstanceKind::Intrinsic(_) => cx.write_str(" - intrinsic")?,
             ty::InstanceKind::Virtual(_, num) => cx.write_str(&format!(" - virtual#{num}"))?,
-            ty::InstanceKind::FnPtrShim(_, ty) => cx.write_str(&format!(" - shim({ty})"))?,
-            ty::InstanceKind::ClosureOnceShim { .. } => cx.write_str(" - shim")?,
-            ty::InstanceKind::ConstructCoroutineInClosureShim { .. } => cx.write_str(" - shim")?,
-            ty::InstanceKind::DropGlue(_, None) => cx.write_str(" - shim(None)")?,
-            ty::InstanceKind::DropGlue(_, Some(ty)) => {
-                cx.write_str(&format!(" - shim(Some({ty}))"))?
+            ty::InstanceKind::Shim(shim) => {
+                cx.write_str(" - ")?;
+                shim.print(cx)?;
             }
-            ty::InstanceKind::CloneShim(_, ty) => cx.write_str(&format!(" - shim({ty})"))?,
-            ty::InstanceKind::FnPtrAddrShim(_, ty) => cx.write_str(&format!(" - shim({ty})"))?,
-            ty::InstanceKind::FutureDropPollShim(_, proxy_ty, impl_ty) => {
-                cx.write_str(&format!(" - dropshim({proxy_ty}-{impl_ty})"))?
-            }
-            ty::InstanceKind::AsyncDropGlue(_, ty) => cx.write_str(&format!(" - shim({ty})"))?,
-            ty::InstanceKind::AsyncDropGlueCtorShim(_, ty) => {
-                cx.write_str(&format!(" - shim(Some({ty}))"))?
-            }
-        };
+        }
         Ok(())
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
+impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::ShimKind<'tcx> {
+    fn print(&self, cx: &mut P) -> Result<(), PrintError> {
+        match self {
+            ty::ShimKind::VTable(_) => cx.write_str("shim(vtable)"),
+            ty::ShimKind::Reify(_, None) => cx.write_str("shim(reify)"),
+            ty::ShimKind::Reify(_, Some(ty::ReifyReason::FnPtr)) => {
+                cx.write_str("shim(reify-fnptr)")
+            }
+            ty::ShimKind::Reify(_, Some(ty::ReifyReason::Vtable)) => {
+                cx.write_str("shim(reify-vtable)")
+            }
+            ty::ShimKind::ThreadLocal(_) => cx.write_str("shim(tls)"),
+            ty::ShimKind::FnPtr(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::ClosureOnce { .. } => cx.write_str("shim"),
+            ty::ShimKind::ConstructCoroutineInClosure { .. } => cx.write_str("shim"),
+            ty::ShimKind::DropGlue(_, None) => cx.write_str("shim(None)"),
+            ty::ShimKind::DropGlue(_, Some(ty)) => cx.write_str(&format!("shim(Some({ty}))")),
+            ty::ShimKind::Clone(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::FnPtrAddr(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::FutureDropPoll(_, proxy_ty, impl_ty) => {
+                cx.write_str(&format!("dropshim({proxy_ty}-{impl_ty})"))
+            }
+            ty::ShimKind::AsyncDropGlue(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::AsyncDropGlueCtor(_, ty) => cx.write_str(&format!("shim(Some({ty}))")),
+        }
+    }
+}
+
+impl<'tcx, P: Printer<'tcx>> Print<P> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
         p.print_dyn_existential(self)
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
+impl<'tcx, P: Printer<'tcx>> Print<P> for ty::Const<'tcx> {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
         p.print_const(*self)
     }
@@ -413,12 +420,12 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
 
 impl<T> rustc_type_ir::ir_print::IrPrint<T> for TyCtxt<'_>
 where
-    T: Copy + for<'a, 'tcx> Lift<TyCtxt<'tcx>, Lifted: Print<'tcx, FmtPrinter<'a, 'tcx>>>,
+    T: Copy + for<'a, 'tcx> Lift<TyCtxt<'tcx>, Lifted: Print<FmtPrinter<'a, 'tcx>>>,
 {
     fn print(t: &T, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         ty::tls::with(|tcx| {
             let mut p = FmtPrinter::new(tcx, Namespace::TypeNS);
-            tcx.lift(*t).expect("could not lift for printing").print(&mut p)?;
+            tcx.lift(*t).print(&mut p)?;
             fmt.write_str(&p.into_buffer())?;
             Ok(())
         })

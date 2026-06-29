@@ -124,7 +124,7 @@ impl CargoTestHandle {
         cmd.arg("--no-fail-fast");
         cmd.arg("--manifest-path");
         cmd.arg(root.join("Cargo.toml"));
-        options.apply_on_command(&mut cmd, ws_target_dir);
+        options.apply_on_command(&mut cmd, ws_target_dir, Some(&test_target.package));
         cmd.arg("--");
         if let Some(path) = path {
             cmd.arg(path);

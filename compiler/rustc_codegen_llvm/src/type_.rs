@@ -106,10 +106,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 }
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
-    pub(crate) fn type_bool(&self) -> &'ll Type {
-        self.type_i8()
-    }
-
     pub(crate) fn type_int_from_ty(&self, t: ty::IntTy) -> &'ll Type {
         match t {
             ty::IntTy::Isize => self.type_isize(),

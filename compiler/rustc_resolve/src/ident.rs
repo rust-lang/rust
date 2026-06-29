@@ -6,15 +6,15 @@ use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_middle::{bug, span_bug};
+use rustc_session::errors::feature_err;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
-use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::{Ident, Span, kw, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
-use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
+use crate::diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::{Import, NameResolution};
 use crate::late::{
@@ -23,9 +23,9 @@ use crate::late::{
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
-    Determinacy, Finalize, IdentKey, ImportKind, ImportSummary, LateDecl, LocalModule, Module,
-    ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, Res, ResolutionError,
-    Resolver, Scope, ScopeSet, Segment, Stage, Symbol, Used, errors,
+    Determinacy, ExternModule, Finalize, IdentKey, ImportKind, ImportSummary, LateDecl,
+    LocalModule, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError,
+    Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage, Symbol, Used, diagnostics,
 };
 
 #[derive(Copy, Clone)]
@@ -271,7 +271,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // The macro is a proc macro derive
             && let Some(def_id) = module.expansion.expn_data().macro_def_id
         {
-            let ext = &self.get_macro_by_def_id(def_id).ext;
+            let ext = self.get_macro_by_def_id(def_id);
             if ext.builtin_name.is_none()
                 && ext.macro_kinds() == MacroKinds::DERIVE
                 && parent.expansion.outer_expn_is_descendant_of(**ctxt)
@@ -490,6 +490,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                             Some(Finalize { import, .. }) => import,
                         };
+                        this.get_mut().maybe_push_glob_vs_glob_vis_ambiguity(
+                            ident,
+                            orig_ident_span,
+                            decl,
+                            import,
+                        );
 
                         if let Some(&(innermost_decl, _)) = innermost_results.first() {
                             // Found another solution, if the first one was "weak", report an error.
@@ -602,21 +608,36 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         finalize.map(|f| Finalize { used: Used::Scope, ..f }),
                     )
                 };
-                let decl = self.reborrow().resolve_ident_in_module_non_globs_unadjusted(
-                    module,
-                    ident,
-                    orig_ident_span,
-                    ns,
-                    adjusted_parent_scope,
-                    if matches!(scope_set, ScopeSet::Module(..)) {
-                        Shadowing::Unrestricted
-                    } else {
-                        Shadowing::Restricted
-                    },
-                    adjusted_finalize,
-                    ignore_decl,
-                    ignore_import,
-                );
+                let shadowing = if matches!(scope_set, ScopeSet::Module(..)) {
+                    Shadowing::Unrestricted
+                } else {
+                    Shadowing::Restricted
+                };
+                let decl = if module.is_local() {
+                    self.reborrow().resolve_ident_in_local_module_non_globs_unadjusted(
+                        module.expect_local(),
+                        ident,
+                        orig_ident_span,
+                        ns,
+                        adjusted_parent_scope,
+                        shadowing,
+                        adjusted_finalize,
+                        ignore_decl,
+                        ignore_import,
+                    )
+                } else {
+                    self.reborrow().resolve_ident_in_extern_module_non_globs_unadjusted(
+                        module.expect_extern(),
+                        ident,
+                        orig_ident_span,
+                        ns,
+                        adjusted_parent_scope,
+                        shadowing,
+                        adjusted_finalize,
+                        ignore_decl,
+                    )
+                };
+
                 match decl {
                     Ok(decl) => {
                         if let Some(lint_id) = derive_fallback_lint_id {
@@ -624,7 +645,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                 lint_id,
                                 orig_ident_span,
-                                errors::ProcMacroDeriveResolutionFallback {
+                                diagnostics::ProcMacroDeriveResolutionFallback {
                                     span: orig_ident_span,
                                     ns_descr: ns.descr(),
                                     ident: ident.name,
@@ -637,10 +658,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Err(ControlFlow::Break(..)) => return decl,
                 }
             }
-            Scope::ModuleGlobs(module, _)
-                if let ModuleKind::Def(_, def_id, _) = module.kind
-                    && !def_id.is_local() =>
-            {
+            Scope::ModuleGlobs(module, _) if !module.is_local() => {
                 // Fast path: external module decoding only creates non-glob declarations.
                 Err(Determined)
             }
@@ -678,7 +696,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                 lint_id,
                                 orig_ident_span,
-                                errors::ProcMacroDeriveResolutionFallback {
+                                diagnostics::ProcMacroDeriveResolutionFallback {
                                     span: orig_ident_span,
                                     ns_descr: ns.descr(),
                                     ident: ident.name,
@@ -693,9 +711,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
                 Some(decl) => Ok(decl),
-                None => Err(Determinacy::determined(
-                    self.graph_root.unexpanded_invocations.borrow().is_empty(),
-                )),
+                None => Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations())),
             },
             Scope::BuiltinAttrs => match self.builtin_attr_decls.get(&ident.name) {
                 Some(decl) => Ok(*decl),
@@ -708,9 +724,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     finalize.is_some(),
                 ) {
                     Some(decl) => Ok(decl),
-                    None => Err(Determinacy::determined(
-                        self.graph_root.unexpanded_invocations.borrow().is_empty(),
-                    )),
+                    None => {
+                        Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations()))
+                    }
                 }
             }
             Scope::ExternPreludeFlags => {
@@ -745,7 +761,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Scope::BuiltinTypes => match self.builtin_type_decls.get(&ident.name) {
                 Some(decl) => {
                     if matches!(ident.name, sym::f16)
-                        && !self.tcx.features().f16()
+                        && !self.features.f16()
                         && !orig_ident_span.allows_unstable(sym::f16)
                         && finalize.is_some()
                     {
@@ -758,7 +774,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         .emit();
                     }
                     if matches!(ident.name, sym::f128)
-                        && !self.tcx.features().f128()
+                        && !self.features.f128()
                         && !orig_ident_span.allows_unstable(sym::f128)
                         && finalize.is_some()
                     {
@@ -777,6 +793,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         ret.map_err(ControlFlow::Continue)
+    }
+
+    fn maybe_push_glob_vs_glob_vis_ambiguity(
+        &mut self,
+        ident: IdentKey,
+        orig_ident_span: Span,
+        decl: Decl<'ra>,
+        import: Option<ImportSummary>,
+    ) {
+        let Some(import) = import else { return };
+        let vis1 = self.import_decl_vis(decl, import);
+        let vis2 = self.import_decl_vis_ext(decl, import, true);
+        if vis1 != vis2 {
+            self.ambiguity_errors.push(AmbiguityError {
+                kind: AmbiguityKind::GlobVsGlob,
+                ambig_vis: Some((vis1, vis2)),
+                ident: ident.orig(orig_ident_span),
+                b1: decl.ambiguity_vis_max.get().unwrap_or(decl),
+                b2: decl.ambiguity_vis_min.get().unwrap_or(decl),
+                scope1: Scope::ModuleGlobs(decl.parent_module.unwrap(), None),
+                scope2: Scope::ModuleGlobs(decl.parent_module.unwrap(), None),
+                warning: Some(AmbiguityWarning::GlobImport),
+            });
+        }
     }
 
     fn maybe_push_ambiguity(
@@ -1053,10 +1093,49 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    /// Attempts to resolve `ident` in namespace `ns` of non-glob bindings in `module`.
-    fn resolve_ident_in_module_non_globs_unadjusted<'r>(
+    /// Attempts to resolve `ident` in namespace `ns` of non-glob bindings in an external `module`.
+    fn resolve_ident_in_extern_module_non_globs_unadjusted<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
-        module: Module<'ra>,
+        module: ExternModule<'ra>,
+        ident: IdentKey,
+        orig_ident_span: Span,
+        ns: Namespace,
+        parent_scope: &ParentScope<'ra>,
+        shadowing: Shadowing,
+        finalize: Option<Finalize>,
+        // This binding should be ignored during in-module resolution, so that we don't get
+        // "self-confirming" import resolutions during import validation and checking.
+        ignore_decl: Option<Decl<'ra>>,
+    ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
+        let key = BindingKey::new(ident, ns);
+        let resolution =
+            &*self.resolution(module.to_module(), key).ok_or(ControlFlow::Continue(Determined))?;
+
+        let binding = resolution.non_glob_decl.filter(|b| Some(*b) != ignore_decl);
+
+        if let Some(finalize) = finalize {
+            return self.get_mut().finalize_module_binding(
+                ident,
+                orig_ident_span,
+                binding,
+                parent_scope,
+                finalize,
+                shadowing,
+            );
+        }
+
+        // Items and single imports are not shadowable, if we have one, then it's determined.
+        if let Some(binding) = binding {
+            let accessible = self.is_accessible_from(binding.vis(), parent_scope.module);
+            return if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) };
+        }
+        Err(ControlFlow::Continue(Determined))
+    }
+
+    /// Attempts to resolve `ident` in namespace `ns` of non-glob bindings in a local `module`.
+    fn resolve_ident_in_local_module_non_globs_unadjusted<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
+        module: LocalModule<'ra>,
         ident: IdentKey,
         orig_ident_span: Span,
         ns: Namespace,
@@ -1073,7 +1152,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
         // the exclusive access infinite recursion will crash the compiler with stack overflow.
         let resolution = &*self
-            .resolution_or_default(module, key, orig_ident_span)
+            .resolution_or_default(module.to_module(), key, orig_ident_span)
             .try_borrow_mut_unchecked()
             .map_err(|_| ControlFlow::Continue(Determined))?;
 
@@ -1109,7 +1188,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Check if one of unexpanded macros can still define the name.
-        if !module.unexpanded_invocations.borrow().is_empty() {
+        if module.has_unexpanded_invocations() {
             return Err(ControlFlow::Continue(Undetermined));
         }
 
@@ -1193,7 +1272,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // scopes we return `Undetermined` with `ControlFlow::Continue`.
         // Check if one of unexpanded macros can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
-        if !module.unexpanded_invocations.borrow().is_empty() {
+        if module.has_unexpanded_invocations() {
             return Err(ControlFlow::Continue(Undetermined));
         }
 
@@ -1505,7 +1584,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
 
                         RibKind::ConstParamTy => {
-                            if !self.tcx.features().generic_const_parameter_types() {
+                            if !self.features.generic_const_parameter_types() {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,
@@ -1534,7 +1613,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
-                                                is_gca: self.tcx.features().generic_const_args(),
+                                                is_gca: self.features.generic_const_args(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Type,
                                             }
@@ -1559,12 +1638,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let item = if let Some(diag_metadata) = diag_metadata
                             && let Some(current_item) = diag_metadata.current_item
                         {
-                            let span = current_item
+                            let label_span = current_item
                                 .kind
                                 .ident()
                                 .map(|i| i.span)
                                 .unwrap_or(current_item.span);
-                            Some((span, current_item.kind.clone()))
+                            Some((label_span, current_item.span, current_item.kind.clone()))
                         } else {
                             None
                         };
@@ -1599,7 +1678,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         | RibKind::ForwardGenericParamBan(_) => continue,
 
                         RibKind::ConstParamTy => {
-                            if !self.tcx.features().generic_const_parameter_types() {
+                            if !self.features.generic_const_parameter_types() {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,
@@ -1626,7 +1705,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
-                                                is_gca: self.tcx.features().generic_const_args(),
+                                                is_gca: self.features.generic_const_args(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Const {
                                                     name: rib_ident.name,
@@ -1653,12 +1732,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let item = if let Some(diag_metadata) = diag_metadata
                             && let Some(current_item) = diag_metadata.current_item
                         {
-                            let span = current_item
+                            let label_span = current_item
                                 .kind
                                 .ident()
                                 .map(|i| i.span)
                                 .unwrap_or(current_item.span);
-                            Some((span, current_item.kind.clone()))
+                            Some((label_span, current_item.span, current_item.kind.clone()))
                         } else {
                             None
                         };
@@ -1837,8 +1916,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
 
+            let allow_trailing_self = is_last && name == kw::SelfLower;
+
             // Report special messages for path segment keywords in wrong positions.
-            if ident.is_path_segment_keyword() && segment_idx != 0 {
+            if ident.is_path_segment_keyword() && segment_idx != 0 && !allow_trailing_self {
                 return PathResult::failed(
                     ident,
                     false,
@@ -1857,6 +1938,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             (
                                 format!("global paths cannot start with {name_str}"),
                                 "cannot start with this".to_string(),
+                            )
+                        } else if name == kw::SelfLower {
+                            (
+                                format!(
+                                    "`self` in paths can only be used in start position or last position"
+                                ),
+                                "can only be used in path start position or last position"
+                                    .to_string(),
                             )
                         } else {
                             (
@@ -1948,7 +2037,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         record_segment_res(self.reborrow(), finalize, res, id);
                     } else if res == Res::ToolMod && !is_last && opt_ns.is_some() {
                         if binding.is_import() {
-                            self.dcx().emit_err(errors::ToolModuleImported {
+                            self.dcx().emit_err(diagnostics::ToolModuleImported {
                                 span: ident.span,
                                 import: binding.span,
                             });
@@ -1979,7 +2068,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             module,
                             || {
                                 let import_inherent_item_error_flag =
-                                    self.tcx.features().import_trait_associated_functions()
+                                    self.features.import_trait_associated_functions()
                                         && matches!(
                                             res,
                                             Res::Def(

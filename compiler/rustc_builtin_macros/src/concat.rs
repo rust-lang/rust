@@ -4,7 +4,7 @@ use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpa
 use rustc_session::errors::report_lit_error;
 use rustc_span::Symbol;
 
-use crate::errors;
+use crate::diagnostics;
 use crate::util::get_exprs_from_tts;
 
 pub(crate) fn expand_concat(
@@ -38,10 +38,10 @@ pub(crate) fn expand_concat(
                     accumulator.push_str(&b.to_string());
                 }
                 Ok(LitKind::CStr(..)) => {
-                    guar = Some(cx.dcx().emit_err(errors::ConcatCStrLit { span: e.span }));
+                    guar = Some(cx.dcx().emit_err(diagnostics::ConcatCStrLit { span: e.span }));
                 }
                 Ok(LitKind::Byte(..) | LitKind::ByteStr(..)) => {
-                    guar = Some(cx.dcx().emit_err(errors::ConcatBytestr { span: e.span }));
+                    guar = Some(cx.dcx().emit_err(diagnostics::ConcatBytestr { span: e.span }));
                 }
                 Ok(LitKind::Err(guarantee)) => {
                     guar = Some(guarantee);
@@ -62,7 +62,7 @@ pub(crate) fn expand_concat(
                 }
             }
             ExprKind::IncludedBytes(..) => {
-                cx.dcx().emit_err(errors::ConcatBytestr { span: e.span });
+                cx.dcx().emit_err(diagnostics::ConcatBytestr { span: e.span });
             }
             ExprKind::Err(guarantee) => {
                 guar = Some(guarantee);
@@ -75,7 +75,7 @@ pub(crate) fn expand_concat(
     }
 
     ExpandResult::Ready(if !missing_literal.is_empty() {
-        let guar = cx.dcx().emit_err(errors::ConcatMissingLiteral { spans: missing_literal });
+        let guar = cx.dcx().emit_err(diagnostics::ConcatMissingLiteral { spans: missing_literal });
         DummyResult::any(sp, guar)
     } else if let Some(guar) = guar {
         DummyResult::any(sp, guar)

@@ -1886,7 +1886,7 @@ fn test_align_to_empty_mid() {
     type Chunk = u32;
     for offset in 0..4 {
         let (_, mid, _) = unsafe { bytes[offset..offset + 1].align_to::<Chunk>() };
-        assert_eq!(mid.as_ptr() as usize % align_of::<Chunk>(), 0);
+        assert_eq!(mid.as_ptr().addr() % align_of::<Chunk>(), 0);
     }
 }
 

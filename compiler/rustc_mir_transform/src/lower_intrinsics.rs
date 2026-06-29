@@ -35,7 +35,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             terminator.source_info,
                             StatementKind::Assign(Box::new((
                                 *destination,
-                                Rvalue::Use(Operand::RuntimeChecks(op)),
+                                Rvalue::Use(Operand::RuntimeChecks(op), WithRetag::Yes),
                             ))),
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
@@ -46,11 +46,14 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             terminator.source_info,
                             StatementKind::Assign(Box::new((
                                 *destination,
-                                Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-                                    span: terminator.source_info.span,
-                                    user_ty: None,
-                                    const_: Const::zero_sized(tcx.types.unit),
-                                }))),
+                                Rvalue::Use(
+                                    Operand::Constant(Box::new(ConstOperand {
+                                        span: terminator.source_info.span,
+                                        user_ty: None,
+                                        const_: Const::zero_sized(tcx.types.unit),
+                                    })),
+                                    WithRetag::Yes,
+                                ),
                             ))),
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
@@ -165,7 +168,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             terminator.source_info,
                             StatementKind::Assign(Box::new((
                                 *destination,
-                                Rvalue::Use(Operand::Copy(derefed_place)),
+                                Rvalue::Use(Operand::Copy(derefed_place), WithRetag::Yes),
                             ))),
                         ));
                         terminator.kind = match *target {

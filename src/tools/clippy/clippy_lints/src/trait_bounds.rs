@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
+use clippy_utils::source::{SpanExt, snippet, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, SpanlessHash, is_from_proc_macro};
 use core::hash::{Hash, Hasher};
 use itertools::Itertools;
@@ -15,7 +15,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -115,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         // special handling for self trait bounds as these are not considered generics
         // i.e. trait Foo: Display {}
         if let Item {
-            kind: ItemKind::Trait(_, _, _, _, _, _, bounds, ..),
+            kind: ItemKind::Trait { bounds, .. },
             ..
         } = item
         {
@@ -136,7 +136,9 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     ..
                 }) = segments.first()
                 && let Some(Node::Item(Item {
-                    kind: ItemKind::Trait(_, _, _, _, _, _, self_bounds, _),
+                    kind: ItemKind::Trait {
+                        bounds: self_bounds, ..
+                    },
                     ..
                 })) = cx.tcx.hir_get_if_local(*def_id)
             {
@@ -155,9 +157,11 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     .filter_map(get_trait_info_from_bound)
                     .for_each(|(trait_item_res, trait_item_segments, span)| {
                         if let Some(self_segments) = self_bounds_map.get(&trait_item_res)
-                            && SpanlessEq::new(cx)
-                                .paths_by_resolution()
-                                .eq_path_segments(self_segments, trait_item_segments)
+                            && SpanlessEq::new(cx).paths_by_resolution().eq_path_segments(
+                                SyntaxContext::root(),
+                                self_segments,
+                                trait_item_segments,
+                            )
                         {
                             span_lint_and_help(
                                 cx,
@@ -208,10 +212,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     bounds_span = bounds_span.to(bound.span);
                 }
 
-                let fixed_trait_snippet = unique_traits
-                    .iter()
-                    .filter_map(|b| b.span.get_source_text(cx))
-                    .join(" + ");
+                let fixed_trait_snippet = unique_traits.iter().filter_map(|b| b.span.get_text(cx)).join(" + ");
 
                 span_lint_and_sugg(
                     cx,
@@ -250,7 +251,7 @@ impl TraitBounds {
         impl PartialEq for SpanlessTy<'_, '_> {
             fn eq(&self, other: &Self) -> bool {
                 let mut eq = SpanlessEq::new(self.cx);
-                eq.inter_expr().eq_ty(self.ty, other.ty)
+                eq.inter_expr(SyntaxContext::root()).eq_ty(self.ty, other.ty)
             }
         }
         impl Hash for SpanlessTy<'_, '_> {
@@ -380,9 +381,11 @@ struct ComparableTraitRef<'a, 'tcx> {
 impl PartialEq for ComparableTraitRef<'_, '_> {
     fn eq(&self, other: &Self) -> bool {
         SpanlessEq::eq_modifiers(self.modifiers, other.modifiers)
-            && SpanlessEq::new(self.cx)
-                .paths_by_resolution()
-                .eq_path(self.trait_ref.path, other.trait_ref.path)
+            && SpanlessEq::new(self.cx).paths_by_resolution().eq_path(
+                SyntaxContext::root(),
+                self.trait_ref.path,
+                other.trait_ref.path,
+            )
     }
 }
 impl Eq for ComparableTraitRef<'_, '_> {}
@@ -445,7 +448,7 @@ fn rollup_traits<'cx, 'tcx>(
 
         let traits = comparable_bounds
             .iter()
-            .filter_map(|&(_, span)| span.get_source_text(cx))
+            .filter_map(|&(_, span)| span.get_text(cx))
             .join(" + ");
 
         span_lint_and_sugg(

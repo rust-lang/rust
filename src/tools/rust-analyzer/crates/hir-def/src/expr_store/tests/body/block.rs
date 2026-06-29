@@ -199,6 +199,11 @@ fn f() {
                         4401,
                     ),
                 ),
+                containing_module_inside_def_map: None,
+                name_or_empty: Name {
+                    symbol: "",
+                    ctx: (),
+                },
             }"#]],
     );
 }

@@ -36,9 +36,9 @@ fn build2<T>(x: T) -> impl Sized {
 // Not allowed today. Detected as not defining.
 fn build3<T>(x: T) -> impl Sized {
     //[current]~^ ERROR cannot resolve opaque type
+    //[next]~^^ ERROR type annotations needed
     let (x,) = (build3((x,)),);
     build3(x)
-    //[next]~^ ERROR type annotations needed
 }
 
 fn main() {}

@@ -5,29 +5,29 @@ use std::io::Write;
 use rustfix::{Filter, apply_suggestions, get_suggestions_from_json};
 use tracing::debug;
 
+use crate::common::PassFailMode;
 use crate::json;
 use crate::runtest::{
-    AllowUnused, Emit, FailMode, LinkToAux, PassMode, ProcRes, RunFailMode, RunResult,
-    TargetLocation, TestCx, TestOutput, Truncated, UI_FIXED, WillExecute,
+    AllowUnused, Emit, LinkToAux, ProcRes, RunResult, TargetLocation, TestCx, TestOutput,
+    Truncated, UI_FIXED, WillExecute,
 };
 
 impl TestCx<'_> {
     pub(super) fn run_ui_test(&self) {
-        if let Some(FailMode::Build) = self.props.fail_mode {
+        let pass_fail =
+            self.effective_pass_fail_mode().expect("UI tests always have a pass/fail mode");
+
+        if pass_fail == PassFailMode::BuildFail {
             // Make sure a build-fail test cannot fail due to failing analysis (e.g. typeck).
             let proc_res = self.compile_test(WillExecute::No, Emit::Metadata);
-            self.check_if_test_should_compile(
-                self.props.fail_mode,
-                Some(PassMode::Check),
-                &proc_res,
-            );
+            self.check_if_test_should_compile(PassFailMode::CheckPass, &proc_res);
         }
 
-        let pm = self.pass_mode();
-        let should_run = self.should_run(pm);
-        let emit_metadata = self.should_emit_metadata(pm);
-        let proc_res = self.compile_test(should_run, emit_metadata);
-        self.check_if_test_should_compile(self.props.fail_mode, pm, &proc_res);
+        let will_execute = if pass_fail.is_run() { self.run_if_enabled() } else { WillExecute::No };
+        let emit_metadata = if pass_fail.is_check() { Emit::Metadata } else { Emit::None };
+        let proc_res = self.compile_test(will_execute, emit_metadata);
+        self.check_if_test_should_compile(pass_fail, &proc_res);
+
         if matches!(proc_res.truncated, Truncated::Yes)
             && !self.props.dont_check_compiler_stdout
             && !self.props.dont_check_compiler_stderr
@@ -136,7 +136,7 @@ impl TestCx<'_> {
         // If the test is executed, capture its ProcRes separately so that
         // pattern/forbid checks can report the *runtime* stdout/stderr when they fail.
         let mut run_proc_res: Option<ProcRes> = None;
-        let output_to_check = if let WillExecute::Yes = should_run {
+        let output_to_check = if will_execute == WillExecute::Yes {
             let proc_res = self.exec_compiled_test();
             let run_output_errors = if self.props.check_run_results {
                 self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
@@ -157,45 +157,61 @@ impl TestCx<'_> {
             } else {
                 RunResult::Crash
             };
+
             // Help users understand why the test failed by including the actual
             // exit code and actual run result in the failure message.
             let pass_hint = format!("code={code:?} so test would pass with `{run_result}`");
-            if self.should_run_successfully(pm) {
-                if run_result != RunResult::Pass {
-                    self.fatal_proc_rec(
-                        &format!("test did not exit with success! {pass_hint}"),
-                        &proc_res,
-                    );
+            match pass_fail {
+                PassFailMode::CheckFail
+                | PassFailMode::CheckPass
+                | PassFailMode::BuildFail
+                | PassFailMode::BuildPass => {
+                    unreachable!("test program should not have run in mode {pass_fail:?}")
                 }
-            } else if self.props.fail_mode == Some(FailMode::Run(RunFailMode::Fail)) {
-                // If the test is marked as `run-fail` but do not support
-                // unwinding we allow it to crash, since a panic will trigger an
-                // abort (crash) instead of unwind (exit with code 101).
-                let crash_ok = !self.config.can_unwind();
-                if run_result != RunResult::Fail && !(crash_ok && run_result == RunResult::Crash) {
-                    let err = if crash_ok {
-                        format!(
-                            "test did not exit with failure or crash (`{}` can't unwind)! {pass_hint}",
-                            self.config.target
-                        )
-                    } else {
-                        format!("test did not exit with failure! {pass_hint}")
-                    };
-                    self.fatal_proc_rec(&err, &proc_res);
+
+                PassFailMode::RunPass => {
+                    if run_result != RunResult::Pass {
+                        self.fatal_proc_rec(
+                            &format!("test did not exit with success! {pass_hint}"),
+                            &proc_res,
+                        );
+                    }
                 }
-            } else if self.props.fail_mode == Some(FailMode::Run(RunFailMode::Crash)) {
-                if run_result != RunResult::Crash {
-                    self.fatal_proc_rec(&format!("test did not crash! {pass_hint}"), &proc_res);
+
+                PassFailMode::RunFail => {
+                    // If the test is marked as `run-fail` but do not support
+                    // unwinding we allow it to crash, since a panic will trigger an
+                    // abort (crash) instead of unwind (exit with code 101).
+                    let crash_ok = !self.config.can_unwind();
+                    if run_result != RunResult::Fail
+                        && !(crash_ok && run_result == RunResult::Crash)
+                    {
+                        let err = if crash_ok {
+                            format!(
+                                "test did not exit with failure or crash (`{}` can't unwind)! {pass_hint}",
+                                self.config.target
+                            )
+                        } else {
+                            format!("test did not exit with failure! {pass_hint}")
+                        };
+                        self.fatal_proc_rec(&err, &proc_res);
+                    }
                 }
-            } else if self.props.fail_mode == Some(FailMode::Run(RunFailMode::FailOrCrash)) {
-                if run_result != RunResult::Fail && run_result != RunResult::Crash {
-                    self.fatal_proc_rec(
-                        &format!("test did not exit with failure or crash! {pass_hint}"),
-                        &proc_res,
-                    );
+
+                PassFailMode::RunCrash => {
+                    if run_result != RunResult::Crash {
+                        self.fatal_proc_rec(&format!("test did not crash! {pass_hint}"), &proc_res);
+                    }
                 }
-            } else {
-                unreachable!("run_ui_test() must not be called if the test should not run");
+
+                PassFailMode::RunFailOrCrash => {
+                    if run_result != RunResult::Fail && run_result != RunResult::Crash {
+                        self.fatal_proc_rec(
+                            &format!("test did not exit with failure or crash! {pass_hint}"),
+                            &proc_res,
+                        );
+                    }
+                }
             }
 
             let output = self.get_output(&proc_res);

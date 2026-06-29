@@ -31,7 +31,7 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
             for statement in basic_block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::AscribeUserType(..)
-                    | StatementKind::Assign(box (_, Rvalue::Ref(_, BorrowKind::Fake(_), _)))
+                    | StatementKind::Assign((_, Rvalue::Ref(_, BorrowKind::Fake(_), _)))
                     | StatementKind::Coverage(
                         // These kinds of coverage statements are markers inserted during
                         // MIR building, and are not needed after InstrumentCoverage.
@@ -41,7 +41,7 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
                     | StatementKind::BackwardIncompatibleDropHint { .. } => {
                         statement.make_nop(true)
                     }
-                    StatementKind::Assign(box (
+                    StatementKind::Assign((
                         _,
                         Rvalue::Cast(
                             ref mut cast_kind @ CastKind::PointerCoercion(

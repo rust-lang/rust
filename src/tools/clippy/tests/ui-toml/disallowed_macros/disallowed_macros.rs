@@ -1,8 +1,6 @@
 //@aux-build:macros.rs
 //@aux-build:proc_macros.rs
 
-#![allow(unused)]
-
 extern crate macros;
 extern crate proc_macros;
 

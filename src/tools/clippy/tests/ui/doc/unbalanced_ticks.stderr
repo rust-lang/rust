@@ -1,5 +1,5 @@
 error: backticks are unbalanced
-  --> tests/ui/doc/unbalanced_ticks.rs:7:5
+  --> tests/ui/doc/unbalanced_ticks.rs:6:5
    |
 LL |   /// This is a doc comment with `unbalanced_tick marks and several words that
    |  _____^
@@ -14,7 +14,7 @@ LL | | /// very `confusing_and_misleading`.
    = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
 
 error: backticks are unbalanced
-  --> tests/ui/doc/unbalanced_ticks.rs:14:5
+  --> tests/ui/doc/unbalanced_ticks.rs:13:5
    |
 LL | /// This paragraph has `unbalanced_tick marks and should stop_linting.
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL | /// This paragraph has `unbalanced_tick marks and should stop_linting.
    = help: a backtick may be missing a pair
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/unbalanced_ticks.rs:17:32
+  --> tests/ui/doc/unbalanced_ticks.rs:16:32
    |
 LL | /// This paragraph is fine and should_be linted normally.
    |                                ^^^^^^^^^
@@ -34,7 +34,7 @@ LL + /// This paragraph is fine and `should_be` linted normally.
    |
 
 error: backticks are unbalanced
-  --> tests/ui/doc/unbalanced_ticks.rs:20:5
+  --> tests/ui/doc/unbalanced_ticks.rs:19:5
    |
 LL | /// Double unbalanced backtick from ``here to here` should lint.
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ LL | /// Double unbalanced backtick from ``here to here` should lint.
    = help: a backtick may be missing a pair
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/unbalanced_ticks.rs:34:8
+  --> tests/ui/doc/unbalanced_ticks.rs:33:8
    |
 LL | /// ## not_fine
    |        ^^^^^^^^
@@ -54,7 +54,7 @@ LL + /// ## `not_fine`
    |
 
 error: backticks are unbalanced
-  --> tests/ui/doc/unbalanced_ticks.rs:37:5
+  --> tests/ui/doc/unbalanced_ticks.rs:36:5
    |
 LL | /// ### `unbalanced
    |     ^^^^^^^^^^^^^^^
@@ -62,7 +62,7 @@ LL | /// ### `unbalanced
    = help: a backtick may be missing a pair
 
 error: backticks are unbalanced
-  --> tests/ui/doc/unbalanced_ticks.rs:40:5
+  --> tests/ui/doc/unbalanced_ticks.rs:39:5
    |
 LL | /// - This `item has unbalanced tick marks
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL | /// - This `item has unbalanced tick marks
    = help: a backtick may be missing a pair
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/unbalanced_ticks.rs:42:23
+  --> tests/ui/doc/unbalanced_ticks.rs:41:23
    |
 LL | /// - This item needs backticks_here
    |                       ^^^^^^^^^^^^^^
@@ -82,7 +82,7 @@ LL + /// - This item needs `backticks_here`
    |
 
 error: backticks are unbalanced
-  --> tests/ui/doc/unbalanced_ticks.rs:53:5
+  --> tests/ui/doc/unbalanced_ticks.rs:52:5
    |
 LL | /// `
    |     ^
@@ -90,7 +90,7 @@ LL | /// `
    = help: a backtick may be missing a pair
 
 error: backticks are unbalanced
-  --> tests/ui/doc/unbalanced_ticks.rs:63:5
+  --> tests/ui/doc/unbalanced_ticks.rs:62:5
    |
 LL | /// Escaped \` ` backticks don't count, but unescaped backticks do.
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,7 +98,7 @@ LL | /// Escaped \` ` backticks don't count, but unescaped backticks do.
    = help: a backtick may be missing a pair
 
 error: backticks are unbalanced
-  --> tests/ui/doc/unbalanced_ticks.rs:79:9
+  --> tests/ui/doc/unbalanced_ticks.rs:78:9
    |
 LL |       /// `Month::from_i64(n: i64)`: | `1`                  | `2`                   | ... | `12`
    |  _________^

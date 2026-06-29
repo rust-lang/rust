@@ -1,8 +1,7 @@
-//~ ERROR: cycle detected when computing layout of
-
 use std::mem;
 
 pub struct S<T: Tr> {
+    //~^ ERROR: cycle detected when computing layout of
     pub f: <T as Tr>::I,
 }
 

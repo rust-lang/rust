@@ -33,6 +33,7 @@ use rustc_span::def_id::DefId;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 
+use crate::abi::FnAbiGccExt;
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
 use crate::errors;
@@ -213,6 +214,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         _typ: &str,
         func_ptr: RValue<'gcc>,
         args: &'b [RValue<'gcc>],
+        on_stack_param_indices: &FxHashSet<usize>,
     ) -> Cow<'b, [RValue<'gcc>]> {
         let mut all_args_match = true;
         let mut param_types = vec![];
@@ -223,11 +225,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 all_args_match = false;
             }
             param_types.push(param);
-        }
-
-        let mut on_stack_param_indices = FxHashSet::default();
-        if let Some(indices) = self.on_stack_params.borrow().get(&gcc_func) {
-            on_stack_param_indices.clone_from(indices);
         }
 
         if all_args_match {
@@ -351,19 +348,24 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     fn function_ptr_call(
         &mut self,
         typ: Type<'gcc>,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         mut func_ptr: RValue<'gcc>,
         args: &[RValue<'gcc>],
         _funclet: Option<&Funclet>,
     ) -> RValue<'gcc> {
-        let gcc_func = match func_ptr.get_type().dyncast_function_ptr_type() {
-            Some(func) => func,
-            None => {
-                // NOTE: due to opaque pointers now being used, we need to cast here.
-                let new_func_type = typ.dyncast_function_ptr_type().expect("function ptr");
+        let func_ptr_type = {
+            let func_ptr_type = func_ptr.get_type();
+            if func_ptr_type != typ {
                 func_ptr = self.context.new_cast(self.location, func_ptr, typ);
-                new_func_type
+                typ
+            } else {
+                func_ptr_type
             }
         };
+        let gcc_func = func_ptr_type.dyncast_function_ptr_type().expect("function ptr");
+        let on_stack_param_indices = fn_abi
+            .map(|fn_abi| fn_abi.gcc_type(self.cx).on_stack_param_indices)
+            .unwrap_or_default();
         let func_name = format!("{:?}", func_ptr);
         let previous_arg_count = args.len();
         let orig_args = args;
@@ -372,7 +374,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             llvm::adjust_intrinsic_arguments(self, gcc_func, args.into(), &func_name)
         };
         let args_adjusted = args.len() != previous_arg_count;
-        let args = self.check_ptr_call("call", func_ptr, &args);
+        let args = self.check_ptr_call("call", func_ptr, &args, &on_stack_param_indices);
 
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
@@ -599,7 +601,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         &mut self,
         typ: Type<'gcc>,
         fn_attrs: Option<&CodegenFnAttrs>,
-        _fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
@@ -611,7 +613,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         let current_block = self.block;
         self.block = try_block;
-        let call = self.call(typ, fn_attrs, None, func, args, None, instance); // FIXME(antoyo): use funclet here?
+        let call = self.call(typ, fn_attrs, fn_abi, func, args, None, instance); // FIXME(antoyo): use funclet here?
         self.block = current_block;
 
         let return_value =
@@ -645,7 +647,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _funclet: Option<&Funclet>,
         instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
-        let call_site = self.call(typ, fn_attrs, None, func, args, None, instance);
+        let call_site = self.call(typ, fn_attrs, fn_abi, func, args, None, instance);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(self.location, condition, then, catch);
         if let Some(_fn_abi) = fn_abi {
@@ -991,7 +993,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         loaded_value.to_rvalue()
     }
 
-    fn volatile_load(&mut self, ty: Type<'gcc>, ptr: RValue<'gcc>) -> RValue<'gcc> {
+    fn volatile_load(&mut self, ty: Type<'gcc>, ptr: RValue<'gcc>, _: Align) -> RValue<'gcc> {
+        // FIXME(antoyo): set alignment.
         let ptr = self.context.new_cast(self.location, ptr, ty.make_volatile().make_pointer());
         // (FractalFir): We insert a local here, to ensure this volatile load can't move across
         // blocks.
@@ -1457,6 +1460,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         );
     }
 
+    fn vscale(&mut self, _: Self::Type) -> Self::Value {
+        unimplemented!("`rustc_codegen_gcc` doesn't support scalable vectors yet")
+    }
+
     fn select(
         &mut self,
         cond: RValue<'gcc>,
@@ -1657,6 +1664,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
+    fn get_funclet_cleanuppad(&self, _funclet: &Funclet) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
     // Atomic Operations
     fn atomic_cmpxchg(
         &mut self,
@@ -1773,7 +1784,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             self.function_call(func, args, funclet)
         } else {
             // If it's a not function that was defined, it's a function pointer.
-            self.function_ptr_call(typ, func, args, funclet)
+            self.function_ptr_call(typ, fn_abi, func, args, funclet)
         };
         if let Some(_fn_abi) = fn_abi {
             // FIXME(bjorn3): Apply function attributes
@@ -2313,65 +2324,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.vector_extremum(a, b, ExtremumOperation::Min)
     }
 
-    #[cfg(feature = "master")]
-    pub fn vector_reduce_fmin(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
-        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
-        let element_count = vector_type.get_num_units();
-        let mut acc = self
-            .context
-            .new_vector_access(self.location, src, self.context.new_rvalue_zero(self.int_type))
-            .to_rvalue();
-        for i in 1..element_count {
-            let elem = self
-                .context
-                .new_vector_access(
-                    self.location,
-                    src,
-                    self.context.new_rvalue_from_int(self.int_type, i as _),
-                )
-                .to_rvalue();
-            let cmp = self.context.new_comparison(self.location, ComparisonOp::LessThan, acc, elem);
-            acc = self.select(cmp, acc, elem);
-        }
-        acc
-    }
-
-    #[cfg(not(feature = "master"))]
-    pub fn vector_reduce_fmin(&mut self, _src: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
-    }
-
     pub fn vector_maximum_number_nsz(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.vector_extremum(a, b, ExtremumOperation::Max)
-    }
-
-    #[cfg(feature = "master")]
-    pub fn vector_reduce_fmax(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
-        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
-        let element_count = vector_type.get_num_units();
-        let mut acc = self
-            .context
-            .new_vector_access(self.location, src, self.context.new_rvalue_zero(self.int_type))
-            .to_rvalue();
-        for i in 1..element_count {
-            let elem = self
-                .context
-                .new_vector_access(
-                    self.location,
-                    src,
-                    self.context.new_rvalue_from_int(self.int_type, i as _),
-                )
-                .to_rvalue();
-            let cmp =
-                self.context.new_comparison(self.location, ComparisonOp::GreaterThan, acc, elem);
-            acc = self.select(cmp, acc, elem);
-        }
-        acc
-    }
-
-    #[cfg(not(feature = "master"))]
-    pub fn vector_reduce_fmax(&mut self, _src: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
     }
 
     pub fn vector_select(

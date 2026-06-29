@@ -30,6 +30,20 @@ pub(crate) fn line_directive<'a>(
 
         revision = Some(line_revision);
         raw_directive = after_close_bracket.trim_start();
+
+        if line_revision.contains(",") {
+            let suggestion: Vec<_> = line_revision
+                .split(",")
+                .map(|revision| {
+                    format!("{COMPILETEST_DIRECTIVE_PREFIX} [{revision}]: {raw_directive}")
+                })
+                .collect();
+            panic!(
+                "malformed condition directive: multiple revisions aren't supported yet in `{}`, split them like\n{}",
+                original_line,
+                suggestion.join("\n"),
+            );
+        }
     } else {
         revision = None;
         raw_directive = after_comment;

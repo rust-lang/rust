@@ -1,5 +1,5 @@
 error: it is more concise to loop over containers instead of using explicit iteration methods
-  --> tests/ui/explicit_into_iter_loop.rs:10:18
+  --> tests/ui/explicit_into_iter_loop.rs:9:18
    |
 LL |         for _ in iterator.into_iter() {}
    |                  ^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `iterator`
@@ -8,37 +8,37 @@ LL |         for _ in iterator.into_iter() {}
    = help: to override `-D warnings` add `#[allow(clippy::explicit_into_iter_loop)]`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
-  --> tests/ui/explicit_into_iter_loop.rs:24:14
+  --> tests/ui/explicit_into_iter_loop.rs:23:14
    |
 LL |     for _ in t.into_iter() {}
    |              ^^^^^^^^^^^^^ help: to write this more concisely, try: `&t`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
-  --> tests/ui/explicit_into_iter_loop.rs:28:14
+  --> tests/ui/explicit_into_iter_loop.rs:27:14
    |
 LL |     for _ in r.into_iter() {}
    |              ^^^^^^^^^^^^^ help: to write this more concisely, try: `r`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
-  --> tests/ui/explicit_into_iter_loop.rs:37:14
+  --> tests/ui/explicit_into_iter_loop.rs:36:14
    |
 LL |     for _ in mr.into_iter() {}
    |              ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&*mr`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
-  --> tests/ui/explicit_into_iter_loop.rs:50:14
+  --> tests/ui/explicit_into_iter_loop.rs:49:14
    |
 LL |     for _ in u.into_iter() {}
    |              ^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut u`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
-  --> tests/ui/explicit_into_iter_loop.rs:54:14
+  --> tests/ui/explicit_into_iter_loop.rs:53:14
    |
 LL |     for _ in mr.into_iter() {}
    |              ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut *mr`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
-  --> tests/ui/explicit_into_iter_loop.rs:84:14
+  --> tests/ui/explicit_into_iter_loop.rs:83:14
    |
 LL |     for _ in dbg!([1, 2]).into_iter() {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `dbg!([1, 2])`

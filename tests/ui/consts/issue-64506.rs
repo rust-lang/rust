@@ -14,7 +14,7 @@ const FOO: () = {
         b: (),
     }
     let x = unsafe { Foo { b: () }.a };
-    //~^ ERROR: value of uninhabited type
+    //~^ ERROR: value of zero-variant enum
     let x = &x.inner;
 };
 

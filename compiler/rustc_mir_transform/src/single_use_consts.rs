@@ -35,7 +35,7 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
             locals_in_debug_info: DenseBitSet::new_empty(body.local_decls.len()),
         };
 
-        finder.ineligible_locals.insert_range(..=Local::from_usize(body.arg_count));
+        finder.ineligible_locals.insert_range(..Local::arg(body.arg_count));
 
         finder.visit_body(body);
 
@@ -59,7 +59,7 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
             };
             let (place, rvalue) = *place_and_rvalue;
             assert_eq!(place.as_local(), Some(local));
-            let Rvalue::Use(operand) = rvalue else { bug!("No longer a use?") };
+            let Rvalue::Use(operand, _) = rvalue else { bug!("No longer a use?") };
 
             let mut replacer = LocalReplacer { tcx, local, operand: Some(operand) };
 
@@ -114,7 +114,7 @@ struct SingleUseConstsFinder {
 impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Some(local) = place.as_local()
-            && let Rvalue::Use(operand) = rvalue
+            && let Rvalue::Use(operand, _) = rvalue
             && let Operand::Constant(_) = operand
         {
             let locations = &mut self.locations[local];

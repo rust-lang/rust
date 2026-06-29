@@ -1,13 +1,12 @@
 use std::ops::Range;
 
 use rustc_abi::Size;
-use rustc_middle::mir;
 use rustc_middle::ty::{ExistentialTraitRef, Instance, Ty};
-use rustc_span::{SourceFile, Span, Symbol};
+use rustc_span::{BytePos, SourceFile, Span, Symbol};
 use rustc_target::callconv::FnAbi;
 
 use super::BackendTypes;
-use crate::mir::debuginfo::{FunctionDebugContext, VariableKind};
+use crate::mir::debuginfo::VariableKind;
 
 pub trait DebugInfoCodegenMethods<'tcx>: BackendTypes {
     fn create_vtable_debuginfo(
@@ -17,17 +16,13 @@ pub trait DebugInfoCodegenMethods<'tcx>: BackendTypes {
         vtable: Self::Value,
     );
 
-    /// Creates the function-specific debug context.
-    ///
-    /// Returns the FunctionDebugContext for the function which holds state needed
-    /// for debug info creation, if it is enabled.
-    fn create_function_debug_context(
+    fn dbg_create_lexical_block(&self, pos: BytePos, parent_scope: Self::DIScope) -> Self::DIScope;
+
+    fn dbg_location_clone_with_discriminator(
         &self,
-        instance: Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        llfn: Self::Function,
-        mir: &mir::Body<'tcx>,
-    ) -> Option<FunctionDebugContext<'tcx, Self::DIScope, Self::DILocation>>;
+        loc: Self::DILocation,
+        discriminator: u32,
+    ) -> Option<Self::DILocation>;
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).

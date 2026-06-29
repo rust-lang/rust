@@ -5,19 +5,19 @@ LL | use crate::both::private::S;
    |                           ^ private struct import
    |
 note: the struct import `S` is defined here...
-  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:8:24
+  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:7:13
    |
-LL |         pub(super) use crate::m::*;
-   |                        ^^^^^^^^^^^
+LL |         use crate::m::*;
+   |             ^^^^^^^^^^^
 note: ...and refers to the struct `S` which is defined here
   --> $DIR/ambiguous-import-visibility-globglob-priv.rs:2:5
    |
 LL |     pub struct S {}
    |     ^^^^^^^^^^^^ you could import this directly
-help: import `S` through the re-export
+help: import `S` directly
    |
 LL - use crate::both::private::S;
-LL + use m::S;
+LL + use crate::m::S;
    |
 
 error[E0603]: struct import `S` is private
@@ -27,19 +27,19 @@ LL |     use crate::both::private::S;
    |                               ^ private struct import
    |
 note: the struct import `S` is defined here...
-  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:8:24
+  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:7:13
    |
-LL |         pub(super) use crate::m::*;
-   |                        ^^^^^^^^^^^
+LL |         use crate::m::*;
+   |             ^^^^^^^^^^^
 note: ...and refers to the struct `S` which is defined here
   --> $DIR/ambiguous-import-visibility-globglob-priv.rs:2:5
    |
 LL |     pub struct S {}
    |     ^^^^^^^^^^^^ you could import this directly
-help: import `S` through the re-export
+help: import `S` directly
    |
 LL -     use crate::both::private::S;
-LL +     use m::S;
+LL +     use crate::m::S;
    |
 
 error: aborting due to 2 previous errors

@@ -1,4 +1,5 @@
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-strict-provenance
 
@@ -185,12 +186,12 @@ fn atomic_ptr() {
 }
 
 fn weak_sometimes_fails() {
-    let atomic = AtomicBool::new(false);
+    let atomic = AtomicUsize::new(0);
     let tries = 100;
     for _ in 0..tries {
         let cur = atomic.load(Relaxed);
-        // Try (weakly) to flip the flag.
-        if atomic.compare_exchange_weak(cur, !cur, Relaxed, Relaxed).is_err() {
+        // Try (weakly) to modify the flag.
+        if atomic.compare_exchange_weak(cur, cur + 1, Relaxed, Relaxed).is_err() {
             // We failed, so return and skip the panic.
             return;
         }

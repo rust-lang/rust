@@ -7,7 +7,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{CrateType, EntryFnType, sigpipe};
 use rustc_span::{RemapPathScopeComponents, Span};
 
-use crate::errors::{ExternMain, MultipleRustcMain, NoMainErr};
+use crate::diagnostics::{ExternMain, MultipleRustcMain, NoMainErr};
 
 struct EntryContext<'tcx> {
     tcx: TyCtxt<'tcx>,

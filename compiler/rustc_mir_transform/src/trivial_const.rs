@@ -59,6 +59,18 @@ where
         return None;
     }
 
+    // If there are impossible predicates then MIR passes will replace the body with
+    // `unreachable` causing const eval errors when trying to evaluate the body. For
+    // now we avoid using trivial consts for such bodies so that the behaviour doesn't
+    // change.
+    if crate::impossible_predicates::has_impossible_predicates(tcx, def.into()) {
+        return None;
+    }
+
+    if !tcx.opaque_types_defined_by(def).is_empty() {
+        return None;
+    }
+
     let body = body_provider();
 
     if body.has_opaque_types() {
@@ -78,7 +90,7 @@ where
         return None;
     }
 
-    let StatementKind::Assign(box (place, rvalue)) = &block.statements[0].kind else {
+    let StatementKind::Assign((place, rvalue)) = &block.statements[0].kind else {
         return None;
     };
 
@@ -86,7 +98,7 @@ where
         return None;
     }
 
-    let Rvalue::Use(Operand::Constant(c)) = rvalue else {
+    let Rvalue::Use(Operand::Constant(c), _) = rvalue else {
         return None;
     };
     match c.const_ {

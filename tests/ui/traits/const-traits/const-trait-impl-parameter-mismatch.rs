@@ -14,7 +14,7 @@ const trait Main {
     fn compute<T: [const] Aux>() -> u32;
 }
 
-impl const Main for () {
+const impl Main for () {
     fn compute<'x>() -> u32 {
         //~^ ERROR associated function `compute` has 0 type parameters but its trait declaration has 1 type parameter
         0
@@ -23,7 +23,7 @@ impl const Main for () {
 
 const trait Aux {}
 
-impl const Aux for () {}
+const impl Aux for () {}
 
 fn main() {
     const _: u32 = <()>::compute::<()>();

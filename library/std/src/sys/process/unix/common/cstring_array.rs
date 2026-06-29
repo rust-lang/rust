@@ -35,10 +35,12 @@ impl CStringArray {
     /// Push an additional string to the array.
     pub fn push(&mut self, item: CString) {
         let argc = self.ptrs.len() - 1;
-        // Replace the null pointer at the end of the array...
-        self.ptrs[argc] = item.into_raw();
-        // ... and recreate it to restore the data structure invariant.
+        // Amend the array by another null pointer first, to ensure that the
+        // array is null-terminated even when the `push` panics, in which case
+        // the array will be left undisturbed (see #155748).
         self.ptrs.push(ptr::null());
+        // Now, replace the previous null pointer.
+        self.ptrs[argc] = item.into_raw();
     }
 
     /// Returns a pointer to the C-string array managed by this type.
@@ -90,6 +92,11 @@ impl Drop for CStringArray {
 pub struct CStringIter<'a> {
     iter: crate::slice::Iter<'a, *const c_char>,
 }
+
+// SAFETY: `CStringIter` is basically just a `slice::Iter<&'a CStr>`
+unsafe impl Send for CStringIter<'_> {}
+// SAFETY: `CStringIter` is basically just a `slice::Iter<&'a CStr>`
+unsafe impl Sync for CStringIter<'_> {}
 
 impl<'a> Iterator for CStringIter<'a> {
     type Item = &'a CStr;

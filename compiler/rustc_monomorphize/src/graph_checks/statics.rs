@@ -8,7 +8,7 @@ use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::TyCtxt;
 
 use crate::collector::UsageMap;
-use crate::errors;
+use crate::diagnostics;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 struct StaticNodeIdx(usize);
@@ -105,7 +105,7 @@ pub(super) fn check_static_initializers_are_acyclic<'tcx, 'a, 'b>(
         let head_def = statics[nodes[0].index()];
         let head_span = tcx.def_span(head_def);
 
-        tcx.dcx().emit_err(errors::StaticInitializerCyclic {
+        tcx.dcx().emit_err(diagnostics::StaticInitializerCyclic {
             span: head_span,
             labels: nodes.iter().map(|&n| tcx.def_span(statics[n.index()])).collect(),
             head: &tcx.def_path_str(head_def),

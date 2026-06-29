@@ -447,6 +447,10 @@ export class Config {
         return this.get<boolean>("initializeStopped");
     }
 
+    get projectCreationOpenAfterCreate() {
+        return this.get<string>("projectCreation.openAfterCreate");
+    }
+
     get askBeforeUpdateTest() {
         return this.get<boolean>("runnables.askBeforeUpdateTest");
     }

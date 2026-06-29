@@ -1,11 +1,10 @@
 //! Linux and Android-specific extensions to socket addresses.
 
 use crate::os::unix::net::SocketAddr;
-use crate::sealed::Sealed;
 
 /// Platform-specific extensions to [`SocketAddr`].
 #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
-pub trait SocketAddrExt: Sealed {
+pub impl(in crate::os) trait SocketAddrExt {
     /// Creates a Unix socket address in the abstract namespace.
     ///
     /// The abstract namespace is a Linux-specific extension that allows Unix

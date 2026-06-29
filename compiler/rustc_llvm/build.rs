@@ -273,6 +273,15 @@ fn main() {
         cfg.flag(&*flag);
     }
 
+    // Remap ci-llvm include paths in debug info for reproducible builds.
+    if let Some(maps) = tracked_env_var_os("RUSTC_DEBUGINFO_MAP")
+        && let Some(maps_str) = maps.to_str()
+    {
+        for map in maps_str.split('\t') {
+            cfg.flag_if_supported(&format!("-ffile-prefix-map={map}"));
+        }
+    }
+
     for component in &components {
         let mut flag = String::from("LLVM_COMPONENT_");
         flag.push_str(&component.to_uppercase());
@@ -401,6 +410,16 @@ fn main() {
         if name == "LLVMLineEditor" {
             continue;
         }
+
+        // On apple-darwin, llvm-config reports the versioned shared library name such as LLVM-22-..., but
+        // the distributed toolchain ships libLLVM.dylib. Normalize the link name here.
+        let name =
+            if target.contains("apple-darwin") && llvm_kind == "dylib" && name.starts_with("LLVM-")
+            {
+                "LLVM"
+            } else {
+                name
+            };
 
         let kind = if name.starts_with("LLVM") {
             llvm_kind

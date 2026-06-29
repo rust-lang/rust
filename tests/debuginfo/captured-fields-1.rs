@@ -1,6 +1,7 @@
 //@ compile-flags:-g
 //@ edition:2021
 //@ ignore-backends: gcc
+//@ min-lldb-version: 2100
 // === GDB TESTS ===================================================================================
 
 //@ gdb-command:run
@@ -27,22 +28,22 @@
 
 //@ lldb-command:run
 //@ lldb-command:v test
-//@ lldb-check:(captured_fields_1::main::{closure_env#0}) test = { _ref__my_ref__my_field1 = 0x[...] }
+//@ lldb-check:(captured_fields_1::main::{closure_env#0}) test = {_ref__my_ref__my_field1:0x[...]}
 //@ lldb-command:continue
 //@ lldb-command:v test
-//@ lldb-check:(captured_fields_1::main::{closure_env#1}) test = { _ref__my_ref__my_field2 = 0x[...] }
+//@ lldb-check:(captured_fields_1::main::{closure_env#1}) test = {_ref__my_ref__my_field2:0x[...]}
 //@ lldb-command:continue
 //@ lldb-command:v test
-//@ lldb-check:(captured_fields_1::main::{closure_env#2}) test = { _ref__my_ref = 0x[...] }
+//@ lldb-check:(captured_fields_1::main::{closure_env#2}) test = {_ref__my_ref:0x[...]}
 //@ lldb-command:continue
 //@ lldb-command:v test
-//@ lldb-check:(captured_fields_1::main::{closure_env#3}) test = { my_ref = 0x[...] }
+//@ lldb-check:(captured_fields_1::main::{closure_env#3}) test = {my_ref:{my_field1:11, my_field2:22}}
 //@ lldb-command:continue
 //@ lldb-command:v test
-//@ lldb-check:(captured_fields_1::main::{closure_env#4}) test = { my_var__my_field2 = 22 }
+//@ lldb-check:(captured_fields_1::main::{closure_env#4}) test = {my_var__my_field2:22}
 //@ lldb-command:continue
 //@ lldb-command:v test
-//@ lldb-check:(captured_fields_1::main::{closure_env#5}) test = { my_var = { my_field1 = 11 my_field2 = 22 } }
+//@ lldb-check:(captured_fields_1::main::{closure_env#5}) test = {my_var:{my_field1:11, my_field2:22}}
 //@ lldb-command:continue
 
 #![allow(unused)]

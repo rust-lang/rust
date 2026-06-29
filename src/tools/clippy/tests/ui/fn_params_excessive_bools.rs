@@ -1,5 +1,5 @@
 #![warn(clippy::fn_params_excessive_bools)]
-#![allow(clippy::too_many_arguments)]
+#![expect(clippy::too_many_arguments)]
 
 unsafe extern "C" {
     // Should not lint, most of the time users have no control over extern function signatures

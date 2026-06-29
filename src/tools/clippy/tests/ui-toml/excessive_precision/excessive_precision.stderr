@@ -1,11 +1,11 @@
 error: float has excessive precision
-  --> tests/ui-toml/excessive_precision/excessive_precision.rs:12:18
+  --> tests/ui-toml/excessive_precision/excessive_precision.rs:6:18
    |
 LL |     let _: f32 = 1.012345678901234567890;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: consider making it a `const` item
-  --> tests/ui-toml/excessive_precision/excessive_precision.rs:12:5
+  --> tests/ui-toml/excessive_precision/excessive_precision.rs:6:5
    |
 LL |     let _: f32 = 1.012345678901234567890;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -18,13 +18,13 @@ LL +     let _: f32 = 1.012_345_7;
    |
 
 error: float has excessive precision
-  --> tests/ui-toml/excessive_precision/excessive_precision.rs:14:18
+  --> tests/ui-toml/excessive_precision/excessive_precision.rs:8:18
    |
 LL |     let _: f64 = 1.012345678901234567890;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: consider making it a `const` item
-  --> tests/ui-toml/excessive_precision/excessive_precision.rs:14:5
+  --> tests/ui-toml/excessive_precision/excessive_precision.rs:8:5
    |
 LL |     let _: f64 = 1.012345678901234567890;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

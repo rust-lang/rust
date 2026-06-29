@@ -1,9 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 
-use gccjit::{
-    Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, Location, RValue, Type,
-};
+use gccjit::{Block, CType, Context, Function, FunctionType, LValue, Location, RValue, Type};
 use rustc_abi::{Align, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
@@ -21,7 +19,7 @@ use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 #[cfg(feature = "master")]
 use rustc_session::config::DebugInfo;
-use rustc_span::{DUMMY_SP, Span, respan};
+use rustc_span::{DUMMY_SP, Span, Symbol, respan};
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, TlsModel, X86Abi};
 
 #[cfg(feature = "master")]
@@ -100,8 +98,6 @@ pub struct CodegenCx<'gcc, 'tcx> {
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
     // FIXME(antoyo): improve the SSA API to not require those.
-    /// Mapping from function pointer type to indexes of on stack parameters.
-    pub on_stack_params: RefCell<FxHashMap<FunctionPtrType<'gcc>, FxHashSet<usize>>>,
     /// Mapping from function to indexes of on stack parameters.
     pub on_stack_function_params: RefCell<FxHashMap<Function<'gcc>, FxHashSet<usize>>>,
 
@@ -289,7 +285,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             instances: Default::default(),
             function_instances: Default::default(),
             intrinsic_instances: Default::default(),
-            on_stack_params: Default::default(),
             on_stack_function_params: Default::default(),
             vtables: Default::default(),
             const_globals: Default::default(),
@@ -491,16 +486,20 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if !self.functions.borrow().contains_key(entry_name) {
-            #[cfg(feature = "master")]
-            let conv = conv_to_fn_attribute(self.sess().target.entry_abi, &self.sess().target.arch);
-            #[cfg(not(feature = "master"))]
-            let conv = None;
+            let conv = cfg_select! {
+                feature = "master" => conv_to_fn_attribute(self.sess(), self.sess().target.entry_abi),
+                _ => None,
+            };
             Some(self.declare_entry_fn(entry_name, fn_type, conv))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
             None
         }
+    }
+
+    fn intrinsic_call_expects_place_always(&self, _name: Symbol) -> bool {
+        true
     }
 }
 

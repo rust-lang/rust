@@ -40,5 +40,13 @@ LL |     pub fn should_lint() -> ResInv<(), usize> {
    |
    = help: use a custom `Error` type instead
 
-error: aborting due to 5 previous errors
+error: this returns a `Result<_, ()>`
+  --> tests/ui/result_unit_error.rs:66:5
+   |
+LL |     pub async fn returns_unit_error_async() -> Result<u32, ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a custom `Error` type instead
+
+error: aborting due to 6 previous errors
 

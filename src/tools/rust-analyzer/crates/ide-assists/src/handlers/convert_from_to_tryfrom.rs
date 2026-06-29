@@ -33,7 +33,10 @@ use crate::{AssistContext, AssistId, Assists};
 //     }
 // }
 // ```
-pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_from_to_tryfrom(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let impl_ = ctx.find_node_at_offset::<ast::Impl>()?;
     let trait_ty = impl_.trait_()?;
 

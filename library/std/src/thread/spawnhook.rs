@@ -144,7 +144,7 @@ pub(super) struct ChildSpawnHooks {
 
 impl ChildSpawnHooks {
     // This is run on the newly spawned thread, directly at the start.
-    pub(super) fn run(self) {
+    pub(super) fn inherit_and_run(self) {
         SPAWN_HOOKS.set(self.hooks);
         for run in self.to_run {
             run();

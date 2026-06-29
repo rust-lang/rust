@@ -4,7 +4,7 @@ error: used `panic!()` or assertion in a function that returns `Result`
 LL | /     fn result_with_assert_with_message(x: i32) -> Result<bool, String> // should emit lint
 LL | |
 LL | |     {
-LL | |         assert!(x == 5, "wrong argument");
+LL | |         assert!(x.is_positive(), "wrong argument");
 LL | |         Ok(true)
 LL | |     }
    | |_____^
@@ -13,8 +13,8 @@ LL | |     }
 note: return Err() instead of panicking
   --> tests/ui/panic_in_result_fn_assertions.rs:10:9
    |
-LL |         assert!(x == 5, "wrong argument");
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         assert!(x.is_positive(), "wrong argument");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::panic-in-result-fn` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::panic_in_result_fn)]`
 

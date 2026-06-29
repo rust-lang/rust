@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce()` closure, found `()`
+error[E0277]: expected an `FnOnce()` closure, found `()`
   --> $DIR/issue-63279.rs:6:11
    |
 LL | fn c() -> Closure {
@@ -7,7 +7,7 @@ LL | fn c() -> Closure {
    = help: the trait `FnOnce()` is not implemented for `()`
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
 
-error[E0277]: expected a `FnOnce()` closure, found `()`
+error[E0277]: expected an `FnOnce()` closure, found `()`
   --> $DIR/issue-63279.rs:8:11
    |
 LL |     || -> Closure { || () }

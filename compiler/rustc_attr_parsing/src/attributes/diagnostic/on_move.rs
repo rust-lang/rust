@@ -1,15 +1,13 @@
-use rustc_errors::Diagnostic;
-use rustc_feature::template;
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::AttributeKind;
-use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::sym;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::context::{AcceptContext, Stage};
-use crate::errors::DiagnosticOnMoveOnlyForAdt;
+use crate::context::AcceptContext;
 use crate::parser::ArgParser;
-use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use crate::target_checking::AllowedTargets;
+use crate::template;
 
 #[derive(Default)]
 pub(crate) struct OnMoveParser {
@@ -18,28 +16,15 @@ pub(crate) struct OnMoveParser {
 }
 
 impl OnMoveParser {
-    fn parse<'sess, S: Stage>(
-        &mut self,
-        cx: &mut AcceptContext<'_, 'sess, S>,
-        args: &ArgParser,
-        mode: Mode,
-    ) {
+    fn parse<'sess>(&mut self, cx: &mut AcceptContext<'_, 'sess>, args: &ArgParser, mode: Mode) {
         if !cx.features().diagnostic_on_move() {
             // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
+            args.ignore_args();
             return;
         }
 
         let span = cx.attr_span;
         self.span = Some(span);
-
-        if !matches!(cx.target, Target::Enum | Target::Struct | Target::Union) {
-            cx.emit_dyn_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level| DiagnosticOnMoveOnlyForAdt.into_diag(dcx, level),
-                span,
-            );
-            return;
-        }
 
         let Some(items) = parse_list(cx, args, mode) else { return };
 
@@ -48,21 +33,25 @@ impl OnMoveParser {
         }
     }
 }
-impl<S: Stage> AttributeParser<S> for OnMoveParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+impl AttributeParser for OnMoveParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::diagnostic, sym::on_move],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+        AttributeStability::Stable, // Unstable, stability checked manually in the parser
         |this, cx, args| {
             this.parse(cx, args, Mode::DiagnosticOnMove);
         },
     )];
 
-    // "Allowed" for all targets but noop if used on not-adt.
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Enum),
+        Allow(Target::Struct),
+        Allow(Target::Union),
+    ]);
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        if let Some(span) = self.span {
-            Some(AttributeKind::OnMove { span, directive: self.directive.map(|d| Box::new(d.1)) })
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+        if let Some(_span) = self.span {
+            Some(AttributeKind::OnMove { directive: self.directive.map(|d| Box::new(d.1)) })
         } else {
             None
         }

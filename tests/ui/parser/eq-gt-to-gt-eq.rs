@@ -43,3 +43,9 @@ fn b() {
         _ => todo!(),
     }
 }
+
+fn closure() {
+    let a = 0;
+    let b = 1;
+    let _ = [a].iter().any(|x| x => &b); //~ERROR
+}

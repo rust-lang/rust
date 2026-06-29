@@ -4,7 +4,7 @@
 
 const trait Foo {}
 
-impl const Foo for () {}
+const impl Foo for () {}
 
 fn foo<'a: 'a>() -> impl const Foo {}
 //~^ ERROR ['a: *]

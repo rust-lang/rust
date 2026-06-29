@@ -6,9 +6,10 @@
 
 use std::fmt::{self, Debug};
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::HashStableContext;
+use rustc_data_structures::stable_hash::{
+    StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
+};
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
@@ -54,19 +55,19 @@ impl rustc_index::Idx for OwnerId {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for OwnerId {
+impl StableHash for OwnerId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.to_stable_hash_key(hcx).stable_hash(hcx, hasher);
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OwnerId {
+impl ToStableHashKey for OwnerId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
-        hcx.def_path_hash(self.to_def_id())
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
+        self.to_def_id().to_stable_hash_key(hcx)
     }
 }
 
@@ -80,7 +81,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OwnerId {
 /// the `local_id` part of the `HirId` changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 #[rustc_pass_by_value]
 pub struct HirId {
     pub owner: OwnerId,
@@ -151,7 +152,7 @@ rustc_index::newtype_index! {
     /// integers starting at zero, so a mapping that maps all or most nodes within
     /// an "item-like" to something else can be implemented by a `Vec` instead of a
     /// tree or hash map.
-    #[stable_hash_generic]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     pub struct ItemLocalId {}
@@ -175,22 +176,3 @@ pub const CRATE_HIR_ID: HirId =
     HirId { owner: OwnerId { def_id: CRATE_DEF_ID }, local_id: ItemLocalId::ZERO };
 
 pub const CRATE_OWNER_ID: OwnerId = OwnerId { def_id: CRATE_DEF_ID };
-
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for HirId {
-    type KeyType = (DefPathHash, ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> (DefPathHash, ItemLocalId) {
-        let def_path_hash = self.owner.def_id.to_stable_hash_key(hcx);
-        (def_path_hash, self.local_id)
-    }
-}
-
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ItemLocalId {
-    type KeyType = ItemLocalId;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> ItemLocalId {
-        *self
-    }
-}

@@ -53,7 +53,7 @@ impl<'tcx, B: Bridge> AllocRangeHelpers<'tcx> for CompilerCtxt<'tcx, B> {
 }
 
 impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
-    pub fn lift<T: ty::Lift<TyCtxt<'tcx>>>(&self, value: T) -> Option<T::Lifted> {
+    pub fn lift<T: ty::Lift<TyCtxt<'tcx>>>(&self, value: T) -> T::Lifted {
         self.tcx.lift(value)
     }
 
@@ -110,6 +110,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         matches!(self.tcx.def_kind(def_id), DefKind::Static { .. }).then(|| def_id)
     }
 
+    fn filter_adt_def(&self, def_id: DefId) -> Option<DefId> {
+        matches!(self.tcx.def_kind(def_id), DefKind::Struct | DefKind::Enum | DefKind::Union)
+            .then(|| def_id)
+    }
+
     pub fn target_endian(&self) -> Endian {
         self.tcx.data_layout.endian
     }
@@ -150,6 +155,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     /// Retrieve all static items defined in this crate.
     pub fn crate_statics(&self, crate_num: CrateNum) -> Vec<DefId> {
         filter_def_ids(self.tcx, crate_num, |def_id| self.filter_static_def(def_id))
+    }
+
+    /// Retrieve all ADTs defined in this crate.
+    pub fn crate_adts(&self, crate_num: CrateNum) -> Vec<DefId> {
+        filter_def_ids(self.tcx, crate_num, |def_id| self.filter_adt_def(def_id))
     }
 
     pub fn foreign_module(&self, mod_def: DefId) -> &ForeignModule {
@@ -635,7 +645,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Check if this is an empty DropGlue shim.
     pub fn is_empty_drop_shim(&self, instance: ty::Instance<'tcx>) -> bool {
-        matches!(instance.def, ty::InstanceKind::DropGlue(_, None))
+        matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)))
     }
 
     /// Convert a non-generic crate item into an instance.
@@ -665,7 +675,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Resolve an instance for drop_in_place for the given type.
     pub fn resolve_drop_in_place(&self, internal_ty: Ty<'tcx>) -> Instance<'tcx> {
-        let instance = Instance::resolve_drop_in_place(self.tcx, internal_ty);
+        let instance = Instance::resolve_drop_glue(self.tcx, internal_ty);
         instance
     }
 

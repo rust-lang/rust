@@ -29,11 +29,16 @@ where
     }
 
     fn perform_locally_with_next_solver(
-        _ocx: &ObligationCtxt<'_, 'tcx>,
+        ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
-        _span: Span,
+        span: Span,
     ) -> Result<Self::QueryResponse, NoSolution> {
-        Ok(key.value.value)
+        ocx.deeply_normalize(
+            &ObligationCause::dummy_with_span(span),
+            key.param_env,
+            Unnormalized::new_wip(key.value.value),
+        )
+        .map_err(|_| NoSolution)
     }
 }
 

@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use derive_where::derive_where;
+use rustc_type_ir_macros::TypeVisitable_Generic;
 
 use crate::inherent::*;
 use crate::upcast::Upcast;
@@ -25,8 +26,10 @@ use crate::{
 ///
 /// [here]: https://rust-lang.zulipchat.com/#narrow/channel/364551-t-types.2Ftrait-system-refactor/topic/Eager.20normalization.2C.20ahoy.21/with/582996293
 #[derive_where(Clone, Copy, PartialOrd, PartialEq, Debug; T)]
+#[derive(TypeVisitable_Generic)]
 pub struct Unnormalized<I: Interner, T> {
     value: T,
+    #[type_visitable(ignore)]
     #[derive_where(skip(Debug))]
     _tcx: PhantomData<fn() -> I>,
 }
@@ -35,6 +38,13 @@ impl<I: Interner, T> Unnormalized<I, T> {
     /// Should only be used in limited situations where you produce an potentially
     /// unnormalized value, like in (Early)Binder/GenericPredicates instantiation.
     pub fn new(value: T) -> Unnormalized<I, T> {
+        Unnormalized { value, _tcx: PhantomData }
+    }
+
+    /// Should be used in case we have an already normalized input as an argument to
+    /// a function that also expects unnormalized inputs, e.g. getting the tail of a
+    /// type is normalized for tuples, but unnormalized for ADTs.
+    pub fn dummy(value: T) -> Unnormalized<I, T> {
         Unnormalized { value, _tcx: PhantomData }
     }
 

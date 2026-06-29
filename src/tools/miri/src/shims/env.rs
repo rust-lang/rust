@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::ffi::{OsStr, OsString};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -108,23 +109,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if this.machine.communicate() { std::process::id() } else { 1000 }
     }
 
-    /// Get an "OS" thread ID for the current thread.
-    fn get_current_tid(&self) -> u32 {
-        let this = self.eval_context_ref();
-        self.get_tid(this.machine.threads.active_thread())
-    }
-
     /// Get an "OS" thread ID for any thread.
     fn get_tid(&self, thread: ThreadId) -> u32 {
         let this = self.eval_context_ref();
-        let index = thread.to_u32();
-        let target_os = &this.tcx.sess.target.os;
-        if matches!(target_os, Os::Linux | Os::Android) {
-            // On Linux, the main thread has PID == TID so we uphold this.
-            this.get_pid().strict_add(index)
-        } else {
-            // Other platforms do not display any relationship between PID and TID.
-            index
-        }
+        assert!(this.target_os_is_unix());
+        // On Linux, the main thread has PID == TID so we uphold this. For simplicity we do it
+        // everywhere. That also ensures this ID is different from what is returned by
+        // `pthread_self`.
+        this.get_pid().strict_add(thread.to_u32())
+    }
+
+    /// Convert TID back to a `ThreadId`, or `None` if it is invalid or the thread has terminated.
+    fn get_thread_id_from_linux_tid(&self, tid: u32) -> Option<ThreadId> {
+        let this = self.eval_context_ref();
+        assert_matches!(this.tcx.sess.target.os, Os::Linux | Os::Android);
+        // TID = PID + thread_index => index = TID - PID.
+        let id = tid.checked_sub(this.get_pid())?;
+        this.machine.threads.thread_id_try_from(id).ok()
     }
 }

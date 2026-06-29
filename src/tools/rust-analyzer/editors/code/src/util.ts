@@ -22,6 +22,10 @@ class Log {
         log: true,
     });
 
+    show(): void {
+        this.output.show(true);
+    }
+
     trace(...messages: [unknown, ...unknown[]]): void {
         this.output.trace(this.stringify(messages));
     }
@@ -40,7 +44,7 @@ class Log {
 
     error(...messages: [unknown, ...unknown[]]): void {
         this.output.error(this.stringify(messages));
-        this.output.show(true);
+        this.show();
     }
 
     private stringify(messages: unknown[]): string {

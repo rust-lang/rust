@@ -1,85 +1,75 @@
-warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+warning: `#[diagnostic::do_not_recommend]` attribute cannot be used on constants
   --> $DIR/incorrect-locations.rs:7:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | const CONST: () = ();
-   | --------------------- not a trait implementation
    |
+   = help: `#[diagnostic::do_not_recommend]` can only be applied to trait impl blocks
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
-warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+warning: `#[diagnostic::do_not_recommend]` attribute cannot be used on statics
   --> $DIR/incorrect-locations.rs:11:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | static STATIC: () = ();
-   | ----------------------- not a trait implementation
+   |
+   = help: `#[diagnostic::do_not_recommend]` can only be applied to trait impl blocks
 
-warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+warning: `#[diagnostic::do_not_recommend]` attribute cannot be used on type aliases
   --> $DIR/incorrect-locations.rs:15:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | type Type = ();
-   | --------------- not a trait implementation
+   |
+   = help: `#[diagnostic::do_not_recommend]` can only be applied to trait impl blocks
 
-warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+warning: `#[diagnostic::do_not_recommend]` attribute cannot be used on enums
   --> $DIR/incorrect-locations.rs:19:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | enum Enum {}
-   | ------------ not a trait implementation
+   |
+   = help: `#[diagnostic::do_not_recommend]` can only be applied to trait impl blocks
 
-warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+warning: `#[diagnostic::do_not_recommend]` attribute cannot be used on inherent impl blocks
   --> $DIR/incorrect-locations.rs:23:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | impl Enum {}
-   | ------------ not a trait implementation
+   |
+   = help: `#[diagnostic::do_not_recommend]` can only be applied to trait impl blocks
 
-warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+warning: `#[diagnostic::do_not_recommend]` attribute cannot be used on foreign modules
   --> $DIR/incorrect-locations.rs:27:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | extern "C" {}
-   | ------------- not a trait implementation
+   |
+   = help: `#[diagnostic::do_not_recommend]` can only be applied to trait impl blocks
 
-warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+warning: `#[diagnostic::do_not_recommend]` attribute cannot be used on functions
   --> $DIR/incorrect-locations.rs:31:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | fn fun() {}
-   | ----------- not a trait implementation
+   |
+   = help: `#[diagnostic::do_not_recommend]` can only be applied to trait impl blocks
 
-warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+warning: `#[diagnostic::do_not_recommend]` attribute cannot be used on structs
   --> $DIR/incorrect-locations.rs:35:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | struct Struct {}
-   | ---------------- not a trait implementation
+   |
+   = help: `#[diagnostic::do_not_recommend]` can only be applied to trait impl blocks
 
-warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+warning: `#[diagnostic::do_not_recommend]` attribute cannot be used on traits
   --> $DIR/incorrect-locations.rs:39:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | trait Trait {}
-   | -------------- not a trait implementation
+   |
+   = help: `#[diagnostic::do_not_recommend]` can only be applied to trait impl blocks
 
 warning: 9 warnings emitted
 

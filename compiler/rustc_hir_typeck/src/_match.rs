@@ -60,8 +60,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // type in that case)
         let mut all_arms_diverge = Diverges::WarnedAlways;
 
-        let expected =
-            orig_expected.try_structurally_resolve_and_adjust_for_branches(self, expr.span);
+        let expected = orig_expected.try_structurally_resolve_and_adjust_for_branches(self);
         debug!(?expected);
 
         let mut coercion = {
@@ -246,7 +245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.may_coerce(arm_ty, ret_ty)
                     && prior_arm.is_none_or(|(_, ty, _)| self.may_coerce(ty, ret_ty))
                     // The match arms need to unify for the case of `impl Trait`.
-                    && !matches!(ret_ty.kind(), ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }))
+                    && !matches!(ret_ty.kind(), ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }))
             }
             _ => false,
         };
@@ -255,7 +254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let semi = expr.span.shrink_to_hi().with_hi(semi_span.hi());
-        let sugg = crate::errors::RemoveSemiForCoerce { expr: expr.span, ret, semi };
+        let sugg = crate::diagnostics::RemoveSemiForCoerce { expr: expr.span, ret, semi };
         diag.subdiagnostic(sugg);
     }
 
@@ -533,7 +532,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected_ty = expectation.to_option(self)?;
         let (def_id, args) = match *expected_ty.kind() {
             // FIXME: Could also check that the RPIT is not defined
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 (def_id.as_local()?, args)
             }
             // FIXME(-Znext-solver=no): Remove this branch once `replace_opaque_types_with_infer` is gone.

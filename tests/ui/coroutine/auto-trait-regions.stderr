@@ -33,6 +33,9 @@ LL |     let generator = #[coroutine] static move || {
 error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:31:5
    |
+LL |     let generator = #[coroutine] move || {
+   |                                  ------- this coroutine captures a value whose type is not `Foo`
+...
 LL |     assert_foo(generator);
    |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
    |
@@ -42,6 +45,9 @@ LL |     assert_foo(generator);
 error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:51:5
    |
+LL |     let generator = #[coroutine] move || {
+   |                                  ------- this coroutine captures a value whose type is not `Foo`
+...
 LL |     assert_foo(generator);
    |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
    |

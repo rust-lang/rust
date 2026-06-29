@@ -5,37 +5,31 @@ mod arm;
 mod common;
 mod x86;
 
-use arm::ArmArchitectureTest;
-use common::SupportedArchitectureTest;
+use arm::Arm;
+use common::SupportedArchitecture;
 use common::cli::{Cli, ProcessedCli};
-use x86::X86ArchitectureTest;
+use x86::X86;
 
 fn main() {
     pretty_env_logger::init();
     let args: Cli = clap::Parser::parse();
     let processed_cli_options = ProcessedCli::new(args);
 
-    match processed_cli_options.target.as_str() {
-        "aarch64-unknown-linux-gnu"
-        | "armv7-unknown-linux-gnueabihf"
-        | "aarch64_be-unknown-linux-gnu" => run(ArmArchitectureTest::create(processed_cli_options)),
-
-        "x86_64-unknown-linux-gnu" => run(X86ArchitectureTest::create(processed_cli_options)),
-        _ => std::process::exit(0),
+    if processed_cli_options.target.starts_with("arm")
+        | processed_cli_options.target.starts_with("aarch64")
+    {
+        run(Arm::create(&processed_cli_options), processed_cli_options)
+    } else if processed_cli_options.target.starts_with("x86") {
+        run(X86::create(&processed_cli_options), processed_cli_options)
+    } else {
+        unimplemented!("Unsupported target {}", processed_cli_options.target)
     }
 }
 
-fn run(test_environment: impl SupportedArchitectureTest) {
+fn run(test_environment: impl SupportedArchitecture, processed_cli_options: ProcessedCli) {
     info!("building C binaries");
-    if !test_environment.build_c_file() {
-        std::process::exit(2);
-    }
+    test_environment.generate_c_file();
+
     info!("building Rust binaries");
-    if !test_environment.build_rust_file() {
-        std::process::exit(3);
-    }
-    info!("Running binaries");
-    if !test_environment.compare_outputs() {
-        std::process::exit(1);
-    }
+    test_environment.generate_rust_file(&processed_cli_options);
 }

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::ty::{expr_type_is_certain, has_drop};
 use clippy_utils::{in_automatically_derived, is_inside_always_const_context, is_lint_allowed, peel_blocks};
 use rustc_errors::Applicability;
@@ -9,11 +9,9 @@ use rustc_hir::{
     BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, LocalSource, Node, PatKind, Stmt, StmtKind,
     StructTailExpr, UnsafeSource, is_range_literal,
 };
-use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use std::ops::Deref;
 
 declare_clippy_lint! {
@@ -162,12 +160,7 @@ impl NoEffect {
 
                                 // Remove `impl Future<Output = T>` to get `T`
                                 if cx.tcx.ty_is_opaque_future(ret_ty)
-                                    && let Some(true_ret_ty) = cx
-                                        .tcx
-                                        .infer_ctxt()
-                                        .build(cx.typing_mode())
-                                        .err_ctxt()
-                                        .get_impl_future_output_ty(ret_ty)
+                                    && let Some(true_ret_ty) = cx.tcx.get_impl_future_output_ty(ret_ty)
                                 {
                                     ret_ty = true_ret_ty;
                                 }
@@ -285,8 +278,8 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         if let ExprKind::Index(..) = &expr.kind {
             if !is_inside_always_const_context(cx.tcx, expr.hir_id)
                 && let [arr, func] = &*reduced
-                && let Some(arr) = arr.span.get_source_text(cx)
-                && let Some(func) = func.span.get_source_text(cx)
+                && let Some(arr) = arr.span.get_text(cx)
+                && let Some(func) = func.span.get_text(cx)
             {
                 span_lint_hir_and_then(
                     cx,
@@ -307,7 +300,7 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         } else {
             let mut snippet = String::new();
             for e in reduced {
-                if let Some(snip) = e.span.get_source_text(cx) {
+                if let Some(snip) = e.span.get_text(cx) {
                     snippet.push_str(&snip);
                     snippet.push_str("; ");
                 } else {

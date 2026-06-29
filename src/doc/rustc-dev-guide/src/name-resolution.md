@@ -62,8 +62,7 @@ files and expanding `macros`.
 This phase produces links from all the names in the
 source to relevant places where the name was introduced.
 It also generates helpful error messages,
-like typo suggestions, traits to import or lints about
-unused items.
+like typo suggestions, traits to import, or lints about unused items.
 
 A successful run of the second phase ([`Resolver::resolve_crate`]) creates kind
 of an index the rest of the compilation may use to ask about the present names

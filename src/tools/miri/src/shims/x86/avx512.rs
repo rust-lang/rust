@@ -3,7 +3,9 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use super::{packssdw, packsswb, packusdw, packuswb, permute, pmaddbw, pmaddwd, psadbw, pshufb};
+use super::{
+    packssdw, packsswb, packusdw, packuswb, permute, permute2, pmaddbw, pmaddwd, psadbw, pshufb,
+};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -104,12 +106,28 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 pmaddbw(this, left, right, dest)?;
             }
-            // Used to implement the _mm512_permutexvar_epi32 function.
-            "permvar.si.512" => {
+            // Used to implement the _mm512_permutexvar_epi32/_mm512_permutexvar_epi64 functions.
+            "permvar.si.512" | "permvar.di.512" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 permute(this, left, right, dest)?;
+            }
+            // Used to implement the _mm512_permutex2var_epi64 intrinsic.
+            "vpermi2var.q.512" => {
+                let [left, indices, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                permute2(this, left, indices, right, dest)?;
+            }
+            // Used to implement the _mm512_permutex2var_epi8 intrinsic.
+            "vpermi2var.qi.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
+
+                let [left, indices, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                permute2(this, left, indices, right, dest)?;
             }
             // Used to implement the _mm512_shuffle_epi8 intrinsic.
             "pshuf.b.512" => {

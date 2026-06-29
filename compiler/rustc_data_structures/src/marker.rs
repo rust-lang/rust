@@ -64,6 +64,7 @@ already_send!(
         [std::io::Error][std::fs::File][std::panic::Location<'_>][rustc_arena::DroplessArena]
         [jobserver_crate::Client][jobserver_crate::HelperThread][crate::memmap::Mmap]
         [crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
+        [rustc_serialize::opaque::FileEncoder<'_>]
 );
 
 #[cfg(target_has_atomic = "64")]

@@ -6,8 +6,10 @@
 #[inline = ""] //~ ERROR valid forms for the attribute are
 //~^ WARN this was previously accepted
 #[link] //~ ERROR malformed
-//~^ WARN attribute should be applied to an `extern` block with non-Rust ABI
+//~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 #[link = ""] //~ ERROR malformed
+//~^ WARN attribute cannot be used on
+//~| WARN previously accepted
 
 fn main() {}

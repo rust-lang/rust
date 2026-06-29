@@ -40,7 +40,10 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_enum_is_method(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let parent_enum = ast::Adt::Enum(variant.parent_enum());
     let variants = variant

@@ -21,7 +21,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     let (b | a) = 1;
 // }
 // ```
-pub(crate) fn flip_or_pattern(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn flip_or_pattern(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     // Only flip on the `|` token
     let pipe = ctx.find_token_syntax_at_offset(T![|])?;
 

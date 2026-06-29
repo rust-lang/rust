@@ -5,6 +5,7 @@ LL | #[rustc_diagnostic_item = "foomp"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_diagnostic_item]` attribute is an internal implementation detail that will never be stable
    = note: the `#[rustc_diagnostic_item]` attribute allows the compiler to reference types from the standard library for diagnostic purposes
 
 error: aborting due to 1 previous error

@@ -400,7 +400,15 @@ where
         if min_index.eq(T::TRUE) {
             None
         } else {
-            Some(min_index.to_usize())
+            let min_index = min_index.to_usize();
+
+            // Allow eliminating bounds checks when using the index
+            // Safety: the index can't exceed the number of elements in the vector
+            unsafe {
+                core::hint::assert_unchecked(min_index < N);
+            }
+
+            Some(min_index)
         }
     }
 }

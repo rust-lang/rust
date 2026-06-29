@@ -5,7 +5,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 // This diagnostic is triggered if rust-analyzer is unable to resolve the path
 // to a macro in a macro invocation.
 pub(crate) fn unresolved_macro_call(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnresolvedMacroCall,
 ) -> Diagnostic {
     let display_range = ctx.sema.diagnostics_display_range_for_range(d.range);

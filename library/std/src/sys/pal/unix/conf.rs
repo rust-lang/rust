@@ -12,9 +12,7 @@ pub fn page_size() -> usize {
 ///
 /// [posix_confstr]:
 ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
-//
-// FIXME: Support `confstr` in Miri.
-#[cfg(all(target_vendor = "apple", not(miri)))]
+#[cfg(target_vendor = "apple")]
 pub fn confstr(
     key: crate::ffi::c_int,
     size_hint: Option<usize>,

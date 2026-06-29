@@ -1,11 +1,6 @@
 #![warn(clippy::iter_kv_map)]
-#![allow(
-    unused_mut,
-    clippy::redundant_clone,
-    clippy::redundant_closure,
-    clippy::suspicious_map,
-    clippy::map_identity
-)]
+#![allow(clippy::redundant_closure)]
+#![expect(clippy::suspicious_map)]
 
 use std::collections::{BTreeMap, HashMap};
 

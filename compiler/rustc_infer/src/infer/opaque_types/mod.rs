@@ -12,7 +12,7 @@ use rustc_span::Span;
 use tracing::{debug, instrument};
 
 use super::{DefineOpaqueTypes, RegionVariableOrigin};
-use crate::errors::OpaqueHiddenTypeDiag;
+use crate::diagnostics::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, Obligation, PredicateObligations};
 
@@ -45,7 +45,7 @@ impl<'tcx> InferCtxt<'tcx> {
             lt_op: |lt| lt,
             ct_op: |ct| ct,
             ty_op: |ty| match *ty.kind() {
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. })
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. })
                     if self.can_define_opaque_ty(def_id) && !ty.has_escaping_bound_vars() =>
                 {
                     let def_span = self.tcx.def_span(def_id);
@@ -85,11 +85,11 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, TypeError<'tcx>> {
         debug_assert!(!self.next_trait_solver());
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. })
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. })
                 if def_id.is_local() =>
             {
                 let def_id = def_id.expect_local();
-                if self.typing_mode().is_coherence() {
+                if self.typing_mode_raw().is_coherence() {
                     // See comment on `insert_hidden_type` for why this is sufficient in coherence
                     return Some(self.register_hidden_type(
                         OpaqueTypeKey { def_id, args },
@@ -136,7 +136,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     return None;
                 }
 
-                if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }) =
+                if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }) =
                     *b.kind()
                 {
                     // We could accept this, but there are various ways to handle this situation,
@@ -229,14 +229,16 @@ impl<'tcx> InferCtxt<'tcx> {
         // value being folded. In simple cases like `-> impl Foo`,
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
-        match self.typing_mode() {
+        //
+        // Note: we don't use this function in the next solver so we can safely call `assert_not_erased`
+        match self.typing_mode_raw().assert_not_erased() {
             ty::TypingMode::Coherence => {
                 // During intercrate we do not define opaque types but instead always
                 // force ambiguity unless the hidden type is known to not implement
                 // our trait.
                 goals.push(Goal::new(tcx, param_env, ty::PredicateKind::Ambiguous));
             }
-            ty::TypingMode::Analysis { .. } => {
+            ty::TypingMode::Typeck { .. } => {
                 let prev = self
                     .inner
                     .borrow_mut()
@@ -252,7 +254,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     );
                 }
             }
-            ty::TypingMode::Borrowck { .. } => {
+            ty::TypingMode::PostTypeckUntilBorrowck { .. } => {
                 let prev = self
                     .inner
                     .borrow_mut()
@@ -281,7 +283,9 @@ impl<'tcx> InferCtxt<'tcx> {
                         .map(|obligation| obligation.as_goal()),
                 );
             }
-            mode @ (ty::TypingMode::PostBorrowckAnalysis { .. } | ty::TypingMode::PostAnalysis) => {
+            mode @ (ty::TypingMode::PostBorrowck { .. }
+            | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::Codegen) => {
                 bug!("insert hidden type in {mode:?}")
             }
         }
@@ -320,6 +324,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // FIXME(RPITIT): Don't replace RPITITs with inference vars.
                     // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
                     ty::Alias(
+                        _,
                         projection_ty @ ty::AliasTy { kind: ty::Projection { def_id }, .. },
                     ) if !projection_ty.has_escaping_bound_vars()
                         && !tcx.is_impl_trait_in_trait(def_id)
@@ -329,22 +334,19 @@ impl<'tcx> InferCtxt<'tcx> {
                         goals.push(Goal::new(
                             self.tcx,
                             param_env,
-                            ty::PredicateKind::Clause(ty::ClauseKind::Projection(
-                                ty::ProjectionPredicate {
-                                    projection_term: projection_ty.into(),
-                                    term: ty_var.into(),
-                                },
-                            )),
+                            ty::ProjectionPredicate {
+                                projection_term: projection_ty.into(),
+                                term: ty_var.into(),
+                            },
                         ));
                         ty_var
                     }
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
-                    ty::Alias(ty::AliasTy {
-                        kind: ty::Opaque { def_id: def_id2 },
-                        args: args2,
-                        ..
-                    }) if def_id == def_id2 && args == args2 => hidden_ty,
+                    ty::Alias(
+                        _,
+                        ty::AliasTy { kind: ty::Opaque { def_id: def_id2 }, args: args2, .. },
+                    ) if def_id == def_id2 && args == args2 => hidden_ty,
                     _ => ty,
                 },
                 lt_op: |lt| lt,

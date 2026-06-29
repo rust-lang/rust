@@ -15,6 +15,7 @@ use crate::mir::interpret::{
 };
 use crate::mir::visit::Visitor;
 use crate::mir::*;
+use crate::ty::CoroutineArgsExt;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -185,9 +186,6 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
             Some(promoted) => write!(w, "::{promoted:?}`")?,
         }
         writeln!(w, " {} {}", self.disambiguator, self.pass_name)?;
-        if let Some(ref layout) = body.coroutine_layout_raw() {
-            writeln!(w, "/* coroutine_layout = {layout:#?} */")?;
-        }
         writeln!(w)?;
         (self.writer.extra_data)(PassWhere::BeforeCFG, w)?;
         write_user_type_annotations(self.tcx(), body, w)?;
@@ -220,7 +218,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
         // All drop shims have the same DefId, so we have to add the type
         // to get unique file names.
         let shim_disambiguator = match source.instance {
-            ty::InstanceKind::DropGlue(_, Some(ty)) => {
+            ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(ty))) => {
                 // Unfortunately, pretty-printed types are not very filename-friendly.
                 // We do some filtering.
                 let mut s = ".".to_owned();
@@ -231,7 +229,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::AsyncDropGlueCtorShim(_, ty) => {
+            ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, ty)) => {
                 let mut s = ".".to_owned();
                 s.extend(ty.to_string().chars().filter_map(|c| match c {
                     ' ' => None,
@@ -240,7 +238,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::AsyncDropGlue(_, ty) => {
+            ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, ty)) => {
                 let ty::Coroutine(_, args) = ty.kind() else {
                     bug!();
                 };
@@ -253,7 +251,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::FutureDropPollShim(_, proxy_cor, impl_cor) => {
+            ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_, proxy_cor, impl_cor)) => {
                 let mut s = ".".to_owned();
                 s.extend(proxy_cor.to_string().chars().filter_map(|c| match c {
                     ' ' => None,
@@ -312,13 +310,9 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Whole MIR bodies
 
-/// Write out a human-readable textual representation for the given MIR, with the default
-/// [PrettyPrintMirOptions].
-pub fn write_mir_pretty<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    single: Option<DefId>,
-    w: &mut dyn io::Write,
-) -> io::Result<()> {
+/// Write out a human-readable textual representation of this crate's MIR,
+/// with the default [`PrettyPrintMirOptions`].
+pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
     let writer = MirWriter::new(tcx);
 
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
@@ -326,7 +320,7 @@ pub fn write_mir_pretty<'tcx>(
     writeln!(w, "// HINT: See also -Z dump-mir for MIR at specific points during compilation.")?;
 
     let mut first = true;
-    for def_id in dump_mir_def_ids(tcx, single) {
+    for &def_id in tcx.mir_keys(()) {
         if first {
             first = false;
         } else {
@@ -360,7 +354,7 @@ pub fn write_mir_pretty<'tcx>(
                 }
                 writeln!(w, ": {} = const {};", ty, Const::Val(val, ty))?;
             } else {
-                let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id));
+                let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id.to_def_id()));
                 render_body(w, instance_mir)?;
             }
         }
@@ -430,6 +424,31 @@ fn write_scope_tree(
             )?;
         } else {
             writeln!(w, "{indented_debug_info}")?;
+        }
+    }
+
+    // Coroutine debuginfo.
+    if let Some(layout) = body.coroutine_layout_raw() {
+        for (field, field_decl) in layout.field_tys.iter_enumerated() {
+            let source_info = field_decl.source_info;
+            if let Some(name) = field_decl.debuginfo_name
+                && source_info.scope == parent
+            {
+                let indented_debug_info =
+                    format!("{0:1$}coroutine debug {2} => {3:?};", INDENT, indent, name, field);
+
+                if options.include_extra_comments {
+                    writeln!(
+                        w,
+                        "{0:1$} // in {2}",
+                        indented_debug_info,
+                        ALIGN,
+                        comment(tcx, source_info),
+                    )?;
+                } else {
+                    writeln!(w, "{indented_debug_info}")?;
+                }
+            }
         }
     }
 
@@ -522,7 +541,7 @@ fn write_scope_tree(
 
 impl Debug for VarDebugInfo<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        if let Some(box VarDebugInfoFragment { ty, ref projection }) = self.composite {
+        if let Some(VarDebugInfoFragment { ty, ref projection }) = self.composite {
             pre_fmt_projection(&projection[..], fmt)?;
             write!(fmt, "({}: {})", self.name, ty)?;
             post_fmt_projection(&projection[..], fmt)?;
@@ -532,6 +551,45 @@ impl Debug for VarDebugInfo<'_> {
 
         write!(fmt, " => {:?}", self.value)
     }
+}
+
+fn write_coroutine_layout<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    layout: &CoroutineLayout<'_>,
+    w: &mut dyn io::Write,
+    options: PrettyPrintMirOptions,
+) -> io::Result<()> {
+    let CoroutineLayout { field_tys, variant_fields, variant_source_info, storage_conflicts } =
+        layout;
+
+    writeln!(w, "{INDENT}coroutine layout {{")?;
+
+    for (field, CoroutineSavedTy { ty, source_info, ignore_for_traits, debuginfo_name: _ }) in
+        field_tys.iter_enumerated()
+    {
+        let ignore_for_traits = if *ignore_for_traits { " (ignored for traits)" } else { "" };
+        let indented_body = format!("{INDENT}{INDENT}field {field:?}: {ty}{ignore_for_traits};",);
+        if options.include_extra_comments {
+            writeln!(w, "{0:ALIGN$} // in {1}", indented_body, comment(tcx, *source_info))?;
+        } else {
+            writeln!(w, "{}", indented_body)?;
+        }
+    }
+
+    writeln!(w, "{INDENT}{INDENT}variant_fields = {{")?;
+    for (variant, fields) in variant_fields.iter_enumerated() {
+        let variant_name = ty::CoroutineArgs::variant_name(variant);
+        let header = format!("{INDENT}{INDENT}{INDENT}{variant_name:9}({variant:?}): {fields:?},");
+        if options.include_extra_comments {
+            let source_info = variant_source_info[variant];
+            writeln!(w, "{0:ALIGN$} // in {1}", header, comment(tcx, source_info))?;
+        } else {
+            writeln!(w, "{}", header)?;
+        }
+    }
+    writeln!(w, "{INDENT}{INDENT}}}")?;
+    writeln!(w, "{INDENT}{INDENT}storage_conflicts = {storage_conflicts:?}")?;
+    writeln!(w, "{INDENT}}}")
 }
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
@@ -544,6 +602,10 @@ fn write_mir_intro<'tcx>(
 ) -> io::Result<()> {
     write_mir_sig(tcx, body, w)?;
     writeln!(w, "{{")?;
+
+    if let Some(ref layout) = body.coroutine_layout_raw() {
+        write_coroutine_layout(tcx, layout, w, options)?;
+    }
 
     // construct a scope tree and write it out
     let mut scope_tree: FxHashMap<SourceScope, Vec<SourceScope>> = Default::default();
@@ -698,14 +760,6 @@ fn write_user_type_annotations(
     Ok(())
 }
 
-pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
-    if let Some(i) = single {
-        vec![i]
-    } else {
-        tcx.mir_keys(()).iter().map(|def_id| def_id.to_def_id()).collect()
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Basic blocks and their parts (statements, terminators, ...)
 
@@ -806,21 +860,10 @@ impl Debug for StatementKind<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
         match *self {
-            Assign(box (ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
-            FakeRead(box (ref cause, ref place)) => {
+            Assign((ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
+            FakeRead((ref cause, ref place)) => {
                 write!(fmt, "FakeRead({cause:?}, {place:?})")
             }
-            Retag(ref kind, ref place) => write!(
-                fmt,
-                "Retag({}{:?})",
-                match kind {
-                    RetagKind::FnEntry => "[fn entry] ",
-                    RetagKind::TwoPhase => "[2phase] ",
-                    RetagKind::Raw => "[raw] ",
-                    RetagKind::Default => "",
-                },
-                place,
-            ),
             StorageLive(ref place) => write!(fmt, "StorageLive({place:?})"),
             StorageDead(ref place) => write!(fmt, "StorageDead({place:?})"),
             SetDiscriminant { ref place, variant_index } => {
@@ -829,11 +872,11 @@ impl Debug for StatementKind<'_> {
             PlaceMention(ref place) => {
                 write!(fmt, "PlaceMention({place:?})")
             }
-            AscribeUserType(box (ref place, ref c_ty), ref variance) => {
+            AscribeUserType((ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({place:?}, {variance:?}, {c_ty:?})")
             }
             Coverage(ref kind) => write!(fmt, "Coverage::{kind:?}"),
-            Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
+            Intrinsic(ref intrinsic) => write!(fmt, "{intrinsic}"),
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),
             BackwardIncompatibleDropHint { ref place, reason: _ } => {
@@ -943,10 +986,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { place, async_fut: None, .. } => write!(fmt, "drop({place:?})"),
-            Drop { place, async_fut: Some(async_fut), .. } => {
-                write!(fmt, "async drop({place:?}; poll={async_fut:?})")
-            }
+            Drop { place, .. } => write!(fmt, "drop({place:?})"),
             Call { func, args, destination, .. } => {
                 write!(fmt, "{destination:?} = ")?;
                 write!(fmt, "{func:?}(")?;
@@ -1095,7 +1135,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
         use self::Rvalue::*;
 
         match *self {
-            Use(ref place) => write!(fmt, "{place:?}"),
+            Use(ref operand, with_retag) => {
+                // With retag is more common so we only print when it's without.
+                write!(fmt, "{}{operand:?}", if with_retag.no() { "no_retag " } else { "" })
+            }
             Repeat(ref a, b) => {
                 write!(fmt, "[{a:?}; ")?;
                 pretty_print_const(b, fmt, false)?;
@@ -1104,7 +1147,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Cast(ref kind, ref place, ref ty) => {
                 with_no_trimmed_paths!(write!(fmt, "{place:?} as {ty} ({kind:?})"))
             }
-            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
+            BinaryOp(ref op, (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
@@ -1136,6 +1179,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 write!(fmt, "&{region}{kind_str}{place:?}")
             }
 
+            Reborrow(target, mutability, ref place) => {
+                write!(
+                    fmt,
+                    "{target:?}({} {place:?})",
+                    if mutability.is_mut() { "reborrow" } else { "coerce shared" }
+                )
+            }
+
             CopyForDeref(ref place) => write!(fmt, "deref_copy {place:#?}"),
 
             RawPtr(mutability, ref place) => {
@@ -1165,7 +1216,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     AggregateKind::Adt(adt_did, variant, args, _user_ty, _) => {
                         ty::tls::with(|tcx| {
                             let variant_def = &tcx.adt_def(adt_did).variant(variant);
-                            let args = tcx.lift(args).expect("could not lift for printing");
+                            let args = tcx.lift(args);
                             let name = FmtPrinter::print_string(tcx, Namespace::ValueNS, |p| {
                                 p.print_def_path(variant_def.def_id, args)
                             })?;
@@ -1187,7 +1238,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     AggregateKind::Closure(def_id, args)
                     | AggregateKind::CoroutineClosure(def_id, args) => ty::tls::with(|tcx| {
                         let name = if tcx.sess.opts.unstable_opts.span_free_formats {
-                            let args = tcx.lift(args).unwrap();
+                            let args = tcx.lift(args);
                             format!("{{closure@{}}}", tcx.def_path_str_with_args(def_id, args),)
                         } else {
                             let span = tcx.def_span(def_id);
@@ -1440,8 +1491,14 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             let val = match const_ {
                 Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("ty::Param({p})"),
-                    ty::ConstKind::Unevaluated(uv) => {
-                        format!("ty::Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
+                    ty::ConstKind::Alias(_, alias_const) => {
+                        let kind = match alias_const.kind {
+                            ty::AliasConstKind::Projection { def_id }
+                            | ty::AliasConstKind::Inherent { def_id }
+                            | ty::AliasConstKind::Free { def_id }
+                            | ty::AliasConstKind::Anon { def_id } => self.tcx.def_path_str(def_id),
+                        };
+                        format!("ty::AliasConst({}, {:?})", kind, alias_const.args)
                     }
                     ty::ConstKind::Value(cv) => {
                         format!("ty::Valtree({})", fmt_valtree(&cv))
@@ -1911,8 +1968,6 @@ fn pretty_print_const_value_tcx<'tcx>(
         // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
         // to be able to destructure the tuple into `(0u8, *mut T)`
         (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_non_region_param() => {
-            let ct = tcx.lift(ct).unwrap();
-            let ty = tcx.lift(ty).unwrap();
             if let Some(contents) = tcx.try_destructure_mir_constant_for_user_output(ct, ty) {
                 let fields: Vec<(ConstValue, Ty<'_>)> = contents.fields.to_vec();
                 match *ty.kind() {
@@ -1937,7 +1992,6 @@ fn pretty_print_const_value_tcx<'tcx>(
                             .variant
                             .expect("destructed mir constant of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
-                        let args = tcx.lift(args).unwrap();
                         let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
                         p.print_alloc_ids = true;
                         p.pretty_print_value_path(variant_def.def_id, args)?;
@@ -1974,7 +2028,6 @@ fn pretty_print_const_value_tcx<'tcx>(
         (ConstValue::Scalar(scalar), _) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;
-            let ty = tcx.lift(ty).unwrap();
             p.pretty_print_const_scalar(scalar, ty)?;
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
@@ -2000,8 +2053,7 @@ pub(crate) fn pretty_print_const_value<'tcx>(
     fmt: &mut Formatter<'_>,
 ) -> fmt::Result {
     ty::tls::with(|tcx| {
-        let ct = tcx.lift(ct).unwrap();
-        let ty = tcx.lift(ty).unwrap();
+        let ty = tcx.lift(ty);
         pretty_print_const_value_tcx(tcx, ct, ty, fmt)
     })
 }

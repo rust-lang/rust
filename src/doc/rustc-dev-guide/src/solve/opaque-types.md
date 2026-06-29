@@ -5,6 +5,39 @@ This should be a self-contained explanation of the behavior in the new solver.
 
 [opaque types]: ../opaque-types-type-alias-impl-trait.md
 
+## Non-Defining vs Defining Uses
+
+The distinction between non-defining and defining uses determines the inference behavior and governs the strictness of the abstraction. A defining use reveals the underlying hidden type, while a non-defining use enforces rigidity, treating the type as an abstract placeholder.
+
+### Non-defining Use
+
+This concept is what makes an opaque type rigid. By treating the underlying type as unknown, the solver maintains abstraction.
+
+```rust
+fn foo() -> impl Copy {
+    let x: u32 = 56;
+    x 
+}
+
+fn bar() {
+    let x = foo();
+    // Even though we know 'foo' returns a u32.The solver enforces 
+    // rigidity here and is a NON-DEFINING use.
+}
+```
+
+### Defining Use
+
+This is where the opaque type is actually defined. A defining use tells the compiler exactly what the concrete type is behind the abstraction.
+
+```rust
+fn foo() -> impl Copy {
+    let x: u32 = 56;
+    // The return value x defines the hidden type as u32 and is a DEFINING use.
+    x
+}
+```
+
 ## opaques are alias types
 
 Opaque types are treated the same as other aliases, most notabily associated types,

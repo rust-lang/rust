@@ -1,0 +1,17 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/capture-reference.rs:8:26
+   |
+LL |     let c = {
+   |         - borrow later captured here by closure
+LL |         let x = 22;
+   |             - binding `x` declared here
+LL |         || {
+LL |             let y = move(&x);
+   |                          ^^ borrowed value does not live long enough
+...
+LL |     };
+   |     - `x` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

@@ -332,7 +332,7 @@ fn convert_path(
     {
         let syn_ctx = span_for_range(segment.syntax().text_range());
         if let Some(macro_call_id) = syn_ctx.outer_expn(db)
-            && db.lookup_intern_macro_call(macro_call_id.into()).def.local_inner
+            && crate::MacroCallId::from(macro_call_id).loc(db).def.local_inner
         {
             mod_path.kind = match resolve_crate_root(db, syn_ctx) {
                 Some(crate_root) => PathKind::DollarCrate(crate_root),
@@ -406,7 +406,7 @@ pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContext) -> O
         result_mark = Some(mark);
     }
 
-    result_mark.map(|call| db.lookup_intern_macro_call(call.into()).def.krate)
+    result_mark.map(|call| crate::MacroCallId::from(call).loc(db).def.krate)
 }
 
 pub use crate::name as __name;
@@ -427,6 +427,7 @@ macro_rules! __known_path {
     (core::range::RangeFrom) => {};
     (core::range::RangeInclusive) => {};
     (core::range::RangeToInclusive) => {};
+    (core::async_iter::AsyncIterator) => {};
     (core::future::Future) => {};
     (core::future::IntoFuture) => {};
     (core::fmt::Debug) => {};

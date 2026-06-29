@@ -1,11 +1,10 @@
-#![allow(
-    unused,
+#![warn(clippy::mut_from_ref)]
+#![expect(
+    clippy::boxed_local,
     clippy::needless_lifetimes,
     clippy::needless_pass_by_ref_mut,
-    clippy::redundant_allocation,
-    clippy::boxed_local
+    clippy::redundant_allocation
 )]
-#![warn(clippy::mut_from_ref)]
 
 struct Foo;
 

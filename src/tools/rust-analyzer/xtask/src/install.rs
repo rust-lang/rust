@@ -179,7 +179,7 @@ fn install_proc_macro_server(sh: &Shell, opts: ProcMacroServerOpt) -> anyhow::Re
 
     let mut cmd = cmd!(
         sh,
-        "cargo install --path crates/proc-macro-srv-cli --profile={profile} --locked --force --features sysroot-abi"
+        "cargo install --path crates/proc-macro-srv-cli --profile={profile} --locked --force --features in-rust-tree"
     );
     if std::env::var_os("RUSTUP_TOOLCHAIN").is_none() {
         cmd = cmd.env("RUSTUP_TOOLCHAIN", "nightly");

@@ -1,5 +1,5 @@
 #![warn(clippy::unused_format_specs)]
-#![allow(unused)]
+#![allow(clippy::useless_format)]
 
 macro_rules! format_args_from_macro {
     () => {

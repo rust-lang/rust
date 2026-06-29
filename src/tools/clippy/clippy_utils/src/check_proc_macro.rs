@@ -242,7 +242,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
 fn fn_header_search_pat(header: FnHeader) -> Pat {
     if header.is_async() {
         Pat::Str("async")
-    } else if header.is_const() {
+    } else if matches!(header.constness, rustc_hir::Constness::Const { always: false }) {
         Pat::Str("const")
     } else if header.is_unsafe() {
         Pat::Str("unsafe")
@@ -265,15 +265,19 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::Struct(_, _, VariantData::Struct { .. }) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
-        ItemKind::Trait(_, _, _, Safety::Unsafe, ..)
+        ItemKind::Trait {
+            safety: Safety::Unsafe, ..
+        }
         | ItemKind::Impl(Impl {
             of_trait: Some(TraitImplHeader {
                 safety: Safety::Unsafe, ..
             }),
             ..
         }) => (Pat::Str("unsafe"), Pat::Str("}")),
-        ItemKind::Trait(_, _, IsAuto::Yes, ..) => (Pat::Str("auto"), Pat::Str("}")),
-        ItemKind::Trait(..) => (Pat::Str("trait"), Pat::Str("}")),
+        ItemKind::Trait {
+            is_auto: IsAuto::Yes, ..
+        } => (Pat::Str("auto"), Pat::Str("}")),
+        ItemKind::Trait { .. } => (Pat::Str("trait"), Pat::Str("}")),
         ItemKind::Impl(_) => (Pat::Str("impl"), Pat::Str("}")),
         ItemKind::Mod(..) => (Pat::Str("mod"), Pat::Str("")),
         ItemKind::Macro(_, def, _) => (

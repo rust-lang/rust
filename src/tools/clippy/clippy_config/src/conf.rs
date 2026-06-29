@@ -38,6 +38,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "PowerPC", "PowerShell", "WebAssembly",
     "NaN", "NaNs",
     "OAuth", "GraphQL",
+    "SQLite", "MySQL", "PostgreSQL", "MariaDB", "MongoDB",
     "OCaml",
     "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry",
     "OpenType",
@@ -553,6 +554,30 @@ define_Conf! {
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     #[lints(cargo_common_metadata)]
     cargo_ignore_publish: bool = false,
+    /// Whether to check for grouped late initializations from multiple `let` statements.
+    ///
+    /// #### Example
+    /// ```rust
+    /// let a;
+    /// let b;
+    /// if true {
+    ///     a = 1;
+    ///     b = 2;
+    /// } else {
+    ///     a = 3;
+    ///     b = 4;
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let (a, b) = if true {
+    ///     (1, 2)
+    /// } else {
+    ///     (3, 4)
+    /// };
+    /// ```
+    #[lints(needless_late_init)]
+    check_grouped_late_init: bool = true,
     /// Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
     #[lints(incompatible_msrv)]
     check_incompatible_msrv_in_tests: bool = false,
@@ -713,7 +738,8 @@ define_Conf! {
     /// be filtering for common types.
     #[lints(manual_let_else)]
     matches_for_let_else: MatchLintBehaviour = MatchLintBehaviour::WellKnownTypes,
-    /// The maximum number of bool parameters a function can have
+    /// The maximum number of bool parameters a function can have.
+    /// Use `0` to lint on any function with a bool parameter.
     #[lints(fn_params_excessive_bools)]
     max_fn_params_bools: u64 = 3,
     /// The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes
@@ -786,6 +812,7 @@ define_Conf! {
         manual_hash_one,
         manual_is_ascii_check,
         manual_is_power_of_two,
+        manual_isolate_lowest_one,
         manual_let_else,
         manual_midpoint,
         manual_non_exhaustive,

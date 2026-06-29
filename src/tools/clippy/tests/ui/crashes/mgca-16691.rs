@@ -1,5 +1,5 @@
 //@ check-pass
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
 trait Trait {

@@ -499,9 +499,9 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        let expr = if let Const(box ast::ConstItem { rhs_kind, .. }) = &item.kind {
+        let expr = if let Const(ast::ConstItem { rhs_kind, .. }) = &item.kind {
             if let Some(e) = rhs_kind.expr() { e } else { return }
-        } else if let Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind {
+        } else if let Static(ast::StaticItem { expr: Some(expr), .. }) = &item.kind {
             expr
         } else {
             return;
@@ -636,7 +636,7 @@ impl UnusedParens {
         avoid_mut: bool,
         keep_space: (bool, bool),
     ) {
-        use ast::{BindingMode, PatKind};
+        use ast::{BindingMode, ByRef, Mutability, PatKind, Pinnedness};
 
         if let PatKind::Paren(inner) = &value.kind {
             match inner.kind {
@@ -649,8 +649,16 @@ impl UnusedParens {
                 PatKind::Guard(..) => return,
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
-                // Avoid `mut x` and `mut x @ p` if we should:
-                PatKind::Ident(BindingMode::MUT, ..) if avoid_mut => {
+                // Avoid bindings whose own binding mutability is `mut`, like `mut x`,
+                // `mut x @ p`, and `mut ref pin const x`, if we should.
+                PatKind::Ident(BindingMode(_, Mutability::Mut), ..) if avoid_mut => {
+                    return;
+                }
+                PatKind::Ref(_, Pinnedness::Pinned, _)
+                | PatKind::Ident(BindingMode(ByRef::Yes(Pinnedness::Pinned, _), _), ..)
+                    // FIXME(pin_ergonomics): Remove this gate once pinned patterns are stable.
+                    if !cx.builder.features().pin_ergonomics() =>
+                {
                     return;
                 }
                 // Otherwise proceed with linting.
@@ -756,28 +764,57 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
-        use ast::Mutability;
         use ast::PatKind::*;
+        use ast::{Mutability, Pinnedness};
         let keep_space = (false, false);
         match &p.kind {
             // Do not lint on `(..)` as that will result in the other arms being useless.
-            Paren(_)
+            Paren(_) => {}
             // The other cases do not contain sub-patterns.
-            | Missing | Wild | Never | Rest | Expr(..) | MacCall(..) | Range(..) | Ident(.., None)
-            | Path(..) | Err(_) => {},
+            Missing
+            | Wild
+            | Never
+            | Rest
+            | Expr(..)
+            | MacCall(..)
+            | Range(..)
+            | Ident(.., None)
+            | Path(..)
+            | Err(_) => {}
             // These are list-like patterns; parens can always be removed.
-            TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
-                self.check_unused_parens_pat(cx, p, false, false, keep_space);
-            },
-            Struct(_, _, fps, _) => for f in fps {
-                self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
-            },
+            TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => {
+                for p in ps {
+                    self.check_unused_parens_pat(cx, p, false, false, keep_space);
+                }
+            }
+            Struct(_, _, fps, _) => {
+                for f in fps {
+                    self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
+                }
+            }
             // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
-            Ident(.., Some(p)) | Box(p) | Deref(p) | Guard(p, _) => self.check_unused_parens_pat(cx, p, true, false, keep_space),
+            Ident(.., Some(p)) | Box(p) | Deref(p) | Guard(p, _) => {
+                self.check_unused_parens_pat(cx, p, true, false, keep_space)
+            }
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
+            // This only applies to plain shared reference patterns. In `&pin const (mut x)`,
+            // `pin const` is consumed before parsing the subpattern, so removing the
+            // parentheses preserves `mut x` as a binding pattern.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
-            // FIXME(pin_ergonomics): check pinned patterns
-            Ref(p, _, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space),
+            Ref(p, pinned, m)
+                if *pinned != Pinnedness::Pinned
+                    // FIXME(pin_ergonomics): Remove this gate once pinned patterns are stable.
+                    || cx.builder.features().pin_ergonomics() =>
+            {
+                self.check_unused_parens_pat(
+                    cx,
+                    p,
+                    true,
+                    *pinned == Pinnedness::Not && *m == Mutability::Not,
+                    keep_space,
+                );
+            }
+            Ref(..) => {}
         }
     }
 
@@ -900,21 +937,28 @@ impl EarlyLintPass for UnusedParens {
                             && !dyn2015_exception
                         {
                             let s = poly_trait_ref.span;
-                            let spans = (!s.from_expansion()).then(|| {
-                                (
+                            // Check that the span really is wrapped in single-byte ASCII parens
+                            // before trimming a byte off each end, in case a macro does weird
+                            // things with spans or parser recovery produced multibyte parens.
+                            if !s.from_expansion()
+                                && let Ok(snippet) = cx.sess().source_map().span_to_snippet(s)
+                                && snippet.starts_with('(')
+                                && snippet.ends_with(')')
+                            {
+                                let spans = Some((
                                     s.with_hi(s.lo() + rustc_span::BytePos(1)),
                                     s.with_lo(s.hi() - rustc_span::BytePos(1)),
-                                )
-                            });
+                                ));
 
-                            self.emit_unused_delims(
-                                cx,
-                                poly_trait_ref.span,
-                                spans,
-                                "type",
-                                (false, false),
-                                false,
-                            );
+                                self.emit_unused_delims(
+                                    cx,
+                                    poly_trait_ref.span,
+                                    spans,
+                                    "type",
+                                    (false, false),
+                                    false,
+                                );
+                            }
                         }
                     }
                 }
@@ -931,7 +975,7 @@ impl EarlyLintPass for UnusedParens {
         self.in_no_bounds_pos.clear();
     }
 
-    fn enter_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
+    fn check_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
         use rustc_ast::{WhereBoundPredicate, WherePredicateKind};
         if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
             bounded_ty,
@@ -945,7 +989,7 @@ impl EarlyLintPass for UnusedParens {
         }
     }
 
-    fn exit_where_predicate(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) {
+    fn check_where_predicate_post(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) {
         assert!(!self.with_self_ty_parens);
     }
 }

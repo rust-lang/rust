@@ -7,6 +7,7 @@ use std::panic;
 use std::path::PathBuf;
 use std::thread::panicking;
 
+use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::{DiagArgMap, DiagArgName, DiagArgValue, IntoDiagArg};
 use rustc_lint_defs::{Applicability, LintExpectationId};
@@ -129,18 +130,6 @@ impl<'a> Diagnostic<'a, ()>
     }
 }
 
-pub struct DiagCallback<'a>(
-    pub  &'a Box<
-        dyn for<'b> Fn(DiagCtxtHandle<'b>, Level) -> Diag<'b, ()> + DynSend + DynSync + 'static,
-    >,
-);
-
-impl<'a, 'b> Diagnostic<'a, ()> for DiagCallback<'b> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        (self.0)(dcx, level)
-    }
-}
-
 /// Type used to emit diagnostic through a closure instead of implementing the `Diagnostic` trait.
 pub struct DiagDecorator<F: FnOnce(&mut Diag<'_, ()>)>(pub F);
 
@@ -155,10 +144,7 @@ impl<'a, F: FnOnce(&mut Diag<'_, ()>)> Diagnostic<'a, ()> for DiagDecorator<F> {
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
 #[rustc_diagnostic_item = "Subdiagnostic"]
-pub trait Subdiagnostic
-where
-    Self: Sized,
-{
+pub trait Subdiagnostic {
     /// Add a subdiagnostic to an existing diagnostic.
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>);
 }
@@ -190,6 +176,8 @@ pub struct IsLint {
     pub(crate) name: String,
     /// Indicates whether this lint should show up in cargo's future breakage report.
     has_future_breakage: bool,
+    /// Indicates the minimum rust version this lint applies to
+    rust_version: Option<RustcVersion>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -321,6 +309,11 @@ impl DiagInner {
     /// Indicates whether this diagnostic should show up in cargo's future breakage report.
     pub(crate) fn has_future_breakage(&self) -> bool {
         matches!(self.is_lint, Some(IsLint { has_future_breakage: true, .. }))
+    }
+
+    /// Indicates the minimum rust version this lint applies to.
+    pub(crate) fn rust_version(&self) -> Option<RustcVersion> {
+        self.is_lint.as_ref().and_then(|is| is.rust_version)
     }
 
     pub(crate) fn is_force_warn(&self) -> bool {
@@ -1167,8 +1160,13 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     } }
 
-    pub fn is_lint(&mut self, name: String, has_future_breakage: bool) -> &mut Self {
-        self.is_lint = Some(IsLint { name, has_future_breakage });
+    pub fn is_lint(
+        &mut self,
+        name: String,
+        has_future_breakage: bool,
+        rust_version: Option<RustcVersion>,
+    ) -> &mut Self {
+        self.is_lint = Some(IsLint { name, has_future_breakage, rust_version });
         self
     }
 

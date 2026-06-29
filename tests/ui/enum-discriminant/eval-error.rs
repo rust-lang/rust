@@ -22,7 +22,7 @@ enum Bar2 {
 }
 
 #[repr(u8, packed)]
-//~^ ERROR attribute should be applied to a struct or union
+//~^ ERROR attribute cannot be used on
 enum Foo3 {
     A
 }

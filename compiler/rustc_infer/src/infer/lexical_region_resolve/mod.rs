@@ -149,7 +149,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // Deduplicating constraints is shown to have a positive perf impact.
         let mut seen = UnordSet::default();
-        self.data.constraints.retain(|(constraint, _)| seen.insert(*constraint));
+        self.data.constraints.retain_mut(|(constraint, _)| {
+            // We don't want to discern constraints by leak check visibility here
+            constraint.visible_for_leak_check = ty::VisibleForLeakCheck::Unreachable;
+            seen.insert(*constraint)
+        });
 
         if cfg!(debug_assertions) {
             self.dump_constraints();

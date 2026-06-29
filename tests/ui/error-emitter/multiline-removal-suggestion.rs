@@ -56,4 +56,3 @@ fn bay() -> Vec<(bool, HashSet<u8>)> {
 		.collect()
 }
 fn main() {}
-//@ ignore-parallel-frontend invalid svg(multiple threads trying to write to the same file)

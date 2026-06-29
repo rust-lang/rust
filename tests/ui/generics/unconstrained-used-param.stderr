@@ -1,0 +1,29 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-used-param.rs:5:6
+   |
+LL | impl<T> S {
+   |      ^ unconstrained type parameter
+   |
+help: use the type parameter `T` in the `S` type and use it in the type definition
+   |
+LL ~ struct S<T>;
+LL ~ impl<T> S<T> {
+   |
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-used-param.rs:16:9
+   |
+LL | impl<F, T> S2<F> {
+   |         ^ unconstrained type parameter
+   |
+help: use the type parameter `T` in the `S2` type and use it in the type definition
+   |
+LL ~ struct S2<F, T> {
+LL |     _f: F,
+LL | }
+LL ~ impl<F, T> S2<F, T> {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

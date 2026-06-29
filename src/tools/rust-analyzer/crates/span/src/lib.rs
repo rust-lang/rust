@@ -51,13 +51,20 @@ impl Span {
         }
         // Differing context, we can't merge these so prefer the one that's root
         if self.ctx != other.ctx {
+            #[cfg(feature = "salsa")]
             if self.ctx.is_root() {
                 return Some(other);
             } else if other.ctx.is_root() {
                 return Some(self);
             }
+            None
+        } else {
+            Some(Span {
+                range: self.range.cover(other.range),
+                anchor: other.anchor,
+                ctx: other.ctx,
+            })
         }
-        Some(Span { range: self.range.cover(other.range), anchor: other.anchor, ctx: other.ctx })
     }
 
     pub fn eq_ignoring_ctx(self, other: Self) -> bool {

@@ -388,7 +388,7 @@ impl<'tcx> MoveData<'tcx> {
 
 /// A projection into a move path producing a child path
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum MoveSubPath {
+enum MoveSubPath {
     Deref,
     Field(FieldIdx),
     ConstantIndex(u64),
@@ -397,7 +397,7 @@ pub enum MoveSubPath {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum MoveSubPathResult {
+enum MoveSubPathResult {
     One(MoveSubPath),
     Subslice { from: u64, to: u64 },
     Skip,
@@ -405,7 +405,7 @@ pub enum MoveSubPathResult {
 }
 
 impl MoveSubPath {
-    pub fn of(elem: ProjectionKind) -> MoveSubPathResult {
+    fn of(elem: ProjectionKind) -> MoveSubPathResult {
         let subpath = match elem {
             // correspond to a MoveSubPath
             ProjectionKind::Deref => MoveSubPath::Deref,

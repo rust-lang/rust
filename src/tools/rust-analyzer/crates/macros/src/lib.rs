@@ -5,7 +5,7 @@ use syn::parse_quote;
 use synstructure::decl_derive;
 
 decl_derive!(
-    [TypeFoldable, attributes(type_foldable)] =>
+    [TypeFoldable, attributes(type_foldable, type_visitable)] =>
     /// Derives `TypeFoldable` for the annotated `struct` or `enum` (`union` is not supported).
     ///
     /// The fold will produce a value of the same struct or enum variant as the input, with
@@ -102,8 +102,10 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
         vi.construct(|_, index| {
             let bind = &bindings[index];
 
-            // retain value of fields with #[type_foldable(identity)]
-            if has_ignore_attr(&bind.ast().attrs, "type_foldable", "identity") {
+            // retain value of fields with #[type_foldable(identity)] or #[type_visitable(ignore)]
+            if has_ignore_attr(&bind.ast().attrs, "type_foldable", "identity")
+                || has_ignore_attr(&bind.ast().attrs, "type_visitable", "ignore")
+            {
                 bind.to_token_stream()
             } else {
                 quote! {
@@ -118,8 +120,10 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
         vi.construct(|_, index| {
             let bind = &bindings[index];
 
-            // retain value of fields with #[type_foldable(identity)]
-            if has_ignore_attr(&bind.ast().attrs, "type_foldable", "identity") {
+            // retain value of fields with #[type_foldable(identity)] or #[type_visitable(ignore)]
+            if has_ignore_attr(&bind.ast().attrs, "type_foldable", "identity")
+                || has_ignore_attr(&bind.ast().attrs, "type_visitable", "ignore")
+            {
                 bind.to_token_stream()
             } else {
                 quote! {

@@ -3,9 +3,8 @@
 
 #![feature(stmt_expr_attributes)]
 #![warn(clippy::almost_complete_range)]
-#![allow(ellipsis_inclusive_range_patterns)]
-#![allow(clippy::needless_parens_on_range_literals)]
-#![allow(clippy::double_parens)]
+#![allow(ellipsis_inclusive_range_patterns, clippy::double_parens)]
+#![expect(clippy::needless_parens_on_range_literals)]
 
 extern crate proc_macros;
 use proc_macros::{external, inline_macros};

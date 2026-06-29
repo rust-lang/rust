@@ -1,8 +1,8 @@
 error[E0264]: unknown external lang item: `copy`
-  --> $DIR/E0264.rs:5:5
+  --> $DIR/E0264.rs:4:5
    |
-LL |     fn copy();
-   |     ^^^^^^^^^^
+LL |     #[lang = "copy"]
+   |     ^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

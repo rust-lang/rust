@@ -19,7 +19,7 @@ use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
 use tracing::{debug, trace};
 // Also make the error macros available from this module.
@@ -51,7 +51,7 @@ use crate::ty::{self, Instance, Ty, TyCtxt};
 /// - A constant
 /// - A static
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(StableHash, TypeFoldable, TypeVisitable)]
 pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
     /// For a promoted global, the `Instance` of the function they belong to.
@@ -250,7 +250,7 @@ impl<'s> AllocDecodingSession<'s> {
 
 /// An allocation in the global (tcx-managed) memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, TyDecodable, TyEncodable, HashStable)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, TyDecodable, TyEncodable, StableHash)]
 pub enum GlobalAlloc<'tcx> {
     /// The alloc ID is used as a function pointer.
     Function { instance: Instance<'tcx> },

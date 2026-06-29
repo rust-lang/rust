@@ -710,3 +710,15 @@ fn issue16751(mut v: Option<usize>) -> Option<usize> {
         None => return None,
     }
 }
+
+fn issue_destructuring_assignment() -> Option<(i32, i32)> {
+    let mut a = 0i32;
+    let mut b = 0i32;
+    let opt: Option<(i32, i32)> = Some((1, 2));
+    match opt {
+        //~^ question_mark
+        Some(x) => (a, b) = x,
+        None => return None,
+    }
+    Some((a, b))
+}

@@ -17,7 +17,7 @@ use rustc_target::asm::{
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::FnCtxt;
-use crate::errors::RegisterTypeUnstable;
+use crate::diagnostics::RegisterTypeUnstable;
 
 pub(crate) struct InlineAsmCtxt<'a, 'tcx> {
     target_features: &'tcx FxIndexSet<Symbol>,
@@ -44,7 +44,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
     fn expr_ty(&self, expr: &hir::Expr<'tcx>) -> Ty<'tcx> {
         let ty = self.fcx.typeck_results.borrow().expr_ty_adjusted(expr);
-        let ty = self.fcx.try_structurally_resolve_type(expr.span, ty);
+        let ty = self.fcx.resolve_vars_with_obligations(ty);
         if ty.has_non_region_infer() {
             Ty::new_misc_error(self.tcx())
         } else {
@@ -53,13 +53,13 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     }
 
     // FIXME(compiler-errors): This could use `<$ty as Pointee>::Metadata == ()`
-    fn is_thin_ptr_ty(&self, span: Span, ty: Ty<'tcx>) -> bool {
+    fn is_thin_ptr_ty(&self, ty: Ty<'tcx>) -> bool {
         // Type still may have region variables, but `Sized` does not depend
         // on those, so just erase them before querying.
         if self.fcx.type_is_sized_modulo_regions(self.fcx.param_env, ty) {
             return true;
         }
-        if let ty::Foreign(..) = self.fcx.try_structurally_resolve_type(span, ty).kind() {
+        if let ty::Foreign(..) = self.fcx.resolve_vars_with_obligations(ty).kind() {
             return true;
         }
         false
@@ -90,7 +90,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Float(FloatTy::F128) => Ok(InlineAsmType::F128),
             ty::FnPtr(..) => Ok(asm_ty_isize),
             ty::RawPtr(elem_ty, _) => {
-                if self.is_thin_ptr_ty(span, elem_ty) {
+                if self.is_thin_ptr_ty(elem_ty) {
                     Ok(asm_ty_isize)
                 } else {
                     Err(NonAsmTypeReason::NotSizedPtr(ty))
@@ -110,7 +110,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     return Err(NonAsmTypeReason::EmptySIMDArray(ty));
                 }
                 let field = &fields[FieldIdx::ZERO];
-                let elem_ty = field.ty(self.tcx(), args);
+                let elem_ty = field.ty(self.tcx(), args).skip_norm_wip();
 
                 let (size, ty) = match *elem_ty.kind() {
                     ty::Array(ty, len) => {
@@ -465,7 +465,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     if let InlineAsmRegClass::Err = reg_class {
                         continue;
                     }
-                    for &(_, feature) in reg_class.supported_types(asm_arch, allow_experimental_reg)
+                    for &(_, feature) in
+                        reg_class.supported_types(asm_arch, allow_experimental_reg).as_ref()
                     {
                         match feature {
                             Some(feature) => {

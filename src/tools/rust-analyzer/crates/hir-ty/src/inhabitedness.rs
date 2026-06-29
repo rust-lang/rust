@@ -5,10 +5,7 @@ use hir_def::{
     AdtId, EnumVariantId, ModuleId, VariantId, signatures::VariantFields, visibility::Visibility,
 };
 use rustc_hash::FxHashSet;
-use rustc_type_ir::{
-    TypeSuperVisitable, TypeVisitable, TypeVisitor,
-    inherent::{AdtDef, IntoKind},
-};
+use rustc_type_ir::{TypeSuperVisitable, TypeVisitable, TypeVisitor, inherent::IntoKind};
 
 use crate::{
     consteval::try_const_usize,
@@ -85,7 +82,7 @@ impl<'db> TypeVisitor<DbInterner<'db>> for UninhabitedFrom<'_, 'db> {
         }
 
         let r = match ty.kind() {
-            TyKind::Adt(adt, subst) => self.visit_adt(adt.def_id().0, subst),
+            TyKind::Adt(adt, subst) => self.visit_adt(adt.def_id(), subst),
             TyKind::Never => BREAK_VISIBLY_UNINHABITED,
             TyKind::Tuple(..) => ty.super_visit_with(self),
             TyKind::Array(item_ty, len) => match try_const_usize(self.infcx.interner.db, len) {
@@ -128,7 +125,7 @@ impl<'a, 'db> UninhabitedFrom<'a, 'db> {
             AdtId::EnumId(e) => {
                 let enum_data = e.enum_variants(self.db());
 
-                for &(variant, _, _) in enum_data.variants.iter() {
+                for &(variant, _) in enum_data.variants.values() {
                     let variant_inhabitedness = self.visit_variant(variant.into(), subst);
                     match variant_inhabitedness {
                         Break(VisiblyUninhabited) => (),
@@ -160,7 +157,7 @@ impl<'a, 'db> UninhabitedFrom<'a, 'db> {
         };
 
         for (fid, _) in fields.iter() {
-            self.visit_field(field_vis.as_ref().map(|it| it[fid]), &field_tys[fid].get(), subst)?;
+            self.visit_field(field_vis.as_ref().map(|it| it[fid]), &field_tys[fid].ty(), subst)?;
         }
         CONTINUE_OPAQUELY_INHABITED
     }
@@ -172,7 +169,7 @@ impl<'a, 'db> UninhabitedFrom<'a, 'db> {
         subst: GenericArgs<'db>,
     ) -> ControlFlow<VisiblyUninhabited> {
         if vis.is_none_or(|it| it.is_visible_from(self.db(), self.target_mod)) {
-            let ty = ty.instantiate(self.interner(), subst);
+            let ty = ty.instantiate(self.interner(), subst).skip_norm_wip();
             ty.visit_with(self)
         } else {
             CONTINUE_OPAQUELY_INHABITED

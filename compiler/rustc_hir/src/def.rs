@@ -4,19 +4,18 @@ use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
-use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, StableHash};
+use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{HashStableContext, Symbol};
 
 use crate::definitions::DefPathData;
 use crate::hir;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
 pub enum CtorOf {
     /// This `DefKind::Ctor` is a synthesized constructor of a tuple or unit struct.
     Struct,
@@ -25,7 +24,7 @@ pub enum CtorOf {
 }
 
 /// What kind of constructor something is.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
 pub enum CtorKind {
     /// Constructor function automatically created by a tuple struct/variant.
     Fn,
@@ -35,7 +34,7 @@ pub enum CtorKind {
 
 /// A set of macro kinds, for macros that can have more than one kind
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(StableHash)]
 pub struct MacroKinds(u8);
 bitflags::bitflags! {
     impl MacroKinds: u8 {
@@ -81,7 +80,7 @@ impl MacroKinds {
 }
 
 /// An attribute that is not a macro; e.g., `#[inline]` or `#[rustfmt::skip]`.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
 pub enum NonMacroAttrKind {
     /// Single-segment attribute defined by the language (`#[inline]`)
     Builtin(Symbol),
@@ -96,7 +95,7 @@ pub enum NonMacroAttrKind {
 
 /// What kind of definition something is; e.g., `mod` vs `struct`.
 /// `enum DefPathData` may need to be updated if a new variant is added here.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
 pub enum DefKind {
     // Type namespace
     Mod,
@@ -134,6 +133,11 @@ pub enum DefKind {
         nested: bool,
     },
     /// Refers to the struct or enum variant's constructor.
+    ///
+    /// ```
+    /// struct S;
+    /// let x = S; // S in the value namespace is a Ctor
+    /// ```
     ///
     /// The reason `Ctor` exists in addition to [`DefKind::Struct`] and
     /// [`DefKind::Variant`] is because structs and enum variants exist
@@ -511,7 +515,7 @@ impl DefKind {
 /// - the call to `str_to_string` will resolve to [`Res::Def`], with the [`DefId`]
 ///   pointing to the definition of `str_to_string` in the current crate.
 //
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
 pub enum Res<Id = hir::HirId> {
     /// Definition having a unique ID (`DefId`), corresponds to something defined in user code.
     ///
@@ -679,7 +683,7 @@ impl PartialRes {
 /// Different kinds of symbols can coexist even if they share the same textual name.
 /// Therefore, they each have a separate universe (known as a "namespace").
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
-#[derive(HashStable_Generic)]
+#[derive(StableHash)]
 pub enum Namespace {
     /// The type namespace includes `struct`s, `enum`s, `union`s, `trait`s, and `mod`s
     /// (and, by extension, crates).
@@ -712,17 +716,9 @@ impl IntoDiagArg for Namespace {
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for Namespace {
-    type KeyType = Namespace;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> Namespace {
-        *self
-    }
-}
-
 /// Just a helper ‒ separate structure for each namespace.
-#[derive(Copy, Clone, Default, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, StableHash)]
+#[derive_const(Default)]
 pub struct PerNS<T> {
     pub value_ns: T,
     pub type_ns: T,
@@ -996,8 +992,6 @@ pub enum LifetimeRes {
         ///
         /// Creating the associated `LocalDefId` is the responsibility of lowering.
         param: NodeId,
-        /// Id of the introducing place. See `Param`.
-        binder: NodeId,
         /// Kind of elided lifetime
         kind: hir::MissingLifetimeKind,
     },

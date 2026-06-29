@@ -64,7 +64,7 @@ impl TcpStream {
         self.inner.read(buf, self.read_timeout()?)
     }
 
-    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 
@@ -109,6 +109,14 @@ impl TcpStream {
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
+        unsupported()
+    }
+
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
         unsupported()
     }
 

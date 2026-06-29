@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{SpanRangeExt, position_before_rarrow};
+use clippy_utils::source::{SpanExt, position_before_rarrow};
 use clippy_utils::{is_never_expr, is_unit_expr};
 use rustc_ast::{Block, StmtKind};
 use rustc_errors::Applicability;

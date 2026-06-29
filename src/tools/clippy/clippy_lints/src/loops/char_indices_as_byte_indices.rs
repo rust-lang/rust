@@ -48,7 +48,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, iterable: &Expr
             && let PatKind::Binding(_, binding_id, ..) = pat.kind
         {
             // Destructured iterator element `(idx, _)`, look for uses of the binding
-            for_each_expr(cx, body, |expr| {
+            for_each_expr(cx.tcx, body, |expr| {
                 if expr.res_local_id() == Some(binding_id) {
                     check_index_usage(cx, expr, pat, enumerate_span, chars_span, chars_recv);
                 }
@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, iterable: &Expr
             });
         } else if let PatKind::Binding(_, binding_id, ..) = pat.kind {
             // Bound as a tuple, look for `tup.0`
-            for_each_expr(cx, body, |expr| {
+            for_each_expr(cx.tcx, body, |expr| {
                 if let ExprKind::Field(e, field) = expr.kind
                     && e.res_local_id() == Some(binding_id)
                     && field.name == sym::integer(0)
@@ -89,13 +89,13 @@ fn check_index_usage<'tcx>(
             // `Index` directly and no deref to `str` would happen in that case).
             if cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_str()
                 && BYTE_INDEX_METHODS.contains(&segment.ident.name)
-                && eq_expr_value(cx, chars_recv, recv) =>
+                && eq_expr_value(cx, expr.span.ctxt(), chars_recv, recv) =>
         {
             "passing a character position to a method that expects a byte index"
         },
         ExprKind::Index(target, ..)
             if is_string_like(cx.typeck_results().expr_ty_adjusted(target).peel_refs())
-                && eq_expr_value(cx, chars_recv, target) =>
+                && eq_expr_value(cx, expr.span.ctxt(), chars_recv, target) =>
         {
             "indexing into a string with a character position where a byte index is expected"
         },

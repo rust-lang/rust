@@ -1,5 +1,5 @@
 error: item name ends with its containing module's name
-  --> tests/ui-toml/item_name_repetitions/allowed_prefixes/item_name_repetitions.rs:9:12
+  --> tests/ui-toml/item_name_repetitions/allowed_prefixes/item_name_repetitions.rs:8:12
    |
 LL |     pub fn to_foo() {}
    |            ^^^^^^

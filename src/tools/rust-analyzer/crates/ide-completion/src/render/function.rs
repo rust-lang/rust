@@ -27,7 +27,7 @@ enum FuncKind<'ctx> {
 }
 
 pub(crate) fn render_fn(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     local_name: Option<hir::Name>,
     func: hir::Function,
@@ -37,7 +37,7 @@ pub(crate) fn render_fn(
 }
 
 pub(crate) fn render_method(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     dot_access: &DotAccess<'_>,
     receiver: Option<SmolStr>,
     local_name: Option<hir::Name>,
@@ -48,7 +48,7 @@ pub(crate) fn render_method(
 }
 
 fn render(
-    ctx @ RenderContext { completion, .. }: RenderContext<'_>,
+    ctx @ RenderContext { completion, .. }: RenderContext<'_, '_>,
     local_name: Option<hir::Name>,
     func: hir::Function,
     func_kind: FuncKind<'_>,
@@ -76,7 +76,7 @@ fn render(
         completion.edition,
     );
 
-    let ret_type = func.ret_type(db);
+    let ret_type = ctx.completion.rebase_ty(&func.ret_type(db));
     let assoc_item = func.as_assoc_item(db);
 
     let trait_info =
@@ -107,6 +107,7 @@ fn render(
 
     let function = assoc_item
         .and_then(|assoc_item| assoc_item.implementing_ty(db))
+        .map(|self_type| ctx.completion.rebase_ty(&self_type))
         .map(|self_type| compute_return_type_match(db, &ctx, self_type, &ret_type))
         .map(|return_type| CompletionRelevanceFn {
             has_params: has_self_param || func.num_params(db) > 0,
@@ -118,7 +119,7 @@ fn render(
         type_match: if has_call_parens || complete_call_parens.is_some() {
             compute_type_match(completion, &ret_type)
         } else {
-            compute_type_match(completion, &func.ty(db))
+            compute_type_match(completion, &ctx.completion.rebase_ty(&func.ty(db)))
         },
         exact_name_match: compute_exact_name_match(completion, &call),
         function,
@@ -132,10 +133,10 @@ fn render(
             super::path_ref_match(completion, path_ctx, &ret_type, &mut item);
         }
         FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
-            if let Some(original_expr) = completion.sema.original_ast_node(receiver.clone())
+            if let Some(original_expr) = completion.sema.original_range_opt(receiver.syntax())
                 && let Some(ref_mode) = compute_ref_match(completion, &ret_type)
             {
-                item.ref_match(ref_mode, original_expr.syntax().text_range().start());
+                item.ref_match(ref_mode, original_expr.range.start());
             }
         }
         _ => (),
@@ -183,7 +184,7 @@ fn render(
 
 fn compute_return_type_match(
     db: &dyn HirDatabase,
-    ctx: &RenderContext<'_>,
+    ctx: &RenderContext<'_, '_>,
     self_type: hir::Type<'_>,
     ret_type: &hir::Type<'_>,
 ) -> CompletionRelevanceReturnType {
@@ -210,7 +211,7 @@ fn compute_return_type_match(
 
 pub(super) fn add_call_parens<'b>(
     builder: &'b mut Builder,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     cap: SnippetCap,
     name: SmolStr,
     escaped_name: SmolStr,
@@ -286,8 +287,8 @@ pub(super) fn add_call_parens<'b>(
     builder.label(SmolStr::from_iter([&name, label_suffix])).insert_snippet(cap, snippet)
 }
 
-fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type<'_>) -> &'static str {
-    if let Some(derefed_ty) = ty.remove_ref() {
+fn ref_of_param(ctx: &CompletionContext<'_, '_>, arg: &str, ty: &hir::Type<'_>) -> &'static str {
+    if let Some(derefed_ty) = ty.as_reference_inner() {
         for (name, local) in ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()) {
             if name.as_str() == arg {
                 return if local.ty(ctx.db) == derefed_ty {
@@ -301,7 +302,7 @@ fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type<'_>) -> &
     ""
 }
 
-fn detail(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
+fn detail(ctx: &CompletionContext<'_, '_>, func: hir::Function) -> String {
     let mut ret_ty = func.ret_type(ctx.db);
     let mut detail = String::new();
 
@@ -327,7 +328,7 @@ fn detail(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
     detail
 }
 
-fn detail_full(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
+fn detail_full(ctx: &CompletionContext<'_, '_>, func: hir::Function) -> String {
     let signature = format!("{}", func.display(ctx.db, ctx.display_target));
     let mut detail = String::with_capacity(signature.len());
 
@@ -342,7 +343,7 @@ fn detail_full(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
     detail
 }
 
-fn params_display(ctx: &CompletionContext<'_>, detail: &mut String, func: hir::Function) {
+fn params_display(ctx: &CompletionContext<'_, '_>, detail: &mut String, func: hir::Function) {
     if let Some(self_param) = func.self_param(ctx.db) {
         format_to!(detail, "{}", self_param.display(ctx.db, ctx.display_target));
         let assoc_fn_params = func.assoc_fn_params(ctx.db);
@@ -368,7 +369,7 @@ fn params_display(ctx: &CompletionContext<'_>, detail: &mut String, func: hir::F
 }
 
 fn params<'db>(
-    ctx: &CompletionContext<'db>,
+    ctx: &CompletionContext<'_, 'db>,
     func: hir::Function,
     func_kind: &FuncKind<'_>,
     has_dot_receiver: bool,
@@ -948,6 +949,25 @@ fn bar() {
 fn foo() {}
 fn bar() {
     let _ = [foo()$0];
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_semicolon_in_match() {
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match fo$0 {}
+}
+"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match foo()$0 {}
 }
 "#,
         );

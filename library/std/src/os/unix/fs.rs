@@ -14,7 +14,6 @@ use crate::fs::{self, OpenOptions, Permissions};
 use crate::io::BorrowedCursor;
 use crate::os::unix::io::{AsFd, AsRawFd};
 use crate::path::Path;
-use crate::sealed::Sealed;
 use crate::sys::{AsInner, AsInnerMut, FromInner};
 use crate::{io, sys};
 
@@ -163,7 +162,7 @@ pub trait FileExt {
     /// }
     /// ```
     #[unstable(feature = "read_buf_at", issue = "140771")]
-    fn read_buf_at(&self, buf: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    fn read_buf_at(&self, buf: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         io::default_read_buf(|b| self.read_at(b, offset), buf)
     }
 
@@ -199,7 +198,11 @@ pub trait FileExt {
     /// }
     /// ```
     #[unstable(feature = "read_buf_at", issue = "140771")]
-    fn read_buf_exact_at(&self, mut buf: BorrowedCursor<'_>, mut offset: u64) -> io::Result<()> {
+    fn read_buf_exact_at(
+        &self,
+        mut buf: BorrowedCursor<'_, u8>,
+        mut offset: u64,
+    ) -> io::Result<()> {
         while buf.capacity() > 0 {
             let prev_written = buf.written();
             match self.read_buf_at(buf.reborrow(), offset) {
@@ -350,7 +353,7 @@ impl FileExt for fs::File {
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.as_inner().read_at(buf, offset)
     }
-    fn read_buf_at(&self, buf: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    fn read_buf_at(&self, buf: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         self.as_inner().read_buf_at(buf, offset)
     }
     fn read_vectored_at(&self, bufs: &mut [io::IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
@@ -1009,9 +1012,9 @@ impl DirEntryExt for fs::DirEntry {
     }
 }
 
-/// Sealed Unix-specific extension methods for [`fs::DirEntry`].
+/// Unix-specific extension methods for [`fs::DirEntry`].
 #[unstable(feature = "dir_entry_ext2", issue = "85573")]
-pub trait DirEntryExt2: Sealed {
+pub impl(self) trait DirEntryExt2 {
     /// Returns a reference to the underlying `OsStr` of this entry's filename.
     ///
     /// # Examples
@@ -1034,10 +1037,6 @@ pub trait DirEntryExt2: Sealed {
     /// ```
     fn file_name_ref(&self) -> &OsStr;
 }
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl Sealed for fs::DirEntry {}
 
 #[unstable(feature = "dir_entry_ext2", issue = "85573")]
 impl DirEntryExt2 for fs::DirEntry {

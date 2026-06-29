@@ -1,4 +1,4 @@
-#![allow(dead_code, unused, for_loops_over_fallibles)]
+#![expect(for_loops_over_fallibles)]
 #![warn(clippy::iter_next_loop)]
 
 fn main() {

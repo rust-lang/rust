@@ -1,0 +1,32 @@
+error: only a small subset of attributes are supported on externally implementable items
+  --> $DIR/attrs.rs:12:1
+   |
+LL | fn example() {}
+   | ^^^^^^^^^^^^
+   |
+note: this attribute is not supported
+  --> $DIR/attrs.rs:5:1
+   |
+LL | #[macro_export]
+   | ^^^^^^^^^^^^^^^
+
+error: use of deprecated macro `example`: foo
+  --> $DIR/attrs.rs:16:3
+   |
+LL | #[example]
+   |   ^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/attrs.rs:2:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+
+error: use of deprecated function `example`: foo
+  --> $DIR/attrs.rs:20:5
+   |
+LL |     example()
+   |     ^^^^^^^
+
+error: aborting due to 3 previous errors
+

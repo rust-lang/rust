@@ -241,7 +241,19 @@ fn temporary_scope_introduction() {
 
     (assert_matches!(*MutRefWithDrop(&mut val).0, 0), std::mem::take(&mut val));
     (assert_matches!(*MutRefWithDrop(&mut val).0, 0, "msg"), std::mem::take(&mut val));
-
     (debug_assert_matches!(*MutRefWithDrop(&mut val).0, 0), std::mem::take(&mut val));
     (debug_assert_matches!(*MutRefWithDrop(&mut val).0, 0, "msg"), std::mem::take(&mut val));
+
+    (assert_eq!(*MutRefWithDrop(&mut val).0, 0), std::mem::take(&mut val));
+    (assert_eq!(*MutRefWithDrop(&mut val).0, 0, "msg"), std::mem::take(&mut val));
+    (debug_assert_eq!(*MutRefWithDrop(&mut val).0, 0), std::mem::take(&mut val));
+    (debug_assert_eq!(*MutRefWithDrop(&mut val).0, 0, "msg"), std::mem::take(&mut val));
+
+    (assert_ne!(*MutRefWithDrop(&mut val).0, 1), std::mem::take(&mut val));
+    (assert_ne!(*MutRefWithDrop(&mut val).0, 1, "msg"), std::mem::take(&mut val));
+    (debug_assert_ne!(*MutRefWithDrop(&mut val).0, 1), std::mem::take(&mut val));
+    (debug_assert_ne!(*MutRefWithDrop(&mut val).0, 1, "msg"), std::mem::take(&mut val));
+
+    (assert!(*MutRefWithDrop(&mut val).0 == 0), std::mem::take(&mut val));
+    (assert!(*MutRefWithDrop(&mut val).0 == 0, "msg"), std::mem::take(&mut val));
 }

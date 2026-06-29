@@ -105,17 +105,17 @@ extern "C" fn pass_packed(out: &mut Packed, x: Packed) {
 extern "C" fn ret_packed(x: &Packed) -> Packed {
     // CHECK: addi sp, sp, -16
     // CHECK-NEXT: .cfi_def_cfa_offset 16
-    // CHECK-NEXT: lbu [[BYTE2:.*]], 2(a0)
-    // CHECK-NEXT: lbu [[BYTE1:.*]], 1(a0)
-    // CHECK-NEXT: lbu [[BYTE3:.*]], 3(a0)
-    // CHECK-NEXT: lbu [[BYTE4:.*]], 4(a0)
-    // CHECK-NEXT: slli [[SHIFTED2:.*]], [[BYTE2]], 8
-    // CHECK-NEXT: or [[BYTE12:.*]], [[SHIFTED2]], [[BYTE1]]
-    // CHECK-NEXT: slli [[SHIFTED3:.*]], [[BYTE3]], 16
-    // CHECK-NEXT: slli [[SHIFTED4:.*]], [[BYTE4]], 24
-    // CHECK-NEXT: or [[BYTE34:.*]], [[SHIFTED3]], [[SHIFTED4]]
-    // CHECK-NEXT: or [[VALUE:.*]], [[BYTE12]], [[BYTE34]]
-    // CHECK-NEXT: sw [[VALUE]], 8(sp)
+    // CHECK-DAG: lbu [[BYTE2:.*]], 2(a0)
+    // CHECK-DAG: lbu [[BYTE1:.*]], 1(a0)
+    // CHECK-DAG: lbu [[BYTE3:.*]], 3(a0)
+    // CHECK-DAG: lbu [[BYTE4:.*]], 4(a0)
+    // CHECK-DAG: slli [[SHIFTED2:.*]], [[BYTE2]], 8
+    // CHECK-DAG: or [[BYTE12:.*]], [[SHIFTED2]], [[BYTE1]]
+    // CHECK-DAG: slli [[SHIFTED3:.*]], [[BYTE3]], 16
+    // CHECK-DAG: slli [[SHIFTED4:.*]], [[BYTE4]], 24
+    // CHECK-DAG: or [[BYTE34:.*]], [[SHIFTED3]], [[SHIFTED4]]
+    // CHECK-DAG: or [[VALUE:.*]], [[BYTE12]], [[BYTE34]]
+    // CHECK: sw [[VALUE]], 8(sp)
     // CHECK-NEXT: flw fa0, 8(sp)
     // CHECK-NEXT: lbu a0, 0(a0)
     // CHECK-NEXT: addi sp, sp, 16
@@ -127,17 +127,17 @@ extern "C" fn ret_packed(x: &Packed) -> Packed {
 extern "C" fn call_packed(x: &Packed) {
     // CHECK: addi sp, sp, -16
     // CHECK-NEXT: .cfi_def_cfa_offset 16
-    // CHECK-NEXT: lbu [[BYTE2:.*]], 2(a0)
-    // CHECK-NEXT: lbu [[BYTE1:.*]], 1(a0)
-    // CHECK-NEXT: lbu [[BYTE3:.*]], 3(a0)
-    // CHECK-NEXT: lbu [[BYTE4:.*]], 4(a0)
-    // CHECK-NEXT: slli [[SHIFTED2:.*]], [[BYTE2]], 8
-    // CHECK-NEXT: or [[BYTE12:.*]], [[SHIFTED2]], [[BYTE1]]
-    // CHECK-NEXT: slli [[SHIFTED3:.*]], [[BYTE3]], 16
-    // CHECK-NEXT: slli [[SHIFTED4:.*]], [[BYTE4]], 24
-    // CHECK-NEXT: or [[BYTE34:.*]], [[SHIFTED3]], [[SHIFTED4]]
-    // CHECK-NEXT: or [[VALUE:.*]], [[BYTE12]], [[BYTE34]]
-    // CHECK-NEXT: sw [[VALUE]], 8(sp)
+    // CHECK-DAG: lbu [[BYTE2:.*]], 2(a0)
+    // CHECK-DAG: lbu [[BYTE1:.*]], 1(a0)
+    // CHECK-DAG: lbu [[BYTE3:.*]], 3(a0)
+    // CHECK-DAG: lbu [[BYTE4:.*]], 4(a0)
+    // CHECK-DAG: slli [[SHIFTED2:.*]], [[BYTE2]], 8
+    // CHECK-DAG: or [[BYTE12:.*]], [[SHIFTED2]], [[BYTE1]]
+    // CHECK-DAG: slli [[SHIFTED3:.*]], [[BYTE3]], 16
+    // CHECK-DAG: slli [[SHIFTED4:.*]], [[BYTE4]], 24
+    // CHECK-DAG: or [[BYTE34:.*]], [[SHIFTED3]], [[SHIFTED4]]
+    // CHECK-DAG: or [[VALUE:.*]], [[BYTE12]], [[BYTE34]]
+    // CHECK: sw [[VALUE]], 8(sp)
     // CHECK-NEXT: flw fa0, 8(sp)
     // CHECK-NEXT: lbu a0, 0(a0)
     // CHECK-NEXT: addi sp, sp, 16

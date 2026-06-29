@@ -72,13 +72,13 @@ fn lint_into_iter_on_expr_implementing_iterator_2() {
 
 #[allow(const_item_mutation)]
 fn lint_into_iter_on_const_implementing_iterator() {
-    const NUMBERS: std::ops::Range<i32> = 0..10;
+    const NUMBERS: std::iter::Empty<i32> = std::iter::empty();
     let _ = NUMBERS.into_iter().next();
     //~^ useless_conversion
 }
 
 fn lint_into_iter_on_const_implementing_iterator_2() {
-    const NUMBERS: std::ops::Range<i32> = 0..10;
+    const NUMBERS: std::iter::Empty<i32> = std::iter::empty();
     let mut n = NUMBERS.into_iter();
     //~^ useless_conversion
     n.next();
@@ -423,10 +423,8 @@ mod issue11819 {
     }
 }
 
-fn issue14739() {
-    use std::ops::Range;
-
-    const R: Range<u32> = 2..7;
+fn issue14800() {
+    const R: std::iter::Empty<u32> = std::iter::empty();
 
     R.into_iter().all(|_x| true); // no lint
 
@@ -436,6 +434,33 @@ fn issue14739() {
     //~^ useless_conversion
     let _ = R.into_iter().map(|_x| 0);
     //~^ useless_conversion
+}
+
+// In a future edition of Rust or with the unstable `feature(new_range)`, the syntax `a..b`
+// will change from producing type `core::ops::Range`, which implements `Iterator`, to
+// producing type `core::range::Range`, which implements `IntoIterator`.
+//
+// Therefore, an `.into_iter()` call that is technically useless today will be useful for
+// edition migration or unstable feature testing; do not remove it.
+//
+// This test case tests that the ranges produced *by range syntax* aren’t linted on, which
+// should be true both before and after the expected 2027 edition migration (but after such
+// migration, this test will not really be testing anything).
+fn do_not_lint_on_ops_range_into_iter_before_method() {
+    #![allow(clippy::never_loop)]
+
+    // No lint on these
+    (0..10).into_iter().for_each(drop);
+    (0..=10).into_iter().for_each(drop);
+    (0..).into_iter().take(10).for_each(drop);
+
+    // But do still lint on for loops
+    for _ in (0..10).into_iter() {} //~ useless_conversion
+    for _ in (0..=10).into_iter() {} //~ useless_conversion
+    for _ in (0..).into_iter() {
+        //~^ useless_conversion
+        break;
+    }
 }
 
 fn issue16165() {

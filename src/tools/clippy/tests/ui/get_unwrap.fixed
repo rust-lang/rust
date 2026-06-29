@@ -1,10 +1,5 @@
-#![allow(
-    unused_mut,
-    clippy::from_iter_instead_of_collect,
-    clippy::get_first,
-    clippy::useless_vec,
-    clippy::out_of_bounds_indexing
-)]
+#![allow(clippy::get_first, clippy::out_of_bounds_indexing)]
+#![expect(clippy::useless_vec)]
 #![warn(clippy::unwrap_used)]
 #![deny(clippy::get_unwrap)]
 
@@ -94,7 +89,7 @@ fn main() {
     }
 }
 mod issue9909 {
-    #![allow(clippy::identity_op, clippy::unwrap_used, dead_code)]
+    #![allow(clippy::identity_op, clippy::unwrap_used)]
 
     #[allow(unconditional_panic)]
     fn reduced() {

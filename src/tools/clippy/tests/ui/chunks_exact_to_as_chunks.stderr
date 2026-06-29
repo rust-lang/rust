@@ -1,0 +1,56 @@
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks.rs:8:24
+   |
+LL |     let mut it = slice.chunks_exact(4);
+   |                        ^^^^^^^^^^^^^^^
+   |
+help: consider using `as_chunks::<4>()` instead
+  --> tests/ui/chunks_exact_to_as_chunks.rs:8:24
+   |
+LL |     let mut it = slice.chunks_exact(4);
+   |                        ^^^^^^^^^^^^^^^
+   = note: you can access the chunks using `it.0.iter()`, and the remainder using `it.1`
+   = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks.rs:14:24
+   |
+LL |     let mut it = slice.chunks_exact(CHUNK_SIZE);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `as_chunks::<CHUNK_SIZE>()` instead
+  --> tests/ui/chunks_exact_to_as_chunks.rs:14:24
+   |
+LL |     let mut it = slice.chunks_exact(CHUNK_SIZE);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: you can access the chunks using `it.0.iter()`, and the remainder using `it.1`
+
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks.rs:24:24
+   |
+LL |     let mut it = slice.chunks_exact(3);
+   |                        ^^^^^^^^^^^^^^^
+   |
+help: consider using `as_chunks::<3>()` instead
+  --> tests/ui/chunks_exact_to_as_chunks.rs:24:24
+   |
+LL |     let mut it = slice.chunks_exact(3);
+   |                        ^^^^^^^^^^^^^^^
+   = note: you can access the chunks using `it.0.iter()`, and the remainder using `it.1`
+
+error: using `chunks_exact_mut` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks.rs:31:22
+   |
+LL |     let mut it = arr.chunks_exact_mut(4);
+   |                      ^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `as_chunks_mut::<4>()` instead
+  --> tests/ui/chunks_exact_to_as_chunks.rs:31:22
+   |
+LL |     let mut it = arr.chunks_exact_mut(4);
+   |                      ^^^^^^^^^^^^^^^^^^^
+   = note: you can access the chunks using `it.0.iter()`, and the remainder using `it.1`
+
+error: aborting due to 4 previous errors
+

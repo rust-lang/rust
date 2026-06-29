@@ -7,7 +7,7 @@ impl A {
     fn result_with_assert_with_message(x: i32) -> Result<bool, String> // should emit lint
     //~^ panic_in_result_fn
     {
-        assert!(x == 5, "wrong argument");
+        assert!(x.is_positive(), "wrong argument");
         Ok(true)
     }
 
@@ -27,7 +27,7 @@ impl A {
 
     fn other_with_assert_with_message(x: i32) // should not emit lint
     {
-        assert!(x == 5, "wrong argument");
+        assert!(x.is_positive(), "wrong argument");
     }
 
     fn other_with_assert_eq(x: i32) // should not emit lint

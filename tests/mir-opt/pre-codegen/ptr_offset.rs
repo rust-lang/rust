@@ -5,12 +5,12 @@
 
 #![crate_type = "lib"]
 
-// EMIT_MIR ptr_offset.demo_byte_add_thin.PreCodegen.after.mir
+// EMIT_MIR ptr_offset.demo_byte_add_thin.runtime-optimized.after.mir
 pub unsafe fn demo_byte_add_thin(p: *const u32, n: usize) -> *const u32 {
     p.byte_add(n)
 }
 
-// EMIT_MIR ptr_offset.demo_byte_add_fat.PreCodegen.after.mir
+// EMIT_MIR ptr_offset.demo_byte_add_fat.runtime-optimized.after.mir
 pub unsafe fn demo_byte_add_fat(p: *const [u32], n: usize) -> *const [u32] {
     p.byte_add(n)
 }

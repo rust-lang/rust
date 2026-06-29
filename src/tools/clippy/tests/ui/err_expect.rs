@@ -1,4 +1,4 @@
-#![allow(unused, clippy::unnecessary_literal_unwrap)]
+#![allow(clippy::unnecessary_literal_unwrap)]
 
 struct MyTypeNonDebug;
 

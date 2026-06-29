@@ -8,7 +8,8 @@ use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::DebugInfoCodegenMethods;
-use rustc_hir::attrs::Linkage;
+use rustc_hir::attrs::{AttributeKind, Linkage};
+use rustc_hir::find_attr;
 use rustc_middle::dep_graph;
 #[cfg(feature = "master")]
 use rustc_middle::mono::Visibility;
@@ -136,6 +137,17 @@ pub fn compile_codegen_unit(
         context.add_command_line_option("-fno-strict-aliasing");
         // NOTE: Rust relies on LLVM doing wrapping on overflow.
         context.add_command_line_option("-fwrapv");
+
+        // NOTE: We need to honor the `#![no_builtins]` attribute to prevent GCC from
+        // replacing code patterns (like loops) with calls to builtins (like memset).
+        // The `-fno-tree-loop-distribute-patterns` flag disables the loop distribution pass
+        // that transforms loops into calls to library functions (memset, memcpy, etc.).
+        // See GCC handling for more details:
+        // https://github.com/rust-lang/gcc/blob/efdd0a7290c22f5438d7c5380105d353ee3e8518/gcc/c-family/c-opts.cc#L953
+        let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
+        if find_attr!(crate_attrs, AttributeKind::NoBuiltins) {
+            context.add_command_line_option("-fno-tree-loop-distribute-patterns");
+        }
 
         if let Some(model) = tcx.sess.code_model() {
             use rustc_target::spec::CodeModel;

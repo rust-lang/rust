@@ -1,5 +1,5 @@
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:15:5
+  --> tests/ui/collapsible_if.rs:9:5
    |
 LL | /     if x == "hello" {
 LL | |         if y == "world" {
@@ -19,7 +19,7 @@ LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:22:5
+  --> tests/ui/collapsible_if.rs:16:5
    |
 LL | /     if x == "hello" || x == "world" {
 LL | |         if y == "world" || y == "hello" {
@@ -37,7 +37,7 @@ LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:29:5
+  --> tests/ui/collapsible_if.rs:23:5
    |
 LL | /     if x == "hello" && x == "world" {
 LL | |         if y == "world" || y == "hello" {
@@ -55,7 +55,7 @@ LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:36:5
+  --> tests/ui/collapsible_if.rs:30:5
    |
 LL | /     if x == "hello" || x == "world" {
 LL | |         if y == "world" && y == "hello" {
@@ -73,7 +73,7 @@ LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:43:5
+  --> tests/ui/collapsible_if.rs:37:5
    |
 LL | /     if x == "hello" && x == "world" {
 LL | |         if y == "world" && y == "hello" {
@@ -91,7 +91,7 @@ LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:50:5
+  --> tests/ui/collapsible_if.rs:44:5
    |
 LL | /     if 42 == 1337 {
 LL | |         if 'a' != 'A' {
@@ -109,7 +109,7 @@ LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:86:5
+  --> tests/ui/collapsible_if.rs:80:5
    |
 LL | /     if x == "hello" {
 LL | |         if y == "world" { // Collapsible
@@ -127,7 +127,7 @@ LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:114:5
+  --> tests/ui/collapsible_if.rs:108:5
    |
 LL | /     if matches!(true, true) {
 LL | |         if matches!(true, true) {}
@@ -141,7 +141,7 @@ LL ~         && matches!(true, true) {}
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:120:5
+  --> tests/ui/collapsible_if.rs:114:5
    |
 LL | /     if matches!(true, true) && truth() {
 LL | |         if matches!(true, true) {}
@@ -155,7 +155,7 @@ LL ~         && matches!(true, true) {}
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:132:5
+  --> tests/ui/collapsible_if.rs:126:5
    |
 LL | /     if true {
 LL | |         if true {
@@ -173,7 +173,7 @@ LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:149:5
+  --> tests/ui/collapsible_if.rs:143:5
    |
 LL | /     if true {
 LL | |         if true {
@@ -191,7 +191,7 @@ LL ~     ; 3
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:196:5
+  --> tests/ui/collapsible_if.rs:190:5
    |
 LL | /     if true {
 LL | |         (if true {

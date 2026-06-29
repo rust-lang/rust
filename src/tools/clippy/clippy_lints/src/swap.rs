@@ -98,12 +98,12 @@ fn generate_swap_warning<'tcx>(
     let ctxt = span.ctxt();
     let mut applicability = Applicability::MachineApplicable;
 
-    if !can_mut_borrow_both(cx, e1, e2) {
+    if !can_mut_borrow_both(cx, ctxt, e1, e2) {
         if let ExprKind::Index(lhs1, idx1, _) = e1.kind
             && let ExprKind::Index(lhs2, idx2, _) = e2.kind
-            && eq_expr_value(cx, lhs1, lhs2)
             && e1.span.ctxt() == ctxt
             && e2.span.ctxt() == ctxt
+            && eq_expr_value(cx, ctxt, lhs1, lhs2)
         {
             let ty = cx.typeck_results().expr_ty(lhs1).peel_refs();
 
@@ -189,14 +189,15 @@ fn check_manual_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
             && rhs2_path.segments.len() == 1
 
             && ident.name == rhs2_path.segments[0].ident.name
-            && eq_expr_value(cx, tmp_init, lhs1)
-            && eq_expr_value(cx, rhs1, lhs2)
 
             && let ctxt = s1.span.ctxt()
             && s2.span.ctxt() == ctxt
             && s3.span.ctxt() == ctxt
             && first.span.ctxt() == ctxt
             && second.span.ctxt() == ctxt
+
+            && eq_expr_value(cx, ctxt, tmp_init, lhs1)
+            && eq_expr_value(cx, ctxt, rhs1, lhs2)
         {
             let span = s1.span.to(s3.span);
             generate_swap_warning(block, cx, lhs1, lhs2, rhs1, rhs2, span, false);
@@ -209,11 +210,12 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     for [first, second] in block.stmts.array_windows() {
         if let Some((lhs0, rhs0)) = parse(first)
             && let Some((lhs1, rhs1)) = parse(second)
-            && first.span.eq_ctxt(second.span)
-			&& !first.span.in_external_macro(cx.sess().source_map())
-            && is_same(cx, lhs0, rhs1)
-            && is_same(cx, lhs1, rhs0)
-			&& !is_same(cx, lhs1, rhs1) // Ignore a = b; a = a (#10421)
+            && let ctxt = first.span.ctxt()
+            && ctxt == second.span.ctxt()
+			&& !ctxt.in_external_macro(cx.sess().source_map())
+            && is_same(cx, ctxt, lhs0, rhs1)
+            && is_same(cx, ctxt, lhs1, rhs0)
+			&& !is_same(cx, ctxt, lhs1, rhs1) // Ignore a = b; a = a (#10421)
             && let Some(lhs_sugg) = match &lhs0 {
                 ExprOrIdent::Expr(expr) => Sugg::hir_opt(cx, expr),
                 ExprOrIdent::Ident(ident) => Some(Sugg::NonParen(ident.as_str().into())),
@@ -241,9 +243,9 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     }
 }
 
-fn is_same(cx: &LateContext<'_>, lhs: ExprOrIdent<'_>, rhs: &Expr<'_>) -> bool {
+fn is_same(cx: &LateContext<'_>, ctxt: SyntaxContext, lhs: ExprOrIdent<'_>, rhs: &Expr<'_>) -> bool {
     match lhs {
-        ExprOrIdent::Expr(expr) => eq_expr_value(cx, expr, rhs),
+        ExprOrIdent::Expr(expr) => eq_expr_value(cx, ctxt, expr, rhs),
         ExprOrIdent::Ident(ident) => {
             if let ExprKind::Path(QPath::Resolved(None, path)) = rhs.kind
                 && let [segment] = &path.segments
@@ -284,10 +286,10 @@ fn check_xor_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if let Some((lhs0, rhs0)) = extract_sides_of_xor_assign(s1, ctxt)
             && let Some((lhs1, rhs1)) = extract_sides_of_xor_assign(s2, ctxt)
             && let Some((lhs2, rhs2)) = extract_sides_of_xor_assign(s3, ctxt)
-            && eq_expr_value(cx, lhs0, rhs1)
-            && eq_expr_value(cx, lhs2, rhs1)
-            && eq_expr_value(cx, lhs1, rhs0)
-            && eq_expr_value(cx, lhs1, rhs2)
+            && eq_expr_value(cx, ctxt, lhs0, rhs1)
+            && eq_expr_value(cx, ctxt, lhs2, rhs1)
+            && eq_expr_value(cx, ctxt, lhs1, rhs0)
+            && eq_expr_value(cx, ctxt, lhs1, rhs2)
             && s2.span.ctxt() == ctxt
             && s3.span.ctxt() == ctxt
         {

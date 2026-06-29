@@ -141,13 +141,6 @@ fn generate_single_test(
         }
     }
 
-    if fn_name.starts_with("svldff1") && fn_name.contains("gather") {
-        // TODO: We can remove this check when first-faulting gathers are fixed in CI's QEMU
-        // https://gitlab.com/qemu-project/qemu/-/issues/1612
-        println!("Skipping test for {fn_name}");
-        return Ok(quote!());
-    }
-
     let fn_ident = format_ident!("{fn_name}");
     let test_name = format_ident!(
         "test_{fn_name}{}",
@@ -310,12 +303,12 @@ fn generate_single_test(
         (None, quote!())
     };
 
-    let ptr = if chars.gather_bases_type.is_some() {
-        quote!()
+    let (ptr_arg, init_ptr) = if chars.gather_bases_type.is_some() {
+        (quote!(), quote!())
     } else if chars.is_prf {
-        quote!(, I64_DATA.as_ptr())
+        (quote!(,ptr), quote!(let ptr = I64_DATA.as_ptr();))
     } else {
-        quote!(, #data_array.as_ptr())
+        (quote!(,ptr), quote!(let ptr = #data_array.as_ptr();))
     };
 
     let tuple_len = &chars.tuple_len;
@@ -327,18 +320,17 @@ fn generate_single_test(
             .map(|i| get_expected_range(i, &chars))
             .collect()
     };
-    let asserts: Vec<_> =
-        if *tuple_len > 1 {
-            let svget = format_ident!("svget{tuple_len}_{acle_type}");
-            expecteds.iter().enumerate().map(|(i, expected)| {
-            quote! (#assert_fn(#svget::<{ #i as i32 }>(loaded), #expected);)
+    let asserts: Vec<_> = if *tuple_len > 1 {
+        let svget = format_ident!("svget{tuple_len}_{acle_type}");
+        expecteds.iter().enumerate().map(|(i, expected)| {
+            quote! (#assert_fn(#svget::<{ #i as i32 }>(loaded), #expected, defined);)
         }).collect()
-        } else {
-            expecteds
-                .iter()
-                .map(|expected| quote! (#assert_fn(loaded, #expected);))
-                .collect()
-        };
+    } else {
+        expecteds
+            .iter()
+            .map(|expected| quote! (#assert_fn(loaded, #expected, defined);))
+            .collect()
+    };
 
     let function = if chars.is_prf {
         if fn_name.contains("gather") && fn_name.contains("base") && !fn_name.starts_with("svprf_")
@@ -392,6 +384,7 @@ fn generate_single_test(
         } else {
             (quote!(), quote!())
         };
+
         let args = quote!(#pred_fn() #store_ptr #vnum_arg #bases_arg #offset_arg #index_arg #offsets_arg #indices_arg);
         let call = if chars.uses_ffr {
             // Doing a normal load first maximises the number of elements our ff/nf test loads
@@ -405,12 +398,14 @@ fn generate_single_test(
                 svsetffr();
                 let _ = #non_ffr_fn_name(#args);
                 let loaded = #function(#args);
+                let defined = svrdffr();
             }
         } else {
             // Note that the FFR must be set for all tests as the assert functions mask against it
             quote! {
                 svsetffr();
                 let loaded = #function(#args);
+                let defined = svrdffr();
             }
         };
 
@@ -436,7 +431,7 @@ fn generate_single_test(
             }
         })
     } else {
-        let args = quote!(#pred_fn() #ptr #vnum_arg #bases_arg #offset_arg #index_arg #offsets_arg #indices_arg);
+        let args = quote!(#pred_fn() #ptr_arg #vnum_arg #bases_arg #offset_arg #index_arg #offsets_arg #indices_arg);
         let call = if chars.uses_ffr {
             // Doing a normal load first maximises the number of elements our ff/nf test loads
             let non_ffr_fn_name = format_ident!(
@@ -446,15 +441,19 @@ fn generate_single_test(
                     .replace("svldnf1", "svld1")
             );
             quote! {
+                #init_ptr
                 svsetffr();
                 let _ = #non_ffr_fn_name(#args);
                 let loaded = #function(#args);
+                let defined = svrdffr();
             }
         } else {
             // Note that the FFR must be set for all tests as the assert functions mask against it
             quote! {
+                #init_ptr
                 svsetffr();
                 let loaded = #function(#args);
+                let defined = svrdffr();
             }
         };
         Ok(quote! {
@@ -722,80 +721,70 @@ static U64_DATA: LazyLock<[u64; {LEN_U64} * {NUM_VECS}]> = LazyLock::new(|| {{
 }});
 
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_f32(vector: svfloat32_t, expected: svfloat32_t) {{
-    let defined = svrdffr();
+fn assert_vector_matches_f32(vector: svfloat32_t, expected: svfloat32_t, defined: svbool_t) {{
     assert!(svptest_first(svptrue_b32(), defined));
     let cmp = svcmpne_f32(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }}
 
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_f64(vector: svfloat64_t, expected: svfloat64_t) {{
-    let defined = svrdffr();
+fn assert_vector_matches_f64(vector: svfloat64_t, expected: svfloat64_t, defined: svbool_t) {{
     assert!(svptest_first(svptrue_b64(), defined));
     let cmp = svcmpne_f64(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }}
 
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_i8(vector: svint8_t, expected: svint8_t) {{
-    let defined = svrdffr();
+fn assert_vector_matches_i8(vector: svint8_t, expected: svint8_t, defined: svbool_t) {{
     assert!(svptest_first(svptrue_b8(), defined));
     let cmp = svcmpne_s8(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }}
 
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_i16(vector: svint16_t, expected: svint16_t) {{
-    let defined = svrdffr();
+fn assert_vector_matches_i16(vector: svint16_t, expected: svint16_t, defined: svbool_t) {{
     assert!(svptest_first(svptrue_b16(), defined));
     let cmp = svcmpne_s16(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }}
 
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_i32(vector: svint32_t, expected: svint32_t) {{
-    let defined = svrdffr();
+fn assert_vector_matches_i32(vector: svint32_t, expected: svint32_t, defined: svbool_t) {{
     assert!(svptest_first(svptrue_b32(), defined));
     let cmp = svcmpne_s32(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }}
 
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_i64(vector: svint64_t, expected: svint64_t) {{
-    let defined = svrdffr();
+fn assert_vector_matches_i64(vector: svint64_t, expected: svint64_t, defined: svbool_t) {{
     assert!(svptest_first(svptrue_b64(), defined));
     let cmp = svcmpne_s64(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }}
 
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_u8(vector: svuint8_t, expected: svuint8_t) {{
-    let defined = svrdffr();
+fn assert_vector_matches_u8(vector: svuint8_t, expected: svuint8_t, defined: svbool_t) {{
     assert!(svptest_first(svptrue_b8(), defined));
     let cmp = svcmpne_u8(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }}
 
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_u16(vector: svuint16_t, expected: svuint16_t) {{
-    let defined = svrdffr();
+fn assert_vector_matches_u16(vector: svuint16_t, expected: svuint16_t, defined: svbool_t) {{
     assert!(svptest_first(svptrue_b16(), defined));
     let cmp = svcmpne_u16(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }}
 
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_u32(vector: svuint32_t, expected: svuint32_t) {{
-    let defined = svrdffr();
+fn assert_vector_matches_u32(vector: svuint32_t, expected: svuint32_t, defined: svbool_t) {{
     assert!(svptest_first(svptrue_b32(), defined));
     let cmp = svcmpne_u32(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }}
 
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_u64(vector: svuint64_t, expected: svuint64_t) {{
-    let defined = svrdffr();
+fn assert_vector_matches_u64(vector: svuint64_t, expected: svuint64_t, defined: svbool_t) {{
     assert!(svptest_first(svptrue_b64(), defined));
     let cmp = svcmpne_u64(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
@@ -808,11 +797,11 @@ const MANUAL_TESTS: &str = "#[simd_test(enable = \"sve\")]
 unsafe fn test_ffr() {
     svsetffr();
     let ffr = svrdffr();
-    assert_vector_matches_u8(svdup_n_u8_z(ffr, 1), svindex_u8(1, 0));
+    assert_vector_matches_u8(svdup_n_u8_z(ffr, 1), svindex_u8(1, 0), ffr);
     let pred = svdupq_n_b8(true, false, true, false, true, false, true, false,
                            true, false, true, false, true, false, true, false);
     svwrffr(pred);
     let ffr = svrdffr_z(svptrue_b8());
-    assert_vector_matches_u8(svdup_n_u8_z(ffr, 1), svdup_n_u8_z(pred, 1));
+    assert_vector_matches_u8(svdup_n_u8_z(ffr, 1), svdup_n_u8_z(pred, 1), ffr);
 }
 ";

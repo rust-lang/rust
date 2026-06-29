@@ -1,19 +1,18 @@
-error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/repr-transparent-other-items.rs:3:8
+error: `#[repr(transparent)]` attribute cannot be used on functions
+  --> $DIR/repr-transparent-other-items.rs:3:1
    |
 LL | #[repr(transparent)]
-   |        ^^^^^^^^^^^
-LL | fn cant_repr_this() {}
-   | ---------------------- not a struct, enum, or union
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(transparent)]` can only be applied to data types
 
-error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/repr-transparent-other-items.rs:6:8
+error: `#[repr(transparent)]` attribute cannot be used on statics
+  --> $DIR/repr-transparent-other-items.rs:6:1
    |
 LL | #[repr(transparent)]
-   |        ^^^^^^^^^^^
-LL | static CANT_REPR_THIS: u32 = 0;
-   | ------------------------------- not a struct, enum, or union
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(transparent)]` can only be applied to data types
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0517`.

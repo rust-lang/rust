@@ -56,11 +56,17 @@ where
             // either `'static` or a unique outlives region, and if one is
             // found, we just need to prove that that region is still live.
             // If one is not found, then we continue to walk through the alias.
-            ty::Alias(ty::AliasTy { kind, args, .. }) => {
+            ty::Alias(_, alias_ty @ ty::AliasTy { kind, args, .. }) => {
                 let tcx = self.tcx;
                 let param_env = self.param_env;
+                let def_id = match kind {
+                    ty::AliasTyKind::Projection { def_id }
+                    | ty::AliasTyKind::Inherent { def_id }
+                    | ty::AliasTyKind::Opaque { def_id }
+                    | ty::AliasTyKind::Free { def_id } => def_id,
+                };
                 let outlives_bounds: Vec<_> = tcx
-                    .item_bounds(kind.def_id())
+                    .item_bounds(def_id)
                     .iter_instantiated(tcx, args)
                     .map(Unnormalized::skip_norm_wip)
                     .chain(param_env.caller_bounds())
@@ -76,7 +82,11 @@ where
                                 &outlives.map_bound(|ty::OutlivesPredicate(ty, bound)| {
                                     VerifyIfEq { ty, bound }
                                 }),
-                                ty,
+                                // FIXME(#155345): Region handling should generally only
+                                // deal with rigid aliases, making sure we do so correctly
+                                // everywhere is effort, so we're just using `No` everywhere
+                                // for now. This should change soon.
+                                alias_ty.to_ty(tcx, ty::IsRigid::No),
                             )
                         }
                     })

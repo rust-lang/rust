@@ -4,7 +4,6 @@
 #![deny(unused_features)]
 
 // Used language features
-#![feature(box_patterns)]
 #![feature(decl_macro)]
 #![cfg_attr(all(), feature(rustc_attrs))]
 
@@ -13,11 +12,6 @@
 //[bfail]~^ ERROR feature `error_iter` is declared but not used
 #![cfg_attr(all(), feature(allocator_api))]
 //[bfail]~^ ERROR feature `allocator_api` is declared but not used
-
-pub fn use_box_patterns(b: Box<i32>) -> i32 {
-    let box x = b;
-    x
-}
 
 macro m() {}
 pub fn use_decl_macro() {

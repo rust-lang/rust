@@ -3,17 +3,16 @@ use std::sync::Arc;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
-use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::dep_graph::{DepGraph, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 
-use crate::errors::FailedWritingFile;
+use crate::diagnostics::FailedWritingFile;
 use crate::passes;
 
 pub struct Linker {
@@ -36,7 +35,7 @@ impl Linker {
         Linker {
             dep_graph: tcx.dep_graph.clone(),
             output_filenames: Arc::clone(tcx.output_filenames(())),
-            crate_hash: if tcx.needs_crate_hash() {
+            crate_hash: if tcx.sess.opts.incremental.is_some() {
                 Some(tcx.crate_hash(LOCAL_CRATE))
             } else {
                 None
@@ -51,11 +50,14 @@ impl Linker {
         let (compiled_modules, mut work_products) = sess.time("finish_ongoing_codegen", || {
             match self.ongoing_codegen.downcast::<CompiledModules>() {
                 // This was a check only build
-                Ok(compiled_modules) => (*compiled_modules, IndexMap::default()),
+                Ok(compiled_modules) => (*compiled_modules, WorkProductMap::default()),
 
-                Err(ongoing_codegen) => {
-                    codegen_backend.join_codegen(ongoing_codegen, sess, &self.output_filenames)
-                }
+                Err(ongoing_codegen) => codegen_backend.join_codegen(
+                    ongoing_codegen,
+                    sess,
+                    &self.output_filenames,
+                    &self.crate_info,
+                ),
             }
         });
 
@@ -67,18 +69,33 @@ impl Linker {
             codegen_backend.print_statistics()
         }
 
+        if let Some(out_path) = sess.print_llvm_stats_json() {
+            let llvm_stats_json = codegen_backend.print_statistics_json();
+
+            if !llvm_stats_json.is_empty() {
+                if let Err(e) = std::fs::write(&out_path, llvm_stats_json) {
+                    sess.dcx().err(format!("failed to write stats to {}: {}", out_path, e));
+                }
+            } else {
+                sess.dcx().warn(format!(
+                    "requested to print LLVM statistics to JSON file {}, but the codegen backend \
+                    did not provide any statistics",
+                    out_path,
+                ));
+            }
+        }
+
         sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
 
         if sess.opts.incremental.is_some()
             && let Some(path) = self.metadata.path()
-            && let Some((id, product)) =
-                rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-                    sess,
-                    "metadata",
-                    &[("rmeta", path)],
-                    &[],
-                )
         {
+            let (id, product) = rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+                sess,
+                "metadata",
+                &[("rmeta", path)],
+                &[],
+            );
             work_products.insert(id, product);
         }
 

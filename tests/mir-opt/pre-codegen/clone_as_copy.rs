@@ -22,7 +22,7 @@ enum Enum1 {
     B(NestCopy),
 }
 
-// EMIT_MIR clone_as_copy.clone_as_copy.PreCodegen.after.mir
+// EMIT_MIR clone_as_copy.clone_as_copy.runtime-optimized.after.mir
 fn clone_as_copy(v: &NestCopy) -> NestCopy {
     // CHECK-LABEL: fn clone_as_copy(
     // CHECK: let [[DEAD_VAR:_.*]]: &AllCopy;
@@ -33,7 +33,7 @@ fn clone_as_copy(v: &NestCopy) -> NestCopy {
     v.clone()
 }
 
-// EMIT_MIR clone_as_copy.enum_clone_as_copy.PreCodegen.after.mir
+// EMIT_MIR clone_as_copy.enum_clone_as_copy.runtime-optimized.after.mir
 fn enum_clone_as_copy(v: &Enum1) -> Enum1 {
     // CHECK-LABEL: fn enum_clone_as_copy(
     // CHECK: bb0: {

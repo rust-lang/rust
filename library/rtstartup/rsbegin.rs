@@ -39,12 +39,9 @@ auto trait Freeze {}
 
 impl<T: PointeeSized> Copy for *mut T {}
 
-#[lang = "drop_in_place"]
+#[lang = "drop_glue"]
 #[inline]
-#[allow(unconditional_recursion)]
-pub unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T) {
-    drop_in_place(to_drop);
-}
+pub unsafe fn drop_glue<T: PointeeSized>(_to_drop: &mut T) {}
 
 // Frame unwind info registration
 //

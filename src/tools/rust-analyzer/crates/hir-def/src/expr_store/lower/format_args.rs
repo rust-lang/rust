@@ -30,12 +30,14 @@ impl<'db> ExprCollector<'db> {
     ) -> ExprId {
         let mut args = FormatArgumentsCollector::default();
         f.args().for_each(|arg| {
+            let expr = arg.expr();
             args.add(FormatArgument {
                 kind: match arg.arg_name() {
                     Some(name) => FormatArgumentKind::Named(Name::new_root(name.name().text())),
                     None => FormatArgumentKind::Normal,
                 },
-                expr: self.collect_expr_opt(arg.expr()),
+                syntax: expr.as_ref().map(AstPtr::new),
+                expr: self.collect_expr_opt(expr),
             });
         });
         let template = f.template();
@@ -53,8 +55,10 @@ impl<'db> ExprCollector<'db> {
             Some(((s, is_direct_literal), template)) => {
                 let call_ctx = SyntaxContext::root(self.def_map.edition());
                 let hygiene = self.hygiene_id_for(s.syntax().text_range());
+                let template_ptr = AstPtr::new(&template);
                 let fmt = format_args::parse(
                     &s,
+                    template_ptr,
                     fmt_snippet,
                     args,
                     is_direct_literal,
@@ -65,10 +69,7 @@ impl<'db> ExprCollector<'db> {
                                 .template_map
                                 .get_or_insert_with(Default::default)
                                 .implicit_capture_to_source
-                                .insert(
-                                    expr_id,
-                                    self.expander.in_file((AstPtr::new(&template), range)),
-                                );
+                                .insert(expr_id, self.expander.in_file((template_ptr, range)));
                         }
                         if !hygiene.is_root() {
                             self.store.ident_hygiene.insert(expr_id.into(), hygiene);
@@ -340,7 +341,8 @@ impl<'db> ExprCollector<'db> {
                         expr: args_ident_expr,
                         name: Name::new_tuple_field(arg_index),
                     });
-                    self.make_argument(arg, ty)
+                    let arg_ptr = arguments.get(arg_index).and_then(|it| it.syntax);
+                    self.make_argument(arg_ptr, arg, ty)
                 })
                 .collect();
             let args =
@@ -557,7 +559,8 @@ impl<'db> ExprCollector<'db> {
                         rawness: Rawness::Ref,
                         mutability: Mutability::Shared,
                     });
-                    self.make_argument(arg, ty)
+                    let arg_ptr = arguments.get(arg_index).and_then(|it| it.syntax);
+                    self.make_argument(arg_ptr, arg, ty)
                 })
                 .collect();
             let array =
@@ -649,7 +652,8 @@ impl<'db> ExprCollector<'db> {
                         rawness: Rawness::Ref,
                         mutability: Mutability::Shared,
                     });
-                    self.make_argument(ref_arg, ty)
+                    let arg_ptr = arguments.get(arg_index).and_then(|it| it.syntax);
+                    self.make_argument(arg_ptr, ref_arg, ty)
                 })
                 .collect();
             let args =
@@ -716,7 +720,8 @@ impl<'db> ExprCollector<'db> {
                         expr: args_ident_expr,
                         name: Name::new_tuple_field(arg_index),
                     });
-                    self.make_argument(arg, ty)
+                    let arg_ptr = arguments.get(arg_index).and_then(|it| it.syntax);
+                    self.make_argument(arg_ptr, arg, ty)
                 })
                 .collect();
             let array =
@@ -867,11 +872,14 @@ impl<'db> ExprCollector<'db> {
             };
             let width =
                 RecordLitField { name: Name::new_symbol_root(sym::width), expr: width_expr };
-            self.alloc_expr_desugared(Expr::RecordLit {
-                path: self.lang_path(lang_items.FormatPlaceholder).map(Box::new),
-                fields: Box::new([position, flags, precision, width]),
-                spread: RecordSpread::None,
-            })
+            match self.lang_path(lang_items.FormatPlaceholder) {
+                Some(path) => self.alloc_expr_desugared(Expr::RecordLit {
+                    path,
+                    fields: Box::new([position, flags, precision, width]),
+                    spread: RecordSpread::None,
+                }),
+                None => self.missing_expr(),
+            }
         } else {
             let format_placeholder_new =
                 self.ty_rel_lang_path_desugared_expr(lang_items.FormatPlaceholder, sym::new);
@@ -973,11 +981,16 @@ impl<'db> ExprCollector<'db> {
     /// ```text
     ///     <core::fmt::Argument>::new_…(arg)
     /// ```
-    fn make_argument(&mut self, arg: ExprId, ty: ArgumentType) -> ExprId {
+    fn make_argument(
+        &mut self,
+        arg_ptr: Option<AstPtr<ast::Expr>>,
+        arg: ExprId,
+        ty: ArgumentType,
+    ) -> ExprId {
         use ArgumentType::*;
         use FormatTrait::*;
 
-        let new_fn = self.ty_rel_lang_path_desugared_expr(
+        let new_fn = self.ty_rel_lang_path(
             self.lang_items().FormatArgument,
             match ty {
                 Format(Display) => sym::new_display,
@@ -992,6 +1005,22 @@ impl<'db> ExprCollector<'db> {
                 Usize => sym::from_usize,
             },
         );
+        let new_fn = match new_fn {
+            Some(new_fn) => {
+                let new_fn = self.store.exprs.alloc(Expr::Path(new_fn));
+                if let Some(arg_ptr) = arg_ptr {
+                    // Trait errors (the argument does not implement the expected fmt trait) will show
+                    // on this path, so to not end up with synthetic syntax we insert this mapping. We
+                    // don't want to insert the other way's mapping in order to not override the source
+                    // for the argument.
+                    self.store
+                        .expr_map_back
+                        .insert(new_fn, self.expander.in_file(arg_ptr.wrap_left()));
+                }
+                new_fn
+            }
+            None => self.missing_expr(),
+        };
         self.alloc_expr_desugared(Expr::Call { callee: new_fn, args: Box::new([arg]) })
     }
 

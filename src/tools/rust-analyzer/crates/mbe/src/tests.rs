@@ -74,7 +74,7 @@ fn check_(
         "{}",
         syntax_bridge::prettify_macro_expansion::prettify_macro_expansion(
             node.syntax_node(),
-            &mut |_| None,
+            &mut |_, _| None,
             |_| ()
         )
     );
@@ -237,7 +237,7 @@ fn expr_2021() {
               PUNCH   ; [alone] 0:Root[0000, 0]@39..40#ROOT2024
 
             _;
-            (const  {
+            (const {
                 1
             });"#]],
     );

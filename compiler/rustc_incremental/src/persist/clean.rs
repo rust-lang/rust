@@ -33,7 +33,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol};
 use tracing::debug;
 
-use crate::errors;
+use crate::diagnostics;
 
 // Base and Extra labels to build up the labels
 
@@ -54,8 +54,8 @@ const BASE_FN: &[&str] = &[
 
 /// DepNodes for Hir, which is pretty much everything
 const BASE_HIR: &[&str] = &[
-    // opt_hir_owner_nodes should be computed for all nodes
-    label_strs::opt_hir_owner_nodes,
+    // hir_owner should be computed for all nodes
+    label_strs::hir_owner,
 ];
 
 /// `impl` implementation of struct/trait
@@ -183,12 +183,7 @@ impl<'tcx> CleanVisitor<'tcx> {
         item_id: LocalDefId,
         attr: &RustcCleanAttribute,
     ) -> Option<Assertion> {
-        self.tcx
-            .sess
-            .psess
-            .config
-            .contains(&(attr.cfg, None))
-            .then(|| self.assertion_auto(item_id, attr))
+        self.tcx.sess.config.contains(&(attr.cfg, None)).then(|| self.assertion_auto(item_id, attr))
     }
 
     /// Gets the "auto" assertion on pre-validated attr, along with the `except` labels.
@@ -198,7 +193,7 @@ impl<'tcx> CleanVisitor<'tcx> {
         let loaded_from_disk = self.loaded_from_disk(attr);
         for e in except.items().into_sorted_stable_ord() {
             if !auto.remove(e) {
-                self.tcx.dcx().emit_fatal(errors::AssertionAuto { span: attr.span, name, e });
+                self.tcx.dcx().emit_fatal(diagnostics::AssertionAuto { span: attr.span, name, e });
             }
         }
         Assertion { clean: auto, dirty: except, loaded_from_disk }
@@ -267,12 +262,12 @@ impl<'tcx> CleanVisitor<'tcx> {
                     HirItem::Union(..) => ("ItemUnion", LABELS_ADT),
 
                     // Represents a Trait Declaration
-                    HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
+                    HirItem::Trait { .. } => ("ItemTrait", LABELS_TRAIT),
 
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
                     HirItem::Impl { .. } => ("ItemKind::Impl", LABELS_IMPL),
 
-                    _ => self.tcx.dcx().emit_fatal(errors::UndefinedCleanDirtyItem {
+                    _ => self.tcx.dcx().emit_fatal(diagnostics::UndefinedCleanDirtyItem {
                         span,
                         kind: format!("{:?}", item.kind),
                     }),
@@ -291,7 +286,7 @@ impl<'tcx> CleanVisitor<'tcx> {
             _ => self
                 .tcx
                 .dcx()
-                .emit_fatal(errors::UndefinedCleanDirty { span, kind: format!("{node:?}") }),
+                .emit_fatal(diagnostics::UndefinedCleanDirty { span, kind: format!("{node:?}") }),
         };
         let labels =
             Labels::from_iter(labels.iter().flat_map(|s| s.iter().map(|l| (*l).to_string())));
@@ -306,13 +301,13 @@ impl<'tcx> CleanVisitor<'tcx> {
                 if out.contains(label_str) {
                     self.tcx
                         .dcx()
-                        .emit_fatal(errors::RepeatedDepNodeLabel { span, label: label_str });
+                        .emit_fatal(diagnostics::RepeatedDepNodeLabel { span, label: label_str });
                 }
                 out.insert(label_str.to_string());
             } else {
                 self.tcx
                     .dcx()
-                    .emit_fatal(errors::UnrecognizedDepNodeLabel { span, label: label_str });
+                    .emit_fatal(diagnostics::UnrecognizedDepNodeLabel { span, label: label_str });
             }
         }
         out
@@ -333,7 +328,7 @@ impl<'tcx> CleanVisitor<'tcx> {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx
                 .dcx()
-                .emit_err(errors::NotDirty { span: item_span, dep_node_str: &dep_node_str });
+                .emit_err(diagnostics::NotDirty { span: item_span, dep_node_str: &dep_node_str });
         }
     }
 
@@ -344,7 +339,7 @@ impl<'tcx> CleanVisitor<'tcx> {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx
                 .dcx()
-                .emit_err(errors::NotClean { span: item_span, dep_node_str: &dep_node_str });
+                .emit_err(diagnostics::NotClean { span: item_span, dep_node_str: &dep_node_str });
         }
     }
 
@@ -374,7 +369,7 @@ impl<'tcx> CleanVisitor<'tcx> {
                     Ok(dep_node) => {
                         if !self.tcx.dep_graph.debug_was_loaded_from_disk(dep_node) {
                             let dep_node_str = self.dep_node_str(&dep_node);
-                            self.tcx.dcx().emit_err(errors::NotLoaded {
+                            self.tcx.dcx().emit_err(diagnostics::NotLoaded {
                                 span: item_span,
                                 dep_node_str: &dep_node_str,
                             });
@@ -384,7 +379,7 @@ impl<'tcx> CleanVisitor<'tcx> {
                     Err(()) => {
                         let dep_kind = dep_kind_from_label(label);
                         if !self.tcx.dep_graph.debug_dep_kind_was_loaded_from_disk(dep_kind) {
-                            self.tcx.dcx().emit_err(errors::NotLoaded {
+                            self.tcx.dcx().emit_err(diagnostics::NotLoaded {
                                 span: item_span,
                                 dep_node_str: &label,
                             });
@@ -406,13 +401,13 @@ struct FindAllAttrs<'tcx> {
 
 impl<'tcx> FindAllAttrs<'tcx> {
     fn is_active_attr(&self, attr: &RustcCleanAttribute) -> bool {
-        self.tcx.sess.psess.config.contains(&(attr.cfg, None))
+        self.tcx.sess.config.contains(&(attr.cfg, None))
     }
 
     fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<Span>) {
         for attr in &self.found_attrs {
             if !checked_attrs.contains(&attr.span) {
-                self.tcx.dcx().emit_err(errors::UncheckedClean { span: attr.span });
+                self.tcx.dcx().emit_err(diagnostics::UncheckedClean { span: attr.span });
                 checked_attrs.insert(attr.span);
             }
         }

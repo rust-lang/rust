@@ -9,12 +9,8 @@ license = "MIT OR Apache-2.0"
 crate-type = ["dylib"]
 
 [[test]]
-name = "lang_tests_debug"
-path = "tests/lang_tests_debug.rs"
-harness = false
-[[test]]
-name = "lang_tests_release"
-path = "tests/lang_tests_release.rs"
+name = "lang_tests"
+path = "tests/lang_tests.rs"
 harness = false
 
 [features]

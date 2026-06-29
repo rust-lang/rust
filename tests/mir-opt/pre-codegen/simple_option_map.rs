@@ -11,7 +11,7 @@ where
     }
 }
 
-// EMIT_MIR simple_option_map.ezmap.PreCodegen.after.mir
+// EMIT_MIR simple_option_map.ezmap.runtime-optimized.after.mir
 pub fn ezmap(x: Option<i32>) -> Option<i32> {
     // We expect this to all be inlined, as though it was written without the
     // combinator and without the closure, using just a plain match.
@@ -23,7 +23,7 @@ pub fn ezmap(x: Option<i32>) -> Option<i32> {
     map(x, |n| n + 1)
 }
 
-// EMIT_MIR simple_option_map.map_via_question_mark.PreCodegen.after.mir
+// EMIT_MIR simple_option_map.map_via_question_mark.runtime-optimized.after.mir
 pub fn map_via_question_mark(x: Option<i32>) -> Option<i32> {
     // FIXME(#138544): Ideally this would optimize out the `ControlFlow` local.
 

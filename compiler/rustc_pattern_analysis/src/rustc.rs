@@ -11,8 +11,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized,
-    VariantDef,
+    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -26,7 +25,7 @@ use crate::lints::lint_nonexhaustive_missing_variants;
 use crate::pat_column::PatternColumn;
 use crate::rustc::print::EnumInfo;
 use crate::usefulness::{PlaceValidity, compute_match_usefulness};
-use crate::{PatCx, PrivateUninhabitedField, errors};
+use crate::{PatCx, PrivateUninhabitedField, diagnostics};
 
 mod print;
 
@@ -127,7 +126,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     #[inline]
     pub fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
         fn reveal_inner<'tcx>(cx: &RustcPatCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
-            let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *ty.kind()
+            debug_assert!(!cx.tcx.next_trait_solver_globally());
+            let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *ty.kind()
             else {
                 bug!()
             };
@@ -139,7 +139,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             }
             RevealedTy(ty)
         }
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) = ty.kind() {
+        if let ty::Alias(ty::IsRigid::No, ty::AliasTy { kind: ty::Opaque { .. }, .. }) = ty.kind() {
             reveal_inner(self, ty)
         } else {
             RevealedTy(ty)
@@ -196,7 +196,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             let ty = field.ty(self.tcx, args);
             // `field.ty()` doesn't normalize after instantiating.
             let ty =
-                self.tcx.try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(ty)).unwrap_or_else(|e| {
+                self.tcx.try_normalize_erasing_regions(self.typing_env, ty).unwrap_or_else(|e| {
                     self.tcx.dcx().span_delayed_bug(
                         self.scrut_span,
                         format!(
@@ -205,7 +205,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             self.typing_env,
                         ),
                     );
-                    ty
+                    ty.skip_norm_wip()
                 });
             let ty = self.reveal_opaque_ty(ty);
             (field, ty)
@@ -427,7 +427,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::UnsafeBinder(_)
-            | ty::Alias(_)
+            | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Error(_) => ConstructorSet::Unlistable,
             ty::CoroutineWitness(_, _) | ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {
@@ -950,14 +950,14 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         let overlaps: Vec<_> = overlaps_with
             .iter()
             .map(|pat| pat.data().span)
-            .map(|span| errors::Overlap { range: overlap_as_pat.to_string(), span })
+            .map(|span| diagnostics::Overlap { range: overlap_as_pat.to_string(), span })
             .collect();
         let pat_span = pat.data().span;
         self.tcx.emit_node_span_lint(
             lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
             self.match_lint_level,
             pat_span,
-            errors::OverlappingRangeEndpoints { overlap: overlaps, range: pat_span },
+            diagnostics::OverlappingRangeEndpoints { overlap: overlaps, range: pat_span },
         );
     }
 
@@ -993,7 +993,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                 lint::builtin::NON_CONTIGUOUS_RANGE_ENDPOINTS,
                 self.match_lint_level,
                 thir_pat.span,
-                errors::ExclusiveRangeMissingMax {
+                diagnostics::ExclusiveRangeMissingMax {
                     // Point at this range.
                     first_range: thir_pat.span,
                     // That's the gap that isn't covered.
@@ -1007,7 +1007,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                 lint::builtin::NON_CONTIGUOUS_RANGE_ENDPOINTS,
                 self.match_lint_level,
                 thir_pat.span,
-                errors::ExclusiveRangeMissingGap {
+                diagnostics::ExclusiveRangeMissingGap {
                     // Point at this range.
                     first_range: thir_pat.span,
                     // That's the gap that isn't covered.
@@ -1018,7 +1018,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                     // mistake.
                     gap_with: gapped_with
                         .iter()
-                        .map(|pat| errors::GappedRange {
+                        .map(|pat| diagnostics::GappedRange {
                             span: pat.data().span,
                             gap: gap_as_pat.to_string(),
                             first_range: range.to_string(),
@@ -1040,7 +1040,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
     ) -> Self::Error {
         let deref_pattern_label = deref_pat.data().span;
         let normal_constructor_label = normal_pat.data().span;
-        self.tcx.dcx().emit_err(errors::MixedDerefPatternConstructors {
+        self.tcx.dcx().emit_err(diagnostics::MixedDerefPatternConstructors {
             spans: vec![deref_pattern_label, normal_constructor_label],
             smart_pointer_ty: deref_pat.ty().inner(),
             deref_pattern_label,

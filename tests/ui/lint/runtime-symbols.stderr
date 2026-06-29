@@ -1,0 +1,129 @@
+error: invalid definition of the runtime `memmove` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:13:5
+   |
+LL |     pub fn memmove() {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*mut c_void, *const c_void, usize) -> *mut c_void`
+           found    `fn()`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "memmove")]`, or `#[link_name = "memmove"]`
+   = note: `#[deny(invalid_runtime_symbol_definitions)]` on by default
+
+error: invalid definition of the runtime `memset` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:17:9
+   |
+LL |         pub fn memset();
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*mut c_void, i32, usize) -> *mut c_void`
+           found    `unsafe extern "C" fn()`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "memset")]`, or `#[link_name = "memset"]`
+
+error: invalid definition of the runtime `memcmp` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:20:9
+   |
+LL |         pub fn memcmp();
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*const c_void, *const c_void, usize) -> i32`
+           found    `unsafe extern "C" fn()`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "memcmp")]`, or `#[link_name = "memcmp"]`
+
+error: invalid definition of the runtime `strlen` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:25:5
+   |
+LL |     pub static strlen: () = ();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*const U8) -> usize`
+           found    `static strlen: ()`
+   = help: either fix the signature or remove any attributes `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "strlen")]`
+
+error: invalid definition of the runtime `memcpy` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:30:5
+   |
+LL |     pub fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*mut c_void, *const c_void, usize) -> *mut c_void`
+           found    `fn(*mut c_void, *const c_void, usize) -> *mut c_void`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "memcpy")]`, or `#[link_name = "memcpy"]`
+
+error: invalid definition of the runtime `bcmp` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:37:5
+   |
+LL |     pub unsafe extern "C" fn bcmp(s1: *const c_void, s2: *const c_void, n: usize, _: ...) -> c_int {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*const c_void, *const c_void, usize) -> i32`
+           found    `unsafe extern "C" fn(*const c_void, *const c_void, usize, ...) -> i32`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "bcmp")]`, or `#[link_name = "bcmp"]`
+
+error: invalid definition of the runtime `bcmp` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:44:5
+   |
+LL |     pub extern "C" fn bcmp_(s1: *const c_void, s2: *const c_void, n: usize) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*const c_void, *const c_void, usize) -> i32`
+           found    `extern "C" fn(*const c_void, *const c_void, usize)`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "bcmp")]`, or `#[link_name = "bcmp"]`
+
+warning: suspicious definition of the runtime `memcpy` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:50:5
+   |
+LL |     pub extern "C" fn memcpy(dest: *mut c_void, src: *const c_void, n: i64) -> *mut c_void {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*mut c_void, *const c_void, usize) -> *mut c_void`
+           found    `extern "C" fn(*mut c_void, *const c_void, i64) -> *mut c_void`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "memcpy")]`, or `#[link_name = "memcpy"]`
+   = help: allow this lint if the signature is compatible
+   = note: `#[warn(suspicious_runtime_symbol_definitions)]` on by default
+
+warning: suspicious definition of the runtime `memmove` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:56:5
+   |
+LL |     pub extern "C" fn memmove(dest: *mut c_void, src: *const c_void, n: i64) -> *mut c_void {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*mut c_void, *const c_void, usize) -> *mut c_void`
+           found    `extern "C" fn(*mut c_void, *const c_void, i64) -> *mut c_void`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "memmove")]`, or `#[link_name = "memmove"]`
+   = help: allow this lint if the signature is compatible
+
+warning: suspicious definition of the runtime `memset` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:62:9
+   |
+LL |         fn memset(s: *mut c_void, c: c_int, n: usize) -> f64;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*mut c_void, i32, usize) -> *mut c_void`
+           found    `unsafe extern "C" fn(*mut c_void, i32, usize) -> f64`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "memset")]`, or `#[link_name = "memset"]`
+   = help: allow this lint if the signature is compatible
+
+warning: suspicious definition of the runtime `bcmp` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:67:5
+   |
+LL |     pub extern "C" fn bcmp_(s1: *const U8, s2: *const U8, n: usize) -> c_int {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*const c_void, *const c_void, usize) -> i32`
+           found    `extern "C" fn(*const U8, *const U8, usize) -> i32`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "bcmp")]`, or `#[link_name = "bcmp"]`
+   = help: allow this lint if the signature is compatible
+
+warning: suspicious definition of the runtime `strlen` symbol used by the standard library
+  --> $DIR/runtime-symbols.rs:73:5
+   |
+LL |     pub extern "C" fn strlen(s: *const u64) -> usize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(*const U8) -> usize`
+           found    `extern "C" fn(*const u64) -> usize`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "strlen")]`, or `#[link_name = "strlen"]`
+   = help: allow this lint if the signature is compatible
+
+error: aborting due to 7 previous errors; 5 warnings emitted
+

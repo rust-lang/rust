@@ -52,13 +52,19 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 
-use crate::errors;
+use crate::diagnostics;
 
 #[allow(missing_docs)]
 pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
+        // Clone the retained dep graph once and share it between the graph dump and the path
+        // checks below, rather than locking and cloning it separately for each.
+        let retained_dep_graph = tcx.dep_graph.retained_dep_graph();
+
         if tcx.sess.opts.unstable_opts.dump_dep_graph {
-            tcx.dep_graph.with_retained_dep_graph(dump_graph);
+            if let Some(graph) = &retained_dep_graph {
+                dump_graph(graph);
+            }
         }
 
         if !tcx.sess.opts.unstable_opts.query_dep_graph {
@@ -92,7 +98,7 @@ pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
         }
 
         // Check paths.
-        check_paths(tcx, &if_this_changed, &then_this_would_need);
+        check_paths(tcx, retained_dep_graph.as_ref(), &if_this_changed, &then_this_would_need);
     })
 }
 
@@ -113,34 +119,30 @@ impl<'tcx> IfThisChanged<'tcx> {
         for attr in attrs {
             if let Attribute::Parsed(AttributeKind::RustcIfThisChanged(span, dep_node)) = *attr {
                 let dep_node = match dep_node {
-                    None => DepNode::from_def_path_hash(
-                        self.tcx,
-                        def_path_hash,
-                        DepKind::opt_hir_owner_nodes,
-                    ),
+                    None => {
+                        DepNode::from_def_path_hash(self.tcx, def_path_hash, DepKind::hir_owner)
+                    }
                     Some(n) => {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,
                             Err(()) => self
                                 .tcx
                                 .dcx()
-                                .emit_fatal(errors::UnrecognizedDepNode { span, name: n }),
+                                .emit_fatal(diagnostics::UnrecognizedDepNode { span, name: n }),
                         }
                     }
                 };
                 self.if_this_changed.push((span, def_id.to_def_id(), dep_node));
-            } else if let Attribute::Parsed(AttributeKind::RustcThenThisWouldNeed(
-                _,
-                ref dep_nodes,
-            )) = *attr
+            } else if let Attribute::Parsed(AttributeKind::RustcThenThisWouldNeed(dep_nodes)) = attr
             {
                 for &n in dep_nodes {
                     let Ok(dep_node) =
                         DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash)
                     else {
-                        self.tcx
-                            .dcx()
-                            .emit_fatal(errors::UnrecognizedDepNode { span: n.span, name: n.name });
+                        self.tcx.dcx().emit_fatal(diagnostics::UnrecognizedDepNode {
+                            span: n.span,
+                            name: n.name,
+                        });
                     };
                     self.then_this_would_need.push((n.span, n.name, hir_id, dep_node));
                 }
@@ -177,30 +179,33 @@ impl<'tcx> Visitor<'tcx> for IfThisChanged<'tcx> {
     }
 }
 
-fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_would_need: &Targets) {
-    // Return early here so as not to construct the query, which is not cheap.
+fn check_paths<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    retained_dep_graph: Option<&RetainedDepGraph>,
+    if_this_changed: &Sources,
+    then_this_would_need: &Targets,
+) {
     if if_this_changed.is_empty() {
         for &(target_span, _, _, _) in then_this_would_need {
-            tcx.dcx().emit_err(errors::MissingIfThisChanged { span: target_span });
+            tcx.dcx().emit_err(diagnostics::MissingIfThisChanged { span: target_span });
         }
         return;
     }
-    tcx.dep_graph.with_retained_dep_graph(|query| {
-        for &(_, source_def_id, ref source_dep_node) in if_this_changed {
-            let dependents = query.transitive_predecessors(source_dep_node);
-            for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
-                if !dependents.contains(&target_dep_node) {
-                    tcx.dcx().emit_err(errors::NoPath {
-                        span: target_span,
-                        source: tcx.def_path_str(source_def_id),
-                        target: *target_pass,
-                    });
-                } else {
-                    tcx.dcx().emit_err(errors::Ok { span: target_span });
-                }
+    let Some(query) = retained_dep_graph else { return };
+    for &(_, source_def_id, ref source_dep_node) in if_this_changed {
+        let dependents = query.transitive_predecessors(source_dep_node);
+        for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
+            if !dependents.contains(&target_dep_node) {
+                tcx.dcx().emit_err(diagnostics::NoPath {
+                    span: target_span,
+                    source: tcx.def_path_str(source_def_id),
+                    target: *target_pass,
+                });
+            } else {
+                tcx.dcx().emit_err(diagnostics::Ok { span: target_span });
             }
         }
-    });
+    }
 }
 
 fn dump_graph(graph: &RetainedDepGraph) {

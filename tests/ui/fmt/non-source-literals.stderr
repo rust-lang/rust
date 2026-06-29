@@ -31,7 +31,6 @@ LL |     let _ = format!(concat!("{:", "?}"), NonDebug);
    |                                          ^^^^^^^^ `NonDebug` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = help: the trait `Debug` is not implemented for `NonDebug`
-   = note: add `#[derive(Debug)]` to `NonDebug` or manually `impl Debug for NonDebug`
 help: consider annotating `NonDebug` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]
@@ -45,7 +44,6 @@ LL |     let _ = format!(concat!("{", "0", ":?}"), NonDebug);
    |                                               ^^^^^^^^ `NonDebug` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = help: the trait `Debug` is not implemented for `NonDebug`
-   = note: add `#[derive(Debug)]` to `NonDebug` or manually `impl Debug for NonDebug`
 help: consider annotating `NonDebug` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]

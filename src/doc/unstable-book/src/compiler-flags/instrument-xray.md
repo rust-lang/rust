@@ -37,3 +37,4 @@ which on their own don't do anything useful.
 In order to actually trace the functions,
 you will need to link a separate runtime library of your choice,
 such as Clang's [XRay Runtime Library](https://www.llvm.org/docs/XRay.html#xray-runtime-library).
+On targets where such a runtime is not available but instrumentation is supported, you must supply and link your own runtime library.

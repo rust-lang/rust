@@ -5,6 +5,6 @@
 #![expect(incomplete_features)]
 
 type const A: u8 = A;
-//~^ ERROR overflow normalizing the unevaluated constant `A`
+//~^ ERROR overflow normalizing the const alias `A`
 
 fn main() {}

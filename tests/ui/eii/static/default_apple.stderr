@@ -1,0 +1,10 @@
+error: `#[eii]` cannot be used on statics with a value on Apple targets
+  --> $DIR/default_apple.rs:7:25
+   |
+LL | pub static DECL1: u64 = 5;
+   |                         ^
+   |
+   = note: see issue #157649 <https://github.com/rust-lang/rust/issues/157649> for more information
+
+error: aborting due to 1 previous error
+

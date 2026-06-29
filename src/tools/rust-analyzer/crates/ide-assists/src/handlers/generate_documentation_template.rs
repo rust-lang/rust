@@ -43,7 +43,7 @@ use crate::assist_context::{AssistContext, Assists};
 // ```
 pub(crate) fn generate_documentation_template(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let ast_func = name.syntax().parent().and_then(ast::Fn::cast)?;
@@ -95,7 +95,7 @@ pub(crate) fn generate_documentation_template(
 // /// ```
 // pub fn add(a: i32, b: i32) -> i32 { a + b }
 // ```
-pub(crate) fn generate_doc_example(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_doc_example(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let tok: ast::Comment = ctx.find_token_at_offset()?;
     let node = tok.syntax().parent()?;
     let last_doc_token =
@@ -127,7 +127,7 @@ pub(crate) fn generate_doc_example(acc: &mut Assists, ctx: &AssistContext<'_>) -
     )
 }
 
-fn make_example_for_fn(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<String> {
+fn make_example_for_fn(ast_func: &ast::Fn, ctx: &AssistContext<'_, '_>) -> Option<String> {
     if !is_public(ast_func, ctx)? {
         // Doctests for private items can't actually name the item, so they're pretty useless.
         return None;
@@ -182,7 +182,7 @@ fn make_example_for_fn(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<St
     Some(example)
 }
 
-fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<String> {
+fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext<'_, '_>) -> Option<String> {
     let hir_func = ctx.sema.to_def(ast_func)?;
     let container = hir_func.as_assoc_item(ctx.db())?.container(ctx.db());
     if let hir::AssocItemContainer::Impl(imp) = container {
@@ -281,7 +281,7 @@ fn safety_builder(ast_func: &ast::Fn) -> Option<Vec<String>> {
 }
 
 /// Checks if the function is public / exported
-fn is_public(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<bool> {
+fn is_public(ast_func: &ast::Fn, ctx: &AssistContext<'_, '_>) -> Option<bool> {
     let hir_func = ctx.sema.to_def(ast_func)?;
     Some(
         hir_func.visibility(ctx.db()) == Visibility::Public
@@ -290,7 +290,7 @@ fn is_public(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<bool> {
 }
 
 /// Checks that all parent modules of the function are public / exported
-fn all_parent_mods_public(hir_func: &hir::Function, ctx: &AssistContext<'_>) -> bool {
+fn all_parent_mods_public(hir_func: &hir::Function, ctx: &AssistContext<'_, '_>) -> bool {
     let mut module = hir_func.module(ctx.db());
     loop {
         if let Some(parent) = module.parent(ctx.db()) {
@@ -305,7 +305,7 @@ fn all_parent_mods_public(hir_func: &hir::Function, ctx: &AssistContext<'_>) -> 
 }
 
 /// Returns the name of the current crate
-fn crate_name(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<String> {
+fn crate_name(ast_func: &ast::Fn, ctx: &AssistContext<'_, '_>) -> Option<String> {
     let krate = ctx.sema.scope(ast_func.syntax())?.krate();
     Some(krate.display_name(ctx.db())?.to_string())
 }
@@ -378,7 +378,7 @@ fn self_partial_type(ast_func: &ast::Fn) -> Option<String> {
 }
 
 /// Helper function to determine if the function is in a trait implementation
-fn is_in_trait_impl(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> bool {
+fn is_in_trait_impl(ast_func: &ast::Fn, ctx: &AssistContext<'_, '_>) -> bool {
     ctx.sema
         .to_def(ast_func)
         .and_then(|hir_func| hir_func.as_assoc_item(ctx.db()))
@@ -387,7 +387,7 @@ fn is_in_trait_impl(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> bool {
 }
 
 /// Helper function to determine if the function definition is in a trait definition
-fn is_in_trait_def(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> bool {
+fn is_in_trait_def(ast_func: &ast::Fn, ctx: &AssistContext<'_, '_>) -> bool {
     ctx.sema
         .to_def(ast_func)
         .and_then(|hir_func| hir_func.as_assoc_item(ctx.db()))
@@ -490,7 +490,7 @@ fn string_vec_from(string_array: &[&str]) -> Vec<String> {
 }
 
 /// Helper function to build the path of the module in the which is the node
-fn build_path(ast_func: &ast::Fn, ctx: &AssistContext<'_>, edition: Edition) -> Option<String> {
+fn build_path(ast_func: &ast::Fn, ctx: &AssistContext<'_, '_>, edition: Edition) -> Option<String> {
     let crate_name = crate_name(ast_func, ctx)?;
     let leaf = self_partial_type(ast_func)
         .or_else(|| ast_func.name().map(|n| n.to_string()))
@@ -508,7 +508,7 @@ fn return_type(ast_func: &ast::Fn) -> Option<ast::Type> {
 }
 
 /// Helper function to determine if the function returns some data
-fn returns_a_value(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> bool {
+fn returns_a_value(ast_func: &ast::Fn, ctx: &AssistContext<'_, '_>) -> bool {
     ctx.sema
         .to_def(ast_func)
         .map(|hir_func| hir_func.ret_type(ctx.db()))

@@ -5,29 +5,37 @@
 #![feature(linkage)]
 
 fn gettid() -> u64 {
-    cfg_if::cfg_if! {
-        if #[cfg(any(target_os = "android", target_os = "linux"))] {
+    cfg_select! {
+        any(target_os = "android", target_os = "linux") => {
             gettid_linux_like()
-        } else if #[cfg(target_os = "nto")] {
+        }
+        target_os = "nto" => {
             unsafe { libc::gettid() as u64 }
-        } else if #[cfg(target_os = "openbsd")] {
+        }
+        target_os = "openbsd" => {
             unsafe { libc::getthrid() as u64 }
-        } else if #[cfg(target_os = "freebsd")] {
+        }
+        target_os = "freebsd" => {
             unsafe { libc::pthread_getthreadid_np() as u64 }
-        } else if #[cfg(target_os = "netbsd")] {
+        }
+        target_os = "netbsd" => {
             unsafe { libc::_lwp_self() as u64 }
-        } else if #[cfg(any(target_os = "solaris", target_os = "illumos"))] {
+        }
+        any(target_os = "solaris", target_os = "illumos") => {
             // On Solaris and Illumos, the `pthread_t` is the OS TID.
             unsafe { libc::pthread_self() as u64 }
-        } else if #[cfg(target_vendor = "apple")] {
+        }
+        target_vendor = "apple" => {
             let mut id = 0u64;
             let status: libc::c_int = unsafe { libc::pthread_threadid_np(0, &mut id) };
             assert_eq!(status, 0);
             id
-        } else if #[cfg(windows)] {
+        }
+        windows => {
             use windows_sys::Win32::System::Threading::GetCurrentThreadId;
             unsafe { GetCurrentThreadId() as u64 }
-        } else {
+        }
+        _ => {
             compile_error!("platform has no gettid")
         }
     }
@@ -165,8 +173,13 @@ fn main() {
     // The value is not important, we only care that whatever the value is,
     // won't change from execution to execution.
     if cfg!(with_isolation) {
-        if cfg!(any(target_os = "linux", target_os = "android")) {
-            // Linux starts the TID at the PID, which is 1000.
+        if cfg!(any(
+            target_os = "linux",
+            target_os = "android",
+            target_os = "freebsd",
+            target_os = "macos"
+        )) {
+            // On these OSes we start the TID at the PID, which is 1000.
             assert_eq!(tid, 1000);
         } else {
             // Other platforms start counting from 0.
@@ -174,7 +187,7 @@ fn main() {
         }
     }
 
-    // On Linux, the first TID is the PID.
+    // On Linux, the main thread TID is the PID.
     #[cfg(any(target_os = "linux", target_os = "android"))]
     assert_eq!(tid, unsafe { libc::getpid() } as u64);
 

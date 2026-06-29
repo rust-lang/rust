@@ -1,6 +1,5 @@
-#![allow(unused)]
 #![warn(clippy::as_ptr_cast_mut)]
-#![allow(clippy::wrong_self_convention, clippy::unnecessary_cast)]
+#![expect(clippy::unnecessary_cast, clippy::wrong_self_convention)]
 
 struct MutPtrWrapper(Vec<u8>);
 impl MutPtrWrapper {

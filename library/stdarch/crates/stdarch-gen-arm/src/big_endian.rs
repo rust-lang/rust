@@ -15,9 +15,9 @@ fn create_single_wild_string(name: &str) -> WildString {
 /// Creates an Identifier with name `name` with no wildcards. This, for example,
 /// can be used to create variables, function names or arbitrary input. Is is
 /// extremely flexible.
-pub fn create_symbol_identifier(arbitrary_string: &str) -> Expression {
+pub fn create_symbol_identifier(arbitrary_string: &str, kind: IdentifierType) -> Expression {
     let identifier_name = create_single_wild_string(arbitrary_string);
-    Expression::Identifier(identifier_name, IdentifierType::Symbol)
+    Expression::Identifier(identifier_name, kind)
 }
 
 /// To compose the simd_shuffle! call we need:
@@ -101,7 +101,6 @@ pub fn make_variable_mutable(variable_name: &str, type_kind: &TypeKind) -> Expre
 fn create_shuffle_internal(
     variable_name: &String,
     type_kind: &TypeKind,
-    fmt_tuple: fn(variable_name: &String, idx: u32, array_lanes: &String) -> String,
     fmt: fn(variable_name: &String, type_kind: &TypeKind, array_lanes: &String) -> String,
 ) -> Option<Expression> {
     let TypeKind::Vector(vector_type) = type_kind else {
@@ -120,14 +119,21 @@ fn create_shuffle_internal(
 
         /* <var_name>.idx = simd_shuffle!(<var_name>.idx, <var_name>.idx, [<indexes>]) */
         for idx in 0..tuple_count {
-            let formatted = fmt_tuple(variable_name, idx, &array_lanes);
+            let formatted =
+                create_assigned_tuple_shuffle_call_fmt(variable_name, idx, &array_lanes);
             string_builder += formatted.as_str();
         }
-        Some(create_symbol_identifier(&string_builder))
+        Some(create_symbol_identifier(
+            &string_builder,
+            IdentifierType::UnsafeSymbol,
+        ))
     } else {
         /* Generate a list of shuffles for each tuple */
         let expression = fmt(variable_name, type_kind, &array_lanes);
-        Some(create_symbol_identifier(&expression))
+        Some(create_symbol_identifier(
+            &expression,
+            IdentifierType::UnsafeSymbol,
+        ))
     }
 }
 
@@ -137,7 +143,7 @@ fn create_assigned_tuple_shuffle_call_fmt(
     array_lanes: &String,
 ) -> String {
     format!(
-        "{variable_name}.{idx} = unsafe {{ simd_shuffle!({variable_name}.{idx}, {variable_name}.{idx}, {array_lanes}) }};\n"
+        "{variable_name}.{idx} = simd_shuffle!({variable_name}.{idx}, {variable_name}.{idx}, {array_lanes});\n"
     )
 }
 
@@ -147,7 +153,7 @@ fn create_assigned_shuffle_call_fmt(
     array_lanes: &String,
 ) -> String {
     format!(
-        "let {variable_name}: {type_kind} = unsafe {{ simd_shuffle!({variable_name}, {variable_name}, {array_lanes}) }}"
+        "let {variable_name}: {type_kind} = simd_shuffle!({variable_name}, {variable_name}, {array_lanes})"
     )
 }
 
@@ -165,20 +171,10 @@ pub fn create_assigned_shuffle_call(
     variable_name: &String,
     type_kind: &TypeKind,
 ) -> Option<Expression> {
-    create_shuffle_internal(
-        variable_name,
-        type_kind,
-        create_assigned_tuple_shuffle_call_fmt,
-        create_assigned_shuffle_call_fmt,
-    )
+    create_shuffle_internal(variable_name, type_kind, create_assigned_shuffle_call_fmt)
 }
 
 /// Create a `simd_shuffle!(<...>, [...])` call
 pub fn create_shuffle_call(variable_name: &String, type_kind: &TypeKind) -> Option<Expression> {
-    create_shuffle_internal(
-        variable_name,
-        type_kind,
-        create_assigned_tuple_shuffle_call_fmt,
-        create_shuffle_call_fmt,
-    )
+    create_shuffle_internal(variable_name, type_kind, create_shuffle_call_fmt)
 }

@@ -188,6 +188,11 @@ impl GenericParams {
     pub const SELF_PARAM_ID_IN_SELF: la_arena::Idx<TypeOrConstParamData> =
         LocalTypeOrConstParamId::from_raw(RawIdx::from_u32(0));
 
+    #[inline]
+    pub fn empty() -> &'static GenericParams {
+        LazyLock::force(&EMPTY)
+    }
+
     pub fn of(db: &dyn DefDatabase, def: GenericDefId) -> &GenericParams {
         Self::with_store(db, def).0
     }

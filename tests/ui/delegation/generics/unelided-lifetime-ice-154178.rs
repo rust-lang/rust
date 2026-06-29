@@ -7,6 +7,7 @@ fn foo<'b: 'b, const N: usize>() {}
 trait Trait {
     reuse foo::<1>;
     //~^ ERROR: function takes 1 lifetime argument but 0 lifetime arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 }
 
 fn main() {}

@@ -66,9 +66,9 @@ use hir_expand::{
     EditionedFileId, ErasedAstId, HirFileId, InFile, MacroCallId, mod_path::ModPath, name::Name,
     proc_macro::ProcMacroKind,
 };
-use intern::Symbol;
+use intern::{Symbol, sym};
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use span::{Edition, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{AstNode, SmolStr, SyntaxNode, ToSmolStr, ast};
@@ -83,6 +83,7 @@ use crate::{
     item_tree::TreeId,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     per_ns::PerNs,
+    unstable_features::UnstableFeatures,
     visibility::{Visibility, VisibilityExplicitness},
 };
 
@@ -216,7 +217,7 @@ struct DefMapCrateData {
     /// Custom tool modules registered with `#![register_tool]`.
     registered_tools: Vec<Symbol>,
     /// Unstable features of Rust enabled with `#![feature(A, B)]`.
-    unstable_features: FxHashSet<Symbol>,
+    unstable_features: UnstableFeatures,
     /// `#[rustc_coherence_is_core]`
     rustc_coherence_is_core: bool,
     no_core: bool,
@@ -233,7 +234,7 @@ impl DefMapCrateData {
             fn_proc_macro_mapping: FxHashMap::default(),
             fn_proc_macro_mapping_back: FxHashMap::default(),
             registered_tools: PREDEFINED_TOOLS.iter().map(|it| Symbol::intern(it)).collect(),
-            unstable_features: FxHashSet::default(),
+            unstable_features: UnstableFeatures::default(),
             rustc_coherence_is_core: false,
             no_core: false,
             no_std: false,
@@ -426,7 +427,7 @@ pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefM
 
 #[salsa_macros::tracked(returns(ref))]
 pub fn block_def_map(db: &dyn DefDatabase, block_id: BlockId) -> DefMap {
-    let BlockLoc { ast_id, module } = block_id.lookup(db);
+    let BlockLoc { ast_id, module } = *block_id.lookup(db);
 
     let visibility = Visibility::Module(module, VisibilityExplicitness::Implicit);
     let module_data =
@@ -464,7 +465,16 @@ impl DefMap {
         block: Option<BlockInfo>,
     ) -> DefMap {
         let mut modules = ModulesMap::new();
-        let root = unsafe { ModuleIdLt::new(db, krate, block.map(|it| it.block)).to_static() };
+        let root = unsafe {
+            ModuleIdLt::new(
+                db,
+                krate,
+                block.map(|it| it.block),
+                None,
+                Name::new_symbol_root(sym::__empty),
+            )
+            .to_static()
+        };
         modules.insert(root, module_data);
 
         DefMap {
@@ -554,8 +564,9 @@ impl DefMap {
         &self.data.registered_tools
     }
 
-    pub fn is_unstable_feature_enabled(&self, feature: &Symbol) -> bool {
-        self.data.unstable_features.contains(feature)
+    #[inline]
+    pub fn features(&self) -> &UnstableFeatures {
+        &self.data.unstable_features
     }
 
     pub fn is_rustc_coherence_is_core(&self) -> bool {
@@ -839,6 +850,7 @@ pub(crate) fn macro_styles_from_id(db: &dyn DefDatabase, macro_id: MacroId) -> M
         MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroCallStyles::FN_LIKE,
         MacroExpander::BuiltInAttr(_) => MacroCallStyles::ATTR,
         MacroExpander::BuiltInDerive(_) => MacroCallStyles::DERIVE,
+        MacroExpander::UnimplementedBuiltIn => MacroCallStyles::all(), // Unknown.
     }
 }
 

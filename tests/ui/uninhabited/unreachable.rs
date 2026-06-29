@@ -4,6 +4,8 @@
 //@ check-pass
 #![deny(unreachable_code)]
 
+use std::process::ExitCode;
+
 enum Never {}
 
 fn make_never() -> Never {
@@ -26,6 +28,14 @@ fn branchy() {
     } else {
         make_never();
     }
+}
+
+// Regression test for https://github.com/rust-lang/rust/issues/152559.
+// The final expression is unreachable at runtime, but it cannot be removed
+// because it supplies the function's required return type.
+fn required_return_value() -> ExitCode {
+    make_never();
+    ExitCode::FAILURE
 }
 
 fn main() {

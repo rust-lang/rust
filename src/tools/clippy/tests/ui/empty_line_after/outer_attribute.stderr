@@ -1,5 +1,5 @@
 error: empty line after outer attribute
-  --> tests/ui/empty_line_after/outer_attribute.rs:5:1
+  --> tests/ui/empty_line_after/outer_attribute.rs:6:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -16,7 +16,7 @@ LL | #![crate_type = "lib"]
    |  +
 
 error: empty line after outer attribute
-  --> tests/ui/empty_line_after/outer_attribute.rs:13:1
+  --> tests/ui/empty_line_after/outer_attribute.rs:14:1
    |
 LL | / #[inline]
 LL | |
@@ -28,7 +28,7 @@ LL |   fn with_one_newline_and_comment() {}
    = help: if the empty line is unintentional, remove it
 
 error: empty line after outer attribute
-  --> tests/ui/empty_line_after/outer_attribute.rs:23:1
+  --> tests/ui/empty_line_after/outer_attribute.rs:24:1
    |
 LL | / #[inline]
 LL | |
@@ -39,7 +39,7 @@ LL |   fn with_one_newline() {}
    = help: if the empty line is unintentional, remove it
 
 error: empty lines after outer attribute
-  --> tests/ui/empty_line_after/outer_attribute.rs:30:5
+  --> tests/ui/empty_line_after/outer_attribute.rs:31:5
    |
 LL | /     #[crate_type = "lib"]
 LL | |
@@ -55,7 +55,7 @@ LL |     #![crate_type = "lib"]
    |      +
 
 error: empty line after outer attribute
-  --> tests/ui/empty_line_after/outer_attribute.rs:37:1
+  --> tests/ui/empty_line_after/outer_attribute.rs:38:1
    |
 LL | / #[doc = "doc attributes should be considered attributes"]
 LL | |
@@ -66,7 +66,7 @@ LL |   enum Baz {
    = help: if the empty line is unintentional, remove it
 
 error: empty line after outer attribute
-  --> tests/ui/empty_line_after/outer_attribute.rs:45:1
+  --> tests/ui/empty_line_after/outer_attribute.rs:46:1
    |
 LL | / #[repr(C)]
 LL | |
@@ -77,7 +77,7 @@ LL |   struct Foo {
    = help: if the empty line is unintentional, remove it
 
 error: empty line after outer attribute
-  --> tests/ui/empty_line_after/outer_attribute.rs:53:1
+  --> tests/ui/empty_line_after/outer_attribute.rs:54:1
    |
 LL | / #[allow(dead_code)]
 LL | |
@@ -88,7 +88,7 @@ LL |   mod foo {}
    = help: if the empty line is unintentional, remove it
 
 error: empty line after outer attribute
-  --> tests/ui/empty_line_after/outer_attribute.rs:58:1
+  --> tests/ui/empty_line_after/outer_attribute.rs:59:1
    |
 LL | / #[inline]
 LL | | // Still lint cases where the empty line does not immediately follow the attribute
@@ -100,7 +100,7 @@ LL |   fn comment_before_empty_line() {}
    = help: if the empty line is unintentional, remove it
 
 error: empty lines after outer attribute
-  --> tests/ui/empty_line_after/outer_attribute.rs:64:1
+  --> tests/ui/empty_line_after/outer_attribute.rs:65:1
    |
 LL | / #[allow(unused)]
 ...  |
@@ -112,7 +112,7 @@ LL |   pub fn isolated_comment() {}
    = help: if the empty lines are unintentional, remove them
 
 error: empty line after outer attribute
-  --> tests/ui/empty_line_after/outer_attribute.rs:121:5
+  --> tests/ui/empty_line_after/outer_attribute.rs:122:5
    |
 LL | /     #[repr(align(536870912))]
 LL | |

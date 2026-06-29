@@ -69,6 +69,8 @@ in `check_crate` and its AST visitor.
   (declared in `rustc_feature::INCOMPATIBLE_FEATURES`) are not used together.
 - `check_new_solver_banned_features`: Bans features incompatible with
   compiler mode for the next trait solver.
+- `check_features_requiring_new_solver`: Requires the new trait solver for
+  features incompatible with the old solver.
 - **Parser-gated spans**: Processes the `GatedSpans` recorded during parsing
   (see [Checking `GatedSpans`](#checking-gatedspans)).
 

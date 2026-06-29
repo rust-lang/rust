@@ -28,7 +28,9 @@ use crate::{
 };
 use base_db::AnchoredPathBuf;
 use either::Either;
-use hir::{FieldSource, FileRange, InFile, ModuleSource, Name, Semantics, sym};
+use hir::{FieldSource, FileRange, HasCrate, InFile, ModuleSource, Name, Semantics, sym};
+use itertools::Itertools;
+use rustc_hash::FxHashSet;
 use span::{Edition, FileId, SyntaxContext};
 use stdx::{TupleExt, never};
 use syntax::{
@@ -405,6 +407,11 @@ fn rename_reference(
             source_edit_from_references(sema.db, references, def, &new_name, edition),
         )
     }));
+
+    if let Definition::Field(field) = def {
+        rename_field_constructors(sema, field, &new_name, &mut source_change, config);
+    }
+
     if rename_definition == RenameDefinition::Yes {
         // This needs to come after the references edits, because we change the annotation of existing edits
         // if a conflict is detected.
@@ -413,6 +420,104 @@ fn rename_reference(
         source_change.insert_source_edit(file_id, edit);
     }
     Ok(source_change)
+}
+
+fn rename_field_constructors(
+    sema: &Semantics<'_, RootDatabase>,
+    field: hir::Field,
+    new_name: &Name,
+    source_change: &mut SourceChange,
+    config: &RenameConfig,
+) {
+    let db = sema.db;
+    let old_name = field.name(db);
+    let adt = field.parent_def(db).adt(db);
+    adt.ty(db).iterate_assoc_items(db, |assoc_item| {
+        let ctor = assoc_item.as_function()?;
+        if ctor.has_self_param(db) {
+            return None;
+        }
+        if ctor.ret_type(db).as_adt() != Some(adt) {
+            return None;
+        }
+
+        let source = sema.source(ctor);
+        let return_values = sema
+            .fn_return_points(ctor)
+            .into_iter()
+            .filter_map(|ret| ret.value.expr())
+            .chain(source.and_then(|source| source.value.body()?.tail_expr()));
+        // FIXME: We could maybe skip ifs etc..
+
+        let get_renamed_field = |mut expr| {
+            while let ast::Expr::ParenExpr(e) = &expr {
+                expr = e.expr()?;
+            }
+            let ast::Expr::RecordExpr(expr) = expr else { return None };
+            if sema.type_of_expr(&expr.clone().into())?.original.as_adt()? != adt {
+                return None;
+            };
+            expr.record_expr_field_list()?.fields().find_map(|record_field| {
+                if record_field.name_ref().is_none()
+                    && Name::new_root(&record_field.field_name()?.text()) == old_name
+                    && let ast::Expr::PathExpr(field_name) = record_field.expr()?
+                {
+                    field_name.path()
+                } else {
+                    None
+                }
+            })
+        };
+        let renamed_fields = return_values
+            .map(get_renamed_field)
+            .map(|renamed_field| {
+                let renamed_field = renamed_field?;
+                let hir::PathResolution::Local(local) = sema.resolve_path(&renamed_field)? else {
+                    return None;
+                };
+                let range = sema.original_range_opt(renamed_field.syntax())?.range;
+                Some((range, local))
+            })
+            .collect::<Option<Vec<_>>>()?;
+
+        let edition = ctor.krate(db).edition(db);
+        let locals = renamed_fields.iter().map(|&(_, local)| local).collect::<FxHashSet<_>>();
+        let mut all_locals_source_change = SourceChange::default();
+        for local in locals {
+            let mut local_source_change = Definition::Local(local)
+                .rename(sema, new_name.as_str(), RenameDefinition::Yes, config)
+                .ok()?;
+
+            let (edit, _snippet) =
+                local_source_change.source_file_edits.values_mut().exactly_one().ok()?;
+
+            // The struct literal will have an edit `old_name -> old_name: new_name`, and we need to remove
+            // that, as we want an overlapping edit `old_name -> new_name`.
+            for &(field_range, _) in &renamed_fields {
+                edit.cancel_edits_touching(field_range);
+            }
+
+            all_locals_source_change =
+                std::mem::take(&mut all_locals_source_change).merge(local_source_change);
+        }
+        let (edit, _snippet) =
+            all_locals_source_change.source_file_edits.values_mut().exactly_one().ok()?;
+        for &(field_range, _) in &renamed_fields {
+            edit.union(TextEdit::replace(field_range, new_name.display(db, edition).to_string()))
+                .unwrap();
+        }
+
+        let file_id = *all_locals_source_change.source_file_edits.keys().exactly_one().ok()?;
+        if let Some((edit, _snippet)) = source_change.source_file_edits.get_mut(&file_id) {
+            for &(field_range, _) in &renamed_fields {
+                edit.cancel_edits_touching(field_range);
+            }
+        }
+
+        *source_change = std::mem::take(source_change).merge(all_locals_source_change);
+
+        None::<std::convert::Infallible>
+    });
 }
 
 pub fn source_edit_from_references(
@@ -596,28 +701,36 @@ fn source_edit_from_def(
         for source in local.sources(sema.db) {
             let source = match source.source.clone().original_ast_node_rooted(sema.db) {
                 Some(source) => source,
-                None => match source
-                    .source
-                    .syntax()
-                    .original_file_range_opt(sema.db)
-                    .map(TupleExt::head)
-                {
-                    Some(FileRange { file_id: file_id2, range }) => {
-                        file_id = Some(file_id2);
-                        edit.replace(
-                            range,
-                            new_name.display(sema.db, file_id2.edition(sema.db)).to_string(),
-                        );
-                        continue;
+                None => {
+                    match source
+                        .as_ident_pat()
+                        .and_then(|x| x.name())
+                        .and_then(|x| sema.original_range_opt(x.syntax()))
+                        .or_else(|| {
+                            source
+                                .source
+                                .syntax()
+                                .original_file_range_opt(sema.db)
+                                .map(TupleExt::head)
+                        }) {
+                        Some(FileRange { file_id: file_id2, range }) => {
+                            file_id = Some(file_id2);
+                            edit.replace(
+                                range,
+                                new_name.display(sema.db, file_id2.edition(sema.db)).to_string(),
+                            );
+                            continue;
+                        }
+                        None => {
+                            bail!("Can't rename local that is defined in a macro declaration")
+                        }
                     }
-                    None => {
-                        bail!("Can't rename local that is defined in a macro declaration")
-                    }
-                },
+                }
             };
             file_id = Some(source.file_id);
             if let Either::Left(pat) = source.value {
                 let name_range = pat.name().unwrap().syntax().text_range();
+
                 // special cases required for renaming fields/locals in Record patterns
                 if let Some(pat_field) = pat.syntax().parent().and_then(ast::RecordPatField::cast) {
                     if let Some(name_ref) = pat_field.name_ref() {

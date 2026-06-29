@@ -1,5 +1,4 @@
 #![warn(clippy::match_str_case_mismatch)]
-#![allow(dead_code)]
 
 // Valid
 

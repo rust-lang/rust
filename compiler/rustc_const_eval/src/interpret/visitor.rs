@@ -41,6 +41,11 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
     fn visit_box(&mut self, _box_ty: Ty<'tcx>, _v: &Self::V) -> InterpResult<'tcx> {
         interp_ok(())
     }
+    /// Visits the given type after it has been found to have no variants.
+    #[inline(always)]
+    fn visit_variantless(&mut self, _v: &Self::V) -> InterpResult<'tcx> {
+        interp_ok(())
+    }
 
     /// Called each time we recurse down to a field of a "product-like" aggregate
     /// (structs, tuples, arrays and the like, but not enums), passing in old (outer)
@@ -122,16 +127,17 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                     phantom.layout().ty,
                 );
 
-                // ... that contains a `NonNull`... (gladly, only a single field here)
+                // ... that contains a `NonNull` whose only field finally is a raw ptr we can
+                // dereference.
                 assert_eq!(nonnull_ptr.layout().fields.count(), 1);
-                let pat_ty = self.ecx().project_field(&nonnull_ptr, FieldIdx::ZERO)?; // `*mut T is !null`
-                let base = match *pat_ty.layout().ty.kind() {
+                let pat_ptr = self.ecx().project_field(&nonnull_ptr, FieldIdx::ZERO)?; // `*mut T is !null`
+                let base = match *pat_ptr.layout().ty.kind() {
                     ty::Pat(base, _) => self.ecx().layout_of(base)?,
                     _ => unreachable!(),
                 };
-                let raw_ptr = pat_ty.transmute(base, self.ecx())?; // The actual raw pointer
+                let raw_ptr = pat_ptr.transmute(base, self.ecx())?; // The actual raw pointer
 
-                // ... whose only field finally is a raw ptr we can dereference.
+                // Hand this actual pointer to the visitor.
                 self.visit_box(ty, &raw_ptr)?;
 
                 // The second `Box` field is the allocator, which we recursively check for validity
@@ -192,7 +198,11 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 self.visit_variant(v, idx, &inner)?;
             }
             // For single-variant layouts, we already did everything there is to do.
-            Variants::Single { .. } | Variants::Empty => {}
+            Variants::Single { .. } => {}
+            // Non-variant layouts need special treatment by the visitor.
+            Variants::Empty => {
+                self.visit_variantless(v)?;
+            }
         }
 
         interp_ok(())

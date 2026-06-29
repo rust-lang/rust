@@ -1,12 +1,9 @@
 use std::ops::Range;
 
-use rustc_errors::{Diagnostic, E0232};
-use rustc_hir::AttrPath;
 use rustc_hir::attrs::diagnostic::{
-    Directive, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name, NameValue,
-    OnUnimplementedCondition, Piece, Predicate,
+    Directive, Filter, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name,
+    NameValue, Piece, Predicate,
 };
-use rustc_macros::Diagnostic;
 use rustc_parse_format::{
     Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,
 };
@@ -16,19 +13,21 @@ use rustc_session::lint::builtin::{
 use rustc_span::{Ident, InnerSpan, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::context::{AcceptContext, Stage};
-use crate::errors::{
-    FormatWarning, IgnoredDiagnosticOption, MalFormedDiagnosticAttributeLint,
-    MissingOptionsForDiagnosticAttribute, NonMetaItemDiagnosticAttribute, WrappedParserError,
+use crate::context::AcceptContext;
+use crate::diagnostics::{
+    DupesNotAllowed, FormatWarning, IgnoredDiagnosticOption, InvalidOnClause,
+    MalFormedDiagnosticAttributeLint, MissingOptionsForDiagnosticAttribute,
+    NonMetaItemDiagnosticAttribute, WrappedParserError,
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
 pub(crate) mod on_move;
+pub(crate) mod on_type_error;
 pub(crate) mod on_unimplemented;
 pub(crate) mod on_unknown;
-pub(crate) mod on_unmatch_args;
+pub(crate) mod on_unmatched_args;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {
@@ -42,8 +41,10 @@ pub(crate) enum Mode {
     DiagnosticOnMove,
     /// `#[diagnostic::on_unknown]`
     DiagnosticOnUnknown,
-    /// `#[diagnostic::on_unmatch_args]`
-    DiagnosticOnUnmatchArgs,
+    /// `#[diagnostic::on_unmatched_args]`
+    DiagnosticOnUnmatchedArgs,
+    /// `#[diagnostic::on_type_error]`
+    DiagnosticOnTypeError,
 }
 
 impl Mode {
@@ -54,13 +55,16 @@ impl Mode {
             Self::DiagnosticOnConst => "diagnostic::on_const",
             Self::DiagnosticOnMove => "diagnostic::on_move",
             Self::DiagnosticOnUnknown => "diagnostic::on_unknown",
-            Self::DiagnosticOnUnmatchArgs => "diagnostic::on_unmatch_args",
+            Self::DiagnosticOnUnmatchedArgs => "diagnostic::on_unmatched_args",
+            Self::DiagnosticOnTypeError => "diagnostic::on_type_error",
         }
     }
 
     fn expected_options(&self) -> &'static str {
         const DEFAULT: &str =
             "at least one of the `message`, `note` and `label` options are expected";
+        const DIAGNOSTIC_ON_TYPE_ERROR_EXPECTED_OPTIONS: &str =
+            "at least a single `note` option is expected";
         match self {
             Self::RustcOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
@@ -69,12 +73,15 @@ impl Mode {
             Self::DiagnosticOnConst => DEFAULT,
             Self::DiagnosticOnMove => DEFAULT,
             Self::DiagnosticOnUnknown => DEFAULT,
-            Self::DiagnosticOnUnmatchArgs => DEFAULT,
+            Self::DiagnosticOnUnmatchedArgs => DEFAULT,
+            Self::DiagnosticOnTypeError => DIAGNOSTIC_ON_TYPE_ERROR_EXPECTED_OPTIONS,
         }
     }
 
     fn allowed_options(&self) -> &'static str {
         const DEFAULT: &str = "only `message`, `note` and `label` are allowed as options";
+        const DIAGNOSTIC_ON_TYPE_ERROR_ALLOWED_OPTIONS: &str =
+            "only `note` is allowed as option for `diagnostic::on_type_error`";
         match self {
             Self::RustcOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
@@ -83,7 +90,8 @@ impl Mode {
             Self::DiagnosticOnConst => DEFAULT,
             Self::DiagnosticOnMove => DEFAULT,
             Self::DiagnosticOnUnknown => DEFAULT,
-            Self::DiagnosticOnUnmatchArgs => DEFAULT,
+            Self::DiagnosticOnUnmatchedArgs => DEFAULT,
+            Self::DiagnosticOnTypeError => DIAGNOSTIC_ON_TYPE_ERROR_ALLOWED_OPTIONS,
         }
     }
 
@@ -104,15 +112,18 @@ impl Mode {
             Self::DiagnosticOnUnknown => {
                 "only `This` is allowed as a format argument, referring to the failed import"
             }
-            Self::DiagnosticOnUnmatchArgs => {
+            Self::DiagnosticOnUnmatchedArgs => {
                 "only `This` is allowed as a format argument, referring to the macro's name"
+            }
+            Self::DiagnosticOnTypeError => {
+                "only `note` is allowed as option for `diagnostic::on_type_error`"
             }
         }
     }
 }
 
-fn merge_directives<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn merge_directives(
+    cx: &mut AcceptContext<'_, '_>,
     first: &mut Option<(Span, Directive)>,
     later: (Span, Directive),
 ) {
@@ -129,8 +140,8 @@ fn merge_directives<S: Stage>(
     }
 }
 
-fn merge<T, S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn merge<T>(
+    cx: &mut AcceptContext<'_, '_>,
     first: &mut Option<(Span, T)>,
     later: Option<(Span, T)>,
     option_name: Symbol,
@@ -139,12 +150,9 @@ fn merge<T, S: Stage>(
         (Some(_) | None, None) => {}
         (Some((first_span, _)), Some((later_span, _))) => {
             let first_span = *first_span;
-            cx.emit_dyn_lint(
+            cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level| {
-                    IgnoredDiagnosticOption { first_span, later_span, option_name }
-                        .into_diag(dcx, level)
-                },
+                IgnoredDiagnosticOption { first_span, later_span, option_name },
                 later_span,
             );
         }
@@ -154,8 +162,8 @@ fn merge<T, S: Stage>(
     }
 }
 
-fn parse_list<'p, S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn parse_list<'p>(
+    cx: &mut AcceptContext<'_, '_>,
     args: &'p ArgParser,
     mode: Mode,
 ) -> Option<&'p MetaItemListParser> {
@@ -166,35 +174,29 @@ fn parse_list<'p, S: Stage>(
             // We're dealing with `#[diagnostic::attr()]`.
             // This can be because that is what the user typed, but that's also what we'd see
             // if the user used non-metaitem syntax. See `ArgParser::from_attr_args`.
-            cx.emit_dyn_lint(
+            cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level| NonMetaItemDiagnosticAttribute.into_diag(dcx, level),
+                NonMetaItemDiagnosticAttribute,
                 list.span,
             );
         }
         ArgParser::NoArgs => {
-            cx.emit_dyn_lint(
+            cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level| {
-                    MissingOptionsForDiagnosticAttribute {
-                        attribute: mode.as_str(),
-                        options: mode.expected_options(),
-                    }
-                    .into_diag(dcx, level)
+                MissingOptionsForDiagnosticAttribute {
+                    attribute: mode.as_str(),
+                    options: mode.expected_options(),
                 },
                 span,
             );
         }
         ArgParser::NameValue(_) => {
-            cx.emit_dyn_lint(
+            cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level| {
-                    MalFormedDiagnosticAttributeLint {
-                        attribute: mode.as_str(),
-                        options: mode.allowed_options(),
-                        span,
-                    }
-                    .into_diag(dcx, level)
+                MalFormedDiagnosticAttributeLint {
+                    attribute: mode.as_str(),
+                    options: mode.allowed_options(),
+                    span,
                 },
                 span,
             );
@@ -203,32 +205,28 @@ fn parse_list<'p, S: Stage>(
     None
 }
 
-fn parse_directive_items<'p, S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn parse_directive_items<'p>(
+    cx: &mut AcceptContext<'_, '_>,
     mode: Mode,
     items: impl Iterator<Item = &'p MetaItemOrLitParser>,
     is_root: bool,
 ) -> Option<Directive> {
-    let condition = None;
     let mut message: Option<(Span, _)> = None;
     let mut label: Option<(Span, _)> = None;
     let mut notes = ThinVec::new();
     let mut parent_label = None;
-    let mut subcommands = ThinVec::new();
+    let mut filters = ThinVec::new();
 
     for item in items {
         let span = item.span();
 
         macro malformed() {{
-            cx.emit_dyn_lint(
+            cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level| {
-                    MalFormedDiagnosticAttributeLint {
-                        attribute: mode.as_str(),
-                        options: mode.allowed_options(),
-                        span,
-                    }
-                    .into_diag(dcx, level)
+                MalFormedDiagnosticAttributeLint {
+                    attribute: mode.as_str(),
+                    options: mode.allowed_options(),
+                    span,
                 },
                 span,
             );
@@ -236,9 +234,11 @@ fn parse_directive_items<'p, S: Stage>(
         }}
 
         macro or_malformed($($code:tt)*) {{
-            let Some(ret) = (||{
-                Some($($code)*)
-            })() else {
+            let Some(ret) = (
+                try {
+                    $($code)*
+                }
+            ) else {
                 malformed!()
             };
             ret
@@ -246,13 +246,13 @@ fn parse_directive_items<'p, S: Stage>(
 
         macro duplicate($name: ident, $($first_span:tt)*) {{
             let first_span = $($first_span)*;
-            cx.emit_dyn_lint(
+            cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level| IgnoredDiagnosticOption {
+                IgnoredDiagnosticOption {
                     first_span,
                     later_span: span,
                     option_name: $name,
-                }.into_diag(dcx, level),
+                },
                 span,
             );
         }}
@@ -267,7 +267,7 @@ fn parse_directive_items<'p, S: Stage>(
         // But we don't assert its presence yet because we don't want to mention it
         // if someone does something like `#[diagnostic::on_unimplemented(doesnt_exist)]`.
         // That happens in the big `match` below.
-        let value: Option<Ident> = match item.args().name_value() {
+        let value: Option<Ident> = match item.args().as_name_value() {
             Some(nv) => Some(or_malformed!(nv.value_as_ident()?)),
             None => None,
         };
@@ -282,25 +282,18 @@ fn parse_directive_items<'p, S: Stage>(
                         | FormatWarning::PositionalArgument { span }
                         | FormatWarning::IndexedArgument { span }
                         | FormatWarning::DisallowedPlaceholder { span, .. }) = warning;
-                        cx.emit_dyn_lint(
-                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                            move |dcx, level| warning.into_diag(dcx, level),
-                            span,
-                        );
+                        cx.emit_lint(MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, warning, span);
                     }
 
                     f
                 }
                 Err(e) => {
-                    cx.emit_dyn_lint(
+                    cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                        move |dcx, level| {
-                            WrappedParserError {
-                                description: &e.description,
-                                label: &e.label,
-                                span: slice_span(input.span, e.span.clone(), is_snippet),
-                            }
-                            .into_diag(dcx, level)
+                        WrappedParserError {
+                            description: e.description,
+                            label: e.label,
+                            span: slice_span(input.span, e.span.clone(), is_snippet),
                         },
                         input.span,
                     );
@@ -314,7 +307,15 @@ fn parse_directive_items<'p, S: Stage>(
             }
         };
         match (mode, name) {
-            (_, sym::message) => {
+            (
+                Mode::RustcOnUnimplemented
+                | Mode::DiagnosticOnUnimplemented
+                | Mode::DiagnosticOnConst
+                | Mode::DiagnosticOnMove
+                | Mode::DiagnosticOnUnknown
+                | Mode::DiagnosticOnUnmatchedArgs,
+                sym::message,
+            ) => {
                 let value = or_malformed!(value?);
                 if let Some(message) = &message {
                     duplicate!(name, message.0)
@@ -322,7 +323,15 @@ fn parse_directive_items<'p, S: Stage>(
                     message = Some((item.span(), parse_format(value)));
                 }
             }
-            (_, sym::label) => {
+            (
+                Mode::RustcOnUnimplemented
+                | Mode::DiagnosticOnUnimplemented
+                | Mode::DiagnosticOnConst
+                | Mode::DiagnosticOnMove
+                | Mode::DiagnosticOnUnknown
+                | Mode::DiagnosticOnUnmatchedArgs,
+                sym::label,
+            ) => {
                 let value = or_malformed!(value?);
                 if let Some(label) = &label {
                     duplicate!(name, label.0)
@@ -346,7 +355,7 @@ fn parse_directive_items<'p, S: Stage>(
                 if is_root {
                     let items = or_malformed!(item.args().as_list()?);
                     let mut iter = items.mixed();
-                    let condition: &MetaItemOrLitParser = match iter.next() {
+                    let filter: &MetaItemOrLitParser = match iter.next() {
                         Some(c) => c,
                         None => {
                             cx.emit_err(InvalidOnClause::Empty { span });
@@ -354,21 +363,19 @@ fn parse_directive_items<'p, S: Stage>(
                         }
                     };
 
-                    let condition = parse_condition(condition);
+                    let filter = parse_filter(filter);
 
                     if items.len() < 2 {
                         // Something like `#[rustc_on_unimplemented(on(.., /* nothing */))]`
-                        // There's a condition but no directive behind it, this is a mistake.
+                        // There's a filter but no directive behind it, this is a mistake.
                         malformed!();
                     }
 
-                    let mut directive =
-                        or_malformed!(parse_directive_items(cx, mode, iter, false)?);
-
-                    match condition {
-                        Ok(c) => {
-                            directive.condition = Some(c);
-                            subcommands.push(directive);
+                    match filter {
+                        Ok(filter) => {
+                            let directive =
+                                or_malformed!(parse_directive_items(cx, mode, iter, false)?);
+                            filters.push((filter, directive));
                         }
                         Err(e) => {
                             cx.emit_err(e);
@@ -378,7 +385,6 @@ fn parse_directive_items<'p, S: Stage>(
                     malformed!();
                 }
             }
-
             _other => {
                 malformed!();
             }
@@ -387,8 +393,7 @@ fn parse_directive_items<'p, S: Stage>(
 
     Some(Directive {
         is_rustc_attr: matches!(mode, Mode::RustcOnUnimplemented),
-        condition,
-        subcommands,
+        filters,
         message,
         label,
         notes,
@@ -416,9 +421,7 @@ pub(crate) fn parse_format_string(
         .map(|piece| match piece {
             RpfPiece::Lit(lit) => Piece::Lit(Symbol::intern(lit)),
             RpfPiece::NextArgument(arg) => {
-                warn_on_format_spec(&arg.format, &mut warnings, span, parser.is_source_literal);
-                let arg = parse_arg(&arg, mode, &mut warnings, span, parser.is_source_literal);
-                Piece::Arg(arg)
+                Piece::Arg(parse_arg(&arg, mode, &mut warnings, span, parser.is_source_literal))
             }
         })
         .collect();
@@ -435,15 +438,29 @@ fn parse_arg(
 ) -> FormatArg {
     let span = slice_span(input_span, arg.position_span.clone(), is_source_literal);
 
-    match arg.position {
+    let mut check_format = true;
+
+    let ret = match arg.position {
         // Something like "hello {name}"
         Position::ArgumentNamed(name) => match (mode, Symbol::intern(name)) {
             (Mode::RustcOnUnimplemented, sym::ItemContext) => FormatArg::ItemContext,
 
-            // Like `{This}`, but sugared.
-            // FIXME(mejrs) maybe rename/rework this or something
-            // if we want to apply this to other attrs?
-            (Mode::RustcOnUnimplemented, sym::Trait) => FormatArg::Trait,
+            // `{This:ty}`
+            (Mode::RustcOnUnimplemented, sym::This) => match arg.format.ty {
+                "resolved" => {
+                    check_format = false;
+                    FormatArg::ThisResolved
+                }
+                "path" => {
+                    check_format = false;
+                    FormatArg::ThisPath
+                }
+                _ => FormatArg::This,
+            },
+
+            (Mode::DiagnosticOnTypeError, sym::Found) => FormatArg::Found,
+            (Mode::DiagnosticOnTypeError, sym::Expected) => FormatArg::Expected,
+            (Mode::DiagnosticOnUnknown, sym::Unresolved) => FormatArg::Unresolved,
 
             // Some diagnostic attributes can use `{This}` to refer to the annotated item.
             // For those that don't, we continue and maybe use it as a generic parameter.
@@ -451,10 +468,10 @@ fn parse_arg(
             // FIXME(mejrs) `DiagnosticOnUnimplemented` is intentionally not here;
             // that requires lang approval which is best kept for a standalone PR.
             (
-                Mode::RustcOnUnimplemented
-                | Mode::DiagnosticOnUnknown
+                Mode::DiagnosticOnUnknown
                 | Mode::DiagnosticOnMove
-                | Mode::DiagnosticOnUnmatchArgs,
+                | Mode::DiagnosticOnUnmatchedArgs
+                | Mode::DiagnosticOnTypeError,
                 sym::This,
             ) => FormatArg::This,
 
@@ -480,22 +497,23 @@ fn parse_arg(
                 Mode::RustcOnUnimplemented
                 | Mode::DiagnosticOnUnimplemented
                 | Mode::DiagnosticOnMove
-                | Mode::DiagnosticOnConst,
+                | Mode::DiagnosticOnConst
+                | Mode::DiagnosticOnTypeError,
                 generic_param,
             ) => FormatArg::GenericParam { generic_param, span },
 
             // Generics are explicitly not allowed, we print those back as is.
-            (Mode::DiagnosticOnUnknown | Mode::DiagnosticOnUnmatchArgs, as_is) => {
+            (Mode::DiagnosticOnUnknown | Mode::DiagnosticOnUnmatchedArgs, as_is) => {
                 warnings.push(FormatWarning::DisallowedPlaceholder {
                     span,
                     attr: mode.as_str(),
                     allowed: mode.allowed_format_arguments(),
                 });
-                return FormatArg::AsIs(Symbol::intern(&format!("{{{as_is}}}")));
+                FormatArg::AsIs(Symbol::intern(&format!("{{{as_is}}}")))
             }
         },
 
-        // `{:1}` and `{}` are ignored
+        // `{1}` and `{}` are ignored
         Position::ArgumentIs(idx) => {
             warnings.push(FormatWarning::IndexedArgument { span });
             FormatArg::AsIs(Symbol::intern(&format!("{{{idx}}}")))
@@ -504,7 +522,11 @@ fn parse_arg(
             warnings.push(FormatWarning::PositionalArgument { span });
             FormatArg::AsIs(sym::empty_braces)
         }
+    };
+    if check_format {
+        warn_on_format_spec(&arg.format, warnings, input_span, is_source_literal);
     }
+    ret
 }
 
 /// `#[rustc_on_unimplemented]` and `#[diagnostic::...]` don't actually do anything
@@ -515,12 +537,8 @@ fn warn_on_format_spec(
     input_span: Span,
     is_source_literal: bool,
 ) {
-    if spec.ty != "" {
-        let span = spec
-            .ty_span
-            .as_ref()
-            .map(|inner| slice_span(input_span, inner.clone(), is_source_literal))
-            .unwrap_or(input_span);
+    if let Some(ty_span) = &spec.ty_span {
+        let span = slice_span(input_span, ty_span.clone(), is_source_literal);
         warnings.push(FormatWarning::InvalidSpecifier { span })
     }
 }
@@ -529,12 +547,10 @@ fn slice_span(input: Span, Range { start, end }: Range<usize>, is_source_literal
     if is_source_literal { input.from_inner(InnerSpan { start, end }) } else { input }
 }
 
-pub(crate) fn parse_condition(
-    input: &MetaItemOrLitParser,
-) -> Result<OnUnimplementedCondition, InvalidOnClause> {
+pub(crate) fn parse_filter(input: &MetaItemOrLitParser) -> Result<Filter, InvalidOnClause> {
     let span = input.span();
     let pred = parse_predicate(input)?;
-    Ok(OnUnimplementedCondition { span, pred })
+    Ok(Filter { span, pred })
 }
 
 fn parse_predicate(input: &MetaItemOrLitParser) -> Result<Predicate, InvalidOnClause> {
@@ -569,7 +585,7 @@ fn parse_predicate(input: &MetaItemOrLitParser) -> Result<Predicate, InvalidOnCl
                 return Err(InvalidOnClause::UnsupportedLiteral { span: p.args_span() });
             };
             let name = parse_name(predicate.name);
-            let value = parse_filter(value.name);
+            let value = parse_filter_format(value.name);
             let kv = NameValue { name, value };
             Ok(Predicate::Match(kv))
         }
@@ -604,7 +620,7 @@ fn parse_name(name: Symbol) -> Name {
     }
 }
 
-fn parse_filter(input: Symbol) -> FilterFormatString {
+fn parse_filter_format(input: Symbol) -> FilterFormatString {
     let pieces = Parser::new(input.as_str(), None, None, false, ParseMode::Diagnostic)
         .map(|p| match p {
             RpfPiece::Lit(s) => LitOrArg::Lit(Symbol::intern(s)),
@@ -629,54 +645,3 @@ fn parse_filter(input: Symbol) -> FilterFormatString {
         .collect();
     FilterFormatString { pieces }
 }
-
-#[derive(Diagnostic)]
-pub(crate) enum InvalidOnClause {
-    #[diag("empty `on`-clause in `#[rustc_on_unimplemented]`", code = E0232)]
-    Empty {
-        #[primary_span]
-        #[label("empty `on`-clause here")]
-        span: Span,
-    },
-    #[diag("expected a single predicate in `not(..)`", code = E0232)]
-    ExpectedOnePredInNot {
-        #[primary_span]
-        #[label("unexpected quantity of predicates here")]
-        span: Span,
-    },
-    #[diag("literals inside `on`-clauses are not supported", code = E0232)]
-    UnsupportedLiteral {
-        #[primary_span]
-        #[label("unexpected literal here")]
-        span: Span,
-    },
-    #[diag("expected an identifier inside this `on`-clause", code = E0232)]
-    ExpectedIdentifier {
-        #[primary_span]
-        #[label("expected an identifier here, not `{$path}`")]
-        span: Span,
-        path: AttrPath,
-    },
-    #[diag("this predicate is invalid", code = E0232)]
-    InvalidPredicate {
-        #[primary_span]
-        #[label("expected one of `any`, `all` or `not` here, not `{$invalid_pred}`")]
-        span: Span,
-        invalid_pred: Symbol,
-    },
-    #[diag("invalid flag in `on`-clause", code = E0232)]
-    InvalidFlag {
-        #[primary_span]
-        #[label(
-            "expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `{$invalid_flag}`"
-        )]
-        span: Span,
-        invalid_flag: Symbol,
-    },
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "using multiple `rustc_on_unimplemented` (or mixing it with `diagnostic::on_unimplemented`) is not supported"
-)]
-pub(crate) struct DupesNotAllowed;

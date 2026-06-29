@@ -1,0 +1,21 @@
+error: unsatisfied lifetime constraint from -Zassumptions-on-binders :3
+  --> $DIR/alias_outlives.rs:37:1
+   |
+LL | const REGIONCK_ENV_FAIL<'a, T: AliasHaver>: ReqTrait<T::Assoc> = todo!()
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: meoow :c
+
+error: unsatisfied lifetime constraint from -Zassumptions-on-binders :3
+  --> $DIR/alias_outlives.rs:25:1
+   |
+LL | / fn borrowck_env_fail<'a, T: AliasHaver>()
+LL | |
+LL | | where
+LL | |     <T as AliasHaver>::Assoc: 'a,
+   | |_________________________________^
+   |
+   = note: meoow :c
+
+error: aborting due to 2 previous errors
+

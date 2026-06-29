@@ -298,7 +298,7 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
     let mut copies = IndexVec::from_fn_n(|l| l, body.local_decls.len());
 
     for (local, rvalue, _) in ssa.assignments(body) {
-        let Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) = rvalue else {
+        let Rvalue::Use(Operand::Copy(place) | Operand::Move(place), _) = rvalue else {
             continue;
         };
 
@@ -426,7 +426,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedLocals {
     ) {
         match statement.kind {
             // An assignment makes a local initialized.
-            StatementKind::Assign(box (place, _)) => {
+            StatementKind::Assign((place, _)) => {
                 if let Some(local) = place.as_local() {
                     state.remove(local);
                 }

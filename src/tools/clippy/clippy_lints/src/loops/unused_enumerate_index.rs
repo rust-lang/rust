@@ -1,7 +1,7 @@
 use super::UNUSED_ENUMERATE_INDEX;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanRangeExt, walk_span_to_context};
+use clippy_utils::source::{SpanExt, walk_span_to_context};
 use clippy_utils::{expr_or_init, pat_is_wild, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Pat, PatKind, TyKind};

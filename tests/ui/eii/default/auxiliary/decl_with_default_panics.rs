@@ -1,4 +1,3 @@
-//@ no-prefer-dynamic
 //@ needs-unwind
 //@ exec-env:RUST_BACKTRACE=1
 #![crate_type = "rlib"]

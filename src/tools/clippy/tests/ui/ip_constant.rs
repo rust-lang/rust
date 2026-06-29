@@ -1,6 +1,5 @@
 #![warn(clippy::ip_constant)]
-#![allow(dead_code)]
-#![allow(clippy::identity_op)]
+#![expect(clippy::identity_op)]
 #![allow(clippy::eq_op)]
 
 fn literal_test1() {

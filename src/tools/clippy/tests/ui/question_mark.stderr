@@ -498,5 +498,23 @@ LL +         if n > 10 { Some(42) } else { None }
 LL +     }
    |
 
-error: aborting due to 46 previous errors
+error: this `match` expression can be replaced with `?`
+  --> tests/ui/question_mark.rs:718:5
+   |
+LL | /     match opt {
+LL | |
+LL | |         Some(x) => (a, b) = x,
+LL | |         None => return None,
+LL | |     }
+   | |_____^
+   |
+help: try instead
+   |
+LL ~     {
+LL +         let x = opt?;
+LL +         (a, b) = x
+LL +     }
+   |
+
+error: aborting due to 47 previous errors
 

@@ -31,7 +31,8 @@ pub unsafe extern "C" fn c_variadic(n: i32, mut ap: ...) -> i32 {
         sum += ap.next_arg::<i32>();
     }
     sum
-    // CHECK: call void @llvm.va_end
+    // We no longer call the LLVM va_end.
+    // CHECK-NOT: call void @llvm.va_end
 }
 
 // Ensure that we generate the correct `call` signature when calling a Rust

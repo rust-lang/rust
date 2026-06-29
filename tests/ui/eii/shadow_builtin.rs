@@ -5,7 +5,7 @@
 #![feature(extern_item_impls)]
 
 #[eii(inline)]
-//~^ ERROR `#[inline]` required, but not found
+//~^ ERROR `#[inline]` function required, but not found
 fn test(x: u64);
 
 #[inline]
@@ -14,4 +14,4 @@ fn test_impl(x: u64) {
     println!("{x:?}")
 }
 
-fn main() { }
+fn main() {}

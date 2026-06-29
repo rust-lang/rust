@@ -96,7 +96,7 @@ impl From<vector_bool_int> for m32x4 {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.ppc.altivec.lvx"]
     fn lvx(p: *const i8) -> vector_unsigned_int;
 

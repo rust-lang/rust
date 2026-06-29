@@ -28,7 +28,7 @@ impl FileDesc {
         usercalls::read(self.fd, &mut [IoSliceMut::new(buf)])
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         usercalls::read_buf(self.fd, buf)
     }
 

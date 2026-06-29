@@ -1,15 +1,5 @@
 #![warn(clippy::if_same_then_else)]
-#![allow(
-    clippy::disallowed_names,
-    clippy::collapsible_else_if,
-    clippy::equatable_if_let,
-    clippy::collapsible_if,
-    clippy::ifs_same_cond,
-    clippy::needless_ifs,
-    clippy::needless_return,
-    clippy::single_element_loop,
-    clippy::branches_sharing_code
-)]
+#![expect(clippy::disallowed_names, clippy::ifs_same_cond)]
 
 fn if_same_then_else2() -> Result<&'static str, ()> {
     if true {

@@ -15,6 +15,7 @@ use rustc_proc_macro::bridge::{
     DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree, server,
 };
 use rustc_proc_macro::{Delimiter, Level};
+use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, FileName, Pos, Span, Symbol, sym};
@@ -440,6 +441,10 @@ impl<'a, 'b> Rustc<'a, 'b> {
         }
     }
 
+    fn sess(&self) -> &Session {
+        &self.ecx.sess
+    }
+
     fn psess(&self) -> &ParseSess {
         self.ecx.psess()
     }
@@ -825,7 +830,7 @@ impl server::Server for Rustc<'_, '_> {
     /// since we've loaded `my_proc_macro` from disk in order to execute it).
     /// In this way, we have obtained a span pointing into `my_proc_macro`
     fn span_save_span(&mut self, span: Self::Span) -> usize {
-        self.psess().save_proc_macro_span(span)
+        self.sess().save_proc_macro_span(span)
     }
 
     fn span_recover_proc_macro_span(&mut self, id: usize) -> Self::Span {

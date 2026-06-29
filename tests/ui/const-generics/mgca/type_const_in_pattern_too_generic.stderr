@@ -1,0 +1,13 @@
+error: could not evaluate constant pattern
+  --> $DIR/type_const_in_pattern_too_generic.rs:9:12
+   |
+LL | trait Trait {
+   | -----------
+LL |     type const ASSOC: usize;
+   |     ----------------------- constant defined here
+...
+LL |     if let <T as Trait>::ASSOC = 1 {}
+   |            ^^^^^^^^^^^^^^^^^^^ could not evaluate constant
+
+error: aborting due to 1 previous error
+

@@ -26,3 +26,18 @@ async fn retry_db() -> Result<(), Drop> {
 }
 
 fn main() {}
+
+// Regression test for https://github.com/rust-lang/rust/issues/136206:
+// a user-written binding named `__awaitee` is still a user-visible name.
+impl Drop {
+    fn get(&self) -> u8 {
+        0
+    }
+}
+
+fn user_written_awaitee() -> u8 {
+    let __awaitee = Drop;
+    __awaitee.get() + Drop.get()
+    //~^ ERROR relative drop order changing in Rust 2024
+    //~| WARNING this changes meaning in Rust 2024
+}

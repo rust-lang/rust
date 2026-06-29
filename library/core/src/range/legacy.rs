@@ -7,4 +7,5 @@
 //! The types here are equivalent to those in [`core::ops`].
 
 #[doc(inline)]
+#[stable(feature = "new_range_api_legacy", since = "CURRENT_RUSTC_VERSION")]
 pub use crate::ops::{Range, RangeFrom, RangeInclusive, RangeToInclusive};

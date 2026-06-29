@@ -186,6 +186,11 @@ pub(crate) fn placeholder(
             ty: ty(),
             vis,
             is_placeholder: true,
+            mut_restriction: ast::MutRestriction {
+                kind: ast::RestrictionKind::Unrestricted,
+                span: DUMMY_SP,
+                tokens: None,
+            },
             safety: Safety::Default,
             default: None,
         }]),

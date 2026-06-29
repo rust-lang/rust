@@ -69,7 +69,7 @@ pub fn _pext_u64(a: u64, mask: u64) -> u64 {
     unsafe { x86_bmi2_pext_64(a, mask) }
 }
 
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.bmi.bzhi.64"]
     fn x86_bmi2_bzhi_64(x: u64, y: u64) -> u64;
     #[link_name = "llvm.x86.bmi.pdep.64"]

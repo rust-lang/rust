@@ -16,7 +16,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // Diagnoses redundant trait items in a trait impl.
 pub(crate) fn trait_impl_redundant_assoc_item(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TraitImplRedundantAssocItems,
 ) -> Diagnostic {
     let db = ctx.sema.db;
@@ -74,7 +74,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
 
 /// add assoc item into the trait def body
 fn quickfix_for_redundant_assoc_item(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TraitImplRedundantAssocItems,
     redundant_item_def: String,
     range: TextRange,

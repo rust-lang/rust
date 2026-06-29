@@ -38,3 +38,13 @@ pub fn binop_right_homogeneous(op: mir::BinOp) -> bool {
         Offset | Shl | ShlUnchecked | Shr | ShrUnchecked => false,
     }
 }
+
+/// Classify whether an operator is "homogeneous", i.e., the operand has the
+/// same type as the result.
+#[inline]
+pub fn unop_homogeneous(op: mir::UnOp) -> bool {
+    match op {
+        mir::UnOp::Not | mir::UnOp::Neg => true,
+        mir::UnOp::PtrMetadata => false,
+    }
+}

@@ -5,8 +5,10 @@ use std::slice;
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::LangItem;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_hir::attrs::AttributeKind;
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use smallvec::{SmallVec, smallvec};
+use thin_vec::ThinVec;
 
 use super::*;
 
@@ -409,10 +411,11 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub struct Terminator<'tcx> {
     pub source_info: SourceInfo,
     pub kind: TerminatorKind<'tcx>,
+    pub attributes: ThinVec<AttributeKind>,
 }
 
 impl<'tcx> Terminator<'tcx> {
@@ -674,7 +677,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub enum TerminatorEdges<'mir, 'tcx> {
     /// For terminators that have no successor, like `return`.
     None,
@@ -686,7 +689,7 @@ pub enum TerminatorEdges<'mir, 'tcx> {
     Double(BasicBlock, BasicBlock),
     /// Special action for `Yield`, `Call` and `InlineAsm` terminators.
     AssignOnReturn {
-        return_: &'mir [BasicBlock],
+        return_: Box<[BasicBlock]>,
         /// The cleanup block, if it exists.
         cleanup: Option<BasicBlock>,
         place: CallReturnPlaces<'mir, 'tcx>,
@@ -743,7 +746,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             // FIXME: Maybe we need also TerminatorEdges::Trio for async drop
             // (target + unwind + dropline)
             Assert { target, unwind, expected: _, msg: _, cond: _ }
-            | Drop { target, unwind, place: _, replace: _, drop: _, async_fut: _ }
+            | Drop { target, unwind, place: _, replace: _, drop: _ }
             | FalseUnwind { real_target: target, unwind } => match unwind {
                 UnwindAction::Cleanup(unwind) => TerminatorEdges::Double(target, unwind),
                 UnwindAction::Continue | UnwindAction::Terminate(_) | UnwindAction::Unreachable => {
@@ -755,27 +758,21 @@ impl<'tcx> TerminatorKind<'tcx> {
                 TerminatorEdges::Double(real_target, imaginary_target)
             }
 
-            Yield { resume: ref target, drop, resume_arg, value: _ } => {
+            Yield { resume: target, drop, resume_arg, value: _ } => {
                 TerminatorEdges::AssignOnReturn {
-                    return_: slice::from_ref(target),
-                    cleanup: drop,
+                    return_: [target].into_iter().chain(drop.into_iter()).collect(),
+                    cleanup: None,
                     place: CallReturnPlaces::Yield(resume_arg),
                 }
             }
 
-            Call {
-                unwind,
-                destination,
-                ref target,
-                func: _,
-                args: _,
-                fn_span: _,
-                call_source: _,
-            } => TerminatorEdges::AssignOnReturn {
-                return_: target.as_ref().map(slice::from_ref).unwrap_or_default(),
-                cleanup: unwind.cleanup_block(),
-                place: CallReturnPlaces::Call(destination),
-            },
+            Call { unwind, destination, target, func: _, args: _, fn_span: _, call_source: _ } => {
+                TerminatorEdges::AssignOnReturn {
+                    return_: target.into_iter().collect(),
+                    cleanup: unwind.cleanup_block(),
+                    place: CallReturnPlaces::Call(destination),
+                }
+            }
 
             InlineAsm {
                 asm_macro: _,
@@ -786,7 +783,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 ref targets,
                 unwind,
             } => TerminatorEdges::AssignOnReturn {
-                return_: targets,
+                return_: targets.to_owned(),
                 cleanup: unwind.cleanup_block(),
                 place: CallReturnPlaces::InlineAsm(operands),
             },

@@ -6,13 +6,13 @@ use tracing::{debug, instrument};
 
 use super::interpret::GlobalAlloc;
 use super::*;
-use crate::ty::CoroutineArgsExt;
+use crate::ty::{CoroutineArgsExt, Unnormalized};
 
 ///////////////////////////////////////////////////////////////////////////
 // Statements
 
 /// A statement in a basic block, including information about its source code.
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 #[non_exhaustive]
 pub struct Statement<'tcx> {
     pub source_info: SourceInfo,
@@ -52,7 +52,6 @@ impl<'tcx> StatementKind<'tcx> {
             StatementKind::SetDiscriminant { .. } => "SetDiscriminant",
             StatementKind::StorageLive(..) => "StorageLive",
             StatementKind::StorageDead(..) => "StorageDead",
-            StatementKind::Retag(..) => "Retag",
             StatementKind::PlaceMention(..) => "PlaceMention",
             StatementKind::AscribeUserType(..) => "AscribeUserType",
             StatementKind::Coverage(..) => "Coverage",
@@ -78,7 +77,7 @@ impl<'tcx> StatementKind<'tcx> {
 
     pub fn as_debuginfo(&self) -> Option<StmtDebugInfo<'tcx>> {
         match self {
-            StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
+            StatementKind::Assign((place, Rvalue::Ref(_, _, ref_place)))
                 if let Some(local) = place.as_local() =>
             {
                 Some(StmtDebugInfo::AssignRef(local, *ref_place))
@@ -121,7 +120,7 @@ impl<'tcx> PlaceTy<'tcx> {
         self_ty: Ty<'tcx>,
         variant_idx: Option<VariantIdx>,
         f: FieldIdx,
-    ) -> Ty<'tcx> {
+    ) -> Unnormalized<'tcx, Ty<'tcx>> {
         if let Some(variant_index) = variant_idx {
             match *self_ty.kind() {
                 ty::Adt(adt_def, args) if adt_def.is_enum() => {
@@ -133,9 +132,9 @@ impl<'tcx> PlaceTy<'tcx> {
                         bug!("variant {variant_index:?} of coroutine out of range: {self_ty:?}");
                     };
 
-                    variant.nth(f.index()).unwrap_or_else(|| {
+                    Unnormalized::new_wip(variant.nth(f.index()).unwrap_or_else(|| {
                         bug!("field {f:?} out of range of variant: {self_ty:?} {variant_idx:?}")
-                    })
+                    }))
                 }
                 _ => bug!("can't downcast non-adt non-coroutine type: {self_ty:?}"),
             }
@@ -144,29 +143,32 @@ impl<'tcx> PlaceTy<'tcx> {
                 ty::Adt(adt_def, args) if !adt_def.is_enum() => {
                     adt_def.non_enum_variant().fields[f].ty(tcx, args)
                 }
-                ty::Closure(_, args) => args
-                    .as_closure()
-                    .upvar_tys()
-                    .get(f.index())
-                    .copied()
-                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
-                ty::CoroutineClosure(_, args) => args
-                    .as_coroutine_closure()
-                    .upvar_tys()
-                    .get(f.index())
-                    .copied()
-                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
+                ty::Closure(_, args) => Unnormalized::dummy(
+                    args.as_closure()
+                        .upvar_tys()
+                        .get(f.index())
+                        .copied()
+                        .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
+                ),
+                ty::CoroutineClosure(_, args) => Unnormalized::dummy(
+                    args.as_coroutine_closure()
+                        .upvar_tys()
+                        .get(f.index())
+                        .copied()
+                        .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
+                ),
                 // Only prefix fields (upvars and current state) are
                 // accessible without a variant index.
-                ty::Coroutine(_, args) => {
+                ty::Coroutine(_, args) => Unnormalized::dummy(
                     args.as_coroutine().prefix_tys().get(f.index()).copied().unwrap_or_else(|| {
                         bug!("field {f:?} out of range of prefixes for {self_ty}")
-                    })
-                }
-                ty::Tuple(tys) => tys
-                    .get(f.index())
-                    .copied()
-                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
+                    }),
+                ),
+                ty::Tuple(tys) => Unnormalized::dummy(
+                    tys.get(f.index())
+                        .copied()
+                        .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
+                ),
                 _ => bug!("can't project out of {self_ty:?}"),
             }
         }
@@ -200,6 +202,8 @@ impl<'tcx> PlaceTy<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         elem: &ProjectionElem<V, T>,
+        // FIXME(#155345): This should take `Unnormalized` as input and only
+        // normalize when actually required.
         mut structurally_normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
         mut handle_field: impl FnMut(Ty<'tcx>, Option<VariantIdx>, FieldIdx, T) -> Ty<'tcx>,
         mut handle_opaque_cast_and_subtype: impl FnMut(T) -> Ty<'tcx>,
@@ -444,7 +448,7 @@ impl<'tcx> Place<'tcx> {
         let ty = self.ty(local_decls, tcx).ty;
         let ty::Adt(adt, args) = ty.kind() else { panic!("projecting to field of non-ADT {ty}") };
         let field = &adt.non_enum_variant().fields[idx];
-        let field_ty = field.ty(tcx, args);
+        let field_ty = field.ty(tcx, args).skip_norm_wip();
         self.project_deeper(&[ProjectionElem::Field(idx, field_ty)], tcx)
     }
 
@@ -478,6 +482,12 @@ impl From<Local> for Place<'_> {
 }
 
 impl<'tcx> PlaceRef<'tcx> {
+    pub fn is_prefix_of(&self, other: PlaceRef<'tcx>) -> bool {
+        self.local == other.local
+            && self.projection.len() <= other.projection.len()
+            && self.projection == &other.projection[..self.projection.len()]
+    }
+
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
     /// a single deref of a local.
     pub fn local_or_deref_local(&self) -> Option<Local> {
@@ -614,11 +624,7 @@ impl<'tcx> Operand<'tcx> {
         span: Span,
     ) -> Self {
         let ty = Ty::new_fn_def(tcx, def_id, args);
-        Operand::Constant(Box::new(ConstOperand {
-            span,
-            user_ty: None,
-            const_: Const::Val(ConstValue::ZeroSized, ty),
-        }))
+        Operand::zero_sized_constant(ty, span)
     }
 
     /// Convenience helper to make a constant that refers to the given `DefId` and args. Since this
@@ -630,6 +636,12 @@ impl<'tcx> Operand<'tcx> {
         span: Span,
     ) -> Self {
         let const_ = Const::from_unevaluated(tcx, def_id).instantiate(tcx, args).skip_norm_wip();
+        Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_ }))
+    }
+
+    /// Convenience helper to make a constant that refers to a zero-sized type.
+    pub fn zero_sized_constant(ty: Ty<'tcx>, span: Span) -> Self {
+        let const_ = Const::Val(ConstValue::ZeroSized, ty);
         Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_ }))
     }
 
@@ -757,10 +769,11 @@ impl<'tcx> Rvalue<'tcx> {
             // <https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html>
             Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => false,
 
-            Rvalue::Use(_)
+            Rvalue::Use(_, _)
             | Rvalue::CopyForDeref(_)
             | Rvalue::Repeat(_, _)
             | Rvalue::Ref(_, _, _)
+            | Rvalue::Reborrow(_, _, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
             | Rvalue::Cast(
@@ -785,12 +798,18 @@ impl<'tcx> Rvalue<'tcx> {
         }
     }
 
+    /// Returns true if rvalue is a generic Reborrow coercion (usage of Reborrow or CoerceShared
+    /// trait).
+    pub fn is_generic_reborrow(&self) -> bool {
+        matches!(self, Self::Reborrow(..))
+    }
+
     pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
         D: ?Sized + HasLocalDecls<'tcx>,
     {
         match *self {
-            Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
+            Rvalue::Use(ref operand, _) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
                 Ty::new_array_with_const_len(tcx, operand.ty(local_decls, tcx), count)
             }
@@ -799,12 +818,13 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ref(tcx, reg, place_ty, bk.to_mutbl_lossy())
             }
+            Rvalue::Reborrow(target, _, _) => target,
             Rvalue::RawPtr(kind, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ptr(tcx, place_ty, kind.to_mutbl_lossy())
             }
             Rvalue::Cast(.., ty) => ty,
-            Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
+            Rvalue::BinaryOp(op, (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 op.ty(tcx, lhs_ty, rhs_ty)
@@ -1014,7 +1034,7 @@ impl RawPtrKind {
     }
 }
 
-#[derive(Default, Debug, Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Default, Debug, Clone, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub struct StmtDebugInfos<'tcx>(Vec<StmtDebugInfo<'tcx>>);
 
 impl<'tcx> StmtDebugInfos<'tcx> {
@@ -1077,7 +1097,7 @@ impl<'tcx> ops::DerefMut for StmtDebugInfos<'tcx> {
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub enum StmtDebugInfo<'tcx> {
     AssignRef(Local, Place<'tcx>),
     InvalidAssign(Local),

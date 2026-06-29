@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{Span, Spanned, sym};
 
-use crate::errors;
+use crate::diagnostics;
 
 pub(super) struct FunctionItemReferences;
 
@@ -83,7 +83,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                         // If the inner type matches the type bound by `Pointer`
                         if inner_ty == bound_ty {
                             // Do an instantiation using the parameters from the callsite
-                            let instantiated_ty = EarlyBinder::bind(inner_ty)
+                            let instantiated_ty = EarlyBinder::bind(self.tcx, inner_ty)
                                 .instantiate(self.tcx, args_ref)
                                 .skip_norm_wip();
                             if let Some((fn_id, fn_args)) =
@@ -179,7 +179,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             FUNCTION_ITEM_REFERENCES,
             lint_root,
             span,
-            errors::FnItemRef { span, sugg, ident },
+            diagnostics::FnItemRef { span, sugg, ident },
         );
     }
 }

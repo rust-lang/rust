@@ -405,9 +405,6 @@ impl fmt::Debug for OwnedHandle {
 
 macro_rules! impl_is_terminal {
     ($($t:ty),*$(,)?) => {$(
-        #[unstable(feature = "sealed", issue = "none")]
-        impl crate::sealed::Sealed for $t {}
-
         #[stable(feature = "is_terminal", since = "1.70.0")]
         impl io::IsTerminal for $t {
             #[inline]

@@ -627,6 +627,11 @@ config_data! {
         /// Term search fuel in "units of work" for assists (Defaults to 1800).
         assist_termSearch_fuel: usize = 1800,
 
+        /// Automatically add `::` when completing the module.
+        ///
+        /// Will not be completed in `use`.
+        completion_addColonsToModule: bool = true,
+
         /// Automatically add a semicolon when completing unit-returning functions.
         ///
         /// In `match` arms it completes a comma instead.
@@ -655,6 +660,12 @@ config_data! {
         /// verbose form `{ "path": "path::to::item", type: "always" }`.
         ///
         /// For traits the type "methods" can be used to only exclude the methods but not the trait
+        /// itself.
+        ///
+        /// For modules the type "sub_items" can be used to only exclude the all items in it but not the module
+        /// itself. This does not include items defined in nested modules.
+        ///
+        /// For enums the type "variants" can be used to only exclude the all variants in it but not the enum
         /// itself.
         ///
         /// This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
@@ -1901,6 +1912,7 @@ impl Config {
                 CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),
                 CallableCompletionDef::None => None,
             },
+            add_colons_to_module: *self.completion_addColonsToModule(source_root),
             add_semicolon_to_unit: *self.completion_addSemicolonToUnit(source_root),
             snippet_cap: SnippetCap::new(self.completion_snippet()),
             insert_use: self.insert_use_config(source_root),
@@ -1931,6 +1943,12 @@ impl Config {
                             }
                             AutoImportExclusionType::Methods => {
                                 ide_completion::AutoImportExclusionType::Methods
+                            }
+                            AutoImportExclusionType::SubItems => {
+                                ide_completion::AutoImportExclusionType::SubItems
+                            }
+                            AutoImportExclusionType::Variants => {
+                                ide_completion::AutoImportExclusionType::Variants
                             }
                         },
                     ),
@@ -2991,6 +3009,8 @@ pub enum AutoImportExclusion {
 pub enum AutoImportExclusionType {
     Always,
     Methods,
+    SubItems,
+    Variants,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -4122,10 +4142,11 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                             },
                             "type": {
                                 "type": "string",
-                                "enum": ["always", "methods"],
+                                "enum": ["always", "methods", "sub_items", "variants"],
                                 "enumDescriptions": [
                                     "Do not show this item or its methods (if it is a trait) in auto-import completions.",
-                                    "Do not show this traits methods in auto-import completions."
+                                    "Do not show this trait's methods in auto-import completions.",
+                                    "Do not show this module's all items in it in auto-import completions."
                                 ],
                             },
                         }

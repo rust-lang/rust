@@ -1,9 +1,4 @@
-#![allow(
-    clippy::future_not_send,
-    clippy::manual_async_fn,
-    clippy::never_loop,
-    clippy::uninlined_format_args
-)]
+#![expect(clippy::manual_async_fn)]
 #![warn(clippy::large_futures)]
 
 async fn big_fut(_arg: [u8; 1024 * 16]) {}

@@ -1,7 +1,7 @@
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls_derive_const.rs:11:5
+  --> tests/ui/derivable_impls_derive_const.rs:10:5
    |
-LL | /     impl const Default for Foo {
+LL | /     const impl Default for Foo {
 LL | |
 LL | |         fn default() -> Self {
 LL | |             Self(0)
@@ -20,9 +20,9 @@ LL ~
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls_derive_const.rs:24:5
+  --> tests/ui/derivable_impls_derive_const.rs:23:5
    |
-LL | /     impl const Default for Bar {
+LL | /     const impl Default for Bar {
 LL | |
 LL | |         fn default() -> Self {
 LL | |             Bar::A

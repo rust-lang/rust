@@ -1,11 +1,11 @@
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_hir::HirId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 
 use crate::ty;
 use crate::ty::Ty;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum PlaceBase {
     /// A temporary variable.
@@ -18,7 +18,7 @@ pub enum PlaceBase {
     Upvar(ty::UpvarId),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum ProjectionKind {
     /// A dereference of a pointer, reference or `Box<T>` of the given type.
@@ -48,7 +48,7 @@ pub enum ProjectionKind {
     UnwrapUnsafeBinder,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct Projection<'tcx> {
     /// Type after the projection is applied.
@@ -64,7 +64,7 @@ pub struct Projection<'tcx> {
 /// currently being inspected.
 ///
 /// This is an HIR version of [`rustc_middle::mir::Place`].
-#[derive(Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct Place<'tcx> {
     /// The type of the `PlaceBase`
@@ -81,7 +81,7 @@ pub struct Place<'tcx> {
 /// currently being inspected.
 ///
 /// This is an HIR version of [`rustc_middle::mir::Place`].
-#[derive(Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, StableHash)]
 pub struct PlaceWithHirId<'tcx> {
     /// `HirId` of the expression or pattern producing this value.
     pub hir_id: HirId,

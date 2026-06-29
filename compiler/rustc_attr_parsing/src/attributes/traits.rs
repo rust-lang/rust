@@ -1,20 +1,23 @@
 use std::mem;
 
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 use crate::attributes::{NoArgsAttributeParser, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage};
+use crate::context::AcceptContext;
 use crate::parser::ArgParser;
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::{Allow, Warn};
 
 pub(crate) struct RustcSkipDuringMethodDispatchParser;
-impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser {
+impl SingleAttributeParser for RustcSkipDuringMethodDispatchParser {
     const PATH: &[Symbol] = &[sym::rustc_skip_during_method_dispatch];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
 
     const TEMPLATE: AttributeTemplate = template!(List: &["array, boxed_slice"]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let mut array = false;
         let mut boxed_slice = false;
         let args = cx.expect_list(args, cx.attr_span)?;
@@ -27,9 +30,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser 
                 cx.adcx().expected_not_literal(arg.span());
                 continue;
             };
-            if let Err(span) = arg.args().no_args() {
-                cx.adcx().expected_no_args(span);
-            }
+            let _ = cx.expect_no_args(arg.args());
             let path = arg.path();
             let (key, skip): (Symbol, &mut bool) = match path.word_sym() {
                 Some(key @ sym::array) => (key, &mut array),
@@ -44,86 +45,91 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser 
                 cx.adcx().duplicate_key(arg.span(), key);
             }
         }
-        Some(AttributeKind::RustcSkipDuringMethodDispatch {
-            array,
-            boxed_slice,
-            span: cx.attr_span,
-        })
+        Some(AttributeKind::RustcSkipDuringMethodDispatch { array, boxed_slice })
     }
 }
 
 pub(crate) struct RustcParenSugarParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcParenSugarParser {
+impl NoArgsAttributeParser for RustcParenSugarParser {
     const PATH: &[Symbol] = &[sym::rustc_paren_sugar];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcParenSugar;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcParenSugar;
 }
 
 // Markers
 
 pub(crate) struct MarkerParser;
-impl<S: Stage> NoArgsAttributeParser<S> for MarkerParser {
+impl NoArgsAttributeParser for MarkerParser {
     const PATH: &[Symbol] = &[sym::marker];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
         Warn(Target::Field),
         Warn(Target::Arm),
         Warn(Target::MacroDef),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Marker;
+    const STABILITY: AttributeStability = unstable!(marker_trait_attr);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Marker;
 }
 
 pub(crate) struct RustcDenyExplicitImplParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcDenyExplicitImplParser {
+impl NoArgsAttributeParser for RustcDenyExplicitImplParser {
     const PATH: &[Symbol] = &[sym::rustc_deny_explicit_impl];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcDenyExplicitImpl;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDenyExplicitImpl;
 }
 
 pub(crate) struct RustcDynIncompatibleTraitParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcDynIncompatibleTraitParser {
+impl NoArgsAttributeParser for RustcDynIncompatibleTraitParser {
     const PATH: &[Symbol] = &[sym::rustc_dyn_incompatible_trait];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcDynIncompatibleTrait;
 }
 
 // Specialization
 
 pub(crate) struct RustcSpecializationTraitParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcSpecializationTraitParser {
+impl NoArgsAttributeParser for RustcSpecializationTraitParser {
     const PATH: &[Symbol] = &[sym::rustc_specialization_trait];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcSpecializationTrait;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcSpecializationTrait;
 }
 
 pub(crate) struct RustcUnsafeSpecializationMarkerParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcUnsafeSpecializationMarkerParser {
+impl NoArgsAttributeParser for RustcUnsafeSpecializationMarkerParser {
     const PATH: &[Symbol] = &[sym::rustc_unsafe_specialization_marker];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcUnsafeSpecializationMarker;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcUnsafeSpecializationMarker;
 }
 
 // Coherence
 
 pub(crate) struct RustcCoinductiveParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcCoinductiveParser {
+impl NoArgsAttributeParser for RustcCoinductiveParser {
     const PATH: &[Symbol] = &[sym::rustc_coinductive];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcCoinductive;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCoinductive;
 }
 
 pub(crate) struct RustcAllowIncoherentImplParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcAllowIncoherentImplParser {
+impl NoArgsAttributeParser for RustcAllowIncoherentImplParser {
     const PATH: &[Symbol] = &[sym::rustc_allow_incoherent_impl];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Method(MethodKind::Inherent))]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcAllowIncoherentImpl;
 }
 
 pub(crate) struct FundamentalParser;
-impl<S: Stage> NoArgsAttributeParser<S> for FundamentalParser {
+impl NoArgsAttributeParser for FundamentalParser {
     const PATH: &[Symbol] = &[sym::fundamental];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Struct), Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(fundamental);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Fundamental;
 }

@@ -132,7 +132,7 @@ impl Socket {
         Ok(Socket(unsafe { FileDesc::from_raw_fd(fd) }))
     }
 
-    fn recv_with_flags(&self, mut buf: BorrowedCursor<'_>, flags: i32) -> io::Result<()> {
+    fn recv_with_flags(&self, mut buf: BorrowedCursor<'_, u8>, flags: i32) -> io::Result<()> {
         let ret = cvt(unsafe {
             netc::recv(
                 self.0.as_raw_fd(),
@@ -159,7 +159,7 @@ impl Socket {
         Ok(buf.len())
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.recv_with_flags(buf, 0)
     }
 
@@ -270,6 +270,15 @@ impl Socket {
         let val: netc::linger = unsafe { getsockopt(self, netc::SOL_SOCKET, netc::SO_LINGER)? };
 
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
+    }
+
+    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+        unsafe { setsockopt(self, netc::SOL_SOCKET, netc::SO_KEEPALIVE, keepalive as c_int) }
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        let raw: c_int = unsafe { getsockopt(self, netc::SOL_SOCKET, netc::SO_KEEPALIVE)? };
+        Ok(raw != 0)
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {

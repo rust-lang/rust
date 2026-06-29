@@ -250,7 +250,10 @@ impl VaList<'_> {
 }
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
-impl<'f> const Clone for VaList<'f> {
+const impl<'f> Clone for VaList<'f> {
+    /// Clone the [`VaList`], producing a second independent cursor into the variable argument list.
+    ///
+    /// Corresponds to `va_copy` in C.
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     fn clone(&self) -> Self {
         // We only implement Clone and not Copy because some future target might not be able to
@@ -262,32 +265,18 @@ impl<'f> const Clone for VaList<'f> {
 }
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
-impl<'f> const Drop for VaList<'f> {
+const impl<'f> Drop for VaList<'f> {
+    /// Drop the [`VaList`].
+    ///
+    /// Corresponds to `va_end` in C.
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     fn drop(&mut self) {
+        // Call the rust `va_end` intrinsic, which is a no-op and does not map to LLVM `va_end`.
+        // The rust intrinsic exists as a hook for Miri to check for UB.
+        //
         // SAFETY: this variable argument list is being dropped, so won't be read from again.
         unsafe { va_end(self) }
     }
-}
-
-mod sealed {
-    pub trait Sealed {}
-
-    impl Sealed for i16 {}
-    impl Sealed for i32 {}
-    impl Sealed for i64 {}
-    impl Sealed for isize {}
-
-    impl Sealed for u16 {}
-    impl Sealed for u32 {}
-    impl Sealed for u64 {}
-    impl Sealed for usize {}
-
-    impl Sealed for f32 {}
-    impl Sealed for f64 {}
-
-    impl<T> Sealed for *mut T {}
-    impl<T> Sealed for *const T {}
 }
 
 /// Types that are valid to read using [`VaList::next_arg`].
@@ -324,7 +313,7 @@ mod sealed {
 // types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
 // to accept unsupported types in the meantime.
 #[lang = "va_arg_safe"]
-pub unsafe trait VaArgSafe: sealed::Sealed {}
+pub impl(self) unsafe trait VaArgSafe: Copy {}
 
 crate::cfg_select! {
     any(target_arch = "avr", target_arch = "msp430") => {
@@ -381,6 +370,12 @@ const _: () = {
     va_arg_safe_check::<crate::ffi::c_ulonglong>();
 
     va_arg_safe_check::<crate::ffi::c_double>();
+
+    va_arg_safe_check::<*const crate::ffi::c_void>();
+    va_arg_safe_check::<*mut crate::ffi::c_void>();
+
+    va_arg_safe_check::<*const crate::ffi::c_char>();
+    va_arg_safe_check::<*mut crate::ffi::c_char>();
 };
 
 impl<'f> VaList<'f> {
@@ -390,13 +385,24 @@ impl<'f> VaList<'f> {
     ///
     /// # Safety
     ///
-    /// This function is only sound to call when there is another argument to read, and that
-    /// argument is a properly initialized value of the type `T`.
+    /// This function is safe to call only if all of the following conditions are satisfied:
     ///
-    /// Calling this function with an incompatible type, an invalid value, or when there
-    /// are no more variable arguments, is unsound.
+    /// - There is another c-variadic argument to read.
+    /// - The actual type of the argument `U` is compatible with `T` (as defined below).
+    /// - If `U` and `T` are both integer types, then the value passed by the caller must be
+    /// representable in both types.
+    ///
+    /// Types `T` and `U` are compatible when:
+    ///
+    /// - `T` and `U` are the same type.
+    /// - `T` and `U` are integer types of the same size.
+    /// - `T` and `U` are both pointers, and their target types are compatible.
+    /// - `T` is a pointer to [`c_void`] and `U` is a pointer to [`i8`] or [`u8`], or vice versa.
+    ///
+    /// [`c_void`]: core::ffi::c_void
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn next_arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
         unsafe { va_arg(self) }

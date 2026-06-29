@@ -1,8 +1,8 @@
-error: Undefined Behavior: constructing invalid value of type NonZero<i32>: encountered 0, but expected something greater or equal to 1
+error: Undefined Behavior: constructing invalid value of type (u32) is 1..: encountered 0, but expected something greater or equal to 1
   --> tests/fail/validity/nonzero.rs:LL:CC
    |
-LL |     let _x = Some(unsafe { NonZero(0) });
-   |                            ^^^^^^^^^^ Undefined Behavior occurred here
+LL |     let _x = Some(unsafe { NonZero(std::mem::transmute(0_u32)) });
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

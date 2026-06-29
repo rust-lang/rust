@@ -122,7 +122,7 @@ pub const fn _mm_tzcnt_64(x: u64) -> i64 {
     x.trailing_zeros() as i64
 }
 
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.bmi.bextr.64"]
     fn x86_bmi_bextr_64(x: u64, y: u64) -> u64;
 }

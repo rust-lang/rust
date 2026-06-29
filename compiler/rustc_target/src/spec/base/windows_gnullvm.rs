@@ -36,7 +36,6 @@ pub(crate) fn opts() -> TargetOptions {
         families: cvs!["windows"],
         is_like_windows: true,
         binary_format: BinaryFormat::Coff,
-        allows_weak_linkage: false,
         pre_link_args,
         pre_link_objects_self_contained: pre_mingw_self_contained(),
         link_self_contained: LinkSelfContainedDefault::InferredForMingw,

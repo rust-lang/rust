@@ -170,20 +170,20 @@ impl<T, const N: usize> PackedSimd<T, N> {
 
 macro_rules! impl_traits {
     ($($const_:ident)?) => {
-        impl<T: $([$const_])? PartialEq, const N: usize> $($const_)? PartialEq for Simd<T, N> {
+        $($const_)? impl<T: $([$const_])? PartialEq, const N: usize> PartialEq for Simd<T, N> {
             fn eq(&self, other: &Self) -> bool {
                 self.as_array() == other.as_array()
             }
         }
 
-        impl<T, const N: usize> $($const_)? core::ops::Index<usize> for Simd<T, N> {
+        $($const_)? impl<T, const N: usize> core::ops::Index<usize> for Simd<T, N> {
             type Output = T;
             fn index(&self, i: usize) -> &T {
                 &self.as_array()[i]
             }
         }
 
-        impl<T: $([$const_])? PartialEq, const N: usize> $($const_)? PartialEq for PackedSimd<T, N>
+        $($const_)? impl<T: $([$const_])? PartialEq, const N: usize> PartialEq for PackedSimd<T, N>
         {
             fn eq(&self, other: &Self) -> bool {
                 self.as_array() == other.as_array()

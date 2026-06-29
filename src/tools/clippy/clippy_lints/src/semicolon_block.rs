@@ -1,6 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -94,7 +94,7 @@ impl SemicolonBlock {
         //     ({ 0 }); // if we remove this `;`, this will parse as a `({ 0 })(5);` function call
         //     (5);
         // }
-        if remove_span.check_source_text(cx, |src| src.contains(')')) {
+        if remove_span.check_text(cx, |src| src.contains(')')) {
             return;
         }
 

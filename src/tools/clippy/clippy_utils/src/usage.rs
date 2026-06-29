@@ -195,7 +195,7 @@ pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
 }
 
 pub fn local_used_in<'tcx>(cx: &LateContext<'tcx>, local_id: HirId, v: impl Visitable<'tcx>) -> bool {
-    for_each_expr(cx, v, |e| {
+    for_each_expr(cx.tcx, v, |e| {
         if e.res_local_id() == Some(local_id) {
             ControlFlow::Break(())
         } else {
@@ -220,7 +220,7 @@ pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr
     let loop_start = get_enclosing_loop_or_multi_call_closure(cx, after).map(|e| e.hir_id);
 
     let mut past_expr = false;
-    for_each_expr(cx, block, |e| {
+    for_each_expr(cx.tcx, block, |e| {
         if past_expr {
             if e.res_local_id() == Some(local_id) {
                 ControlFlow::Break(())

@@ -12,7 +12,7 @@ use crate::{
 
 pub(crate) fn complete_derive_path(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
     existing_derives: &ExistingDerives,
 ) {

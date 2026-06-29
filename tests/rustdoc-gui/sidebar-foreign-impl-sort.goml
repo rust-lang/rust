@@ -1,4 +1,4 @@
-// Checks sidebar resizing close the Settings popover
+// Checks sidebar foreign impl ordering
 go-to: "file://" + |DOC_PATH| + "/test_docs/SidebarSort/trait.Sort.html#foreign-impls"
 
 // Check that the sidebar contains the expected foreign implementations

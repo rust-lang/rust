@@ -36,7 +36,7 @@ use tracing::{debug, info};
 
 use self::rust::HirCollector;
 use crate::config::{MergeDoctests, Options as RustdocOptions, OutputFormat};
-use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
+use crate::html::markdown::{CodeLineMapping, ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
 
 /// Type used to display times (compilation and total) information for merged doctests.
@@ -940,6 +940,7 @@ pub(crate) struct ScrapedDocTest {
     text: String,
     name: String,
     span: Span,
+    code_mappings: Vec<CodeLineMapping>,
     global_crate_attrs: Vec<String>,
 }
 
@@ -951,6 +952,7 @@ impl ScrapedDocTest {
         langstr: LangString,
         text: String,
         span: Span,
+        code_mappings: Vec<CodeLineMapping>,
         global_crate_attrs: Vec<String>,
     ) -> Self {
         let mut item_path = logical_path.join("::");
@@ -963,7 +965,7 @@ impl ScrapedDocTest {
             filename.display(RemapPathScopeComponents::DOCUMENTATION)
         );
 
-        Self { filename, line, langstr, text, name, span, global_crate_attrs }
+        Self { filename, line, langstr, text, name, span, code_mappings, global_crate_attrs }
     }
     fn edition(&self, opts: &RustdocOptions) -> Edition {
         self.langstr.edition.unwrap_or(opts.edition)
@@ -984,7 +986,13 @@ impl ScrapedDocTest {
 }
 
 pub(crate) trait DocTestVisitor {
-    fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine);
+    fn visit_test(
+        &mut self,
+        test: String,
+        config: LangString,
+        rel_line: MdRelLine,
+        code_mappings: Vec<CodeLineMapping>,
+    );
     fn visit_header(&mut self, _name: &str, _level: u32) {}
 }
 
@@ -1055,6 +1063,7 @@ impl CreateRunnableDocTests {
             .test_id(test_id)
             .lang_str(&scraped_test.langstr)
             .span(scraped_test.span)
+            .code_mappings(&scraped_test.code_mappings)
             .build(dcx);
         let is_standalone = !doctest.can_be_merged
             || self.rustdoc_options.no_capture
@@ -1228,7 +1237,13 @@ fn doctest_run_fn(
 
 #[cfg(test)] // used in tests
 impl DocTestVisitor for Vec<usize> {
-    fn visit_test(&mut self, _test: String, _config: LangString, rel_line: MdRelLine) {
+    fn visit_test(
+        &mut self,
+        _test: String,
+        _config: LangString,
+        rel_line: MdRelLine,
+        _code_mappings: Vec<CodeLineMapping>,
+    ) {
         self.push(1 + rel_line.offset());
     }
 }

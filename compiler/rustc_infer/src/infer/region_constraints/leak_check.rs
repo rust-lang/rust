@@ -392,10 +392,15 @@ impl<'tcx> MiniGraph<'tcx> {
             {
                 match undo_entry {
                     &AddConstraint(i) => {
-                        region_constraints.data().constraints[i]
-                            .0
-                            .iter_outlives()
-                            .for_each(|c| each_edge(c.sub, c.sup));
+                        region_constraints.data().constraints[i].0.iter_outlives().for_each(
+                            |Constraint { kind: _, sub, sup, visible_for_leak_check }| {
+                                match visible_for_leak_check {
+                                    ty::VisibleForLeakCheck::Yes => each_edge(sub, sup),
+                                    ty::VisibleForLeakCheck::No => {}
+                                    ty::VisibleForLeakCheck::Unreachable => unreachable!(),
+                                }
+                            },
+                        );
                     }
                     &AddVerify(i) => span_bug!(
                         region_constraints.data().verifys[i].origin.span(),
@@ -410,7 +415,13 @@ impl<'tcx> MiniGraph<'tcx> {
                 .constraints
                 .iter()
                 .flat_map(|(c, _)| c.iter_outlives())
-                .for_each(|c| each_edge(c.sub, c.sup))
+                .for_each(|Constraint { kind: _, sub, sup, visible_for_leak_check }| {
+                    match visible_for_leak_check {
+                        ty::VisibleForLeakCheck::Yes => each_edge(sub, sup),
+                        ty::VisibleForLeakCheck::No => {}
+                        ty::VisibleForLeakCheck::Unreachable => unreachable!(),
+                    }
+                })
         }
     }
 

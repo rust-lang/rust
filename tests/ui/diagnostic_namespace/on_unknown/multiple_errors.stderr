@@ -13,8 +13,9 @@ error[E0432]: custom message
   --> $DIR/multiple_errors.rs:19:15
    |
 LL |     use std::{Whatever, vec::NonExisting, vec::Vec, *};
-   |               ^^^^^^^^  ^^^^^^^^^^^^^^^^ custom label
-   |               |
+   |               ^^^^^^^^  ^^^^^-----------
+   |               |              |
+   |               |              custom label
    |               custom label
    |
    = note: unresolved imports `std::Whatever`, `std::vec::NonExisting`

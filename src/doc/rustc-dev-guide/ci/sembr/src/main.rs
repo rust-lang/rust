@@ -15,7 +15,7 @@ struct Cli {
     /// Modify files that do not comply
     overwrite: bool,
     /// Applies to lines that are to be split
-    #[arg(long, default_value_t = 80)]
+    #[arg(long, default_value_t = 100)]
     line_length_limit: usize,
 }
 
@@ -45,14 +45,16 @@ fn main() -> Result<()> {
                 continue;
             }
             let old = fs::read_to_string(&path)?;
-            let new = lengthen_lines(&comply(&old), cli.line_length_limit);
+            let new = comply(&old);
             if new == old {
                 compliant.push(path.clone());
-            } else if cli.overwrite {
-                fs::write(&path, new)?;
-                made_compliant.push(path.clone());
             } else {
-                not_compliant.push(path.clone());
+                if cli.overwrite {
+                    fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
+                    made_compliant.push(path.clone());
+                } else {
+                    not_compliant.push(path.clone());
+                }
             }
         }
     }
@@ -312,4 +314,11 @@ html comment closing
 [another target]: https://example.com
 ";
     assert_eq!(expected, lengthen_lines(original, 50));
+}
+
+#[test]
+#[ignore]
+fn should_pass() {
+    let original = "if you see `input isn't interesting! verify interesting-ness test`.";
+    assert_eq!(original, comply(original));
 }

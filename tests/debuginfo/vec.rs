@@ -15,7 +15,7 @@
 
 //@ lldb-command:run
 //@ lldb-command:v a
-//@ lldb-check:[...] { [0] = 1 [1] = 2 [2] = 3 }
+//@ lldb-check:[...] ([0] = 1, [1] = 2, [2] = 3)
 
 #![allow(unused_variables)]
 

@@ -1,5 +1,5 @@
 #![warn(clippy::manual_option_as_slice)]
-#![allow(clippy::redundant_closure, clippy::unwrap_or_default)]
+#![expect(clippy::redundant_closure)]
 
 fn check(x: Option<u32>) {
     _ = x.as_slice();

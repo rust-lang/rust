@@ -1,6 +1,7 @@
 // We're testing aarch64 target specific features
 //@only-target: aarch64
 //@compile-flags: -C target-feature=+neon
+//@run-native
 
 use std::arch::aarch64::*;
 use std::arch::is_aarch64_feature_detected;
@@ -14,6 +15,7 @@ fn main() {
         test_tbl1_v16i8_basic();
         test_vpadd();
         test_vpaddl();
+        test_vqdmulh();
     }
 }
 
@@ -156,4 +158,52 @@ unsafe fn test_vpaddl() {
     let mut r = [0u64; 2];
     vst1q_u64(r.as_mut_ptr(), vpaddlq_u32(a));
     assert_eq!(r, e);
+}
+
+#[target_feature(enable = "neon")]
+unsafe fn test_vqdmulh() {
+    let a = vld1_s32([i32::MIN, i32::MAX].as_ptr());
+    let r: [i32; 2] = transmute(vqdmulh_n_s32(a, i32::MIN));
+    assert_eq!(r, [i32::MAX, -i32::MAX]);
+
+    // This is the actual calculation that happens.
+    let product = i32::MIN as i128 * i32::MIN as i128 * 2;
+    assert_eq!(i32::MAX, (product >> 32).clamp(i32::MIN as i128, i32::MAX as i128) as i32);
+
+    let product = i32::MAX as i128 * i32::MIN as i128 * 2;
+    assert_eq!(-i32::MAX, (product >> 32).clamp(i32::MIN as i128, i32::MAX as i128) as i32);
+
+    let b = vld1_s32([123, i32::MIN].as_ptr());
+    let r: [i32; 2] = transmute(vqdmulh_s32(a, b));
+    assert_eq!(r, [-123, -i32::MAX]);
+
+    // Wider 32-bit versions.
+    let a = vld1q_s32([0x4000_0000, -0x4000_0000, i32::MIN, i32::MAX].as_ptr());
+
+    let b = vld1q_s32([123, 456, 0x4000_0000, 789].as_ptr());
+    let r: [i32; 4] = transmute(vqdmulhq_s32(a, b));
+    assert_eq!(r, [61, -228, -1073741824, 788]);
+
+    let r: [i32; 4] = transmute(vqdmulhq_n_s32(a, 0x4000_0000));
+    assert_eq!(r, [536870912, -536870912, -1073741824, 1073741823]);
+
+    // 16-bit versions.
+
+    let a = vld1_s16([i16::MIN, i16::MAX, 0, 16384].as_ptr());
+    let r: [i16; 4] = transmute(vqdmulh_n_s16(a, i16::MIN));
+    assert_eq!(r, [i16::MAX, -i16::MAX, 0, -16384]);
+
+    let b = vld1_s16([123, i16::MIN, 456, 789].as_ptr());
+    let r: [i16; 4] = transmute(vqdmulh_s16(a, b));
+    assert_eq!(r, [-123, -i16::MAX, 0, 394]);
+
+    // Wider 16-bit versions.
+
+    let a = vld1q_s16([i16::MIN, i16::MAX, 0, 16384, -16384, 8192, 1, -1].as_ptr());
+    let b = vld1q_s16([123, 456, 789, i16::MIN, 1, 2, 3, 4].as_ptr());
+    let r: [i16; 8] = transmute(vqdmulhq_s16(a, b));
+    assert_eq!(r, [-123, 455, 0, -16384, -1, 0, 0, -1]);
+
+    let r: [i16; 8] = transmute(vqdmulhq_n_s16(a, i16::MIN));
+    assert_eq!(r, [32767, -32767, 0, -16384, 16384, -8192, -1, 1]);
 }

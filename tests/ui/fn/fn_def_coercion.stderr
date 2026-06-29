@@ -9,7 +9,7 @@ LL |     let mut x = foo::<&'a ()>;
    |                 ^^^^^^^^^^^^^ assignment requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
-   = note: requirement occurs because of a function pointer to `foo`
+   = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
@@ -25,7 +25,7 @@ LL |     x = foo::<&'b ()>;
    |     ^^^^^^^^^^^^^^^^^ assignment requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
-   = note: requirement occurs because of a function pointer to `foo`
+   = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
@@ -56,7 +56,7 @@ LL |     x = foo::<&'b ()>;
    |     ^^^^^^^^^^^^^^^^^ assignment requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
-   = note: requirement occurs because of a function pointer to `foo`
+   = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
@@ -72,7 +72,7 @@ LL |     x = foo::<&'a ()>;
    |     ^^^^^^^^^^^^^^^^^ assignment requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
-   = note: requirement occurs because of a function pointer to `foo`
+   = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
@@ -92,7 +92,7 @@ LL |         true => foo::<&'b ()>,
    |                 ^^^^^^^^^^^^^ assignment requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
-   = note: requirement occurs because of a function pointer to `foo`
+   = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
@@ -108,7 +108,7 @@ LL |         false => foo::<&'a ()>,
    |                  ^^^^^^^^^^^^^ assignment requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
-   = note: requirement occurs because of a function pointer to `foo`
+   = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
@@ -128,7 +128,7 @@ LL |         true => foo::<&'c ()>,
    |                 ^^^^^^^^^^^^^ assignment requires that `'a` must outlive `'c`
    |
    = help: consider adding the following bound: `'a: 'c`
-   = note: requirement occurs because of a function pointer to `foo`
+   = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
@@ -144,7 +144,7 @@ LL |         false => foo::<&'a ()>,
    |                  ^^^^^^^^^^^^^ assignment requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
-   = note: requirement occurs because of a function pointer to `foo`
+   = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 

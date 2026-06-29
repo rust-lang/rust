@@ -1,5 +1,5 @@
 error: consider moving the `;` inside the block for consistent formatting
-  --> tests/ui-toml/semicolon_block/semicolon_inside_block.rs:47:5
+  --> tests/ui-toml/semicolon_block/semicolon_inside_block.rs:46:5
    |
 LL | /     {
 LL | |

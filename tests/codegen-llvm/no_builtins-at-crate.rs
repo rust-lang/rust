@@ -3,11 +3,13 @@
 #![no_builtins]
 #![crate_type = "lib"]
 
+use std::ffi::c_void;
+
 // CHECK: define
 // CHECK-SAME: @__aeabi_memcpy
 // CHECK-SAME: #0
 #[no_mangle]
-pub unsafe extern "C" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, size: usize) {
+pub unsafe extern "C" fn __aeabi_memcpy(dest: *mut c_void, src: *const c_void, size: usize) {
     // CHECK: call
     // CHECK-SAME: @memcpy(
     memcpy(dest, src, size);
@@ -17,7 +19,7 @@ pub unsafe extern "C" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, size: usi
 // CHECK-SAME: @memcpy
 // CHECK-SAME: #0
 extern "C" {
-    pub fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
+    pub fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
 }
 
 // CHECK: attributes #0

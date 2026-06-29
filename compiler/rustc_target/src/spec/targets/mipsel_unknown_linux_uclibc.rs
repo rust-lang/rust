@@ -1,4 +1,4 @@
-use crate::spec::{Arch, LlvmAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, LlvmAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -17,6 +17,7 @@ pub(crate) fn target() -> Target {
             cpu: "mips32r2".into(),
             features: "+mips32r2,+soft-float".into(),
             llvm_abiname: LlvmAbi::O32,
+            llvm_args: cvs!["-mno-check-zero-division"],
             max_atomic_width: Some(32),
             mcount: "_mcount".into(),
 

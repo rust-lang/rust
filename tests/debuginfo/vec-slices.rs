@@ -70,7 +70,7 @@
 //@ lldb-check:[...] size=2 { [0] = (6, 7) [1] = (8, 9) }
 
 //@ lldb-command:v padded_struct
-//@ lldb-check:[...] size=2 { [0] = { x = 10 y = 11 z = 12 } [1] = { x = 13 y = 14 z = 15 } }
+//@ lldb-check:[...] size=2 { [0] = {x:10, y:11, z:12} [1] = {x:13, y:14, z:15} }
 
 #![allow(dead_code, unused_variables)]
 

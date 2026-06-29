@@ -1,5 +1,5 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/150354>
-//@ edition 2024
+//@ edition: 2024
 
 #![allow(incomplete_features)]
 #![feature(min_generic_const_args, adt_const_params)]

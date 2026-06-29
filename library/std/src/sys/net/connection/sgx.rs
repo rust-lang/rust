@@ -169,7 +169,7 @@ impl TcpStream {
         self.inner.inner.read(buf)
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.inner.read_buf(buf)
     }
 
@@ -217,6 +217,14 @@ impl TcpStream {
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
         sgx_ineffective(None)
+    }
+
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        sgx_ineffective(())
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        sgx_ineffective(false)
     }
 
     pub fn set_nodelay(&self, _: bool) -> io::Result<()> {

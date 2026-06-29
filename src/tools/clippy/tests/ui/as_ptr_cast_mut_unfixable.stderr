@@ -1,5 +1,5 @@
 error: casting the result of `as_ptr` to *mut i8
-  --> tests/ui/as_ptr_cast_mut_unfixable.rs:14:22
+  --> tests/ui/as_ptr_cast_mut_unfixable.rs:13:22
    |
 LL |     let _: *mut i8 = string.as_ptr() as *mut _;
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `string.as_mut_ptr()`

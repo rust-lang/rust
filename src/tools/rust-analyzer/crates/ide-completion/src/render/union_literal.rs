@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub(crate) fn render_union_literal(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     un: hir::Union,
     path: Option<hir::ModPath>,
     local_name: Option<Name>,

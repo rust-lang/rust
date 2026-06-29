@@ -16,7 +16,6 @@ use tracing::{debug, instrument, warn};
 use super::{
     PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
 };
-use crate::next_solver::infer::unify_key::ConstVariableValue;
 use crate::next_solver::infer::{InferCtxt, relate};
 use crate::next_solver::util::MaxUniverse;
 use crate::next_solver::{
@@ -24,6 +23,7 @@ use crate::next_solver::{
     Term, TermVid, Ty, TyKind, TypingMode, UnevaluatedConst,
 };
 use crate::next_solver::{GenericArgs, infer::type_variable::TypeVariableValue};
+use crate::{Span, next_solver::infer::unify_key::ConstVariableValue};
 
 impl<'db> InferCtxt<'db> {
     /// The idea is that we should ensure that the type variable `target_vid`
@@ -60,6 +60,7 @@ impl<'db> InferCtxt<'db> {
         // `?1 <: ?3`.
         let Generalization { value_may_be_infer: generalized_ty, has_unconstrained_ty_var } = self
             .generalize(
+                relation.span(),
                 relation.structurally_relate_aliases(),
                 target_vid,
                 instantiation_variance,
@@ -179,6 +180,7 @@ impl<'db> InferCtxt<'db> {
         // constants and generic expressions are not yet handled correctly.
         let Generalization { value_may_be_infer: generalized_ct, has_unconstrained_ty_var } = self
             .generalize(
+                relation.span(),
                 relation.structurally_relate_aliases(),
                 target_vid,
                 Variance::Invariant,
@@ -220,6 +222,7 @@ impl<'db> InferCtxt<'db> {
     /// This checks for cycles -- that is, whether `source_term` references `target_vid`.
     fn generalize<T: Into<Term<'db>> + Relate<DbInterner<'db>>>(
         &self,
+        span: Span,
         structurally_relate_aliases: StructurallyRelateAliases,
         target_vid: impl Into<TermVid>,
         ambient_variance: Variance,
@@ -238,6 +241,7 @@ impl<'db> InferCtxt<'db> {
 
         let mut generalizer = Generalizer {
             infcx: self,
+            span,
             structurally_relate_aliases,
             root_vid,
             for_universe,
@@ -269,6 +273,8 @@ impl<'db> InferCtxt<'db> {
 /// [blog post]: https://is.gd/0hKvIr
 struct Generalizer<'me, 'db> {
     infcx: &'me InferCtxt<'db>,
+
+    span: Span,
 
     /// Whether aliases should be related structurally. If not, we have to
     /// be careful when generalizing aliases.
@@ -318,7 +324,7 @@ impl<'db> Generalizer<'_, 'db> {
     /// if we're currently in a bivariant context.
     fn next_ty_var_for_alias(&mut self) -> Ty<'db> {
         self.has_unconstrained_ty_var |= self.ambient_variance == Variance::Bivariant;
-        self.infcx.next_ty_var_in_universe(self.for_universe)
+        self.infcx.next_ty_var_in_universe(self.for_universe, self.span)
     }
 
     /// An occurs check failure inside of an alias does not mean
@@ -453,11 +459,11 @@ impl<'db> TypeRelation<DbInterner<'db>> for Generalizer<'_, 'db> {
                 } else {
                     let probe = inner.type_variables().probe(vid);
                     match probe {
-                        TypeVariableValue::Known { value: u } => {
+                        TypeVariableValue::Known { value: u, .. } => {
                             drop(inner);
                             self.relate(u, u)
                         }
-                        TypeVariableValue::Unknown { universe } => {
+                        TypeVariableValue::Unknown { universe, .. } => {
                             match self.ambient_variance {
                                 // Invariant: no need to make a fresh type variable
                                 // if we can name the universe.
@@ -477,7 +483,7 @@ impl<'db> TypeRelation<DbInterner<'db>> for Generalizer<'_, 'db> {
                                 Variance::Covariant | Variance::Contravariant => (),
                             }
 
-                            let origin = inner.type_variables().var_origin(vid);
+                            let origin = inner.type_variables().var_span(vid);
                             let new_var_id =
                                 inner.type_variables().new_var(self.for_universe, origin);
                             // If we're in the new solver and create a new inference
@@ -579,7 +585,7 @@ impl<'db> TypeRelation<DbInterner<'db>> for Generalizer<'_, 'db> {
             }
         }
 
-        Ok(self.infcx.next_region_var_in_universe(self.for_universe))
+        Ok(self.infcx.next_region_var_in_universe(self.for_universe, self.span))
     }
 
     #[instrument(level = "debug", skip(self, c2), ret)]
@@ -605,13 +611,13 @@ impl<'db> TypeRelation<DbInterner<'db>> for Generalizer<'_, 'db> {
                         drop(inner);
                         self.relate(u, u)
                     }
-                    ConstVariableValue::Unknown { origin, universe } => {
+                    ConstVariableValue::Unknown { span, universe } => {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
                         } else {
                             let new_var_id = variable_table
                                 .new_key(ConstVariableValue::Unknown {
-                                    origin,
+                                    span,
                                     universe: self.for_universe,
                                 })
                                 .vid;

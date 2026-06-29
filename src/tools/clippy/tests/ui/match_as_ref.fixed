@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::match_as_ref)]
 
 fn match_as_ref() {

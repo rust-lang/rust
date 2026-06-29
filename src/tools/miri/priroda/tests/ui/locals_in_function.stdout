@@ -1,0 +1,10 @@
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_in_function.rs:5
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_in_function.rs:5
+(priroda) Name: None, Id: _0, Ty: ()
+Name: x, Id: _1, Ty: i32
+Name: y, Id: _2, Ty: bool
+Name: None, Id: _3, Ty: (i32, bool)
+Name: None, Id: _4, Ty: i32
+Name: None, Id: _5, Ty: bool
+(priroda) quitting

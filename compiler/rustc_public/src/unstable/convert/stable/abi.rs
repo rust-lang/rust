@@ -58,7 +58,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Layout<'tcx> {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        tables.layout_id(cx.lift(*self).unwrap())
+        tables.layout_id(cx.lift(*self))
     }
 }
 
@@ -125,7 +125,9 @@ impl<'tcx> Stable<'tcx> for CanonAbi {
             CanonAbi::Rust => CallConvention::Rust,
             CanonAbi::RustCold => CallConvention::Cold,
             CanonAbi::RustPreserveNone => CallConvention::PreserveNone,
+            CanonAbi::RustTail => CallConvention::Tail,
             CanonAbi::Custom => CallConvention::Custom,
+            CanonAbi::Swift => CallConvention::Swift,
             CanonAbi::Arm(arm_call) => match arm_call {
                 ArmCall::Aapcs => CallConvention::ArmAapcs,
                 ArmCall::CCmseNonSecureCall => CallConvention::CCmseNonSecureCall,
@@ -216,11 +218,8 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::
                     tag_field: tag_field.stable(tables, cx),
                     variants: variants
                         .iter()
-                        .map(|v| match &v.fields {
-                            rustc_abi::FieldsShape::Arbitrary { offsets, .. } => VariantFields {
-                                offsets: offsets.iter().as_slice().stable(tables, cx),
-                            },
-                            _ => panic!("variant layout should be Arbitrary"),
+                        .map(|v| VariantFields {
+                            offsets: v.field_offsets.iter().as_slice().stable(tables, cx),
                         })
                         .collect(),
                 }

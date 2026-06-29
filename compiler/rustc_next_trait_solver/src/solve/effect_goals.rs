@@ -5,15 +5,17 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::inspect::ProbeKind;
-use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
-use rustc_type_ir::{self as ty, Interner, TypingMode, Unnormalized, elaborate};
+use rustc_type_ir::solve::{
+    AliasBoundKind, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased, RerunNonErased,
+    SizedTraitKind,
+};
+use rustc_type_ir::{self as ty, Interner, Unnormalized, elaborate};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
 use crate::delegate::SolverDelegate;
 use crate::solve::{
-    BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, NoSolution,
-    QueryResult, assembly,
+    BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, NoSolution, assembly,
 };
 
 impl<D, I> assembly::GoalKind<D> for ty::HostEffectPredicate<I>
@@ -60,8 +62,8 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
-    ) -> QueryResult<I> {
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
+    ) -> QueryResultOrRerunNonErased<I> {
         let host_clause = assumption.as_host_effect_clause().unwrap();
 
         let assumption_trait_pred = ecx.instantiate_binder_with_infer(host_clause);
@@ -84,17 +86,24 @@ where
         let cx = ecx.cx();
         let mut candidates = vec![];
 
-        if !ecx.cx().alias_has_const_conditions(alias_ty.kind.def_id()) {
+        let def_id = match alias_ty.kind {
+            ty::AliasTyKind::Projection { def_id } => def_id.into(),
+            ty::AliasTyKind::Inherent { def_id } => def_id.into(),
+            ty::AliasTyKind::Opaque { def_id } => def_id.into(),
+            ty::AliasTyKind::Free { def_id } => def_id.into(),
+        };
+
+        if !ecx.cx().alias_has_const_conditions(def_id) {
             return vec![];
         }
 
         for clause in elaborate::elaborate(
             cx,
-            cx.explicit_implied_const_bounds(alias_ty.kind.def_id())
-                .iter_instantiated(cx, alias_ty.args)
-                .map(|trait_ref| {
+            cx.explicit_implied_const_bounds(def_id).iter_instantiated(cx, alias_ty.args).map(
+                |trait_ref| {
                     trait_ref.to_host_effect_clause(cx, goal.predicate.constness).skip_norm_wip()
-                }),
+                },
+            ),
         ) {
             candidates.extend(Self::probe_and_match_goal_against_assumption(
                 ecx,
@@ -105,17 +114,17 @@ where
                     // Const conditions must hold for the implied const bound to hold.
                     ecx.add_goals(
                         GoalSource::AliasBoundConstCondition,
-                        cx.const_conditions(alias_ty.kind.def_id())
-                            .iter_instantiated(cx, alias_ty.args)
-                            .map(|trait_ref| {
+                        cx.const_conditions(def_id).iter_instantiated(cx, alias_ty.args).map(
+                            |trait_ref| {
                                 goal.with(
                                     cx,
                                     trait_ref
                                         .to_host_effect_clause(cx, goal.predicate.constness)
                                         .skip_norm_wip(),
                                 )
-                            }),
-                    );
+                            },
+                        ),
+                    )?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 },
             ));
@@ -128,32 +137,32 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         impl_def_id: I::ImplId,
-        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResult<I>,
-    ) -> Result<Candidate<I>, NoSolution> {
+        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResultOrRerunNonErased<I>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
         if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
             .args_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args)
         {
-            return Err(NoSolution);
+            return Err(NoSolution.into());
         }
 
         let impl_polarity = cx.impl_polarity(impl_def_id);
         let certainty = match impl_polarity {
-            ty::ImplPolarity::Negative => return Err(NoSolution),
-            ty::ImplPolarity::Reservation => match ecx.typing_mode() {
-                TypingMode::Coherence => Certainty::AMBIGUOUS,
-                TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => return Err(NoSolution),
-            },
+            ty::ImplPolarity::Negative => return Err(NoSolution.into()),
+            ty::ImplPolarity::Reservation => {
+                if ecx.typing_mode().is_coherence() {
+                    Certainty::AMBIGUOUS
+                } else {
+                    return Err(NoSolution.into());
+                }
+            }
             ty::ImplPolarity::Positive => Certainty::Yes,
         };
 
         if !cx.impl_is_const(impl_def_id) {
-            return Err(NoSolution);
+            return Err(NoSolution.into());
         }
 
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
@@ -167,7 +176,7 @@ where
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred));
-            ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
+            ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // For this impl to be `const`, we need to check its `[const]` bounds too.
             let const_conditions = cx
@@ -181,7 +190,7 @@ where
                             .skip_norm_wip(),
                     )
                 });
-            ecx.add_goals(GoalSource::ImplWhereBound, const_conditions);
+            ecx.add_goals(GoalSource::ImplWhereBound, const_conditions)?;
 
             then(ecx, certainty)
         })
@@ -189,8 +198,9 @@ where
 
     fn consider_error_guaranteed_candidate(
         ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
         _guar: I::ErrorGuaranteed,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -198,15 +208,15 @@ where
     fn consider_auto_trait_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         ecx.cx().delay_bug("auto traits are never const");
-        Err(NoSolution)
+        Err(NoSolution.into())
     }
 
     fn consider_trait_alias_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
@@ -232,8 +242,8 @@ where
             // `GoalSource::ImplWhereClause` here would be incorrect, as we also
             // impl them, which means we're "stepping out of the impl constructor"
             // again. To handle this, we treat these cycles as ambiguous for now.
-            ecx.add_goals(GoalSource::Misc, where_clause_bounds);
-            ecx.add_goals(GoalSource::Misc, const_conditions);
+            ecx.add_goals(GoalSource::Misc, where_clause_bounds)?;
+            ecx.add_goals(GoalSource::Misc, const_conditions)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -242,14 +252,14 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
         _sizedness: SizedTraitKind,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("Sized/MetaSized is never const")
     }
 
     fn consider_builtin_copy_clone_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
         let self_ty = goal.predicate.self_ty();
@@ -257,7 +267,7 @@ where
             structural_traits::instantiate_constituent_tys_for_copy_clone_trait(ecx, self_ty)?;
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.enter_forall(constituent_tys, |ecx, tys| {
+            ecx.enter_forall_with_assumptions(constituent_tys, goal.param_env, |ecx, tys| {
                 ecx.add_goals(
                     GoalSource::ImplWhereBound,
                     tys.into_iter().map(|ty| {
@@ -268,8 +278,8 @@ where
                             ),
                         )
                     }),
-                );
-            });
+                )
+            })?;
 
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
@@ -278,7 +288,7 @@ where
     fn consider_builtin_fn_ptr_trait_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         todo!("Fn* are not yet const")
     }
 
@@ -287,7 +297,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         _kind: rustc_type_ir::ClosureKind,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
         let self_ty = goal.predicate.self_ty();
@@ -329,83 +339,84 @@ where
             pred,
             requirements,
         )
+        .map_err(Into::into)
     }
 
     fn consider_builtin_async_fn_trait_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
         _kind: rustc_type_ir::ClosureKind,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         todo!("AsyncFn* are not yet const")
     }
 
     fn consider_builtin_async_fn_kind_helper_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("AsyncFnKindHelper is not const")
     }
 
     fn consider_builtin_tuple_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("Tuple trait is not const")
     }
 
     fn consider_builtin_pointee_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("Pointee is not const")
     }
 
     fn consider_builtin_future_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("Future is not const")
     }
 
     fn consider_builtin_iterator_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        todo!("Iterator is not yet const")
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution))
     }
 
     fn consider_builtin_fused_iterator_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("FusedIterator is not const")
     }
 
     fn consider_builtin_async_iterator_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("AsyncIterator is not const")
     }
 
     fn consider_builtin_coroutine_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("Coroutine is not const")
     }
 
     fn consider_builtin_discriminant_kind_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("DiscriminantKind is not const")
     }
 
     fn consider_builtin_destruct_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
         let self_ty = goal.predicate.self_ty();
@@ -421,7 +432,7 @@ where
                             .to_host_effect_clause(cx, goal.predicate.constness),
                     )
                 }),
-            );
+            )?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -429,28 +440,28 @@ where
     fn consider_builtin_transmute_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("TransmuteFrom is not const")
     }
 
     fn consider_builtin_bikeshed_guaranteed_no_drop_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("BikeshedGuaranteedNoDrop is not const");
     }
 
     fn consider_structural_builtin_unsize_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Vec<Candidate<I>> {
+    ) -> Result<Vec<Candidate<I>>, RerunNonErased> {
         unreachable!("Unsize is not const")
     }
 
     fn consider_builtin_field_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<<D as SolverDelegate>::Interner, Self>,
-    ) -> Result<Candidate<<D as SolverDelegate>::Interner>, NoSolution> {
+    ) -> Result<Candidate<<D as SolverDelegate>::Interner>, NoSolutionOrRerunNonErased> {
         unreachable!("Field is not const")
     }
 }
@@ -464,12 +475,17 @@ where
     pub(super) fn compute_host_effect_goal(
         &mut self,
         goal: Goal<I, ty::HostEffectPredicate<I>>,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
             let trait_goal: Goal<I, ty::TraitPredicate<I>> =
                 goal.with(ecx.cx(), goal.predicate.trait_ref);
-            ecx.compute_trait_goal(trait_goal)
+            ecx.compute_trait_goal(trait_goal).map_err(Into::into)
         })?;
-        self.assemble_and_merge_candidates(proven_via, goal, |_ecx| None, |_ecx| Err(NoSolution))
+        self.assemble_and_merge_candidates(
+            proven_via,
+            goal,
+            |_ecx| None,
+            |_ecx| Err(NoSolution.into()),
+        )
     }
 }

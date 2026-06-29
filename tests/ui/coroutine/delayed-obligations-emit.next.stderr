@@ -4,6 +4,7 @@ error[E0275]: overflow evaluating the requirement `{async block@$DIR/delayed-obl
 LL |     spawn(async { build_dependencies().await });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`delayed_obligations_emit`)
 note: required by a bound in `spawn`
   --> $DIR/delayed-obligations-emit.rs:31:13
    |

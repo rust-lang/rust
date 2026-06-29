@@ -1,3 +1,4 @@
+use indexmap::IndexSet;
 use quote::{ToTokens, quote};
 use syn::visit_mut::VisitMut;
 use syn::{Attribute, parse_quote};
@@ -10,12 +11,30 @@ decl_derive!(
     [TypeFoldable_Generic, attributes(type_foldable)] => type_foldable_derive
 );
 decl_derive!(
-    [Lift_Generic] => lift_derive
+    [Lift_Generic, attributes(lift)] => lift_derive
 );
 #[cfg(not(feature = "nightly"))]
 decl_derive!(
     [GenericTypeVisitable] => customizable_type_visitable_derive
 );
+
+struct TransformedTy {
+    ty: syn::Type,
+    generic_parameter_bounds: IndexSet<syn::Ident>,
+}
+
+enum TypeParameterPath {
+    Interner,
+    GenericParameter(syn::Ident),
+}
+
+enum TypeParameterTransform {
+    Continue,
+    Stop,
+}
+
+type TypeParameterVisitor =
+    fn(TypeParameterPath, &mut syn::TypePath, &mut IndexSet<syn::Ident>) -> TypeParameterTransform;
 
 fn has_ignore_attr(attrs: &[Attribute], name: &'static str, meta: &'static str) -> bool {
     let mut ignored = false;
@@ -86,6 +105,9 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
 
     s.add_where_predicate(parse_quote! { I: Interner });
     s.add_bounds(synstructure::AddBounds::Fields);
+    let generic_parameters =
+        s.ast().generics.type_params().map(|ty| ty.ident.clone()).collect::<Vec<_>>();
+    let mut generic_parameter_bounds = IndexSet::new();
     s.bind_with(|_| synstructure::BindStyle::Move);
     let body_try_fold = s.each_variant(|vi| {
         let bindings = vi.bindings();
@@ -96,6 +118,12 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
             if has_ignore_attr(&bind.ast().attrs, "type_foldable", "identity") {
                 bind.to_token_stream()
             } else {
+                for param in
+                    type_foldable_generic_parameters(bind.ast().ty.clone(), &generic_parameters)
+                {
+                    generic_parameter_bounds.insert(param);
+                }
+
                 quote! {
                     ::rustc_type_ir::TypeFoldable::try_fold_with(#bind, __folder)?
                 }
@@ -124,6 +152,9 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     // to generate code for them.
     s.filter(|bi| !has_ignore_attr(&bi.ast().attrs, "type_foldable", "identity"));
     s.add_bounds(synstructure::AddBounds::Fields);
+    for param in generic_parameter_bounds {
+        s.add_where_predicate(parse_quote! { #param: ::rustc_type_ir::TypeFoldable<I> });
+    }
     s.bound_impl(
         quote!(::rustc_type_ir::TypeFoldable<I>),
         quote! {
@@ -144,6 +175,31 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     )
 }
 
+fn type_foldable_generic_parameters(
+    ty: syn::Type,
+    generic_parameters: &[syn::Ident],
+) -> IndexSet<syn::Ident> {
+    transform_type_parameters(ty, generic_parameters, |path, _, generic_parameter_bounds| {
+        if let TypeParameterPath::GenericParameter(param) = path {
+            generic_parameter_bounds.insert(param);
+        }
+        TypeParameterTransform::Continue
+    })
+    .generic_parameter_bounds
+}
+
+/// `Lift_Generic` is specialised for structs/enums parameterised by an interner
+/// `I: Interner`. It derives `Lift<J>` by rewriting interner associated types
+/// from `I::Assoc` to `J::Assoc`. The required associated type lift bounds are
+/// supplied by `I: LiftInto<J>`.
+///
+/// Ordinary generic parameters still get explicit `Lift<J>` bounds. Interner
+/// independent fields must either implement `Lift` manually or use
+/// `#[lift(identity)]`.
+///
+/// `PhantomData` is a special case that occurs enough in the code base to be
+/// handled here directly. We collect any generic bounds from the type then
+/// produce another `PhantomData`.
 fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     if let syn::Data::Union(_) = s.ast().data {
         panic!("cannot derive on union")
@@ -154,9 +210,12 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     }
 
     s.add_bounds(synstructure::AddBounds::None);
-    s.add_where_predicate(parse_quote! { I: Interner });
     s.add_impl_generic(parse_quote! { J });
     s.add_where_predicate(parse_quote! { J: Interner });
+    s.add_where_predicate(parse_quote! { I: ::rustc_type_ir::LiftInto<J> });
+
+    let generic_parameters =
+        s.ast().generics.type_params().map(|ty| ty.ident.clone()).collect::<Vec<_>>();
 
     let mut wc = vec![];
     s.bind_with(|_| synstructure::BindStyle::Move);
@@ -164,11 +223,30 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
         let bindings = vi.bindings();
         vi.construct(|field, index| {
             let ty = field.ty.clone();
-            let lifted_ty = lift(ty.clone());
-            wc.push(parse_quote! { #ty: ::rustc_type_ir::lift::Lift<J, Lifted = #lifted_ty> });
             let bind = &bindings[index];
+            // Allow field to be ignored from lift
+            if has_ignore_attr(&field.attrs, "lift", "identity") {
+                return bind.to_token_stream();
+            }
+
+            let lifted = lift(ty.clone(), &generic_parameters);
+
+            // Field types involving ordinary generic parameters still need
+            // explicit bounds for those parameters, e.g. `Binder<I, T>` needs
+            // `T: Lift<J>` so its own derived `Lift` impl applies. Interner
+            // associated types are covered by `I: LiftInto<J>`.
+            for param in lifted.generic_parameter_bounds {
+                wc.push(parse_quote! { #param: ::rustc_type_ir::lift::Lift<J> });
+            }
+
+            if is_type_phantom(&ty) {
+                return quote! {
+                    PhantomData
+                };
+            }
+
             quote! {
-                #bind.lift_to_interner(interner)?
+                #bind.lift_to_interner(interner)
             }
         })
     });
@@ -179,7 +257,8 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let (_, ty_generics, _) = s.ast().generics.split_for_impl();
     let name = s.ast().ident.clone();
     let self_ty: syn::Type = parse_quote! { #name #ty_generics };
-    let lifted_ty = lift(self_ty);
+    let lifted = lift(self_ty, &generic_parameters);
+    let lifted_ty = lifted.ty;
 
     s.bound_impl(
         quote!(::rustc_type_ir::lift::Lift<J>),
@@ -189,31 +268,94 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
             fn lift_to_interner(
                 self,
                 interner: J,
-            ) -> Option<Self::Lifted> {
-                Some(match self { #body_fold })
+            ) -> Self::Lifted {
+                match self { #body_fold }
             }
         },
     )
 }
 
-fn lift(mut ty: syn::Type) -> syn::Type {
-    struct ItoJ;
-    impl VisitMut for ItoJ {
+fn get_first_path_segment(ty: &syn::Type) -> Option<&syn::PathSegment> {
+    if let syn::Type::Path(ty) = ty
+        && ty.path.segments.len() == 1
+    {
+        ty.path.segments.first()
+    } else {
+        None
+    }
+}
+
+/// Return if the type is `PhantomData`
+fn is_type_phantom(ty: &syn::Type) -> bool {
+    get_first_path_segment(ty).is_some_and(|segment| segment.ident == "PhantomData")
+}
+
+fn lift(ty: syn::Type, generic_parameters: &[syn::Ident]) -> TransformedTy {
+    transform_type_parameters(ty, generic_parameters, |path, ty, generic_parameter_bounds| {
+        match path {
+            TypeParameterPath::Interner => {
+                *ty.path.segments.first_mut().unwrap() = parse_quote! { J };
+                TypeParameterTransform::Continue
+            }
+            TypeParameterPath::GenericParameter(param) => {
+                generic_parameter_bounds.insert(param.clone());
+                *ty = parse_quote! { <#param as ::rustc_type_ir::lift::Lift<J>>::Lifted };
+                TypeParameterTransform::Stop
+            }
+        }
+    })
+}
+
+fn transform_type_parameters(
+    mut ty: syn::Type,
+    generic_parameters: &[syn::Ident],
+    visit: TypeParameterVisitor,
+) -> TransformedTy {
+    struct TypeParameterTransformer<'a> {
+        generic_parameters: &'a [syn::Ident],
+        generic_parameter_bounds: IndexSet<syn::Ident>,
+        visit: TypeParameterVisitor,
+    }
+
+    impl VisitMut for TypeParameterTransformer<'_> {
         fn visit_type_path_mut(&mut self, i: &mut syn::TypePath) {
-            if i.qself.is_none() {
-                if let Some(first) = i.path.segments.first_mut()
-                    && first.ident == "I"
+            let path = if i.qself.is_none() {
+                let segments_len = i.path.segments.len();
+                i.path.segments.first().and_then(|first| {
+                    if first.ident == "I" {
+                        Some(TypeParameterPath::Interner)
+                    } else if segments_len == 1
+                        && matches!(first.arguments, syn::PathArguments::None)
+                        && self.generic_parameters.contains(&first.ident)
+                    {
+                        Some(TypeParameterPath::GenericParameter(first.ident.clone()))
+                    } else {
+                        None
+                    }
+                })
+            } else {
+                None
+            };
+
+            if let Some(path) = path {
+                if let TypeParameterTransform::Stop =
+                    (self.visit)(path, i, &mut self.generic_parameter_bounds)
                 {
-                    *first = parse_quote! { J };
+                    return;
                 }
             }
+
             syn::visit_mut::visit_type_path_mut(self, i);
         }
     }
 
-    ItoJ.visit_type_mut(&mut ty);
-
-    ty
+    let mut visitor = TypeParameterTransformer {
+        generic_parameters,
+        generic_parameter_bounds: IndexSet::new(),
+        visit,
+    };
+    visitor.visit_type_mut(&mut ty);
+    TransformedTy { ty, generic_parameter_bounds: visitor.generic_parameter_bounds }
 }
 
 #[cfg(not(feature = "nightly"))]

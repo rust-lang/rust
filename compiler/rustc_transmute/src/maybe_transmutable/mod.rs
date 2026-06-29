@@ -330,7 +330,7 @@ impl<R, T> Answer<R, T> {
             // If either is an error, return it
             | (Answer::No(reason), _) | (_, Answer::No(reason)) => Answer::No(reason),
             // If only one side has a condition, pass it along
-            | (Answer::Yes, other) | (other, Answer::Yes) => other,
+            (Answer::Yes, other) | (other, Answer::Yes) => other,
             // If both sides have IfAll conditions, merge them
             (Answer::If(Condition::IfAll(mut lhs)), Answer::If(Condition::IfAll(ref mut rhs))) => {
                 lhs.append(rhs);

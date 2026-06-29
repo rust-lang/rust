@@ -4,7 +4,10 @@ use syntax::{
     ast::{self, ArithOp, BinaryOp},
 };
 
-use crate::assist_context::{AssistContext, Assists};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    utils::wrap_paren,
+};
 
 // Assist: replace_arith_with_checked
 //
@@ -21,7 +24,10 @@ use crate::assist_context::{AssistContext, Assists};
 //   let x = 1.checked_add(2);
 // }
 // ```
-pub(crate) fn replace_arith_with_checked(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn replace_arith_with_checked(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     replace_arith(acc, ctx, ArithKind::Checked)
 }
 
@@ -42,7 +48,7 @@ pub(crate) fn replace_arith_with_checked(acc: &mut Assists, ctx: &AssistContext<
 // ```
 pub(crate) fn replace_arith_with_saturating(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     replace_arith(acc, ctx, ArithKind::Saturating)
 }
@@ -64,13 +70,13 @@ pub(crate) fn replace_arith_with_saturating(
 // ```
 pub(crate) fn replace_arith_with_wrapping(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     replace_arith(acc, ctx, ArithKind::Wrapping)
 }
 
-fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_>, kind: ArithKind) -> Option<()> {
-    let (lhs, op, rhs) = parse_binary_op(ctx)?;
+fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_, '_>, kind: ArithKind) -> Option<()> {
+    let (lhs, op, is_assign, rhs) = parse_binary_op(ctx)?;
     let op_expr = lhs.syntax().parent()?;
 
     if !is_primitive_int(ctx, &lhs) || !is_primitive_int(ctx, &rhs) {
@@ -87,18 +93,20 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_>, kind: ArithKind) ->
             let make = editor.make();
             let method_name = kind.method_name(op);
 
-            let needs_parentheses =
-                lhs.precedence().needs_parentheses_in(ast::prec::ExprPrecedence::Postfix);
-            let receiver = if needs_parentheses { make.expr_paren(lhs).into() } else { lhs };
-            let arith_expr =
-                make.expr_method_call(receiver, make.name_ref(&method_name), make.arg_list([rhs]));
+            let receiver = wrap_paren(lhs.clone(), make, ast::prec::ExprPrecedence::Postfix);
+            let mut arith_expr = make
+                .expr_method_call(receiver, make.name_ref(&method_name), make.arg_list([rhs]))
+                .into();
+            if is_assign {
+                arith_expr = make.expr_assignment(lhs, arith_expr).into();
+            }
             editor.replace(op_expr, arith_expr.syntax());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
 
-fn is_primitive_int(ctx: &AssistContext<'_>, expr: &ast::Expr) -> bool {
+fn is_primitive_int(ctx: &AssistContext<'_, '_>, expr: &ast::Expr) -> bool {
     match ctx.sema.type_of_expr(expr) {
         Some(ty) => ty.adjusted().is_int_or_uint(),
         _ => false,
@@ -106,24 +114,25 @@ fn is_primitive_int(ctx: &AssistContext<'_>, expr: &ast::Expr) -> bool {
 }
 
 /// Extract the operands of an arithmetic expression (e.g. `1 + 2` or `1.checked_add(2)`)
-fn parse_binary_op(ctx: &AssistContext<'_>) -> Option<(ast::Expr, ArithOp, ast::Expr)> {
+fn parse_binary_op(ctx: &AssistContext<'_, '_>) -> Option<(ast::Expr, ArithOp, bool, ast::Expr)> {
     if !ctx.has_empty_selection() {
         return None;
     }
     let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
 
-    let op = match expr.op_kind() {
-        Some(BinaryOp::ArithOp(ArithOp::Add)) => ArithOp::Add,
-        Some(BinaryOp::ArithOp(ArithOp::Sub)) => ArithOp::Sub,
-        Some(BinaryOp::ArithOp(ArithOp::Mul)) => ArithOp::Mul,
-        Some(BinaryOp::ArithOp(ArithOp::Div)) => ArithOp::Div,
+    let (op, is_assign) = match expr.op_kind()? {
+        BinaryOp::ArithOp(arith_op) => (arith_op, false),
+        BinaryOp::Assignment { op: Some(op) } => (op, true),
         _ => return None,
     };
+    if !matches!(op, ArithOp::Add | ArithOp::Sub | ArithOp::Mul | ArithOp::Div) {
+        return None;
+    }
 
     let lhs = expr.lhs()?;
     let rhs = expr.rhs()?;
 
-    Some((lhs, op, rhs))
+    Some((lhs, op, is_assign, rhs))
 }
 
 pub(crate) enum ArithKind {
@@ -244,6 +253,25 @@ fn main() {
             r#"
 fn main() {
     let x = (1*3).wrapping_add(2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_arith_with_wrapping_add_assign() {
+        check_assist(
+            replace_arith_with_wrapping,
+            r#"
+fn main() {
+    let mut x = 1;
+    x $0+= 2;
+}
+"#,
+            r#"
+fn main() {
+    let mut x = 1;
+    x = x.wrapping_add(2);
 }
 "#,
         )

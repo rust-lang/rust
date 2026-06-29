@@ -13,7 +13,7 @@ LL |     match KEY.compare_exchange(KEY_SENTVAL, key, Release, Acquire) {
                at tests/genmc/pass/atomics/cas_failure_ord_racy_key_init.rs:LL:CC
            2: <std::boxed::Box<{closure@tests/genmc/pass/atomics/cas_failure_ord_racy_key_init.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once
                at RUSTLIB/alloc/src/boxed.rs:LL:CC
-           3: genmc::spawn_pthread_closure::thread_func
+           3: genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/pass/atomics/cas_failure_ord_racy_key_init.rs:LL:CC}>
                at tests/genmc/pass/atomics/../../../utils/genmc.rs:LL:CC
 note: the last function in that backtrace got called indirectly due to this code
   --> tests/genmc/pass/atomics/../../../utils/genmc.rs:LL:CC

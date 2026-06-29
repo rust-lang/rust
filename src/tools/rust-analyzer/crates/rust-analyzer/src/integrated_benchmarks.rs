@@ -162,36 +162,7 @@ fn integrated_completion_benchmark() {
     {
         let _span = profile::cpu_span();
         let analysis = host.analysis();
-        let config = CompletionConfig {
-            enable_postfix_completions: true,
-            enable_imports_on_the_fly: true,
-            enable_self_on_the_fly: true,
-            enable_private_editable: true,
-            enable_term_search: true,
-            term_search_fuel: 200,
-            full_function_signatures: false,
-            callable: Some(CallableSnippets::FillArguments),
-            snippet_cap: SnippetCap::new(true),
-            insert_use: InsertUseConfig {
-                granularity: ImportGranularity::Crate,
-                prefix_kind: hir::PrefixKind::ByCrate,
-                enforce_granularity: true,
-                group: true,
-                skip_glob_imports: true,
-            },
-            prefer_no_std: false,
-            prefer_prelude: true,
-            prefer_absolute: false,
-            snippets: Vec::new(),
-            limit: None,
-            add_semicolon_to_unit: true,
-            fields_to_resolve: CompletionFieldsToResolve::empty(),
-            exclude_flyimport: vec![],
-            exclude_traits: &[],
-            enable_auto_await: true,
-            enable_auto_iter: true,
-            ra_fixture: RaFixtureConfig::default(),
-        };
+        let config = completion_config();
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
         analysis.completions(&config, position, None).unwrap();
@@ -217,36 +188,7 @@ fn integrated_completion_benchmark() {
         let _p = tracing::info_span!("unqualified path completion").entered();
         let _span = profile::cpu_span();
         let analysis = host.analysis();
-        let config = CompletionConfig {
-            enable_postfix_completions: true,
-            enable_imports_on_the_fly: true,
-            enable_self_on_the_fly: true,
-            enable_private_editable: true,
-            enable_term_search: true,
-            term_search_fuel: 200,
-            full_function_signatures: false,
-            callable: Some(CallableSnippets::FillArguments),
-            snippet_cap: SnippetCap::new(true),
-            insert_use: InsertUseConfig {
-                granularity: ImportGranularity::Crate,
-                prefix_kind: hir::PrefixKind::ByCrate,
-                enforce_granularity: true,
-                group: true,
-                skip_glob_imports: true,
-            },
-            prefer_no_std: false,
-            prefer_prelude: true,
-            prefer_absolute: false,
-            snippets: Vec::new(),
-            limit: None,
-            add_semicolon_to_unit: true,
-            fields_to_resolve: CompletionFieldsToResolve::empty(),
-            exclude_flyimport: vec![],
-            exclude_traits: &[],
-            enable_auto_await: true,
-            enable_auto_iter: true,
-            ra_fixture: RaFixtureConfig::default(),
-        };
+        let config = completion_config();
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
         analysis.completions(&config, position, None).unwrap();
@@ -270,36 +212,7 @@ fn integrated_completion_benchmark() {
         let _p = tracing::info_span!("dot completion").entered();
         let _span = profile::cpu_span();
         let analysis = host.analysis();
-        let config = CompletionConfig {
-            enable_postfix_completions: true,
-            enable_imports_on_the_fly: true,
-            enable_self_on_the_fly: true,
-            enable_private_editable: true,
-            enable_term_search: true,
-            term_search_fuel: 200,
-            full_function_signatures: false,
-            callable: Some(CallableSnippets::FillArguments),
-            snippet_cap: SnippetCap::new(true),
-            insert_use: InsertUseConfig {
-                granularity: ImportGranularity::Crate,
-                prefix_kind: hir::PrefixKind::ByCrate,
-                enforce_granularity: true,
-                group: true,
-                skip_glob_imports: true,
-            },
-            prefer_no_std: false,
-            prefer_prelude: true,
-            prefer_absolute: false,
-            snippets: Vec::new(),
-            limit: None,
-            add_semicolon_to_unit: true,
-            fields_to_resolve: CompletionFieldsToResolve::empty(),
-            exclude_flyimport: vec![],
-            exclude_traits: &[],
-            enable_auto_await: true,
-            enable_auto_iter: true,
-            ra_fixture: RaFixtureConfig::default(),
-        };
+        let config = completion_config();
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
         analysis.completions(&config, position, None).unwrap();
@@ -399,4 +312,38 @@ fn patch(what: &mut String, from: &str, to: &str) -> usize {
     let idx = what.find(from).unwrap();
     *what = what.replacen(from, to, 1);
     idx
+}
+
+fn completion_config() -> CompletionConfig<'static> {
+    CompletionConfig {
+        enable_postfix_completions: true,
+        enable_imports_on_the_fly: true,
+        enable_self_on_the_fly: true,
+        enable_private_editable: true,
+        enable_term_search: true,
+        term_search_fuel: 200,
+        full_function_signatures: false,
+        callable: Some(CallableSnippets::FillArguments),
+        snippet_cap: SnippetCap::new(true),
+        insert_use: InsertUseConfig {
+            granularity: ImportGranularity::Crate,
+            prefix_kind: hir::PrefixKind::ByCrate,
+            enforce_granularity: true,
+            group: true,
+            skip_glob_imports: true,
+        },
+        prefer_no_std: false,
+        prefer_prelude: true,
+        prefer_absolute: false,
+        snippets: Vec::new(),
+        limit: None,
+        add_colons_to_module: true,
+        add_semicolon_to_unit: true,
+        fields_to_resolve: CompletionFieldsToResolve::empty(),
+        exclude_flyimport: vec![],
+        exclude_traits: &[],
+        enable_auto_await: true,
+        enable_auto_iter: true,
+        ra_fixture: RaFixtureConfig::default(),
+    }
 }

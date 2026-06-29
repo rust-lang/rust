@@ -2,7 +2,9 @@ error[E0432]: unresolved import `foo::Foo`
   --> $DIR/this_format_argument.rs:7:5
    |
 LL | use foo::Foo;
-   |     ^^^^^^^^ no `Foo` in `foo`
+   |     ^^^^^---
+   |          |
+   |          no `Foo` in `foo`
    |
    = note: the name of this item is a single ident: `Foo`
 
@@ -51,7 +53,9 @@ error[E0432]: unresolved import `foo::Foo`
   --> $DIR/this_format_argument.rs:42:5
    |
 LL | use foo::Foo as DoNotUseForThisParam;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `Foo` in `foo`
+   |     ^^^^^---^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          no `Foo` in `foo`
    |
    = note: the name of this item is a single ident: `Foo`
 

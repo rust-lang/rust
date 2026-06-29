@@ -4,7 +4,7 @@
 //! this feature, turn back. This is *exceptionally* unstable. There is no attempt at all to make
 //! anything work besides those things which the rustc test suite happened to need. If you make a
 //! typo you'll probably ICE. Really, this is not the solution to your problems. Consider instead
-//! supporting the [stable MIR project group](https://github.com/rust-lang/project-stable-mir).
+//! supporting the [rustc public project group](https://github.com/rust-lang/rustc_public).
 //!
 //! The documentation for this module describes how to use this feature. If you are interested in
 //! hacking on the implementation, most of that documentation lives at
@@ -229,7 +229,7 @@
 //!
 //! #### Statements
 //!  - Assign statements work via normal Rust assignment.
-//!  - [`Retag`], [`StorageLive`], [`StorageDead`] statements have an associated function.
+//!  - [`StorageLive`], [`StorageDead`] statements have an associated function.
 //!
 //! #### Rvalues
 //!
@@ -407,7 +407,6 @@ define!(
     "mir_ptr_metadata",
     fn PtrMetadata<P: ?Sized>(place: *const P) -> <P as ::core::ptr::Pointee>::Metadata
 );
-define!("mir_retag", fn Retag<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
 define!("mir_static", fn Static<T>(s: T) -> &'static T);
 define!("mir_static_mut", fn StaticMut<T>(s: T) -> *mut T);

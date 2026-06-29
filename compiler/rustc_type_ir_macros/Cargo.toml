@@ -11,6 +11,7 @@ nightly = []
 
 [dependencies]
 # tidy-alphabetical-start
+indexmap = "2.4.0"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2.0.9", features = ["full", "visit-mut"] }

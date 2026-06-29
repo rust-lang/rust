@@ -109,7 +109,7 @@ pub(crate) enum Op {
     },
     Count {
         name: Symbol,
-        // FIXME: `usize`` once we drop support for 1.76
+        // FIXME: `usize` once we drop support for 1.76
         depth: Option<usize>,
     },
     Concat {

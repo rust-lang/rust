@@ -26,7 +26,6 @@ fn index<'a, K, V>(map: &'a HashMap<K, V>, k: K) -> &'a V {
     //~| ERROR the trait bound `V: Copy` is not satisfied
     //~| ERROR mismatched types
     //[current]~| ERROR mismatched types
-    //[next]~^^^^^ ERROR the trait bound `K: Hash` is not satisfied
 }
 
 fn main() {}

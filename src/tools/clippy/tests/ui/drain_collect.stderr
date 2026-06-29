@@ -1,8 +1,8 @@
-error: you seem to be trying to move all elements into a new `BinaryHeap`
-  --> tests/ui/drain_collect.rs:7:5
+error: draining all elements of a collection into a new collection of the same type
+  --> tests/ui/drain_collect.rs:6:5
    |
 LL |     b.drain().collect()
-   |     ^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+   |     ^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `std::mem::take(b)`
    |
 note: the lint level is defined here
   --> tests/ui/drain_collect.rs:1:9
@@ -10,59 +10,59 @@ note: the lint level is defined here
 LL | #![deny(clippy::drain_collect)]
    |         ^^^^^^^^^^^^^^^^^^^^^
 
-error: you seem to be trying to move all elements into a new `HashMap`
-  --> tests/ui/drain_collect.rs:16:5
+error: draining all elements of a collection into a new collection of the same type
+  --> tests/ui/drain_collect.rs:15:5
    |
 LL |     b.drain().collect()
-   |     ^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+   |     ^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `std::mem::take(b)`
 
-error: you seem to be trying to move all elements into a new `HashSet`
-  --> tests/ui/drain_collect.rs:25:5
+error: draining all elements of a collection into a new collection of the same type
+  --> tests/ui/drain_collect.rs:24:5
    |
 LL |     b.drain().collect()
-   |     ^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+   |     ^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `std::mem::take(b)`
 
-error: you seem to be trying to move all elements into a new `Vec`
-  --> tests/ui/drain_collect.rs:34:5
+error: draining all elements of a collection into a new collection of the same type
+  --> tests/ui/drain_collect.rs:33:5
    |
 LL |     b.drain(..).collect()
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `std::mem::take(b)`
 
-error: you seem to be trying to move all elements into a new `Vec`
-  --> tests/ui/drain_collect.rs:43:5
+error: draining all elements of a collection into a new collection of the same type
+  --> tests/ui/drain_collect.rs:42:5
    |
 LL |     b.drain(..).collect()
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `std::mem::take(b)`
 
-error: you seem to be trying to move all elements into a new `Vec`
-  --> tests/ui/drain_collect.rs:48:5
+error: draining all elements of a collection into a new collection of the same type
+  --> tests/ui/drain_collect.rs:47:5
    |
 LL |     b.drain(0..).collect()
-   |     ^^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `std::mem::take(b)`
 
-error: you seem to be trying to move all elements into a new `Vec`
-  --> tests/ui/drain_collect.rs:53:5
+error: draining all elements of a collection into a new collection of the same type
+  --> tests/ui/drain_collect.rs:52:5
    |
 LL |     b.drain(..b.len()).collect()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `std::mem::take(b)`
 
-error: you seem to be trying to move all elements into a new `Vec`
-  --> tests/ui/drain_collect.rs:58:5
+error: draining all elements of a collection into a new collection of the same type
+  --> tests/ui/drain_collect.rs:57:5
    |
 LL |     b.drain(0..b.len()).collect()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `std::mem::take(b)`
 
-error: you seem to be trying to move all elements into a new `Vec`
-  --> tests/ui/drain_collect.rs:64:5
+error: draining all elements of a collection into a new collection of the same type
+  --> tests/ui/drain_collect.rs:63:5
    |
 LL |     b.drain(..).collect()
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(&mut b)`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `std::mem::take(&mut b)`
 
-error: you seem to be trying to move all elements into a new `String`
-  --> tests/ui/drain_collect.rs:73:5
+error: draining all elements of a collection into a new collection of the same type
+  --> tests/ui/drain_collect.rs:72:5
    |
 LL |     b.drain(..).collect()
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `std::mem::take(b)`
 
 error: aborting due to 10 previous errors
 

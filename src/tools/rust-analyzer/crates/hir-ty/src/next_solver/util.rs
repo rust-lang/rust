@@ -423,14 +423,14 @@ pub fn sizedness_constraint_for_ty<'db>(
             .and_then(|ty| sizedness_constraint_for_ty(interner, sizedness, ty)),
 
         Adt(adt, args) => {
-            if crate::representability::representability(interner.db, adt.def_id().0)
+            if crate::representability::representability(interner.db, adt.def_id())
                 == Representability::Infinite
             {
                 return None;
             }
 
             adt.struct_tail_ty(interner).and_then(|tail_ty| {
-                let tail_ty = tail_ty.instantiate(interner, args);
+                let tail_ty = tail_ty.instantiate(interner, args).skip_norm_wip();
                 sizedness_constraint_for_ty(interner, sizedness, tail_ty)
             })
         }
@@ -717,7 +717,7 @@ pub(crate) fn clauses_as_obligations<'db>(
     param_env: ParamEnv<'db>,
 ) -> impl Iterator<Item = PredicateObligation<'db>> {
     clauses.into_iter().map(move |clause| Obligation {
-        cause: cause.clone(),
+        cause,
         param_env,
         predicate: clause.as_predicate(),
         recursion_depth: 0,

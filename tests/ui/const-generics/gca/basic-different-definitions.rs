@@ -1,13 +1,14 @@
 //@ check-pass
+//@ compile-flags: -Znext-solver
 
 #![feature(generic_const_items)]
 #![feature(min_generic_const_args)]
 #![feature(generic_const_args)]
 #![expect(incomplete_features)]
 
-type const ADD1<const N: usize>: usize = const { N + 1 };
+const ADD1<const N: usize>: usize = N + 1;
 
-type const INC<const N: usize>: usize = const { N + 1 };
+const INC<const N: usize>: usize = N + 1;
 
 type const ONE: usize = ADD1::<0>;
 

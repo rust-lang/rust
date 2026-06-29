@@ -1,11 +1,15 @@
-//@only-target: linux # these are Linux-specific APIs
+//@only-target: linux freebsd # these are Linux/FreeBSD-specific APIs
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-num-cpus=4
-#![feature(io_error_more)]
-#![feature(pointer_is_aligned_to)]
 
 use std::mem::{size_of, size_of_val};
 
-use libc::{cpu_set_t, sched_getaffinity, sched_setaffinity};
+use libc::{sched_getaffinity, sched_setaffinity};
+
+#[rustfmt::skip] // don't merge with imports above
+#[cfg(any(target_os = "linux", target_os = "android"))]
+use libc::cpu_set_t;
+#[cfg(target_os = "freebsd")]
+use libc::cpuset_t as cpu_set_t;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
@@ -195,6 +199,25 @@ fn parent_child() {
     errno_check(unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>(), &cpuset) });
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn use_gettid() {
+    // sched_getaffinity/sched_setaffinity also accept a TID (as returned by gettid)
+    let tid = unsafe { libc::gettid() };
+    assert_ne!(tid, 0);
+
+    let mut cpuset: cpu_set_t = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
+    let err = unsafe { sched_getaffinity(tid, std::mem::size_of::<cpu_set_t>(), &mut cpuset) };
+    assert_eq!(err, 0, "sched_getaffinity with gettid failed: {}", std::io::Error::last_os_error());
+
+    // An invalid TID returns ESRCH
+    let err = unsafe { sched_getaffinity(i32::MAX, std::mem::size_of::<cpu_set_t>(), &mut cpuset) };
+    assert_eq!(err, -1);
+    assert_eq!(std::io::Error::last_os_error().raw_os_error(), Some(libc::ESRCH));
+
+    // Setting affinity via TID also works
+    errno_check(unsafe { sched_setaffinity(tid, std::mem::size_of::<cpu_set_t>(), &cpuset) });
+}
+
 fn main() {
     null_pointers();
     configure_no_cpus();
@@ -204,4 +227,6 @@ fn main() {
     set_small_cpu_mask();
     set_custom_cpu_mask();
     parent_child();
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    use_gettid();
 }

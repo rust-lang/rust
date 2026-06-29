@@ -41,4 +41,4 @@ building for Linux. Other linkers such as LLD are not affected.
 Using `-Zdefault-visibility=interposable` will cause symbols to be emitted with "default"
 visibility. On platforms that support it, this makes it so that symbols can be interposed, which
 means that they can be overridden by symbols with the same name from the executable or by other
-shared objects earier in the load order.
+shared objects earlier in the load order.

@@ -37,17 +37,6 @@ LL | #[repr(transparent)]
 LL | struct Nanoseconds(NanoI32);
    |                    ^^^^^^^ the trait `Ord` is not implemented for `(i32) is 0..=999999999`
 
-error[E0277]: can't compare `(i32) is 0..=999999999` with `_`
-  --> $DIR/derives_fail.rs:11:20
-   |
-LL | #[derive(Clone, Copy, PartialEq, Eq, Debug, Ord, PartialOrd, Hash, Default)]
-   |                                                  ---------- in this derive macro expansion
-LL | #[repr(transparent)]
-LL | struct Nanoseconds(NanoI32);
-   |                    ^^^^^^^ no implementation for `(i32) is 0..=999999999 < _` and `(i32) is 0..=999999999 > _`
-   |
-   = help: the trait `PartialOrd<_>` is not implemented for `(i32) is 0..=999999999`
-
 error[E0277]: the trait bound `(i32) is 0..=999999999: Hash` is not satisfied
   --> $DIR/derives_fail.rs:11:20
    |
@@ -66,7 +55,7 @@ LL | #[repr(transparent)]
 LL | struct Nanoseconds(NanoI32);
    |                    ^^^^^^^ the trait `Default` is not implemented for `(i32) is 0..=999999999`
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0277, E0369.
 For more information about an error, try `rustc --explain E0277`.

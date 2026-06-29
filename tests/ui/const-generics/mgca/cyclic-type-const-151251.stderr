@@ -1,4 +1,4 @@
-error[E0275]: overflow normalizing the unevaluated constant `A`
+error[E0275]: overflow normalizing the const alias `A`
   --> $DIR/cyclic-type-const-151251.rs:7:1
    |
 LL | type const A: u8 = A;

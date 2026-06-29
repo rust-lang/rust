@@ -34,9 +34,7 @@ impl<T: Internable + GcInternedVisit> Storage for InternedStorage<T> {
         for item in storage {
             let item = item.key();
             let addr = Arc::as_ptr(item).addr();
-            if Arc::strong_count(item) > 1 {
-                // The item is referenced from the outside.
-                gc.alive.insert(addr);
+            if Arc::strong_count(item) > 1 && gc.alive.insert(addr) {
                 item.visit_with(gc);
             }
         }
@@ -60,9 +58,7 @@ impl<T: SliceInternable + GcInternedSliceVisit> Storage for InternedSliceStorage
         for item in storage {
             let item = item.key();
             let addr = ThinArc::as_ptr(item).addr();
-            if ThinArc::strong_count(item) > 1 {
-                // The item is referenced from the outside.
-                gc.alive.insert(addr);
+            if ThinArc::strong_count(item) > 1 && gc.alive.insert(addr) {
                 T::visit_header(&item.header.header, gc);
                 T::visit_slice(&item.slice, gc);
             }
@@ -81,7 +77,7 @@ pub trait GcInternedVisit {
 
 pub trait GcInternedSliceVisit: SliceInternable {
     fn visit_header(header: &Self::Header, gc: &mut GarbageCollector);
-    fn visit_slice(header: &[Self::SliceType], gc: &mut GarbageCollector);
+    fn visit_slice(slice: &[Self::SliceType], gc: &mut GarbageCollector);
 }
 
 #[derive(Default)]
@@ -103,11 +99,13 @@ impl GarbageCollector {
         self.storages.push(&InternedSliceStorage::<T>(PhantomData));
     }
 
+    /// Collects unreachable GC-managed interned values.
+    ///
     /// # Safety
     ///
     ///  - This cannot be called if there are some not-yet-recorded type values.
-    ///  - All relevant storages must have been added; that is, within the full graph of values,
-    ///    the added storages must form a DAG.
+    ///  - All storages that can contain live GC-managed values must have been added, and those
+    ///    storages must be closed over the GC-managed values reachable from them.
     ///  - [`GcInternedVisit`] and [`GcInternedSliceVisit`] must mark all values reachable from the node.
     pub unsafe fn collect(mut self) {
         if cfg!(feature = "prevent-gc") {
@@ -136,8 +134,9 @@ impl GarbageCollector {
         &mut self,
         interned: InternedRef<'_, T>,
     ) -> ControlFlow<()> {
+        const { assert!(T::USE_GC) };
+
         if interned.strong_count() > 1 {
-            // It will be visited anyway, so short-circuit
             return ControlFlow::Break(());
         }
         let addr = interned.as_raw().addr();
@@ -148,8 +147,9 @@ impl GarbageCollector {
         &mut self,
         interned: InternedSliceRef<'_, T>,
     ) -> ControlFlow<()> {
+        const { assert!(T::USE_GC) };
+
         if interned.strong_count() > 1 {
-            // It will be visited anyway, so short-circuit
             return ControlFlow::Break(());
         }
         let addr = interned.as_raw().addr();
@@ -240,7 +240,7 @@ mod tests {
         impl GcInternedSliceVisit for StringSlice {
             fn visit_header(_header: &Self::Header, _gc: &mut GarbageCollector) {}
 
-            fn visit_slice(_header: &[Self::SliceType], _gc: &mut GarbageCollector) {}
+            fn visit_slice(_slice: &[Self::SliceType], _gc: &mut GarbageCollector) {}
         }
 
         let (a, d) = {
@@ -276,6 +276,10 @@ mod tests {
         gc.add_storage::<GcString>();
         unsafe { gc.collect() };
 
+        if !cfg!(feature = "prevent-gc") {
+            assert_eq!(<GcString as crate::Internable>::storage().get().len(), 1);
+            assert_eq!(<StringSlice as crate::SliceInternable>::storage().get().len(), 1);
+        }
         assert_eq!(a.0, "abc");
         assert_eq!(d.header.length, 2);
         assert_eq!(d.header.header, "abc");
@@ -288,6 +292,11 @@ mod tests {
         gc.add_slice_storage::<StringSlice>();
         gc.add_storage::<GcString>();
         unsafe { gc.collect() };
+
+        if !cfg!(feature = "prevent-gc") {
+            assert_eq!(<GcString as crate::Internable>::storage().get().len(), 0);
+            assert_eq!(<StringSlice as crate::SliceInternable>::storage().get().len(), 0);
+        }
     }
 
     #[test]
@@ -309,7 +318,7 @@ mod tests {
         impl GcInternedSliceVisit for StringSlice {
             fn visit_header(_header: &Self::Header, _gc: &mut GarbageCollector) {}
 
-            fn visit_slice(_header: &[Self::SliceType], _gc: &mut GarbageCollector) {}
+            fn visit_slice(_slice: &[Self::SliceType], _gc: &mut GarbageCollector) {}
         }
 
         let outer = {
@@ -322,6 +331,10 @@ mod tests {
         gc.add_storage::<GcInterned>();
         unsafe { gc.collect() };
 
+        if !cfg!(feature = "prevent-gc") {
+            assert_eq!(<GcInterned as crate::Internable>::storage().get().len(), 1);
+            assert_eq!(<StringSlice as crate::SliceInternable>::storage().get().len(), 1);
+        }
         assert_eq!(outer.0.header.header, "abc");
         assert_eq!(outer.0.slice, [123, 456, 789]);
 
@@ -331,5 +344,10 @@ mod tests {
         gc.add_slice_storage::<StringSlice>();
         gc.add_storage::<GcInterned>();
         unsafe { gc.collect() };
+
+        if !cfg!(feature = "prevent-gc") {
+            assert_eq!(<GcInterned as crate::Internable>::storage().get().len(), 0);
+            assert_eq!(<StringSlice as crate::SliceInternable>::storage().get().len(), 0);
+        }
     }
 }

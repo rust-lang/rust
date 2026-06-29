@@ -1197,12 +1197,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let a = a.load_scalar(fx);
             let b = b.load_scalar(fx);
 
-            // FIXME(bytecodealliance/wasmtime#8312): Use `fmin` directly once
-            // Cranelift backend lowerings are implemented.
-            let a = codegen_f16_f128::f16_to_f32(fx, a);
-            let b = codegen_f16_f128::f16_to_f32(fx, b);
-            let val = fx.bcx.ins().fmin(a, b);
-            let val = codegen_f16_f128::f32_to_f16(fx, val);
+            let val = codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, a, b, |fx, a, b| {
+                fx.bcx.ins().fmin(a, b)
+            });
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
             ret.write_cvalue(fx, val);
         }
@@ -1240,12 +1237,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let a = a.load_scalar(fx);
             let b = b.load_scalar(fx);
 
-            // FIXME(bytecodealliance/wasmtime#8312): Use `fmax` directly once
-            // Cranelift backend lowerings are implemented.
-            let a = codegen_f16_f128::f16_to_f32(fx, a);
-            let b = codegen_f16_f128::f16_to_f32(fx, b);
-            let val = fx.bcx.ins().fmax(a, b);
-            let val = codegen_f16_f128::f32_to_f16(fx, val);
+            let val = codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, a, b, |fx, a, b| {
+                fx.bcx.ins().fmax(a, b)
+            });
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
             ret.write_cvalue(fx, val);
         }
@@ -1371,8 +1365,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
             {
                 fx.bcx.ins().call_indirect(f_sig, f, &[data]);
 
-                let layout = fx.layout_of(fx.tcx.types.i32);
-                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I32, 0), layout);
+                let layout = fx.layout_of(fx.tcx.types.bool);
+                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I8, 0), layout);
                 ret.write_cvalue(fx, ret_val);
 
                 fx.bcx.ins().jump(ret_block, &[]);
@@ -1405,8 +1399,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
                 fx.bcx.seal_block(fallthrough_block);
                 fx.bcx.switch_to_block(fallthrough_block);
-                let layout = fx.layout_of(fx.tcx.types.i32);
-                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I32, 0), layout);
+                let layout = fx.layout_of(fx.tcx.types.bool);
+                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I8, 0), layout);
                 ret.write_cvalue(fx, ret_val);
                 fx.bcx.ins().jump(ret_block, &[]);
 
@@ -1415,8 +1409,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 fx.bcx.set_cold_block(catch_block);
                 let exception = fx.bcx.append_block_param(catch_block, pointer_ty(fx.tcx));
                 fx.bcx.ins().call_indirect(catch_fn_sig, catch_fn, &[data, exception]);
-                let layout = fx.layout_of(fx.tcx.types.i32);
-                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I32, 1), layout);
+                let layout = fx.layout_of(fx.tcx.types.bool);
+                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I8, 1), layout);
                 ret.write_cvalue(fx, ret_val);
                 fx.bcx.ins().jump(ret_block, &[]);
             }
@@ -1518,7 +1512,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         }
 
         // FIXME implement variadics in cranelift
-        sym::va_arg | sym::va_end => {
+        sym::va_arg => {
             fx.tcx.dcx().span_fatal(
                 source_info.span,
                 "Defining variadic functions is not yet supported by Cranelift",
@@ -1527,6 +1521,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         sym::cold_path => {
             fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+        }
+
+        sym::return_address => {
+            let val = fx.bcx.ins().get_return_address(fx.pointer_type);
+            let val = CValue::by_val(val, ret.layout());
+            ret.write_cvalue(fx, val);
         }
 
         // Unimplemented intrinsics must have a fallback body. The fallback body is obtained

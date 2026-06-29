@@ -57,11 +57,11 @@ fn check_nth_fix(
 pub(crate) fn check_fix_with_disabled(
     #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
     #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
-    disabled: impl Iterator<Item = String>,
+    disabled: &[&str],
 ) {
     let mut config = DiagnosticsConfig::test_sample();
     config.expr_fill_default = ExprFillDefaultMode::Default;
-    config.disabled.extend(disabled);
+    config.disabled.extend(disabled.iter().map(|&disabled| disabled.to_owned()));
     check_nth_fix_with_config(config, 0, ra_fixture_before, ra_fixture_after)
 }
 

@@ -33,11 +33,11 @@ pub fn test_cleanup() {
     }
 
     // CHECK-NOT: call
-    // CHECK: try
+    // CHECK: try_table (catch_all_ref 0)
     // CHECK: call may_panic
-    // CHECK: catch_all
-    // CHECK: rethrow
-    // CHECK: end_try
+    // CHECK: end_try_table
+    // CHECK: call log_number
+    // CHECK: throw_ref
 }
 
 // CHECK-LABEL: test_rtry:
@@ -48,7 +48,7 @@ pub fn test_rtry() {
             |_| {
                 may_panic();
             },
-            core::ptr::null_mut(),
+            core::ptr::null_mut::<u8>(),
             |data, exception| {
                 log_number(data as usize);
                 log_number(exception as usize);
@@ -57,11 +57,11 @@ pub fn test_rtry() {
     }
 
     // CHECK-NOT: call
-    // CHECK: try
+    // CHECK: try_table (catch __cpp_exception 0)
     // CHECK: call may_panic
-    // CHECK: catch
+    // CHECK: end_try_table
     // CHECK: call log_number
     // CHECK: call log_number
-    // CHECK-NOT: rethrow
-    // CHECK: end_try
+    // CHECK-NOT: throw_ref
+    // CHECK: end_function
 }

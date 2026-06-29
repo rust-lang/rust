@@ -1,0 +1,17 @@
+error[E0284]: type annotations needed
+  --> $DIR/type-const-free-anon-const-mismatch.rs:5:1
+   |
+LL | type const X: usize = const { N };
+   | ^^^^^^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
+   |
+   = note: cannot satisfy `X::{constant#0} == _`
+
+error: the constant `"this isn't a usize"` is not of type `usize`
+  --> $DIR/type-const-free-anon-const-mismatch.rs:8:1
+   |
+LL | type const N: usize = "this isn't a usize";
+   | ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

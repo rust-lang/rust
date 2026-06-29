@@ -244,6 +244,8 @@ pub fn wavefrontsize() -> u32 {
 /// Synchronize all wavefronts in a workgroup.
 ///
 /// Each wavefronts in a workgroup waits at the barrier until all wavefronts in the workgroup arrive at a barrier.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn s_barrier() {
@@ -253,6 +255,8 @@ pub fn s_barrier() {
 /// Signal a specific barrier type.
 ///
 /// Only for non-named barriers.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn s_barrier_signal<const BARRIER_TYPE: i32>() {
@@ -265,6 +269,8 @@ pub unsafe fn s_barrier_signal<const BARRIER_TYPE: i32>() {
 /// Provides access to the s_barrier_signal_first instruction;
 /// additionally ensures that the result value is valid even when
 /// the intrinsic is used from a wavefront that is not running in a workgroup.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn s_barrier_signal_isfirst<const BARRIER_TYPE: i32>() -> bool {
@@ -274,6 +280,8 @@ pub unsafe fn s_barrier_signal_isfirst<const BARRIER_TYPE: i32>() -> bool {
 /// Wait for a specific barrier type.
 ///
 /// Only for non-named barriers.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn s_barrier_wait<const BARRIER_TYPE: i16>() {
@@ -283,6 +291,8 @@ pub unsafe fn s_barrier_wait<const BARRIER_TYPE: i16>() {
 /// Get the state of a specific barrier type.
 ///
 /// The `barrier_type` argument must be uniform, otherwise behavior is undefined.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn s_get_barrier_state<const BARRIER_TYPE: i32>() -> u32 {
@@ -292,6 +302,8 @@ pub unsafe fn s_get_barrier_state<const BARRIER_TYPE: i32>() -> u32 {
 /// A barrier for only the threads within the current wavefront.
 ///
 /// Does not result in an instruction but restricts the compiler.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn wave_barrier() {
@@ -315,6 +327,8 @@ pub fn wave_barrier() {
 /// - 0x0100: All DS read instructions may be scheduled across `sched_barrier`.
 /// - 0x0200: All DS write instructions may be scheduled across `sched_barrier`.
 /// - 0x0400: All Transcendental (e.g. V_EXP) instructions may be scheduled across `sched_barrier`.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn sched_barrier<const MASK: u32>() {
@@ -345,6 +359,8 @@ pub unsafe fn sched_barrier<const MASK: u32>() {
 /// // 5 MFMA
 /// sched_group_barrier::<8, 5, 0>()
 /// ```
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn sched_group_barrier<const MASK: u32, const SIZE: u32, const SYNC_ID: u32>() {
@@ -366,6 +382,8 @@ pub fn s_sleep<const COUNT: u32>() {
 /// Stop execution of the kernel.
 ///
 /// This usually signals an error state.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn s_sethalt<const VALUE: u32>() -> ! {
@@ -407,6 +425,8 @@ pub fn mbcnt_hi(value: u32, init: u32) -> u32 {
 
 /// Returns a bitfield (`u32` or `u64`) containing the result of its i1 argument
 /// in all active lanes, and zero in all inactive lanes.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn ballot(b: bool) -> u64 {
@@ -419,6 +439,8 @@ pub fn ballot(b: bool) -> u64 {
 /// While [`ballot`] converts a `bool` to a mask, `inverse_ballot` converts a mask back to a `bool`.
 /// This means `inverse_ballot(ballot(b)) == b`.
 /// The inverse of `ballot(inverse_ballot(value)) ~= value` is not always true as inactive lanes are set to zero by `ballot`.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn inverse_ballot(value: u64) -> bool {
@@ -433,6 +455,8 @@ pub fn inverse_ballot(value: u64) -> bool {
 /// - 2: DPP
 ///
 /// If target does not support the DPP operations (e.g. gfx6/7), reduction will be performed using default iterative strategy.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn wave_reduce_umin<const STRATEGY: u32>(value: u32) -> u32 {
@@ -447,6 +471,8 @@ pub fn wave_reduce_umin<const STRATEGY: u32>(value: u32) -> u32 {
 /// - 2: DPP
 ///
 /// If target does not support the DPP operations (e.g. gfx6/7), reduction will be performed using default iterative strategy.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn wave_reduce_min<const STRATEGY: u32>(value: i32) -> i32 {
@@ -462,6 +488,8 @@ pub fn wave_reduce_min<const STRATEGY: u32>(value: i32) -> i32 {
 /// - 2: DPP
 ///
 /// If target does not support the DPP operations (e.g. gfx6/7), reduction will be performed using default iterative strategy.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn wave_reduce_umax<const STRATEGY: u32>(value: u32) -> u32 {
@@ -476,6 +504,8 @@ pub fn wave_reduce_umax<const STRATEGY: u32>(value: u32) -> u32 {
 /// - 2: DPP
 ///
 /// If target does not support the DPP operations (e.g. gfx6/7), reduction will be performed using default iterative strategy.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn wave_reduce_max<const STRATEGY: u32>(value: i32) -> i32 {
@@ -491,6 +521,8 @@ pub fn wave_reduce_max<const STRATEGY: u32>(value: i32) -> i32 {
 /// - 2: DPP
 ///
 /// If target does not support the DPP operations (e.g. gfx6/7), reduction will be performed using default iterative strategy.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn wave_reduce_add<const STRATEGY: u32>(value: u32) -> u32 {
@@ -506,6 +538,8 @@ pub fn wave_reduce_add<const STRATEGY: u32>(value: u32) -> u32 {
 /// - 2: DPP
 ///
 /// If target does not support the DPP operations (e.g. gfx6/7), reduction will be performed using default iterative strategy.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn wave_reduce_and<const STRATEGY: u32>(value: u32) -> u32 {
@@ -520,6 +554,8 @@ pub fn wave_reduce_and<const STRATEGY: u32>(value: u32) -> u32 {
 /// - 2: DPP
 ///
 /// If target does not support the DPP operations (e.g. gfx6/7), reduction will be performed using default iterative strategy.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn wave_reduce_or<const STRATEGY: u32>(value: u32) -> u32 {
@@ -534,6 +570,8 @@ pub fn wave_reduce_or<const STRATEGY: u32>(value: u32) -> u32 {
 /// - 2: DPP
 ///
 /// If target does not support the DPP operations (e.g. gfx6/7), reduction will be performed using default iterative strategy.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn wave_reduce_xor<const STRATEGY: u32>(value: u32) -> u32 {
@@ -544,12 +582,16 @@ pub fn wave_reduce_xor<const STRATEGY: u32>(value: u32) -> u32 {
 // The following intrinsics can have multiple sizes
 
 /// Get `value` from the first active lane in the wavefront.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn readfirstlane_u32(value: u32) -> u32 {
     llvm_readfirstlane_u32(value)
 }
 /// Get `value` from the first active lane in the wavefront.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn readfirstlane_u64(value: u64) -> u64 {
@@ -559,6 +601,8 @@ pub fn readfirstlane_u64(value: u64) -> u64 {
 ///
 /// The lane argument must be uniform across the currently active threads
 /// of the current wavefront. Otherwise, the result is undefined.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn readlane_u32(value: u32, lane: u32) -> u32 {
@@ -568,6 +612,8 @@ pub unsafe fn readlane_u32(value: u32, lane: u32) -> u32 {
 ///
 /// The lane argument must be uniform across the currently active threads
 /// of the current wavefront. Otherwise, the result is undefined.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn readlane_u64(value: u64, lane: u32) -> u64 {
@@ -582,6 +628,8 @@ pub unsafe fn readlane_u64(value: u64, lane: u32) -> u64 {
 ///
 /// `value` is the value returned by `lane`.
 /// `default` is the value returned by all lanes other than `lane`.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn writelane_u32(value: u32, lane: u32, default: u32) -> u32 {
@@ -596,6 +644,8 @@ pub unsafe fn writelane_u32(value: u32, lane: u32, default: u32) -> u32 {
 ///
 /// `value` is the value returned by `lane`.
 /// `default` is the value returned by all lanes other than `lane`.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn writelane_u64(value: u64, lane: u32, default: u64) -> u64 {
@@ -605,6 +655,8 @@ pub unsafe fn writelane_u64(value: u64, lane: u32, default: u64) -> u64 {
 /// Stop execution of the wavefront.
 ///
 /// This usually signals the end of a successful execution.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub fn endpgm() -> ! {
@@ -621,6 +673,8 @@ pub fn endpgm() -> ! {
 /// v_mov_b32 <dest> <old>
 /// v_mov_b32 <dest> <src> <dpp_ctrl> <row_mask> <bank_mask> <bound_ctrl>
 /// ```
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn update_dpp<
@@ -651,6 +705,8 @@ pub fn s_memrealtime() -> u64 {
 ///
 /// Reading from inactive lanes returns `0`.
 /// In case multiple values get written to the same `lane`, the value from the source lane with the higher index is taken.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn ds_permute(lane: u32, value: u32) -> u32 {
@@ -661,6 +717,8 @@ pub unsafe fn ds_permute(lane: u32, value: u32) -> u32 {
 /// Returns the `value` given to `ds_permute` by lane `lane`.
 ///
 /// Reading from inactive lanes returns `0`.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn ds_bpermute(lane: u32, value: u32) -> u32 {
@@ -680,6 +738,8 @@ pub unsafe fn perm(src0: u32, src1: u32, selector: u32) -> u32 {
 ///
 /// The third and fourth inputs must be uniform across the current wavefront.
 /// These are combined into a single 64-bit value representing lane selects used to swizzle within each row.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn permlane16_u32<const FI: bool, const BOUND_CONTROL: bool>(
@@ -696,6 +756,8 @@ pub unsafe fn permlane16_u32<const FI: bool, const BOUND_CONTROL: bool>(
 ///
 /// The third and fourth inputs must be uniform across the current wavefront.
 /// These are combined into a single 64-bit value representing lane selects used to swizzle within each row.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn permlanex16_u32<const FI: bool, const BOUND_CONTROL: bool>(
@@ -718,6 +780,8 @@ pub fn s_get_waveid_in_workgroup() -> u32 {
 /// Swap `value` between upper and lower 32 lanes in a wavefront.
 ///
 /// Does nothing for wave32.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn permlane64_u32(value: u32) -> u32 {
@@ -728,6 +792,8 @@ pub unsafe fn permlane64_u32(value: u32) -> u32 {
 /// Performs arbitrary gather-style operation within a row (16 contiguous lanes) of the second input operand.
 ///
 /// In contrast to [`permlane16_u32`], allows each lane to specify its own gather lane.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn permlane16_var<const FI: bool, const BOUND_CONTROL: bool>(
@@ -742,6 +808,8 @@ pub unsafe fn permlane16_var<const FI: bool, const BOUND_CONTROL: bool>(
 /// Performs arbitrary gather-style operation across two rows (16 contiguous lanes) of the second input operand.
 ///
 /// In contrast to [`permlanex16_u32`], allows each lane to specify its own gather lane.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn permlanex16_var<const FI: bool, const BOUND_CONTROL: bool>(
@@ -766,6 +834,8 @@ pub fn wave_id() -> u32 {
 /// Odd rows of the first operand are swapped with even rows of the second operand (one row is 16 lanes).
 /// Returns a pair for the swapped registers.
 /// The first element of the return corresponds to the swapped element of the first argument.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn permlane16_swap<const FI: bool, const BOUND_CONTROL: bool>(
@@ -782,6 +852,8 @@ pub unsafe fn permlane16_swap<const FI: bool, const BOUND_CONTROL: bool>(
 /// Rows 2 and 3 of the first operand are swapped with rows 0 and 1 of the second operand (one row is 16 lanes).
 /// Returns a pair for the swapped registers.
 /// The first element of the return corresponds to the swapped element of the first argument.
+///
+#[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
 pub unsafe fn permlane32_swap<const FI: bool, const BOUND_CONTROL: bool>(

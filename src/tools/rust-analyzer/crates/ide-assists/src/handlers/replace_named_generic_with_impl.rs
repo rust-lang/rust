@@ -26,7 +26,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 pub(crate) fn replace_named_generic_with_impl(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     // finds `<P: AsRef<Path>>`
     let type_param = ctx.find_node_at_offset::<ast::TypeParam>()?;
@@ -34,7 +34,7 @@ pub(crate) fn replace_named_generic_with_impl(
     let type_param_name = type_param.name()?;
 
     // The list of type bounds / traits: `AsRef<Path>`
-    let type_bound_list = type_param.type_bound_list()?;
+    let type_bound_list = type_param.type_bound_list();
 
     let fn_ = type_param.syntax().ancestors().find_map(ast::Fn::cast)?;
     let param_list_text_range = fn_.param_list()?.syntax().text_range();
@@ -89,6 +89,8 @@ pub(crate) fn replace_named_generic_with_impl(
                 }
             }
 
+            let type_bound_list = type_bound_list
+                .unwrap_or_else(|| make.type_bound_list([make.type_bound_text("Sized")]).unwrap());
             let new_bounds = make.impl_trait_type(type_bound_list);
             for path_type in path_types_to_replace.iter().rev() {
                 editor.replace(path_type.syntax(), new_bounds.syntax());
@@ -309,6 +311,15 @@ mod tests {
             replace_named_generic_with_impl,
             r#"fn new<A: Send, B$0: ToString, C: Debug>(a: A, b: B, c: C) -> Self {}"#,
             r#"fn new<A: Send, C: Debug>(a: A, b: impl ToString, c: C) -> Self {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_generic_without_bounds() {
+        check_assist(
+            replace_named_generic_with_impl,
+            r#"fn foo<T$0>(input: T) {}"#,
+            r#"fn foo(input: impl Sized) {}"#,
         );
     }
 

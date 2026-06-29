@@ -1,6 +1,6 @@
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::ty::{has_iter_method, implements_trait};
-use clippy_utils::{get_parent_expr, is_integer_const, sugg};
+use clippy_utils::{get_parent_expr, is_integer_literal, sugg};
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_local};
@@ -46,6 +46,17 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for IncrementVisitor<'_, 'tcx> {
+    fn visit_local(&mut self, l: &'tcx LetStmt<'tcx>) {
+        if let Some(init) = l.init {
+            self.visit_expr(init);
+            if let Some(els) = l.els {
+                self.depth += 1;
+                self.visit_block(els);
+                self.depth -= 1;
+            }
+        }
+    }
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // If node is a variable
         if let Some(def_id) = expr.res_local_id() {
@@ -59,7 +70,7 @@ impl<'tcx> Visitor<'tcx> for IncrementVisitor<'_, 'tcx> {
                 match parent.kind {
                     ExprKind::AssignOp(op, lhs, rhs) if lhs.hir_id == expr.hir_id => {
                         *state = if op.node == AssignOpKind::AddAssign
-                            && is_integer_const(self.cx, rhs, 1)
+                            && is_integer_literal(rhs, 1)
                             && *state == IncrementVisitorVarState::Initial
                             && self.depth == 0
                         {

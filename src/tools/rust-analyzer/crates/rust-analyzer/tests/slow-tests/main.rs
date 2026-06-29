@@ -1543,6 +1543,45 @@ version = "0.0.0"
 }
 
 #[test]
+fn test_evaluate_predicate() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+trait Trait {}
+struct S;
+impl Trait for S {}
+
+fn test<T: Trait>() {
+    let _ = 0;$0
+}
+"#,
+    )
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    let res = server.send_request::<rust_analyzer::lsp::ext::EvaluatePredicate>(
+        rust_analyzer::lsp::ext::EvaluatePredicateParams {
+            text: "T: Trait".to_owned(),
+            text_document: server.doc_id("src/lib.rs"),
+            position: Position::new(5, 14),
+        },
+    );
+
+    let res: rust_analyzer::lsp::ext::EvaluatePredicateResult =
+        serde_json::from_value(res).unwrap();
+    assert_eq!(res.status, rust_analyzer::lsp::ext::PredicateEvaluationStatus::Holds);
+}
+
+#[test]
 fn test_get_failed_obligations() {
     use expect_test::expect;
     if skip_slow_tests() {

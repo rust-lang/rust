@@ -26,7 +26,7 @@ note: cycle used when building specialization graph of trait `Tr`
    |
 LL | trait Tr<T = u8> {
    | ^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:16:6

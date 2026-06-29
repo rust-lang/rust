@@ -1,7 +1,7 @@
-use rustc_macros::HashStable_Generic;
+use rustc_macros::StableHash;
 use rustc_span::{Symbol, sym};
 
-#[derive(Clone, Debug, Copy, Eq, PartialEq, HashStable_Generic)]
+#[derive(Clone, Debug, Copy, Eq, PartialEq, StableHash)]
 pub enum AllocatorKind {
     /// Use `#[global_allocator]` as global allocator.
     Global,

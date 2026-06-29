@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::manual_ilog2)]
-#![allow(clippy::unnecessary_operation)]
+#![expect(clippy::unnecessary_operation)]
 
 use proc_macros::{external, with_span};
 

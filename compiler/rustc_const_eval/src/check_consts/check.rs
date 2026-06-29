@@ -570,7 +570,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         match rvalue {
             Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
 
-            Rvalue::Use(_)
+            Rvalue::Use(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Discriminant(..) => {}
@@ -608,6 +608,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if borrowed_place_has_mut_interior && self.place_may_escape(place) {
                     self.check_op(ops::EscapingCellBorrow);
                 }
+            }
+
+            Rvalue::Reborrow(..) => {
+                // FIXME(reborrow): figure out if this is relevant at all.
             }
 
             Rvalue::RawPtr(RawPtrKind::FakeForPtrMetadata, place) => {
@@ -665,7 +669,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, box (lhs, rhs)) => {
+            Rvalue::BinaryOp(op, (lhs, rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -725,7 +729,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::Retag { .. }
             | StatementKind::PlaceMention(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
@@ -776,7 +779,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // to do different checks than usual.
 
                     trace!("attempting to call a trait method");
-                    let is_const = tcx.constness(callee) == hir::Constness::Const;
+                    let is_const =
+                        matches!(tcx.constness(callee), hir::Constness::Const { always: false });
 
                     // Only consider a trait to be const if the const conditions hold.
                     // Otherwise, it's really misleading to call something "conditionally"

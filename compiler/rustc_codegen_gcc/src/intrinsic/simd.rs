@@ -16,8 +16,8 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_middle::ty::{self, Ty, Unnormalized};
-use rustc_span::{Span, Symbol, sym};
+use rustc_middle::ty::{self, Ty};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::builder::Builder;
 #[cfg(not(feature = "master"))]
@@ -32,12 +32,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     ret_ty: Ty<'tcx>,
     llret_ty: Type<'gcc>,
     span: Span,
-) -> Result<RValue<'gcc>, ()> {
+) -> Result<RValue<'gcc>, ErrorGuaranteed> {
     // macros for error handling:
     macro_rules! return_error {
         ($err:expr) => {{
-            bx.tcx.dcx().emit_err($err);
-            return Err(());
+            let err = bx.tcx.dcx().emit_err($err);
+            return Err(err);
         }};
     }
     macro_rules! require {
@@ -539,10 +539,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(
-                        ty::TypingEnv::fully_monomorphized(),
-                        Unnormalized::new_wip(ty),
-                    )
+                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
                 });
                 require!(
                     metadata.is_unit(),
@@ -556,10 +553,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(
-                        ty::TypingEnv::fully_monomorphized(),
-                        Unnormalized::new_wip(ty),
-                    )
+                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
                 });
                 require!(
                     metadata.is_unit(),
@@ -809,11 +803,11 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         bx: &mut Builder<'_, 'gcc, 'tcx>,
         span: Span,
         args: &[OperandRef<'tcx, RValue<'gcc>>],
-    ) -> Result<RValue<'gcc>, ()> {
+    ) -> Result<RValue<'gcc>, ErrorGuaranteed> {
         macro_rules! return_error {
             ($err:expr) => {{
-                bx.tcx.dcx().emit_err($err);
-                return Err(());
+                let err = bx.tcx.dcx().emit_err($err);
+                return Err(err);
             }};
         }
         let ty::Float(ref f) = *in_elem.kind() else {
@@ -828,7 +822,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 return_error!(InvalidMonomorphization::FloatingPointVector {
                     span,
                     name,
-                    f_ty: *f,
+                    f_ty: f.name_str().to_string(),
                     in_ty
                 });
             }
@@ -1422,7 +1416,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     );
 
     macro_rules! minmax_red {
-        ($name:ident: $int_red:ident, $float_red:ident) => {
+        ($name:ident: $int_red:ident) => {
             if name == sym::$name {
                 require!(
                     ret_ty == in_elem,
@@ -1430,7 +1424,6 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 );
                 return match *in_elem.kind() {
                     ty::Int(_) | ty::Uint(_) => Ok(bx.$int_red(args[0].immediate())),
-                    ty::Float(_) => Ok(bx.$float_red(args[0].immediate())),
                     _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
                         span,
                         name,
@@ -1444,8 +1437,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         };
     }
 
-    minmax_red!(simd_reduce_min: vector_reduce_min, vector_reduce_fmin);
-    minmax_red!(simd_reduce_max: vector_reduce_max, vector_reduce_fmax);
+    minmax_red!(simd_reduce_min: vector_reduce_min);
+    minmax_red!(simd_reduce_max: vector_reduce_max);
 
     macro_rules! bitwise_red {
         ($name:ident : $op:expr, $boolean:expr) => {

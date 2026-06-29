@@ -20,7 +20,7 @@ use crate::{
 // ```
 // fn t() {}
 // ```
-pub(crate) fn move_from_mod_rs(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn move_from_mod_rs(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let source_file = ctx.find_node_at_offset::<ast::SourceFile>()?;
     let module = ctx.sema.file_to_module_def(ctx.vfs_file_id())?;
     // Enable this assist if the user select all "meaningful" content in the source file

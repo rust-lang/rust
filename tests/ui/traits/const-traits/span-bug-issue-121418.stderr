@@ -1,8 +1,8 @@
 error: redundant `const` fn marker in const impl
   --> $DIR/span-bug-issue-121418.rs:7:9
    |
-LL | impl const dyn T {
-   |      ----- this declares all associated functions implicitly const
+LL | const impl dyn T {
+   | ----- this declares all associated functions implicitly const
 LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    |         ^^^^^^ help: remove the `const`
 

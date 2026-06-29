@@ -14,7 +14,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     pub(super) fn lex_token_trees(
         &mut self,
         is_delimited: bool,
-    ) -> Result<(Spacing, TokenStream), Vec<Diag<'psess>>> {
+    ) -> Result<(Spacing, TokenStream), Diag<'psess>> {
         // Move past the opening delimiter.
         let open_spacing = self.bump_minimal();
 
@@ -35,11 +35,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 return if is_delimited {
                     Ok((open_spacing, TokenStream::new(buf)))
                 } else {
-                    Err(vec![self.close_delim_err(delim)])
+                    Err(self.close_delim_err(delim))
                 };
             } else if self.token.kind == token::Eof {
                 return if is_delimited {
-                    Err(vec![self.eof_err()])
+                    Err(self.eof_err())
                 } else {
                     Ok((open_spacing, TokenStream::new(buf)))
                 };
@@ -54,7 +54,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     fn lex_token_tree_open_delim(
         &mut self,
         open_delim: Delimiter,
-    ) -> Result<TokenTree, Vec<Diag<'psess>>> {
+    ) -> Result<TokenTree, Diag<'psess>> {
         // The span for beginning of the delimited section.
         let pre_span = self.token.span;
 

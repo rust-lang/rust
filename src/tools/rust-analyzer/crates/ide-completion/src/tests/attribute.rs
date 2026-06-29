@@ -64,7 +64,7 @@ pub struct Foo(#[m$0] i32);
             at unsafe(…)
             at used
             at warn(…)
-            md mac
+            md mac::
             kw crate::
             kw self::
         "#]],
@@ -128,7 +128,7 @@ pub struct Foo(#[$0] i32);
             at unsafe(…)
             at used
             at warn(…)
-            md mac
+            md mac::
             kw crate::
             kw self::
         "#]],
@@ -162,7 +162,7 @@ struct Foo;
             at repr(…)
             at unsafe(…)
             at warn(…)
-            md proc_macros
+            md proc_macros::
             kw crate::
             kw self::
         "#]],
@@ -463,7 +463,7 @@ struct Foo;
             at repr(…)
             at unsafe(…)
             at warn(…)
-            md core
+            md core::
             kw crate::
             kw self::
         "#]],
@@ -1137,7 +1137,7 @@ mod derive {
                 de PartialEq, Eq
                 de PartialEq, Eq, PartialOrd, Ord
                 de PartialEq, PartialOrd
-                md core
+                md core::
                 kw crate::
                 kw self::
             "#]],
@@ -1159,7 +1159,7 @@ mod derive {
                 de Eq
                 de Eq, PartialOrd, Ord
                 de PartialOrd
-                md core
+                md core::
                 kw crate::
                 kw self::
             "#]],
@@ -1181,7 +1181,7 @@ mod derive {
                 de Eq
                 de Eq, PartialOrd, Ord
                 de PartialOrd
-                md core
+                md core::
                 kw crate::
                 kw self::
             "#]],
@@ -1202,7 +1202,7 @@ mod derive {
                 de Default macro Default
                 de PartialOrd
                 de PartialOrd, Ord
-                md core
+                md core::
                 kw crate::
                 kw self::
             "#]],
@@ -1219,8 +1219,8 @@ mod derive {
 "#,
             expect![[r#"
                 de DeriveIdentity (use proc_macros::DeriveIdentity) proc_macro DeriveIdentity
-                md core
-                md proc_macros
+                md core::
+                md proc_macros::
                 kw crate::
                 kw self::
             "#]],
@@ -1234,8 +1234,8 @@ use proc_macros::DeriveIdentity;
 "#,
             expect![[r#"
                 de DeriveIdentity proc_macro DeriveIdentity
-                md core
-                md proc_macros
+                md core::
+                md proc_macros::
                 kw crate::
                 kw self::
             "#]],

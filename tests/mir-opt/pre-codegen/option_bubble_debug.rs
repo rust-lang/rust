@@ -5,7 +5,7 @@
 #![crate_type = "lib"]
 #![feature(try_blocks)]
 
-// EMIT_MIR option_bubble_debug.option_direct.PreCodegen.after.mir
+// EMIT_MIR option_bubble_debug.option_direct.runtime-optimized.after.mir
 pub fn option_direct(x: Option<u32>) -> Option<u32> {
     // CHECK-LABEL: fn option_direct(_1: Option<u32>) -> Option<u32>
     // CHECK: = discriminant(_1);
@@ -18,7 +18,7 @@ pub fn option_direct(x: Option<u32>) -> Option<u32> {
     }
 }
 
-// EMIT_MIR option_bubble_debug.option_traits.PreCodegen.after.mir
+// EMIT_MIR option_bubble_debug.option_traits.runtime-optimized.after.mir
 pub fn option_traits(x: Option<u32>) -> Option<u32> {
     // CHECK-LABEL: fn option_traits(_1: Option<u32>) -> Option<u32>
     // CHECK: = <Option<u32> as Try>::branch(copy _1)

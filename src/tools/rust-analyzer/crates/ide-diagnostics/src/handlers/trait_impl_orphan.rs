@@ -6,7 +6,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // Only traits defined in the current crate can be implemented for arbitrary types
 pub(crate) fn trait_impl_orphan(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TraitImplOrphan,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(

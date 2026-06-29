@@ -298,7 +298,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             error.code,
             FulfillmentErrorCode::Select(crate::traits::SelectionError::Unimplemented)
                 | FulfillmentErrorCode::Project(_)
-        ) && self.apply_do_not_recommend(&mut error.obligation)
+        ) && self.apply_do_not_recommend(&mut error.obligation, &error.root_obligation)
         {
             error.code = FulfillmentErrorCode::Select(SelectionError::Unimplemented);
         }
@@ -577,8 +577,9 @@ pub fn report_dyn_incompatibility<'tcx>(
     let trait_str = tcx.def_path_str(trait_def_id);
     let trait_span = tcx.hir_get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => match item.kind {
-            hir::ItemKind::Trait(_, _, _, _, ident, ..)
-            | hir::ItemKind::TraitAlias(_, ident, _, _) => Some(ident.span),
+            hir::ItemKind::Trait { ident, .. } | hir::ItemKind::TraitAlias(_, ident, _, _) => {
+                Some(ident.span)
+            }
             _ => unreachable!(),
         },
         _ => None,

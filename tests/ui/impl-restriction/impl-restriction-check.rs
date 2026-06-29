@@ -3,7 +3,6 @@
 //@ [e2015] edition: 2015
 //@ [e2018] edition: 2018..
 #![feature(impl_restriction)]
-#![expect(incomplete_features)]
 
 extern crate external_impl_restriction as external;
 

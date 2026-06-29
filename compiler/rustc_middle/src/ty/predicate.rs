@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, extension};
+use rustc_macros::{StableHash, extension};
 use rustc_type_ir as ir;
 
 use crate::ty::{self, EarlyBinder, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom, WithCachedTypeInfo};
@@ -40,7 +40,7 @@ pub type PolyProjectionPredicate<'tcx> = ty::Binder<'tcx, ProjectionPredicate<'t
 /// predicate which is emitted when a type is coerced to a trait object.
 ///
 /// Use this rather than `PredicateKind`, whenever possible.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash)]
 #[rustc_pass_by_value]
 pub struct Predicate<'tcx>(
     pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
@@ -113,7 +113,7 @@ impl<'tcx> Predicate<'tcx> {
 impl<'tcx> rustc_errors::IntoDiagArg for Predicate<'tcx> {
     fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         ty::tls::with(|tcx| {
-            let pred = tcx.short_string(self, path);
+            let pred = tcx.short_string(tcx.lift(self), path);
             rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(pred))
         })
     }
@@ -122,7 +122,7 @@ impl<'tcx> rustc_errors::IntoDiagArg for Predicate<'tcx> {
 impl<'tcx> rustc_errors::IntoDiagArg for Clause<'tcx> {
     fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         ty::tls::with(|tcx| {
-            let clause = tcx.short_string(self, path);
+            let clause = tcx.short_string(tcx.lift(self), path);
             rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(clause))
         })
     }
@@ -131,7 +131,7 @@ impl<'tcx> rustc_errors::IntoDiagArg for Clause<'tcx> {
 /// A subset of predicates which can be assumed by the trait solver. They show up in
 /// an item's where clauses, hence the name `Clause`, and may either be user-written
 /// (such as traits) or may be inserted during lowering.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash)]
 #[rustc_pass_by_value]
 pub struct Clause<'tcx>(
     pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
@@ -419,7 +419,7 @@ impl<'tcx> Clause<'tcx> {
         let shifted_pred =
             tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
         // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder::bind(shifted_pred)
+        let new = EarlyBinder::bind(tcx, shifted_pred)
             .instantiate(tcx, trait_ref.skip_binder().args)
             .skip_norm_wip();
         // 3) ['x] + ['b] -> ['x, 'b]
@@ -644,6 +644,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(PredicateKind<'_>, 40);
-    static_assert_size!(WithCachedTypeInfo<PredicateKind<'_>>, 64);
+    static_assert_size!(WithCachedTypeInfo<PredicateKind<'_>>, 48);
     // tidy-alphabetical-end
 }

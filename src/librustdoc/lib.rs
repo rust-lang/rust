@@ -5,7 +5,7 @@
 )]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]
@@ -13,8 +13,10 @@
 #![feature(rustc_private)]
 #![feature(test)]
 #![feature(trim_prefix_suffix)]
+#![feature(variant_count)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
+#![warn(rustc::symbol_intern_string_literal)]
 // tidy-alphabetical-end
 
 // N.B. these need `extern crate` even in 2018 edition
@@ -457,6 +459,14 @@ fn opts() -> Vec<RustcOptGroup> {
                 By default, it is at `forbid` level.",
             "LEVEL",
         ),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "remap-path-prefix",
+            "Remap source names in compiler messages",
+            "FROM=TO",
+        ),
         opt(Unstable, Opt, "", "index-page", "Markdown file to be used as index page", "PATH"),
         opt(
             Unstable,
@@ -533,7 +543,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         opt(
-            Unstable,
+            Stable,
             Multi,
             "",
             "emit",
@@ -548,14 +558,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "merge-doctests",
             "Force all doctests to be compiled as a single binary, instead of one binary per test. If merging fails, rustdoc will emit a hard error.",
             "yes|no|auto",
-        ),
-        opt(
-            Unstable,
-            Multi,
-            "",
-            "remap-path-prefix",
-            "Remap source names in compiler messages",
-            "FROM=TO",
         ),
         opt(
             Unstable,
@@ -869,9 +871,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                     };
                     rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
                         let has_dep_info = render_options.dep_info().is_some();
-                        if render_options.emit.contains(&EmitType::HtmlNonStaticFiles)
-                            || render_options.emit.is_empty()
-                        {
+                        if render_options.emit.contains(&EmitType::HtmlNonStaticFiles) {
                             markdown::render_and_write(file, render_options, edition)?;
                         }
                         if has_dep_info {

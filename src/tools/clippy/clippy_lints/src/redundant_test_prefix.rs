@@ -144,7 +144,7 @@ fn name_conflicts<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, fn_name: S
 
     // Also check that within the body of the function there is also no function call
     // with the same name (since it will result in recursion)
-    for_each_expr(cx, body, |expr| {
+    for_each_expr(cx.tcx, body, |expr| {
         if let ExprKind::Path(qpath) = &expr.kind
             && let Some(def_id) = cx.qpath_res(qpath, expr.hir_id).opt_def_id()
             && let Some(name) = tcx.opt_item_name(def_id)

@@ -382,7 +382,6 @@ impl WorkspaceBuildScripts {
                     }
                     Message::CompilerArtifact(message) => {
                         with_output_for(&message.package_id, &mut |name, data| {
-                            progress(format!("proc-macro {name} built"));
                             if data.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt {
                                 data.proc_macro_dylib_path = ProcMacroDylibPath::NotProcMacro;
                             }
@@ -392,6 +391,7 @@ impl WorkspaceBuildScripts {
                                     .kind
                                     .contains(&cargo_metadata::TargetKind::ProcMacro)
                             {
+                                progress(format!("proc-macro {name} built"));
                                 data.proc_macro_dylib_path =
                                     match message.filenames.iter().find(|file| is_dylib(file)) {
                                         Some(filename) => {
@@ -560,7 +560,7 @@ impl WorkspaceBuildScripts {
 
 // FIXME: Find a better way to know if it is a dylib.
 fn is_dylib(path: &Utf8Path) -> bool {
-    match path.extension().map(|e| e.to_owned().to_lowercase()) {
+    match path.extension().map(|e| e.to_ascii_lowercase()) {
         None => false,
         Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
     }

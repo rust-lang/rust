@@ -1,5 +1,5 @@
 //@ needs-asm-support
-//@ only-x86_64
+//@ needs-asm-ret
 
 // tests that `va_start` is not injected into naked functions
 

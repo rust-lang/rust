@@ -137,6 +137,7 @@ register_builtin! {
     (const_format_args, ConstFormatArgs) => format_args_expand,
     (format_args_nl, FormatArgsNl) => format_args_nl_expand,
     (quote, Quote) => quote_expand,
+    (pattern_type, PatternType) => pattern_type_expand,
 
     EagerExpander:
     (compile_error, CompileError) => compile_error_expand,
@@ -357,7 +358,7 @@ fn cfg_select_expand(
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let loc = db.lookup_intern_macro_call(id);
+    let loc = id.loc(db);
     let cfg_options = loc.krate.cfg_options(db);
 
     let mut iter = tt.iter();
@@ -446,7 +447,7 @@ fn cfg_expand(
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let loc = db.lookup_intern_macro_call(id);
+    let loc = id.loc(db);
     let expr = CfgExpr::parse(tt);
     let enabled = loc.krate.cfg_options(db).check(&expr) != Some(false);
     let expanded = if enabled { quote!(span=>true) } else { quote!(span=>false) };
@@ -518,7 +519,7 @@ fn use_panic_2021(db: &dyn ExpandDatabase, span: Span) -> bool {
         let Some(expn) = span.ctx.outer_expn(db) else {
             break false;
         };
-        let expn = db.lookup_intern_macro_call(expn.into());
+        let expn = crate::MacroCallId::from(expn).loc(db);
         // FIXME: Record allow_internal_unstable in the macro def (not been done yet because it
         // would consume quite a bit extra memory for all call locs...)
         // if let Some(features) = expn.def.allow_internal_unstable {
@@ -764,7 +765,7 @@ fn relative_file(
     allow_recursion: bool,
     err_span: Span,
 ) -> Result<EditionedFileId, ExpandError> {
-    let lookup = db.lookup_intern_macro_call(call_id);
+    let lookup = call_id.loc(db);
     let call_site = lookup.kind.file_id().original_file_respecting_includes(db).file_id(db);
     let path = AnchoredPath { anchor: call_site, path: path_str };
     let res: FileId = db
@@ -851,17 +852,9 @@ fn include_bytes_expand(
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
     // FIXME: actually read the file here if the user asked for macro expansion
-    let underscore = sym::underscore;
-    let zero = tt::Literal {
-        text_and_suffix: sym::_0_u8,
-        span,
-        kind: tt::LitKind::Integer,
-        suffix_len: 3,
-    };
-    // We don't use a real length since we can't know the file length, so we use an underscore
-    // to infer it.
+    let pound = mk_pound(span);
     let res = quote! {span =>
-        &[#zero; #underscore]
+        builtin #pound include_bytes
     };
     ExpandResult::ok(res)
 }
@@ -900,7 +893,7 @@ fn include_str_expand(
 }
 
 fn get_env_inner(db: &dyn ExpandDatabase, arg_id: MacroCallId, key: &Symbol) -> Option<String> {
-    let krate = db.lookup_intern_macro_call(arg_id).krate;
+    let krate = arg_id.loc(db).krate;
     krate.env(db).get(key.as_str())
 }
 
@@ -993,4 +986,16 @@ fn unescape_str(s: &str) -> Cow<'_, str> {
     } else {
         Cow::Borrowed(s)
     }
+}
+
+fn pattern_type_expand(
+    _db: &dyn ExpandDatabase,
+    _arg_id: MacroCallId,
+    tt: &tt::TopSubtree,
+    call_site: Span,
+) -> ExpandResult<tt::TopSubtree> {
+    let mut tt = tt.clone();
+    tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
+    let pound = mk_pound(call_site);
+    ExpandResult::ok(quote! {call_site => builtin #pound pattern_type ( #tt ) })
 }

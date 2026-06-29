@@ -1,5 +1,5 @@
 #![warn(clippy::manual_pop_if)]
-#![allow(clippy::collapsible_if, clippy::redundant_closure)]
+#![expect(clippy::collapsible_if)]
 //@no-rustfix
 
 fn main() {}

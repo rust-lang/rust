@@ -97,7 +97,7 @@ The best way for drivers to get access to this is by overriding the
 
 Within the compiler, for performance reasons, we usually do not register dozens
 of lint passes. Instead, we have a single lint pass of each variety (e.g.,
-`BuiltinCombinedModuleLateLintPass`) which will internally call all of the
+`BuiltinCombinedLateLintModPass`) which will internally call all of the
 individual lint passes; this is because then we get the benefits of static over
 dynamic dispatch for each of the (often empty) trait methods.
 

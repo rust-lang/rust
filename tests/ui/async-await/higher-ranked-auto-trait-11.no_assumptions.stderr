@@ -11,7 +11,10 @@ error: implementation of `Send` is not general enough
   --> $DIR/higher-ranked-auto-trait-11.rs:27:9
    |
 LL |         Box::pin(async move { <T as Foo<'a>>::foo().await })
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Send` is not general enough
+   |         ^^^^^^^^^----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |        |
+   |         |        this async block captures a value whose type is not `Send`
+   |         implementation of `Send` is not general enough
    |
    = note: `Send` would have to be implemented for the type `<T as Foo<'0>>::Future`, for any lifetime `'0`...
    = note: ...but `Send` is actually implemented for the type `<T as Foo<'1>>::Future`, for some specific lifetime `'1`

@@ -474,6 +474,57 @@ impl TcpStream {
         self.0.linger()
     }
 
+    /// Sets the value of the `SO_KEEPALIVE` option on this socket.
+    ///
+    /// If set to `true`, the operating system will periodically send keepalive
+    /// probes on an idle connection to verify that the remote peer is still
+    /// reachable. If the peer fails to respond after a system-determined number
+    /// of probes, the connection is considered broken and subsequent I/O calls
+    /// will return an error.
+    ///
+    /// This is useful for detecting dead peers on long-lived connections where
+    /// no application-level traffic is exchanged, such as database or SSH
+    /// connections.
+    ///
+    /// The timing and frequency of keepalive probes are controlled by
+    /// system-level settings and are not configured by this method alone.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(tcp_keepalive)]
+    ///
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_keepalive(true).expect("set_keepalive call failed");
+    #[unstable(feature = "tcp_keepalive", issue = "155889")]
+    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+        self.0.set_keepalive(keepalive)
+    }
+
+    /// Gets the value of the `SO_KEEPALIVE` option on this socket.
+    ///
+    /// For more information about this option, see [`TcpStream::set_keepalive`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(tcp_keepalive)]
+    ///
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_keepalive(true).expect("set_keepalive call failed");
+    /// assert_eq!(stream.keepalive().unwrap_or(false), true);
+    /// ```
+    #[unstable(feature = "tcp_keepalive", issue = "155889")]
+    pub fn keepalive(&self) -> io::Result<bool> {
+        self.0.keepalive()
+    }
+
     /// Sets the value of the `TCP_NODELAY` option on this socket.
     ///
     /// If set, this option disables the Nagle algorithm. This means that
@@ -631,7 +682,7 @@ impl Read for TcpStream {
         self.0.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0.read_buf(buf)
     }
 
@@ -670,7 +721,7 @@ impl Read for &TcpStream {
         self.0.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0.read_buf(buf)
     }
 
@@ -825,6 +876,29 @@ impl TcpListener {
     /// is established. When established, the corresponding [`TcpStream`] and the
     /// remote peer's address will be returned.
     ///
+    /// # Errors
+    ///
+    /// Some errors this function returns do not indicate a problem with the
+    /// listener itself, and a program serving a long-lived listener will
+    /// usually want to handle them and keep accepting connections rather than
+    /// treat them as fatal. These include, but are not limited to:
+    ///
+    /// - An error specific to a single incoming connection that failed before
+    ///   it could be accepted, such as one aborted by the peer
+    ///   ([`ConnectionAborted`]). A later call may succeed immediately.
+    /// - An error from reaching the per-process or system-wide open file
+    ///   descriptor limit. The call can be retried once other file descriptors
+    ///   have been closed, typically after a short delay.
+    /// - An error from failing to allocate memory while accepting a connection
+    ///   ([`OutOfMemory`]).
+    ///
+    /// Which errors can occur is platform-specific. On Unix, [`Interrupted`]
+    /// errors are retried internally rather than being returned.
+    ///
+    /// [`ConnectionAborted`]: io::ErrorKind::ConnectionAborted
+    /// [`OutOfMemory`]: io::ErrorKind::OutOfMemory
+    /// [`Interrupted`]: io::ErrorKind::Interrupted
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -850,6 +924,11 @@ impl TcpListener {
     /// The returned iterator will never return [`None`] and will also not yield
     /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
     /// calling [`TcpListener::accept`] in a loop.
+    ///
+    /// # Errors
+    ///
+    /// Each connection yielded by the iterator can fail for the same reasons as
+    /// [`TcpListener::accept`]; see its documentation for details.
     ///
     /// # Examples
     ///
@@ -885,6 +964,11 @@ impl TcpListener {
     /// The returned iterator will never return [`None`] and will also not yield
     /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
     /// calling [`TcpListener::accept`] in a loop.
+    ///
+    /// # Errors
+    ///
+    /// Each connection yielded by the iterator can fail for the same reasons as
+    /// [`TcpListener::accept`]; see its documentation for details.
     ///
     /// # Examples
     ///

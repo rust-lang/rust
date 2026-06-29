@@ -9,16 +9,13 @@ help: you might be missing a type parameter
 LL | fn test<Subset>() {
    |        ++++++++
 
-error[E0517]: attribute should be applied to a struct or union
-  --> $DIR/thaw-transmute-invalid-enum.rs:22:11
+error: `#[repr(packed)]` attribute cannot be used on enums
+  --> $DIR/thaw-transmute-invalid-enum.rs:22:1
    |
-LL |   #[repr(C, packed(2))]
-   |             ^^^^^^^^^
-LL |
-LL | / enum OxFF {
-LL | |     V = 0xFF,
-LL | | }
-   | |_- not a struct or union
+LL | #[repr(C, packed(2))]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(packed)]` can be applied to structs and unions
 
 error[E0658]: use of unstable library feature `transmutability`
   --> $DIR/thaw-transmute-invalid-enum.rs:4:20
@@ -75,5 +72,5 @@ LL |         a: std::mem::ManuallyDrop<Ox00>,
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0425, E0517, E0658, E0740.
+Some errors have detailed explanations: E0425, E0658, E0740.
 For more information about an error, try `rustc --explain E0425`.

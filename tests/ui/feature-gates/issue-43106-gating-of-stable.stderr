@@ -1,45 +1,130 @@
-error[E0734]: stability attributes may not be used outside of the standard library
+error[E0658]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:7:1
    |
 LL | #![stable()]
    | ^^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-stable.rs:10:1
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-stable.rs:7:1
+   |
+LL | #![stable()]
+   | ^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-stable.rs:7:1
+   |
+LL | #![stable()]
+   | ^^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:12:1
    |
 LL | #[stable()]
    | ^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-stable.rs:14:9
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-stable.rs:12:1
+   |
+LL | #[stable()]
+   | ^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-stable.rs:12:1
+   |
+LL | #[stable()]
+   | ^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:18:9
    |
 LL |         #![stable()]
    |         ^^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-stable.rs:18:5
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-stable.rs:18:9
+   |
+LL |         #![stable()]
+   |         ^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-stable.rs:18:9
+   |
+LL |         #![stable()]
+   |         ^^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:24:5
    |
 LL |     #[stable()]
    |     ^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-stable.rs:22:5
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-stable.rs:24:5
    |
 LL |     #[stable()]
    |     ^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-stable.rs:26:5
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-stable.rs:24:5
    |
 LL |     #[stable()]
    |     ^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
+error[E0658]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:30:5
    |
 LL |     #[stable()]
    |     ^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-stable.rs:30:5
+   |
+LL |     #[stable()]
+   |     ^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0734`.
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-stable.rs:30:5
+   |
+LL |     #[stable()]
+   |     ^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:36:5
+   |
+LL |     #[stable()]
+   |     ^^^^^^^^^^^
+
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-stable.rs:36:5
+   |
+LL |     #[stable()]
+   |     ^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-stable.rs:36:5
+   |
+LL |     #[stable()]
+   |     ^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:42:5
+   |
+LL |     #[stable()]
+   |     ^^^^^^^^^^^
+
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-stable.rs:42:5
+   |
+LL |     #[stable()]
+   |     ^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-stable.rs:42:5
+   |
+LL |     #[stable()]
+   |     ^^^^^^^^^^^
+
+error: aborting due to 21 previous errors
+
+Some errors have detailed explanations: E0542, E0546, E0658.
+For more information about an error, try `rustc --explain E0542`.

@@ -1,6 +1,5 @@
 //@check-pass
 
-#![allow(clippy::all, clippy::pedantic, clippy::restriction, clippy::nursery)]
 #![forbid(clippy::ptr_as_ptr)]
 
 /// MSRV checking in late passes skips checking the parent nodes if no early pass sees a

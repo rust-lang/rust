@@ -115,7 +115,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
         Err(errs) => {
             // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
             // because the delimiter mismatch is more likely to be the root cause of error
-            unmatched_closing_delims.extend(errs);
+            unmatched_closing_delims.push(errs);
             Err(unmatched_closing_delims)
         }
     }

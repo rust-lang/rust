@@ -11,11 +11,13 @@ pub(crate) fn prepare(dirs: &Dirs) {
     std::fs::create_dir_all(&dirs.download_dir).unwrap();
     crate::tests::RAND_REPO.fetch(dirs);
     crate::tests::REGEX_REPO.fetch(dirs);
+    crate::tests::GRAVIOLA_REPO.fetch(dirs);
 }
 
 pub(crate) struct GitRepo {
     url: GitRepoUrl,
     rev: &'static str,
+    submodules: &'static [&'static str],
     content_hash: &'static str,
     patch_name: &'static str,
 }
@@ -71,10 +73,17 @@ impl GitRepo {
         user: &'static str,
         repo: &'static str,
         rev: &'static str,
+        submodules: &'static [&'static str],
         content_hash: &'static str,
         patch_name: &'static str,
     ) -> GitRepo {
-        GitRepo { url: GitRepoUrl::Github { user, repo }, rev, content_hash, patch_name }
+        GitRepo {
+            url: GitRepoUrl::Github { user, repo },
+            rev,
+            submodules,
+            content_hash,
+            patch_name,
+        }
     }
 
     fn download_dir(&self, dirs: &Dirs) -> PathBuf {
@@ -132,6 +141,7 @@ impl GitRepo {
                     &download_dir,
                     &format!("https://github.com/{}/{}.git", user, repo),
                     self.rev,
+                    self.submodules,
                 );
             }
         }
@@ -160,7 +170,7 @@ impl GitRepo {
     }
 }
 
-fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
+fn clone_repo(download_dir: &Path, repo: &str, rev: &str, submodules: &[&str]) {
     eprintln!("[CLONE] {}", repo);
 
     match fs::remove_dir_all(download_dir) {
@@ -179,6 +189,13 @@ fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     let mut checkout_cmd = git_command(download_dir, "checkout");
     checkout_cmd.arg("-q").arg(rev);
     spawn_and_wait(checkout_cmd);
+
+    if !submodules.is_empty() {
+        let mut submodule_cmd = git_command(download_dir, "submodule");
+        submodule_cmd.arg("update").arg("--init");
+        submodule_cmd.args(submodules);
+        spawn_and_wait(submodule_cmd);
+    }
 
     std::fs::remove_dir_all(download_dir.join(".git")).unwrap();
 }

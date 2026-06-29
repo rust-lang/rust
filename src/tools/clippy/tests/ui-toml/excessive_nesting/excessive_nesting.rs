@@ -3,16 +3,15 @@
 #![feature(custom_inner_attributes)]
 #![warn(clippy::excessive_nesting)]
 #![allow(
-    unused,
-    clippy::let_and_return,
-    clippy::redundant_closure_call,
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::never_loop,
-    clippy::needless_ifs,
-    clippy::collapsible_if,
     clippy::blocks_in_conditions,
+    clippy::collapsible_if,
+    clippy::let_and_return,
+    clippy::needless_ifs,
+    clippy::never_loop,
+    clippy::no_effect,
+    clippy::redundant_closure_call,
     clippy::single_match,
+    clippy::unnecessary_operation,
 )]
 
 #[macro_use]

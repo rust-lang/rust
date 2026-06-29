@@ -15,26 +15,38 @@ enum Mode {
     OtherWithPanic,
 }
 
+fn print_unspanned<T>(s: &str) -> Result<T, LexError>
+where
+    T: FromStr<Err = LexError> + Debug,
+{
+    let t = T::from_str(s);
+    let mut s = format!("{t:?}");
+    while let Some((l, r)) = s.split_once("span: #") {
+        let (_, r) = r.split_once(")").unwrap();
+        s = format!("{l}span: Span{r}");
+    }
+    println!("{s}");
+    t
+}
+
 fn parse<T>(s: &str, mode: Mode)
 where
     T: FromStr<Err = LexError> + Debug,
 {
     match mode {
         NormalOk => {
-            let t = T::from_str(s);
-            println!("{:?}", t);
+            let t = print_unspanned::<T>(s);
             assert!(t.is_ok());
         }
         NormalErr => {
-            let t = T::from_str(s);
-            println!("{:?}", t);
+            let t = print_unspanned::<T>(s);
             assert!(t.is_err());
         }
         OtherError => {
-            println!("{:?}", T::from_str(s));
+            print_unspanned::<T>(s);
         }
         OtherWithPanic => {
-            if catch_unwind(|| println!("{:?}", T::from_str(s))).is_ok() {
+            if catch_unwind(|| print_unspanned::<T>(s)).is_ok() {
                 eprintln!("{s} did not panic");
             }
         }
@@ -64,7 +76,10 @@ fn lit(s: &str, mode: Mode) {
 }
 
 pub fn run() {
+    assert_eq!("\'", "'");
     // returns Ok(valid instance)
+    lit("r\"g\"", NormalOk);
+    lit("r#\"g\"#", NormalOk);
     lit("123", NormalOk);
     lit("\"ab\"", NormalOk);
     lit("\'b\'", NormalOk);
@@ -72,6 +87,7 @@ pub fn run() {
     lit("b\"b\"", NormalOk);
     lit("c\"b\"", NormalOk);
     lit("cr\"b\"", NormalOk);
+    lit("'\\''", NormalOk);
     lit("b'b'", NormalOk);
     lit("256u8", NormalOk);
     lit("-256u8", NormalOk);
@@ -99,10 +115,13 @@ pub fn run() {
         NormalOk,
     );
     stream("/*a*/ //", NormalOk);
+    lit("\"\"", NormalOk);
+    stream("", NormalOk);
 
     println!("### ERRORS");
 
     // returns Err(LexError)
+    lit("", NormalErr);
     lit("\'c\'/**/", NormalErr);
     lit(" 0", NormalErr);
     lit("0 ", NormalErr);
@@ -119,10 +138,12 @@ pub fn run() {
     // emits diagnostics and returns LexError
     lit("r'r'", OtherError);
     lit("c'r'", OtherError);
+    lit("\u{2000}", OtherError);
 
     // emits diagnostic and returns a seemingly valid tokenstream
     stream("r'r'", OtherError);
     stream("c'r'", OtherError);
+    stream("\u{2000}", OtherError);
 
     for parse in [stream as fn(&str, Mode), lit] {
         // emits diagnostic(s), then panics

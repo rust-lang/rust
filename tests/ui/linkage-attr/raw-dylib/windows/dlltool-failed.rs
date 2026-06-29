@@ -7,7 +7,6 @@
 //@ normalize-stderr: "[^ ]*/foo.dll_imports.lib" -> "$$LIB_FILE"
 //@ normalize-stderr: "-m [^ ]*" -> "$$TARGET_MACHINE"
 //@ normalize-stderr: "-f [^ ]*" -> "$$ASM_FLAGS"
-//@ normalize-stderr: "--temp-prefix [^ ]*/foo.dll" -> "$$TEMP_PREFIX"
 #[link(name = "foo", kind = "raw-dylib")]
 extern "C" {
     // `@1` is an invalid name to export, as it usually indicates that something

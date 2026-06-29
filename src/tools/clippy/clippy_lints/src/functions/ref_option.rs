@@ -107,7 +107,12 @@ pub(crate) fn check_fn<'a>(
 
         check_fn_sig(cx, decl, inputs_output_span, sig);
     } else if !is_trait_impl_item(cx, hir_id) {
-        let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().skip_binder();
+        let sig = cx
+            .tcx
+            .fn_sig(def_id)
+            .instantiate_identity()
+            .skip_norm_wip()
+            .skip_binder();
 
         if is_from_proc_macro(cx, &(&kind, body, hir_id, span)) {
             return;
@@ -128,7 +133,12 @@ pub(super) fn check_trait_item<'a>(
         && !is_from_proc_macro(cx, trait_item)
     {
         let def_id = trait_item.owner_id.def_id;
-        let ty_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().skip_binder();
+        let ty_sig = cx
+            .tcx
+            .fn_sig(def_id)
+            .instantiate_identity()
+            .skip_norm_wip()
+            .skip_binder();
         check_fn_sig(cx, sig.decl, sig.span, ty_sig);
     }
 }

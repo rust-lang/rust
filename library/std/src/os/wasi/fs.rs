@@ -52,7 +52,7 @@ pub trait FileExt {
     /// This equivalent to the [`read_at`](FileExt::read_at) method, except that it is passed a
     /// [`BorrowedCursor`] rather than `&mut [u8]` to allow use with uninitialized buffers. The new
     /// data will be appended to any existing contents of `buf`.
-    fn read_buf_at(&self, buf: BorrowedCursor<'_>, offset: u64) -> io::Result<()>;
+    fn read_buf_at(&self, buf: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()>;
 
     /// Reads the exact number of byte required to fill `buf` from the given offset.
     ///
@@ -228,7 +228,7 @@ impl FileExt for File {
         self.as_inner().read_at(buf, offset)
     }
 
-    fn read_buf_at(&self, buf: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    fn read_buf_at(&self, buf: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         self.as_inner().read_buf_at(buf, offset)
     }
 

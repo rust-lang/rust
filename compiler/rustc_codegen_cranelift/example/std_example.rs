@@ -2,8 +2,6 @@
 #![allow(internal_features)]
 
 #[cfg(target_arch = "x86_64")]
-use std::arch::asm;
-#[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 use std::hint::black_box;
 use std::io::Write;
@@ -591,7 +589,7 @@ unsafe fn test_xmm_roundtrip() {
         let input = [1u8; 16];
         let mut output = [0u8; 16];
 
-        asm!(
+        std::arch::asm!(
             "movups {xmm}, [{input}]",
             "movups [{output}], {xmm}",
             input = in(reg) input.as_ptr(),
@@ -611,7 +609,7 @@ unsafe fn test_ymm_roundtrip() {
         let input = [1u8; 32];
         let mut output = [0u8; 32];
 
-        asm!(
+        std::arch::asm!(
             "vmovups {ymm}, [{input}]",
             "vmovups [{output}], {ymm}",
             input = in(reg) input.as_ptr(),
@@ -631,7 +629,7 @@ unsafe fn test_zmm_roundtrip() {
         let input = [1u8; 64];
         let mut output = [0u8; 64];
 
-        asm!(
+        std::arch::asm!(
             "vmovups {zmm}, [{input}]",
             "vmovups [{output}], {zmm}",
             input = in(reg) input.as_ptr(),

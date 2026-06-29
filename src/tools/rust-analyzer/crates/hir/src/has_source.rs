@@ -293,8 +293,9 @@ impl HasSource for Param<'_> {
                 .map(|value| InFile { file_id, value })
             }
             Callee::Closure(closure, _) => {
-                let InternedClosure(owner, expr_id) = closure.loc(db);
-                let (_, source_map) = ExpressionStore::with_source_map(db, owner);
+                let InternedClosure { owner, expr: expr_id, .. } = closure.loc(db);
+                let (_, source_map) =
+                    ExpressionStore::with_source_map(db, owner.expression_store_owner(db));
                 let ast @ InFile { file_id, value } = source_map.expr_syntax(expr_id).ok()?;
                 let root = db.parse_or_expand(file_id);
                 match value.to_node(&root) {

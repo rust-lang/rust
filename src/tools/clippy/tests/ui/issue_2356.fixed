@@ -1,5 +1,4 @@
-#![deny(clippy::while_let_on_iterator)]
-#![allow(unused_mut)]
+#![warn(clippy::while_let_on_iterator)]
 
 use std::iter::Iterator;
 

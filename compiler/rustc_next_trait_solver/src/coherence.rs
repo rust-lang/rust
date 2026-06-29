@@ -362,7 +362,7 @@ where
             //   normalize to that, so we have to treat it as an uncovered ty param.
             // * Otherwise it may normalize to any non-type-generic type
             //   be it local or non-local.
-            ty::Alias(ty::AliasTy { kind, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind, .. }) => {
                 if ty.has_type_flags(
                     ty::TypeFlags::HAS_TY_PLACEHOLDER
                         | ty::TypeFlags::HAS_TY_BOUND

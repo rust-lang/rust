@@ -3,8 +3,6 @@
 //@no-rustfix
 //@[r32bit]ignore-bitwidth: 64
 //@[r64bit]ignore-bitwidth: 32
-#![allow(dead_code)]
-#![allow(unused_variables)]
 #![warn(clippy::large_enum_variant)]
 
 extern crate proc_macros;

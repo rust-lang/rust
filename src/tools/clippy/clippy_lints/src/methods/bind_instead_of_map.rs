@@ -128,6 +128,7 @@ impl BindInsteadOfMap {
             }
         });
         let (span, msg) = if can_sugg
+            && !suggs.is_empty()
             && let hir::ExprKind::MethodCall(segment, ..) = expr.kind
             && let Some(msg) = self.lint_msg(cx)
         {

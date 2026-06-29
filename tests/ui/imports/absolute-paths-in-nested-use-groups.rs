@@ -8,7 +8,7 @@ use foo::{
     super::bar,
     //~^ ERROR: `super` in paths can only be used in start position
     self::bar,
-    //~^ ERROR: `self` in paths can only be used in start position
+    //~^ ERROR: `self` in paths can only be used in start position or last position
 };
 
 fn main() {}

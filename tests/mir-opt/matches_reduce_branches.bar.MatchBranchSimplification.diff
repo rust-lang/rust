@@ -39,12 +39,14 @@
 -     bb1: {
 -         _2 = const true;
 -         _3 = const false;
+-         _4 = const false;
+-         _5 = const true;
 +         StorageLive(_11);
-+         _11 = copy _1;
++         _11 = no_retag copy _1;
 +         _2 = Ne(copy _11, const 7_i32);
 +         _3 = Eq(copy _11, const 7_i32);
-          _4 = const false;
-          _5 = const true;
++         _4 = no_retag const false;
++         _5 = no_retag const true;
           _6 = ();
 -         goto -> bb3;
 -     }

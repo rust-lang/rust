@@ -27,11 +27,11 @@ use rustc_hir::{
 };
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
-use rustc_session::parse::feature_err;
+use rustc_session::errors::feature_err;
 use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::instrument;
 
-use crate::errors::{
+use crate::diagnostics::{
     CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
     FeatureRemovedReason, InvalidCfg, RemoveExprNotSupported,
 };
@@ -282,7 +282,7 @@ impl<'a> StripUnconfigured<'a> {
                 rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
                 cfg_attr.span,
                 ast::CRATE_NODE_ID,
-                crate::errors::CfgAttrNoAttributes,
+                crate::diagnostics::CfgAttrNoAttributes,
             );
         }
 

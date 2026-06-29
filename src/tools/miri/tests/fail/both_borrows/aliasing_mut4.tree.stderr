@@ -20,11 +20,11 @@ help: the protected tag <TAG> was created here, in the initial state Frozen
 LL | fn safe(x: &i32, y: &mut Cell<i32>) {
    |         ^
    = note: stack backtrace:
-           0: std::mem::replace
+           0: std::mem::replace::<i32>
                at RUSTLIB/core/src/mem/mod.rs:LL:CC
-           1: std::cell::Cell::replace
+           1: std::cell::Cell::<i32>::replace
                at RUSTLIB/core/src/cell.rs:LL:CC
-           2: std::cell::Cell::set
+           2: std::cell::Cell::<i32>::set
                at RUSTLIB/core/src/cell.rs:LL:CC
            3: safe
                at tests/fail/both_borrows/aliasing_mut4.rs:LL:CC

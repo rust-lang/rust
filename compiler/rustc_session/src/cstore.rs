@@ -12,14 +12,14 @@ use rustc_hir::def_id::{
     CrateNum, DefId, LOCAL_CRATE, LocalDefId, StableCrateId, StableCrateIdMap,
 };
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
-use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
 use rustc_span::{Span, Symbol};
 
 // lonely orphan structs and enums looking for a better home
 
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
-#[derive(PartialEq, Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+#[derive(PartialEq, Clone, Debug, StableHash, Encodable, Decodable)]
 pub struct CrateSource {
     pub dylib: Option<PathBuf>,
     pub rlib: Option<PathBuf>,
@@ -35,7 +35,7 @@ impl CrateSource {
 }
 
 #[derive(Encodable, BlobDecodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(StableHash)]
 pub enum CrateDepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
@@ -58,13 +58,13 @@ impl CrateDepKind {
     }
 }
 
-#[derive(Copy, Debug, PartialEq, Clone, Encodable, BlobDecodable, HashStable_Generic)]
+#[derive(Copy, Debug, PartialEq, Clone, Encodable, BlobDecodable, StableHash)]
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,
 }
 
-#[derive(Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Debug, Encodable, Decodable, StableHash)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Symbol,
@@ -86,7 +86,7 @@ impl NativeLib {
     }
 }
 
-#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Debug, Encodable, Decodable, StableHash)]
 pub struct DllImport {
     pub name: Symbol,
     pub import_name_type: Option<PeImportNameType>,
@@ -101,7 +101,7 @@ pub struct DllImport {
     pub size: rustc_abi::Size,
 }
 
-#[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic, PartialEq)]
+#[derive(Copy, Clone, Debug, Encodable, Decodable, StableHash, PartialEq)]
 pub enum DllImportSymbolType {
     Function,
     Static,
@@ -127,7 +127,7 @@ impl DllImport {
 ///
 /// The usize value, where present, indicates the size of the function's argument list
 /// in bytes.
-#[derive(Clone, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, PartialEq, Debug, Encodable, Decodable, StableHash)]
 pub enum DllCallingConvention {
     C,
     Stdcall(usize),
@@ -135,14 +135,14 @@ pub enum DllCallingConvention {
     Vectorcall(usize),
 }
 
-#[derive(Clone, Encodable, Decodable, HashStable_Generic, Debug)]
+#[derive(Clone, Encodable, Decodable, StableHash, Debug)]
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,
     pub abi: ExternAbi,
 }
 
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, StableHash)]
 pub struct ExternCrate {
     pub src: ExternCrateSource,
 
@@ -175,7 +175,7 @@ impl ExternCrate {
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, StableHash)]
 pub enum ExternCrateSource {
     /// Crate is loaded by `extern crate`.
     Extern(
@@ -223,4 +223,14 @@ pub struct Untracked {
     pub definitions: FreezeLock<Definitions>,
     /// The interned [StableCrateId]s.
     pub stable_crate_ids: FreezeLock<StableCrateIdMap>,
+}
+
+impl Untracked {
+    /// Freezes the cstore and, with it, the `StableCrateId` map, making reads of
+    /// both lock-free. The cstore is frozen first so any in-flight crate loading
+    /// (which writes the map) finishes before the map is frozen.
+    pub fn freeze_cstore(&self) {
+        self.cstore.freeze();
+        self.stable_crate_ids.freeze();
+    }
 }

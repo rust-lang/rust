@@ -26,7 +26,7 @@ libc.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 miow = "0.6.0"
-windows-sys = { version = "0.60", features = ["Win32_Foundation"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation"] }
 
 [features]
 # Uncomment to enable for the whole crate graph

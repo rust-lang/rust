@@ -17,7 +17,9 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
-use rustc_middle::ty::{self, Const, Flags, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{
+    self, CantBeErased, Const, Flags, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
@@ -161,6 +163,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(crate) fn typing_mode(&self) -> TypingMode<'tcx, CantBeErased> {
+        // `FnCtxt` is never constructed in the trait solver, so we can safely use
+        // `assert_not_erased`.
+        self.infcx.typing_mode_raw().assert_not_erased()
+    }
+
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'a> {
         self.root_ctxt.infcx.dcx()
     }
@@ -189,25 +197,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
         TypeErrCtxt {
             infcx: &self.infcx,
+            param_env: Some(self.param_env),
             typeck_results: Some(self.typeck_results.borrow()),
             diverging_fallback_has_occurred: self.diverging_fallback_has_occurred.get(),
-            normalize_fn_sig: Box::new(|fn_sig| {
-                if fn_sig.skip_normalization().has_escaping_bound_vars() {
-                    return fn_sig.skip_normalization();
-                }
-                self.probe(|_| {
-                    let ocx = ObligationCtxt::new(self);
-                    let normalized_fn_sig =
-                        ocx.normalize(&ObligationCause::dummy(), self.param_env, fn_sig);
-                    if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
-                        let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
-                        if !normalized_fn_sig.has_infer() {
-                            return normalized_fn_sig;
-                        }
-                    }
-                    fn_sig.skip_normalization()
-                })
-            }),
             autoderef_steps: Box::new(|ty| {
                 let mut autoderef = self.autoderef(DUMMY_SP, ty).silence_errors();
                 let mut steps = vec![];
@@ -302,7 +294,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         // HACK(eddyb) should get the original `Span`.
         let span = tcx.def_span(def_id);
 
-        ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(
+        ty::EarlyBinder::bind_iter(tcx.arena.alloc_from_iter(
             self.param_env.caller_bounds().iter().filter_map(|predicate| {
                 match predicate.kind().skip_binder() {
                     ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
@@ -407,15 +399,14 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         match ty.kind() {
             ty::Adt(adt_def, _) => Some(*adt_def),
             // FIXME(#104767): Should we handle bound regions here?
-            ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
-                ..
-            }) if !ty.has_escaping_bound_vars() => {
-                if self.next_trait_solver() {
-                    self.try_structurally_resolve_type(span, ty).ty_adt_def()
-                } else {
-                    self.normalize(span, Unnormalized::new_wip(ty)).ty_adt_def()
-                }
+            ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    ..
+                },
+            ) if !ty.has_escaping_bound_vars() => {
+                self.normalize(span, Unnormalized::new_wip(ty)).ty_adt_def()
             }
             _ => None,
         }
@@ -428,11 +419,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             // WF obligations that are registered elsewhere, but they have a
             // better cause code assigned to them in `add_required_obligations_for_hir`.
             // This means that they should shadow obligations with worse spans.
-            if let ty::Alias(ty::AliasTy {
-                kind: ty::Projection { def_id } | ty::Free { def_id },
-                args,
-                ..
-            }) = ty.kind()
+            if let ty::Alias(
+                _,
+                ty::AliasTy { kind: ty::Projection { def_id } | ty::Free { def_id }, args, .. },
+            ) = ty.kind()
             {
                 self.add_required_obligations_for_hir(span, *def_id, args, hir_id);
             }
@@ -485,15 +475,7 @@ pub(crate) struct LoweredTy<'tcx> {
 
 impl<'tcx> LoweredTy<'tcx> {
     fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
-        // FIXME(-Znext-solver=no): This is easier than requiring all uses of `LoweredTy`
-        // to call `try_structurally_resolve_type` instead. This seems like a lot of
-        // effort, especially as we're still supporting the old solver. We may revisit
-        // this in the future.
-        let normalized = if fcx.next_trait_solver() {
-            fcx.try_structurally_resolve_type(span, raw)
-        } else {
-            fcx.normalize(span, Unnormalized::new_wip(raw))
-        };
+        let normalized = fcx.normalize(span, Unnormalized::new_wip(raw));
         LoweredTy { raw, normalized }
     }
 }

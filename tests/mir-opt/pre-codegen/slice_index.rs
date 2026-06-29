@@ -6,7 +6,7 @@
 
 use std::ops::Range;
 
-// EMIT_MIR slice_index.slice_index_usize.PreCodegen.after.mir
+// EMIT_MIR slice_index.slice_index_usize.runtime-optimized.after.mir
 pub fn slice_index_usize(slice: &[u32], index: usize) -> u32 {
     // CHECK-LABEL: slice_index_usize
     // CHECK: [[LEN:_[0-9]+]] = PtrMetadata(copy _1)
@@ -16,7 +16,7 @@ pub fn slice_index_usize(slice: &[u32], index: usize) -> u32 {
     slice[index]
 }
 
-// EMIT_MIR slice_index.slice_get_mut_usize.PreCodegen.after.mir
+// EMIT_MIR slice_index.slice_get_mut_usize.runtime-optimized.after.mir
 pub fn slice_get_mut_usize(slice: &mut [u32], index: usize) -> Option<&mut u32> {
     // CHECK-LABEL: slice_get_mut_usize
     // CHECK: [[LEN:_[0-9]+]] = PtrMetadata(copy _1)
@@ -25,13 +25,13 @@ pub fn slice_get_mut_usize(slice: &mut [u32], index: usize) -> Option<&mut u32> 
     slice.get_mut(index)
 }
 
-// EMIT_MIR slice_index.slice_index_range.PreCodegen.after.mir
+// EMIT_MIR slice_index.slice_index_range.runtime-optimized.after.mir
 pub fn slice_index_range(slice: &[u32], index: Range<usize>) -> &[u32] {
     // CHECK-LABEL: slice_index_range
     &slice[index]
 }
 
-// EMIT_MIR slice_index.slice_get_unchecked_mut_range.PreCodegen.after.mir
+// EMIT_MIR slice_index.slice_get_unchecked_mut_range.runtime-optimized.after.mir
 pub unsafe fn slice_get_unchecked_mut_range(slice: &mut [u32], index: Range<usize>) -> &mut [u32] {
     // CHECK-LABEL: slice_get_unchecked_mut_range
     // CHECK: [[START:_[0-9]+]] = move (_2.0: usize);
@@ -44,7 +44,7 @@ pub unsafe fn slice_get_unchecked_mut_range(slice: &mut [u32], index: Range<usiz
     slice.get_unchecked_mut(index)
 }
 
-// EMIT_MIR slice_index.slice_ptr_get_unchecked_range.PreCodegen.after.mir
+// EMIT_MIR slice_index.slice_ptr_get_unchecked_range.runtime-optimized.after.mir
 pub unsafe fn slice_ptr_get_unchecked_range(
     slice: *const [u32],
     index: Range<usize>,

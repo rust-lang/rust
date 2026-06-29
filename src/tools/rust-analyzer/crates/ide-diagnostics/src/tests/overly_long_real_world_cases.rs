@@ -2722,6 +2722,13 @@ fn foo() {
 tracing::error!();
 }
     "#,
-        &["E0432", "inactive-code", "unresolved-macro-call", "syntax-error", "macro-error"],
+        &[
+            "E0432",
+            "E0282",
+            "inactive-code",
+            "unresolved-macro-call",
+            "syntax-error",
+            "macro-error",
+        ],
     );
 }

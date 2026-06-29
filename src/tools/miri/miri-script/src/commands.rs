@@ -114,8 +114,8 @@ impl Command {
             Command::Check { features, flags } => Self::check(features, flags),
             Command::Test { bless, target, coverage, features, flags } =>
                 Self::test(bless, target, coverage, features, flags),
-            Command::Run { dep, quiet, target, edition, features, flags } =>
-                Self::run(dep, quiet, target, edition, features, flags),
+            Command::Run { dep, native, quiet, target, edition, features, flags } =>
+                Self::run(dep, native, quiet, target, edition, features, flags),
             Command::Doc { features, flags } => Self::doc(features, flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { features, flags } => Self::clippy(features, flags),
@@ -465,6 +465,7 @@ impl Command {
 
     fn run(
         dep: bool,
+        native: bool,
         quiet: bool,
         target: Option<String>,
         edition: Option<String>,
@@ -472,8 +473,10 @@ impl Command {
         flags: Vec<String>,
     ) -> Result<()> {
         let mut e = MiriEnv::new()?;
+        let run_via_ui_test = dep || native;
 
         // Preparation: get a sysroot, and get the miri binary.
+        // We do this even for native run as it also builds Miri itself.
         let miri_sysroot =
             e.build_miri_sysroot(/* quiet */ quiet, target.as_deref(), &features)?;
         let miri_bin = e
@@ -484,8 +487,8 @@ impl Command {
         // (because `flags` may contain `--`).
         let mut early_flags = Vec::<OsString>::new();
 
-        // In `dep` mode, the target is already passed via `MIRI_TEST_TARGET`
-        if !dep {
+        // In ui_test mode, the target is already passed via `MIRI_TEST_TARGET`
+        if !run_via_ui_test {
             if let Some(target) = &target {
                 early_flags.push("--target".into());
                 early_flags.push(target.into());
@@ -493,35 +496,36 @@ impl Command {
         }
         early_flags.push("--edition".into());
         early_flags.push(edition.as_deref().unwrap_or("2021").into());
-        early_flags.push("--sysroot".into());
-        early_flags.push(miri_sysroot.into());
+        if !native {
+            early_flags.push("--sysroot".into());
+            early_flags.push(miri_sysroot.into());
+        }
 
         // Compute flags.
         let miri_flags = e.sh.var("MIRIFLAGS").unwrap_or_default();
         let miri_flags = flagsplit(&miri_flags);
-        let quiet_flag = if quiet { Some("--quiet") } else { None };
 
         // Run Miri.
         // The basic command that executes the Miri driver.
-        let mut cmd = if dep {
+        let mut cmd = if run_via_ui_test {
             // We invoke the test suite as that has all the logic for running with dependencies.
-            e.cargo_cmd(".", "test", &features)
+            let mut cmd = e
+                .cargo_cmd(".", "test", &features)
                 .args(&["--test", "ui"])
-                .args(quiet_flag)
+                // This does not show anything useful so we always hide it.
+                .arg("--quiet")
                 .arg("--")
-                .args(&["--miri-run-dep-mode"])
+                .env("MIRI_RUN_MODE", if native { "native" } else { "1" });
+            if let Some(target) = &target {
+                cmd = cmd.env("MIRI_TEST_TARGET", target);
+            }
+            cmd
         } else {
             cmd!(e.sh, "{miri_bin}")
         };
         cmd.set_quiet(quiet);
         // Add Miri flags
-        let mut cmd = cmd.args(&miri_flags).args(&early_flags).args(&flags);
-        // For `--dep` we also need to set the target in the env var.
-        if dep {
-            if let Some(target) = &target {
-                cmd = cmd.env("MIRI_TEST_TARGET", target);
-            }
-        }
+        let cmd = cmd.args(&miri_flags).args(&early_flags).args(&flags);
         // Finally, run the thing.
         Ok(cmd.run()?)
     }

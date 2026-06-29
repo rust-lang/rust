@@ -11,7 +11,7 @@ use rustc_span::symbol::sym;
 
 use super::MAP_FLATTEN;
 
-/// lint use of `map().flatten()` for `Iterators` and 'Options'
+/// lint use of `map().flatten()` for `Iterator`s, 'Option's, and `Result`s.
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, map_arg: &Expr<'_>, map_span: Span) {
     if let Some((caller_ty_name, method_to_use)) = try_get_caller_ty_name_and_method_name(cx, expr, recv, map_arg) {
         let mut applicability = Applicability::MachineApplicable;

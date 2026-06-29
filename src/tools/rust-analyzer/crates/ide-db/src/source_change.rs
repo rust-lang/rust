@@ -1,11 +1,10 @@
 //! This modules defines type to represent changes to the source code, that flow
 //! from the server to the client.
 //!
-//! It can be viewed as a dual for `Change`.
+//! It can be viewed as a dual for [`Change`][vfs::Change].
 
 use std::{collections::hash_map::Entry, fmt, iter, mem};
 
-use crate::imports::insert_use::{ImportScope, ImportScopeKind};
 use crate::text_edit::{TextEdit, TextEditBuilder};
 use crate::{SnippetCap, assists::Command, syntax_helpers::tree_diff::diff};
 use base_db::AnchoredPathBuf;
@@ -16,7 +15,7 @@ use rustc_hash::FxHashMap;
 use span::FileId;
 use stdx::never;
 use syntax::{
-    AstNode, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
+    AstNode, SyntaxElement, SyntaxNode, SyntaxToken, TextRange, TextSize,
     syntax_editor::{SyntaxAnnotation, SyntaxEditor},
 };
 
@@ -229,12 +228,12 @@ pub struct SourceChangeBuilder {
     pub snippet_annotations: Vec<(AnnotationSnippet, SyntaxAnnotation)>,
 
     /// Maps the original, immutable `SyntaxNode` to a `clone_for_update` twin.
-    pub mutated_tree: Option<TreeMutator>,
+    mutated_tree: Option<TreeMutator>,
     /// Keeps track of where to place snippets
     pub snippet_builder: Option<SnippetBuilder>,
 }
 
-pub struct TreeMutator {
+struct TreeMutator {
     immutable: SyntaxNode,
     mutable_clone: SyntaxNode,
 }
@@ -243,23 +242,6 @@ pub struct TreeMutator {
 pub struct SnippetBuilder {
     /// Where to place snippets at
     places: Vec<PlaceSnippet>,
-}
-
-impl TreeMutator {
-    pub fn new(immutable: &SyntaxNode) -> TreeMutator {
-        let immutable = immutable.ancestors().last().unwrap();
-        let mutable_clone = immutable.clone_for_update();
-        TreeMutator { immutable, mutable_clone }
-    }
-
-    pub fn make_mut<N: AstNode>(&self, node: &N) -> N {
-        N::cast(self.make_syntax_mut(node.syntax())).unwrap()
-    }
-
-    pub fn make_syntax_mut(&self, node: &SyntaxNode) -> SyntaxNode {
-        let ptr = SyntaxNodePtr::new(node);
-        ptr.to_node(&self.mutable_clone)
-    }
 }
 
 impl SourceChangeBuilder {
@@ -366,34 +348,6 @@ impl SourceChangeBuilder {
         }
     }
 
-    pub fn make_mut<N: AstNode>(&mut self, node: N) -> N {
-        self.mutated_tree.get_or_insert_with(|| TreeMutator::new(node.syntax())).make_mut(&node)
-    }
-
-    pub fn make_import_scope_mut(&mut self, scope: ImportScope) -> ImportScope {
-        ImportScope {
-            kind: match scope.kind.clone() {
-                ImportScopeKind::File(it) => ImportScopeKind::File(self.make_mut(it)),
-                ImportScopeKind::Module(it) => ImportScopeKind::Module(self.make_mut(it)),
-                ImportScopeKind::Block(it) => ImportScopeKind::Block(self.make_mut(it)),
-            },
-            required_cfgs: scope.required_cfgs.iter().map(|it| self.make_mut(it.clone())).collect(),
-        }
-    }
-    /// Returns a copy of the `node`, suitable for mutation.
-    ///
-    /// Syntax trees in rust-analyzer are typically immutable, and mutating
-    /// operations panic at runtime. However, it is possible to make a copy of
-    /// the tree and mutate the copy freely. Mutation is based on interior
-    /// mutability, and different nodes in the same tree see the same mutations.
-    ///
-    /// The typical pattern for an assist is to find specific nodes in the read
-    /// phase, and then get their mutable counterparts using `make_mut` in the
-    /// mutable state.
-    pub fn make_syntax_mut(&mut self, node: SyntaxNode) -> SyntaxNode {
-        self.mutated_tree.get_or_insert_with(|| TreeMutator::new(&node)).make_syntax_mut(&node)
-    }
-
     /// Remove specified `range` of text.
     pub fn delete(&mut self, range: TextRange) {
         self.edit.delete(range)
@@ -434,12 +388,6 @@ impl SourceChangeBuilder {
         self.add_snippet(PlaceSnippet::Before(node.syntax().clone().into()));
     }
 
-    /// Adds a tabstop snippet to place the cursor after `node`
-    pub fn add_tabstop_after(&mut self, _cap: SnippetCap, node: impl AstNode) {
-        assert!(node.syntax().parent().is_some());
-        self.add_snippet(PlaceSnippet::After(node.syntax().clone().into()));
-    }
-
     /// Adds a tabstop snippet to place the cursor before `token`
     pub fn add_tabstop_before_token(&mut self, _cap: SnippetCap, token: SyntaxToken) {
         assert!(token.parent().is_some());
@@ -456,23 +404,6 @@ impl SourceChangeBuilder {
     pub fn add_placeholder_snippet(&mut self, _cap: SnippetCap, node: impl AstNode) {
         assert!(node.syntax().parent().is_some());
         self.add_snippet(PlaceSnippet::Over(node.syntax().clone().into()))
-    }
-
-    /// Adds a snippet to move the cursor selected over `token`
-    pub fn add_placeholder_snippet_token(&mut self, _cap: SnippetCap, token: SyntaxToken) {
-        assert!(token.parent().is_some());
-        self.add_snippet(PlaceSnippet::Over(token.into()))
-    }
-
-    /// Adds a snippet to move the cursor selected over `nodes`
-    ///
-    /// This allows for renaming newly generated items without having to go
-    /// through a separate rename step.
-    pub fn add_placeholder_snippet_group(&mut self, _cap: SnippetCap, nodes: Vec<SyntaxNode>) {
-        assert!(nodes.iter().all(|node| node.parent().is_some()));
-        self.add_snippet(PlaceSnippet::OverGroup(
-            nodes.into_iter().map(|node| node.into()).collect(),
-        ))
     }
 
     fn add_snippet(&mut self, snippet: PlaceSnippet) {
@@ -553,9 +484,6 @@ enum PlaceSnippet {
     After(SyntaxElement),
     /// Place a placeholder snippet in place of the element
     Over(SyntaxElement),
-    /// Place a group of placeholder snippets which are linked together
-    /// in place of the elements
-    OverGroup(Vec<SyntaxElement>),
 }
 
 impl PlaceSnippet {
@@ -564,9 +492,6 @@ impl PlaceSnippet {
             PlaceSnippet::Before(it) => vec![Snippet::Tabstop(it.text_range().start())],
             PlaceSnippet::After(it) => vec![Snippet::Tabstop(it.text_range().end())],
             PlaceSnippet::Over(it) => vec![Snippet::Placeholder(it.text_range())],
-            PlaceSnippet::OverGroup(it) => {
-                vec![Snippet::PlaceholderGroup(it.into_iter().map(|it| it.text_range()).collect())]
-            }
         }
     }
 }

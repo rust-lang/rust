@@ -7,6 +7,7 @@
 #![feature(closure_track_caller)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]
+#![feature(default_field_values)]
 #![feature(derive_const)]
 #![feature(exhaustive_patterns)]
 #![feature(never_type)]

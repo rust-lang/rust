@@ -91,7 +91,7 @@ impl TcpStream {
         self.read_vectored(&mut [IoSliceMut::new(buf)])
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.socket().as_inner().read_buf(buf)
     }
 
@@ -142,6 +142,14 @@ impl TcpStream {
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
+        unsupported()
+    }
+
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
         unsupported()
     }
 

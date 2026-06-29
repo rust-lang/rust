@@ -274,8 +274,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         inputs_and_output.push(shim_sig.ret);
         let fn_sig_binder = Binder::dummy(FnSig {
             inputs_and_output: this.machine.tcx.mk_type_list(&inputs_and_output),
-            // Safety does not matter for the ABI.
-            fn_sig_kind: FnSigKind::default().set_abi(shim_sig.abi).set_safe(true),
+            // Safety and splatted do not matter for the ABI.
+            fn_sig_kind: FnSigKind::default()
+                .set_abi(shim_sig.abi)
+                .set_safety(rustc_hir::Safety::Safe),
         });
         let callee_fn_abi = this.fn_abi_of_fn_ptr(fn_sig_binder, Default::default())?;
 

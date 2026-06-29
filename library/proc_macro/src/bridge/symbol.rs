@@ -10,9 +10,10 @@
 //! proc_macro, this module should probably be removed or simplified.
 
 use std::cell::RefCell;
+use std::fmt;
 use std::num::NonZero;
 
-use super::*;
+use crate::bridge::{Buffer, Decode, Encode, Mark, arena, client, fxhash, server};
 
 /// Handle for a symbol string stored within the Interner.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

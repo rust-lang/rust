@@ -1,5 +1,24 @@
+error[E0364]: `S` is private, and cannot be re-exported
+  --> $DIR/private-from-decl-macro.rs:18:13
+   |
+LL |         use crate::m::*;
+   |             ^^^^^^^^^^^
+...
+LL |     crate::m::mac_glob!();
+   |     --------------------- in this macro invocation
+   |
+note: consider marking `S` as `pub` in the imported module
+  --> $DIR/private-from-decl-macro.rs:18:13
+   |
+LL |         use crate::m::*;
+   |             ^^^^^^^^^^^
+...
+LL |     crate::m::mac_glob!();
+   |     --------------------- in this macro invocation
+   = note: this error originates in the macro `crate::m::mac_glob` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0423]: expected value, found struct `S`
-  --> $DIR/private-from-decl-macro.rs:27:17
+  --> $DIR/private-from-decl-macro.rs:28:17
    |
 LL |     pub struct S {}
    |     --------------- `S` defined here
@@ -22,6 +41,7 @@ LL -         let s = S;
 LL +         let s = s;
    |
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0423`.
+Some errors have detailed explanations: E0364, E0423.
+For more information about an error, try `rustc --explain E0364`.

@@ -47,9 +47,9 @@ fn box_clone_from_ptr_stability() {
     for size in (0..8).map(|i| 2usize.pow(i)) {
         let control = vec![Dummy { _data: 42 }; size].into_boxed_slice();
         let mut copy = vec![Dummy { _data: 84 }; size].into_boxed_slice();
-        let copy_raw = copy.as_ptr() as usize;
+        let copy_raw = copy.as_ptr();
         copy.clone_from(&control);
-        assert_eq!(copy.as_ptr() as usize, copy_raw);
+        assert_eq!(copy.as_ptr(), copy_raw);
     }
 }
 
@@ -104,7 +104,7 @@ pub struct ConstAllocator;
 unsafe impl Allocator for ConstAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
-            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
+            0 => Ok(layout.dangling_ptr().cast_slice(0)),
             _ => unsafe {
                 let ptr = core::intrinsics::const_allocate(layout.size(), layout.align());
                 Ok(NonNull::new_unchecked(ptr as *mut [u8; 0] as *mut [u8]))

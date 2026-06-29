@@ -16,10 +16,9 @@ use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
-    FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
-    Projectable, interp_ok, throw_ub, throw_unsup_format,
+    EnteredTraceSpan, FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine,
+    MemPlaceMeta, PlaceTy, Projectable, RetagMode, interp_ok, throw_ub, throw_unsup_format,
 };
-use crate::interpret::EnteredTraceSpan;
 use crate::{enter_trace_span, util};
 
 struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
@@ -91,7 +90,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         use rustc_middle::mir::StatementKind::*;
 
         match &stmt.kind {
-            Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
+            Assign((place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
 
             SetDiscriminant { place, variant_index } => {
                 let dest = self.eval_place(**place)?;
@@ -112,17 +111,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // interpreter is solely intended for borrowck'ed code.
             FakeRead(..) => {}
 
-            // Stacked Borrows.
-            Retag(kind, place) => {
-                let dest = self.eval_place(**place)?;
-                M::retag_place_contents(self, *kind, &dest)?;
-            }
-
-            Intrinsic(box intrinsic) => self.eval_nondiverging_intrinsic(intrinsic)?,
+            Intrinsic(intrinsic) => self.eval_nondiverging_intrinsic(intrinsic)?,
 
             // Evaluate the place expression, without reading from it.
-            PlaceMention(box place) => {
-                let _ = self.eval_place(*place)?;
+            PlaceMention(place) => {
+                let _ = self.eval_place(**place)?;
             }
 
             // This exists purely to guide borrowck lifetime inference, and does not have
@@ -177,15 +170,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_pointer(ptr, &dest)?;
             }
 
-            Use(ref operand) => {
+            Use(ref operand, with_retag) => {
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
-                self.copy_op(&op, &dest)?;
+                let mode = if with_retag.yes() { RetagMode::Default } else { RetagMode::None };
+                M::with_retag_mode(self, mode, |ecx| ecx.copy_op(&op, &dest))?;
             }
 
             CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
 
-            BinaryOp(bin_op, box (ref left, ref right)) => {
+            BinaryOp(bin_op, (ref left, ref right)) => {
                 let layout = util::binop_left_homogeneous(bin_op).then_some(dest.layout);
                 let left = self.read_immediate(&self.eval_operand(left, layout)?)?;
                 let layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
@@ -196,14 +190,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             UnaryOp(un_op, ref operand) => {
-                // The operand always has the same type as the result.
-                let val = self.read_immediate(&self.eval_operand(operand, Some(dest.layout))?)?;
+                let layout = util::unop_homogeneous(un_op).then_some(dest.layout);
+                let val = self.read_immediate(&self.eval_operand(operand, layout)?)?;
                 let result = self.unary_op(un_op, &val)?;
                 assert_eq!(result.layout, dest.layout, "layout mismatch for result of {un_op:?}");
                 self.write_immediate(*result, &dest)?;
             }
 
-            Aggregate(box ref kind, ref operands) => {
+            Aggregate(ref kind, ref operands) => {
                 self.write_aggregate(kind, operands, &dest)?;
             }
 
@@ -214,18 +208,37 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Ref(_, borrow_kind, place) => {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(&src)?;
-                let val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
-                // A fresh reference was created, make sure it gets retagged.
-                let val = M::retag_ptr_value(
-                    self,
-                    if borrow_kind.is_two_phase_borrow() {
-                        mir::RetagKind::TwoPhase
-                    } else {
-                        mir::RetagKind::Default
-                    },
-                    &val,
-                )?;
-                self.write_immediate(*val, &dest)?;
+                let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
+                // A fresh reference was created, make sure it gets retagged with the right mode.
+                let mode = if borrow_kind.is_two_phase_borrow() {
+                    RetagMode::TwoPhase
+                } else {
+                    RetagMode::Default
+                };
+                M::with_retag_mode(self, mode, |ecx| {
+                    // If validation is disabled, we still want to do this retag. This is because
+                    // const-eval disables validation for performance reasons but wants to retag
+                    // shared references. So we add a bit of a hack here to do the retag manually
+                    // if the write would not incur validation.
+                    if !M::enforce_validity(ecx, val.layout) {
+                        if let Some(new_val) = M::retag_ptr_value(ecx, &val, val.layout.ty)? {
+                            val = new_val;
+                        }
+                    }
+                    // Now do the actual write.
+                    ecx.write_immediate(*val, &dest)
+                })?;
+            }
+
+            Reborrow(_, mutability, place) => {
+                let op = self.eval_place_to_op(place, None)?;
+                if mutability.is_not() {
+                    // Shared generic reborrows use `CoerceShared`: a bitwise copy into a
+                    // distinct same-layout target ADT.
+                    self.copy_op_allow_transmute(&op, &dest)?;
+                } else {
+                    self.copy_op(&op, &dest)?;
+                }
             }
 
             RawPtr(kind, place) => {
@@ -244,8 +257,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if !place_base_raw && !kind.is_fake() {
                     // If this was not already raw, it needs retagging -- except for "fake"
                     // raw borrows whose defining property is that they do not get retagged.
-                    val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
+                    val = M::with_retag_mode(self, RetagMode::Raw, |ecx| {
+                        interp_ok(M::retag_ptr_value(ecx, &val, val.layout.ty)?.unwrap_or(val))
+                    })?;
                 }
+                // This writes a raw pointer so it will not do any retags.
                 self.write_immediate(*val, &dest)?;
             }
 
@@ -580,18 +596,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            Drop { place, target, unwind, replace: _, drop, async_fut } => {
+            Drop { place, target, unwind, replace: _, drop } => {
                 assert!(
-                    async_fut.is_none() && drop.is_none(),
+                    drop.is_none(),
                     "Async Drop must be expanded or reset to sync in runtime MIR"
                 );
                 let place = self.eval_place(place)?;
                 let instance = {
                     let _trace =
-                        enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
-                    Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
+                        enter_trace_span!(M, resolve::resolve_drop_glue, ty = ?place.layout.ty);
+                    Instance::resolve_drop_glue(*self.tcx, place.layout.ty)
                 };
-                if let ty::InstanceKind::DropGlue(_, None) = instance.def {
+                if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = instance.def {
                     // This is the branch we enter if and only if the dropped type has no drop glue
                     // whatsoever. This can happen as a result of monomorphizing a drop of a
                     // generic. In order to make sure that generic and non-generic code behaves

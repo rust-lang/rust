@@ -1680,7 +1680,7 @@ impl<T: ?Sized> Pin<&'static mut T> {
 
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<Ptr: [const] Deref> const Deref for Pin<Ptr> {
+const impl<Ptr: [const] Deref> Deref for Pin<Ptr> {
     type Target = Ptr::Target;
     fn deref(&self) -> &Ptr::Target {
         Pin::get_ref(Pin::as_ref(self))
@@ -1723,7 +1723,7 @@ mod helper {
 
     #[unstable(feature = "pin_derefmut_internals", issue = "none")]
     #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-    impl<Ptr: [const] super::DerefMut> const PinDerefMutHelper for PinHelper<Ptr>
+    const impl<Ptr: [const] super::DerefMut> PinDerefMutHelper for PinHelper<Ptr>
     where
         Ptr::Target: crate::marker::Unpin,
     {
@@ -1739,7 +1739,7 @@ mod helper {
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(not(doc))]
-impl<Ptr> const DerefMut for Pin<Ptr>
+const impl<Ptr> DerefMut for Pin<Ptr>
 where
     Ptr: [const] Deref,
     helper::PinHelper<Ptr>: [const] helper::PinDerefMutHelper<Target = Self::Target>,
@@ -1765,7 +1765,7 @@ where
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(doc)]
-impl<Ptr> const DerefMut for Pin<Ptr>
+const impl<Ptr> DerefMut for Pin<Ptr>
 where
     Ptr: [const] DerefMut,
     <Ptr as Deref>::Target: Unpin,
@@ -2021,14 +2021,29 @@ unsafe impl<T: PinCoerceUnsized> PinCoerceUnsized for Pin<T> {}
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
 #[stable(feature = "pin_macro", since = "1.68.0")]
 #[rustc_macro_transparency = "semiopaque"]
-#[allow_internal_unstable(super_let)]
+#[allow_internal_unstable(pin_macro_internals, super_let)]
 #[rustc_diagnostic_item = "pin_macro"]
 // `super` gets removed by rustfmt
 #[rustfmt::skip]
 pub macro pin($value:expr $(,)?) {
-    {
+    'p: {
         super let mut pinned = $value;
         // SAFETY: The value is pinned: it is the local above which cannot be named outside this macro.
-        unsafe { $crate::pin::Pin::new_unchecked(&mut pinned) }
+        break 'p unsafe { $crate::pin::Pin::new_unchecked(&mut pinned) };
+
+        // HACK: We need to ensure that, given `$value: T`, `pin!($value)` has type `Pin<&mut T>`.
+        // Otherwise, it's possible for a type annotation on the result of `pin!` to unsoundly add
+        // deref coercions. E.g. for `$value: &mut T`, we could get `pin!($value): Pin<&mut T>`,
+        // violating the pinning invariant; see <https://github.com/rust-lang/rust/issues/153438>.
+        #[expect(unreachable_code)]
+        $crate::pin::unreachable_pin_macro_type_constraint(pinned)
     }
+}
+
+/// Helper for `pin!` to enforce its type signature.
+/// See <https://github.com/rust-lang/rust/issues/153438>.
+#[unstable(feature = "pin_macro_internals", issue = "none")]
+#[doc(hidden)]
+pub fn unreachable_pin_macro_type_constraint<'a, T>(_: T) -> Pin<&'a mut T> {
+    unreachable!()
 }

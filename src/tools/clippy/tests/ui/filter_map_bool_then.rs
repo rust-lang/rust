@@ -1,10 +1,9 @@
 //@aux-build:proc_macros.rs
-#![allow(
+#![allow(clippy::map_identity)]
+#![expect(
     clippy::clone_on_copy,
-    clippy::map_identity,
-    clippy::unnecessary_lazy_evaluations,
     clippy::unnecessary_filter_map,
-    unused
+    clippy::unnecessary_lazy_evaluations
 )]
 #![warn(clippy::filter_map_bool_then)]
 

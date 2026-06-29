@@ -33,7 +33,7 @@
 //@ lldb-command:run
 
 //@ lldb-command:v *stack_val_ref
-//@ lldb-check:[...] { x = 10 y = 23.5 }
+//@ lldb-check:[...] {x:10, y:23.5}
 
 //@ lldb-command:v *stack_val_interior_ref_1
 //@ lldb-check:[...] 10
@@ -42,10 +42,10 @@
 //@ lldb-check:[...] 23.5
 
 //@ lldb-command:v *ref_to_unnamed
-//@ lldb-check:[...] { x = 11 y = 24.5 }
+//@ lldb-check:[...] {x:11, y:24.5}
 
 //@ lldb-command:v *unique_val_ref
-//@ lldb-check:[...] { x = 13 y = 26.5 }
+//@ lldb-check:[...] {x:13, y:26.5}
 
 //@ lldb-command:v *unique_val_interior_ref_1
 //@ lldb-check:[...] 13

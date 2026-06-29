@@ -24,9 +24,12 @@ pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let diag: Diag<'_, G> = self.0.into_diag(dcx, level);
+        // Reuse the formatted primary message from `LlvmError` without emitting it.
+        let diag: Diag<'_, ()> = self.0.into_diag(dcx, level);
         let (message, _) = diag.messages.first().expect("`LlvmError` with no message");
-        let message = format_diag_message(message, &diag.args);
+        let message = format_diag_message(message, &diag.args).into_owned();
+        diag.cancel();
+
         Diag::new(
             dcx,
             level,
@@ -58,7 +61,9 @@ pub(crate) struct AutoDiffWithoutLto;
 pub(crate) struct AutoDiffWithoutEnable;
 
 #[derive(Diagnostic)]
-#[diag("using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/host.out>")]
+#[diag(
+    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/device.bin>"
+)]
 pub(crate) struct OffloadWithoutEnable;
 
 #[derive(Diagnostic)]
@@ -66,23 +71,23 @@ pub(crate) struct OffloadWithoutEnable;
 pub(crate) struct OffloadWithoutFatLTO;
 
 #[derive(Diagnostic)]
-#[diag("using the `-Z offload=Host=/absolute/path/to/host.out` flag requires an absolute path")]
+#[diag("using the `-Z offload=Host=/absolute/path/to/device.bin` flag requires an absolute path")]
 pub(crate) struct OffloadWithoutAbsPath;
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the `-Z offload=Host=/absolute/path/to/host.out` flag must point to a `host.out` file"
+    "using the `-Z offload=Host=/absolute/path/to/device.bin` flag must point to a `device.bin` file"
 )]
 pub(crate) struct OffloadWrongFileName;
 
 #[derive(Diagnostic)]
 #[diag(
-    "the given path/file to `host.out` does not exist. Did you forget to run the device compilation first?"
+    "the given path/file to `device.bin` does not exist. Did you forget to run the device compilation first?"
 )]
 pub(crate) struct OffloadNonexistingPath;
 
 #[derive(Diagnostic)]
-#[diag("call to BundleImages failed, `host.out` was not created")]
+#[diag("call to BundleImages failed, `device.bin` was not created")]
 pub(crate) struct OffloadBundleImagesFailed;
 
 #[derive(Diagnostic)]

@@ -14,7 +14,7 @@ fn a(_1: &mut [T]) -> &mut [T] {
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
-        _4 = copy _1;
+        _4 = no_retag copy _1;
         _3 = copy _4;
         _2 = copy _3;
         StorageDead(_4);

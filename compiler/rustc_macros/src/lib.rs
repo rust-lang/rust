@@ -11,11 +11,11 @@ use synstructure::decl_derive;
 mod current_version;
 mod diagnostics;
 mod extension;
-mod hash_stable;
 mod lift;
 mod print_attribute;
 mod query;
 mod serialize;
+mod stable_hash;
 mod symbols;
 mod type_foldable;
 mod type_visitable;
@@ -58,17 +58,11 @@ pub fn extension(attr: TokenStream, input: TokenStream) -> TokenStream {
     extension::extension(attr, input)
 }
 
-decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);
 decl_derive!(
-    [HashStable_Generic, attributes(stable_hasher)] =>
-    hash_stable::hash_stable_generic_derive
+    [StableHash, attributes(stable_hash)] => stable_hash::stable_hash_derive
 );
 decl_derive!(
-    [HashStable_NoContext, attributes(stable_hasher)] =>
-    /// `HashStable` implementation that has no `HashStableContext` bound and
-    /// which adds `where` bounds for `HashStable` based off of fields and not
-    /// generics. This is suitable for use in crates like `rustc_type_ir`.
-    hash_stable::hash_stable_no_context_derive
+    [StableHash_NoContext, attributes(stable_hash)] => stable_hash::stable_hash_no_context_derive
 );
 
 // Encoding and Decoding derives
@@ -187,7 +181,6 @@ decl_derive!(
         note_once,
         warning,
         // field attributes
-        skip_arg,
         primary_span,
         label,
         subdiagnostic,
@@ -214,7 +207,6 @@ decl_derive!(
         multipart_suggestion_short,
         multipart_suggestion_hidden,
         // field attributes
-        skip_arg,
         primary_span,
         suggestion_part,
         applicability)] => diagnostics::subdiagnostic_derive

@@ -27,7 +27,7 @@ impl<'db> ActiveParameter<'db> {
 
     /// Returns information about the call argument this token is part of.
     pub fn at_arg(
-        sema: &'db Semantics<'db, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         list: ast::ArgList,
         at: TextSize,
     ) -> Option<Self> {

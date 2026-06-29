@@ -21,7 +21,7 @@ fn main() {
 }
 
 pub fn kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
-    core::intrinsics::offload(_kernel_1, [256, 1, 1], [32, 1, 1], (x, y))
+    core::intrinsics::offload(_kernel_1, [256, 1, 1], [32, 1, 1], 0, (x, y))
 }
 
 #[inline(never)]
@@ -52,8 +52,8 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 
 // CHECK-LABEL: define{{( dso_local)?}} void @main()
 // CHECK-NEXT: start:
-// CHECK-NEXT:   %0 = alloca [8 x i8], align 8
-// CHECK-NEXT:   %1 = alloca [8 x i8], align 8
+// CHECK-NEXT:   {{%[^ ]+}} = alloca [8 x i8], align 8
+// CHECK-NEXT:   {{%[^ ]+}} = alloca [8 x i8], align 8
 // CHECK-NEXT:   %y = alloca [1024 x i8], align 16
 // CHECK-NEXT:   %x = alloca [1024 x i8], align 16
 // CHECK-NEXT:   %.offload_baseptrs = alloca [2 x ptr], align 8
@@ -61,9 +61,9 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 // CHECK-NEXT:   %kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
 // CHECK:   store ptr %x, ptr %.offload_baseptrs, align 8
 // CHECK-NEXT:   store ptr %x, ptr %.offload_ptrs, align 8
-// CHECK-NEXT:   [[BPTRS_1:%.*]] = getelementptr inbounds nuw i8, ptr %.offload_baseptrs, i64 8
+// CHECK-NEXT:   [[BPTRS_1:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %.offload_baseptrs, i64 8
 // CHECK-NEXT:   store ptr %y, ptr [[BPTRS_1]], align 8
-// CHECK-NEXT:   [[PTRS_1:%.*]] = getelementptr inbounds nuw i8, ptr %.offload_ptrs, i64 8
+// CHECK-NEXT:   [[PTRS_1:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %.offload_ptrs, i64 8
 // CHECK-NEXT:   store ptr %y, ptr [[PTRS_1]], align 8
 // CHECK-NEXT:   call void @__tgt_target_data_begin_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 2, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull @.offload_sizes.[[K]], ptr nonnull @.offload_maptypes.[[K]].begin, ptr null, ptr null)
 // CHECK-NEXT:   store i32 3, ptr %kernel_args, align 8

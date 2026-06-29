@@ -8,7 +8,7 @@ const trait Trait {
     fn required();
 }
 
-impl const Trait for () {
+const impl Trait for () {
     fn required() {
         pub struct Type;
 

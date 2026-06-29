@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
-use rustc_span::Symbol;
+use rustc_span::{Symbol, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -62,7 +62,8 @@ impl LateLintPass<'_> for CheckedConversions {
                 },
                 _ => return,
             }
-            && !item.span.in_external_macro(cx.sess().source_map())
+            && let ctxt = item.span.ctxt()
+            && !ctxt.in_external_macro(cx.sess().source_map())
             && !is_in_const_context(cx)
             && let Some(cv) = match op2 {
                 // todo: check for case signed -> larger unsigned == only x >= 0
@@ -71,7 +72,7 @@ impl LateLintPass<'_> for CheckedConversions {
                     let upper_lower = |lt1, gt1, lt2, gt2| {
                         check_upper_bound(lt1, gt1)
                             .zip(check_lower_bound(lt2, gt2))
-                            .and_then(|(l, r)| l.combine(r, cx))
+                            .and_then(|(l, r)| l.combine(r, cx, ctxt))
                     };
                     upper_lower(lt1, gt1, lt2, gt2).or_else(|| upper_lower(lt2, gt2, lt1, gt1))
                 },
@@ -126,8 +127,8 @@ fn read_le_ge<'tcx>(
 
 impl<'a> Conversion<'a> {
     /// Combine multiple conversions if the are compatible
-    pub fn combine(self, other: Self, cx: &LateContext<'_>) -> Option<Conversion<'a>> {
-        if self.is_compatible(&other, cx) {
+    pub fn combine(self, other: Self, cx: &LateContext<'_>, ctxt: SyntaxContext) -> Option<Conversion<'a>> {
+        if self.is_compatible(&other, cx, ctxt) {
             // Prefer a Conversion that contains a type-constraint
             Some(if self.to_type.is_some() { self } else { other })
         } else {
@@ -137,9 +138,9 @@ impl<'a> Conversion<'a> {
 
     /// Checks if two conversions are compatible
     /// same type of conversion, same 'castee' and same 'to type'
-    pub fn is_compatible(&self, other: &Self, cx: &LateContext<'_>) -> bool {
+    pub fn is_compatible(&self, other: &Self, cx: &LateContext<'_>, ctxt: SyntaxContext) -> bool {
         (self.cvt == other.cvt)
-            && (SpanlessEq::new(cx).eq_expr(self.expr_to_cast, other.expr_to_cast))
+            && (SpanlessEq::new(cx).eq_expr(ctxt, self.expr_to_cast, other.expr_to_cast))
             && (self.has_compatible_to_type(other))
     }
 

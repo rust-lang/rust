@@ -1,5 +1,5 @@
-#![allow(clippy::match_same_arms, dead_code)]
 #![warn(clippy::match_wild_err_arm)]
+#![expect(clippy::match_same_arms)]
 
 fn issue_10635() {
     enum Error {

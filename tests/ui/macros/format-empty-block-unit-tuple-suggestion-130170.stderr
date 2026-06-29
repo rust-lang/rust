@@ -8,6 +8,11 @@ help: you might be missing a string literal to format with
    |
 LL |     println!("{:?} {} {}", {}, "sss", s);
    |              +++++++++++++
+help: you might want to enclose `{}` with `""`
+   |
+LL -     println!({}, "sss", s);
+LL +     println!("{}", "sss", s);
+   |
 
 error: format argument must be a string literal
   --> $DIR/format-empty-block-unit-tuple-suggestion-130170.rs:7:14
@@ -19,6 +24,11 @@ help: you might be missing a string literal to format with
    |
 LL |     println!("{:?}", {});
    |              +++++++
+help: you might want to enclose `{}` with `""`
+   |
+LL -     println!({});
+LL +     println!("{}");
+   |
 
 error: format argument must be a string literal
   --> $DIR/format-empty-block-unit-tuple-suggestion-130170.rs:9:14

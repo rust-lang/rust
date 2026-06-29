@@ -1,10 +1,11 @@
 use std::{fmt, iter};
 
+use arrayvec::ArrayVec;
 use rustc_abi::{
     AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Primitive,
     Reg, RegKind, Scalar, Size, TyAbiInterface, TyAndLayout, Variants,
 };
-use rustc_macros::HashStable_Generic;
+use rustc_macros::StableHash;
 
 pub use crate::spec::AbiMap;
 use crate::spec::{Arch, HasTargetSpec, HasX86AbiOpt};
@@ -35,7 +36,7 @@ mod x86_win32;
 mod x86_win64;
 mod xtensa;
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, StableHash)]
 pub enum PassMode {
     /// Ignore the argument.
     ///
@@ -106,10 +107,10 @@ pub use attr_impl::ArgAttribute;
 #[allow(non_upper_case_globals)]
 #[allow(unused)]
 mod attr_impl {
-    use rustc_macros::HashStable_Generic;
+    use rustc_macros::StableHash;
 
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
-    #[derive(Clone, Copy, Default, Hash, PartialEq, Eq, HashStable_Generic)]
+    #[derive(Clone, Copy, Default, Hash, PartialEq, Eq, StableHash)]
     pub struct ArgAttribute(u16);
     bitflags::bitflags! {
         impl ArgAttribute: u16 {
@@ -122,6 +123,11 @@ mod attr_impl {
             const InReg    = 1 << 6;
             const NoUndef  = 1 << 7;
             const Writable = 1 << 8;
+            /// It is UB for this pointer or any pointer derived from it to be used for
+            /// deallocation (except for zero-sized deallocation) while the function is
+            /// executing. Only valid on arguments (including return values that are passed
+            /// indirectly as arguments).
+            const NoFree   = 1 << 9;
         }
     }
     rustc_data_structures::external_bitflags_debug! { ArgAttribute }
@@ -130,7 +136,7 @@ mod attr_impl {
 /// Sometimes an ABI requires small integers to be extended to a full or partial register. This enum
 /// defines if this extension should be zero-extension or sign-extension when necessary. When it is
 /// not necessary to extend the argument, this enum is ignored.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, StableHash)]
 pub enum ArgExtension {
     None,
     Zext,
@@ -139,13 +145,12 @@ pub enum ArgExtension {
 
 /// A compact representation of LLVM attributes (at least those relevant for this module)
 /// that can be manipulated without interacting with LLVM's Attribute machinery.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, StableHash)]
 pub struct ArgAttributes {
     pub regular: ArgAttribute,
     pub arg_ext: ArgExtension,
-    /// The minimum size of the pointee, guaranteed to be valid for the duration of the whole call
-    /// (corresponding to LLVM's dereferenceable_or_null attributes, i.e., it is okay for this to be
-    /// set on a null pointer, but all non-null pointers must be dereferenceable).
+    /// If the pointer is not null, the minimum dereferenceable size of the pointee, at the time of
+    /// function entry (for arguments) or function return (for return values).
     pub pointee_size: Size,
     /// The minimum alignment of the pointee, if any.
     pub pointee_align: Option<Align>,
@@ -213,7 +218,7 @@ impl From<ArgAttribute> for ArgAttributes {
 
 /// An argument passed entirely registers with the
 /// same kind (e.g., HFA / HVA on PPC64 and AArch64).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, StableHash)]
 pub struct Uniform {
     pub unit: Reg,
 
@@ -262,9 +267,13 @@ impl Uniform {
 /// `rest.unit` register type gets repeated often enough to cover `rest.size`. This describes the
 /// actual type used for the call; the Rust type of the argument is then transmuted to this ABI type
 /// (and all data in the padding between the registers is dropped).
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, StableHash)]
 pub struct CastTarget {
-    pub prefix: [Option<Reg>; 8],
+    // Note that this is fixed to 8 elements for now as ABIs currently don't
+    // need anything further beyond that, and when this code was originally
+    // refactored to use `ArrayVec` it was already using 8, so that stuck
+    // around.
+    pub prefix: ArrayVec<Reg, 8>,
     /// The offset of `rest` from the start of the value. Currently only implemented for a `Reg`
     /// pair created by the `offset_pair` method.
     pub rest_offset: Option<Size>,
@@ -280,18 +289,20 @@ impl From<Reg> for CastTarget {
 
 impl From<Uniform> for CastTarget {
     fn from(uniform: Uniform) -> CastTarget {
-        Self::prefixed([None; 8], uniform)
+        Self::prefixed(Default::default(), uniform)
     }
 }
 
 impl CastTarget {
-    pub fn prefixed(prefix: [Option<Reg>; 8], rest: Uniform) -> Self {
+    pub fn prefixed(prefix: ArrayVec<Reg, 8>, rest: Uniform) -> Self {
         Self { prefix, rest_offset: None, rest, attrs: ArgAttributes::new() }
     }
 
     pub fn offset_pair(a: Reg, offset_from_start: Size, b: Reg) -> Self {
+        let mut prefix = ArrayVec::new();
+        prefix.push(a);
         Self {
-            prefix: [Some(a), None, None, None, None, None, None, None],
+            prefix,
             rest_offset: Some(offset_from_start),
             rest: b.into(),
             attrs: ArgAttributes::new(),
@@ -304,7 +315,9 @@ impl CastTarget {
     }
 
     pub fn pair(a: Reg, b: Reg) -> CastTarget {
-        Self::prefixed([Some(a), None, None, None, None, None, None, None], Uniform::from(b))
+        let mut prefix = ArrayVec::new();
+        prefix.push(a);
+        Self::prefixed(prefix, Uniform::from(b))
     }
 
     /// When you only access the range containing valid data, you can use this unaligned size;
@@ -314,10 +327,7 @@ impl CastTarget {
         let prefix_size = if let Some(offset_from_start) = self.rest_offset {
             offset_from_start
         } else {
-            self.prefix
-                .iter()
-                .filter_map(|x| x.map(|reg| reg.size))
-                .fold(Size::ZERO, |acc, size| acc + size)
+            self.prefix.iter().map(|reg| reg.size).fold(Size::ZERO, |acc, size| acc + size)
         };
         // Remaining arguments are passed in chunks of the unit size
         let rest_size =
@@ -333,7 +343,7 @@ impl CastTarget {
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.prefix
             .iter()
-            .filter_map(|x| x.map(|reg| reg.align(cx)))
+            .map(|reg| reg.align(cx))
             .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)), |acc, align| {
                 acc.max(align)
             })
@@ -363,7 +373,7 @@ impl CastTarget {
 
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
-#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, StableHash)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
     pub mode: PassMode,
@@ -408,7 +418,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             .set(ArgAttribute::NoAlias)
             .set(ArgAttribute::CapturesAddress)
             .set(ArgAttribute::NonNull)
-            .set(ArgAttribute::NoUndef);
+            .set(ArgAttribute::NoUndef)
+            .set(ArgAttribute::NoFree);
         attrs.pointee_size = layout.size;
         attrs.pointee_align = Some(layout.align.abi);
 
@@ -564,7 +575,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, StableHash)]
 pub enum RiscvInterruptKind {
     Machine,
     Supervisor,
@@ -589,7 +600,7 @@ impl RiscvInterruptKind {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, StableHash)]
 pub struct FnAbi<'a, Ty> {
     /// The type, layout, and information about how each argument is passed.
     pub args: Box<[ArgAbi<'a, Ty>]>,
@@ -744,7 +755,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 
             if arg_idx.is_none()
                 && arg.layout.size > Primitive::Pointer(AddressSpace::ZERO).size(cx) * 2
-                && !matches!(arg.layout.backend_repr, BackendRepr::SimdVector { .. })
+                && !matches!(
+                    arg.layout.backend_repr,
+                    BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. }
+                )
             {
                 // Return values larger than 2 registers using a return area
                 // pointer. LLVM and Cranelift disagree about how to return
@@ -813,6 +827,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                             ArgAttribute::default()
                         };
                         arg.cast_to_with_attrs(Reg { kind: RegKind::Integer, size }, attr.into());
+                    } else if self.conv == CanonAbi::RustTail {
+                        assert!(arg.layout.is_sized(), "extern \"tail\" arguments must be sized");
+                        arg.pass_by_stack_offset(None);
                     }
                 }
 

@@ -88,11 +88,9 @@ pub fn transparent_simd_aggregate(x: [u32; 4]) -> u32 {
 
     // CHECK-LABEL: transparent_simd_aggregate
     // CHECK-NOT: alloca
-    // CHECK: %[[RET:.+]] = alloca [4 x i8]
-    // CHECK-NOT: alloca
     // CHECK: %a = load <4 x i32>, ptr %x, align 4
     // CHECK: %[[TEMP:.+]] = extractelement <4 x i32> %a, i32 1
-    // CHECK: store i32 %[[TEMP]], ptr %[[RET]]
+    // CHECK: ret i32 %[[TEMP]]
 
     unsafe {
         let a = Simd(x);

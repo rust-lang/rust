@@ -1,8 +1,8 @@
 use std::assert_matches;
 
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, TagEncoding, Variants};
-use rustc_middle::bug;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
+use rustc_middle::{bug, ty};
 
 /// Enforce some basic invariants on layouts.
 pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
@@ -52,6 +52,14 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     }
 
     fn skip_newtypes<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) -> TyAndLayout<'tcx> {
+        match *layout.ty.kind() {
+            ty::UnsafeBinder(bound_ty) => {
+                let ty = cx.tcx().instantiate_bound_regions_with_erased(bound_ty.into());
+                return skip_newtypes(cx, &TyAndLayout { ty, ..*layout });
+            }
+            _ => {}
+        }
+
         if matches!(layout.layout.variants(), Variants::Multiple { .. }) {
             // Definitely not a newtype of anything.
             return *layout;
@@ -294,10 +302,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 }
             }
             for variant in variants.iter() {
-                // No nested "multiple".
-                assert_matches!(variant.variants, Variants::Single { .. });
-                // Variants should have the same or a smaller size as the full thing,
-                // and same for alignment.
+                // Variants should have the same or a smaller size as the full thing.
                 if variant.size > layout.size {
                     bug!(
                         "Type with size {} bytes has variant with size {} bytes: {layout:#?}",
@@ -305,18 +310,8 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                         variant.size.bytes(),
                     )
                 }
-                if variant.align.abi > layout.align.abi {
-                    bug!(
-                        "Type with alignment {} bytes has variant with alignment {} bytes: {layout:#?}",
-                        layout.align.bytes(),
-                        variant.align.bytes(),
-                    )
-                }
                 // Skip empty variants.
-                if variant.size == Size::ZERO
-                    || variant.fields.count() == 0
-                    || variant.is_uninhabited()
-                {
+                if variant.size == Size::ZERO || !variant.has_fields() || variant.is_uninhabited() {
                     // These are never actually accessed anyway, so we can skip the coherence check
                     // for them. They also fail that check, since they may have
                     // a different ABI even when the main type is

@@ -23,6 +23,9 @@ mod bogus_attribute_types_1 {
 
     #[deprecated("test")] //~ ERROR malformed `deprecated` attribute input [E0565]
     fn f8() { }
+
+    #[deprecated("1.2.3")] //~ ERROR malformed `deprecated` attribute input [E0565]
+    fn f9() { }
 }
 
 #[deprecated(since = "a", note = "b")]

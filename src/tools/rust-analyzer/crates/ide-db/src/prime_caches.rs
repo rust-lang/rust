@@ -5,7 +5,7 @@
 use std::panic::AssertUnwindSafe;
 
 use base_db::all_crates;
-use hir::{Symbol, import_map::ImportMap};
+use hir::{Symbol, import_map::ImportMap, sym};
 use rustc_hash::FxHashMap;
 use salsa::{Cancelled, Database};
 
@@ -315,5 +315,5 @@ fn crate_name(db: &RootDatabase, krate: Crate) -> Symbol {
         .display_name
         .as_deref()
         .cloned()
-        .unwrap_or_else(|| Symbol::integer(salsa::plumbing::AsId::as_id(&krate).index() as usize))
+        .unwrap_or_else(|| sym::Integer::get(salsa::plumbing::AsId::as_id(&krate).index() as usize))
 }

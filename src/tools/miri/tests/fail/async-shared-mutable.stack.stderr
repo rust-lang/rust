@@ -1,12 +1,12 @@
-error: Undefined Behavior: attempting a write access using <TAG> at ALLOC[OFFSET], but that tag does not exist in the borrow stack for this location
+error: Undefined Behavior: attempting a write access using <TAG> at ALLOC[RANGE], but that tag does not exist in the borrow stack for this location
   --> tests/fail/async-shared-mutable.rs:LL:CC
    |
 LL |             *x = 1;
-   |             ^^^^^^ this error occurs as part of an access at ALLOC[OFFSET]
+   |             ^^^^^^ this error occurs as part of an access at ALLOC[RANGE]
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a Unique retag at offsets [OFFSET]
+help: <TAG> was created by a Unique retag at offsets [RANGE]
   --> tests/fail/async-shared-mutable.rs:LL:CC
    |
 LL | /         core::future::poll_fn(move |_| {
@@ -15,7 +15,7 @@ LL | |             Poll::<()>::Pending
 LL | |         })
 LL | |         .await
    | |______________^
-help: <TAG> was later invalidated at offsets [OFFSET] by a SharedReadOnly retag
+help: <TAG> was later invalidated at offsets [RANGE] by a SharedReadOnly retag
   --> tests/fail/async-shared-mutable.rs:LL:CC
    |
 LL |     let _: Pin<&_> = f.as_ref(); // Or: `f.as_mut().into_ref()`.

@@ -30,7 +30,7 @@ use crate::{AssistContext, Assists, utils::add_group_separators};
 // ```
 pub(crate) fn add_explicit_enum_discriminant(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let enum_node = ctx.find_node_at_offset::<ast::Enum>()?;
     let enum_def = ctx.sema.to_def(&enum_node)?;

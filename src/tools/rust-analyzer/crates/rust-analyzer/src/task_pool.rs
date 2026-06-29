@@ -40,10 +40,6 @@ impl<T> TaskPool<T> {
         })
     }
 
-    pub(crate) fn len(&self) -> usize {
-        self.pool.len()
-    }
-
     pub(crate) fn is_empty(&self) -> bool {
         self.pool.is_empty()
     }

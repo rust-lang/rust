@@ -176,7 +176,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // In MIR, argument N is stored in local N+1.
-            let local = Local::from_usize(argument_index + 1);
+            let local = Local::arg(argument_index);
 
             let mir_input_ty = self.body.local_decls[local].ty;
 
@@ -235,7 +235,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
         {
-            let b = self.normalize(b, Locations::All(span));
+            let b = self.normalize(ty::Unnormalized::new(b), Locations::All(span));
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
                 .unwrap_or_else(|terr| {
                     span_mirbug!(

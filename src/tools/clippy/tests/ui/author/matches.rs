@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![allow(clippy::let_and_return)]
+#![expect(clippy::let_and_return)]
 
 fn main() {
     #[clippy::author]

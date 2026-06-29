@@ -78,15 +78,11 @@ impl bool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(bool_to_result)]
-    ///
     /// assert_eq!(false.ok_or(0), Err(0));
     /// assert_eq!(true.ok_or(0), Ok(()));
     /// ```
     ///
     /// ```
-    /// #![feature(bool_to_result)]
-    ///
     /// let mut a = 0;
     /// let mut function_with_side_effects = || { a += 1; };
     ///
@@ -97,7 +93,7 @@ impl bool {
     /// // evaluated eagerly.
     /// assert_eq!(a, 2);
     /// ```
-    #[unstable(feature = "bool_to_result", issue = "142748")]
+    #[stable(feature = "bool_to_result", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_bool", issue = "151531")]
     #[inline]
     pub const fn ok_or<E: [const] Destruct>(self, err: E) -> Result<(), E> {
@@ -110,15 +106,11 @@ impl bool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(bool_to_result)]
-    ///
     /// assert_eq!(false.ok_or_else(|| 0), Err(0));
     /// assert_eq!(true.ok_or_else(|| 0), Ok(()));
     /// ```
     ///
     /// ```
-    /// #![feature(bool_to_result)]
-    ///
     /// let mut a = 0;
     ///
     /// assert!(true.ok_or_else(|| { a += 1; }).is_ok());
@@ -128,7 +120,7 @@ impl bool {
     /// // `ok_or_else`.
     /// assert_eq!(a, 1);
     /// ```
-    #[unstable(feature = "bool_to_result", issue = "142748")]
+    #[stable(feature = "bool_to_result", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_bool", issue = "151531")]
     #[inline]
     pub const fn ok_or_else<E, F: [const] FnOnce() -> E + [const] Destruct>(

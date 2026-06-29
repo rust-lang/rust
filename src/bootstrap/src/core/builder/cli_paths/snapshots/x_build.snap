@@ -19,5 +19,4 @@ expression: build
     - Set({build::library/unwind})
 [Build] tool::Rustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({build::src/librustdoc})
-    - Set({build::src/tools/rustdoc})
+    - Set({build::src/librustdoc, build::src/tools/rustdoc})

@@ -1,4 +1,3 @@
-#![allow(clippy::redundant_clone)]
 #![feature(custom_inner_attributes)]
 
 fn main() {}

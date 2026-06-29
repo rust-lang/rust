@@ -21,13 +21,13 @@
 // CHECK:  call void @llvm.memcpy.p0.p0.i64(ptr {{.*}} %.offload_sizes, ptr {{.*}} @.offload_sizes.foo, i64 16, i1 false)
 // CHECK:       store i64 16, ptr %.offload_sizes, align 8
 // CHECK:       call void @__tgt_target_data_begin_mapper(ptr nonnull @anon.[[ID]].1, i64 -1, i32 2, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull %.offload_sizes, ptr nonnull @.offload_maptypes.[[K]].begin, ptr null, ptr null)
-// CHECK:       %11 = call i32 @__tgt_target_kernel(ptr nonnull @anon.[[ID]].1, i64 -1, i32 1, i32 1, ptr nonnull @.foo.region_id, ptr nonnull %kernel_args)
+// CHECK:       call i32 @__tgt_target_kernel(ptr nonnull @anon.[[ID]].1, i64 -1, i32 1, i32 1, ptr nonnull @.foo.region_id, ptr nonnull %kernel_args)
 // CHECK-NEXT:  call void @__tgt_target_data_end_mapper(ptr nonnull @anon.[[ID]].1, i64 -1, i32 2, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull %.offload_sizes, ptr nonnull @.offload_maptypes.[[K]].end, ptr null, ptr null)
 
 #[unsafe(no_mangle)]
 fn main() {
     let mut x = [0.0, 0.0, 0.0, 0.0];
-    core::intrinsics::offload::<_, _, ()>(foo, [1, 1, 1], [1, 1, 1], ((&mut x) as &mut [f64],));
+    core::intrinsics::offload::<_, _, ()>(foo, [1, 1, 1], [1, 1, 1], 0, ((&mut x) as &mut [f64],));
 }
 
 unsafe extern "C" {

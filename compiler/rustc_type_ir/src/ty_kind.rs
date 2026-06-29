@@ -1,13 +1,14 @@
 use std::fmt;
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 use derive_where::derive_where;
 use rustc_abi::ExternAbi;
 use rustc_ast_ir::Mutability;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 use rustc_type_ir::data_structures::{NoError, UnifyKey, UnifyValue};
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
@@ -16,17 +17,21 @@ use rustc_type_ir_macros::{
 use self::TyKind::*;
 pub use self::closure::*;
 use crate::inherent::*;
+use crate::ty::AliasTy;
 #[cfg(feature = "nightly")]
 use crate::visit::TypeVisitable;
-use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
+use crate::{
+    self as ty, BoundVarIndexKind, FloatTy, FreeAliasTy, InherentAliasTy, IntTy, Interner,
+    OpaqueAliasTy, ProjectionAliasTy, UintTy,
+};
 
 mod closure;
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(GenericTypeVisitable, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub enum AliasTyKind<I: Interner> {
     /// A projection `<Type as Trait>::AssocType`.
@@ -38,12 +43,12 @@ pub enum AliasTyKind<I: Interner> {
     /// Note that the `def_id` is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `interner.associated_item(def_id).container`,
     /// aka. `interner.parent(def_id)`.
-    Projection { def_id: I::DefId },
+    Projection { def_id: I::TraitAssocTyId },
 
     /// An associated type in an inherent `impl`
     ///
     /// The `def_id` is the `DefId` of the `ImplItem` for the associated type.
-    Inherent { def_id: I::DefId },
+    Inherent { def_id: I::InherentAssocTyId },
 
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
     ///
@@ -54,20 +59,16 @@ pub enum AliasTyKind<I: Interner> {
     ///
     /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
     /// underlying type if the type is an opaque.
-    Opaque { def_id: I::DefId },
+    Opaque { def_id: I::OpaqueTyId },
 
     /// A type alias that actually checks its trait bounds.
     ///
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
-    Free { def_id: I::DefId },
+    Free { def_id: I::FreeTyAliasId },
 }
 
 impl<I: Interner> AliasTyKind<I> {
-    pub fn new_from_def_id(interner: I, def_id: I::DefId) -> Self {
-        interner.alias_ty_kind_from_def_id(def_id)
-    }
-
     pub fn descr(self) -> &'static str {
         match self {
             AliasTyKind::Projection { .. } => "associated type",
@@ -77,13 +78,60 @@ impl<I: Interner> AliasTyKind<I> {
         }
     }
 
-    pub fn def_id(self) -> I::DefId {
-        let (AliasTyKind::Projection { def_id }
-        | AliasTyKind::Inherent { def_id }
-        | AliasTyKind::Opaque { def_id }
-        | AliasTyKind::Free { def_id }) = self;
+    pub fn try_to_projection(self) -> Option<I::TraitAssocTyId> {
+        match self {
+            AliasTyKind::Projection { def_id } => Some(def_id),
+            _ => None,
+        }
+    }
 
-        def_id
+    pub fn try_to_inherent(self) -> Option<I::InherentAssocTyId> {
+        match self {
+            AliasTyKind::Inherent { def_id } => Some(def_id),
+            _ => None,
+        }
+    }
+
+    pub fn try_to_opaque(self) -> Option<I::OpaqueTyId> {
+        match self {
+            AliasTyKind::Opaque { def_id } => Some(def_id),
+            _ => None,
+        }
+    }
+
+    pub fn try_to_free(self) -> Option<I::FreeTyAliasId> {
+        match self {
+            AliasTyKind::Free { def_id } => Some(def_id),
+            _ => None,
+        }
+    }
+}
+
+/// Whether an alias type is rigid or potentially normalizeable.
+///
+/// This is not used by the old solver and is always `IsRigid::No` there. In the new solver,
+/// aliases which cannot be further normalized in their current scope normalize to themselves
+/// with `IsRigid::Yes`. At this point we no longer have to try and renormalize this alias
+/// later on.
+///
+/// FIXME(#155345): Alias handling is currently still in flux for the new trait
+/// solver and this is currently somewhat messy. Please reach out on
+/// #t-types/trait-system-refactor-initiative if you encounter this and it isn't
+/// immediately clear what to do.
+#[derive(Debug, Clone, Copy, Hash, PartialEq)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
+)]
+pub enum IsRigid {
+    Yes,
+    No,
+}
+
+impl IsRigid {
+    pub fn yes_if_next_solver<I: Interner>(interner: I) -> IsRigid {
+        if interner.next_trait_solver_globally() { IsRigid::Yes } else { IsRigid::No }
     }
 }
 
@@ -96,7 +144,7 @@ impl<I: Interner> AliasTyKind<I> {
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
@@ -253,7 +301,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// All of these types are represented as pairs of def-id and args, and can
     /// be normalized, so they are grouped conceptually.
-    Alias(AliasTy<I>),
+    Alias(IsRigid, AliasTy<I>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(I::ParamTy),
@@ -355,7 +403,7 @@ impl<I: Interner> TyKind<I> {
 
             ty::Error(_)
             | ty::Infer(_)
-            | ty::Alias(_)
+            | ty::Alias(ty::IsRigid::No | ty::IsRigid::Yes, _)
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Placeholder(_) => false,
@@ -420,7 +468,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
                 }
                 write!(f, ")")
             }
-            Alias(a) => f.debug_tuple("Alias").field(&a).finish(),
+            Alias(is_rigid, a) => f.debug_tuple("Alias").field(&is_rigid).field(&a).finish(),
             Param(p) => write!(f, "{p:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
@@ -430,45 +478,18 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
     }
 }
 
-/// Represents the projection of an associated, opaque, or lazy-type-alias type.
-///
-/// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
-/// * For an inherent projection, this would be `Ty::N<...>`.
-/// * For an opaque type, there is no explicit syntax.
-#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
-)]
-pub struct AliasTy<I: Interner> {
-    /// The parameters of the associated or opaque type.
-    ///
-    /// For a projection, these are the generic parameters for the trait and the
-    /// GAT parameters, if there are any.
-    ///
-    /// For an inherent projection, they consist of the self type and the GAT parameters,
-    /// if there are any.
-    ///
-    /// For RPIT the generic parameters are for the generics of the function,
-    /// while for TAIT it is used for the generic parameters of the alias.
-    pub args: I::GenericArgs,
-
-    #[type_foldable(identity)]
-    #[type_visitable(ignore)]
-    pub kind: AliasTyKind<I>,
-
-    /// This field exists to prevent the creation of `AliasTy` without using [`AliasTy::new_from_args`].
-    #[derive_where(skip(Debug))]
-    pub(crate) _use_alias_ty_new_instead: (),
-}
-
-impl<I: Interner> Eq for AliasTy<I> {}
-
 impl<I: Interner> AliasTy<I> {
     pub fn new_from_args(interner: I, kind: AliasTyKind<I>, args: I::GenericArgs) -> AliasTy<I> {
-        interner.debug_assert_args_compatible(kind.def_id(), args);
-        AliasTy { kind, args, _use_alias_ty_new_instead: () }
+        if cfg!(debug_assertions) {
+            let def_id = match kind {
+                AliasTyKind::Projection { def_id } => def_id.into(),
+                AliasTyKind::Inherent { def_id } => def_id.into(),
+                AliasTyKind::Opaque { def_id } => def_id.into(),
+                AliasTyKind::Free { def_id } => def_id.into(),
+            };
+            interner.debug_assert_args_compatible(def_id, args);
+        }
+        AliasTy { kind, args, _use_alias_new_instead: () }
     }
 
     pub fn new(
@@ -485,12 +506,70 @@ impl<I: Interner> AliasTy<I> {
         matches!(self.kind, AliasTyKind::Opaque { .. })
     }
 
-    pub fn to_ty(self, interner: I) -> I::Ty {
-        Ty::new_alias(interner, self)
+    pub fn to_ty(self, interner: I, is_rigid: ty::IsRigid) -> I::Ty {
+        Ty::new_alias(interner, is_rigid, self)
+    }
+
+    pub fn try_to_projection(self) -> Option<ProjectionAliasTy<I>> {
+        self.kind.try_to_projection().map(|kind| ty::Alias {
+            kind,
+            args: self.args,
+            _use_alias_new_instead: (),
+        })
+    }
+
+    pub fn try_to_inherent(self) -> Option<InherentAliasTy<I>> {
+        self.kind.try_to_inherent().map(|kind| ty::Alias {
+            kind,
+            args: self.args,
+            _use_alias_new_instead: (),
+        })
+    }
+
+    pub fn try_to_opaque(self) -> Option<OpaqueAliasTy<I>> {
+        self.kind.try_to_opaque().map(|kind| ty::Alias {
+            kind,
+            args: self.args,
+            _use_alias_new_instead: (),
+        })
+    }
+
+    pub fn try_to_free(self) -> Option<FreeAliasTy<I>> {
+        self.kind.try_to_free().map(|kind| ty::Alias {
+            kind,
+            args: self.args,
+            _use_alias_new_instead: (),
+        })
+    }
+}
+
+impl<I: Interner> ProjectionAliasTy<I> {
+    pub fn new_projection_from_args(
+        interner: I,
+        kind: I::TraitAssocTyId,
+        args: I::GenericArgs,
+    ) -> Self {
+        interner.debug_assert_args_compatible(kind.into(), args);
+        Self { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn projection_to_alias_ty(self) -> AliasTy<I> {
+        AliasTy {
+            kind: AliasTyKind::Projection { def_id: self.kind },
+            args: self.args,
+            _use_alias_new_instead: (),
+        }
+    }
+
+    #[track_caller]
+    pub fn projection_self_ty(self) -> I::Ty {
+        self.args.type_at(0)
     }
 }
 
 /// The following methods work only with (trait) associated type projections.
+// FIXME: Migrate these to the impl on ProjectionAliasTy (by making callers use `try_to_projection`
+// or similar when they guard for projections)
 impl<I: Interner> AliasTy<I> {
     #[track_caller]
     pub fn self_ty(self) -> I::Ty {
@@ -505,10 +584,10 @@ impl<I: Interner> AliasTy<I> {
         )
     }
 
-    pub fn trait_def_id(self, interner: I) -> I::DefId {
+    pub fn trait_def_id(self, interner: I) -> I::TraitId {
         let AliasTyKind::Projection { def_id } = self.kind else { panic!("expected a projection") };
 
-        interner.parent(def_id)
+        interner.projection_parent(def_id.into())
     }
 
     /// Extracts the underlying trait reference and own args from this projection.
@@ -519,7 +598,7 @@ impl<I: Interner> AliasTy<I> {
     pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::GenericArgsSlice) {
         let AliasTyKind::Projection { def_id } = self.kind else { panic!("expected a projection") };
 
-        interner.trait_ref_and_own_args_for_alias(def_id, self.args)
+        interner.trait_ref_and_own_args_for_alias(def_id.into(), self.args)
     }
 
     /// Extracts the underlying trait reference from this projection.
@@ -532,6 +611,55 @@ impl<I: Interner> AliasTy<I> {
     /// as well.
     pub fn trait_ref(self, interner: I) -> ty::TraitRef<I> {
         self.trait_ref_and_own_args(interner).0
+    }
+}
+
+impl<I: Interner> InherentAliasTy<I> {
+    pub fn new_inherent_from_args(
+        interner: I,
+        kind: I::InherentAssocTyId,
+        args: I::GenericArgs,
+    ) -> Self {
+        interner.debug_assert_args_compatible(kind.into(), args);
+        Self { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn inherent_to_alias_ty(self) -> AliasTy<I> {
+        AliasTy {
+            kind: AliasTyKind::Inherent { def_id: self.kind },
+            args: self.args,
+            _use_alias_new_instead: (),
+        }
+    }
+}
+
+impl<I: Interner> OpaqueAliasTy<I> {
+    pub fn new_opaque_from_args(interner: I, kind: I::OpaqueTyId, args: I::GenericArgs) -> Self {
+        interner.debug_assert_args_compatible(kind.into(), args);
+        Self { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn opaque_to_alias_ty(self) -> AliasTy<I> {
+        AliasTy {
+            kind: AliasTyKind::Opaque { def_id: self.kind },
+            args: self.args,
+            _use_alias_new_instead: (),
+        }
+    }
+}
+
+impl<I: Interner> FreeAliasTy<I> {
+    pub fn new_free_from_args(interner: I, kind: I::FreeTyAliasId, args: I::GenericArgs) -> Self {
+        interner.debug_assert_args_compatible(kind.into(), args);
+        Self { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn free_to_alias_ty(self) -> AliasTy<I> {
+        AliasTy {
+            kind: AliasTyKind::Free { def_id: self.kind },
+            args: self.args,
+            _use_alias_new_instead: (),
+        }
     }
 }
 
@@ -706,15 +834,15 @@ impl UnifyKey for FloatVid {
 }
 
 #[cfg(feature = "nightly")]
-impl<Hcx> HashStable<Hcx> for InferTy {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl StableHash for InferTy {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         use InferTy::*;
-        std::mem::discriminant(self).hash_stable(hcx, hasher);
+        std::mem::discriminant(self).stable_hash(hcx, hasher);
         match self {
             TyVar(_) | IntVar(_) | FloatVar(_) => {
                 panic!("type variables should not be hashed: {self:?}")
             }
-            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(hcx, hasher),
+            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.stable_hash(hcx, hasher),
         }
     }
 }
@@ -750,7 +878,7 @@ impl fmt::Debug for InferTy {
 #[derive_where(Clone, Copy, PartialEq, Hash, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 pub struct TypeAndMut<I: Interner> {
@@ -760,20 +888,47 @@ pub struct TypeAndMut<I: Interner> {
 
 impl<I: Interner> Eq for TypeAndMut<I> {}
 
-/// Contains the packed non-type fields of a function signature.
-// FIXME(splat): add the splatted argument index as a u16
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
-)]
-pub struct FnSigKind {
-    /// Holds the c_variadic and safety bitflags, and 6 bits for the `ExternAbi` variant and unwind
-    /// flag.
-    flags: u8,
+/// Error type for splatted argument index errors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SplattedArgIndexError {
+    /// The splatted argument index is invalid.
+    /// A `u8::MAX` argument index used to indicate that no argument is splatted.
+    /// Higher values are also not supported, for performance reasons.
+    InvalidIndex { splatted_arg_index: u8 },
+
+    /// The splatted argument index is outside the bounds of the function arguments.
+    OutOfBounds { splatted_arg_index: u8, args_len: u16 },
 }
 
-impl fmt::Debug for FnSigKind {
+/// Contains the packed non-type fields of a function signature.
+#[derive_where(Copy, Clone, PartialEq, Eq, Hash; I: Interner)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
+)]
+pub struct FnSigKind<I: Interner> {
+    /// Holds the c_variadic and safety bitflags, and 6 bits for the `ExternAbi` variant and unwind
+    /// flag.
+    #[lift(identity)]
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
+    flags: u8,
+
+    /// Which function argument is splatted into multiple arguments in callers, if any?
+    /// Splatting functions with `>= u8::MAX` arguments is not supported, for performance reasons.
+    /// (And spending an extra byte on an edge case is not worth the perf.)
+    #[lift(identity)]
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
+    splatted: u8,
+
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
+    _marker: PhantomData<fn() -> I>,
+}
+
+impl<I: Interner> fmt::Debug for FnSigKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut f = f.debug_tuple("FnSigKind");
 
@@ -787,13 +942,29 @@ impl fmt::Debug for FnSigKind {
 
         if self.c_variadic() {
             f.field(&"CVariadic");
-        };
+        }
+
+        if let Some(index) = self.splatted() {
+            f.field(&format!("Splatted({})", index));
+        }
 
         f.finish()
     }
 }
 
-impl FnSigKind {
+impl<I: Interner> Default for FnSigKind<I> {
+    /// Create a new FnSigKind with the "Rust" ABI, "Unsafe" safety, and no C-style variadic or splatted arguments.
+    /// To modify these flags, use the `set_*` methods, for readability.
+    fn default() -> Self {
+        Self { flags: 0, splatted: 0, _marker: PhantomData }
+            .set_abi(ExternAbi::Rust)
+            .set_safety(I::Safety::unsafe_mode())
+            .set_c_variadic(false)
+            .set_no_splatted_args()
+    }
+}
+
+impl<I: Interner> FnSigKind<I> {
     /// Mask for the `ExternAbi` variant, including the unwind flag.
     const EXTERN_ABI_MASK: u8 = 0b111111;
 
@@ -803,16 +974,39 @@ impl FnSigKind {
     /// Bitflag for a trailing C-style variadic argument.
     const C_VARIADIC_FLAG: u8 = 1 << 7;
 
-    /// Create a new FnSigKind with the "Rust" ABI, "Unsafe" safety, and no C-style variadic argument.
-    /// To modify these flags, use the `set_*` methods, for readability.
-    // FIXME: use Default instead when that trait is const stable.
-    pub const fn default() -> Self {
-        Self { flags: 0 }.set_abi(ExternAbi::Rust).set_safe(false).set_c_variadic(false)
+    /// The marker index for "no splatted arguments". Higher values are also not supported, for
+    /// performance reasons.
+    ///
+    /// Must have the same value as `FnDeclFlags::NO_SPLATTED_ARG_INDEX` and
+    /// `rustc_ast::FnDecl::NO_SPLATTED_ARG_INDEX`.
+    ///
+    /// This is an implementation detail, which should only be used in low-level encoding.
+    pub const NO_SPLATTED_ARG_INDEX: u8 = u8::MAX;
+
+    /// Create a new FnSigKind with the given ABI, safety, C-style variadic, and splatted argument
+    /// index.
+    pub fn new(
+        abi: ExternAbi,
+        safety: I::Safety,
+        c_variadic: bool,
+        splatted: Option<u8>,
+        args_len: usize,
+    ) -> Result<Self, SplattedArgIndexError> {
+        Self::default()
+            .set_abi(abi)
+            .set_safety(safety)
+            .set_c_variadic(c_variadic)
+            .set_splatted(splatted, args_len)
+    }
+
+    /// Create a new safe FnSigKind with the `extern "Rust"` ABI, that isn't C-style variadic or splatted.
+    pub fn dummy() -> Self {
+        Self::default().set_safety(I::Safety::safe())
     }
 
     /// Set the ABI, including the unwind flag.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_abi(mut self, abi: ExternAbi) -> Self {
+    pub fn set_abi(mut self, abi: ExternAbi) -> Self {
         let abi_index = abi.as_packed();
         assert!(abi_index <= Self::EXTERN_ABI_MASK);
 
@@ -824,8 +1018,8 @@ impl FnSigKind {
 
     /// Set the safety flag, `true` is `Safe`.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_safe(mut self, is_safe: bool) -> Self {
-        if is_safe {
+    pub fn set_safety(mut self, safety: I::Safety) -> Self {
+        if safety.is_safe() {
             self.flags |= Self::SAFE_FLAG;
         } else {
             self.flags &= !Self::SAFE_FLAG;
@@ -836,7 +1030,7 @@ impl FnSigKind {
 
     /// Set the C-style variadic argument flag.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_c_variadic(mut self, c_variadic: bool) -> Self {
+    pub fn set_c_variadic(mut self, c_variadic: bool) -> Self {
         if c_variadic {
             self.flags |= Self::C_VARIADIC_FLAG;
         } else {
@@ -846,34 +1040,79 @@ impl FnSigKind {
         self
     }
 
+    /// Set the splatted argument index.
+    /// The number of function arguments is used for error checking.
+    #[must_use = "this method does not modify the receiver"]
+    pub fn set_splatted(
+        mut self,
+        splatted: Option<u8>,
+        args_len: usize,
+    ) -> Result<Self, SplattedArgIndexError> {
+        if let Some(splatted_arg_index) = splatted {
+            if splatted_arg_index == Self::NO_SPLATTED_ARG_INDEX {
+                // This index value is used as a marker for "no splatting", so it is unsupported.
+                // Higher values are also not supported, for performance reasons.
+                return Err(SplattedArgIndexError::InvalidIndex { splatted_arg_index });
+            } else if usize::from(splatted_arg_index) >= args_len {
+                return Err(SplattedArgIndexError::OutOfBounds {
+                    splatted_arg_index,
+                    args_len: args_len as u16,
+                });
+            }
+
+            self.splatted = splatted_arg_index;
+        } else {
+            self.splatted = Self::NO_SPLATTED_ARG_INDEX;
+        }
+
+        Ok(self)
+    }
+
+    /// Set the splatted argument index to "no splatted arguments".
+    #[must_use = "this method does not modify the receiver"]
+    pub fn set_no_splatted_args(mut self) -> Self {
+        self.splatted = Self::NO_SPLATTED_ARG_INDEX;
+        self
+    }
+
     /// Get the ABI, including the unwind flag.
-    pub const fn abi(self) -> ExternAbi {
+    pub fn abi(self) -> ExternAbi {
         let abi_index = self.flags & Self::EXTERN_ABI_MASK;
         ExternAbi::from_packed(abi_index)
     }
 
     /// Get the safety flag.
-    pub const fn is_safe(self) -> bool {
+    pub fn is_safe(self) -> bool {
         self.flags & Self::SAFE_FLAG != 0
     }
 
+    /// Returns the safety mode.
+    pub fn safety(self) -> I::Safety {
+        if self.is_safe() { I::Safety::safe() } else { I::Safety::unsafe_mode() }
+    }
+
     /// Do the function arguments end with a C-style variadic argument?
-    pub const fn c_variadic(self) -> bool {
+    pub fn c_variadic(self) -> bool {
         self.flags & Self::C_VARIADIC_FLAG != 0
+    }
+
+    /// Get the index of the splatted argument, if any.
+    pub fn splatted(self) -> Option<u8> {
+        if self.splatted == Self::NO_SPLATTED_ARG_INDEX { None } else { Some(self.splatted) }
     }
 }
 
 #[derive_where(Clone, Copy, PartialEq, Hash; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnSig<I: Interner> {
     pub inputs_and_output: I::Tys,
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
-    pub fn_sig_kind: I::FSigKind,
+    pub fn_sig_kind: FnSigKind<I>,
 }
 
 impl<I: Interner> Eq for FnSig<I> {}
@@ -888,25 +1127,31 @@ impl<I: Interner> FnSig<I> {
     }
 
     pub fn is_fn_trait_compatible(self) -> bool {
-        !self.c_variadic() && self.safety().is_safe() && self.abi().is_rust()
+        !self.c_variadic() && self.safety().is_safe() && self.abi() == ExternAbi::Rust
     }
 
-    pub fn set_safe(self, is_safe: bool) -> Self {
-        Self {
-            fn_sig_kind: I::FSigKind::new(
-                self.abi(),
-                if is_safe { I::Safety::safe() } else { I::Safety::unsafe_mode() },
-                self.c_variadic(),
-            ),
-            ..self
-        }
+    /// Set the safety flag.
+    #[must_use = "this method does not modify the receiver"]
+    pub fn set_safety(self, safety: I::Safety) -> Self {
+        Self { fn_sig_kind: self.fn_sig_kind.set_safety(safety), ..self }
+    }
+
+    /// Set the splatted argument index.
+    /// The number of function arguments is used for error checking.
+    #[must_use = "this method does not modify the receiver"]
+    pub fn set_splatted(
+        self,
+        splatted: Option<u8>,
+        args_len: usize,
+    ) -> Result<Self, SplattedArgIndexError> {
+        Ok(Self { fn_sig_kind: self.fn_sig_kind.set_splatted(splatted, args_len)?, ..self })
     }
 
     pub fn safety(self) -> I::Safety {
         self.fn_sig_kind.safety()
     }
 
-    pub fn abi(self) -> I::Abi {
+    pub fn abi(self) -> ExternAbi {
         self.fn_sig_kind.abi()
     }
 
@@ -914,11 +1159,14 @@ impl<I: Interner> FnSig<I> {
         self.fn_sig_kind.c_variadic()
     }
 
+    pub fn splatted(self) -> Option<u8> {
+        self.fn_sig_kind.splatted()
+    }
+
+    /// Create a new safe FnSig with no arguments or return type, using the `extern "Rust"` ABI,
+    /// that isn't C-style variadic or splatted.
     pub fn dummy() -> Self {
-        Self {
-            inputs_and_output: Default::default(),
-            fn_sig_kind: I::FSigKind::new(I::Abi::rust(), I::Safety::safe(), false),
-        }
+        Self { inputs_and_output: Default::default(), fn_sig_kind: FnSigKind::dummy() }
     }
 }
 
@@ -943,7 +1191,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
         self.map_bound(|fn_sig| fn_sig.output())
     }
 
-    pub fn fn_sig_kind(self) -> I::FSigKind {
+    pub fn fn_sig_kind(self) -> FnSigKind<I> {
         self.skip_binder().fn_sig_kind
     }
 
@@ -951,11 +1199,15 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
         self.skip_binder().c_variadic()
     }
 
+    pub fn splatted(self) -> Option<u8> {
+        self.skip_binder().splatted()
+    }
+
     pub fn safety(self) -> I::Safety {
         self.skip_binder().safety()
     }
 
-    pub fn abi(self) -> I::Abi {
+    pub fn abi(self) -> ExternAbi {
         self.skip_binder().abi()
     }
 
@@ -976,7 +1228,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
         let FnSig { inputs_and_output: _, fn_sig_kind } = sig;
 
         write!(f, "{}", fn_sig_kind.safety().prefix_str())?;
-        if !fn_sig_kind.abi().is_rust() {
+        if fn_sig_kind.abi() != ExternAbi::Rust {
             write!(f, "extern \"{:?}\" ", fn_sig_kind.abi())?;
         }
 
@@ -985,6 +1237,9 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
         for (i, ty) in inputs.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
+            }
+            if Some(i) == fn_sig_kind.splatted().map(usize::from) {
+                write!(f, "#[splat] ")?;
             }
             write!(f, "{ty:?}")?;
         }
@@ -1008,7 +1263,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
 // FIXME: this is a distinct type because we need to define `Encode`/`Decode`
 // impls in this crate for `Binder<I, I::Ty>`.
 #[derive_where(Clone, Copy, PartialEq, Hash; I: Interner)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct UnsafeBinderInner<I: Interner>(ty::Binder<I, I::Ty>);
 
@@ -1073,7 +1328,7 @@ where
 #[derive_where(Clone, Copy, Debug, PartialEq, Hash; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnSigTys<I: Interner> {
@@ -1125,13 +1380,13 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
 #[derive_where(Clone, Copy, Debug, PartialEq, Hash; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnHeader<I: Interner> {
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
-    pub fn_sig_kind: I::FSigKind,
+    pub fn_sig_kind: FnSigKind<I>,
 }
 
 impl<I: Interner> FnHeader<I> {
@@ -1143,12 +1398,13 @@ impl<I: Interner> FnHeader<I> {
         self.fn_sig_kind.safety()
     }
 
-    pub fn abi(self) -> I::Abi {
+    pub fn abi(self) -> ExternAbi {
         self.fn_sig_kind.abi()
     }
 
+    /// Create a new safe FnHeader with the `extern "Rust"` ABI, that isn't C-style variadic or splatted.
     pub fn dummy() -> Self {
-        Self { fn_sig_kind: I::FSigKind::new(I::Abi::rust(), I::Safety::safe(), false) }
+        Self { fn_sig_kind: FnSigKind::dummy() }
     }
 }
 
@@ -1157,7 +1413,7 @@ impl<I: Interner> Eq for FnHeader<I> {}
 #[derive_where(Clone, Copy, Debug, PartialEq, Hash; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct CoroutineWitnessTypes<I: Interner> {

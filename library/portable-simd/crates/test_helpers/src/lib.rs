@@ -122,12 +122,23 @@ pub fn make_runner() -> proptest::test_runner::TestRunner {
     proptest::test_runner::TestRunner::new(proptest::test_runner::Config::with_cases(4))
 }
 
+#[track_caller]
+fn unwrap_test_error<T, U: std::fmt::Debug>(
+    x: Result<T, proptest::test_runner::TestError<U>>,
+) -> T {
+    // Using the `Display` instance of the error is much more readable.
+    match x {
+        Ok(v) => v,
+        Err(e) => panic!("{e}"),
+    }
+}
+
 /// Test a function that takes a single value.
 pub fn test_1<A: core::fmt::Debug + DefaultStrategy>(
     f: &dyn Fn(A) -> proptest::test_runner::TestCaseResult,
 ) {
     let mut runner = make_runner();
-    runner.run(&A::default_strategy(), f).unwrap();
+    unwrap_test_error(runner.run(&A::default_strategy(), f))
 }
 
 /// Test a function that takes two values.
@@ -135,11 +146,11 @@ pub fn test_2<A: core::fmt::Debug + DefaultStrategy, B: core::fmt::Debug + Defau
     f: &dyn Fn(A, B) -> proptest::test_runner::TestCaseResult,
 ) {
     let mut runner = make_runner();
-    runner
-        .run(&(A::default_strategy(), B::default_strategy()), |(a, b)| {
+    unwrap_test_error(
+        runner.run(&(A::default_strategy(), B::default_strategy()), |(a, b)| {
             f(a, b)
-        })
-        .unwrap();
+        }),
+    )
 }
 
 /// Test a function that takes two values.
@@ -151,16 +162,14 @@ pub fn test_3<
     f: &dyn Fn(A, B, C) -> proptest::test_runner::TestCaseResult,
 ) {
     let mut runner = make_runner();
-    runner
-        .run(
-            &(
-                A::default_strategy(),
-                B::default_strategy(),
-                C::default_strategy(),
-            ),
-            |(a, b, c)| f(a, b, c),
-        )
-        .unwrap();
+    unwrap_test_error(runner.run(
+        &(
+            A::default_strategy(),
+            B::default_strategy(),
+            C::default_strategy(),
+        ),
+        |(a, b, c)| f(a, b, c),
+    ));
 }
 
 /// Test a unary vector function against a unary scalar function, applied elementwise.

@@ -13,7 +13,7 @@ LL |                         *b = 42;
                at tests/genmc/fail/data_race/atomic_ptr_alloc_race.rs:LL:CC
            1: <std::boxed::Box<{closure@tests/genmc/fail/data_race/atomic_ptr_alloc_race.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once
                at RUSTLIB/alloc/src/boxed.rs:LL:CC
-           2: genmc::spawn_pthread_closure::thread_func
+           2: genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/fail/data_race/atomic_ptr_alloc_race.rs:LL:CC}>
                at tests/genmc/fail/data_race/../../../utils/genmc.rs:LL:CC
 note: the last function in that backtrace got called indirectly due to this code
   --> tests/genmc/fail/data_race/../../../utils/genmc.rs:LL:CC

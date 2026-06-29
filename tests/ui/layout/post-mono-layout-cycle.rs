@@ -1,5 +1,4 @@
 //@ build-fail
-//~^ ERROR cycle detected when computing layout of `Wrapper<()>`
 
 trait Trait {
     type Assoc;
@@ -10,6 +9,7 @@ impl Trait for () {
 }
 
 struct Wrapper<T: Trait> {
+    //~^ ERROR cycle detected when computing layout of `Wrapper<()>`
     _x: <T as Trait>::Assoc,
 }
 

@@ -5,17 +5,19 @@ use ena::{
     unify::{self as ut, UnifyKey},
 };
 use rustc_type_ir::{
-    ConstVid, FloatVid, IntVid, RegionKind, RegionVid, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt, inherent::IntoKind,
+    ConstVid, FloatVid, IntVid, RegionVid, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, inherent::IntoKind,
 };
 
-use crate::next_solver::{
-    Const, ConstKind, DbInterner, Region, Ty, TyKind,
-    infer::{
-        InferCtxt, UnificationTable, iter_idx_range,
-        snapshot::VariableLengths,
-        type_variable::TypeVariableOrigin,
-        unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey},
+use crate::{
+    Span,
+    next_solver::{
+        Const, ConstKind, DbInterner, Region, RegionKind, Ty, TyKind,
+        infer::{
+            InferCtxt, UnificationTable, iter_idx_range,
+            snapshot::VariableLengths,
+            unify_key::{ConstVariableValue, ConstVidKey},
+        },
     },
 };
 
@@ -33,7 +35,7 @@ where
 fn const_vars_since_snapshot<'db>(
     table: &mut UnificationTable<'_, 'db, ConstVidKey<'db>>,
     snapshot_var_len: usize,
-) -> (Range<ConstVid>, Vec<ConstVariableOrigin>) {
+) -> (Range<ConstVid>, Vec<Span>) {
     let range = vars_since_snapshot(table, snapshot_var_len);
     let range = range.start.vid..range.end.vid;
 
@@ -41,8 +43,8 @@ fn const_vars_since_snapshot<'db>(
         range.clone(),
         iter_idx_range(range)
             .map(|index| match table.probe_value(index) {
-                ConstVariableValue::Known { value: _ } => ConstVariableOrigin {},
-                ConstVariableValue::Unknown { origin, universe: _ } => origin,
+                ConstVariableValue::Known { value: _ } => Span::Dummy,
+                ConstVariableValue::Unknown { span, universe: _ } => span,
             })
             .collect(),
     )
@@ -128,11 +130,11 @@ impl<'db> InferCtxt<'db> {
 }
 
 struct SnapshotVarData {
-    region_vars: Range<RegionVid>,
-    type_vars: (Range<TyVid>, Vec<TypeVariableOrigin>),
+    region_vars: (Range<RegionVid>, Vec<Span>),
+    type_vars: (Range<TyVid>, Vec<Span>),
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
-    const_vars: (Range<ConstVid>, Vec<ConstVariableOrigin>),
+    const_vars: (Range<ConstVid>, Vec<Span>),
 }
 
 impl SnapshotVarData {
@@ -156,7 +158,7 @@ impl SnapshotVarData {
 
     fn is_empty(&self) -> bool {
         let SnapshotVarData { region_vars, type_vars, int_vars, float_vars, const_vars } = self;
-        region_vars.is_empty()
+        region_vars.0.is_empty()
             && type_vars.0.is_empty()
             && int_vars.is_empty()
             && float_vars.is_empty()
@@ -182,8 +184,8 @@ impl<'a, 'db> TypeFolder<DbInterner<'db>> for InferenceFudger<'a, 'db> {
                         // This variable was created during the fudging.
                         // Recreate it with a fresh variable here.
                         let idx = vid.as_usize() - self.snapshot_vars.type_vars.0.start.as_usize();
-                        let origin = self.snapshot_vars.type_vars.1[idx];
-                        self.infcx.next_ty_var_with_origin(origin)
+                        let span = self.snapshot_vars.type_vars.1[idx];
+                        self.infcx.next_ty_var(span)
                     } else {
                         // This variable was created before the
                         // "fudging". Since we refresh all type
@@ -225,8 +227,10 @@ impl<'a, 'db> TypeFolder<DbInterner<'db>> for InferenceFudger<'a, 'db> {
 
     fn fold_region(&mut self, r: Region<'db>) -> Region<'db> {
         if let RegionKind::ReVar(vid) = r.kind() {
-            if self.snapshot_vars.region_vars.contains(&vid) {
-                self.infcx.next_region_var()
+            if self.snapshot_vars.region_vars.0.contains(&vid) {
+                let idx = vid.index() - self.snapshot_vars.region_vars.0.start.index();
+                let span = self.snapshot_vars.region_vars.1[idx];
+                self.infcx.next_region_var(span)
             } else {
                 r
             }
@@ -241,8 +245,8 @@ impl<'a, 'db> TypeFolder<DbInterner<'db>> for InferenceFudger<'a, 'db> {
                 rustc_type_ir::InferConst::Var(vid) => {
                     if self.snapshot_vars.const_vars.0.contains(&vid) {
                         let idx = vid.index() - self.snapshot_vars.const_vars.0.start.index();
-                        let origin = self.snapshot_vars.const_vars.1[idx];
-                        self.infcx.next_const_var_with_origin(origin)
+                        let span = self.snapshot_vars.const_vars.1[idx];
+                        self.infcx.next_const_var(span)
                     } else {
                         ct
                     }

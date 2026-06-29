@@ -5,7 +5,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 // Diagnostic: bad-rtn
 //
 // This diagnostic is shown when a RTN (Return Type Notation, `Type::method(..): Send`) is written in an improper place.
-pub(crate) fn bad_rtn(ctx: &DiagnosticsContext<'_>, d: &hir::BadRtn) -> Diagnostic {
+pub(crate) fn bad_rtn(ctx: &DiagnosticsContext<'_, '_>, d: &hir::BadRtn) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::Ra("bad-rtn", Severity::Error),

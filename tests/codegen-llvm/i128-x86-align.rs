@@ -5,8 +5,6 @@
 // while rustc wants it to have 16 byte alignment. This test checks that we handle this
 // correctly.
 
-// CHECK: %ScalarPair = type { i32, [3 x i32], i128 }
-
 #![feature(core_intrinsics)]
 
 #[repr(C)]
@@ -62,8 +60,8 @@ pub fn load_volatile(x: &ScalarPair) -> ScalarPair {
     // CHECK-SAME: dereferenceable(32) %_0,
     // CHECK-SAME: align 16
     // CHECK-SAME: dereferenceable(32) %x
-    // CHECK:      [[LOAD:%.*]] = load volatile %ScalarPair, ptr %x, align 16
-    // CHECK-NEXT: store %ScalarPair [[LOAD]], ptr %_0, align 16
+    // CHECK:      [[LOAD:%.*]] = load volatile i256, ptr %x, align 16
+    // CHECK-NEXT: store i256 [[LOAD]], ptr %_0, align 16
     // CHECK-NEXT: ret void
     unsafe { std::intrinsics::volatile_load(x) }
 }

@@ -7,6 +7,12 @@ LL |     const fn test() {
    |     functions in traits cannot be const
    |     help: remove the `const`
 
-error: aborting due to 1 previous error
+error: cannot use `const` closures outside of const contexts
+  --> $DIR/const-closure-in-non-const-trait-method.rs:8:10
+   |
+LL |         (const || {})()
+   |          ^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0379`.

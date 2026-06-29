@@ -1,6 +1,5 @@
 #![warn(clippy::integer_division_remainder_used)]
-#![allow(unused_variables)]
-#![allow(clippy::op_ref)]
+#![expect(clippy::op_ref)]
 
 struct CustomOps(pub i32);
 impl std::ops::Div for CustomOps {

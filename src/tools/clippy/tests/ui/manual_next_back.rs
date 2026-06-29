@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::manual_next_back)]
 
 struct FakeIter(std::ops::Range<i32>);

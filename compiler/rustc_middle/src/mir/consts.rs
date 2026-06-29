@@ -2,7 +2,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 
 use rustc_abi::{HasDataLayout, Size};
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{DUMMY_SP, RemapPathScopeComponents, Span, Symbol};
 use rustc_type_ir::TypeVisitableExt;
 
@@ -18,7 +18,7 @@ use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 /// Not to be confused with `ConstAllocation`, which directly refers to the underlying data!
 /// Here we indirect via an `AllocId`.
-#[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, StableHash, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
 pub struct ConstAlloc<'tcx> {
     /// The value lives here, at offset 0, and that allocation definitely is an `AllocKind::Memory`
     /// (so you can use `AllocMap::unwrap_memory`).
@@ -29,7 +29,7 @@ pub struct ConstAlloc<'tcx> {
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub enum ConstValue {
     /// Used for types with `layout::abi::Scalar` ABI.
     ///
@@ -207,7 +207,7 @@ impl ConstValue {
 ///////////////////////////////////////////////////////////////////////////
 /// Constants
 
-#[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, Hash, StableHash, Debug)]
 #[derive(TypeFoldable, TypeVisitable, Lift)]
 pub enum Const<'tcx> {
     /// This constant came from the type system.
@@ -221,7 +221,7 @@ pub enum Const<'tcx> {
 
     /// An unevaluated mir constant which is not part of the type system.
     ///
-    /// Note that `Ty(ty::ConstKind::Unevaluated)` and this variant are *not* identical! `Ty` will
+    /// Note that `Ty(ty::ConstKind::Alias)` and this variant are *not* identical! `Ty` will
     /// always flow through a valtree, so all data not captured in the valtree is lost. This variant
     /// directly uses the evaluated result of the given constant, including e.g. data stored in
     /// padding.
@@ -239,14 +239,17 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
-        ty::EarlyBinder::bind(Const::Unevaluated(
-            UnevaluatedConst {
-                def: def_id,
-                args: ty::GenericArgs::identity_for_item(tcx, def_id),
-                promoted: None,
-            },
-            tcx.type_of(def_id).skip_binder(),
-        ))
+        ty::EarlyBinder::bind(
+            tcx,
+            Const::Unevaluated(
+                UnevaluatedConst {
+                    def: def_id,
+                    args: ty::GenericArgs::identity_for_item(tcx, def_id),
+                    promoted: None,
+                },
+                tcx.type_of(def_id).skip_binder(),
+            ),
+        )
     }
 
     #[inline(always)]
@@ -317,7 +320,9 @@ impl<'tcx> Const<'tcx> {
     ) -> Result<ConstValue, ErrorHandled> {
         match self {
             Const::Ty(_, c) => {
-                if c.has_non_region_param() {
+                // FIXME(generic_const_exprs): We shouldn't encounter placeholders here
+                // and could change this to ICE when encountering them instead.
+                if c.has_non_region_param() || c.has_non_region_placeholders() {
                     return Err(ErrorHandled::TooGeneric(span));
                 }
 
@@ -458,7 +463,7 @@ impl<'tcx> Const<'tcx> {
 
 /// An unevaluated (potentially generic) constant used in MIR.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Hash, HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Hash, StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,
     pub args: GenericArgsRef<'tcx>,
@@ -467,9 +472,9 @@ pub struct UnevaluatedConst<'tcx> {
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn shrink(self) -> ty::UnevaluatedConst<'tcx> {
+    pub fn shrink(self, tcx: TyCtxt<'tcx>) -> ty::AliasConst<'tcx> {
         assert_eq!(self.promoted, None);
-        ty::UnevaluatedConst { def: self.def, args: self.args }
+        ty::AliasConst::new(tcx, ty::AliasConstKind::new_from_def_id(tcx, self.def), self.args)
     }
 }
 
@@ -493,7 +498,7 @@ impl<'tcx> Display for Const<'tcx> {
             // FIXME(valtrees): Correctly print mir constants.
             Const::Unevaluated(c, _ty) => {
                 ty::tls::with(move |tcx| {
-                    let c = tcx.lift(c).unwrap();
+                    let c = tcx.lift(c);
                     // Matches `GlobalId` printing.
                     let instance =
                         with_no_trimmed_paths!(tcx.def_path_str_with_args(c.def, c.args));

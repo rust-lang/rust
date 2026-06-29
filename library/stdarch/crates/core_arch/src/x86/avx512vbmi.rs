@@ -453,7 +453,7 @@ pub fn _mm_maskz_multishift_epi64_epi8(k: __mmask16, a: __m128i, b: __m128i) -> 
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.avx512.vpermi2var.qi.512"]
     fn vpermi2b(a: i8x64, idx: i8x64, b: i8x64) -> i8x64;
     #[link_name = "llvm.x86.avx512.vpermi2var.qi.256"]

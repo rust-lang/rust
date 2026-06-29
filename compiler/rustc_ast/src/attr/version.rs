@@ -1,10 +1,10 @@
 use std::fmt::{self, Display};
 use std::sync::OnceLock;
 
-use rustc_macros::{BlobDecodable, Encodable, HashStable_Generic, current_rustc_version};
+use rustc_macros::{BlobDecodable, Encodable, StableHash, current_rustc_version};
 
 #[derive(Encodable, BlobDecodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(HashStable_Generic)]
+#[derive(StableHash)]
 pub struct RustcVersion {
     pub major: u16,
     pub minor: u16,
@@ -24,12 +24,22 @@ impl RustcVersion {
             }
         })
     }
+
+    /// Parse a [`RustcVersion`] with an optional patch version, ignoring suffixes such as `-dev` or `-nightly`.
     fn parse_str(value: &str) -> Option<Self> {
-        // Ignore any suffixes such as "-dev" or "-nightly".
         let mut components = value.split('-').next().unwrap().splitn(3, '.');
         let major = components.next()?.parse().ok()?;
         let minor = components.next()?.parse().ok()?;
         let patch = components.next().unwrap_or("0").parse().ok()?;
+        Some(RustcVersion { major, minor, patch })
+    }
+
+    /// Parse a [`RustcVersion`] which is exactly `<major>.<minor>.<patch>`, with no suffix.
+    pub fn parse_str_strict(value: &str) -> Option<Self> {
+        let mut components = value.splitn(3, '.');
+        let major = components.next()?.parse().ok()?;
+        let minor = components.next()?.parse().ok()?;
+        let patch = components.next()?.parse().ok()?;
         Some(RustcVersion { major, minor, patch })
     }
 }

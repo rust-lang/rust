@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::res::MaybeResPath as _;
-use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
+use clippy_utils::source::{SpanExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{Visitable, for_each_expr_without_closures};
 use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, sym};
@@ -113,7 +113,7 @@ pub(super) fn check<'tcx>(
         let literal_str = &cast_str;
 
         if let LitKind::Int(n, _) = lit.node
-            && let Some(src) = cast_expr.span.get_source_text(cx)
+            && let Some(src) = cast_expr.span.get_text(cx)
             && cast_to.is_floating_point()
             && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node)
             && let from_nbits = 128 - n.get().leading_zeros()
@@ -140,7 +140,7 @@ pub(super) fn check<'tcx>(
             | LitKind::Float(_, LitFloatType::Suffixed(_))
                 if cast_from.kind() == cast_to.kind() =>
             {
-                if let Some(src) = cast_expr.span.get_source_text(cx)
+                if let Some(src) = cast_expr.span.get_text(cx)
                     && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node)
                 {
                     lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
@@ -232,7 +232,7 @@ fn lint_unnecessary_cast(
     // (-1).foo() instead of -1.foo())
     let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr)
         && let ExprKind::MethodCall(..) = parent_expr.kind
-        && literal_str.starts_with('-')
+        && literal_str.starts_with(['-', '!'])
     {
         format!("({literal_str}_{cast_to})")
     } else {
@@ -253,7 +253,7 @@ fn lint_unnecessary_cast(
 fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<Lit> {
     match expr.kind {
         ExprKind::Lit(lit) => Some(lit),
-        ExprKind::Unary(UnOp::Neg, e) => {
+        ExprKind::Unary(UnOp::Neg | UnOp::Not, e) => {
             if let ExprKind::Lit(lit) = e.kind {
                 Some(lit)
             } else {

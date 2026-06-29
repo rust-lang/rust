@@ -32,7 +32,7 @@ pub fn vec_move(mut v: Vec<impl Sized>) {
 #[inline(never)]
 fn opaque(_: impl Sized) {}
 
-// EMIT_MIR loops.int_range.PreCodegen.after.mir
-// EMIT_MIR loops.mapped.PreCodegen.after.mir
-// EMIT_MIR loops.filter_mapped.PreCodegen.after.mir
-// EMIT_MIR loops.vec_move.PreCodegen.after.mir
+// EMIT_MIR loops.int_range.runtime-optimized.after.mir
+// EMIT_MIR loops.mapped.runtime-optimized.after.mir
+// EMIT_MIR loops.filter_mapped.runtime-optimized.after.mir
+// EMIT_MIR loops.vec_move.runtime-optimized.after.mir

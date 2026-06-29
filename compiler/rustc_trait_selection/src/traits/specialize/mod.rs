@@ -28,8 +28,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, sym};
 use specialization_graph::GraphExt;
 use tracing::{debug, instrument};
 
+use crate::diagnostics::NegativePositiveConflict;
 use crate::error_reporting::traits::to_pretty_impl_header;
-use crate::errors::NegativePositiveConflict;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{

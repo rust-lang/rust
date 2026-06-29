@@ -7,13 +7,15 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx, ReprOptions, VariantIdx};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
+use rustc_data_structures::stable_hash::{
+    StableHash, StableHashControls, StableHashCtxt, StableHasher,
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::DataTypeKind;
 use rustc_span::sym;
 use rustc_type_ir::FieldInfo;
@@ -23,12 +25,11 @@ use tracing::{debug, info, trace};
 use super::{
     AsyncDestructor, Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr,
 };
-use crate::ich::StableHashingContext;
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::{self, ConstKind};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash, TyEncodable, TyDecodable)]
 pub struct AdtFlags(u16);
 bitflags::bitflags! {
     impl AdtFlags: u16 {
@@ -151,33 +152,33 @@ impl Hash for AdtDefData {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+impl StableHash for AdtDefData {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         thread_local! {
-            static CACHE: RefCell<FxHashMap<(usize, HashingControls), Fingerprint>> = Default::default();
+            static CACHE: RefCell<FxHashMap<(usize, StableHashControls), Fingerprint>> = Default::default();
         }
 
         let hash: Fingerprint = CACHE.with(|cache| {
             let addr = self as *const AdtDefData as usize;
-            let hashing_controls = hcx.hashing_controls();
-            *cache.borrow_mut().entry((addr, hashing_controls)).or_insert_with(|| {
+            let stable_hash_controls = hcx.stable_hash_controls();
+            *cache.borrow_mut().entry((addr, stable_hash_controls)).or_insert_with(|| {
                 let ty::AdtDefData { did, ref variants, ref flags, ref repr } = *self;
 
                 let mut hasher = StableHasher::new();
-                did.hash_stable(hcx, &mut hasher);
-                variants.hash_stable(hcx, &mut hasher);
-                flags.hash_stable(hcx, &mut hasher);
-                repr.hash_stable(hcx, &mut hasher);
+                did.stable_hash(hcx, &mut hasher);
+                variants.stable_hash(hcx, &mut hasher);
+                flags.stable_hash(hcx, &mut hasher);
+                repr.stable_hash(hcx, &mut hasher);
 
                 hasher.finish()
             })
         });
 
-        hash.hash_stable(hcx, hasher);
+        hash.stable_hash(hcx, hasher);
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
 #[rustc_pass_by_value]
 pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
 
@@ -228,7 +229,8 @@ impl<'tcx> AdtDef<'tcx> {
             ty::Adt(base_def, base_args) => {
                 let variant = base_def.variant(variant_idx);
                 let field = &variant.fields[field_idx];
-                (field.ty(tcx, base_args), base_def.is_enum().then_some(variant.name), field.name)
+                let ty = field.ty(tcx, base_args).skip_norm_wip();
+                (ty, base_def.is_enum().then_some(variant.name), field.name)
             }
             ty::Tuple(tys) => {
                 if variant_idx != FIRST_VARIANT {
@@ -290,7 +292,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = Ty<'tcx>>> {
-        ty::EarlyBinder::bind(
+        ty::EarlyBinder::bind_iter(
             self.all_fields().map(move |field| tcx.type_of(field.did).skip_binder()),
         )
     }
@@ -309,13 +311,14 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
 
     fn destructor(self, tcx: TyCtxt<'tcx>) -> Option<AdtDestructorKind> {
         Some(match tcx.constness(self.destructor(tcx)?.did) {
-            hir::Constness::Const => AdtDestructorKind::Const,
+            hir::Constness::Const { always: true } => todo!("FIXME(comptime)"),
+            hir::Constness::Const { always: false } => AdtDestructorKind::Const,
             hir::Constness::NotConst => AdtDestructorKind::NotConst,
         })
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, StableHash, TyEncodable, TyDecodable)]
 pub enum AdtKind {
     Struct,
     Union,

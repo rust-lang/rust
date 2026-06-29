@@ -746,7 +746,7 @@ fn self_cmp<T: Ord + Clone + Debug, S: Sort>(
         pattern_fn(len).into_iter().map(|val| type_into_fn(val)).collect::<Vec<_>>();
 
     let comparison_fn = |a: &T, b: &T| {
-        assert_ne!(a as *const T as usize, b as *const T as usize);
+        assert_ne!(a as *const T, b as *const T);
         a.cmp(b)
     };
 

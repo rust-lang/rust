@@ -1,4 +1,4 @@
-//@ ignore-pass
+//@ no-pass-override (regression test for an ICE in codegen, #115215)
 //@ build-pass
 //@ edition:2021
 use std::future::Future;

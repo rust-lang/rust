@@ -17,7 +17,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_ran
 //
 // This diagnostic is triggered if a method does not exist on a given type.
 pub(crate) fn unresolved_method(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnresolvedMethodCall<'_>,
 ) -> Diagnostic {
     let suffix = if d.field_with_same_name.is_some() {
@@ -49,7 +49,10 @@ pub(crate) fn unresolved_method(
     .with_fixes(fixes(ctx, d))
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall<'_>) -> Option<Vec<Assist>> {
+fn fixes(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::UnresolvedMethodCall<'_>,
+) -> Option<Vec<Assist>> {
     let field_fix = if let Some(ty) = &d.field_with_same_name {
         field_fix(ctx, d, ty)
     } else {
@@ -71,7 +74,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall<'_>) -> Opt
 }
 
 fn field_fix(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnresolvedMethodCall<'_>,
     ty: &hir::Type<'_>,
 ) -> Option<Assist> {
@@ -108,7 +111,7 @@ fn field_fix(
 }
 
 fn assoc_func_fix(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnresolvedMethodCall<'_>,
 ) -> Option<Assist> {
     if let Some(f) = d.assoc_func_with_same_name {
@@ -126,25 +129,17 @@ fn assoc_func_fix(
         let receiver_type = &ctx.sema.type_of_expr(&receiver)?.original;
 
         let assoc_fn_params = f.assoc_fn_params(db);
-        let need_to_take_receiver_as_first_arg = if assoc_fn_params.is_empty() {
-            false
-        } else {
-            assoc_fn_params
-                .first()
-                .map(|first_arg| {
-                    // For generic type, say `Box`, take `Box::into_raw(b: Self)` as example,
-                    // type of `b` is `Self`, which is `Box<T, A>`, containing unspecified generics.
-                    // However, type of `receiver` is specified, it could be `Box<i32, Global>` or something like that,
-                    // so `first_arg.ty() == receiver_type` evaluate to `false` here.
-                    // Here add `first_arg.ty().as_adt() == receiver_type.as_adt()` as guard,
-                    // apply `.as_adt()` over `Box<T, A>` or `Box<i32, Global>` gets `Box`, so we get `true` here.
+        let need_to_take_receiver_as_first_arg = assoc_fn_params.first().is_some_and(|first_arg| {
+            // For generic type, say `Box`, take `Box::into_raw(b: Self)` as example,
+            // type of `b` is `Self`, which is `Box<T, A>`, containing unspecified generics.
+            // However, type of `receiver` is specified, it could be `Box<i32, Global>` or something like that,
+            // so `first_arg.ty() == receiver_type` evaluate to `false` here.
+            // Here add `first_arg.ty().as_adt() == receiver_type.as_adt()` as guard,
+            // apply `.as_adt()` over `Box<T, A>` or `Box<i32, Global>` gets `Box`, so we get `true` here.
 
-                    // FIXME: it fails when type of `b` is `Box` with other generic param different from `receiver`
-                    first_arg.ty() == receiver_type
-                        || first_arg.ty().as_adt() == receiver_type.as_adt()
-                })
-                .unwrap_or(false)
-        };
+            // FIXME: it fails when type of `b` is `Box` with other generic param different from `receiver`
+            first_arg.ty() == receiver_type || first_arg.ty().as_adt() == receiver_type.as_adt()
+        });
 
         let mut receiver_type_adt_name =
             receiver_type.as_adt()?.name(db).display_no_db(ctx.edition).to_smolstr();

@@ -1,5 +1,5 @@
 #![warn(clippy::manual_slice_fill)]
-#![allow(clippy::needless_range_loop, clippy::useless_vec)]
+#![expect(clippy::needless_range_loop, clippy::useless_vec)]
 
 macro_rules! assign_element {
     ($slice:ident, $index:expr) => {
@@ -44,6 +44,47 @@ fn should_lint() {
         //~^ manual_slice_fill
         some_slice[i] = 0;
         // foo
+    }
+}
+
+fn should_lint_direct_mutref_array(s: &mut [u8; 1]) {
+    for slot in s {
+        //~^ manual_slice_fill
+        *slot = 0;
+    }
+}
+
+fn should_lint_direct_mutref_array_non_zero(s: &mut [u8; 4]) {
+    for slot in s {
+        //~^ manual_slice_fill
+        *slot = 42;
+    }
+}
+
+fn should_lint_direct_mutref_array_variable(s: &mut [i32; 3]) {
+    let x = 7;
+    for slot in s {
+        //~^ manual_slice_fill
+        *slot = x;
+    }
+}
+
+fn should_not_lint_direct_mutref_array_fn(s: &mut [usize; 2]) {
+    for slot in s {
+        *slot = num();
+    }
+}
+
+fn should_not_lint_direct_mutref_array_iter_used(s: &mut [u8; 3]) {
+    for slot in s {
+        *slot = !*slot;
+    }
+}
+
+fn should_not_lint_direct_mutref_array_extra_stmt(s: &mut [u8; 2]) {
+    for slot in s {
+        *slot = 0;
+        println!("foo");
     }
 }
 

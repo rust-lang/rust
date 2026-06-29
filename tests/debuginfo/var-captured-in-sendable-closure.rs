@@ -25,7 +25,7 @@
 //@ lldb-command:v constant
 //@ lldb-check:[...] 1
 //@ lldb-command:v a_struct
-//@ lldb-check:[...] { a = -2 b = 3.5 c = 4 }
+//@ lldb-check:[...] {a:-2, b:3.5, c:4}
 //@ lldb-command:v *owned
 //@ lldb-check:[...] 5
 

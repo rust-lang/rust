@@ -1,9 +1,10 @@
 use std::any::Any;
 use std::collections::BTreeMap;
-use std::fs::{File, Metadata};
+use std::fs::{Dir, File};
 use std::io::{ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::marker::CoercePointee;
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 use std::{fs, io};
 
@@ -60,6 +61,14 @@ impl<T: ?Sized> FileDescriptionRef<T> {
         self.0.id
     }
 }
+
+impl<T: ?Sized> PartialEq for FileDescriptionRef<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.id == other.0.id
+    }
+}
+
+impl<T: ?Sized> Eq for FileDescriptionRef<T> {}
 
 /// Holds a weak reference to the actual file description.
 #[derive(Debug)]
@@ -209,7 +218,11 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         throw_unsup_format!("cannot close {}", self.name());
     }
 
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<fs::Metadata>> {
+    /// Returns the metadata for this FD, if available.
+    /// This is either host metadata, or a non-file-backed-FD type.
+    /// The latter is for new represented as a string storing a `libc` name so we only
+    /// support that kind of metadata on Unix targets.
+    fn metadata<'tcx>(&self) -> InterpResult<'tcx, Either<io::Result<fs::Metadata>, &'static str>> {
         throw_unsup_format!("obtaining metadata is only supported on file-backed file descriptors");
     }
 
@@ -350,6 +363,7 @@ impl FileDescription for io::Stderr {
 #[derive(Debug)]
 pub struct FileHandle {
     pub(crate) file: File,
+    pub(crate) readable: bool,
     pub(crate) writable: bool,
 }
 
@@ -367,6 +381,10 @@ impl FileDescription for FileHandle {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
+
+        if !self.readable {
+            return finish.call(ecx, Err(ErrorKind::PermissionDenied.into()));
+        }
 
         let mut file = &self.file;
         let result = ecx.read_from_host(|buf| file.read(buf), len, ptr)?;
@@ -432,8 +450,8 @@ impl FileDescription for FileHandle {
         }
     }
 
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
-        interp_ok(self.file.metadata())
+    fn metadata<'tcx>(&self) -> InterpResult<'tcx, Either<io::Result<fs::Metadata>, &'static str>> {
+        interp_ok(Either::Left(self.file.metadata()))
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -453,6 +471,39 @@ impl FileDescription for FileHandle {
             "unix file operations are only available for unix targets"
         );
         self
+    }
+}
+
+#[derive(Debug)]
+pub struct DirHandle {
+    #[cfg_attr(bootstrap, allow(unused))]
+    pub(crate) dir: Dir,
+    /// Fallback used under `cfg(bootstrap)`.
+    #[cfg_attr(not(bootstrap), allow(unused))]
+    pub(crate) path: PathBuf,
+}
+
+impl FileDescription for DirHandle {
+    fn name(&self) -> &'static str {
+        "directory"
+    }
+
+    fn metadata<'tcx>(
+        &self,
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        #[cfg(not(bootstrap))]
+        return interp_ok(Either::Left(self.dir.metadata()));
+        #[cfg(bootstrap)]
+        return interp_ok(Either::Left(std::fs::metadata(&self.path)));
+    }
+
+    fn destroy<'tcx>(
+        self,
+        _self_id: FdId,
+        _communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        interp_ok(Ok(()))
     }
 }
 

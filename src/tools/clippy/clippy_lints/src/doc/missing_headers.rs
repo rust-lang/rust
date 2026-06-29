@@ -99,7 +99,7 @@ pub fn check(
 fn find_panic(cx: &LateContext<'_>, body_id: BodyId) -> Option<Span> {
     let mut panic_span = None;
     let typeck = cx.tcx.typeck_body(body_id);
-    for_each_expr(cx, cx.tcx.hir_body(body_id), |expr| {
+    for_each_expr(cx.tcx, cx.tcx.hir_body(body_id), |expr| {
         if is_inside_always_const_context(cx.tcx, expr.hir_id) {
             return ControlFlow::<!>::Continue(());
         }

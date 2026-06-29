@@ -1,7 +1,7 @@
 #![crate_name = "oud"]
 #![feature(doc_cfg)]
 
-#![doc(auto_cfg(hide(feature = "solecism")))]
+#![doc(auto_cfg(hide(feature, values("solecism"))))]
 
 //@ has 'oud/struct.Solecism.html'
 //@ count   - '//*[@class="stab portability"]' 0

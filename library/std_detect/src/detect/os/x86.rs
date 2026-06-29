@@ -127,6 +127,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
         enable(extended_features_ebx, 9, Feature::ermsb);
 
+        enable(extended_features_ebx, 23, Feature::clflushopt);
+
         enable(extended_features_eax_leaf_1, 31, Feature::movrs);
 
         // Detect if CPUID.19h available

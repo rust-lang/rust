@@ -5,7 +5,7 @@
 //@[edition2024] edition:2024
 //@[edition2024] check-pass
 #![warn(clippy::if_let_mutex)]
-#![allow(clippy::redundant_pattern_matching)]
+#![expect(clippy::redundant_pattern_matching)]
 
 use std::ops::Deref;
 use std::sync::Mutex;

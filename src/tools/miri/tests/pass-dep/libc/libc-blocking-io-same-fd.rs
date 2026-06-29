@@ -24,16 +24,15 @@ fn main() {
         thread::yield_now();
 
         let mut buffer = [22u8; 128];
-        let bytes_written = unsafe {
-            errno_result(libc_utils::write_all_generic(
+        unsafe {
+            libc_utils::write_all_generic(
                 buffer.as_mut_ptr().cast(),
                 buffer.len(),
                 libc_utils::NoRetry,
                 |buf, len| libc::send(peerfd, buf, len, 0),
-            ))
+            )
             .unwrap()
         };
-        assert_eq!(bytes_written as usize, 128);
     });
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
@@ -41,12 +40,12 @@ fn main() {
     let reader_thread = thread::spawn(move || {
         let mut buffer = [0u8; 8];
         unsafe {
-            errno_result(libc_utils::read_all_generic(
+            libc_utils::read_exact_generic(
                 buffer.as_mut_ptr().cast(),
                 buffer.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::recv(client_sockfd, buf, count, 0),
-            ))
+            )
             .unwrap()
         };
         assert_eq!(&buffer, &[22u8; 8]);
@@ -54,12 +53,12 @@ fn main() {
 
     let mut buffer = [0u8; 8];
     unsafe {
-        errno_result(libc_utils::read_all_generic(
+        libc_utils::read_exact_generic(
             buffer.as_mut_ptr().cast(),
             buffer.len(),
             libc_utils::NoRetry,
             |buf, count| libc::recv(client_sockfd, buf, count, 0),
-        ))
+        )
         .unwrap()
     };
     assert_eq!(&buffer, &[22u8; 8]);

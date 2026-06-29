@@ -224,6 +224,7 @@ pub enum Expr {
     Loop {
         body: ExprId,
         label: Option<LabelId>,
+        source: LoopSource,
     },
     Call {
         callee: ExprId,
@@ -259,7 +260,7 @@ pub enum Expr {
         expr: Option<ExprId>,
     },
     RecordLit {
-        path: Option<Box<Path>>,
+        path: Path,
         fields: Box<[RecordLitField]>,
         spread: RecordSpread,
     },
@@ -322,6 +323,7 @@ pub enum Expr {
     Underscore,
     OffsetOf(OffsetOf),
     InlineAsm(InlineAsm),
+    IncludeBytes,
 }
 
 impl Expr {
@@ -343,7 +345,8 @@ impl Expr {
             | Expr::RecordLit { .. }
             | Expr::Tuple { .. }
             | Expr::OffsetOf(_)
-            | Expr::Underscore => ExprPrecedence::Unambiguous,
+            | Expr::Underscore
+            | Expr::IncludeBytes => ExprPrecedence::Unambiguous,
 
             Expr::Await { .. }
             | Expr::Call { .. }
@@ -387,6 +390,17 @@ impl Expr {
             Expr::Range { .. } => ExprPrecedence::Range,
         }
     }
+}
+
+/// The loop type that yielded an `Expr::Loop`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoopSource {
+    /// A `loop { .. }` loop.
+    Loop,
+    /// A `while _ { .. }` loop.
+    While,
+    /// A `for _ in _ { .. }` loop.
+    ForLoop,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -524,12 +538,19 @@ pub enum InlineAsmRegOrRegClass {
     RegClass(Symbol),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CoroutineKind {
+    Async,
+    Gen,
+    AsyncGen,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ClosureKind {
     Closure,
-    Coroutine(Movability),
-    AsyncBlock { source: CoroutineSource },
-    AsyncClosure,
+    OldCoroutine(Movability),
+    Coroutine { kind: CoroutineKind, source: CoroutineSource },
+    CoroutineClosure(CoroutineKind),
 }
 
 /// In the case of a coroutine created as part of an async/gen construct,
@@ -557,7 +578,7 @@ pub enum CaptureBy {
     Ref,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Movability {
     Static,
     Movable,
@@ -666,6 +687,8 @@ pub struct RecordFieldPat {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Pat {
     Missing,
+    /// A rest pattern. Not valid outside special context.
+    Rest,
     Wild,
     Tuple {
         args: Box<[PatId]>,
@@ -673,7 +696,7 @@ pub enum Pat {
     },
     Or(Box<[PatId]>),
     Record {
-        path: Option<Box<Path>>,
+        path: Path,
         args: Box<[RecordFieldPat]>,
         ellipsis: bool,
     },
@@ -687,7 +710,6 @@ pub enum Pat {
         slice: Option<PatId>,
         suffix: Box<[PatId]>,
     },
-    /// This might refer to a variable if a single segment path (specifically, on destructuring assignment).
     Path(Path),
     Lit(ExprId),
     Bind {
@@ -695,7 +717,7 @@ pub enum Pat {
         subpat: Option<PatId>,
     },
     TupleStruct {
-        path: Option<Box<Path>>,
+        path: Path,
         args: Box<[PatId]>,
         ellipsis: Option<u32>,
     },
@@ -706,6 +728,10 @@ pub enum Pat {
     Box {
         inner: PatId,
     },
+    Deref {
+        inner: PatId,
+    },
+    NotNull,
     ConstBlock(ExprId),
     /// An expression inside a pattern. That can only occur inside assignments.
     ///
@@ -722,7 +748,9 @@ impl Pat {
             | Pat::ConstBlock(..)
             | Pat::Wild
             | Pat::Missing
-            | Pat::Expr(_) => {}
+            | Pat::Rest
+            | Pat::Expr(_)
+            | Pat::NotNull => {}
             Pat::Bind { subpat, .. } => {
                 subpat.iter().copied().for_each(f);
             }
@@ -737,7 +765,7 @@ impl Pat {
             Pat::Record { args, .. } => {
                 args.iter().map(|f| f.pat).for_each(f);
             }
-            Pat::Box { inner } => f(*inner),
+            Pat::Box { inner } | Pat::Deref { inner } => f(*inner),
         }
     }
 }

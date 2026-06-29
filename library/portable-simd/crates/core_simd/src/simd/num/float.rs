@@ -430,14 +430,14 @@ macro_rules! impl_trait {
 
             #[inline]
             fn reduce_max(self) -> Self::Scalar {
-                // Safety: `self` is a float vector
-                unsafe { core::intrinsics::simd::simd_reduce_max(self) }
+                // LLVM has no intrinsic we can use here
+                // (https://github.com/llvm/llvm-project/issues/185827).
+                self.as_array().iter().copied().fold(Self::Scalar::NAN, Self::Scalar::max)
             }
 
             #[inline]
             fn reduce_min(self) -> Self::Scalar {
-                // Safety: `self` is a float vector
-                unsafe { core::intrinsics::simd::simd_reduce_min(self) }
+                self.as_array().iter().copied().fold(Self::Scalar::NAN, Self::Scalar::min)
             }
         }
         )*

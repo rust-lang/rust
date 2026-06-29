@@ -44,9 +44,9 @@
 //@ lldb-command:v constant
 //@ lldb-check:[...] 2
 //@ lldb-command:v a_struct
-//@ lldb-check:[...] { a = -3 b = 4.5 c = 5 }
+//@ lldb-check:[...] {a:-3, b:4.5, c:5}
 //@ lldb-command:v *struct_ref
-//@ lldb-check:[...] { a = -3 b = 4.5 c = 5 }
+//@ lldb-check:[...] {a:-3, b:4.5, c:5}
 //@ lldb-command:v *owned
 //@ lldb-check:[...] 6
 //@ lldb-command:v closure_local
@@ -58,9 +58,9 @@
 //@ lldb-command:v constant
 //@ lldb-check:[...] 2
 //@ lldb-command:v a_struct
-//@ lldb-check:[...] { a = -3 b = 4.5 c = 5 }
+//@ lldb-check:[...] {a:-3, b:4.5, c:5}
 //@ lldb-command:v *struct_ref
-//@ lldb-check:[...] { a = -3 b = 4.5 c = 5 }
+//@ lldb-check:[...] {a:-3, b:4.5, c:5}
 //@ lldb-command:v *owned
 //@ lldb-check:[...] 6
 //@ lldb-command:v closure_local

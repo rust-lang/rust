@@ -15,7 +15,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::query::dropck_outlives;
-use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOp, TypeOpOutput};
+use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOpOutput};
 use tracing::debug;
 
 use crate::polonius;
@@ -638,9 +638,9 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     ) -> DropData<'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty);
 
-        let op = typeck.infcx.param_env.and(DropckOutlives { dropped_ty });
+        let goal = DropckOutlives { dropped_ty };
 
-        match op.fully_perform(typeck.infcx, typeck.root_cx.root_def_id(), DUMMY_SP) {
+        match typeck.infcx.fully_perform(goal, DUMMY_SP) {
             Ok(TypeOpOutput { output, constraints, .. }) => {
                 DropData { dropck_result: output, region_constraint_data: constraints }
             }
@@ -655,7 +655,9 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
                 typeck.infcx.probe(|_| {
                     let ocx = ObligationCtxt::new_with_diagnostics(&typeck.infcx);
                     let errors = match dropck_outlives::compute_dropck_outlives_with_errors(
-                        &ocx, op, span,
+                        &ocx,
+                        typeck.infcx.param_env.and(goal),
+                        span,
                     ) {
                         Ok(_) => ocx.evaluate_obligations_error_on_ambiguity(),
                         Err(e) => e,

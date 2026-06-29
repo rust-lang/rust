@@ -2,8 +2,7 @@
 
 use std::collections::hash_map;
 
-use hir_def::{GenericParamId, TraitId, hir::ExprId};
-use intern::{Symbol, sym};
+use hir_def::{FunctionId, GenericParamId, TraitId, hir::ExprId};
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::inherent::{IntoKind, Ty as _};
 use syntax::ast::{ArithOp, BinaryOp, UnaryOp};
@@ -38,7 +37,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             && !rhs_ty.is_ty_var()
             && is_builtin_binop(lhs_ty, rhs_ty, category)
         {
-            self.enforce_builtin_binop_types(lhs_ty, rhs_ty, category);
+            self.enforce_builtin_binop_types(expr, lhs_ty, rhs_ty, category);
             self.types.types.unit
         } else {
             return_ty
@@ -107,7 +106,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                     && is_builtin_binop(lhs_ty, rhs_ty, category)
                 {
                     let builtin_return_ty =
-                        self.enforce_builtin_binop_types(lhs_ty, rhs_ty, category);
+                        self.enforce_builtin_binop_types(expr, lhs_ty, rhs_ty, category);
                     _ = self.demand_eqtype(expr.into(), builtin_return_ty, return_ty);
                     builtin_return_ty
                 } else {
@@ -119,6 +118,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
     fn enforce_builtin_binop_types(
         &mut self,
+        expr: ExprId,
         lhs_ty: Ty<'db>,
         rhs_ty: Ty<'db>,
         category: BinOpCategory,
@@ -131,8 +131,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
         match category {
             BinOpCategory::Shortcircuit => {
-                self.demand_suptype(self.types.types.bool, lhs_ty);
-                self.demand_suptype(self.types.types.bool, rhs_ty);
+                _ = self.demand_suptype(expr.into(), self.types.types.bool, lhs_ty);
+                _ = self.demand_suptype(expr.into(), self.types.types.bool, rhs_ty);
                 self.types.types.bool
             }
 
@@ -143,13 +143,13 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
             BinOpCategory::Math | BinOpCategory::Bitwise => {
                 // both LHS and RHS and result will have the same type
-                self.demand_suptype(lhs_ty, rhs_ty);
+                _ = self.demand_suptype(expr.into(), lhs_ty, rhs_ty);
                 lhs_ty
             }
 
             BinOpCategory::Comparison => {
                 // both LHS and RHS and result will have the same type
-                self.demand_suptype(lhs_ty, rhs_ty);
+                _ = self.demand_suptype(expr.into(), lhs_ty, rhs_ty);
                 self.types.types.bool
             }
         }
@@ -179,7 +179,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 // e.g., adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
                 // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
                 let lhs_ty = self.infer_expr_no_expect(lhs_expr, ExprIsRead::Yes);
-                let fresh_var = self.table.next_ty_var();
+                let fresh_var = self.table.next_ty_var(lhs_expr.into());
                 self.demand_coerce(lhs_expr, lhs_ty, fresh_var, AllowTwoPhase::No, ExprIsRead::Yes)
             }
         };
@@ -191,8 +191,9 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // using this variable as the expected type, which sometimes lets
         // us do better coercions than we would be able to do otherwise,
         // particularly for things like `String + &String`.
-        let rhs_ty_var = self.table.next_ty_var();
+        let rhs_ty_var = self.table.next_ty_var(rhs_expr.into());
         let result = self.lookup_op_method(
+            expr,
             lhs_ty,
             Some((rhs_expr, rhs_ty_var)),
             self.lang_item_for_bin_op(op),
@@ -264,7 +265,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         operand_ty: Ty<'db>,
         op: UnaryOp,
     ) -> Ty<'db> {
-        match self.lookup_op_method(operand_ty, None, self.lang_item_for_unop(op)) {
+        match self.lookup_op_method(ex, operand_ty, None, self.lang_item_for_unop(op)) {
             Ok(method) => {
                 self.write_method_resolution(ex, method.def_id, method.args);
                 method.sig.output()
@@ -278,31 +279,32 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
     fn lookup_op_method(
         &mut self,
+        expr: ExprId,
         lhs_ty: Ty<'db>,
         opt_rhs: Option<(ExprId, Ty<'db>)>,
-        (opname, trait_did): (Symbol, Option<TraitId>),
+        (op_method, trait_did): (Option<FunctionId>, Option<TraitId>),
     ) -> Result<MethodCallee<'db>, Vec<NextSolverError<'db>>> {
-        let Some(trait_did) = trait_did else {
+        let (Some(trait_did), Some(op_method)) = (trait_did, op_method) else {
             // Bail if the operator trait is not defined.
             return Err(vec![]);
         };
 
         debug!(
             "lookup_op_method(lhs_ty={:?}, opname={:?}, trait_did={:?})",
-            lhs_ty, opname, trait_did
+            lhs_ty, op_method, trait_did
         );
 
         let opt_rhs_ty = opt_rhs.map(|it| it.1);
-        let cause = ObligationCause::new();
+        let cause = ObligationCause::new(expr);
 
         // We don't consider any other candidates if this lookup fails
         // so we can freely treat opaque types as inference variables here
         // to allow more code to compile.
         let treat_opaques = TreatNotYetDefinedOpaques::AsInfer;
         let method = self.table.lookup_method_for_operator(
-            cause.clone(),
-            opname,
+            cause,
             trait_did,
+            op_method,
             lhs_ty,
             opt_rhs_ty,
             treat_opaques,
@@ -357,20 +359,20 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         }
     }
 
-    fn lang_item_for_bin_op(&self, op: BinaryOp) -> (Symbol, Option<TraitId>) {
-        let (method_name, trait_lang_item) =
+    fn lang_item_for_bin_op(&self, op: BinaryOp) -> (Option<FunctionId>, Option<TraitId>) {
+        let (method, trait_lang_item) =
             crate::lang_items::lang_items_for_bin_op(self.lang_items, op)
                 .expect("invalid operator provided");
-        (method_name, trait_lang_item)
+        (method, trait_lang_item)
     }
 
-    fn lang_item_for_unop(&self, op: UnaryOp) -> (Symbol, Option<TraitId>) {
-        let (method_name, trait_lang_item) = match op {
-            UnaryOp::Not => (sym::not, self.lang_items.Not),
-            UnaryOp::Neg => (sym::neg, self.lang_items.Neg),
+    fn lang_item_for_unop(&self, op: UnaryOp) -> (Option<FunctionId>, Option<TraitId>) {
+        let (method, trait_lang_item) = match op {
+            UnaryOp::Not => (self.lang_items.Not_not, self.lang_items.Not),
+            UnaryOp::Neg => (self.lang_items.Neg_neg, self.lang_items.Neg),
             UnaryOp::Deref => panic!("Deref is not overloadable"),
         };
-        (method_name, trait_lang_item)
+        (method, trait_lang_item)
     }
 }
 

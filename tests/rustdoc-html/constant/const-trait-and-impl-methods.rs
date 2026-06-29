@@ -20,7 +20,7 @@ pub struct NonConstImpl {}
 //@ !has - '//*[@id="method.required"]' 'const'
 //@ has - '//*[@id="method.defaulted"]' 'fn defaulted()'
 //@ !has - '//*[@id="method.defaulted"]' 'const'
-impl const Tr for ConstImpl {
+const impl Tr for ConstImpl {
     fn required() {}
 }
 

@@ -1,6 +1,12 @@
 warning: MIR pass `ThisPassDoesNotExist` is unknown and will be ignored
 
+note: valid MIR pass names are: $PASS_NAMES
+
 warning: MIR pass `ThisPassDoesNotExist` is unknown and will be ignored
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: valid MIR pass names are: $PASS_NAMES
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

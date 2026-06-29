@@ -6,6 +6,7 @@
 
 // tidy-alphabetical-start
 #![feature(decl_macro)]
+#![feature(file_buffered)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
 #![feature(trim_prefix_suffix)]
@@ -333,7 +334,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             }
 
             if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
-                if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
+                if let Err(error) = pretty::emit_mir(tcx) {
                     tcx.dcx().emit_fatal(CantEmitMIR { error });
                 }
             }
@@ -713,7 +714,7 @@ fn print_crate_info(
                 let lint_store = crate::unerased_lint_store(sess);
                 let features = rustc_expand::config::features(sess, attrs, crate_name);
                 let registered_tools = rustc_resolve::registered_tools_ast(sess.dcx(), attrs, sess);
-                let lint_levels = rustc_lint::LintLevelsBuilder::crate_root(
+                let builder = rustc_lint::LintLevelsBuilder::crate_root(
                     sess,
                     &features,
                     true,
@@ -728,13 +729,12 @@ fn print_crate_info(
                         // lint is unstable and feature gate isn't active, don't print
                         continue;
                     }
-                    let level = lint_levels.lint_level(lint).level;
+                    let level = builder.lint_level_spec(lint).level();
                     println_info!("{}={}", lint.name_lower(), level.as_str());
                 }
             }
             Cfg => {
                 let mut cfgs = sess
-                    .psess
                     .config
                     .iter()
                     .filter_map(|&(name, value)| {
@@ -763,7 +763,7 @@ fn print_crate_info(
 
                 // INSTABILITY: We are sorting the output below.
                 #[allow(rustc::potential_query_instability)]
-                for (name, expected_values) in &sess.psess.check_config.expecteds {
+                for (name, expected_values) in &sess.check_config.expecteds {
                     use crate::config::ExpectedValues;
                     match expected_values {
                         ExpectedValues::Any => {
@@ -791,9 +791,7 @@ fn print_crate_info(
                 }
 
                 check_cfgs.sort_unstable();
-                if !sess.psess.check_config.exhaustive_names
-                    && sess.psess.check_config.exhaustive_values
-                {
+                if !sess.check_config.exhaustive_names && sess.check_config.exhaustive_values {
                     println_info!("cfg(any())");
                 }
                 for check_cfg in check_cfgs {
@@ -803,6 +801,11 @@ fn print_crate_info(
             CallingConventions => {
                 let calling_conventions = rustc_abi::all_names();
                 println_info!("{}", calling_conventions.join("\n"));
+            }
+            BackendHasMnemonic => {
+                let has_mnemonic: bool =
+                    codegen_backend.has_mnemonic(sess, req.arg.as_ref().unwrap());
+                println_info!("{has_mnemonic}");
             }
             BackendHasZstd => {
                 let has_zstd: bool = codegen_backend.has_zstd();

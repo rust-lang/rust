@@ -100,55 +100,55 @@ LL ~     let _ = subindex.0.next();
    |
 
 error: unnecessary map of the identity function
-  --> tests/ui/map_identity.rs:100:15
+  --> tests/ui/map_identity.rs:99:15
    |
 LL |     let _ = it.map(|x| x).next();
    |               ^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> tests/ui/map_identity.rs:106:19
+  --> tests/ui/map_identity.rs:105:19
    |
 LL |     let _ = { it }.map(|x| x).next();
    |                   ^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> tests/ui/map_identity.rs:119:30
+  --> tests/ui/map_identity.rs:118:30
    |
 LL |     let _ = x.iter().copied().map(|[x, y]| [x, y]);
    |                              ^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> tests/ui/map_identity.rs:145:26
+  --> tests/ui/map_identity.rs:144:26
    |
 LL |     let _ = x.into_iter().map(|Foo { foo, bar }| Foo { foo, bar });
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> tests/ui/map_identity.rs:149:26
+  --> tests/ui/map_identity.rs:148:26
    |
 LL |     let _ = x.into_iter().map(|Foo { foo, bar }| foo::Foo { foo, bar });
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> tests/ui/map_identity.rs:157:26
+  --> tests/ui/map_identity.rs:156:26
    |
 LL |     let _ = x.into_iter().map(|Foo { foo, bar }| Foo { foo: foo, bar: bar });
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> tests/ui/map_identity.rs:161:26
+  --> tests/ui/map_identity.rs:160:26
    |
 LL |     let _ = x.into_iter().map(|Foo { foo, bar }| Foo { bar, foo });
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> tests/ui/map_identity.rs:171:26
+  --> tests/ui/map_identity.rs:170:26
    |
 LL |     let _ = x.into_iter().map(|Foo2(foo, bar)| Foo2(foo, bar));
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> tests/ui/map_identity.rs:175:26
+  --> tests/ui/map_identity.rs:174:26
    |
 LL |     let _ = x.into_iter().map(|Foo2(foo, bar)| foo::Foo2(foo, bar));
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`

@@ -1,0 +1,39 @@
+error[E0057]: this splatted function takes 2 arguments, but 1 was provided
+  --> $DIR/splat-fn-tuple-generic-fail.rs:19:5
+   |
+LL |     splat_generic_tuple::<(((u32, i8)))>((1, 2));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0057]: this splatted function takes 2 arguments, but 1 was provided
+  --> $DIR/splat-fn-tuple-generic-fail.rs:20:5
+   |
+LL |     splat_generic_tuple::<(((u32, i8)))>((1u32, 2i8));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0057]: this splatted function takes 2 arguments, but 1 was provided
+  --> $DIR/splat-fn-tuple-generic-fail.rs:22:5
+   |
+LL |     splat_generic_tuple::<((u32, i8))>((1, 2));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0057]: this splatted function takes 2 arguments, but 1 was provided
+  --> $DIR/splat-fn-tuple-generic-fail.rs:23:5
+   |
+LL |     splat_generic_tuple::<((u32, i8))>((1u32, 2i8));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0057]: this splatted function takes 2 arguments, but 1 was provided
+  --> $DIR/splat-fn-tuple-generic-fail.rs:25:5
+   |
+LL |     splat_generic_tuple::<(u32, i8)>((1, 2));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0057]: this splatted function takes 2 arguments, but 1 was provided
+  --> $DIR/splat-fn-tuple-generic-fail.rs:26:5
+   |
+LL |     splat_generic_tuple::<(u32, i8)>((1u32, 2i8));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0057`.

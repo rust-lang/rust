@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ revisions: x86 x86-avx2 x86-avx512 aarch64
+//@ revisions: x86 x86-avx2 x86-avx512 aarch64-llvm-pre-23 aarch64
 //@ [x86] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86] needs-llvm-components: x86
 //@ [x86-avx2] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
@@ -8,8 +8,12 @@
 //@ [x86-avx512] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86-avx512] compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512dq
 //@ [x86-avx512] needs-llvm-components: x86
+//@ [aarch64] min-llvm-version: 23
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64
+//@ [aarch64-llvm-pre-23] ignore-llvm-version: 23 - 99
+//@ [aarch64-llvm-pre-23] compile-flags: --target=aarch64-unknown-linux-gnu
+//@ [aarch64-llvm-pre-23] needs-llvm-components: aarch64
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
@@ -54,14 +58,23 @@ pub unsafe extern "C" fn bitmask_m8x16(mask: m8x16) -> u16 {
     // x86-avx512-NOT: vpsllw xmm0
     // x86-avx512: vpmovmskb eax, xmm0
     //
+    // aarch64-pre-llvm-23: adrp
+    // aarch64-pre-llvm-23-NEXT: cmlt
+    // aarch64-pre-llvm-23-NEXT: ldr
+    // aarch64-pre-llvm-23-NEXT: and
+    // aarch64-pre-llvm-23-NEXT: ext
+    // aarch64-pre-llvm-23-NEXT: zip1
+    // aarch64-pre-llvm-23-NEXT: addv
+    // aarch64-pre-llvm-23-NEXT: fmov
+    //
     // aarch64: adrp
     // aarch64-NEXT: cmlt
     // aarch64-NEXT: ldr
     // aarch64-NEXT: and
-    // aarch64-NEXT: ext
-    // aarch64-NEXT: zip1
-    // aarch64-NEXT: addv
-    // aarch64-NEXT: fmov
+    // aarch64-NEXT: addp
+    // aarch64-NEXT: addp
+    // aarch64-NEXT: addp
+    // aarch64-NEXT: umov
     simd_bitmask(mask)
 }
 

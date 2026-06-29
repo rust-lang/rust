@@ -15,7 +15,7 @@ use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, HirId, PatKind, PathSegme
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use rustc_span::{Span, SyntaxContext};
 use std::cmp::Ordering;
 use std::ops::Deref;
 
@@ -140,7 +140,13 @@ struct InputMinMax<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !expr.span.from_expansion() && !is_in_const_context(cx) {
+        // Cheap kind check before the costlier const context query.
+        if matches!(
+            expr.kind,
+            ExprKind::If(..) | ExprKind::Match(..) | ExprKind::MethodCall(..) | ExprKind::Call(..)
+        ) && !expr.span.from_expansion()
+            && !is_in_const_context(cx)
+        {
             let suggestion = is_if_elseif_else_pattern(cx, expr)
                 .or_else(|| is_max_min_pattern(cx, expr))
                 .or_else(|| is_call_max_min_pattern(cx, expr))
@@ -155,6 +161,15 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     }
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        // Cheap `if`-statement check before the costlier const context query.
+        if !block
+            .stmts
+            .iter()
+            .any(|stmt| matches!(stmt.kind, StmtKind::Expr(e) if matches!(e.kind, ExprKind::If(..))))
+        {
+            return;
+        }
+
         if is_in_const_context(cx) || !self.msrv.meets(cx, msrvs::CLAMP) {
             return;
         }
@@ -261,6 +276,7 @@ fn is_if_elseif_else_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
     {
         let params = is_clamp_meta_pattern(
             cx,
+            expr.span.ctxt(),
             &BinaryOp::new(peel_blocks(cond))?,
             &BinaryOp::new(peel_blocks(else_if_cond))?,
             peel_blocks(then),
@@ -268,7 +284,7 @@ fn is_if_elseif_else_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
             None,
         )?;
         // Contents of the else should be the resolved input.
-        if !eq_expr_value(cx, params.input, peel_blocks(else_body)) {
+        if !eq_expr_value(cx, expr.span.ctxt(), params.input, peel_blocks(else_body)) {
             return None;
         }
         Some(ClampSuggestion {
@@ -292,18 +308,19 @@ fn is_if_elseif_else_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
 /// ```
 fn is_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<ClampSuggestion<'tcx>> {
     if let ExprKind::MethodCall(seg_second, receiver, [arg_second], _) = expr.kind
+        && let ExprKind::MethodCall(seg_first, input, [arg_first], _) = &receiver.kind
+        // Match method names before the costlier type queries.
+        && let Some((min, max)) = match (seg_first.ident.name, seg_second.ident.name) {
+            (sym::min, sym::max) => Some((arg_second, arg_first)),
+            (sym::max, sym::min) => Some((arg_first, arg_second)),
+            _ => None,
+        }
         && (cx.typeck_results().expr_ty_adjusted(receiver).is_floating_point()
             || cx.ty_based_def(expr).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
-        && let ExprKind::MethodCall(seg_first, input, [arg_first], _) = &receiver.kind
         && (cx.typeck_results().expr_ty_adjusted(input).is_floating_point()
             || cx.ty_based_def(receiver).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
     {
         let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
-        let (min, max) = match (seg_first.ident.name, seg_second.ident.name) {
-            (sym::min, sym::max) => (arg_second, arg_first),
-            (sym::max, sym::min) => (arg_first, arg_second),
-            _ => return None,
-        };
         Some(ClampSuggestion {
             params: InputMinMax {
                 input,
@@ -366,12 +383,16 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
             && let Some(inner_seg) = segment(cx, inner_fn)
             && let Some(outer_seg) = segment(cx, outer_fn)
         {
-            let (input, inner_arg) = match (is_const_evaluatable(cx, first), is_const_evaluatable(cx, second)) {
+            let typeck = cx.typeck_results();
+            let (input, inner_arg) = match (
+                is_const_evaluatable(cx.tcx, typeck, first),
+                is_const_evaluatable(cx.tcx, typeck, second),
+            ) {
                 (true, false) => (second, first),
                 (false, true) => (first, second),
                 _ => return None,
             };
-            let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
+            let is_float = typeck.expr_ty_adjusted(input).is_floating_point();
             let (min, max) = match (inner_seg, outer_seg) {
                 (FunctionType::CmpMin, FunctionType::CmpMax) => (outer_arg, inner_arg),
                 (FunctionType::CmpMax, FunctionType::CmpMin) => (inner_arg, outer_arg),
@@ -445,6 +466,7 @@ fn is_match_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Opt
         }
         if let Some(params) = is_clamp_meta_pattern(
             cx,
+            expr.span.ctxt(),
             &first,
             &second,
             first_expr,
@@ -496,11 +518,14 @@ fn is_two_if_pattern<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> 
                     peel_blocks_with_stmt(first_then).kind
                 && let ExprKind::Assign(maybe_input_second_path, maybe_min_max_second, _) =
                     peel_blocks_with_stmt(second_then).kind
-                && eq_expr_value(cx, maybe_input_first_path, maybe_input_second_path)
+                && let ctxt = first_expr.span.ctxt()
+                && second_expr.span.ctxt() == ctxt
+                && eq_expr_value(cx, ctxt, maybe_input_first_path, maybe_input_second_path)
                 && let Some(first_bin) = BinaryOp::new(first_cond)
                 && let Some(second_bin) = BinaryOp::new(second_cond)
                 && let Some(input_min_max) = is_clamp_meta_pattern(
                     cx,
+                    ctxt,
                     &first_bin,
                     &second_bin,
                     maybe_min_max_first,
@@ -552,15 +577,17 @@ fn is_if_elseif_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) ->
         && let ExprKind::Assign(maybe_input_second_path, maybe_min_max_second, _) =
             peel_blocks_with_stmt(else_if_then).kind
     {
+        let ctxt = expr.span.ctxt();
         let params = is_clamp_meta_pattern(
             cx,
+            ctxt,
             &BinaryOp::new(peel_blocks(cond))?,
             &BinaryOp::new(peel_blocks(else_if_cond))?,
             peel_blocks(maybe_min_max_first),
             peel_blocks(maybe_min_max_second),
             None,
         )?;
-        if !eq_expr_value(cx, maybe_input_first_path, maybe_input_second_path) {
+        if !eq_expr_value(cx, ctxt, maybe_input_first_path, maybe_input_second_path) {
             return None;
         }
         Some(ClampSuggestion {
@@ -631,6 +658,7 @@ impl<'tcx> BinaryOp<'tcx> {
 ///   result can not be the shared argument in either case.
 fn is_clamp_meta_pattern<'tcx>(
     cx: &LateContext<'tcx>,
+    ctxt: SyntaxContext,
     first_bin: &BinaryOp<'tcx>,
     second_bin: &BinaryOp<'tcx>,
     first_expr: &'tcx Expr<'tcx>,
@@ -642,8 +670,10 @@ fn is_clamp_meta_pattern<'tcx>(
     // be the input variable, not the min or max.
     input_hir_ids: Option<(HirId, HirId)>,
 ) -> Option<InputMinMax<'tcx>> {
+    #[expect(clippy::too_many_arguments)]
     fn check<'tcx>(
         cx: &LateContext<'tcx>,
+        ctxt: SyntaxContext,
         first_bin: &BinaryOp<'tcx>,
         second_bin: &BinaryOp<'tcx>,
         first_expr: &'tcx Expr<'tcx>,
@@ -659,11 +689,11 @@ fn is_clamp_meta_pattern<'tcx>(
                         peel_blocks(first_bin.left).res_local_id() == Some(first_hir_id)
                             && peel_blocks(second_bin.left).res_local_id() == Some(second_hir_id)
                     },
-                    None => eq_expr_value(cx, first_bin.left, second_bin.left),
+                    None => eq_expr_value(cx, ctxt, first_bin.left, second_bin.left),
                 };
                 (refers_to_input
-                    && eq_expr_value(cx, first_bin.right, first_expr)
-                    && eq_expr_value(cx, second_bin.right, second_expr))
+                    && eq_expr_value(cx, ctxt, first_bin.right, first_expr)
+                    && eq_expr_value(cx, ctxt, second_bin.right, second_expr))
                 .then_some(InputMinMax {
                     input: first_bin.left,
                     min,
@@ -699,9 +729,20 @@ fn is_clamp_meta_pattern<'tcx>(
     ];
 
     cases.into_iter().find_map(|(first, second)| {
-        check(cx, &first, &second, first_expr, second_expr, input_hir_ids, is_float).or_else(|| {
+        check(
+            cx,
+            ctxt,
+            &first,
+            &second,
+            first_expr,
+            second_expr,
+            input_hir_ids,
+            is_float,
+        )
+        .or_else(|| {
             check(
                 cx,
+                ctxt,
                 &second,
                 &first,
                 second_expr,

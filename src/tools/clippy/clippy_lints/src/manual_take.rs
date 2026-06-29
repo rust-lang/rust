@@ -1,4 +1,5 @@
 use clippy_config::Conf;
+use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{MEM_TAKE, Msrv};
 use clippy_utils::source::snippet_with_context;
@@ -74,10 +75,11 @@ impl LateLintPass<'_> for ManualTake {
             && let StmtKind::Semi(assignment) = stmt.kind
             && let ExprKind::Assign(mut_c, possible_false, _) = assignment.kind
             && let ExprKind::Path(_) = mut_c.kind
-            && !expr.span.in_external_macro(cx.sess().source_map())
+            && let ctxt = expr.span.ctxt()
+            && !ctxt.in_external_macro(cx.sess().source_map())
             && let Some(std_or_core) = clippy_utils::std_or_core(cx)
             && self.msrv.meets(cx, MEM_TAKE)
-            && clippy_utils::SpanlessEq::new(cx).eq_expr(cond, mut_c)
+            && SpanlessEq::new(cx).eq_expr(ctxt, cond, mut_c)
             && Some(false) == as_const_bool(possible_false)
             && let Some(then_bool) = as_const_bool(then_expr)
             && let Some(else_bool) = as_const_bool(else_expr)

@@ -47,7 +47,7 @@ const CARGO_DEFINED_VARS: &[(&str, &str)] = &[
 
 pub(crate) fn complete_cargo_env_vars(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     original: &ast::String,
     expanded: &ast::String,
 ) -> Option<()> {

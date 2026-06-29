@@ -218,10 +218,11 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
 
         loop {
             let buf = self.buffer_mut();
-            let mut read_buf: BorrowedBuf<'_> = buf.spare_capacity_mut().into();
+            let mut read_buf: BorrowedBuf<'_, u8> = buf.spare_capacity_mut().into();
 
             if init {
-                // SAFETY: init is either 0 or the init_len from the previous iteration.
+                // SAFETY: `init` is only true after `reader` initializes
+                // `read_buf`. See the comment about `flush_buf` below.
                 unsafe { read_buf.set_init() };
             }
 
@@ -248,6 +249,8 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
                     Err(e) => return Err(e),
                 }
             } else {
+                // SAFETY: `flush_buf` will not de-initialize any elements of
+                // the spare capacity so we can remember `init` across this.
                 self.flush_buf()?;
             }
         }
@@ -269,7 +272,7 @@ fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     writer: &mut W,
 ) -> Result<u64> {
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); DEFAULT_BUF_SIZE];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     let mut len = 0;
 

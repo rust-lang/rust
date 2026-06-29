@@ -1,4 +1,4 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 //@ compile-flags:--extern extern_prelude --extern Vec
 //@ aux-build:extern-prelude.rs
 //@ aux-build:extern-prelude-vec.rs

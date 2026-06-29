@@ -1,6 +1,7 @@
 /// Lang items used by the new trait solver. This can be mapped to whatever internal
 /// representation of `LangItem`s used in the underlying compiler implementation.
-pub enum SolverLangItem {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SolverProjectionLangItem {
     // tidy-alphabetical-start
     AsyncFnKindUpvars,
     AsyncFnOnceOutput,
@@ -8,7 +9,6 @@ pub enum SolverLangItem {
     CallRefFuture,
     CoroutineReturn,
     CoroutineYield,
-    DynMetadata,
     FieldBase,
     FieldType,
     FutureOutput,
@@ -16,20 +16,22 @@ pub enum SolverLangItem {
     // tidy-alphabetical-end
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SolverAdtLangItem {
     // tidy-alphabetical-start
+    DynMetadata,
     Option,
     Poll,
     // tidy-alphabetical-end
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SolverTraitLangItem {
     // tidy-alphabetical-start
     AsyncFn,
     AsyncFnKindHelper,
     AsyncFnMut,
     AsyncFnOnce,
-    AsyncFnOnceOutput,
     AsyncIterator,
     BikeshedGuaranteedNoDrop,
     Clone,

@@ -287,6 +287,9 @@ fn floating_point_casts() {
     check_number(r#"const GOAL: i8 = (0./0.) as i8"#, 0);
     check_number(r#"const GOAL: i8 = (1./0.) as i8"#, 127);
     check_number(r#"const GOAL: i8 = (-1./0.) as i8"#, -128);
+    check_number(r#"const GOAL: u8 = (1./0.) as u8"#, 255);
+    check_number(r#"const GOAL: u8 = 256.0f32 as u8"#, 255);
+    check_number(r#"const GOAL: u16 = 1e10f32 as u16"#, 65535);
     check_number(r#"const GOAL: i64 = 1e18f64 as f32 as i64"#, 999999984306749440);
 }
 
@@ -2474,8 +2477,6 @@ fn extern_weak_statics() {
 }
 
 #[test]
-// FIXME
-#[should_panic]
 fn from_ne_bytes() {
     check_number(
         r#"
@@ -2567,9 +2568,8 @@ fn const_transfer_memory() {
 fn anonymous_const_block() {
     check_number(
         r#"
-    extern "rust-intrinsic" {
-        pub fn size_of<T>() -> usize;
-    }
+    #[rustc_intrinsic]
+    pub fn size_of<T>() -> usize;
 
     const fn f<T>() -> usize {
         let r = const { size_of::<T>() };
@@ -2630,6 +2630,19 @@ fn const_generic_subst_fn() {
     const GOAL: usize = f([1, 2, 5]);
     "#,
         3,
+    );
+}
+
+#[test]
+fn const_generic_fixed_width() {
+    check_number(
+        r#"
+    const fn m<const N: u64>() -> u64 {
+        N
+    }
+    const GOAL: u64 = m::<0>();
+    "#,
+        0,
     );
 }
 

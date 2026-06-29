@@ -44,7 +44,10 @@ use crate::{AssistContext, AssistId, Assists};
 //     }
 // }
 // ```
-pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_mut_trait_impl(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?;
     let indent = impl_def.indent_level();
 

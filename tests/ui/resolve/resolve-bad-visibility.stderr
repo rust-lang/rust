@@ -27,16 +27,11 @@ help: you might be missing a crate named `nonexistent`, add it to your project a
 LL + extern crate nonexistent;
    |
 
-error[E0433]: cannot find module or crate `too_soon` in the crate root
+error[E0742]: visibilities can only be restricted to ancestor modules
   --> $DIR/resolve-bad-visibility.rs:9:8
    |
 LL | pub(in too_soon) struct H;
-   |        ^^^^^^^^ use of unresolved module or unlinked crate `too_soon`
-   |
-help: you might be missing a crate named `too_soon`, add it to your project and import it in your code
-   |
-LL + extern crate too_soon;
-   |
+   |        ^^^^^^^^
 
 error: aborting due to 5 previous errors
 

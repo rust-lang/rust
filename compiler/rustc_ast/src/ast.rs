@@ -25,14 +25,15 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_data_structures::packed::Pu128;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
+use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 pub use rustc_span::AttrId;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{
-    ByteSymbol, DUMMY_SP, ErrorGuaranteed, HashStableContext, Ident, Span, Spanned, Symbol, kw,
-    respan, sym,
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
+    sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 
@@ -53,7 +54,7 @@ use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 /// ```
 ///
 /// `'outer` is a label.
-#[derive(Clone, Encodable, Decodable, Copy, HashStable_Generic, Eq, PartialEq, Walkable)]
+#[derive(Clone, Encodable, Decodable, Copy, StableHash, Eq, PartialEq, Walkable)]
 pub struct Label {
     pub ident: Ident,
 }
@@ -121,11 +122,11 @@ impl PartialEq<&[Symbol]> for Path {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for Path {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.segments.len().hash_stable(hcx, hasher);
+impl StableHash for Path {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.segments.len().stable_hash(hcx, hasher);
         for segment in &self.segments {
-            segment.ident.hash_stable(hcx, hasher);
+            segment.ident.stable_hash(hcx, hasher);
         }
     }
 }
@@ -510,8 +511,6 @@ pub enum WherePredicateKind {
     BoundPredicate(WhereBoundPredicate),
     /// A lifetime predicate (e.g., `'a: 'b + 'c`).
     RegionPredicate(WhereRegionPredicate),
-    /// An equality predicate (unsupported).
-    EqPredicate(WhereEqPredicate),
 }
 
 /// A type bound.
@@ -565,7 +564,7 @@ pub struct Crate {
 /// for most built-in attributes.
 ///
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, StableHash)]
 pub struct MetaItem {
     pub unsafety: Safety,
     pub path: Path,
@@ -574,7 +573,7 @@ pub struct MetaItem {
 }
 
 /// The meta item kind, containing the data after the initial path.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, StableHash)]
 pub enum MetaItemKind {
     /// Word meta item.
     ///
@@ -595,7 +594,7 @@ pub enum MetaItemKind {
 /// Values inside meta item lists.
 ///
 /// E.g., each of `Clone`, `Copy` in `#[derive(Clone, Copy)]`.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, StableHash)]
 pub enum MetaItemInner {
     /// A full MetaItem, for recursive meta items.
     MetaItem(MetaItem),
@@ -793,7 +792,7 @@ pub struct PatField {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Encodable, Decodable, StableHash, Walkable)]
 pub enum ByRef {
     Yes(Pinnedness, Mutability),
     No,
@@ -815,7 +814,7 @@ impl ByRef {
 /// `.0` is the by-reference mode (`ref`, `ref mut`, or by value),
 /// `.1` is the mutability of the binding.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Encodable, Decodable, StableHash, Walkable)]
 pub struct BindingMode(pub ByRef, pub Mutability);
 
 impl BindingMode {
@@ -965,7 +964,7 @@ pub enum PatFieldsRest {
 /// The kind of borrow in an `AddrOf` expression,
 /// e.g., `&place` or `&raw const place`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Encodable, Decodable, StableHash, Walkable)]
 pub enum BorrowKind {
     /// A normal borrow, `&$expr` or `&mut $expr`.
     /// The resulting type is either `&'a T` or `&'a mut T`
@@ -981,7 +980,7 @@ pub enum BorrowKind {
     Pin,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, StableHash, Walkable)]
 pub enum BinOpKind {
     /// The `+` operator (addition)
     Add,
@@ -1111,7 +1110,7 @@ impl From<AssignOpKind> for BinOpKind {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, StableHash, Walkable)]
 pub enum AssignOpKind {
     /// The `+=` operator (addition)
     AddAssign,
@@ -1163,7 +1162,7 @@ pub type AssignOp = Spanned<AssignOpKind>;
 /// Unary operator.
 ///
 /// Note that `&data` is not an operator, it's an `AddrOf` expression.
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, StableHash, Walkable)]
 pub enum UnOp {
     /// The `*` operator for dereferencing
     Deref,
@@ -1558,12 +1557,10 @@ impl Expr {
         }
 
         match &self.kind {
-            ExprKind::Closure(closure) => {
-                match closure.fn_decl.output {
-                    FnRetTy::Default(_) => ExprPrecedence::Jump,
-                    FnRetTy::Ty(_) => prefix_attrs_precedence(&self.attrs),
-                }
-            }
+            ExprKind::Closure(closure) => match closure.fn_decl.output {
+                FnRetTy::Default(_) => ExprPrecedence::Jump,
+                FnRetTy::Ty(_) => prefix_attrs_precedence(&self.attrs),
+            },
 
             ExprKind::Break(_ /*label*/, value)
             | ExprKind::Ret(value)
@@ -1585,17 +1582,16 @@ impl Expr {
             ExprKind::Binary(op, ..) => op.node.precedence(),
             ExprKind::Cast(..) => ExprPrecedence::Cast,
 
-            ExprKind::Assign(..) |
-            ExprKind::AssignOp(..) => ExprPrecedence::Assign,
+            ExprKind::Assign(..) | ExprKind::AssignOp(..) => ExprPrecedence::Assign,
 
             // Unary, prefix
-            ExprKind::AddrOf(..)
+            ExprKind::AddrOf(..) => ExprPrecedence::Prefix,
+
             // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
             // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
-            | ExprKind::Let(..)
-            | ExprKind::Unary(..) => ExprPrecedence::Prefix,
+            ExprKind::Let(..) | ExprKind::Move(..) | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Need parens if and only if there are prefix attributes.
             ExprKind::Array(_)
@@ -1764,6 +1760,8 @@ pub enum ExprKind {
     Binary(BinOp, Box<Expr>, Box<Expr>),
     /// A unary operation (e.g., `!x`, `*x`).
     Unary(UnOp, Box<Expr>),
+    /// A `move(expr)` expression.
+    Move(Box<Expr>, Span),
     /// A literal (e.g., `1`, `"foo"`).
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
@@ -1962,7 +1960,7 @@ impl GenBlockKind {
 
 /// Whether we're unwrapping or wrapping an unsafe binder
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Encodable, Decodable, StableHash, Walkable)]
 pub enum UnsafeBinderCastKind {
     // e.g. `&i32` -> `unsafe<'a> &'a i32`
     Wrap,
@@ -1996,7 +1994,7 @@ pub struct QSelf {
 }
 
 /// A capture clause used in closures and `async` blocks.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, StableHash, Walkable)]
 pub enum CaptureBy {
     /// `move |x| y + x`.
     Value {
@@ -2091,7 +2089,7 @@ impl AttrArgs {
 }
 
 /// Delimited arguments, as used in `#[attr()/[]/{}]` or `mac!()/[]/{}`.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Encodable, Decodable, Debug, StableHash, Walkable)]
 pub struct DelimArgs {
     pub dspan: DelimSpan,
     pub delim: Delimiter, // Note: `Delimiter::Invisible` never occurs
@@ -2107,7 +2105,7 @@ impl DelimArgs {
 }
 
 /// Represents a macro definition.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Encodable, Decodable, Debug, StableHash, Walkable)]
 pub struct MacroDef {
     pub body: Box<DelimArgs>,
     /// `true` if macro was defined with `macro_rules`.
@@ -2121,7 +2119,7 @@ pub struct MacroDef {
     pub eii_declaration: Option<EiiDecl>,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Encodable, Decodable, Debug, StableHash, Walkable)]
 pub struct EiiDecl {
     /// path to the extern item we're targeting
     pub foreign_item: Path,
@@ -2129,7 +2127,7 @@ pub struct EiiDecl {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(StableHash, Walkable)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`.
     Cooked,
@@ -2187,7 +2185,7 @@ impl YieldKind {
 }
 
 /// A literal in a meta item.
-#[derive(Clone, Copy, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, StableHash)]
 pub struct MetaItemLit {
     /// The original literal as written in the source code.
     pub symbol: Symbol,
@@ -2224,7 +2222,7 @@ impl StrLit {
 
 /// Type of the integer literal based on provided suffix.
 #[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq)]
-#[derive(HashStable_Generic)]
+#[derive(StableHash)]
 pub enum LitIntType {
     /// e.g. `42_i32`.
     Signed(IntTy),
@@ -2236,7 +2234,7 @@ pub enum LitIntType {
 
 /// Type of the float literal based on provided suffix.
 #[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq)]
-#[derive(HashStable_Generic)]
+#[derive(StableHash)]
 pub enum LitFloatType {
     /// A float literal with a suffix (`1f32` or `1E10f32`).
     Suffixed(FloatTy),
@@ -2250,7 +2248,7 @@ pub enum LitFloatType {
 /// deciding the `LitKind`. This means that float literals like `1f32` are
 /// classified by this type as `Float`. This is different to `token::LitKind`
 /// which does *not* consider the suffix.
-#[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq, StableHash)]
 pub enum LitKind {
     /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
     /// from the original token's symbol.
@@ -2653,7 +2651,7 @@ pub enum TyPatKind {
 }
 
 /// Syntax used to declare a trait object.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, StableHash, Walkable)]
 #[repr(u8)]
 pub enum TraitObjectSyntax {
     // SAFETY: When adding new variants make sure to update the `Tag` impl.
@@ -2697,7 +2695,7 @@ pub enum InlineAsmRegOrRegClass {
     RegClass(Symbol),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub struct InlineAsmOptions(u16);
 bitflags::bitflags! {
     impl InlineAsmOptions: u16 {
@@ -2760,7 +2758,7 @@ impl std::fmt::Debug for InlineAsmOptions {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Hash, HashStable_Generic, Walkable)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Hash, StableHash, Walkable)]
 pub enum InlineAsmTemplatePiece {
     String(Cow<'static, str>),
     Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
@@ -2863,7 +2861,7 @@ impl InlineAsmOperand {
     }
 }
 
-#[derive(Clone, Copy, Encodable, Decodable, Debug, HashStable_Generic, Walkable, PartialEq, Eq)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, StableHash, Walkable, PartialEq, Eq)]
 pub enum AsmMacro {
     /// The `asm!` macro
     Asm,
@@ -3055,13 +3053,36 @@ impl FnDecl {
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).is_some_and(Param::is_self)
     }
+
     pub fn c_variadic(&self) -> bool {
         self.inputs.last().is_some_and(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
+    }
+
+    /// The marker index for "no splatted arguments".
+    /// Higher values are also not supported, for performance reasons.
+    ///
+    /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `FnDeclFlags::NO_SPLATTED_ARG_INDEX`.
+    pub const NO_SPLATTED_ARG_INDEX: u8 = u8::MAX;
+
+    /// Returns a splatted argument index, if any are present.
+    pub fn splatted(&self) -> Option<u8> {
+        self.inputs.iter().enumerate().find_map(|(index, arg)| {
+            if index >= usize::from(Self::NO_SPLATTED_ARG_INDEX) {
+                // AST validation has already checked the splatted argument index is valid, so just
+                // ignore invalid indexes here.
+                None
+            } else {
+                arg.attrs
+                    .iter()
+                    .any(|attr| attr.has_name(sym::splat))
+                    .then_some(u8::try_from(index).unwrap())
+            }
+        })
     }
 }
 
 /// Is the trait definition an auto trait?
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, Walkable)]
 pub enum IsAuto {
     Yes,
     No,
@@ -3069,7 +3090,7 @@ pub enum IsAuto {
 
 /// Safety of items.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(StableHash, Walkable)]
 pub enum Safety {
     /// `unsafe` an item is explicitly marked as `unsafe`.
     Unsafe(Span),
@@ -3134,7 +3155,7 @@ impl CoroutineKind {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(StableHash, Walkable)]
 pub enum Const {
     Yes(Span),
     No,
@@ -3142,7 +3163,7 @@ pub enum Const {
 
 /// Item defaultness.
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, Walkable)]
 pub enum Defaultness {
     /// Item is unmarked. Implicitly determined based off of position.
     /// For impls, this is `final`; for traits, this is `default`.
@@ -3156,7 +3177,7 @@ pub enum Defaultness {
     Final(Span),
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, StableHash, Walkable)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -3175,7 +3196,7 @@ impl fmt::Debug for ImplPolarity {
 
 /// The polarity of a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Hash)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(StableHash, Walkable)]
 pub enum BoundPolarity {
     /// `Type: Trait`
     Positive,
@@ -3197,7 +3218,7 @@ impl BoundPolarity {
 
 /// The constness of a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Hash)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(StableHash, Walkable)]
 pub enum BoundConstness {
     /// `Type: Trait`
     Never,
@@ -3219,7 +3240,7 @@ impl BoundConstness {
 
 /// The asyncness of a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(StableHash, Walkable)]
 pub enum BoundAsyncness {
     /// `Type: Trait`
     Normal,
@@ -3388,7 +3409,7 @@ impl UseTree {
 /// are contained as statements within items. These two cases need to be
 /// distinguished for pretty-printing.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
-#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Encodable, Decodable, StableHash, Walkable)]
 pub enum AttrStyle {
     Outer,
     Inner,
@@ -3485,7 +3506,7 @@ impl AttrItemKind {
 ///
 /// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
 /// When adding new early parsed attributes, consider whether they should be pretty printed.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, StableHash)]
 pub enum EarlyParsedAttribute {
     CfgTrace(CfgEntry),
     CfgAttrTrace,
@@ -3499,6 +3520,7 @@ impl AttrItem {
             || self.path == sym::warn
             || self.path == sym::allow
             || self.path == sym::deny
+            || self.path == sym::expect
     }
 }
 
@@ -3585,6 +3607,13 @@ pub struct ImplRestriction {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct MutRestriction {
+    pub kind: RestrictionKind,
+    pub span: Span,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum RestrictionKind {
     Unrestricted,
     Restricted { path: Box<Path>, id: NodeId, shorthand: bool },
@@ -3599,6 +3628,7 @@ pub struct FieldDef {
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
+    pub mut_restriction: MutRestriction,
     pub safety: Safety,
     pub ident: Option<Ident>,
 
@@ -3608,7 +3638,7 @@ pub struct FieldDef {
 }
 
 /// Was parsing recovery performed?
-#[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Copy, Clone, Debug, Encodable, Decodable, StableHash, Walkable)]
 pub enum Recovered {
     No,
     Yes(ErrorGuaranteed),
@@ -3865,6 +3895,19 @@ pub struct Fn {
     pub eii_impls: ThinVec<EiiImpl>,
 }
 
+impl Fn {
+    pub fn is_pin_drop_sugar(&self) -> bool {
+        self.ident.name == sym::drop
+            && self
+                .sig
+                .decl
+                .inputs
+                .first()
+                .and_then(|param| param.to_self())
+                .is_some_and(|eself| matches!(eself.node, SelfKind::Pinned(None, Mutability::Mut)))
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct EiiImpl {
     pub node_id: NodeId,
@@ -3888,6 +3931,13 @@ pub struct EiiImpl {
     pub is_default: bool,
 }
 
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
+pub enum DelegationSource {
+    Single,
+    List(LocalExpnId),
+    Glob,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct Delegation {
     /// Path resolution id.
@@ -3898,7 +3948,14 @@ pub struct Delegation {
     pub rename: Option<Ident>,
     pub body: Option<Box<Block>>,
     /// The item was expanded from a glob delegation item.
-    pub from_glob: bool,
+    #[visitable(ignore)]
+    pub source: DelegationSource,
+}
+
+impl Delegation {
+    pub fn last_segment_span(&self) -> Span {
+        self.path.segments.last().unwrap().ident.span
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4088,18 +4145,18 @@ impl ItemKind {
     pub fn ident(&self) -> Option<Ident> {
         match *self {
             ItemKind::ExternCrate(_, ident)
-            | ItemKind::Static(box StaticItem { ident, .. })
-            | ItemKind::Const(box ConstItem { ident, .. })
-            | ItemKind::Fn(box Fn { ident, .. })
+            | ItemKind::Static(StaticItem { ident, .. })
+            | ItemKind::Const(ConstItem { ident, .. })
+            | ItemKind::Fn(Fn { ident, .. })
             | ItemKind::Mod(_, ident, _)
-            | ItemKind::TyAlias(box TyAlias { ident, .. })
+            | ItemKind::TyAlias(TyAlias { ident, .. })
             | ItemKind::Enum(ident, ..)
             | ItemKind::Struct(ident, ..)
             | ItemKind::Union(ident, ..)
-            | ItemKind::Trait(box Trait { ident, .. })
-            | ItemKind::TraitAlias(box TraitAlias { ident, .. })
+            | ItemKind::Trait(Trait { ident, .. })
+            | ItemKind::TraitAlias(TraitAlias { ident, .. })
             | ItemKind::MacroDef(ident, _)
-            | ItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
+            | ItemKind::Delegation(Delegation { ident, .. }) => Some(ident),
 
             ItemKind::ConstBlock(_) => Some(ConstBlockItem::IDENT),
 
@@ -4150,14 +4207,14 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         match self {
-            Self::Fn(box Fn { generics, .. })
-            | Self::TyAlias(box TyAlias { generics, .. })
-            | Self::Const(box ConstItem { generics, .. })
+            Self::Fn(Fn { generics, .. })
+            | Self::TyAlias(TyAlias { generics, .. })
+            | Self::Const(ConstItem { generics, .. })
             | Self::Enum(_, generics, _)
             | Self::Struct(_, generics, _)
             | Self::Union(_, generics, _)
-            | Self::Trait(box Trait { generics, .. })
-            | Self::TraitAlias(box TraitAlias { generics, .. })
+            | Self::Trait(Trait { generics, .. })
+            | Self::TraitAlias(TraitAlias { generics, .. })
             | Self::Impl(Impl { generics, .. }) => Some(generics),
 
             Self::ExternCrate(..)
@@ -4206,10 +4263,10 @@ pub enum AssocItemKind {
 impl AssocItemKind {
     pub fn ident(&self) -> Option<Ident> {
         match *self {
-            AssocItemKind::Const(box ConstItem { ident, .. })
-            | AssocItemKind::Fn(box Fn { ident, .. })
-            | AssocItemKind::Type(box TyAlias { ident, .. })
-            | AssocItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
+            AssocItemKind::Const(ConstItem { ident, .. })
+            | AssocItemKind::Fn(Fn { ident, .. })
+            | AssocItemKind::Type(TyAlias { ident, .. })
+            | AssocItemKind::Delegation(Delegation { ident, .. }) => Some(ident),
 
             AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(_) => None,
         }
@@ -4217,9 +4274,9 @@ impl AssocItemKind {
 
     pub fn defaultness(&self) -> Defaultness {
         match *self {
-            Self::Const(box ConstItem { defaultness, .. })
-            | Self::Fn(box Fn { defaultness, .. })
-            | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
+            Self::Const(ConstItem { defaultness, .. })
+            | Self::Fn(Fn { defaultness, .. })
+            | Self::Type(TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) | Self::Delegation(..) | Self::DelegationMac(..) => {
                 Defaultness::Implicit
             }
@@ -4272,9 +4329,9 @@ pub enum ForeignItemKind {
 impl ForeignItemKind {
     pub fn ident(&self) -> Option<Ident> {
         match *self {
-            ForeignItemKind::Static(box StaticItem { ident, .. })
-            | ForeignItemKind::Fn(box Fn { ident, .. })
-            | ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => Some(ident),
+            ForeignItemKind::Static(StaticItem { ident, .. })
+            | ForeignItemKind::Fn(Fn { ident, .. })
+            | ForeignItemKind::TyAlias(TyAlias { ident, .. }) => Some(ident),
 
             ForeignItemKind::MacCall(_) => None,
         }
@@ -4307,6 +4364,23 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 }
 
 pub type ForeignItem = Item<ForeignItemKind>;
+
+/// Fragment of the AST according to "HIR owner" semantics.
+///
+/// This is used to map each `LocalDefId` to its content's AST.
+#[derive(Debug)]
+pub enum AstOwner {
+    /// This definition does not correspond to a HIR owner.
+    NonOwner,
+    /// This definition corresponds to a nested `use` tree.
+    /// The `LocalDefId` points to its HIR owner.
+    NestedUseTree(LocalDefId),
+    Crate(Box<Crate>),
+    Item(Box<Item>),
+    TraitItem(Box<AssocItem>),
+    ImplItem(Box<AssocItem>),
+    ForeignItem(Box<ForeignItem>),
+}
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]

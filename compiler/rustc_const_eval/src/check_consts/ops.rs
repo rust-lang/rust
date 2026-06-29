@@ -14,7 +14,7 @@ use rustc_middle::ty::{
     self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef,
     Ty, suggest_constraining_type_param,
 };
-use rustc_session::parse::add_feature_diagnostics;
+use rustc_session::errors::add_feature_diagnostics;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::traits::call_kind::{
     CallDesugaringKind, CallKind, call_kind,
@@ -423,7 +423,8 @@ fn build_error_for_const_call<'tcx>(
                         err.help("const traits are not yet supported on stable Rust");
                     }
                 }
-            } else if ccx.tcx.constness(callee) != hir::Constness::Const {
+            } else if !matches!(ccx.tcx.constness(callee), hir::Constness::Const { always: false })
+            {
                 let name = ccx.tcx.item_name(callee);
                 err.span_note(
                     ccx.tcx.def_span(callee),

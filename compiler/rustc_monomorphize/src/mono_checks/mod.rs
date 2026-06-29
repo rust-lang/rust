@@ -15,9 +15,5 @@ fn check_mono_item<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
 }
 
 pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        check_mono_item,
-        skip_move_check_fns: move_check::skip_move_check_fns,
-        ..*providers
-    }
+    *providers = Providers { check_mono_item, ..*providers }
 }

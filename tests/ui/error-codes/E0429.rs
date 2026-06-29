@@ -1,4 +1,6 @@
-use std::fmt::self; //~ ERROR E0429
+//@ check-pass
+
+use std::fmt::self;
 
 fn main () {
 }

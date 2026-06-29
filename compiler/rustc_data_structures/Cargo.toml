@@ -30,7 +30,7 @@ smallvec = { version = "1.8.1", features = [
 ] }
 stacker = "0.1.17"
 tempfile = "3.2"
-thin-vec = "0.2.15"
+thin-vec = "0.2.18"
 tracing = "0.1"
 # tidy-alphabetical-end
 

@@ -25,7 +25,7 @@ impl io::Read for Stdin {
         with_std_fd(abi::FD_STDIN, |fd| fd.read(buf))
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         with_std_fd(abi::FD_STDIN, |fd| fd.read_buf(buf))
     }
 

@@ -1,5 +1,5 @@
 error: this `if` branch is empty
-  --> tests/ui/needless_ifs.rs:26:5
+  --> tests/ui/needless_ifs.rs:25:5
    |
 LL |     if (true) {}
    |     ^^^^^^^^^^^^ help: you can remove it
@@ -8,13 +8,13 @@ LL |     if (true) {}
    = help: to override `-D warnings` add `#[allow(clippy::needless_ifs)]`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_ifs.rs:29:5
+  --> tests/ui/needless_ifs.rs:28:5
    |
 LL |     if maybe_side_effect() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `maybe_side_effect();`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_ifs.rs:35:5
+  --> tests/ui/needless_ifs.rs:34:5
    |
 LL | /     if {
 LL | |
@@ -31,7 +31,7 @@ LL +     });
    |
 
 error: this `if` branch is empty
-  --> tests/ui/needless_ifs.rs:50:5
+  --> tests/ui/needless_ifs.rs:49:5
    |
 LL | /     if {
 LL | |
@@ -57,34 +57,40 @@ LL +     } && true);
    |
 
 error: this `if` branch is empty
-  --> tests/ui/needless_ifs.rs:95:5
+  --> tests/ui/needless_ifs.rs:94:5
    |
 LL |     if { maybe_side_effect() } {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() });`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_ifs.rs:98:5
+  --> tests/ui/needless_ifs.rs:97:5
    |
 LL |     if { maybe_side_effect() } && true {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() } && true);`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_ifs.rs:103:5
+  --> tests/ui/needless_ifs.rs:102:5
    |
 LL |     if true {}
    |     ^^^^^^^^^^ help: you can remove it: `true;`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_ifs.rs:110:5
+  --> tests/ui/needless_ifs.rs:109:5
    |
 LL |     if matches!(2, 3) {}
    |     ^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `matches!(2, 3);`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_ifs.rs:112:5
+  --> tests/ui/needless_ifs.rs:111:5
    |
 LL |     if matches!(2, 3) == (2 * 2 == 5) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `matches!(2, 3) == (2 * 2 == 5);`
 
-error: aborting due to 9 previous errors
+error: this `if` branch is empty
+  --> tests/ui/needless_ifs.rs:121:5
+   |
+LL |     if true {␋}
+   |     ^^^^^^^^^^^ help: you can remove it
+
+error: aborting due to 10 previous errors
 

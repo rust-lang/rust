@@ -54,7 +54,15 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="comment">// This is another normal comment</span>
 <span class="attribute_bracket attribute macro proc_macro">#</span><span class="attribute_bracket attribute macro proc_macro">[</span><span class="attribute attribute default_library library macro proc_macro">derive</span><span class="parenthesis attribute macro proc_macro">(</span><span class="derive attribute default_library library macro">Copy</span><span class="comma attribute macro proc_macro">,</span> <span class="unresolved_reference attribute macro">Unresolved</span><span class="parenthesis attribute macro proc_macro">)</span><span class="attribute_bracket attribute macro proc_macro">]</span>
 <span class="comment">// The reason for these being here is to test AttrIds</span>
+<span class="attribute_bracket attribute macro proc_macro">#</span><span class="attribute_bracket attribute macro proc_macro">[</span><span class="derive_helper attribute default_library library macro proc_macro">default</span><span class="attribute_bracket attribute macro proc_macro">]</span>
 <span class="keyword macro proc_macro">enum</span> <span class="enum declaration macro proc_macro">Foo</span> <span class="brace macro proc_macro">{</span>
     <span class="attribute_bracket attribute macro proc_macro">#</span><span class="attribute_bracket attribute macro proc_macro">[</span><span class="derive_helper attribute default_library library macro proc_macro">default</span><span class="attribute_bracket attribute macro proc_macro">]</span>
-    <span class="enum_variant declaration macro proc_macro">Bar</span>
-<span class="brace macro proc_macro">}</span></code></pre>
+    <span class="enum_variant declaration macro proc_macro">Bar</span> <span class="brace macro proc_macro">{</span>
+        <span class="attribute_bracket attribute macro proc_macro">#</span><span class="attribute_bracket attribute macro proc_macro">[</span><span class="derive_helper attribute default_library library macro proc_macro">default</span><span class="attribute_bracket attribute macro proc_macro">]</span>
+        <span class="field declaration macro proc_macro">field</span><span class="colon macro proc_macro">:</span> <span class="builtin_type macro proc_macro">i32</span>
+    <span class="brace macro proc_macro">}</span>
+<span class="brace macro proc_macro">}</span>
+
+<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="attribute attribute default_library library">derive</span><span class="parenthesis attribute">(</span><span class="derive attribute default_library library macro">Default</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
+<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="derive_helper attribute default_library library">default</span><span class="attribute_bracket attribute">]</span>
+<span class="keyword">struct</span> <span class="struct declaration">Bar</span><span class="parenthesis">(</span><span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="derive_helper attribute default_library library">default</span><span class="attribute_bracket attribute">]</span> <span class="builtin_type">i32</span><span class="parenthesis">)</span><span class="semicolon">;</span></code></pre>

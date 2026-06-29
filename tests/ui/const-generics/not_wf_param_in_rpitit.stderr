@@ -16,7 +16,7 @@ note: cycle used when checking that `Trait` is well-formed
    |
 LL | trait Trait<const N: dyn Trait = bar> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: aborting due to 2 previous errors
 

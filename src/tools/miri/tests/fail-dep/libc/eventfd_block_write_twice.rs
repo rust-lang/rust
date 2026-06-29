@@ -4,6 +4,10 @@
 
 use std::thread;
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+use libc_utils::*;
+
 // Test the behaviour of a thread being blocked on an eventfd `write`, get unblocked, and then
 // get blocked again.
 
@@ -17,7 +21,7 @@ fn main() {
     // eventfd write will block when EFD_NONBLOCK flag is clear
     // and the addition caused counter to exceed u64::MAX - 1.
     let flags = libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+    let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
     // Write u64 - 1, so the all subsequent write will block.
     let sized_8_data: [u8; 8] = (u64::MAX - 1).to_ne_bytes();
     let res: i64 = unsafe {

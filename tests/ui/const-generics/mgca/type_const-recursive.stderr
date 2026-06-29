@@ -1,4 +1,4 @@
-error[E0275]: overflow normalizing the unevaluated constant `A`
+error[E0275]: overflow normalizing the const alias `A`
   --> $DIR/type_const-recursive.rs:5:1
    |
 LL | type const A: u8 = A;

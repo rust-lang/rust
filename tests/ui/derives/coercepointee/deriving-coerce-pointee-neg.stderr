@@ -140,16 +140,16 @@ LL |
 LL | struct UsingNonCoercePointeeData<T: ?Sized>(NotCoercePointeeData<T>);
    |                                             ----------------------- `NotCoercePointeeData<T>` must be a pointer, reference, or smart pointer that is allowed to be unsized
 
-error[E0690]: transparent struct needs at most one field with non-trivial size or alignment, but has 2
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
   --> $DIR/deriving-coerce-pointee-neg.rs:155:1
    |
 LL | struct MoreThanOneField<T: ?Sized> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs at most one field with non-trivial size or alignment, but has 2
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs at most one non-trivial field, but has 2
 LL |
 LL |     inner1: Box<T>,
-   |     -------------- this field has non-zero size or requires alignment
+   |     -------------- this field is generic and hence may have non-zero size
 LL |     inner2: Box<T>,
-   |     -------------- this field has non-zero size or requires alignment
+   |     -------------- this field is generic and hence may have non-zero size
 
 error: aborting due to 21 previous errors
 

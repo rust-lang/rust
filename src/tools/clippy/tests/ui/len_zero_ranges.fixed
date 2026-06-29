@@ -1,5 +1,4 @@
 #![warn(clippy::len_zero)]
-#![allow(unused)]
 
 // Now that `Range(Inclusive)::is_empty` is stable (1.47), we can always suggest this
 mod issue_3807 {

@@ -194,6 +194,10 @@ fn hints() {
 
     check_enable_hints("#![cfg(test)]", &opts, &[]);
     check_enable_hints("#![cfg(not(test))]", &opts, &["disable test"]);
+
+    opts.insert_atom(Symbol::intern("a"));
+    opts.insert_atom(Symbol::intern("b"));
+    check_enable_hints("#![cfg(all(not(a), not(b)))]", &opts, &["disable a and b"]);
 }
 
 /// Tests that we don't suggest hints for cfgs that express an inconsistent formula.

@@ -210,3 +210,17 @@ fn foo(v: for<'a> Trait1 + Trait2) {}
         "#]],
     );
 }
+
+#[test]
+fn extern_block_abi() {
+    lower_and_print(
+        r#"
+extern "C" {
+    fn extern_fn();
+}
+    "#,
+        expect![[r#"
+            extern "C" fn extern_fn() {...}
+        "#]],
+    );
+}

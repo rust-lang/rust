@@ -4,7 +4,7 @@
 //@ compile-flags: -Zmir-opt-level=2 -Zinline-mir
 
 // EMIT_MIR unwrap_unchecked.unwrap_unchecked.Inline.diff
-// EMIT_MIR unwrap_unchecked.unwrap_unchecked.PreCodegen.after.mir
+// EMIT_MIR unwrap_unchecked.unwrap_unchecked.runtime-optimized.after.mir
 pub unsafe fn unwrap_unchecked<T>(slf: Option<T>) -> T {
     // CHECK-LABEL: fn unwrap_unchecked(
     // CHECK: (inlined #[track_caller] Option::<T>::unwrap_unchecked)

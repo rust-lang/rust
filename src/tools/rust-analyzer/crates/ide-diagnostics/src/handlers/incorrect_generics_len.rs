@@ -5,7 +5,7 @@ use hir::IncorrectGenericsLenKind;
 //
 // This diagnostic is triggered if the number of generic arguments does not match their declaration.
 pub(crate) fn incorrect_generics_len(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::IncorrectGenericsLen,
 ) -> Diagnostic {
     let owner_description = d.def.description();

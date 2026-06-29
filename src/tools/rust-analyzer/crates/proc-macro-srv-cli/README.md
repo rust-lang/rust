@@ -9,12 +9,12 @@ rust-analyzer uses a RPC (via stdio) client-server architecture for procedural m
 1. Proc macros are dynamic libraries that can segfault, bringing down the entire process, so running them out of process allows rust-analyzer to recover from fatal errors.
 2. Proc macro dylibs are compiled against a specific rustc version and require matching internal APIs to load and execute, as such having this binary shipped as a rustup component allows us to always match the rustc version irrespective of the rust-analyzer version used.
 
-## The `sysroot-abi` Feature
+## The `in-rust-tree` Feature
 
-**The `sysroot-abi` feature is required for the binary to actually function.** Without it, the binary will return an error:
+**The `in-rust-tree` feature is required for the binary to actually function.** Without it, the binary will return an error:
 
 ```
-proc-macro-srv-cli needs to be compiled with the `sysroot-abi` feature to function
+proc-macro-srv-cli needs to be compiled with the `in-rust-tree` feature to function
 ```
 
 This feature is necessary because the proc-macro server needs access to unstable rustc internals (`proc_macro_internals`, `proc_macro_diagnostic`, `proc_macro_span`) which are only available on nightly or with `RUSTC_BOOTSTRAP=1`.
@@ -24,10 +24,10 @@ rust-analyzer is a stable toolchain project though, so the feature flag is used 
 
 ```bash
 # Using nightly toolchain
-cargo build -p proc-macro-srv-cli --features sysroot-abi
+cargo build -p proc-macro-srv-cli --features in-rust-tree
 
 # Or with RUSTC_BOOTSTRAP on stable
-RUSTC_BOOTSTRAP=1 cargo build -p proc-macro-srv-cli --features sysroot-abi
+RUSTC_BOOTSTRAP=1 cargo build -p proc-macro-srv-cli --features in-rust-tree
 ```
 
 ### Installing the proc-macro server
@@ -42,7 +42,7 @@ cargo xtask install --proc-macro-server
 ## Testing
 
 ```bash
-cargo test --features sysroot-abi -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api
+cargo test --features in-rust-tree -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api
 ```
 
 The tests use a test proc macro dylib built by the `proc-macro-test` crate, which compiles a small proc macro implementation during build time.

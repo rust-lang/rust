@@ -243,7 +243,12 @@ fn mapping_of_mirrored_pats(a_pat: &Pat<'_>, b_pat: &Pat<'_>) -> Option<BindingM
 fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<LintTrigger> {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
-        && cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip().is_slice()
+        && cx
+            .tcx
+            .type_of(impl_id)
+            .instantiate_identity()
+            .skip_norm_wip()
+            .is_slice()
         && let ExprKind::Closure(&Closure { body, .. }) = arg.kind
         && let closure_body = cx.tcx.hir_body(body)
         && let &[Param { pat: l_pat, .. }, Param { pat: r_pat, .. }] = closure_body.params
@@ -257,7 +262,15 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<
             if mirrored_exprs(left_expr, right_expr, &binding_map, BindingSource::Left) {
                 (left_expr, l_pat.span, false)
             } else if mirrored_exprs(left_expr, right_expr, &binding_map, BindingSource::Right) {
-                (left_expr, r_pat.span, true)
+                // Use the right-hand expr (the `a` side) as the key body, peeling any `&`
+                // introduced by the `.cmp(&rhs)` call so the suggestion doesn't contain a
+                // spurious borrow.
+                let right_body = if let ExprKind::AddrOf(_, _, inner) = right_expr.kind {
+                    inner
+                } else {
+                    right_expr
+                };
+                (right_body, l_pat.span, true)
             } else {
                 return None;
             };

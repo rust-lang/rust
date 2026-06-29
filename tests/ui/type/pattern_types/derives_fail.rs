@@ -14,7 +14,6 @@ struct Nanoseconds(NanoI32);
 //~| ERROR: the trait bound `(i32) is 0..=999999999: Ord` is not satisfied
 //~| ERROR: the trait bound `(i32) is 0..=999999999: Hash` is not satisfied
 //~| ERROR: the trait bound `(i32) is 0..=999999999: Default` is not satisfied
-//~| ERROR: can't compare `(i32) is 0..=999999999` with `_`
 //~| ERROR: `==` cannot be applied
 
 type NanoI32 = crate::pattern_type!(i32 is 0..=999_999_999);

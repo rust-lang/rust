@@ -1,5 +1,5 @@
 //@ build-pass
-//@ ignore-pass (test emits codegen-time warnings and verifies that they are not errors)
+//@ no-pass-override (test emits codegen-time warnings and verifies that they are not errors)
 
 #![warn(unconditional_panic)]
 

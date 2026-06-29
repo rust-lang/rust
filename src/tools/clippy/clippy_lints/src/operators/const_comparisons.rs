@@ -63,7 +63,7 @@ pub(super) fn check<'tcx>(
         && left_type == right_type
 
         // Check that the same expression is compared in both comparisons
-        && SpanlessEq::new(cx).eq_expr(left_expr, right_expr)
+        && SpanlessEq::new(cx).eq_expr(span.ctxt(), left_expr, right_expr)
 
         && !left_expr.can_have_side_effects()
 

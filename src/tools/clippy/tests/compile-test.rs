@@ -89,11 +89,33 @@ fn internal_extern_flags() -> Vec<String> {
         help: Try adding to dev-dependencies in Cargo.toml\n\
         help: Be sure to also add `extern crate ...;` to tests/compile-test.rs",
     );
-    crates
+
+    let mut args: Vec<String> = crates
         .into_iter()
         .map(|(name, path)| format!("--extern={name}={path}"))
-        .chain([format!("-Ldependency={}", deps_path.display())])
-        .collect()
+        .collect();
+
+    if deps_path.ends_with("deps") {
+        args.push(format!("-Ldependency={}", deps_path.display()));
+    } else {
+        // If the dep_path does not point to `/deps` it very likely means Cargo is using the v2 build-dir
+        // layout
+        assert!(deps_path.ends_with("out"));
+
+        // Get a path to `target/<platform-profile>/build`
+        let build_dir = {
+            let mut d = deps_path.to_path_buf();
+            d.pop(); // remove `out`
+            d.pop(); // remove `<hash>`
+            d.pop(); // remove `<pkgname>`
+            d
+        };
+
+        let out_dirs = discover_out_dirs(&build_dir);
+        args.extend(out_dirs.iter().map(|path| format!("-Ldependency={}", path.display())));
+    }
+
+    args
 }
 
 // whether to run internal tests or not
@@ -214,8 +236,21 @@ impl TestContext {
         config.program.envs.push(("RUSTC_ICE".into(), Some("0".into())));
 
         if let Some(host_libs) = option_env!("HOST_LIBS") {
-            let dep = format!("-Ldependency={}", Path::new(host_libs).join("deps").display());
-            config.program.args.push(dep.into());
+            let deps_dir = Path::new(host_libs).join("deps");
+
+            if deps_dir.exists() {
+                let dep = format!("-Ldependency={}", deps_dir.display());
+                config.program.args.push(dep.into());
+            } else {
+                // If `/deps` does not exist, assume Cargo v2 build-dir layout
+                let build_dir = Path::new(host_libs).join("build");
+                let dependencies = discover_out_dirs(&build_dir);
+
+                for dep in dependencies {
+                    let dep = format!("-Ldependency={}", dep.display());
+                    config.program.args.push(dep.into());
+                }
+            }
         }
         if let Some(sysroot) = option_env!("TEST_SYSROOT") {
             config.program.args.push(format!("--sysroot={sysroot}").into());
@@ -647,4 +682,21 @@ impl LintMetadata {
             _ => panic!("needs to update this code"),
         }
     }
+}
+
+/// Gets all of the `out` dirs in a given Cargo `build-dir/<profile>/build` dir.
+fn discover_out_dirs(dir: &Path) -> Vec<PathBuf> {
+    if !dir.exists() {
+        return Vec::new();
+    }
+
+    let read_dir = |path: &Path| path.read_dir().ok().into_iter().flatten().filter_map(Result::ok);
+    dir.read_dir()
+        .unwrap_or_else(|e| panic!("Couldn't read {}: {}", dir.display(), e))
+        .map(|e| e.unwrap())
+        .flat_map(|e| read_dir(&e.path()))
+        .flat_map(|e| read_dir(&e.path()))
+        .map(|e| e.path())
+        .filter(|path| path.ends_with("out"))
+        .collect::<Vec<_>>()
 }

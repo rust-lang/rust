@@ -33,6 +33,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            avoid-breaking-exported-api
            await-holding-invalid-types
            cargo-ignore-publish
+           check-grouped-late-init
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
            check-private-items
@@ -134,6 +135,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            avoid-breaking-exported-api
            await-holding-invalid-types
            cargo-ignore-publish
+           check-grouped-late-init
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
            check-private-items
@@ -235,6 +237,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            avoid-breaking-exported-api
            await-holding-invalid-types
            cargo-ignore-publish
+           check-grouped-late-init
            check-incompatible-msrv-in-tests
            check-inconsistent-struct-field-initializers
            check-private-items

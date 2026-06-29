@@ -1,10 +1,10 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::approx_ty_size;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{FnDecl, FnRetTy, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
 
@@ -81,8 +81,13 @@ impl UnnecessaryBoxReturns {
 
         // It's sometimes useful to return Box<T> if T is unsized, so don't lint those.
         // Also, don't lint if we know that T is very large, in which case returning
-        // a Box<T> may be beneficial.
-        if boxed_ty.is_sized(cx.tcx, cx.typing_env()) && approx_ty_size(cx, boxed_ty) <= self.maximum_size {
+        // a Box<T> may be beneficial. When the size depends on generic parameters
+        // (e.g. `[T; N]`) it cannot be determined here, so don't lint that either, as
+        // the `Box` may be a deliberate choice to avoid copying a large value.
+        if boxed_ty.is_sized(cx.tcx, cx.typing_env())
+            && let Ok(layout) = cx.layout_of(boxed_ty)
+            && layout.size.bytes() <= self.maximum_size
+        {
             span_lint_and_then(
                 cx,
                 UNNECESSARY_BOX_RETURNS,

@@ -61,11 +61,20 @@ fn test_always_abort_thread() {
     bomb_out_but_not_abort("joined - but we were supposed to panic!");
 }
 
+fn test_always_abort_resume_unwind() {
+    panic::always_abort();
+    let _ = panic::catch_unwind(|| {
+        panic::resume_unwind(Box::new(()));
+    });
+    should_have_aborted();
+}
+
 fn main() {
     let tests: &[(_, fn())] = &[
         ("test", test),
         ("test_always_abort", test_always_abort),
         ("test_always_abort_thread", test_always_abort_thread),
+        ("test_always_abort_resume_unwind", test_always_abort_resume_unwind),
     ];
 
     let args: Vec<String> = env::args().collect();

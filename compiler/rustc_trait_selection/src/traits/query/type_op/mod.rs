@@ -110,7 +110,9 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         ),
         NoSolution,
     > {
-        if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key) {
+        if !infcx.disable_trait_solver_fast_paths()
+            && let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key)
+        {
             return Ok((result, None, PredicateObligations::new(), Certainty::Proven));
         }
 
@@ -158,7 +160,14 @@ where
                 root_def_id,
                 "query type op",
                 span,
-                |ocx| QueryTypeOp::perform_locally_with_next_solver(ocx, self, span),
+                |ocx| {
+                    if !infcx.disable_trait_solver_fast_paths()
+                        && let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &self)
+                    {
+                        return Ok(result);
+                    }
+                    QueryTypeOp::perform_locally_with_next_solver(ocx, self, span)
+                },
             )?
             .0);
         }

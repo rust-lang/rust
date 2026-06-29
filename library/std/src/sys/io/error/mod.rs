@@ -43,13 +43,9 @@ cfg_select! {
         target_os = "vexos",
         target_family = "wasm",
         target_os = "zkvm",
+        target_os = "trusty",
     ) => {
         mod generic;
         pub use generic::*;
     }
 }
-
-pub type RawOsError = cfg_select! {
-    target_os = "uefi" => usize,
-    _ => i32,
-};

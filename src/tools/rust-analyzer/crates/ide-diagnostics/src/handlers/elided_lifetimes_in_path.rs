@@ -5,7 +5,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 // This diagnostic is triggered when lifetimes are elided in paths. It is a lint only for some cases,
 // and a hard error for others.
 pub(crate) fn elided_lifetimes_in_path(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::ElidedLifetimesInPath,
 ) -> Diagnostic {
     if d.hard_error {

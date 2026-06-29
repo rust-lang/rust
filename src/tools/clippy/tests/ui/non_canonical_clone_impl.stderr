@@ -1,5 +1,5 @@
 error: non-canonical implementation of `clone` on a `Copy` type
-  --> tests/ui/non_canonical_clone_impl.rs:14:29
+  --> tests/ui/non_canonical_clone_impl.rs:12:29
    |
 LL |       fn clone(&self) -> Self {
    |  _____________________________^
@@ -12,7 +12,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::non_canonical_clone_impl)]`
 
 error: unnecessary implementation of `clone_from` on a `Copy` type
-  --> tests/ui/non_canonical_clone_impl.rs:19:5
+  --> tests/ui/non_canonical_clone_impl.rs:17:5
    |
 LL | /     fn clone_from(&mut self, source: &Self) {
 LL | |
@@ -22,7 +22,7 @@ LL | |     }
    | |_____^ help: remove it
 
 error: non-canonical implementation of `clone` on a `Copy` type
-  --> tests/ui/non_canonical_clone_impl.rs:87:29
+  --> tests/ui/non_canonical_clone_impl.rs:82:29
    |
 LL |       fn clone(&self) -> Self {
    |  _____________________________^
@@ -32,7 +32,7 @@ LL | |     }
    | |_____^ help: change this to: `{ *self }`
 
 error: unnecessary implementation of `clone_from` on a `Copy` type
-  --> tests/ui/non_canonical_clone_impl.rs:92:5
+  --> tests/ui/non_canonical_clone_impl.rs:87:5
    |
 LL | /     fn clone_from(&mut self, source: &Self) {
 LL | |
@@ -42,7 +42,7 @@ LL | |     }
    | |_____^ help: remove it
 
 error: non-canonical implementation of `clone` on a `Copy` type
-  --> tests/ui/non_canonical_clone_impl.rs:127:37
+  --> tests/ui/non_canonical_clone_impl.rs:121:37
    |
 LL |               fn clone(&self) -> Self {
    |  _____________________________________^
@@ -53,5 +53,27 @@ LL | |             }
    |
    = note: this error originates in the macro `__inline_mac_mod_issue12788` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 5 previous errors
+error: non-canonical implementation of `clone` on a `Copy` type
+  --> tests/ui/non_canonical_clone_impl.rs:160:29
+   |
+LL |       fn clone(&self) -> Self {
+   |  _____________________________^
+LL | |
+LL | |         { *self }
+LL | |     }
+   | |_____^ help: change this to: `{ *self }`
+
+error: non-canonical implementation of `clone` on a `Copy` type
+  --> tests/ui/non_canonical_clone_impl.rs:187:33
+   |
+LL |           fn clone(&self) -> Self {
+   |  _________________________________^
+LL | |
+LL | |             {
+LL | |                 return *self;
+LL | |             }
+LL | |         }
+   | |_________^ help: change this to: `{ return *self; }`
+
+error: aborting due to 7 previous errors
 

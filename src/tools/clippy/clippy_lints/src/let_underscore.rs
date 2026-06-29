@@ -162,7 +162,8 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         );
                     },
                 );
-            } else if let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
+            } else if local.ty.is_none()
+                && let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
                 && implements_trait(cx, cx.typeck_results().expr_ty(init), future_trait_def_id, &[])
             {
                 #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]

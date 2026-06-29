@@ -1,5 +1,4 @@
 //@no-rustfix: has placeholders
-#![allow(dead_code)]
 #![warn(clippy::comparison_chain)]
 
 fn a() {}

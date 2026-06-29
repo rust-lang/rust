@@ -85,12 +85,12 @@ impl Crate {
         if config.max_jobs == 1 {
             println!(
                 "{index}/{total_crates_to_lint} {perc}% Linting {} {}",
-                &self.name, &self.version
+                self.name, self.version
             );
         } else {
             println!(
                 "{index}/{total_crates_to_lint} {perc}% Linting {} {} in target dir {thread_index:?}",
-                &self.name, &self.version
+                self.name, self.version
             );
         }
 

@@ -106,7 +106,7 @@ fn attempt_get_derive(attr: ast::Attr, ident: SyntaxToken) -> WrapUnwrapOption {
         attempt_attr().unwrap_or_else(|| WrapUnwrapOption::WrapAttr(vec![attr]))
     }
 }
-pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let option = if ctx.has_empty_selection() {
         let ident = ctx.find_token_syntax_at_offset(T![ident]);
         let attr = ctx.find_node_at_offset::<ast::Attr>();
@@ -161,7 +161,7 @@ pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>) -
 
 fn wrap_derive(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     attr: ast::Attr,
     derive_element: TextRange,
 ) -> Option<()> {
@@ -232,7 +232,11 @@ fn wrap_derive(
     Some(())
 }
 
-fn wrap_cfg_attrs(acc: &mut Assists, ctx: &AssistContext<'_>, attrs: Vec<ast::Attr>) -> Option<()> {
+fn wrap_cfg_attrs(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+    attrs: Vec<ast::Attr>,
+) -> Option<()> {
     let (first_attr, last_attr) = (attrs.first()?, attrs.last()?);
     let range = first_attr.syntax().text_range().cover(last_attr.syntax().text_range());
     let handle_source_change = |edit: &mut SourceChangeBuilder| {
@@ -268,7 +272,7 @@ fn wrap_cfg_attrs(acc: &mut Assists, ctx: &AssistContext<'_>, attrs: Vec<ast::At
 
 fn unwrap_cfg_attr(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     meta: ast::CfgAttrMeta,
 ) -> Option<()> {
     let top_attr = ast::Meta::from(meta.clone()).parent_attr()?;

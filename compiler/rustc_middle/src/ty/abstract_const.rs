@@ -1,7 +1,7 @@
 //! A subset of a mir body used for const evaluability checking.
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeVisitable};
 
 use crate::ty::{
     self, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -9,7 +9,7 @@ use crate::ty::{
 };
 
 #[derive(Hash, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
-#[derive(TyDecodable, TyEncodable, HashStable, TypeVisitable, TypeFoldable)]
+#[derive(TyDecodable, TyEncodable, StableHash, TypeVisitable, TypeFoldable)]
 pub enum CastKind {
     /// thir::ExprKind::As
     As,
@@ -17,7 +17,7 @@ pub enum CastKind {
     Use,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 pub enum NotConstEvaluatable {
     Error(ErrorGuaranteed),
     MentionsInfer,
@@ -44,7 +44,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.tcx
             }
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if ty.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
+                if ty.has_type_flags(ty::TypeFlags::HAS_CONST_ALIAS) {
                     ty.super_fold_with(self)
                 } else {
                     ty
@@ -52,15 +52,19 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             fn fold_const(&mut self, c: Const<'tcx>) -> Const<'tcx> {
                 let ct = match c.kind() {
-                    ty::ConstKind::Unevaluated(uv) => match self.tcx.thir_abstract_const(uv.def) {
-                        Err(e) => ty::Const::new_error(self.tcx, e),
-                        Ok(Some(bac)) => {
-                            let args = self.tcx.erase_and_anonymize_regions(uv.args);
-                            let bac = bac.instantiate(self.tcx, args).skip_norm_wip();
-                            return bac.fold_with(self);
+                    ty::ConstKind::Alias(_, alias_const)
+                        if let Some(def_id) = alias_const.kind.opt_def_id() =>
+                    {
+                        match self.tcx.thir_abstract_const(def_id) {
+                            Err(e) => ty::Const::new_error(self.tcx, e),
+                            Ok(Some(bac)) => {
+                                let args = self.tcx.erase_and_anonymize_regions(alias_const.args);
+                                let bac = bac.instantiate(self.tcx, args).skip_norm_wip();
+                                return bac.fold_with(self);
+                            }
+                            Ok(None) => c,
                         }
-                        Ok(None) => c,
-                    },
+                    }
                     _ => c,
                 };
                 ct.super_fold_with(self)

@@ -34,6 +34,7 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_type_ir::MayBeErased;
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
@@ -123,6 +124,9 @@ pub struct InferCtxtInner<'tcx> {
     /// region constraints would've been added.
     region_constraint_storage: Option<RegionConstraintStorage<'tcx>>,
 
+    /// Used by the next solver when `-Zassumptions-on-binders` is set.
+    solver_region_constraint_storage: SolverRegionConstraintStorage<'tcx>,
+
     /// A set of constraints that regionck must validate.
     ///
     /// Each constraint has the form `T:'a`, meaning "some type `T` must
@@ -170,6 +174,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             float_unification_storage: Default::default(),
             float_origin_origin_storage: Default::default(),
             region_constraint_storage: Some(Default::default()),
+            solver_region_constraint_storage: SolverRegionConstraintStorage::new(),
             region_obligations: Default::default(),
             region_assumptions: Default::default(),
             hir_typeck_potentially_region_dependent_goals: Default::default(),
@@ -246,6 +251,10 @@ pub struct InferCtxt<'tcx> {
     /// Whether this inference context should care about region obligations in
     /// the root universe. Most notably, this is used during HIR typeck as region
     /// solving is left to borrowck instead.
+    ///
+    /// This is used in the old solver to enable the generation of regions constraints.
+    /// In the new solver its only used inside the InferCtxt's `Drop` implementation:
+    /// if we're considering regions, and new opaques are registered, we panic.
     pub considering_regions: bool,
     /// `-Znext-solver`: Whether this inference context is used by HIR typeck. If so, we
     /// need to make sure we don't rely on region identity in the trait solver or when
@@ -314,9 +323,52 @@ pub struct InferCtxt<'tcx> {
     /// bound.
     universe: Cell<ty::UniverseIndex>,
 
+    /// List of assumed wellformed types which we can derive implied
+    /// bounds on a `for<...>` from. Only used unstabley and by the
+    /// new solver.
+    //
+    // FIXME(-Zassumptions-on-binders): This and `universe` should probably be
+    // in `InferCtxtInner` so they can participate in rollbacks and whatnot
+    placeholder_assumptions_for_next_solver: RefCell<
+        FxIndexMap<
+            ty::UniverseIndex,
+            Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>>,
+        >,
+    >,
+
     next_trait_solver: bool,
 
     pub obligation_inspector: Cell<Option<ObligationInspector<'tcx>>>,
+}
+
+impl<'tcx> Drop for InferCtxt<'tcx> {
+    fn drop(&mut self) {
+        let mut inner = self.inner.borrow_mut();
+        let opaque_type_storage = &mut inner.opaque_type_storage;
+
+        // No need for the drop bomb when we're in `TypingMode::PostTypeckUntilBorrowck`, and the `InferCtxt`
+        // doesn't consider regions. This is okay since after typeck, the only reason we care about opaques is
+        // in relation to regions. In some places *after* typeck that aren't borrowck, like in lints we use
+        // `TypingMode::PostTypeckUntilBorrowck` to prevent defining opaque types and we simply don't care about regions.
+        match self.typing_mode_raw() {
+            TypingMode::Coherence
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => {}
+            // In erased mode, the opaque type storage is always empty
+            TypingMode::ErasedNotCoherence(..) => {}
+            TypingMode::PostTypeckUntilBorrowck { .. } => {
+                if !self.considering_regions {
+                    return;
+                }
+            }
+        }
+
+        if !opaque_type_storage.is_empty() {
+            ty::tls::with(|tcx| tcx.dcx().delayed_bug(format!("{opaque_type_storage:?}")));
+        }
+    }
 }
 
 /// See the `error_reporting` module for more details.
@@ -396,6 +448,10 @@ pub enum SubregionOrigin<'tcx> {
     },
 
     AscribeUserTypeProvePredicate(Span),
+
+    // FIXME(-Zassumptions-on-binders): this is a temporary hack until we support
+    // proper diagnostics for solver region constraints.
+    SolverRegionConstraint(Span),
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -407,6 +463,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
         match self {
             Self::Subtype(type_trace) => type_trace.cause.to_constraint_category(),
             Self::AscribeUserTypeProvePredicate(span) => ConstraintCategory::Predicate(*span),
+            Self::SolverRegionConstraint(span) => ConstraintCategory::SolverRegionConstraint(*span),
             _ => ConstraintCategory::BoringNoLocation,
         }
     }
@@ -606,6 +663,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             reported_signature_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
             universe: Cell::new(ty::UniverseIndex::ROOT),
+            placeholder_assumptions_for_next_solver: RefCell::new(Default::default()),
             next_trait_solver,
             obligation_inspector: Cell::new(None),
         }
@@ -640,9 +698,34 @@ impl<'tcx> InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
+    /// This method is deliberately called `..._raw`,
+    /// since the output may possibly include [`TypingMode::ErasedNotCoherence`](TypingMode::ErasedNotCoherence).
+    /// `ErasedNotCoherence` is an implementation detail of the next trait solver, see its docs for
+    /// more information.
+    ///
+    /// `InferCtxt` has two uses: the trait solver calls some methods on it, because the `InferCtxt`
+    /// works as a kind of store for for example type unification information.
+    /// `InferCtxt` is also often used outside the trait solver during typeck.
+    /// There, we don't care about the `ErasedNotCoherence` case and should never encounter it.
+    /// To make sure these two uses are never confused, we want to statically encode this information.
+    ///
+    /// The `FnCtxt`, for example, is only used in the outside-trait-solver case. It has a non-raw
+    /// version of the `typing_mode` method available that asserts `ErasedNotCoherence` is
+    /// impossible, and returns a `TypingMode` where `ErasedNotCoherence` is made uninhabited using
+    /// the [`CantBeErased`](rustc_type_ir::CantBeErased) enum. That way you don't even have to
+    /// match on the variant and can safely ignore it.
+    ///
+    /// Prefer non-raw apis if available. e.g.,
+    /// - On the `FnCtxt`
+    /// - on the `SelectionCtxt`
     #[inline(always)]
-    pub fn typing_mode(&self) -> TypingMode<'tcx> {
+    pub fn typing_mode_raw(&self) -> TypingMode<'tcx> {
         self.typing_mode
+    }
+
+    #[inline(always)]
+    pub fn disable_trait_solver_fast_paths(&self) -> bool {
+        self.tcx.disable_trait_solver_fast_paths()
     }
 
     /// Returns the origin of the type variable identified by `vid`.
@@ -698,8 +781,9 @@ impl<'tcx> InferCtxt<'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
+        vis: ty::VisibleForLeakCheck,
     ) {
-        self.inner.borrow_mut().unwrap_region_constraints().make_subregion(origin, a, b);
+        self.inner.borrow_mut().unwrap_region_constraints().make_subregion(origin, a, b, vis);
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -708,8 +792,9 @@ impl<'tcx> InferCtxt<'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
+        vis: ty::VisibleForLeakCheck,
     ) {
-        self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(origin, a, b);
+        self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(origin, a, b, vis);
     }
 
     /// Processes a `Coerce` predicate from the fulfillment context.
@@ -875,10 +960,20 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::Region::new_var(self.tcx, region_var)
     }
 
-    pub fn next_term_var_of_kind(&self, term: ty::Term<'tcx>, span: Span) -> ty::Term<'tcx> {
-        match term.kind() {
-            ty::TermKind::Ty(_) => self.next_ty_var(span).into(),
-            ty::TermKind::Const(_) => self.next_const_var(span).into(),
+    pub fn next_term_var_of_alias_kind(
+        &self,
+        alias_term: ty::AliasTerm<'tcx>,
+        span: Span,
+    ) -> ty::Term<'tcx> {
+        match alias_term.kind {
+            ty::AliasTermKind::ProjectionTy { .. }
+            | ty::AliasTermKind::InherentTy { .. }
+            | ty::AliasTermKind::OpaqueTy { .. }
+            | ty::AliasTermKind::FreeTy { .. } => self.next_ty_var(span).into(),
+            ty::AliasTermKind::FreeConst { .. }
+            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::AnonConst { .. }
+            | ty::AliasTermKind::ProjectionConst { .. } => self.next_const_var(span).into(),
         }
     }
 
@@ -1030,7 +1125,10 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Searches for an opaque type key whose hidden type is related to `ty_vid`.
     ///
     /// This only checks for a subtype relation, it does not require equality.
-    pub fn opaques_with_sub_unified_hidden_type(&self, ty_vid: TyVid) -> Vec<ty::AliasTy<'tcx>> {
+    pub fn opaques_with_sub_unified_hidden_type(
+        &self,
+        ty_vid: TyVid,
+    ) -> Vec<ty::OpaqueAliasTy<'tcx>> {
         // Avoid accidentally allowing more code to compile with the old solver.
         if !self.next_trait_solver() {
             return vec![];
@@ -1048,9 +1146,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind() {
                     let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
                     if opaque_sub_vid == ty_sub_vid {
-                        return Some(ty::AliasTy::new_from_args(
+                        return Some(ty::OpaqueAliasTy::new_opaque_from_args(
                             self.tcx,
-                            ty::Opaque { def_id: key.def_id.into() },
+                            key.def_id.into(),
                             key.args,
                         ));
                     }
@@ -1064,19 +1162,18 @@ impl<'tcx> InferCtxt<'tcx> {
     #[inline(always)]
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
         debug_assert!(!self.next_trait_solver());
-        match self.typing_mode() {
-            TypingMode::Analysis {
-                defining_opaque_types_and_generators: defining_opaque_types,
-            }
-            | TypingMode::Borrowck { defining_opaque_types } => {
+        match self.typing_mode_raw().assert_not_erased() {
+            TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
                 id.into().as_local().is_some_and(|def_id| defining_opaque_types.contains(&def_id))
             }
             // FIXME(#132279): This function is quite weird in post-analysis
             // and post-borrowck analysis mode. We may need to modify its uses
-            // to support PostBorrowckAnalysis in the old solver as well.
+            // to support PostBorrowck in the old solver as well.
             TypingMode::Coherence
-            | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => false,
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => false,
         }
     }
 
@@ -1165,10 +1262,11 @@ impl<'tcx> InferCtxt<'tcx> {
                     .unwrap_or(ct),
                 InferConst::Fresh(_) => ct,
             },
+
             ty::ConstKind::Param(_)
             | ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Placeholder(_)
-            | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Alias(_, _)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => ct,
@@ -1395,18 +1493,20 @@ impl<'tcx> InferCtxt<'tcx> {
     /// which contains the necessary information to use the trait system without
     /// using canonicalization or carrying this inference context around.
     pub fn typing_env(&self, param_env: ty::ParamEnv<'tcx>) -> ty::TypingEnv<'tcx> {
-        let typing_mode = match self.typing_mode() {
+        let typing_mode = match self.typing_mode_raw() {
             // FIXME(#132279): This erases the `defining_opaque_types` as it isn't possible
             // to handle them without proper canonicalization. This means we may cause cycle
             // errors and fail to reveal opaques while inside of bodies. We should rename this
             // function and require explicit comments on all use-sites in the future.
-            ty::TypingMode::Analysis { defining_opaque_types_and_generators: _ }
-            | ty::TypingMode::Borrowck { defining_opaque_types: _ } => {
+            ty::TypingMode::Typeck { defining_opaque_types_and_generators: _ }
+            | ty::TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ } => {
                 TypingMode::non_body_analysis()
             }
             mode @ (ty::TypingMode::Coherence
-            | ty::TypingMode::PostBorrowckAnalysis { .. }
-            | ty::TypingMode::PostAnalysis) => mode,
+            | ty::TypingMode::PostBorrowck { .. }
+            | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::Codegen) => mode,
+            ty::TypingMode::ErasedNotCoherence(MayBeErased) => unreachable!(),
         };
         ty::TypingEnv::new(param_env, typing_mode)
     }
@@ -1632,6 +1732,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             SubregionOrigin::CompareImplItemObligation { span, .. } => span,
             SubregionOrigin::AscribeUserTypeProvePredicate(span) => span,
             SubregionOrigin::CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
+            SubregionOrigin::SolverRegionConstraint(a) => a,
         }
     }
 
@@ -1718,6 +1819,58 @@ impl<'tcx> InferCtxt<'tcx> {
             }
             hir::Node::Expr(e) => e.span,
             _ => DUMMY_SP,
+        }
+    }
+}
+
+type SolverRegionConstraint<'tcx> =
+    rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>;
+
+#[derive(Clone, Debug)]
+struct SolverRegionConstraintStorage<'tcx>(SolverRegionConstraint<'tcx>);
+
+impl<'tcx> SolverRegionConstraintStorage<'tcx> {
+    fn new() -> Self {
+        SolverRegionConstraintStorage(SolverRegionConstraint::And(Box::new([])))
+    }
+
+    fn get_constraint(&self) -> SolverRegionConstraint<'tcx> {
+        self.0.clone()
+    }
+
+    fn pop(&mut self) -> Option<SolverRegionConstraint<'tcx>> {
+        match &mut self.0 {
+            SolverRegionConstraint::And(and) => {
+                let mut and = core::mem::take(and).into_iter().collect::<Vec<_>>();
+                let popped = and.pop()?;
+                self.0 = SolverRegionConstraint::And(and.into_boxed_slice());
+                Some(popped)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[instrument(level = "debug")]
+    fn push(&mut self, constraint: SolverRegionConstraint<'tcx>) {
+        match &mut self.0 {
+            SolverRegionConstraint::And(and) => {
+                let and = core::mem::take(and)
+                    .into_iter()
+                    .chain([constraint])
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice();
+                self.0 = SolverRegionConstraint::And(and);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn overwrite_solver_region_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
+        if !constraint.is_and() {
+            self.0 = SolverRegionConstraint::And(vec![constraint].into_boxed_slice())
+        } else {
+            self.0 = constraint;
         }
     }
 }

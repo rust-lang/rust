@@ -160,8 +160,7 @@ which features are enabled.
 
 Note that Rust code compiled for `wasm32-unknown-emscripten` currently enables
 `-fwasm-exceptions` (legacy WASM exceptions) by default unless the Rust code is
-compiled with `-Cpanic=abort`. It is possible to use JS exceptions by passing
-the flag ``-Z emscripten-wasm-eh=false`` but this will be removed in the future.
+compiled with `-Cpanic=abort`.
 
 Please refer to the [Emscripten ABI compatibility](#emscripten-abi-compatibility)
 section to ensure that the features that are enabled do not cause an ABI mismatch

@@ -8,7 +8,6 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{has_non_owning_mutable_access, make_normalized_projection, make_projection};
 use clippy_utils::{CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, sym};
-use rustc_middle::ty::Unnormalized;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
@@ -17,7 +16,7 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, AssocTag, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
+use rustc_middle::ty::{self, AssocTag, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty, Unnormalized};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
@@ -248,9 +247,7 @@ fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty:
         && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, sym::Item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
             cx.typing_env(),
-            Unnormalized::new_wip(
-                Ty::new_projection_from_args(cx.tcx, into_iter_item_proj.kind.def_id(), into_iter_item_proj.args)
-            ),
+            Unnormalized::new_wip(Ty::new_alias(cx.tcx, ty::IsRigid::No, into_iter_item_proj)),
         )
     {
         iter_item_ty == into_iter_item_ty
@@ -279,10 +276,15 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
             iter_trait,
         )
         && let args = cx.tcx.mk_args(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
-        && let proj_ty = Ty::new_projection_from_args(cx.tcx, iter_item.def_id, args)
-        && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(proj_ty))
+        && let proj_ty = Ty::new_projection_from_args(cx.tcx, ty::IsRigid::No, iter_item.def_id, args)
+        && let Ok(item_ty) = cx
+            .tcx
+            .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(proj_ty))
     {
-        item_ty == EarlyBinder::bind(search_ty).instantiate(cx.tcx, cx.typeck_results().node_args(call_id)).skip_norm_wip()
+        item_ty
+            == EarlyBinder::bind(cx.tcx, search_ty)
+                .instantiate(cx.tcx, cx.typeck_results().node_args(call_id))
+                .skip_norm_wip()
     } else {
         false
     }

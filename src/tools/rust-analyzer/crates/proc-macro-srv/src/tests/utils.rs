@@ -11,6 +11,11 @@ use crate::{
     token_stream::TokenStream,
 };
 
+fn make_ctx() -> SyntaxContext {
+    // SAFETY: Tests do not use a Database, so this won't ever be used within salsa.
+    unsafe { SyntaxContext::from_u32(0) }
+}
+
 fn parse_string(call_site: SpanId, src: &str) -> TokenStream<SpanId> {
     TokenStream::from_str(src, call_site).unwrap()
 }
@@ -62,7 +67,16 @@ fn assert_expand_impl(
     let attr_ts_string = attr_ts.as_ref().map(|it| format!("{it:?}"));
 
     let res = expander
-        .expand(macro_name, input_ts, attr_ts, def_site, call_site, mixed_site, None)
+        .expand(
+            macro_name,
+            input_ts,
+            attr_ts,
+            def_site,
+            call_site,
+            mixed_site,
+            &mut Default::default(),
+            None,
+        )
         .unwrap();
     expect.assert_eq(&format!(
         "{input_ts_string}{}{}{}",
@@ -77,7 +91,7 @@ fn assert_expand_impl(
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::root(span::Edition::CURRENT),
+        ctx: make_ctx(),
     };
     let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
@@ -85,7 +99,7 @@ fn assert_expand_impl(
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::root(span::Edition::CURRENT),
+        ctx: make_ctx(),
     };
     let mixed_site = call_site;
 
@@ -94,8 +108,18 @@ fn assert_expand_impl(
     let fixture_string = format!("{fixture:?}");
     let attr_string = attr.as_ref().map(|it| format!("{it:?}"));
 
-    let res =
-        expander.expand(macro_name, fixture, attr, def_site, call_site, mixed_site, None).unwrap();
+    let res = expander
+        .expand(
+            macro_name,
+            fixture,
+            attr,
+            def_site,
+            call_site,
+            mixed_site,
+            &mut Default::default(),
+            None,
+        )
+        .unwrap();
     expect_spanned.assert_eq(&format!(
         "{fixture_string}{}{}{}",
         if attr_string.is_some() { "\n\n" } else { "" },
@@ -150,6 +174,10 @@ impl ProcMacroClientInterface for MockCallback<'_> {
     fn span_parent(&mut self, _span: Span) -> Option<Span> {
         None
     }
+
+    fn span_join(&mut self, _: Span, _: Span) -> Option<Span> {
+        None
+    }
 }
 
 pub fn assert_expand_with_callback(
@@ -166,7 +194,7 @@ pub fn assert_expand_with_callback(
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::root(span::Edition::CURRENT),
+        ctx: make_ctx(),
     };
     let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
@@ -174,7 +202,7 @@ pub fn assert_expand_with_callback(
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::root(span::Edition::CURRENT),
+        ctx: make_ctx(),
     };
     let mixed_site = call_site;
 
@@ -182,7 +210,16 @@ pub fn assert_expand_with_callback(
 
     let mut callback = MockCallback { text: ra_fixture };
     let res = expander
-        .expand(macro_name, fixture, None, def_site, call_site, mixed_site, Some(&mut callback))
+        .expand(
+            macro_name,
+            fixture,
+            None,
+            def_site,
+            call_site,
+            mixed_site,
+            &mut Default::default(),
+            Some(&mut callback),
+        )
         .unwrap();
     expect_spanned.assert_eq(&format!("{res:?}"));
 }

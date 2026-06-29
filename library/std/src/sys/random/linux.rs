@@ -23,11 +23,11 @@
 //!
 //! One additional consideration to make is that the non-blocking pool is not
 //! always initialized during early boot. We want the best quality of randomness
-//! for the output of `DefaultRandomSource` so we simply wait until it is
-//! initialized. When `HashMap` keys however, this represents a potential source
-//! of deadlocks, as the additional entropy may only be generated once the
-//! program makes forward progress. In that case, we just use the best random
-//! data the system has available at the time.
+//! for the output of `SystemRng` so we simply wait until it is initialized.
+//! When `HashMap` keys however, this represents a potential source of
+//! deadlocks, as the additional entropy may only be generated once the program
+//! makes forward progress. In that case, we just use the best random data the
+//! system has available at the time.
 //!
 //! So in conclusion, we always want the output of the non-blocking pool, but
 //! may need to wait until it is initialized. The default behavior of `getrandom`

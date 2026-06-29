@@ -418,15 +418,16 @@ unsafe impl Sync for Waker {}
 impl Waker {
     /// Wakes up the task associated with this `Waker`.
     ///
-    /// As long as the executor keeps running and the task is not finished, it is
-    /// guaranteed that each invocation of [`wake()`](Self::wake) (or
+    /// As long as the executor keeps running and the task is not finished,
+    /// it is guaranteed that each invocation of [`wake()`](Self::wake) (or
     /// [`wake_by_ref()`](Self::wake_by_ref)) will be followed by at least one
-    /// [`poll()`] of the task to which this `Waker` belongs. This makes
-    /// it possible to temporarily yield to other tasks while running potentially
-    /// unbounded processing loops.
+    /// [`poll()`] of the task to which this `Waker` belongs, such that the call to
+    /// [`wake()`](Self::wake) (or [`wake_by_ref()`](Self::wake_by_ref)) _happens-before_
+    /// the beginning of the invocation of [`poll()`]. This makes it possible to temporarily
+    /// yield to other tasks while running potentially unbounded processing loops.
     ///
     /// Note that the above implies that multiple wake-ups may be coalesced into a
-    /// single [`poll()`] invocation by the runtime.
+    /// single [`poll()`] invocation by the executor.
     ///
     /// Also note that yielding to competing tasks is not guaranteed: it is the
     /// executor’s choice which task to run and the executor may choose to run the
@@ -946,7 +947,7 @@ impl Clone for LocalWaker {
 
 #[unstable(feature = "local_waker", issue = "118959")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<LocalWaker> for Waker {
+const impl AsRef<LocalWaker> for Waker {
     fn as_ref(&self) -> &LocalWaker {
         // SAFETY: LocalWaker is just Waker without thread safety
         unsafe { transmute(self) }

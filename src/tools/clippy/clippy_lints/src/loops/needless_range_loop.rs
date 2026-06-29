@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::has_iter_method;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{SpanlessEq, contains_name, higher, is_integer_const, peel_hir_expr_while, sugg};
+use clippy_utils::{SpanlessEq, contains_name, higher, is_integer_literal, peel_hir_expr_while, sugg};
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
@@ -83,7 +83,7 @@ pub(super) fn check<'tcx>(
                 return;
             }
 
-            let starts_at_zero = is_integer_const(cx, start, 0);
+            let starts_at_zero = is_integer_literal(start, 0);
 
             let skip = if starts_at_zero {
                 String::new()
@@ -101,8 +101,9 @@ pub(super) fn check<'tcx>(
                 if let ExprKind::Binary(ref op, left, right) = end.kind
                     && op.node == BinOpKind::Add
                 {
-                    let start_equal_left = SpanlessEq::new(cx).eq_expr(start, left);
-                    let start_equal_right = SpanlessEq::new(cx).eq_expr(start, right);
+                    let ctxt = start.span.ctxt();
+                    let start_equal_left = SpanlessEq::new(cx).eq_expr(ctxt, start, left);
+                    let start_equal_right = SpanlessEq::new(cx).eq_expr(ctxt, start, right);
 
                     if start_equal_left {
                         take_expr = right;
@@ -397,7 +398,13 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
             ExprKind::MethodCall(_, receiver, args, _) => {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in iter::zip(
-                    self.cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder(),
+                    self.cx
+                        .tcx
+                        .fn_sig(def_id)
+                        .instantiate_identity()
+                        .skip_norm_wip()
+                        .inputs()
+                        .skip_binder(),
                     iter::once(receiver).chain(args.iter()),
                 ) {
                     self.prefer_mutable = false;

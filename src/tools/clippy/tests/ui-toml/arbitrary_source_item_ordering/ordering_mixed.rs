@@ -4,7 +4,6 @@
 //@[default_exp] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default_exp
 //@[ord_within] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_within
 
-#![allow(dead_code)]
 #![warn(clippy::arbitrary_source_item_ordering)]
 
 /// This module gets linted before clippy gives up.
