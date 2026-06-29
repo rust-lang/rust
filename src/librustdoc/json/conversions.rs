@@ -270,6 +270,18 @@ impl FromClean<hir::ConstStability> for Stability {
     }
 }
 
+impl FromClean<hir::DefaultBodyStability> for Box<ProvidedDefaultUnstable> {
+    fn from_clean(stab: &hir::DefaultBodyStability, _renderer: &JsonRenderer<'_>) -> Self {
+        let hir::StabilityLevel::Unstable { .. } = stab.level else {
+            bug!(
+                "unexpected stable default-body stability, \
+                 there's no stable equivalent of `#[rustc_default_body_unstable]`"
+            )
+        };
+        Box::new(ProvidedDefaultUnstable { feature: stab.feature.to_string() })
+    }
+}
+
 impl FromClean<clean::GenericArgs> for Option<Box<GenericArgs>> {
     fn from_clean(generic_args: &clean::GenericArgs, renderer: &JsonRenderer<'_>) -> Self {
         use clean::GenericArgs::*;
@@ -353,18 +365,23 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
         VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
         FunctionItem(f) => {
-            ItemEnum::Function(from_clean_function(f, true, header.unwrap(), renderer))
+            ItemEnum::Function(from_clean_function(f, true, None, header.unwrap(), renderer))
         }
         ForeignFunctionItem(f, _) => {
-            ItemEnum::Function(from_clean_function(f, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_clean_function(f, false, None, header.unwrap(), renderer))
         }
         TraitItem(t) => ItemEnum::Trait(t.into_json(renderer)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        MethodItem(m, _) => {
-            ItemEnum::Function(from_clean_function(m, true, header.unwrap(), renderer))
-        }
+        MethodItem(m, _) => ItemEnum::Function(from_clean_function(
+            m,
+            true,
+            default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
+                .map(|stab| stab.into_json(renderer)),
+            header.unwrap(),
+            renderer,
+        )),
         RequiredMethodItem(m, _) => {
-            ItemEnum::Function(from_clean_function(m, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_clean_function(m, false, None, header.unwrap(), renderer))
         }
         ImplItem(i) => ItemEnum::Impl(i.into_json(renderer)),
         StaticItem(s) => ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer)),
@@ -385,23 +402,41 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             })
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
-        RequiredAssocConstItem(_generics, ty) => {
-            ItemEnum::AssocConst { type_: ty.into_json(renderer), value: None }
-        }
+        RequiredAssocConstItem(_generics, ty) => ItemEnum::AssocConst {
+            type_: ty.into_json(renderer),
+            value: None,
+            default_unstable: None,
+        },
         // FIXME(generic_const_items): Add support for generic associated consts.
-        ProvidedAssocConstItem(ci) | ImplAssocConstItem(ci) => ItemEnum::AssocConst {
+        ProvidedAssocConstItem(ci) => ItemEnum::AssocConst {
             type_: ci.type_.into_json(renderer),
             value: Some(ci.kind.expr(renderer.tcx)),
+            default_unstable: default_body_stability_for_def_id(
+                renderer.tcx,
+                item.item_id.expect_def_id(),
+            )
+            .map(|stab| stab.into_json(renderer)),
+        },
+        ImplAssocConstItem(ci) => ItemEnum::AssocConst {
+            type_: ci.type_.into_json(renderer),
+            value: Some(ci.kind.expr(renderer.tcx)),
+            default_unstable: None,
         },
         RequiredAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: g.into_json(renderer),
             bounds: b.into_json(renderer),
             type_: None,
+            default_unstable: None,
         },
         AssocTypeItem(t, b) => ItemEnum::AssocType {
             generics: t.generics.into_json(renderer),
             bounds: b.into_json(renderer),
             type_: Some(t.item_type.as_ref().unwrap_or(&t.type_).into_json(renderer)),
+            default_unstable: default_body_stability_for_def_id(
+                renderer.tcx,
+                item.item_id.expect_def_id(),
+            )
+            .map(|stab| stab.into_json(renderer)),
         },
         // `convert_item` early returns `None` for stripped items, keywords, attributes and
         // "special" macro rules.
@@ -815,6 +850,7 @@ impl FromClean<clean::Impl> for Impl {
 pub(crate) fn from_clean_function(
     clean::Function { decl, generics }: &clean::Function,
     has_body: bool,
+    default_unstable: Option<Box<ProvidedDefaultUnstable>>,
     header: rustc_hir::FnHeader,
     renderer: &JsonRenderer<'_>,
 ) -> Function {
@@ -823,6 +859,7 @@ pub(crate) fn from_clean_function(
         generics: generics.into_json(renderer),
         header: header.into_json(renderer),
         has_body,
+        default_unstable,
     }
 }
 
@@ -972,6 +1009,17 @@ impl FromClean<ItemType> for ItemKind {
     }
 }
 
+fn default_body_stability_for_def_id(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> Option<hir::DefaultBodyStability> {
+    let stability = tcx.lookup_default_body_stability(def_id)?;
+    match stability.level {
+        hir::StabilityLevel::Unstable { .. } => Some(stability),
+        hir::StabilityLevel::Stable { .. } => None,
+    }
+}
+
 fn const_stability_for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::ConstStability> {
     if !tcx.is_conditionally_const(def_id) {
         // The item cannot be conditionally-const. No const stability here.
@@ -1040,6 +1088,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
         AK::Deprecated { .. } => return Vec::new(), // Handled separately into Item::deprecation.
         AK::Stability { .. } => return Vec::new(),  // Handled separately into Item::stability
         AK::RustcConstStability { .. } => return Vec::new(), // Handled separately into Item::const_stability.
+        AK::RustcBodyStability { .. } => return Vec::new(), // Handled separately by `default_unstable`.
 
         AK::DocComment { .. } => unreachable!("doc comments stripped out earlier"),
 

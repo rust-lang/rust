@@ -114,8 +114,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Add `Item::const_stability`.
-pub const FORMAT_VERSION: u32 = 59;
+// Latest feature: Add default-body stability metadata.
+pub const FORMAT_VERSION: u32 = 60;
 
 /// The root of the emitted JSON blob.
 ///
@@ -288,6 +288,9 @@ pub struct Item {
     /// - `#[stable]` and `#[unstable]` attributes: see the [`Self::stability`] field instead.
     /// - `#[rustc_const_stable]` and `#[rustc_const_unstable]` attributes:
     ///   see the [`Self::const_stability`] field instead.
+    /// - `#[rustc_default_body_unstable]` attributes: instead see `default_unstable` fields on
+    ///   item kinds that can have unstable default values, such as [`Function::default_unstable`],
+    ///   [`ItemEnum::AssocConst::default_unstable`], and [`ItemEnum::AssocType::default_unstable`].
     ///
     /// Attributes appear in pretty-printed Rust form, regardless of their formatting
     /// in the original source code. For example:
@@ -367,6 +370,19 @@ pub enum StabilityLevel {
     Unstable,
 }
 
+/// Information about an unstable default provided by a trait item.
+///
+/// Example unstable defaults include:
+/// - a stable trait function or method whose body is not stable
+/// - a stable trait associated type or const whose default value is not stable
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
+pub struct ProvidedDefaultUnstable {
+    /// The feature that must be enabled to use the provided default.
+    pub feature: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
 #[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
@@ -379,6 +395,9 @@ pub enum StabilityLevel {
 /// - `#[stable]` and `#[unstable]`. These are in [`Item::stability`] instead.
 /// - `#[rustc_const_stable]` and `#[rustc_const_unstable]`. These are in
 ///   [`Item::const_stability`] instead.
+/// - `#[rustc_default_body_unstable]`. These are in the `default_unstable` field on the appropriate
+///   item kinds: [`Function::default_unstable`], [`ItemEnum::AssocConst::default_unstable`],
+///   and [`ItemEnum::AssocType::default_unstable`].
 pub enum Attribute {
     /// `#[non_exhaustive]`
     NonExhaustive,
@@ -875,6 +894,11 @@ pub enum ItemEnum {
         /// //               ^^^^^^^^^^
         /// ```
         value: Option<String>,
+        /// Metadata about an unstable default value provided for the associated constant, if any.
+        ///
+        /// Empty if the associated constant has no default (see [`ItemEnum::AssocConst::value`]),
+        /// or if the default value is stable.
+        default_unstable: Option<Box<ProvidedDefaultUnstable>>,
     },
     /// An associated type of a trait or a type.
     AssocType {
@@ -899,6 +923,11 @@ pub enum ItemEnum {
         /// ```
         #[serde(rename = "type")]
         type_: Option<Type>,
+        /// Metadata about an unstable default value provided for the associated type, if any.
+        ///
+        /// Empty if the associated type has no default (see [`ItemEnum::AssocType::type_`]),
+        /// or if the default value is stable.
+        default_unstable: Option<Box<ProvidedDefaultUnstable>>,
     },
 }
 
@@ -1188,6 +1217,12 @@ pub struct Function {
     pub header: FunctionHeader,
     /// Whether the function has a body, i.e. an implementation.
     pub has_body: bool,
+    /// Metadata about a possible unstable provided default implementation for trait methods.
+    ///
+    /// Only populated for function items inside traits. Empty if the trait method
+    /// does not have a default implementation (see [`Function::has_body`]),
+    /// or if its default implementation is stable.
+    pub default_unstable: Option<Box<ProvidedDefaultUnstable>>,
 }
 
 /// Generic parameters accepted by an item and `where` clauses imposed on it and the parameters.
