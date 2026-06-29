@@ -139,7 +139,7 @@ where
             });
         let constraint = evaluate_solver_constraint(&constraint.canonical_form());
 
-        self.delegate.overwrite_solver_region_constraint(constraint.clone());
+        self.delegate.overwrite_solver_region_constraint(constraint.clone(), self.origin_span);
 
         if constraint.is_false() {
             Err(NoSolution)
