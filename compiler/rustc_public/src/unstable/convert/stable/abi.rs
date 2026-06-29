@@ -96,6 +96,7 @@ impl<'tcx> Stable<'tcx> for callconv::FnAbi<'tcx, ty::Ty<'tcx>> {
             fixed_count: self.fixed_count,
             conv: self.conv.stable(tables, cx),
             c_variadic: self.c_variadic,
+            type_discriminator: 0,
         }
     }
 }

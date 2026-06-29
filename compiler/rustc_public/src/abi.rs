@@ -29,6 +29,9 @@ pub struct FnAbi {
 
     /// Whether this is a variadic C function,
     pub c_variadic: bool,
+
+    /// Computed type discriminator for pointer authentication purpose.
+    pub type_discriminator: u64,
 }
 
 /// Information about the ABI of a function's argument, or return value.

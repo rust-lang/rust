@@ -117,6 +117,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             on_stack_param_indices,
             #[cfg(feature = "master")]
             fn_attributes,
+            type_discriminator,
         } = fn_abi.gcc_type(self);
         #[cfg(feature = "master")]
         let conv = fn_abi.gcc_cconv(self);
@@ -128,6 +129,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         for fn_attr in fn_attributes {
             func.add_attribute(fn_attr);
         }
+        let _ = type_discriminator;
         func
     }
 
