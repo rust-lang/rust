@@ -312,6 +312,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             FulfillmentErrorCode::Project(ref e) => {
                 self.report_projection_error(&error.obligation, e)
             }
+            FulfillmentErrorCode::Outlives => self
+                .dcx()
+                .struct_span_err(
+                    error.obligation.cause.span,
+                    "higher-ranked lifetime bound could not be satisfied",
+                )
+                .emit(),
             FulfillmentErrorCode::Ambiguity { overflow: None } => {
                 self.maybe_report_ambiguity(&error.obligation)
             }
