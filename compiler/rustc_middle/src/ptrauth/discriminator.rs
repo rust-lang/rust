@@ -1,0 +1,430 @@
+/*!
+Function pointer type discrimination for pointer authentication.
+
+This module implements Rust's equivalent of Clang's function pointer type
+discriminator computation used in pointer authentication.
+
+Compatibility with Clang is a primary goal. The discriminator produced for a
+given external "C" function type must match the value computed by Clang so that
+function pointers can be exchanged safely between Rust and C code while
+preserving pointer authentication semantics.
+
+The implementation mirrors Clang's behavior in
+`ASTContext::encodeTypeForFunctionPointerAuth`, ensuring that identical
+C-compatible function types produce identical discriminators. See:
+<https://clang.llvm.org/doxygen/ASTContext_8cpp.html#abb1375e068e807917527842d05cadea3>.
+
+## Overview
+
+The computation is structured into three conceptual stages:
+
+### 1. Type normalization and lowering
+   Rust types are converted into a language-independent representation
+   (`ClangDiscTy`) that mirrors the type categories used by Clang when computing
+   function pointer discriminators. This includes canonicalization such as
+   treating all pointer-like types uniformly and mapping Rust constructs onto
+   their closest C equivalents.
+
+### 2. Type encoding
+   The lowered representation is serialized into a byte stream using rules
+   intended to match Clang's implementation in:
+   `encodeTypeForFunctionPointerAuth`. The resulting encoding describes the
+   function signature in a target-independent form suitable for hashing.
+
+### 3. Discriminator hashing
+   The encoded byte stream is hashed using LLVM's stable SipHash-2-4 based
+   discriminator algorithm. The implementation here is a direct translation
+   of LLVM/Clang's logic and must remain bit-for-bit compatible. See:
+   <https://github.com/llvm/llvm-project/blob/main/third-party/siphash/include/siphash/SipHash.h>.
+   Defined in `llvm_siphash.rs`.
+
+## Module structure
+
+- Public API
+  - `FnPtrTypeDiscriminatorInput`
+  - `build_fn_ptr_type_discriminator_input`
+  - `compute_fn_ptr_type_discriminator`
+
+- Signature extraction
+  - `extract_fn_ptr_type`
+
+- Clang-compatible type model
+  - `ClangDiscTy`
+  - `canonicalize_c_type`
+  - `to_clang_disc_ty`
+
+- Encoding
+  - `PtrauthEncoder`
+  - `encode_ty`
+
+## Compatibility requirements
+
+Any changes to the encoding or hashing logic should be validated against Clang's
+discriminator computation. Divergence from Clang will result in incompatible
+pointer authentication values across language boundaries.
+
+This implementation intentionally approximates Clang's behavior for extern "C"
+function types only. It does NOT attempt to model full type system rules.
+*/
+
+use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx};
+use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
+use rustc_span::sym;
+
+use crate::ptrauth::llvm_siphash::llvm_pointer_auth_stable_siphash;
+
+/// Canonical representation of a function signature used for pointer
+/// authentication discriminator generation.
+#[derive(Debug)]
+pub struct FnPtrTypeDiscriminatorInput<'tcx> {
+    inputs: &'tcx [Ty<'tcx>],
+    output: Ty<'tcx>,
+    abi: ExternAbi,
+    c_variadic: bool,
+}
+
+impl<'tcx> FnPtrTypeDiscriminatorInput<'tcx> {
+    pub fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
+        FnPtrTypeDiscriminatorInput {
+            inputs: sig.inputs(),
+            output: sig.output(),
+            abi: sig.abi(),
+            c_variadic: sig.c_variadic(),
+        }
+    }
+
+    pub fn from_sig_tys(
+        sig: ty::FnSigTys<TyCtxt<'tcx>>,
+        header: &ty::FnHeader<TyCtxt<'tcx>>,
+    ) -> Self {
+        FnPtrTypeDiscriminatorInput {
+            inputs: sig.inputs(),
+            output: sig.output(),
+            abi: header.abi(),
+            c_variadic: header.c_variadic(),
+        }
+    }
+}
+
+/// Unwraps optional function pointers and normalizes the type.
+///
+/// Only `Option<fn*>` is supported for nullability modeling, matching C ABI
+/// null pointer conventions.
+pub fn extract_fn_ptr_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    ty = tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), Unnormalized::new(ty));
+
+    loop {
+        match ty.kind() {
+            ty::Adt(def, args) if tcx.is_diagnostic_item(sym::Option, def.did()) => {
+                ty = args.type_at(0);
+                continue;
+            }
+
+            ty::FnPtr(..) | ty::FnDef(..) => {
+                return Some(ty);
+            }
+
+            _ => return None,
+        }
+    }
+}
+
+/// Builds type discrimination input from a Rust function type.
+///
+/// Accepts both:
+/// - `FnPtr`: actual function pointer types
+/// - `FnDef`: function items
+///
+/// FnDef is only accepted for convenience; the discriminator is still computed
+/// from the instantiated function signature.
+pub fn build_fn_ptr_type_discriminator_input<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<FnPtrTypeDiscriminatorInput<'tcx>> {
+    let ty = extract_fn_ptr_type(tcx, ty)?;
+
+    match ty.kind() {
+        ty::FnPtr(sig, header) => {
+            let sig = sig.skip_binder();
+
+            Some(FnPtrTypeDiscriminatorInput::from_sig_tys(sig, header))
+        }
+
+        ty::FnDef(def_id, args) => {
+            let sig = tcx.fn_sig(*def_id).instantiate(tcx, args.skip_binder()).skip_binder();
+
+            Some(FnPtrTypeDiscriminatorInput::from_sig(sig))
+        }
+
+        _ => None,
+    }
+}
+
+pub fn compute_fn_ptr_type_discriminator<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    input: &FnPtrTypeDiscriminatorInput<'tcx>,
+) -> u64 {
+    if !matches!(input.abi, ExternAbi::C { .. } | ExternAbi::System { .. }) {
+        return 0;
+    }
+
+    let mut enc = PtrauthEncoder::new();
+    enc.push(b'F');
+
+    encode_ty(&mut enc, tcx, input.output);
+
+    for &arg in input.inputs {
+        encode_ty(&mut enc, tcx, arg);
+    }
+
+    if input.c_variadic {
+        enc.push(b'z');
+    }
+
+    enc.push(b'E');
+
+    let hash = enc.finish();
+
+    hash.into()
+}
+
+// Clang disc type.
+#[derive(Debug)]
+enum ClangDiscTy<'tcx> {
+    Int,
+    Float(&'tcx ty::FloatTy),
+    Bool,
+    Char,
+
+    // Pointer-like types in the C ABI sense.
+    // This includes:
+    // - raw pointers (`*const T`, `*mut T`)
+    // - Rust references (`&T`, `&mut T`)
+    // - function pointers
+    // All collapse to a single Clang-compatible 'P' node.
+    Pointer,
+
+    Array { elem: Ty<'tcx> },
+
+    // FIXME(jchlands) Decide if to support Complex types. Clang has dedicated node for this
+    // `Type::Complex`, Rust does not. So we match against a Tuple(FP_TYPE, FP_TYPE), that should
+    // not be a problem for extern "C".
+    Complex(Ty<'tcx>),
+
+    Vector { bytes: u64 },
+
+    EnumLikeInt,
+    AdtName(String),
+    Opaque,
+    Void,
+}
+
+// Lowering (Rust Ty -> ClangDiscTy)
+fn is_representing_c_complex(fields: &[Ty<'_>]) -> bool {
+    fields.len() == 2 && fields[0] == fields[1] && is_complex_compatible_float(fields[0])
+}
+
+fn is_complex_compatible_float(ty: Ty<'_>) -> bool {
+    match ty.kind() {
+        ty::Float(f) => match f.bit_width() {
+            32 => true,
+            64 => true,
+            128 => true,
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+fn scalar_size_bytes(tcx: TyCtxt<'_>, ty: Ty<'_>) -> u64 {
+    match ty.kind() {
+        ty::Bool | ty::Uint(ty::UintTy::U8) | ty::Int(ty::IntTy::I8) => 1,
+        ty::Uint(ty::UintTy::U16) | ty::Int(ty::IntTy::I16) => 2,
+        ty::Uint(ty::UintTy::U32) | ty::Int(ty::IntTy::I32) | ty::Float(ty::FloatTy::F32) => 4,
+        ty::Uint(ty::UintTy::U64) | ty::Int(ty::IntTy::I64) | ty::Float(ty::FloatTy::F64) => 8,
+        ty::Float(ty::FloatTy::F128) => 16,
+
+        ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) => tcx.data_layout.pointer_size().bytes(),
+
+        _ => {
+            // SIMD only allows scalars anyway
+            tcx.dcx().delayed_bug("invalid SIMD element type");
+            1
+        }
+    }
+}
+
+// Canonicalize `Option<fn ptr>` to `fn ptr`. This is so that we can express C's null ptr argument.
+// Please see pauth-fn-ptr-type-discrimination-null-arg.rs test for an example.
+fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    if let ty::Adt(def, args) = ty.kind()
+        && tcx.is_diagnostic_item(sym::Option, def.did())
+    {
+        let inner = args.type_at(0);
+
+        if matches!(inner.kind(), ty::FnPtr(..)) {
+            return inner;
+        }
+    }
+
+    ty
+}
+
+/// Lowers a Rust type into a Clang-compatible discriminator type.
+///
+/// This is not a full semantic translation of Rust types. It is a lossy mapping
+/// that intentionally matches Clang's function pointer authentication encoding
+/// rules.
+///
+/// Important invariants:
+/// - All pointer-like types (Rust refs, raw pointers, fn pointers) collapse to
+///   `Pointer`.
+/// - Struct/union types are encoded using name only, not layout.
+/// - Enums are treated as integers.
+/// - SIMD types are encoded only by total byte size (no lane semantics).
+/// This must remain in sync with Clang's `encodeTypeForFunctionPointerAuth`.
+fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> {
+    let ty = canonicalize_c_type(tcx, ty);
+    match ty.kind() {
+        // C void / Rust ()
+        ty::Tuple(list) if list.is_empty() => ClangDiscTy::Void,
+
+        // Complex
+        ty::Tuple(fields) if is_representing_c_complex(fields) => ClangDiscTy::Complex(fields[0]),
+
+        // scalars
+        ty::Bool => ClangDiscTy::Bool,
+        ty::Char => ClangDiscTy::Char,
+
+        ty::Int(_) | ty::Uint(_) => ClangDiscTy::Int,
+        ty::Float(f) => ClangDiscTy::Float(f),
+
+        // everything pointer-like collapses
+        ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) | ty::Dynamic(..) | ty::Slice(_) | ty::Str => {
+            ClangDiscTy::Pointer
+        }
+
+        // arrays ignore size
+        ty::Array(elem, _) => ClangDiscTy::Array { elem: *elem },
+
+        // enums to integer collapse
+        ty::Adt(def, _) if def.is_enum() => ClangDiscTy::EnumLikeInt,
+
+        // This is borrowed from the logic in rust_ty_utils/src/layout.rs
+        ty::Adt(def, args) if def.repr().simd() => {
+            let variant = &def.variant(FIRST_VARIANT);
+            let field = &variant.fields[FieldIdx::from_u32(0)];
+
+            let field_ty = field.ty(tcx, args).skip_norm_wip();
+
+            let ty::Array(e_ty, e_len) = *field_ty.kind() else {
+                tcx.dcx().delayed_bug("invalid repr(simd) shape");
+                return ClangDiscTy::Opaque;
+            };
+
+            // lane count WITHOUT const eval:
+            let lanes = match e_len.kind() {
+                ty::ConstKind::Value(val) => val.try_to_target_usize(tcx).unwrap_or(0),
+                ty::ConstKind::Unevaluated(..) => {
+                    // monomorphic SIMD should never hit this
+                    tcx.dcx().delayed_bug("generic SIMD in ptrauth encoding");
+                    0
+                }
+                _ => 0,
+            };
+
+            let elem_size = scalar_size_bytes(tcx, e_ty);
+
+            ClangDiscTy::Vector { bytes: elem_size * lanes }
+        }
+
+        // structs/unions to name-based identity
+        ty::Adt(def, _) => {
+            let name = tcx.item_name(def.did()).to_string();
+            ClangDiscTy::AdtName(name)
+        }
+
+        ty::Foreign(_) => ClangDiscTy::Opaque,
+
+        _ => ClangDiscTy::Opaque,
+    }
+}
+
+// Encoder
+struct PtrauthEncoder {
+    buf: Vec<u8>,
+}
+
+impl PtrauthEncoder {
+    fn new() -> Self {
+        Self { buf: Vec::new() }
+    }
+
+    fn push(&mut self, b: u8) {
+        self.buf.push(b);
+    }
+
+    fn push_str(&mut self, s: &str) {
+        self.buf.extend_from_slice(s.as_bytes());
+    }
+
+    fn finish(&self) -> u16 {
+        llvm_pointer_auth_stable_siphash(&self.buf)
+    }
+
+    fn as_string(&self) -> String {
+        String::from_utf8_lossy(&self.buf).to_string()
+    }
+}
+
+/// Encodes a ClangDiscTy into the discriminator byte stream.
+///
+/// This format is intended to be bit-for-bit compatible with Clang's
+/// `encodeTypeForFunctionPointerAuth`.
+fn encode_ty<'tcx>(enc: &mut PtrauthEncoder, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
+    let cty = to_clang_disc_ty(tcx, ty);
+
+    match cty {
+        // scalars
+        ClangDiscTy::Bool | ClangDiscTy::Char | ClangDiscTy::Int => enc.push(b'i'),
+
+        ClangDiscTy::Float(f) => match f.bit_width() {
+            16 => enc.push_str("Dh"),
+            32 => enc.push(b'f'),
+            64 => enc.push(b'd'),
+            128 => enc.push(b'g'),
+            _ => enc.push(b'?'),
+        },
+
+        ClangDiscTy::Void => enc.push(b'v'),
+
+        // pointer boundary (NO RECURSION)
+        ClangDiscTy::Pointer => enc.push(b'P'),
+
+        // arrays ignore size
+        ClangDiscTy::Array { elem } => {
+            enc.push(b'A');
+            encode_ty(enc, tcx, elem);
+        }
+
+        // enums collapse
+        ClangDiscTy::EnumLikeInt => enc.push(b'i'),
+
+        // ADT identity
+        ClangDiscTy::AdtName(name) => {
+            enc.push_str(&name.len().to_string());
+            enc.push_str(&name);
+        }
+
+        ClangDiscTy::Opaque => enc.push(b'?'),
+
+        ClangDiscTy::Complex(t) => {
+            enc.push(b'C');
+            encode_ty(enc, tcx, t);
+        }
+        ClangDiscTy::Vector { bytes } => {
+            enc.push_str("Dv");
+            enc.push_str(&bytes.to_string());
+        }
+    }
+}
