@@ -49,7 +49,7 @@ jobs:
           cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "$(echo $WASMTIME_RELEASE_BRANCH)" }
           cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "$(echo $WASMTIME_RELEASE_BRANCH)" }
           EOF
-          
+
           cargo update
         env:
           WASMTIME_RELEASE_BRANCH: ${{ steps.wasmtime_release_branch.outputs.branch }}
