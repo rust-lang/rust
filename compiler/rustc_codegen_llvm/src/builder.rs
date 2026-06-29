@@ -2084,7 +2084,13 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         // Once this is resolved, we should analyze each call and skip direct calls. See the
         // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
         let key: u32 = 0;
-        let discriminator: u64 = 0;
+
+        let discriminator = if self.sess().pointer_authentication_fn_ptr_type_discrimination() {
+            fn_abi?.ptrauth_type_discriminator
+        } else {
+            0
+        };
+
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
             &[self.const_u32(key), self.const_u64(discriminator)],

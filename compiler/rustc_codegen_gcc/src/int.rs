@@ -375,6 +375,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             fixed_count: 3,
             conv: CanonAbi::C,
             can_unwind: false,
+            ptrauth_type_discriminator: 0,
         };
         fn_abi.adjust_for_foreign_abi(self.cx, ExternAbi::C { unwind: false });
 
