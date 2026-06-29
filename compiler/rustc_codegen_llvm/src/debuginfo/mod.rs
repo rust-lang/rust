@@ -127,295 +127,6 @@ impl<'ll> Builder<'_, 'll, '_> {
 }
 
 impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
-    // FIXME(eddyb) find a common convention for all of the debuginfo-related
-    // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
-    fn dbg_var_addr(
-        &mut self,
-        dbg_var: &'ll DIVariable,
-        dbg_loc: &'ll DILocation,
-        variable_alloca: Self::Value,
-        direct_offset: Size,
-        indirect_offsets: &[Size],
-        fragment: &Option<Range<Size>>,
-    ) {
-        use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst};
-
-        // Convert the direct and indirect offsets and fragment byte range to address ops.
-        let mut addr_ops = SmallVec::<[u64; 8]>::new();
-
-        if direct_offset.bytes() > 0 {
-            addr_ops.push(DW_OP_plus_uconst);
-            addr_ops.push(direct_offset.bytes());
-        }
-        for &offset in indirect_offsets {
-            addr_ops.push(DW_OP_deref);
-            if offset.bytes() > 0 {
-                addr_ops.push(DW_OP_plus_uconst);
-                addr_ops.push(offset.bytes());
-            }
-        }
-        if let Some(fragment) = fragment {
-            // `DW_OP_LLVM_fragment` takes as arguments the fragment's
-            // offset and size, both of them in bits.
-            addr_ops.push(DW_OP_LLVM_fragment);
-            addr_ops.push(fragment.start.bits());
-            addr_ops.push((fragment.end - fragment.start).bits());
-        }
-
-        let di_builder = DIB(self.cx());
-        let addr_expr = di_builder.create_expression(&addr_ops);
-        unsafe {
-            llvm::LLVMDIBuilderInsertDeclareRecordAtEnd(
-                di_builder,
-                variable_alloca,
-                dbg_var,
-                addr_expr,
-                dbg_loc,
-                self.llbb(),
-            )
-        };
-    }
-
-    fn dbg_var_value(
-        &mut self,
-        dbg_var: &'ll DIVariable,
-        dbg_loc: &'ll DILocation,
-        value: Self::Value,
-        direct_offset: Size,
-        indirect_offsets: &[Size],
-        fragment: &Option<Range<Size>>,
-    ) {
-        use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst, DW_OP_stack_value};
-
-        // Convert the direct and indirect offsets and fragment byte range to address ops.
-        let mut addr_ops = SmallVec::<[u64; 8]>::new();
-
-        if direct_offset.bytes() > 0 {
-            addr_ops.push(DW_OP_plus_uconst);
-            addr_ops.push(direct_offset.bytes() as u64);
-            addr_ops.push(DW_OP_stack_value);
-        }
-        for &offset in indirect_offsets {
-            addr_ops.push(DW_OP_deref);
-            if offset.bytes() > 0 {
-                addr_ops.push(DW_OP_plus_uconst);
-                addr_ops.push(offset.bytes() as u64);
-            }
-        }
-        if let Some(fragment) = fragment {
-            // `DW_OP_LLVM_fragment` takes as arguments the fragment's
-            // offset and size, both of them in bits.
-            addr_ops.push(DW_OP_LLVM_fragment);
-            addr_ops.push(fragment.start.bits() as u64);
-            addr_ops.push((fragment.end - fragment.start).bits() as u64);
-        }
-
-        let di_builder = DIB(self.cx());
-        let addr_expr = unsafe {
-            llvm::LLVMDIBuilderCreateExpression(di_builder, addr_ops.as_ptr(), addr_ops.len())
-        };
-        unsafe {
-            llvm::LLVMDIBuilderInsertDbgValueRecordAtEnd(
-                di_builder,
-                value,
-                dbg_var,
-                addr_expr,
-                dbg_loc,
-                self.llbb(),
-            );
-        }
-    }
-
-    fn set_dbg_loc(&mut self, dbg_loc: &'ll DILocation) {
-        unsafe {
-            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, dbg_loc);
-        }
-    }
-
-    fn clear_dbg_loc(&mut self) {
-        unsafe {
-            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
-        }
-    }
-
-    fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
-        gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
-    }
-
-    fn set_var_name(&mut self, value: &'ll Value, name: &str) {
-        // Avoid wasting time if LLVM value names aren't even enabled.
-        if self.sess().fewer_names() {
-            return;
-        }
-
-        // Only function parameters and instructions are local to a function,
-        // don't change the name of anything else (e.g. globals).
-        let param_or_inst = unsafe {
-            llvm::LLVMIsAArgument(value).is_some() || llvm::LLVMIsAInstruction(value).is_some()
-        };
-        if !param_or_inst {
-            return;
-        }
-
-        // Avoid replacing the name if it already exists.
-        // While we could combine the names somehow, it'd
-        // get noisy quick, and the usefulness is dubious.
-        if llvm::get_value_name(value).is_empty() {
-            llvm::set_value_name(value, name.as_bytes());
-        }
-    }
-
-    /// Annotate move/copy operations with debug info for profiling.
-    ///
-    /// This creates a temporary debug scope that makes the move/copy appear as an inlined call to
-    /// `compiler_move<T, SIZE>()` or `compiler_copy<T, SIZE>()`. The provided closure is executed
-    /// with this temporary debug location active.
-    ///
-    /// The `instance` parameter should be the monomorphized instance of the `compiler_move` or
-    /// `compiler_copy` function with the actual type and size.
-    fn with_move_annotation<R>(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        f: impl FnOnce(&mut Self) -> R,
-    ) -> R {
-        // Save the current debug location
-        let saved_loc = self.get_dbg_loc();
-
-        // Create a DIScope for the compiler_move/compiler_copy function
-        // We use the function's FnAbi for debug info generation
-        let fn_abi = self
-            .cx()
-            .tcx
-            .fn_abi_of_instance(
-                self.cx().typing_env().as_query_input((instance, ty::List::empty())),
-            )
-            .unwrap();
-
-        let di_scope = self.cx().dbg_scope_fn(instance, fn_abi, None);
-
-        // Create an inlined debug location:
-        // - scope: the compiler_move/compiler_copy function
-        // - inlined_at: the current location (where the move/copy actually occurs)
-        // - span: use the function's definition span
-        let fn_span = self.cx().tcx.def_span(instance.def_id());
-        let inlined_loc = self.cx().dbg_loc(di_scope, saved_loc, fn_span);
-
-        // Set the temporary debug location
-        self.set_dbg_loc(inlined_loc);
-
-        // Execute the closure (which will generate the memcpy)
-        let result = f(self);
-
-        // Restore the original debug location
-        if let Some(loc) = saved_loc {
-            self.set_dbg_loc(loc);
-        } else {
-            self.clear_dbg_loc();
-        }
-
-        result
-    }
-}
-
-/// A source code location used to generate debug information.
-// FIXME(eddyb) rename this to better indicate it's a duplicate of
-// `rustc_span::Loc` rather than `DILocation`, perhaps by making
-// `lookup_char_pos` return the right information instead.
-struct DebugLoc {
-    /// Information about the original source file.
-    file: Arc<SourceFile>,
-    /// The (1-based) line number.
-    line: u32,
-    /// The (1-based) column number.
-    col: u32,
-}
-
-impl<'ll> CodegenCx<'ll, '_> {
-    /// Looks up debug source information about a `BytePos`.
-    // FIXME(eddyb) rename this to better indicate it's a duplicate of
-    // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
-    // `lookup_char_pos` return the right information instead.
-    fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
-        let (file, line, col) = match self.sess().source_map().lookup_line(pos) {
-            Ok(SourceFileAndLine { sf: file, line }) => {
-                let line_pos = file.lines()[line];
-
-                // Use 1-based indexing.
-                let line = (line + 1) as u32;
-                let col = (file.relative_position(pos) - line_pos).to_u32() + 1;
-
-                (file, line, col)
-            }
-            Err(file) => (file, UNKNOWN_LINE_NUMBER, UNKNOWN_COLUMN_NUMBER),
-        };
-
-        // For MSVC, omit the column number.
-        // Otherwise, emit it. This mimics clang behaviour.
-        // See discussion in https://github.com/rust-lang/rust/issues/42921
-        if self.sess().target.is_like_msvc {
-            DebugLoc { file, line, col: UNKNOWN_COLUMN_NUMBER }
-        } else {
-            DebugLoc { file, line, col }
-        }
-    }
-
-    fn create_template_type_parameter(
-        &self,
-        name: &str,
-        actual_type_metadata: &'ll DIType,
-    ) -> &'ll DITemplateTypeParameter {
-        unsafe {
-            llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
-                DIB(self),
-                None,
-                name.as_c_char_ptr(),
-                name.len(),
-                actual_type_metadata,
-            )
-        }
-    }
-
-    /// Creates any deferred debug metadata nodes
-    pub(crate) fn debuginfo_finalize(&self) {
-        if let Some(dbg_cx) = &self.dbg_cx {
-            debug!("finalize");
-
-            if gdb::needs_gdb_debug_scripts_section(self) {
-                // Add a .debug_gdb_scripts section to this compile-unit. This will
-                // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
-                // which activates the Rust pretty printers for binary this section is
-                // contained in.
-                gdb::get_or_insert_gdb_debug_scripts_section_global(self);
-            }
-
-            dbg_cx.finalize(self.sess());
-        }
-    }
-}
-
-impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn dbg_create_lexical_block(&self, pos: BytePos, parent_scope: &'ll DIScope) -> &'ll DIScope {
-        let loc = self.lookup_debug_loc(pos);
-        let file_metadata = file_metadata(self, &loc.file);
-        unsafe {
-            llvm::LLVMDIBuilderCreateLexicalBlock(
-                DIB(self),
-                parent_scope,
-                file_metadata,
-                loc.line,
-                loc.col,
-            )
-        }
-    }
-
-    fn dbg_location_clone_with_discriminator(
-        &self,
-        loc: &'ll DILocation,
-        discriminator: u32,
-    ) -> Option<&'ll DILocation> {
-        unsafe { llvm::LLVMRustDILocationCloneWithBaseDiscriminator(loc, discriminator) }
-    }
-
     fn dbg_scope_fn(
         &self,
         instance: Instance<'tcx>,
@@ -658,42 +369,18 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn dbg_loc(
-        &self,
-        scope: &'ll DIScope,
-        inlined_at: Option<&'ll DILocation>,
-        span: Span,
-    ) -> &'ll DILocation {
-        // When emitting debugging information, DWARF (i.e. everything but MSVC)
-        // treats line 0 as a magic value meaning that the code could not be
-        // attributed to any line in the source. That's also exactly what dummy
-        // spans are. Make that equivalence here, rather than passing dummy spans
-        // to lookup_debug_loc, which will return line 1 for them.
-        let (line, col) = if span.is_dummy() && !self.sess().target.is_like_msvc {
-            (0, 0)
-        } else {
-            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
-            (line, col)
-        };
-
-        unsafe { llvm::LLVMDIBuilderCreateDebugLocation(self.llcx, line, col, scope, inlined_at) }
-    }
-
-    fn create_vtable_debuginfo(
-        &self,
-        ty: Ty<'tcx>,
-        trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
-        vtable: Self::Value,
-    ) {
-        metadata::create_vtable_di_node(self, ty, trait_ref, vtable)
-    }
-
-    fn extend_scope_to_file(
-        &self,
-        scope_metadata: &'ll DIScope,
-        file: &rustc_span::SourceFile,
-    ) -> &'ll DILexicalBlock {
-        metadata::extend_scope_to_file(self, scope_metadata, file)
+    fn dbg_create_lexical_block(&self, pos: BytePos, parent_scope: &'ll DIScope) -> &'ll DIScope {
+        let loc = self.lookup_debug_loc(pos);
+        let file_metadata = file_metadata(self, &loc.file);
+        unsafe {
+            llvm::LLVMDIBuilderCreateLexicalBlock(
+                DIB(self),
+                parent_scope,
+                file_metadata,
+                loc.line,
+                loc.col,
+            )
+        }
     }
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
@@ -745,5 +432,318 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 )
             },
         }
+    }
+
+    // FIXME(eddyb) find a common convention for all of the debuginfo-related
+    // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
+    fn dbg_var_addr(
+        &mut self,
+        dbg_var: &'ll DIVariable,
+        dbg_loc: &'ll DILocation,
+        variable_alloca: Self::Value,
+        direct_offset: Size,
+        indirect_offsets: &[Size],
+        fragment: &Option<Range<Size>>,
+    ) {
+        use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst};
+
+        // Convert the direct and indirect offsets and fragment byte range to address ops.
+        let mut addr_ops = SmallVec::<[u64; 8]>::new();
+
+        if direct_offset.bytes() > 0 {
+            addr_ops.push(DW_OP_plus_uconst);
+            addr_ops.push(direct_offset.bytes());
+        }
+        for &offset in indirect_offsets {
+            addr_ops.push(DW_OP_deref);
+            if offset.bytes() > 0 {
+                addr_ops.push(DW_OP_plus_uconst);
+                addr_ops.push(offset.bytes());
+            }
+        }
+        if let Some(fragment) = fragment {
+            // `DW_OP_LLVM_fragment` takes as arguments the fragment's
+            // offset and size, both of them in bits.
+            addr_ops.push(DW_OP_LLVM_fragment);
+            addr_ops.push(fragment.start.bits());
+            addr_ops.push((fragment.end - fragment.start).bits());
+        }
+
+        let di_builder = DIB(self.cx());
+        let addr_expr = di_builder.create_expression(&addr_ops);
+        unsafe {
+            llvm::LLVMDIBuilderInsertDeclareRecordAtEnd(
+                di_builder,
+                variable_alloca,
+                dbg_var,
+                addr_expr,
+                dbg_loc,
+                self.llbb(),
+            )
+        };
+    }
+
+    fn dbg_var_value(
+        &mut self,
+        dbg_var: &'ll DIVariable,
+        dbg_loc: &'ll DILocation,
+        value: Self::Value,
+        direct_offset: Size,
+        indirect_offsets: &[Size],
+        fragment: &Option<Range<Size>>,
+    ) {
+        use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst, DW_OP_stack_value};
+
+        // Convert the direct and indirect offsets and fragment byte range to address ops.
+        let mut addr_ops = SmallVec::<[u64; 8]>::new();
+
+        if direct_offset.bytes() > 0 {
+            addr_ops.push(DW_OP_plus_uconst);
+            addr_ops.push(direct_offset.bytes() as u64);
+            addr_ops.push(DW_OP_stack_value);
+        }
+        for &offset in indirect_offsets {
+            addr_ops.push(DW_OP_deref);
+            if offset.bytes() > 0 {
+                addr_ops.push(DW_OP_plus_uconst);
+                addr_ops.push(offset.bytes() as u64);
+            }
+        }
+        if let Some(fragment) = fragment {
+            // `DW_OP_LLVM_fragment` takes as arguments the fragment's
+            // offset and size, both of them in bits.
+            addr_ops.push(DW_OP_LLVM_fragment);
+            addr_ops.push(fragment.start.bits() as u64);
+            addr_ops.push((fragment.end - fragment.start).bits() as u64);
+        }
+
+        let di_builder = DIB(self.cx());
+        let addr_expr = unsafe {
+            llvm::LLVMDIBuilderCreateExpression(di_builder, addr_ops.as_ptr(), addr_ops.len())
+        };
+        unsafe {
+            llvm::LLVMDIBuilderInsertDbgValueRecordAtEnd(
+                di_builder,
+                value,
+                dbg_var,
+                addr_expr,
+                dbg_loc,
+                self.llbb(),
+            );
+        }
+    }
+
+    fn set_dbg_loc(&mut self, dbg_loc: &'ll DILocation) {
+        unsafe {
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, dbg_loc);
+        }
+    }
+
+    fn clear_dbg_loc(&mut self) {
+        unsafe {
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
+        }
+    }
+
+    fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
+        gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
+    }
+
+    fn set_var_name(&mut self, value: &'ll Value, name: &str) {
+        // Avoid wasting time if LLVM value names aren't even enabled.
+        if self.sess().fewer_names() {
+            return;
+        }
+
+        // Only function parameters and instructions are local to a function,
+        // don't change the name of anything else (e.g. globals).
+        let param_or_inst = unsafe {
+            llvm::LLVMIsAArgument(value).is_some() || llvm::LLVMIsAInstruction(value).is_some()
+        };
+        if !param_or_inst {
+            return;
+        }
+
+        // Avoid replacing the name if it already exists.
+        // While we could combine the names somehow, it'd
+        // get noisy quick, and the usefulness is dubious.
+        if llvm::get_value_name(value).is_empty() {
+            llvm::set_value_name(value, name.as_bytes());
+        }
+    }
+
+    /// Annotate move/copy operations with debug info for profiling.
+    ///
+    /// This creates a temporary debug scope that makes the move/copy appear as an inlined call to
+    /// `compiler_move<T, SIZE>()` or `compiler_copy<T, SIZE>()`. The provided closure is executed
+    /// with this temporary debug location active.
+    ///
+    /// The `instance` parameter should be the monomorphized instance of the `compiler_move` or
+    /// `compiler_copy` function with the actual type and size.
+    fn with_move_annotation<R>(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        // Save the current debug location
+        let saved_loc = self.get_dbg_loc();
+
+        // Create a DIScope for the compiler_move/compiler_copy function
+        // We use the function's FnAbi for debug info generation
+        let fn_abi = self
+            .cx()
+            .tcx
+            .fn_abi_of_instance(
+                self.cx().typing_env().as_query_input((instance, ty::List::empty())),
+            )
+            .unwrap();
+
+        let di_scope = self.dbg_scope_fn(instance, fn_abi, None);
+
+        // Create an inlined debug location:
+        // - scope: the compiler_move/compiler_copy function
+        // - inlined_at: the current location (where the move/copy actually occurs)
+        // - span: use the function's definition span
+        let fn_span = self.cx().tcx.def_span(instance.def_id());
+        let inlined_loc = self.cx().dbg_loc(di_scope, saved_loc, fn_span);
+
+        // Set the temporary debug location
+        self.set_dbg_loc(inlined_loc);
+
+        // Execute the closure (which will generate the memcpy)
+        let result = f(self);
+
+        // Restore the original debug location
+        if let Some(loc) = saved_loc {
+            self.set_dbg_loc(loc);
+        } else {
+            self.clear_dbg_loc();
+        }
+
+        result
+    }
+}
+
+/// A source code location used to generate debug information.
+// FIXME(eddyb) rename this to better indicate it's a duplicate of
+// `rustc_span::Loc` rather than `DILocation`, perhaps by making
+// `lookup_char_pos` return the right information instead.
+struct DebugLoc {
+    /// Information about the original source file.
+    file: Arc<SourceFile>,
+    /// The (1-based) line number.
+    line: u32,
+    /// The (1-based) column number.
+    col: u32,
+}
+
+impl<'ll> CodegenCx<'ll, '_> {
+    /// Looks up debug source information about a `BytePos`.
+    // FIXME(eddyb) rename this to better indicate it's a duplicate of
+    // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
+    // `lookup_char_pos` return the right information instead.
+    fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
+        let (file, line, col) = match self.sess().source_map().lookup_line(pos) {
+            Ok(SourceFileAndLine { sf: file, line }) => {
+                let line_pos = file.lines()[line];
+
+                // Use 1-based indexing.
+                let line = (line + 1) as u32;
+                let col = (file.relative_position(pos) - line_pos).to_u32() + 1;
+
+                (file, line, col)
+            }
+            Err(file) => (file, UNKNOWN_LINE_NUMBER, UNKNOWN_COLUMN_NUMBER),
+        };
+
+        // For MSVC, omit the column number.
+        // Otherwise, emit it. This mimics clang behaviour.
+        // See discussion in https://github.com/rust-lang/rust/issues/42921
+        if self.sess().target.is_like_msvc {
+            DebugLoc { file, line, col: UNKNOWN_COLUMN_NUMBER }
+        } else {
+            DebugLoc { file, line, col }
+        }
+    }
+
+    fn create_template_type_parameter(
+        &self,
+        name: &str,
+        actual_type_metadata: &'ll DIType,
+    ) -> &'ll DITemplateTypeParameter {
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                DIB(self),
+                None,
+                name.as_c_char_ptr(),
+                name.len(),
+                actual_type_metadata,
+            )
+        }
+    }
+
+    /// Creates any deferred debug metadata nodes
+    pub(crate) fn debuginfo_finalize(&self) {
+        if let Some(dbg_cx) = &self.dbg_cx {
+            debug!("finalize");
+
+            if gdb::needs_gdb_debug_scripts_section(self) {
+                // Add a .debug_gdb_scripts section to this compile-unit. This will
+                // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
+                // which activates the Rust pretty printers for binary this section is
+                // contained in.
+                gdb::get_or_insert_gdb_debug_scripts_section_global(self);
+            }
+
+            dbg_cx.finalize(self.sess());
+        }
+    }
+}
+
+impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn dbg_location_clone_with_discriminator(
+        &self,
+        loc: &'ll DILocation,
+        discriminator: u32,
+    ) -> Option<&'ll DILocation> {
+        unsafe { llvm::LLVMRustDILocationCloneWithBaseDiscriminator(loc, discriminator) }
+    }
+
+    fn dbg_loc(
+        &self,
+        scope: &'ll DIScope,
+        inlined_at: Option<&'ll DILocation>,
+        span: Span,
+    ) -> &'ll DILocation {
+        // When emitting debugging information, DWARF (i.e. everything but MSVC)
+        // treats line 0 as a magic value meaning that the code could not be
+        // attributed to any line in the source. That's also exactly what dummy
+        // spans are. Make that equivalence here, rather than passing dummy spans
+        // to lookup_debug_loc, which will return line 1 for them.
+        let (line, col) = if span.is_dummy() && !self.sess().target.is_like_msvc {
+            (0, 0)
+        } else {
+            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+            (line, col)
+        };
+
+        unsafe { llvm::LLVMDIBuilderCreateDebugLocation(self.llcx, line, col, scope, inlined_at) }
+    }
+
+    fn create_vtable_debuginfo(
+        &self,
+        ty: Ty<'tcx>,
+        trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
+        vtable: Self::Value,
+    ) {
+        metadata::create_vtable_di_node(self, ty, trait_ref, vtable)
+    }
+
+    fn extend_scope_to_file(
+        &self,
+        scope_metadata: &'ll DIScope,
+        file: &rustc_span::SourceFile,
+    ) -> &'ll DILexicalBlock {
+        metadata::extend_scope_to_file(self, scope_metadata, file)
     }
 }

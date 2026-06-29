@@ -341,7 +341,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                             let arg_ty = self.monomorphize(decl.ty);
 
-                            self.cx.create_dbg_var(name, arg_ty, dbg_scope, kind, span)
+                            bx.create_dbg_var(name, arg_ty, dbg_scope, kind, span)
                         },
                     )
                 } else {
@@ -625,13 +625,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     match params_seen.entry((dbg_scope, arg_index)) {
                         Entry::Occupied(o) => o.get().clone(),
                         Entry::Vacant(v) => v
-                            .insert(
-                                self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span),
-                            )
+                            .insert(bx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span))
                             .clone(),
                     }
                 } else {
-                    self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
+                    bx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
                 }
             });
 
@@ -692,7 +690,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ///
     /// Returns the FunctionDebugContext for the function which holds state needed
     /// for debug info creation, if it is enabled.
-    pub(super) fn fill_function_debug_context(&mut self) {
+    pub(super) fn fill_function_debug_context(&mut self, bx: &mut Bx) {
         if self.cx.sess().opts.debuginfo == DebugInfo::None {
             return;
         }
@@ -722,7 +720,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Instantiate all scopes.
         let mut discriminators = FxHashMap::default();
         for scope in self.mir.source_scopes.indices() {
-            let scope_data = self.make_mir_scope(&variables, &mut discriminators, scope);
+            let scope_data = self.make_mir_scope(bx, &variables, &mut discriminators, scope);
             let _s = self.debug_context.as_mut().unwrap().scopes.push(scope_data);
             debug_assert_eq!(_s, scope);
         }
@@ -730,6 +728,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn make_mir_scope(
         &mut self,
+        bx: &mut Bx,
         variables: &Option<DenseBitSet<mir::SourceScope>>,
         discriminators: &mut FxHashMap<BytePos, u32>,
         scope: mir::SourceScope,
@@ -741,7 +740,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             // The root is the function itself.
             let file = self.cx.sess().source_map().lookup_source_file(self.mir.span.lo());
-            let dbg_scope = self.cx.dbg_scope_fn(self.instance, self.fn_abi, Some(self.llfn));
+            let dbg_scope = bx.dbg_scope_fn(self.instance, self.fn_abi, Some(self.llfn));
             return DebugScope {
                 dbg_scope,
                 inlined_at: None,
@@ -770,10 +769,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .entry(callee)
                     .or_insert_with(|| {
                         let callee_fn_abi = self.cx.fn_abi_of_instance(callee, ty::List::empty());
-                        self.cx.dbg_scope_fn(callee, callee_fn_abi, None)
+                        bx.dbg_scope_fn(callee, callee_fn_abi, None)
                     })
             }
-            None => self.cx.dbg_create_lexical_block(scope_data.span.lo(), parent_scope.dbg_scope),
+            None => bx.dbg_create_lexical_block(scope_data.span.lo(), parent_scope.dbg_scope),
         };
 
         let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
