@@ -443,3 +443,10 @@ fn assert_failed_inner(
         ),
     }
 }
+
+#[track_caller]
+#[inline(never)]
+#[cold]
+pub fn outline<T>(f: impl FnOnce() -> T) -> T {
+    f()
+}

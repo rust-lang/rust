@@ -48,7 +48,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
+                    $crate::panicking::outline(move || $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None));
                 }
             }
         }
@@ -61,7 +61,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
+                   $crate::panicking::outline(move || $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+))));
                 }
             }
         }
