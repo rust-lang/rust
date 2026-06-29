@@ -51,7 +51,6 @@ mod utils;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
-    llmod: &'ll llvm::Module,
     builder: DIBuilderBox<'ll>,
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
 
@@ -62,23 +61,8 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
-    pub(crate) fn new(llmod: &'ll llvm::Module) -> Self {
+    pub(crate) fn new(llmod: &'ll llvm::Module, sess: &Session) -> Self {
         debug!("CodegenUnitDebugContext::new");
-        let builder = DIBuilderBox::new(llmod);
-        // DIBuilder inherits context from the module, so we'd better use the same one
-        CodegenUnitDebugContext {
-            llmod,
-            builder,
-            created_files: Default::default(),
-            type_map: Default::default(),
-            adt_stack: Default::default(),
-            namespace_map: RefCell::new(Default::default()),
-            recursion_marker_type: OnceCell::new(),
-        }
-    }
-
-    pub(crate) fn finalize(&self, sess: &Session) {
-        unsafe { llvm::LLVMDIBuilderFinalize(self.builder.as_ref()) };
 
         match sess.target.debuginfo_kind {
             DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym => {
@@ -89,7 +73,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 // This can be overridden using --llvm-opts -dwarf-version,N.
                 // Android has the same issue (#22398)
                 llvm::add_module_flag_u32(
-                    self.llmod,
+                    llmod,
                     // In the case where multiple CGUs with different dwarf version
                     // values are being merged together, such as with cross-crate
                     // LTO, then we want to use the highest version of dwarf
@@ -102,7 +86,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             DebuginfoKind::Pdb => {
                 // Indicate that we want CodeView debug information
                 llvm::add_module_flag_u32(
-                    self.llmod,
+                    llmod,
                     llvm::ModuleFlagMergeBehavior::Warning,
                     "CodeView",
                     1,
@@ -112,11 +96,26 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
 
         // Prevent bitcode readers from deleting the debug info.
         llvm::add_module_flag_u32(
-            self.llmod,
+            llmod,
             llvm::ModuleFlagMergeBehavior::Warning,
             "Debug Info Version",
             unsafe { llvm::LLVMRustDebugMetadataVersion() },
         );
+
+        let builder = DIBuilderBox::new(llmod);
+        // DIBuilder inherits context from the module, so we'd better use the same one
+        CodegenUnitDebugContext {
+            builder,
+            created_files: Default::default(),
+            type_map: Default::default(),
+            adt_stack: Default::default(),
+            namespace_map: RefCell::new(Default::default()),
+            recursion_marker_type: OnceCell::new(),
+        }
+    }
+
+    pub(crate) fn finalize(&self) {
+        unsafe { llvm::LLVMDIBuilderFinalize(self.builder.as_ref()) };
     }
 }
 
@@ -736,7 +735,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 gdb::get_or_insert_gdb_debug_scripts_section_global(self);
             }
 
-            dbg_cx.finalize(self.sess());
+            dbg_cx.finalize();
         }
     }
 }
