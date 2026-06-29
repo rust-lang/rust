@@ -508,6 +508,10 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         pat: PatId,
     },
+    YieldOutsideCoroutine {
+        #[type_visitable(ignore)]
+        expr: ExprId,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

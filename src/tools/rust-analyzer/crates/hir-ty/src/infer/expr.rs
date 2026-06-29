@@ -597,7 +597,9 @@ impl<'db> InferenceContext<'_, 'db> {
                     }
                     resume_ty
                 } else {
-                    // FIXME: report error (yield expr in non-coroutine)
+                    self.push_diagnostic(InferenceDiagnostic::YieldOutsideCoroutine {
+                        expr: tgt_expr,
+                    });
                     self.types.types.error
                 }
             }
