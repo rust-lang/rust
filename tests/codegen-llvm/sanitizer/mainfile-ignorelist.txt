@@ -1,0 +1,2 @@
+[address]
+mainfile:*mainfile-ignore.rs

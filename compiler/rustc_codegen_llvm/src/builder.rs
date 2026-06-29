@@ -1898,7 +1898,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         // Emit KCFI operand bundle
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, instance, llfn);
-        if let Some(kcfi_bundle) = kcfi_bundle.as_ref().map(|b| b.as_ref()) {
+        if let Some(kcfi_bundle) = kcfi_bundle.as_ref().map(|bundle| bundle.as_ref()) {
             bundles.push(kcfi_bundle);
         }
 
@@ -1941,6 +1941,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             {
                 return;
             }
+            if crate::llvm::HasStringAttribute(self.llfn(), "no-sanitize-cfi") {
+                return;
+            }
 
             let mut options = cfi::TypeIdOptions::empty();
             if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
@@ -1948,6 +1951,10 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             }
             if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
                 options.insert(cfi::TypeIdOptions::NORMALIZE_INTEGERS);
+            }
+
+            if self.cx.is_sanitizer_type_ignored(c"cfi", fn_abi) {
+                return;
             }
 
             let typeid = if let Some(instance) = instance {
@@ -1999,6 +2006,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             {
                 return None;
             }
+            if crate::llvm::HasStringAttribute(self.llfn(), "no-sanitize-kcfi") {
+                return None;
+            }
 
             let mut options = kcfi::TypeIdOptions::empty();
             if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
@@ -2006,6 +2016,10 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             }
             if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
                 options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
+            }
+
+            if self.cx.is_sanitizer_type_ignored(c"kcfi", fn_abi) {
+                return None;
             }
 
             let kcfi_typeid = if let Some(instance) = instance {

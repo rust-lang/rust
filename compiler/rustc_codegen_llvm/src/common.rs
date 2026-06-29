@@ -13,7 +13,7 @@ use rustc_hashes::Hash128;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::cstore::DllImport;
 use tracing::debug;
 
@@ -445,4 +445,18 @@ impl AsCCharPtr for [u8] {
     fn as_c_char_ptr(&self) -> *const c_char {
         self.as_ptr().cast()
     }
+}
+
+pub(crate) fn type_name_for_ignore_list<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    fn_abi: &rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>,
+) -> String {
+    let inputs: Vec<_> = fn_abi.args.iter().map(|arg| arg.layout.ty).collect();
+    let output = fn_abi.ret.layout.ty;
+    let mut fn_sig_kind = ty::FnSigKind::default();
+    fn_sig_kind = fn_sig_kind.set_safety(rustc_hir::Safety::Safe);
+    fn_sig_kind = fn_sig_kind.set_c_variadic(fn_abi.c_variadic);
+    let fn_sig = tcx.mk_fn_sig(inputs, output, fn_sig_kind);
+    let fn_ptr = Ty::new_fn_ptr(tcx, ty::Binder::dummy(fn_sig));
+    ty::print::with_no_trimmed_paths!(fn_ptr.to_string())
 }

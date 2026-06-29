@@ -190,39 +190,47 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         );
         fn_abi.apply_attrs_llfn(self, llfn, instance);
 
-        if self.tcx.sess.is_sanitizer_cfi_enabled() {
-            if let Some(instance) = instance {
-                let mut typeids = FxIndexSet::default();
-                for options in [
-                    cfi::TypeIdOptions::GENERALIZE_POINTERS,
-                    cfi::TypeIdOptions::NORMALIZE_INTEGERS,
-                    cfi::TypeIdOptions::USE_CONCRETE_SELF,
-                ]
-                .into_iter()
-                .powerset()
-                .map(cfi::TypeIdOptions::from_iter)
-                {
-                    let typeid = cfi::typeid_for_instance(self.tcx, instance, options);
-                    if typeids.insert(typeid.clone()) {
+        if self.tcx.sess.is_sanitizer_cfi_enabled()
+            && !crate::llvm::HasStringAttribute(llfn, "no-sanitize-cfi")
+        {
+            let ignored = self.is_sanitizer_type_ignored(c"cfi", fn_abi);
+
+            if !ignored {
+                if let Some(instance) = instance {
+                    let mut typeids = FxIndexSet::default();
+                    for options in [
+                        cfi::TypeIdOptions::GENERALIZE_POINTERS,
+                        cfi::TypeIdOptions::NORMALIZE_INTEGERS,
+                        cfi::TypeIdOptions::USE_CONCRETE_SELF,
+                    ]
+                    .into_iter()
+                    .powerset()
+                    .map(cfi::TypeIdOptions::from_iter)
+                    {
+                        let typeid = cfi::typeid_for_instance(self.tcx, instance, options);
+                        if typeids.insert(typeid.clone()) {
+                            self.add_type_metadata(llfn, typeid.as_bytes());
+                        }
+                    }
+                } else {
+                    for options in [
+                        cfi::TypeIdOptions::GENERALIZE_POINTERS,
+                        cfi::TypeIdOptions::NORMALIZE_INTEGERS,
+                    ]
+                    .into_iter()
+                    .powerset()
+                    .map(cfi::TypeIdOptions::from_iter)
+                    {
+                        let typeid = cfi::typeid_for_fnabi(self.tcx, fn_abi, options);
                         self.add_type_metadata(llfn, typeid.as_bytes());
                     }
-                }
-            } else {
-                for options in [
-                    cfi::TypeIdOptions::GENERALIZE_POINTERS,
-                    cfi::TypeIdOptions::NORMALIZE_INTEGERS,
-                ]
-                .into_iter()
-                .powerset()
-                .map(cfi::TypeIdOptions::from_iter)
-                {
-                    let typeid = cfi::typeid_for_fnabi(self.tcx, fn_abi, options);
-                    self.add_type_metadata(llfn, typeid.as_bytes());
                 }
             }
         }
 
-        if self.tcx.sess.is_sanitizer_kcfi_enabled() {
+        if self.tcx.sess.is_sanitizer_kcfi_enabled()
+            && !crate::llvm::HasStringAttribute(llfn, "no-sanitize-kcfi")
+        {
             // LLVM KCFI does not support multiple !kcfi_type attachments
             let mut options = kcfi::TypeIdOptions::empty();
             if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
@@ -232,11 +240,14 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
-            if let Some(instance) = instance {
-                let kcfi_typeid = kcfi::typeid_for_instance(self.tcx, instance, options);
-                self.set_kcfi_type_metadata(llfn, kcfi_typeid);
-            } else {
-                let kcfi_typeid = kcfi::typeid_for_fnabi(self.tcx, fn_abi, options);
+            let ignored = self.is_sanitizer_type_ignored(c"kcfi", fn_abi);
+
+            if !ignored {
+                let kcfi_typeid = if let Some(instance) = instance {
+                    kcfi::typeid_for_instance(self.tcx, instance, options)
+                } else {
+                    kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
+                };
                 self.set_kcfi_type_metadata(llfn, kcfi_typeid);
             }
         }
