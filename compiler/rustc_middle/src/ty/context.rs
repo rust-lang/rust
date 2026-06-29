@@ -601,7 +601,14 @@ impl<'tcx> TyCtxt<'tcx> {
     /// effect. However, we do not want this as a general capability, so this interface restricts
     /// to the only allowed case.
     pub fn feed_anon_const_type(self, key: LocalDefId, value: ty::EarlyBinder<'tcx, Ty<'tcx>>) {
-        debug_assert_eq!(self.def_kind(key), DefKind::AnonConst);
+        if cfg!(debug_assertions) {
+            match self.def_kind(key) {
+                DefKind::AnonConst => (),
+                DefKind::InlineConst => assert!(self.is_type_system_inline_const(key)),
+                def_kind => bug!("unexpected DefKind in feed_anon_const_type: {def_kind:?}"),
+            }
+        }
+
         TyCtxtFeed { tcx: self, key }.type_of(value)
     }
 

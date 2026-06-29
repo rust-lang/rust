@@ -244,7 +244,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy { def_id },
             DefKind::TyAlias => ty::AliasTermKind::FreeTy { def_id },
             DefKind::Const { .. } => ty::AliasTermKind::FreeConst { def_id },
-            DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
+            DefKind::AnonConst | DefKind::InlineConst | DefKind::Ctor(_, CtorKind::Const) => {
                 ty::AliasTermKind::AnonConst { def_id }
             }
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
