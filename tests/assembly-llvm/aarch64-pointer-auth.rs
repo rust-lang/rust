@@ -4,12 +4,12 @@
 //@ revisions: GCS PACRET PAUTHLR_NOP PAUTHLR
 //@ assembly-output: emit-asm
 //@ needs-llvm-components: aarch64
-//@ compile-flags: --target aarch64-unknown-linux-gnu
+//@ compile-flags: --target aarch64-unknown-linux-gnu -Zunstable-options
 //@ [GCS] ignore-apple (XCode version needs updating)
-//@ [GCS] compile-flags: -Z branch-protection=gcs
-//@ [PACRET] compile-flags: -Z branch-protection=pac-ret,leaf
-//@ [PAUTHLR_NOP] compile-flags: -Z branch-protection=pac-ret,pc,leaf
-//@ [PAUTHLR] compile-flags: -C target-feature=+pauth-lr -Z branch-protection=pac-ret,pc,leaf
+//@ [GCS] compile-flags: -T branch-protection=gcs
+//@ [PACRET] compile-flags: -T branch-protection=pac-ret,leaf
+//@ [PAUTHLR_NOP] compile-flags: -T branch-protection=pac-ret,pc,leaf
+//@ [PAUTHLR] compile-flags: -C target-feature=+pauth-lr -T branch-protection=pac-ret,pc,leaf
 
 #![feature(no_core, lang_items)]
 #![no_std]

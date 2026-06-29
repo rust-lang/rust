@@ -3,16 +3,16 @@
 //@ add-minicore
 //@ revisions: BTI GCS PACRET LEAF BKEY PAUTHLR PAUTHLR_BKEY PAUTHLR_LEAF PAUTHLR_BTI NONE
 //@ needs-llvm-components: aarch64
-//@ [BTI] compile-flags: -Z branch-protection=bti
-//@ [GCS] compile-flags: -Z branch-protection=gcs
-//@ [PACRET] compile-flags: -Z branch-protection=pac-ret
-//@ [LEAF] compile-flags: -Z branch-protection=pac-ret,leaf
-//@ [BKEY] compile-flags: -Z branch-protection=pac-ret,b-key
-//@ [PAUTHLR] compile-flags: -Z branch-protection=pac-ret,pc
-//@ [PAUTHLR_BKEY] compile-flags: -Z branch-protection=pac-ret,pc,b-key
-//@ [PAUTHLR_LEAF] compile-flags: -Z branch-protection=pac-ret,pc,leaf
-//@ [PAUTHLR_BTI] compile-flags: -Z branch-protection=bti,pac-ret,pc
-//@ compile-flags: --target aarch64-unknown-linux-gnu
+//@ [BTI] compile-flags: -T branch-protection=bti
+//@ [GCS] compile-flags: -T branch-protection=gcs
+//@ [PACRET] compile-flags: -T branch-protection=pac-ret
+//@ [LEAF] compile-flags: -T branch-protection=pac-ret,leaf
+//@ [BKEY] compile-flags: -T branch-protection=pac-ret,b-key
+//@ [PAUTHLR] compile-flags: -T branch-protection=pac-ret,pc
+//@ [PAUTHLR_BKEY] compile-flags: -T branch-protection=pac-ret,pc,b-key
+//@ [PAUTHLR_LEAF] compile-flags: -T branch-protection=pac-ret,pc,leaf
+//@ [PAUTHLR_BTI] compile-flags: -T branch-protection=bti,pac-ret,pc
+//@ compile-flags: --target aarch64-unknown-linux-gnu -Zunstable-options
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]

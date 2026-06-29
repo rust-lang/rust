@@ -531,7 +531,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
 
         // For non-naked functions, set branch protection attributes on aarch64.
         if let Some(BranchProtection { bti, pac_ret, gcs }) =
-            sess.opts.unstable_opts.branch_protection
+            sess.opts.target_opts.branch_protection
         {
             assert!(sess.target.arch == Arch::AArch64);
             if bti {
