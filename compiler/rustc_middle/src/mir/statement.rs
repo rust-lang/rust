@@ -620,7 +620,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn function_handle(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        args: impl IntoIterator<Item = GenericArg<'tcx>>,
+        args: ty::Binder<'tcx, impl IntoIterator<Item = GenericArg<'tcx>>>,
         span: Span,
     ) -> Self {
         let ty = Ty::new_fn_def(tcx, def_id, args);

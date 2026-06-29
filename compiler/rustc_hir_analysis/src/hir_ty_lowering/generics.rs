@@ -644,24 +644,25 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
 
     let param_counts = def.own_counts();
 
-    if def.has_late_bound_regions() && args.has_lifetime_params() {
-        if !cx.tcx().features().late_bound_turbofishing() && false {
+    if let Some(span_late) = def.has_late_bound_regions
+        && args.has_lifetime_args()
+    {
+        if !cx.tcx().features().late_bound_turbofishing() {
             let msg = "cannot specify lifetime arguments explicitly \
                        if late bound lifetime parameters are present";
-            // let note = "the late bound lifetime parameter is introduced here";
             let span = args.args[0].span();
-        } else {
+
             let gone_turbofishing = "this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information";
 
             if position == GenericArgPosition::Value(IsMethodCall::No)
                 && args.num_lifetime_args() != param_counts.lifetimes
             {
-                struct_span_code_err!(cx.dcx(), span, E0794, "{}", msg)
-                    .with_note(gone_turbofishing)
-                    .emit();
                 // struct_span_code_err!(cx.dcx(), span, E0794, "{}", msg)
-                //     .with_span_note(span_late, note)
+                //     .with_note(gone_turbofishing)
                 //     .emit();
+                struct_span_code_err!(cx.dcx(), span, E0794, "{}", msg)
+                    .with_span_note(span_late, gone_turbofishing)
+                    .emit();
             } else {
                 let /* mut */ multispan = MultiSpan::from_span(span);
                 // multispan.push_span_label(span_late, note);

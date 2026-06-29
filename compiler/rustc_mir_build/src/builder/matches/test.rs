@@ -468,7 +468,7 @@ fn trait_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     method_name: Symbol,
-    args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+    args: ty::Binder<'tcx, impl IntoIterator<Item: Into<GenericArg<'tcx>>>>,
 ) -> Const<'tcx> {
     // The unhygienic comparison here is acceptable because this is only
     // used on known traits.

@@ -2133,10 +2133,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let is_inherent_assoc_type_const =
             matches!(def_kind, DefKind::AssocConst { is_type_const: true }) && is_parent_impl;
 
-        // let is_fn = matches!(def_kind, DefKind::Fn);
-        let is_assoc_fn = matches!(def_kind, DefKind::AssocFn);
-        // &&!self.tcx().features().late_bound_turbofishing();
-
         let own_args = if !nested && (is_inherent_assoc_ty || is_inherent_assoc_type_const) {
             if generics.own_params.len() + 1 != args.len() {
                 // tracing::debug!("turbofish={is_fn_turbofish:?} @ 2107");
@@ -2150,37 +2146,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             &args[1..]
         } else {
-            let generics_count = generics.count();
-            let self_param = self.types.self_param;
-
-            let args_has_self =
-                args.len() > 0 && args[0].as_type().map_or(false, |a| a == self_param);
-
-            // generics.
-            let generics_has_self = if generics_count > 0 {
-                let pat = generics.param_at(0, self);
-                let name = pat.name;
-                name == kw::SelfLower || name == kw::SelfUpper
-            } else {
-                false
-            };
-
-            let expected = if (generics_has_self ^ args_has_self) && is_assoc_fn {
-                if args_has_self { generics_count + 1 } else { generics_count.saturating_sub(1) }
-            } else {
-                generics_count
-            };
-
-            // look. it works.
-            if expected != args.len()
-                && generics.count_without_late() != args.len()
-                && generics_count != args.len()
-            {
-                tracing::error!(
-                    "count (w/o late)={}, count={}, parent kind={def_parent:?}, args_has_self={args_has_self}, generics_has_self={generics_has_self}",
-                    generics.count_without_late(),
-                    generics.count(),
-                );
+            if generics.count() != args.len() {
                 return false;
             }
 

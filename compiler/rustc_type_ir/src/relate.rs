@@ -518,7 +518,8 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
                 let a_args = a_args.no_bound_vars().unwrap();
                 let b_args = b_args.no_bound_vars().unwrap();
                 relation.relate_ty_args(a, b, a_def_id.into(), a_args, b_args, |args| {
-                    Ty::new_fn_def(cx, a_def_id, args)
+                    // FIXME: actually instantiate the binder correctly (turbofishing/fndef changes)
+                    Ty::new_fn_def(cx, a_def_id, ty::Binder::dummy(args))
                 })
             }
         }
