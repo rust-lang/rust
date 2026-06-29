@@ -26,6 +26,7 @@ use crate::{
     Determinacy, ExternModule, Finalize, IdentKey, ImportKind, ImportSummary, LateDecl,
     LocalModule, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError,
     Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage, Symbol, Used, diagnostics,
+    module_to_string,
 };
 
 #[derive(Copy, Clone)]
@@ -1865,6 +1866,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module = Some(ModuleOrUniformRoot::Module(parent));
                         continue;
                     }
+                    let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
+                    let current_module = self.resolve_self(&mut ctxt, parent_scope.module);
+                    let current_module_path = module_to_string(current_module)
+                        .map_or_else(|| "crate".to_string(), |path| format!("crate::{path}"));
                     return PathResult::failed(
                         ident,
                         false,
@@ -1873,8 +1878,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module,
                         || {
                             (
-                                "too many leading `super` keywords".to_string(),
-                                "there are too many leading `super` keywords".to_string(),
+                                format!(
+                                    "too many leading `super` keywords within `{current_module_path}`"
+                                ),
+                                "this `super` would go above the crate root".to_string(),
                                 None,
                                 None,
                             )
