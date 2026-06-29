@@ -58,8 +58,8 @@ struct NotableTraitBadgeVars {
     full_path: String,
     /// Relative URL to the trait page, or `None` when not linkable.
     href: Option<String>,
-    /// Pre-rendered `style="..."` attribute.
-    style_attr: String,
+    /// Index of the `.notable-trait-badge-{n}` color class.
+    color_index: u64,
 }
 
 #[derive(Template)]
@@ -132,15 +132,13 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
                 // This won't be stable between releases though.
                 let mut h = DefaultHasher::new();
                 info.full_path.hash(&mut h);
-                // Evenly-spaced OKLCH hues at fixed light/chroma.
-                const BADGE_HUES: u64 = 8;
-                let hue = (h.finish() % BADGE_HUES) * 360 / BADGE_HUES;
-                let style_attr = format!("style=\"background: oklch(0.55 0.21 {hue})\"");
+                const BADGE_COLORS: u64 = 6;
+                let color_index = h.finish() % BADGE_COLORS;
                 NotableTraitBadgeVars {
                     name: info.name,
                     full_path: info.full_path,
                     href: info.href,
-                    style_attr,
+                    color_index,
                 }
             })
             .collect();
