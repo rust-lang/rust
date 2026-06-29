@@ -188,8 +188,9 @@ def dispatch_repr(var_name: str, breakpoint_index: int, frame: lldb.SBFrame) -> 
     # We save importing the check until we actually see a repr command. This prevents us from trying
     # to load input data from tests that don't use `repr` commands.
     from .check_lldb import check
+    from .common import Result
 
-    return check(var_name, breakpoint_index, frame)
+    return check(var_name, breakpoint_index, frame) == Result.Ok
 
 
 ####################################################################################################
@@ -246,7 +247,7 @@ def main():
 
     repr_cmd_run = False
     breakpoint_index = 0
-    errors = False
+    all_ok = True
 
     try:
         script_file = open(script_path, "r")
@@ -284,7 +285,7 @@ def main():
                 frame = p.GetSelectedThread().GetSelectedFrame()
 
                 print(command)
-                errors |= dispatch_repr(var_name, breakpoint_index, frame)
+                all_ok &= dispatch_repr(var_name, breakpoint_index, frame)
             elif command != "":
                 execute_command(command_interpreter, command)
 

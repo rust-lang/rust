@@ -304,6 +304,8 @@ def bless_type(target_data: TargetData, type: lldb.SBType, sbtarget: lldb.SBTarg
         ), f"old: {pprint.pformat(target_data.types[t_name])}\nnew: {pprint.pformat(t_data)}"
         return
 
+    print(f"blessing type: {t_name}")
+
     # We need to add this type first just in case the type contains itself.
     target_data.types[t_name] = t_data
 

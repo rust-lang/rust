@@ -3,7 +3,7 @@ from/into these types, see `./from_lldb.py`"""
 
 import json
 import os
-from enum import Enum, Flag, auto
+from enum import Enum
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from types import NoneType
 from typing import Any, Optional, get_origin, Final
@@ -16,6 +16,14 @@ ByteSize = int
 # see: default json decoder docs https://docs.python.org/3/library/json.html#json.JSONDecoder
 # The types we're dealing with can only be: int, str, float, list, dict, bool, and None
 JsonType = int | str | float | list["JsonType"] | bool | None | dict[str, "JsonType"]
+
+
+class Result(Enum):
+    Ok = True
+    Mismatch = False
+
+    def __and__(self, other: "Result") -> "Result":
+        return Result(self.value & other.value)
 
 
 def print_error(error_source: str, message: str):
@@ -172,25 +180,6 @@ class Field:
     offset: ByteSize
 
 
-# enum.Flag using the `auto()` specifier defaults to using
-# a bitflags implementation. Per the docs, 0 is no value,
-# and each subsequent value is a power of 2, starting with 1
-# (i.e. 1 << N)
-class TypeMismatch(Flag):
-    Size = auto()
-    BasicType = auto()
-    type_class = auto()
-    fields = auto()
-    fields_renamed = auto()
-    fields_reordered = auto()
-    field_added = auto()
-    field_removed = auto()
-    # todo
-    # generics = auto()
-    # generic_added = auto()
-    # generic_removed = auto()
-
-
 @dataclass(slots=True)
 class Type:
     size: ByteSize
@@ -221,16 +210,16 @@ class Type:
     # values, so it's not super urgent.
     # static_fields: list[StaticField]
 
-    def matches(self, expected: "Type", type_name: str) -> bool:
-        result = True
+    def matches(self, expected: "Type", type_name: str) -> Result:
+        result = Result.Ok
         error_source = f"type '{type_name}'"
         # FIXME handle 32 bit targets
         if self.size != expected.size:
-            result = False
+            result = Result.Mismatch
             print_mismatch(error_source, "size", self.size, expected.size)
 
         if self.fields != expected.fields:
-            result = False
+            result = Result.Mismatch
             # Extra processing for better error messages
             got_set = set(self.fields)
             expected_set = set(expected.fields)
