@@ -4146,7 +4146,8 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                                 "enumDescriptions": [
                                     "Do not show this item or its methods (if it is a trait) in auto-import completions.",
                                     "Do not show this trait's methods in auto-import completions.",
-                                    "Do not show this module's all items in it in auto-import completions."
+                                    "Do not show this module's all items in it in auto-import completions.",
+                                    "Do not show this enum's variants in auto-import completions."
                                 ],
                             },
                         }
