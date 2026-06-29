@@ -1,6 +1,6 @@
 //! Defines a unit of change that can applied to the database to get the next
 //! state. Changes are transactional.
-use base_db::{CrateGraphBuilder, FileChange, SourceRoot, salsa::Durability};
+use base_db::{CrateGraphBuilder, FileChange, SourceRoot};
 use span::FileId;
 
 use crate::{db::ExpandDatabase, proc_macro::ProcMacrosBuilder};
@@ -17,7 +17,6 @@ impl ChangeWithProcMacros {
         if let Some(proc_macros) = self.proc_macros {
             proc_macros.build_in(
                 db,
-                Durability::HIGH,
                 crates_id_map
                     .as_ref()
                     .expect("cannot set proc macros without setting the crate graph too"),
