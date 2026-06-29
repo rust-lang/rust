@@ -6,7 +6,7 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{get_expr_use_site, sym};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Node, PatKind};
+use rustc_hir::{BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::{DesugaringKind, ExpnKind, Span, Symbol};
@@ -41,7 +41,10 @@ pub(super) fn check<'tcx>(
         let iter_method = if is_mut { "iter_mut" } else { "iter" };
 
         let mut applicability = Applicability::MachineApplicable;
-        let arg_str = snippet_with_context(cx, arg.span, expr.span.ctxt(), "_", &mut applicability).0;
+        let mut arg_str = snippet_with_context(cx, arg.span, expr.span.ctxt(), "_", &mut applicability).0;
+        if expr_needs_braces_for_const(arg) {
+            arg_str = std::borrow::Cow::Owned(format!("{{ {arg_str} }}"));
+        }
 
         let as_chunks = format_args!("{suggestion_method}::<{arg_str}>()");
 
@@ -98,5 +101,23 @@ pub(super) fn check<'tcx>(
                 }
             },
         );
+    }
+}
+
+/// Whether the given expression needs braces to be a syntactically valid const generics argument.
+///
+/// For more details, see: <https://doc.rust-lang.org/reference/paths.html#railroad-GenericArgsConst>
+fn expr_needs_braces_for_const(e: &Expr<'_>) -> bool {
+    match e.kind {
+        ExprKind::Lit(_) => false,
+        ExprKind::Block(block, None) => {
+            // unsafe blocks need braces
+            block.rules != BlockCheckMode::DefaultBlock
+        },
+        ExprKind::Path(QPath::Resolved(_, p)) => {
+            // path must be a single segment. E.g. Foo::BAR is not allowed
+            p.segments.len() != 1
+        },
+        _ => true,
     }
 }
