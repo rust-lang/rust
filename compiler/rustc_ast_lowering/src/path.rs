@@ -412,6 +412,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             } else {
                 Some(generic_args.into_generic_args(self))
             },
+            delegation_child_segment: false,
         }
     }
 
