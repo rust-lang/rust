@@ -32,6 +32,40 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) -> Self::DIScope {
     }
 
+    fn dbg_location_clone_with_discriminator(
+        &self,
+        loc: Self::DILocation,
+        _discriminator: u32,
+    ) -> Option<Self::DILocation> {
+        Some(loc)
+    }
+
+    fn extend_scope_to_file(
+        &self,
+        _scope_metadata: Self::DIScope,
+        _file: &SourceFile,
+    ) -> Self::DIScope {
+        // FIXME(antoyo): implement.
+    }
+
+    fn dbg_loc(
+        &self,
+        _scope: Self::DIScope,
+        _inlined_at: Option<Self::DILocation>,
+        span: Span,
+    ) -> Self::DILocation {
+        let pos = span.lo();
+        let DebugLoc { file, line, col } = self.lookup_debug_loc(pos);
+        match file.name {
+            rustc_span::FileName::Real(ref name) => self.context.new_location(
+                name.path(rustc_span::RemapPathScopeComponents::DEBUGINFO).to_string_lossy(),
+                line as i32,
+                col as i32,
+            ),
+            _ => Location::null(),
+        }
+    }
+
     fn create_dbg_var(
         &self,
         _variable_name: Symbol,
@@ -143,39 +177,5 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         _vtable: Self::Value,
     ) {
         // FIXME(antoyo)
-    }
-
-    fn dbg_location_clone_with_discriminator(
-        &self,
-        loc: Self::DILocation,
-        _discriminator: u32,
-    ) -> Option<Self::DILocation> {
-        Some(loc)
-    }
-
-    fn extend_scope_to_file(
-        &self,
-        _scope_metadata: Self::DIScope,
-        _file: &SourceFile,
-    ) -> Self::DIScope {
-        // FIXME(antoyo): implement.
-    }
-
-    fn dbg_loc(
-        &self,
-        _scope: Self::DIScope,
-        _inlined_at: Option<Self::DILocation>,
-        span: Span,
-    ) -> Self::DILocation {
-        let pos = span.lo();
-        let DebugLoc { file, line, col } = self.lookup_debug_loc(pos);
-        match file.name {
-            rustc_span::FileName::Real(ref name) => self.context.new_location(
-                name.path(rustc_span::RemapPathScopeComponents::DEBUGINFO).to_string_lossy(),
-                line as i32,
-                col as i32,
-            ),
-            _ => Location::null(),
-        }
     }
 }

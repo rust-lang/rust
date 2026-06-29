@@ -78,15 +78,18 @@ impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
     /// it may so happen that the current span belongs to a different file than the DIScope
     /// corresponding to span's containing source scope. If so, we need to create a DIScope
     /// "extension" into that file.
-    pub fn adjust_dbg_scope_for_span<Cx: CodegenMethods<'tcx, DIScope = S, DILocation = L>>(
+    pub fn adjust_dbg_scope_for_span<
+        'a,
+        Bx: BuilderMethods<'a, 'tcx, DIScope = S, DILocation = L>,
+    >(
         &self,
-        cx: &Cx,
+        bx: &mut Bx,
         span: Span,
     ) -> S {
         let pos = span.lo();
         if pos < self.file_start_pos || pos >= self.file_end_pos {
-            let sm = cx.sess().source_map();
-            cx.extend_scope_to_file(self.dbg_scope, &sm.lookup_char_pos(pos).file)
+            let sm = bx.sess().source_map();
+            bx.extend_scope_to_file(self.dbg_scope, &sm.lookup_char_pos(pos).file)
         } else {
             self.dbg_scope
         }
@@ -217,23 +220,24 @@ fn calculate_debuginfo_offset<
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn set_debug_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) {
         bx.set_span(source_info.span);
-        if let Some(dbg_loc) = self.dbg_loc(source_info) {
+        if let Some(dbg_loc) = self.dbg_loc(bx, source_info) {
             bx.set_dbg_loc(dbg_loc);
         }
     }
 
-    fn dbg_loc(&self, source_info: mir::SourceInfo) -> Option<Bx::DILocation> {
-        let (dbg_scope, inlined_at, span) = self.adjusted_span_and_dbg_scope(source_info)?;
-        Some(self.cx.dbg_loc(dbg_scope, inlined_at, span))
+    fn dbg_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) -> Option<Bx::DILocation> {
+        let (dbg_scope, inlined_at, span) = self.adjusted_span_and_dbg_scope(bx, source_info)?;
+        Some(bx.dbg_loc(dbg_scope, inlined_at, span))
     }
 
     fn adjusted_span_and_dbg_scope(
         &self,
+        bx: &mut Bx,
         source_info: mir::SourceInfo,
     ) -> Option<(Bx::DIScope, Option<Bx::DILocation>, Span)> {
         let scope = &self.debug_context.as_ref()?.scopes[source_info.scope];
         let span = hygiene::walk_chain_collapsed(source_info.span, self.mir.span);
-        Some((scope.adjust_dbg_scope_for_span(self.cx, span), scope.inlined_at, span))
+        Some((scope.adjust_dbg_scope_for_span(bx, span), scope.inlined_at, span))
     }
 
     fn spill_operand_to_stack(
@@ -279,7 +283,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let Some(dbg_var) = var.dbg_var else {
                 continue;
             };
-            let Some(dbg_loc) = self.dbg_loc(var.source_info) else {
+            let Some(dbg_loc) = self.dbg_loc(bx, var.source_info) else {
                 continue;
             };
             bx.dbg_var_value(
@@ -334,7 +338,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let name = sym::empty;
                 let decl = &self.mir.local_decls[local];
                 let dbg_var = if full_debug_info {
-                    self.adjusted_span_and_dbg_scope(decl.source_info).map(
+                    self.adjusted_span_and_dbg_scope(bx, decl.source_info).map(
                         |(dbg_scope, _, span)| {
                             // FIXME(eddyb) is this `+ 1` needed at all?
                             let kind = VariableKind::ArgumentVariable(arg_index + 1);
@@ -483,7 +487,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         var: PerLocalVarDebugInfo<'tcx, Bx::DIVariable>,
     ) {
         let Some(dbg_var) = var.dbg_var else { return };
-        let Some(dbg_loc) = self.dbg_loc(var.source_info) else { return };
+        let Some(dbg_loc) = self.dbg_loc(bx, var.source_info) else { return };
 
         let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
             calculate_debuginfo_offset(bx, var.projection, base.layout);
@@ -579,7 +583,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut params_seen: FxHashMap<_, Bx::DIVariable> = Default::default();
         for var in &self.mir.var_debug_info {
             let dbg_scope_and_span = if full_debug_info {
-                self.adjusted_span_and_dbg_scope(var.source_info)
+                self.adjusted_span_and_dbg_scope(bx, var.source_info)
             } else {
                 None
             };
@@ -667,7 +671,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::VarDebugInfoContents::Const(c) => {
                     if let Some(dbg_var) = dbg_var {
-                        let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
+                        let Some(dbg_loc) = self.dbg_loc(bx, var.source_info) else { continue };
 
                         let operand = self.eval_mir_constant_to_operand(bx, &c);
                         constants.push(ConstDebugInfo {
@@ -777,8 +781,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
             let callsite_span = hygiene::walk_chain_collapsed(callsite_span, self.mir.span);
-            let callsite_scope = parent_scope.adjust_dbg_scope_for_span(self.cx, callsite_span);
-            let loc = self.cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span);
+            let callsite_scope = parent_scope.adjust_dbg_scope_for_span(bx, callsite_span);
+            let loc = bx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span);
 
             // NB: In order to produce proper debug info for variables (particularly
             // arguments) in multiply-inlined functions, LLVM expects to see a single
@@ -804,9 +808,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // NB: We have to emit *something* here or we'll fail LLVM IR verification
                     // in at least some circumstances (see issue #135322) so if the required
                     // discriminant cannot be encoded fall back to the dummy location.
-                    self.cx.dbg_location_clone_with_discriminator(loc, *o.get()).unwrap_or_else(
-                        || self.cx.dbg_loc(callsite_scope, parent_scope.inlined_at, DUMMY_SP),
-                    )
+                    bx.dbg_location_clone_with_discriminator(loc, *o.get()).unwrap_or_else(|| {
+                        bx.dbg_loc(callsite_scope, parent_scope.inlined_at, DUMMY_SP)
+                    })
                 }
                 Entry::Vacant(v) => {
                     v.insert(0);

@@ -383,6 +383,43 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
     }
 
+    fn dbg_location_clone_with_discriminator(
+        &self,
+        loc: &'ll DILocation,
+        discriminator: u32,
+    ) -> Option<&'ll DILocation> {
+        unsafe { llvm::LLVMRustDILocationCloneWithBaseDiscriminator(loc, discriminator) }
+    }
+
+    fn dbg_loc(
+        &self,
+        scope: &'ll DIScope,
+        inlined_at: Option<&'ll DILocation>,
+        span: Span,
+    ) -> &'ll DILocation {
+        // When emitting debugging information, DWARF (i.e. everything but MSVC)
+        // treats line 0 as a magic value meaning that the code could not be
+        // attributed to any line in the source. That's also exactly what dummy
+        // spans are. Make that equivalence here, rather than passing dummy spans
+        // to lookup_debug_loc, which will return line 1 for them.
+        let (line, col) = if span.is_dummy() && !self.sess().target.is_like_msvc {
+            (0, 0)
+        } else {
+            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+            (line, col)
+        };
+
+        unsafe { llvm::LLVMDIBuilderCreateDebugLocation(self.llcx, line, col, scope, inlined_at) }
+    }
+
+    fn extend_scope_to_file(
+        &self,
+        scope_metadata: &'ll DIScope,
+        file: &rustc_span::SourceFile,
+    ) -> &'ll DILexicalBlock {
+        metadata::extend_scope_to_file(self, scope_metadata, file)
+    }
+
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn create_dbg_var(
@@ -605,7 +642,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         // - inlined_at: the current location (where the move/copy actually occurs)
         // - span: use the function's definition span
         let fn_span = self.cx().tcx.def_span(instance.def_id());
-        let inlined_loc = self.cx().dbg_loc(di_scope, saved_loc, fn_span);
+        let inlined_loc = self.dbg_loc(di_scope, saved_loc, fn_span);
 
         // Set the temporary debug location
         self.set_dbg_loc(inlined_loc);
@@ -701,35 +738,6 @@ impl<'ll> CodegenCx<'ll, '_> {
 }
 
 impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn dbg_location_clone_with_discriminator(
-        &self,
-        loc: &'ll DILocation,
-        discriminator: u32,
-    ) -> Option<&'ll DILocation> {
-        unsafe { llvm::LLVMRustDILocationCloneWithBaseDiscriminator(loc, discriminator) }
-    }
-
-    fn dbg_loc(
-        &self,
-        scope: &'ll DIScope,
-        inlined_at: Option<&'ll DILocation>,
-        span: Span,
-    ) -> &'ll DILocation {
-        // When emitting debugging information, DWARF (i.e. everything but MSVC)
-        // treats line 0 as a magic value meaning that the code could not be
-        // attributed to any line in the source. That's also exactly what dummy
-        // spans are. Make that equivalence here, rather than passing dummy spans
-        // to lookup_debug_loc, which will return line 1 for them.
-        let (line, col) = if span.is_dummy() && !self.sess().target.is_like_msvc {
-            (0, 0)
-        } else {
-            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
-            (line, col)
-        };
-
-        unsafe { llvm::LLVMDIBuilderCreateDebugLocation(self.llcx, line, col, scope, inlined_at) }
-    }
-
     fn create_vtable_debuginfo(
         &self,
         ty: Ty<'tcx>,
@@ -737,13 +745,5 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         vtable: Self::Value,
     ) {
         metadata::create_vtable_di_node(self, ty, trait_ref, vtable)
-    }
-
-    fn extend_scope_to_file(
-        &self,
-        scope_metadata: &'ll DIScope,
-        file: &rustc_span::SourceFile,
-    ) -> &'ll DILexicalBlock {
-        metadata::extend_scope_to_file(self, scope_metadata, file)
     }
 }
