@@ -1800,36 +1800,35 @@ pub(crate) struct NotableTraitBadge {
 /// Returns all `#[doc(notable_trait)]` traits that `item` implements, to be
 /// rendered as badges at the top of the item's page.
 pub(crate) fn notable_trait_badges(item: &clean::Item, cx: &Context<'_>) -> Vec<NotableTraitBadge> {
-    let Some(did) = item.def_id() else { return Vec::new() };
-
-    if Some(did) == cx.tcx().lang_items().owned_box()
-        || Some(did) == cx.tcx().lang_items().pin_type()
+    let tcx = cx.tcx();
+    if let Some(def_id) = item.def_id()
+        && tcx.lang_items().owned_box() != Some(def_id)
+        && tcx.lang_items().pin_type() != Some(def_id)
+        && let Some(impls) = cx.cache().impls.get(&def_id)
     {
-        return Vec::new();
+        impls
+            .iter()
+            .map(Impl::inner_impl)
+            .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
+            .filter_map(|impl_| {
+                let path_ = impl_.trait_.as_ref()?;
+                let trait_did = path_.def_id();
+                if !cx.cache().traits.get(&trait_did)?.is_notable_trait(tcx) {
+                    return None;
+                }
+                let name = tcx.item_name(trait_did).to_string();
+                let (full_path, href) = match href(trait_did, cx) {
+                    Ok(info) => (join_path_syms(&info.rust_path), Some(info.url)),
+                    Err(_) => (tcx.def_path_str(trait_did), None),
+                };
+                Some((name, NotableTraitBadge { name, full_path, href }))
+            })
+            .collect::<BTreeMap<String, NotableTraitBadge>>()
+            .into_values()
+            .collect()
+    } else {
+        Vec::new()
     }
-
-    let Some(impls) = cx.cache().impls.get(&did) else { return Vec::new() };
-
-    impls
-        .iter()
-        .map(Impl::inner_impl)
-        .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
-        .filter_map(|impl_| {
-            let path_ = impl_.trait_.as_ref()?;
-            let trait_did = path_.def_id();
-            if !cx.cache().traits.get(&trait_did)?.is_notable_trait(cx.tcx()) {
-                return None;
-            }
-            let name = cx.tcx().item_name(trait_did).to_string();
-            let (full_path, href) = match href(trait_did, cx) {
-                Ok(info) => (join_path_syms(&info.rust_path), Some(info.url)),
-                Err(_) => (cx.tcx().def_path_str(trait_did), None),
-            };
-            Some((name.clone(), NotableTraitBadge { name, full_path, href }))
-        })
-        .collect::<BTreeMap<String, NotableTraitBadge>>()
-        .into_values()
-        .collect()
 }
 
 #[derive(Clone, Copy, Debug)]
