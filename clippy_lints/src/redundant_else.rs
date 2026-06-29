@@ -2,11 +2,11 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::{SpanExt, indent_of, reindent_multiline};
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, MatchSource, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TypeckResults;
 use rustc_session::declare_lint_pass;
-use rustc_span::SyntaxContext;
+use rustc_span::{ExpnKind, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -50,18 +50,18 @@ declare_lint_pass!(RedundantElse => [REDUNDANT_ELSE]);
 impl<'tcx> LateLintPass<'tcx> for RedundantElse {
     fn check_block_post(&mut self, cx: &LateContext<'tcx>, b: &'tcx Block<'_>) {
         if let Some(e) = b.expr {
-            check(cx, b.span.ctxt(), e);
+            check(cx, b.span.ctxt(), false, e);
         }
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, s: &'tcx Stmt<'_>) {
         if let StmtKind::Expr(e) | StmtKind::Semi(e) = s.kind {
-            check(cx, s.span.ctxt(), e);
+            check(cx, s.span.ctxt(), matches!(s.kind, StmtKind::Expr(_)), e);
         }
     }
 }
 
-fn check<'tcx>(cx: &LateContext<'tcx>, ctxt: SyntaxContext, e: &'tcx Expr<'_>) {
+fn check<'tcx>(cx: &LateContext<'tcx>, ctxt: SyntaxContext, needs_semi: bool, e: &'tcx Expr<'_>) {
     // Find the final `else` block in an `if` chain.
     let mut prev_then = None;
     let mut next = e;
@@ -92,10 +92,14 @@ fn check<'tcx>(cx: &LateContext<'tcx>, ctxt: SyntaxContext, e: &'tcx Expr<'_>) {
     {
         let sp = else_.span.with_lo(then.span.hi());
         span_lint_hir_and_then(cx, REDUNDANT_ELSE, e.hir_id, sp, "redundant else block", |diag| {
+            let mut sugg = reindent_multiline(src.trim_end(), false, Some(indent));
+            if needs_semi && else_.expr.is_some_and(|e| expr_needs_semi(ctxt, e)) {
+                sugg.push(';');
+            }
             diag.span_suggestion(
                 sp,
                 "remove the `else` block and move the contents out",
-                reindent_multiline(src.trim_end(), false, Some(indent)),
+                sugg,
                 if ctxt.is_root() && else_.stmts.iter().all(|s| !matches!(s.kind, StmtKind::Let(_))) {
                     Applicability::MachineApplicable
                 } else {
@@ -103,6 +107,22 @@ fn check<'tcx>(cx: &LateContext<'tcx>, ctxt: SyntaxContext, e: &'tcx Expr<'_>) {
                 },
             );
         });
+    }
+}
+
+/// Checks if an expression, viewed from the specified context, needs a trailing semicolon
+/// to be parsed as a statement.
+fn expr_needs_semi(ctxt: SyntaxContext, e: &Expr<'_>) -> bool {
+    match e.kind {
+        ExprKind::Block(..) | ExprKind::Loop(..) | ExprKind::Match(..) | ExprKind::If(..) if ctxt == e.span.ctxt() => {
+            false
+        },
+        ExprKind::Loop(..) => {
+            let expn = e.span.ctxt().outer_expn_data();
+            ctxt != expn.call_site.ctxt() || !matches!(expn.kind, ExpnKind::Desugaring(_))
+        },
+        ExprKind::Match(_, _, MatchSource::ForLoopDesugar) => ctxt != e.span.ctxt().outer_expn_data().call_site.ctxt(),
+        _ => true,
     }
 }
 
