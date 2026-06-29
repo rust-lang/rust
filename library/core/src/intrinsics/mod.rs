@@ -953,7 +953,7 @@ pub const unsafe fn slice_get_unchecked<
 #[rustc_intrinsic]
 pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 
-/// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
+/// Equivalent to the appropriate `llvm.memcpy.p0.p0.*` intrinsic, with
 /// a size of `count` * `size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
 /// This intrinsic does not have a stable counterpart.
@@ -967,7 +967,7 @@ pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
-/// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
+/// Equivalent to the appropriate `llvm.memmove.p0.p0.*` intrinsic, with
 /// a size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
 /// The volatile parameter is set to `true`, so it will not be optimized out
@@ -977,7 +977,7 @@ pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
-/// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
+/// Equivalent to the appropriate `llvm.memset.p0.*` intrinsic, with a
 /// size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
 /// This intrinsic does not have a stable counterpart.

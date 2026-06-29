@@ -103,6 +103,20 @@ pub unsafe fn amx_autocast(m: u16, n: u16, k: u16, a: Tile, b: Tile, c: Tile) ->
     foo(m, n, k, a, b, c)
 }
 
+// CHECK-LABEL: @overloaded_bf16_autocast
+#[no_mangle]
+pub unsafe fn overloaded_bf16_autocast(a: i16x8) -> i16x8 {
+    extern "unadjusted" {
+        #[link_name = "llvm.sqrt.v8bf16"]
+        fn foo(a: i16x8) -> i16x8;
+    }
+
+    // CHECK: [[A:%[0-9]+]] = bitcast <8 x i16> {{.*}} to <8 x bfloat>
+    // CHECK: [[B:%[0-9]+]] = call <8 x bfloat> @llvm.sqrt.v8bf16(<8 x bfloat> [[A]])
+    // CHECK: bitcast <8 x bfloat> [[B]] to <8 x i16>
+    foo(a)
+}
+
 // CHECK: declare { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } @llvm.x86.encodekey128(i32, <2 x i64>)
 
 // CHECK: declare { <2 x i1>, <2 x i1> } @llvm.x86.avx512.vp2intersect.q.128(<2 x i64>, <2 x i64>)
@@ -116,3 +130,5 @@ pub unsafe fn amx_autocast(m: u16, n: u16, k: u16, a: Tile, b: Tile, c: Tile) ->
 // CHECK: declare x86_amx @llvm.x86.cast.vector.to.tile.v1024i8(<1024 x i8>)
 
 // CHECK: declare <1024 x i8> @llvm.x86.cast.tile.to.vector.v1024i8(x86_amx)
+
+// CHECK: declare <8 x bfloat> @llvm.sqrt.v8bf16(<8 x bfloat>)
