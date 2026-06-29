@@ -681,7 +681,7 @@ pub(crate) struct UnsupportedRegparm {
 pub(crate) struct UnsupportedRegparmArch;
 
 #[derive(Diagnostic)]
-#[diag("`-Zreg-struct-return` is only supported on x86")]
+#[diag("`-Treg-struct-return` is only supported on x86")]
 pub(crate) struct UnsupportedRegStructReturnArch;
 
 #[derive(Diagnostic)]

@@ -2287,6 +2287,8 @@ target_modifier_options! {
         "make the x18 register reserved on AArch64 (default: no)"),
     indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED_UNSTABLE],
         "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
+    reg_struct_return: bool = (false, parse_bool, [TRACKED_UNSTABLE],
+        "On x86-32 targets, it overrides the default ABI to return small structs in registers."),
     regparm: Option<u32> = (None, parse_opt_number, [TRACKED_UNSTABLE],
         "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
         in registers EAX, EDX, and ECX instead of on the stack for\
@@ -2729,9 +2731,6 @@ options! {
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
-    reg_struct_return: bool = (false, parse_bool, [TRACKED],
-        "On x86-32 targets, it overrides the default ABI to return small structs in registers.
-        It is UNSOUND to link together crates that use different values for this flag!"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether ELF relocations can be relaxed"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
