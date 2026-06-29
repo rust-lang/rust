@@ -667,7 +667,7 @@ pub(crate) struct FunctionReturnRequiresX86OrX8664;
 pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
 
 #[derive(Diagnostic)]
-#[diag("`-Zindirect-branch-cs-prefix` is only supported on x86 and x86_64")]
+#[diag("`-Tindirect-branch-cs-prefix` is only supported on x86 and x86_64")]
 pub(crate) struct IndirectBranchCsPrefixRequiresX86OrX8664;
 
 #[derive(Diagnostic)]

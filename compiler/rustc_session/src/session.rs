@@ -1652,7 +1652,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.unstable_opts.indirect_branch_cs_prefix {
+    if sess.opts.target_opts.indirect_branch_cs_prefix {
         if !matches!(sess.target.arch, Arch::X86 | Arch::X86_64) {
             sess.dcx().emit_err(diagnostics::IndirectBranchCsPrefixRequiresX86OrX8664);
         }

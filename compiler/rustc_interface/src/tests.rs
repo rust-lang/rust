@@ -719,6 +719,7 @@ fn test_target_options_tracking_hash() {
         })
     );
     tracked!(fixed_x18, true);
+    tracked!(indirect_branch_cs_prefix, true);
     tracked!(regparm, Some(3));
     // tidy-alphabetical-end
 }
@@ -852,7 +853,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(human_readable_cgu_names, true);
     tracked!(implicit_sysroot_deps, false);
     tracked!(incremental_ignore_spans, true);
-    tracked!(indirect_branch_cs_prefix, true);
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
     tracked!(inline_mir_threshold, Some(123));

@@ -2285,6 +2285,8 @@ target_modifier_options! {
         "set options for branch target identification and pointer authentication on AArch64"),
     fixed_x18: bool = (false, parse_bool, [TRACKED_UNSTABLE],
         "make the x18 register reserved on AArch64 (default: no)"),
+    indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED_UNSTABLE],
+        "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
     regparm: Option<u32> = (None, parse_opt_number, [TRACKED_UNSTABLE],
         "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
         in registers EAX, EDX, and ECX instead of on the stack for\
@@ -2504,8 +2506,6 @@ options! {
         - hashes of green query instances
         - hash collisions of query keys
         - hash collisions when creating dep-nodes"),
-    indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED],
-        "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
