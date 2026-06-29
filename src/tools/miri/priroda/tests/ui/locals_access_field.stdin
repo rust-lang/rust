@@ -1,0 +1,4 @@
+break tests/ui/locals_access_field.rs:14
+continue
+locals
+quit

@@ -12,6 +12,7 @@ extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_type_ir;
 
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
@@ -22,9 +23,8 @@ use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
 use rustc_index::IndexVec;
 use rustc_interface::interface;
-use rustc_middle::mir;
-use rustc_middle::mir::{Local, VarDebugInfoContents};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::mir::{self, Local, ProjectionElem, VarDebugInfoContents, VarDebugInfoFragment};
+use rustc_middle::ty::{TyCtxt, TyKind};
 use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
 use rustc_span::source_map::SourceMap;
@@ -133,8 +133,11 @@ struct PrirodaContext<'tcx> {
 }
 
 struct LocalDesc {
-    name: Option<Symbol>,
-    local: Local,
+    source_name: Option<Symbol>,
+    // Source-side projection from `VarDebugInfo::composite`. Each symbol is
+    // already rendered as one source projection segment, such as `.field` or `.0`.
+    source_projection: Option<Vec<Symbol>>,
+    local: Option<Local>,
     ty: String,
 }
 /// Controls when execution returns to the frontend.
@@ -365,24 +368,96 @@ impl<'tcx> PrirodaContext<'tcx> {
             .body()
             .local_decls
             .iter_enumerated()
-            .map(|(id, local_decl)| {
-                LocalDesc { name: None, local: id, ty: local_decl.ty.to_string() }
+            .map(|(local, local_decl)| {
+                LocalDesc {
+                    source_name: None,
+                    source_projection: None,
+                    local: Some(local),
+                    ty: local_decl.ty.to_string(),
+                }
             })
             .collect();
 
-        // FIXME: Some debug-info entries do not have a backing MIR local, for example
-        // because the source variable was optimized out or is represented as a
-        // projection. This local-indexed table cannot represent those entries yet;
-        // the final locals list should become a `Vec<LocalDesc>` with `id : Option<Local>`, `id`
-        // could be renamed to `local`.
+        // FIXME: Finish classifying `var_debug_info` by keeping the source path
+        // and MIR storage path separate:
+        //
+        // - source side: `var_debug_info.name` plus
+        //   `var_debug_info.composite.projection`
+        // - storage side: `VarDebugInfoContents::Place(place).local` plus
+        //   `place.projection`
+        //
+        // Already handled by the `place.as_local()` path below:
+        // - whole source variable -> whole MIR local:
+        //   `composite = None`, `Place(_N)` with empty projection.
+        // - source fragment -> whole MIR local:
+        //   `composite = Some(source_proj)`, `Place(_N)` with empty projection.
+        //
+        // Remaining cases to represent or explicitly defer:
+        // - whole source variable -> projected MIR storage:
+        //   `composite = None`, `Place(_N.proj)`.
+        // - source fragment -> projected MIR storage:
+        //   `composite = Some(source_proj)`, `Place(_N.storage_proj)`.
+        // - source variable/fragment -> constant:
+        //   `Const(...)`, with no MIR local id.
+        // - optimized-out/debug-only/unsupported shapes:
+        //   explicit deferred state, not silent discard.
+        //
+        // `list_locals` should collect this local-indexed table into a Vec,
+        // then append explicit deferred/debug-info-only rows where needed.
+        // Related: SROA can split a source local like `_slice: ExtraSlice` into
+        // field locals whose debug paths should be printed as `_slice._slice`
+        // and `_slice._extra`, not as two separate locals both named `_slice`.
 
         // Attach source names from debug info when the debug entry maps directly to a whole MIR local.
         for var_debug_info in &frame.body().var_debug_info {
-            if let VarDebugInfoContents::Place(place) = var_debug_info.value
+            if let VarDebugInfoContents::Place(place) = &var_debug_info.value
                 && let Some(local) = place.as_local()
-                && locals[local].name.is_none()
+                && locals[local].source_name.is_none()
             {
-                locals[local].name = Some(var_debug_info.name);
+                if let Some(VarDebugInfoFragment { ty, projection }) =
+                    var_debug_info.composite.as_deref()
+                {
+                    // Walk the source-side projection from the original
+                    // composite variable type. Each `Field` element stores the
+                    // resulting field type, so resolve the field name from the
+                    // current base type before advancing to `field_ty`.
+                    let mut projection_ty = ty;
+
+                    locals[local].source_projection = Some(
+                        projection
+                            .iter()
+                            .filter_map(|elem| {
+                                match elem {
+                                    ProjectionElem::Field(field_idx, field_ty) => {
+                                        let rendered = match projection_ty.kind() {
+                                            TyKind::Adt(adt_def, _args) if adt_def.is_struct() => {
+                                                let variant = adt_def.non_enum_variant();
+                                                let field = &variant.fields[*field_idx];
+                                                Symbol::intern(&format!(".{}", field.name))
+                                            }
+
+                                            TyKind::Tuple(_) =>
+                                                Symbol::intern(&format!(".{}", field_idx.index())),
+
+                                            _ => Symbol::intern(".<unexpected>"),
+                                        };
+
+                                        projection_ty = field_ty;
+
+                                        Some(rendered)
+                                    }
+                                    // Composite projections are currently
+                                    // expected to be field-only. Leave any
+                                    // unexpected shape for the later deferred
+                                    // debug-info representation instead of
+                                    // printing noise in the CLI.
+                                    _ => None,
+                                }
+                            })
+                            .collect(),
+                    );
+                };
+                locals[local].source_name = Some(var_debug_info.name);
             }
         }
 
@@ -450,15 +525,31 @@ impl Cli {
                             println!("no locals");
                         } else {
                             for local_desc in &locals_desc {
-                                let mut name_str = "None".to_string();
-                                if let Some(name) = local_desc.name {
-                                    name_str = name.to_string();
-                                }
+                                let source_projection = local_desc
+                                    .source_projection
+                                    .as_ref()
+                                    .map(|fields| {
+                                        fields
+                                            .iter()
+                                            .map(|field| field.to_string())
+                                            .collect::<String>()
+                                    })
+                                    .unwrap_or_default();
+
+                                let name = local_desc
+                                    .source_name
+                                    .map_or_else(|| "<none>".to_string(), |name| name.to_string());
+
+                                let display_name = format!("{name}{source_projection}");
+
+                                let local = local_desc.local.map_or_else(
+                                    || "<none>".to_string(),
+                                    |local| format!("_{}", local.index()),
+                                );
+
                                 println!(
-                                    "Name: {}, Id: _{}, Ty: {}",
-                                    name_str,
-                                    local_desc.local.index(),
-                                    local_desc.ty,
+                                    "Name: {}, Id: {}, Ty: {}",
+                                    display_name, local, local_desc.ty
                                 );
                             }
                         },
