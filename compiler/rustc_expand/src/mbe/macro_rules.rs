@@ -368,16 +368,11 @@ pub(super) trait Tracker<'matcher> {
     fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure;
 
     /// This is called before trying to match next MatcherLoc on the current token.
-    fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
+    fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
 
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
-    fn after_arm(
-        &mut self,
-        _which_matcher: WhichMatcher,
-        _result: &NamedParseResult<Self::Failure>,
-    ) {
-    }
+    fn after_arm(&mut self, which_matcher: WhichMatcher, result: &NamedParseResult<Self::Failure>);
 
     fn ambiguity(
         &mut self,
@@ -389,9 +384,7 @@ pub(super) trait Tracker<'matcher> {
     /// For tracing.
     fn description() -> &'static str;
 
-    fn recovery() -> Recovery {
-        Recovery::Forbidden
-    }
+    fn recovery() -> Recovery;
 }
 
 /// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to
@@ -403,6 +396,8 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
     fn build_failure(_tok: Token, _position: u32, _msg: &'static str) -> Self::Failure {}
 
+    fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
+
     fn ambiguity(
         &mut self,
         _parser: &Parser<'_>,
@@ -411,8 +406,19 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
     ) {
     }
 
+    fn after_arm(
+        &mut self,
+        _which_matcher: WhichMatcher,
+        _result: &NamedParseResult<Self::Failure>,
+    ) {
+    }
+
     fn description() -> &'static str {
         "none"
+    }
+
+    fn recovery() -> Recovery {
+        Recovery::Forbidden
     }
 }
 
