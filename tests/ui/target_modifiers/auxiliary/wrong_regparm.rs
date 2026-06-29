@@ -1,5 +1,5 @@
 //@ no-prefer-dynamic
-//@ compile-flags: --target i686-unknown-linux-gnu -Zregparm=2
+//@ compile-flags: --target i686-unknown-linux-gnu -Tregparm=2 -Zunstable-options
 //@ needs-llvm-components: x86
 
 #![feature(no_core)]
