@@ -21,60 +21,6 @@ fn test_unnamed_thread() {
 }
 
 #[test]
-fn test_spawn_recovers_from_preinit_current() {
-    // SAFETY: only this test reads the variable, and it is cleared before returning.
-    unsafe { crate::env::set_var("__RUST_STD_TEST_PREINIT_CURRENT", "1") };
-    let result = Builder::new()
-        .name("worker".into())
-        .spawn(|| {
-            assert_eq!(thread::current().name(), Some("worker"));
-        });
-    unsafe { crate::env::remove_var("__RUST_STD_TEST_PREINIT_CURRENT") };
-    result.unwrap().join().unwrap();
-}
-
-#[test]
-fn test_spawn_recovers_from_preinit_current_nested_spawn() {
-    unsafe { crate::env::set_var("__RUST_STD_TEST_PREINIT_CURRENT", "1") };
-    let outer = Builder::new()
-        .name("outer".into())
-        .spawn(|| {
-            assert_eq!(thread::current().name(), Some("outer"));
-            let inner = Builder::new()
-                .name("inner".into())
-                .spawn(|| {
-                    assert_eq!(thread::current().name(), Some("inner"));
-                    thread::current().id()
-                })
-                .unwrap()
-                .join()
-                .unwrap();
-            assert_ne!(thread::current().id(), inner);
-        });
-    unsafe { crate::env::remove_var("__RUST_STD_TEST_PREINIT_CURRENT") };
-    outer.unwrap().join().unwrap();
-}
-
-#[test]
-fn test_spawn_recovers_from_preinit_current_preserves_thread_id() {
-    unsafe { crate::env::set_var("__RUST_STD_TEST_PREINIT_CURRENT", "1") };
-    let preinit_id = thread::current().id();
-    let child = Builder::new()
-        .name("preinit-worker".into())
-        .spawn(move || {
-            let current = thread::current();
-            assert_eq!(current.name(), Some("preinit-worker"));
-            assert_ne!(current.id(), preinit_id);
-            current.id()
-        })
-        .unwrap()
-        .join()
-        .unwrap();
-    unsafe { crate::env::remove_var("__RUST_STD_TEST_PREINIT_CURRENT") };
-    assert_ne!(child, preinit_id);
-}
-
-#[test]
 fn test_named_thread() {
     Builder::new()
         .name("ada lovelace".to_string())

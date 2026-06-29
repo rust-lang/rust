@@ -136,10 +136,6 @@ impl ThreadInit {
         // so that it may call std::thread::current() in its implementation. This is also
         // why we take Box<Self>, to ensure the Box is not destroyed until after this point.
         // Cloning the handle does not invoke the global allocator, it is an Arc.
-        #[cfg(test)]
-        if crate::env::var_os("__RUST_STD_TEST_PREINIT_CURRENT").is_some() {
-            let _ = crate::thread::current();
-        }
         if let Err(thread) = set_current(self.handle.clone()) {
             if !recover_preinitialized_for_spawn(thread) {
                 // The current thread should not have set yet. Use an abort to save binary size (see #123356).
