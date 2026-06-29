@@ -1,7 +1,7 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-realtime
 //
-//@ compile-flags: -Z sanitizer=realtime
+//@ compile-flags: -T sanitizer=realtime -C unsafe-allow-abi-mismatch=sanitizer -Z unstable-options
 //@ exec-env: RTSAN_OPTIONS=abort_on_error=0
 //
 //@ run-fail

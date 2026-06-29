@@ -6,11 +6,11 @@
 //@ needs-sanitizer-address
 //@ ignore-cross-compile
 //
-//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer -Z unstable-options
 //
 //@ no-prefer-dynamic
 //@ revisions: opt0 opt1
-//@ compile-flags: -Zsanitizer=address -Clto=thin
+//@ compile-flags: -Csanitizer=address -Clto=thin
 //@[opt0]compile-flags: -Copt-level=0
 //@[opt1]compile-flags: -Copt-level=1
 //@ run-fail-or-crash

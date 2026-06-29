@@ -724,6 +724,8 @@ fn test_target_options_tracking_hash() {
     tracked!(regparm, Some(3));
     tracked!(retpoline, true);
     tracked!(retpoline_external_thunk, true);
+    tracked!(sanitizer, SanitizerSet::CFI);
+    tracked!(sanitizer_cfi_normalize_integers, Some(true));
     // tidy-alphabetical-end
 }
 
@@ -901,7 +903,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(sanitizer, SanitizerSet::ADDRESS);
     tracked!(sanitizer_cfi_canonical_jump_tables, None);
     tracked!(sanitizer_cfi_generalize_pointers, Some(true));
-    tracked!(sanitizer_cfi_normalize_integers, Some(true));
     tracked!(sanitizer_dataflow_abilist, vec![String::from("/rustc/abc")]);
     tracked!(sanitizer_kcfi_arity, Some(true));
     tracked!(sanitizer_memory_track_origins, 2);

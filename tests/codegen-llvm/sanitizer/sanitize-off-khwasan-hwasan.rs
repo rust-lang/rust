@@ -4,7 +4,7 @@
 //@ needs-sanitizer-hwaddress
 //@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitizer
 //@ compile-flags: -Ctarget-feature=-crt-static
-//@ compile-flags: -Zsanitizer=hwaddress -Copt-level=0
+//@ compile-flags: -Tsanitizer=hwaddress -Copt-level=0 -Zunstable-options
 
 #![crate_type = "lib"]
 #![feature(sanitize)]

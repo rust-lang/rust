@@ -2,7 +2,7 @@
 //@ needs-sanitizer-address
 //@ ignore-cross-compile
 //
-//@ compile-flags: -Z sanitizer=address -O -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -C sanitizer=address -O -C unsafe-allow-abi-mismatch=sanitizer -Z unstable-options
 //
 //@ run-fail-or-crash
 //@ regex-error-pattern: AddressSanitizer: (SEGV|attempting free on address which was not malloc)

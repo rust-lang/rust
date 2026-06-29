@@ -7,11 +7,14 @@
 //@ no-prefer-dynamic
 //@                   compile-flags: -Cunsafe-allow-abi-mismatch=sanitizer
 //@                   compile-flags: -Ctarget-feature=-crt-static
-//@[ASAN]             compile-flags: -Zsanitizer=address -Copt-level=0
-//@[ASAN-RECOVER]     compile-flags: -Zsanitizer=address -Zsanitizer-recover=address -Copt-level=0
-//@[MSAN]             compile-flags: -Zsanitizer=memory
-//@[MSAN-RECOVER]     compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory
-//@[MSAN-RECOVER-LTO] compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory -C lto=fat
+//@[ASAN]             compile-flags: -Csanitizer=address -Copt-level=0 -Zunstable-options
+//@[ASAN-RECOVER]     compile-flags: -Csanitizer=address -Zsanitizer-recover=address -Copt-level=0
+//@[ASAN-RECOVER]     compile-flags: -Zunstable-options
+//@[MSAN]             compile-flags: -Tsanitizer=memory -Zunstable-options
+//@[MSAN-RECOVER]     compile-flags: -Tsanitizer=memory -Zsanitizer-recover=memory
+//@[MSAN-RECOVER]     compile-flags: -Zunstable-options
+//@[MSAN-RECOVER-LTO] compile-flags: -Tsanitizer=memory -Zsanitizer-recover=memory -C lto=fat
+//@[MSAN-RECOVER-LTO] compile-flags: -Zunstable-options
 //
 // MSAN-NOT:         @__msan_keep_going
 // MSAN-RECOVER:     @__msan_keep_going = weak_odr {{.*}}constant i32 1

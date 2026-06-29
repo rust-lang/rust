@@ -10,8 +10,8 @@
 //@ [kcfi] needs-sanitizer-kcfi
 //@ compile-flags: -C target-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
 //@ [cfi] compile-flags: -C codegen-units=1 -C lto -C prefer-dynamic=off -C opt-level=0
-//@ [cfi] compile-flags: -Z sanitizer=cfi
-//@ [kcfi] compile-flags: -Z sanitizer=kcfi
+//@ [cfi] compile-flags: -T sanitizer=cfi -Z unstable-options
+//@ [kcfi] compile-flags: -T sanitizer=kcfi -Z unstable-options
 //@ [kcfi] compile-flags: -C panic=abort -C prefer-dynamic=off
 //@ run-pass
 

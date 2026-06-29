@@ -3,7 +3,7 @@
 //@ needs-sanitizer-kcfi
 //@ needs-sanitizer-safestack
 
-//@ compile-flags: -C panic=abort -Zsanitizer=safestack,kcfi
+//@ compile-flags: -C panic=abort -Tsanitizer=safestack,kcfi -Zunstable-options
 
 #![feature(no_core)]
 #![crate_type = "rlib"]

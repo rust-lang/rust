@@ -5,7 +5,8 @@
 // future.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Tsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Zunstable-options
 
 #![crate_type = "lib"]
 

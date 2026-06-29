@@ -1,4 +1,5 @@
-//@ compile-flags: -Z sanitizer=kernel-hwaddress -Z sanitizer=kernel-address --target aarch64-unknown-none
+//@ compile-flags: -T sanitizer=kernel-hwaddress -T sanitizer=kernel-address --target aarch64-unknown-none
+//@ compile-flags: -Z unstable-options
 //@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc
 
@@ -6,4 +7,4 @@
 #![no_core]
 #![no_main]
 
-//~? ERROR `-Zsanitizer=kernel-address` is incompatible with `-Zsanitizer=kernel-hwaddress`
+//~? ERROR `-Tsanitizer=kernel-address` is incompatible with `-Tsanitizer=kernel-hwaddress`

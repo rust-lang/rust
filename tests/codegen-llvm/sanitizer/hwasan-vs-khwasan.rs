@@ -2,11 +2,11 @@
 //
 //@ add-minicore
 //@ revisions: hwasan khwasan
-//@[hwasan] compile-flags: --target aarch64-unknown-linux-gnu -Zsanitizer=hwaddress
+//@[hwasan] compile-flags: --target aarch64-unknown-linux-gnu -Tsanitizer=hwaddress
 //@[hwasan] needs-llvm-components: aarch64
-//@[khwasan] compile-flags: --target aarch64-unknown-none -Zsanitizer=kernel-hwaddress
+//@[khwasan] compile-flags: --target aarch64-unknown-none -Tsanitizer=kernel-hwaddress
 //@[khwasan] needs-llvm-components: aarch64
-//@ compile-flags: -Copt-level=0
+//@ compile-flags: -Copt-level=0 -Zunstable-options
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items, sanitize)]

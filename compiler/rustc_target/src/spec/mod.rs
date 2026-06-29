@@ -1148,7 +1148,7 @@ impl ToJson for StackProbeType {
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Encodable, BlobDecodable, StableHash)]
 pub struct SanitizerSet(u16);
 bitflags::bitflags! {
     impl SanitizerSet: u16 {
@@ -1226,6 +1226,25 @@ impl SanitizerSet {
             SanitizerSet::THREAD => "thread",
             SanitizerSet::HWADDRESS => "hwaddress",
             SanitizerSet::REALTIME => "realtime",
+            _ => return None,
+        })
+    }
+
+    pub fn prefix(self) -> Option<&'static str> {
+        Some(match self {
+            SanitizerSet::ADDRESS | SanitizerSet::LEAK => "Z",
+            SanitizerSet::CFI
+            | SanitizerSet::DATAFLOW
+            | SanitizerSet::KCFI
+            | SanitizerSet::KERNELADDRESS
+            | SanitizerSet::KERNELHWADDRESS
+            | SanitizerSet::MEMORY
+            | SanitizerSet::MEMTAG
+            | SanitizerSet::SAFESTACK
+            | SanitizerSet::SHADOWCALLSTACK
+            | SanitizerSet::THREAD
+            | SanitizerSet::HWADDRESS
+            | SanitizerSet::REALTIME => "T",
             _ => return None,
         })
     }

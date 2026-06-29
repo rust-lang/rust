@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ needs-llvm-components: x86
-//@ compile-flags: --target x86_64-unknown-linux-gnu -Zsanitizer=address -Ctarget-feature=-crt-static
+//@ compile-flags: --target x86_64-unknown-linux-gnu -Csanitizer=address -Ctarget-feature=-crt-static -Z unstable-options
 
 // Make sure we do not request sanitizers for naked functions.
 

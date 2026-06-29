@@ -5,7 +5,7 @@
 // FIXME(#122848) Remove only-linux once OSX CFI binaries work
 //@ only-linux
 //@ ignore-backends: gcc
-//@ compile-flags: -Ctarget-feature=-crt-static -Ccodegen-units=1 -Clto -Cprefer-dynamic=off -Copt-level=0 -Zsanitizer=cfi -Cunsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Ctarget-feature=-crt-static -Ccodegen-units=1 -Clto -Cprefer-dynamic=off -Copt-level=0 -Tsanitizer=cfi -Cunsafe-allow-abi-mismatch=sanitizer -Zunstable-options
 //@ run-pass
 
 #![feature(adt_const_params)]

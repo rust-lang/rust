@@ -3,7 +3,7 @@
 
 //@ add-minicore
 //@ check-pass
-//@ compile-flags: -Zsanitizer=kernel-hwaddress --target aarch64-unknown-none
+//@ compile-flags: -Tsanitizer=kernel-hwaddress --target aarch64-unknown-none -Zunstable-options
 //@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc
 

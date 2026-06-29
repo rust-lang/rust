@@ -4,7 +4,7 @@
 //@ needs-sanitizer-kcfi
 //@ only-linux
 //@ ignore-backends: gcc
-//@ compile-flags: -Ctarget-feature=-crt-static -Cpanic=abort -Cprefer-dynamic=off -Copt-level=0 -Zsanitizer=kcfi -Cunsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Ctarget-feature=-crt-static -Cpanic=abort -Cprefer-dynamic=off -Copt-level=0 -Tsanitizer=kcfi -Cunsafe-allow-abi-mismatch=sanitizer -Zunstable-options
 //@ run-pass
 
 #![feature(adt_const_params)]

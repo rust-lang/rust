@@ -299,9 +299,13 @@ pub(crate) struct SanitizersNotSupported {
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer={$first}` is incompatible with `-Zsanitizer={$second}`")]
+#[diag(
+    "`-{$first_prefix}sanitizer={$first}` is incompatible with `-{$second_prefix}sanitizer={$second}`"
+)]
 pub(crate) struct CannotMixAndMatchSanitizers {
+    pub(crate) first_prefix: &'static str,
     pub(crate) first: String,
+    pub(crate) second_prefix: &'static str,
     pub(crate) second: String,
 }
 
@@ -318,31 +322,31 @@ pub(crate) struct CannotEnableCrtStaticLinux;
 pub(crate) struct CannotEnableCrtStaticPointerAuth;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`")]
+#[diag("`-Tsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`")]
 pub(crate) struct SanitizerCfiRequiresLto;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer=cfi` with `-Clto` requires `-Ccodegen-units=1`")]
+#[diag("`-Tsanitizer=cfi` with `-Clto` requires `-Ccodegen-units=1`")]
 pub(crate) struct SanitizerCfiRequiresSingleCodegenUnit;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer-cfi-canonical-jump-tables` requires `-Zsanitizer=cfi`")]
+#[diag("`-Zsanitizer-cfi-canonical-jump-tables` requires `-Tsanitizer=cfi`")]
 pub(crate) struct SanitizerCfiCanonicalJumpTablesRequiresCfi;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer-cfi-generalize-pointers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`")]
+#[diag("`-Zsanitizer-cfi-generalize-pointers` requires `-Tsanitizer=cfi` or `-Tsanitizer=kcfi`")]
 pub(crate) struct SanitizerCfiGeneralizePointersRequiresCfi;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer-cfi-normalize-integers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`")]
+#[diag("`-Tsanitizer-cfi-normalize-integers` requires `-Tsanitizer=cfi` or `-Tsanitizer=kcfi`")]
 pub(crate) struct SanitizerCfiNormalizeIntegersRequiresCfi;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer-kcfi-arity` requires `-Zsanitizer=kcfi`")]
+#[diag("`-Zsanitizer-kcfi-arity` requires `-Tsanitizer=kcfi`")]
 pub(crate) struct SanitizerKcfiArityRequiresKcfi;
 
 #[derive(Diagnostic)]
-#[diag("`-Z sanitizer=kcfi` requires `-C panic=abort`")]
+#[diag("`-Tsanitizer=kcfi` requires `-C panic=abort`")]
 pub(crate) struct SanitizerKcfiRequiresPanicAbort;
 
 #[derive(Diagnostic)]

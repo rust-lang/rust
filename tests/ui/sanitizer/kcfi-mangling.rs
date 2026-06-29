@@ -2,7 +2,8 @@
 
 //@ needs-sanitizer-kcfi
 //@ no-prefer-dynamic
-//@ compile-flags: -C panic=abort -Zsanitizer=kcfi -C symbol-mangling-version=v0 -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -C panic=abort -Tsanitizer=kcfi -C symbol-mangling-version=v0
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer -Zunstable-options
 //@ build-pass
 //@ ignore-backends: gcc
 
