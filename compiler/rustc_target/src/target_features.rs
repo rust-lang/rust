@@ -321,7 +321,7 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     (
         "reserve-x18",
         // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
-        InternalOnly { reason: "use `-Zfixed-x18` compiler flag instead", hard_error: false },
+        InternalOnly { reason: "use `-Tfixed-x18` compiler flag instead", hard_error: false },
         &[],
     ),
     // FEAT_SB

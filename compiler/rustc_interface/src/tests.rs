@@ -843,7 +843,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(embed_source, true);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
-    tracked!(fixed_x18, true);
     tracked!(flatten_format_args, false);
     tracked!(fmt_debug, FmtDebug::Shallow);
     tracked!(force_unstable_if_unmarked, true);

@@ -641,7 +641,7 @@ fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     target_features::sanitizer_features_by_flags(sess, features);
 
     // -Zfixed-x18
-    if sess.opts.unstable_opts.fixed_x18 {
+    if sess.opts.target_opts.fixed_x18 {
         if sess.target.arch != Arch::AArch64 {
             sess.dcx()
                 .emit_fatal(diagnostics::FixedX18InvalidArch { arch: sess.target.arch.desc() });

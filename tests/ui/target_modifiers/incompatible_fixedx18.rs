@@ -3,7 +3,7 @@
 //@ needs-llvm-components: aarch64
 
 //@ revisions:allow_match allow_mismatch error_generated
-//@[allow_match] compile-flags: -Zfixed-x18
+//@[allow_match] compile-flags: -Tfixed-x18 -Zunstable-options
 //@[allow_mismatch] compile-flags: -Cunsafe-allow-abi-mismatch=fixed-x18
 // [error_generated] no extra compile-flags
 //@[allow_mismatch] check-pass
@@ -16,4 +16,4 @@
 
 extern crate fixed_x18;
 
-//[error_generated]~? ERROR mixing `-Zfixed-x18` will cause an ABI mismatch in crate `incompatible_fixedx18`
+//[error_generated]~? ERROR mixing `-Tfixed-x18` will cause an ABI mismatch in crate `incompatible_fixedx18`
