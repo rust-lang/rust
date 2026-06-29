@@ -39,7 +39,7 @@ use crate::base::{
 use crate::diagnostics;
 use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
 use crate::mbe::macro_check::check_meta_variables;
-use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
+use crate::mbe::macro_parser::{Ambiguity, ErrorReported, Failure, MatcherLoc, Success, TtParser};
 use crate::mbe::quoted::{RulePart, parse_one_tt};
 use crate::mbe::transcribe::transcribe;
 use crate::mbe::{self, KleeneOp};
@@ -369,6 +369,13 @@ pub(super) trait Tracker<'matcher> {
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
 
+    /// Record an ambiguity error.
+    fn ambiguity(
+        &mut self,
+        parser: &Parser<'_>,
+        locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+    );
+
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
     fn after_arm(
@@ -394,6 +401,13 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
     type Failure = ();
 
     fn build_failure(_tok: Token, _position: u32, _msg: &'static str) -> Self::Failure {}
+
+    fn ambiguity(
+        &mut self,
+        _parser: &Parser<'_>,
+        _locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+    ) {
+    }
 
     fn description() -> &'static str {
         "none"
@@ -585,7 +599,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     // Every iteration gets a reference to this and clones it as necessary.
     let parser = parser_from_cx(psess, arg.clone(), T::recovery());
     // Try each arm's matchers.
-    let mut tt_parser = TtParser::new(name);
+    let mut tt_parser = TtParser::new();
     for (i, rule) in rules.iter().enumerate() {
         let MacroRule::Func { lhs, .. } = rule else { continue };
         let _tracing_span = trace_span!("Matching arm", %i);
@@ -613,8 +627,8 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
                 trace!("Failed to match arm, trying the next one");
                 // Try the next arm.
             }
-            Error(_, _) => {
-                debug!("Fatal error occurred during matching");
+            Ambiguity => {
+                debug!("Ambiguity detected during matching");
                 // We haven't emitted an error yet, so we can retry.
                 return Err(CanRetry::Yes);
             }
@@ -648,7 +662,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
     // This uses the same strategy as `try_match_macro`
     let args_parser = parser_from_cx(psess, attr_args.clone(), T::recovery());
     let body_parser = parser_from_cx(psess, attr_body.clone(), T::recovery());
-    let mut tt_parser = TtParser::new(name);
+    let mut tt_parser = TtParser::new();
     for (i, rule) in rules.iter().enumerate() {
         let MacroRule::Attr { args, body, .. } = rule else { continue };
 
@@ -663,7 +677,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut());
                 continue;
             }
-            Error(_, _) => return Err(CanRetry::Yes),
+            Ambiguity => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         };
 
@@ -680,7 +694,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
             Failure(_) => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
             }
-            Error(_, _) => return Err(CanRetry::Yes),
+            Ambiguity => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         }
     }
@@ -701,7 +715,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
 ) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
     // This uses the same strategy as `try_match_macro`
     let body_parser = parser_from_cx(psess, body.clone(), T::recovery());
-    let mut tt_parser = TtParser::new(name);
+    let mut tt_parser = TtParser::new();
     for (i, rule) in rules.iter().enumerate() {
         let MacroRule::Derive { body, .. } = rule else { continue };
 
@@ -718,7 +732,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
             Failure(_) => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
             }
-            Error(_, _) => return Err(CanRetry::Yes),
+            Ambiguity => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         }
     }

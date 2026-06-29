@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
@@ -44,7 +44,7 @@ pub(super) fn failed_to_match_macro(
 
     // An error occurred, try the expansion again, tracking the expansion closely for better
     // diagnostics.
-    let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
+    let mut tracker = CollectTrackerAndEmitter::new(name, psess.dcx(), sp);
 
     let try_success_result = match args {
         FailedMacro::Func => try_match_macro(psess, name, body, rules, &mut tracker),
@@ -121,7 +121,7 @@ pub(super) fn failed_to_match_macro(
         for rule in rules {
             let MacroRule::Func { lhs, .. } = rule else { continue };
             let parser = parser_from_cx(psess, body.clone(), Recovery::Allowed);
-            let mut tt_parser = TtParser::new(name);
+            let mut tt_parser = TtParser::new();
 
             if let Success(_) = tt_parser.parse_tt(&parser, lhs, &mut NoopTracker) {
                 if comma_span.is_dummy() {
@@ -143,6 +143,7 @@ pub(super) fn failed_to_match_macro(
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.
 struct CollectTrackerAndEmitter<'dcx, 'matcher> {
+    macro_name: Ident,
     dcx: DiagCtxtHandle<'dcx>,
     remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
@@ -217,13 +218,54 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     })
                 }
             }
-            Error(err_sp, msg) => {
-                let span = err_sp.substitute_dummy(self.root_span);
-                let guar = self.dcx.span_err(span, msg.clone());
-                self.result = Some((span, guar));
+            Ambiguity => {
+                assert!(self.result.is_some());
             }
             ErrorReported(guar) => self.result = Some((self.root_span, *guar)),
         }
+    }
+
+    fn ambiguity(
+        &mut self,
+        parser: &Parser<'_>,
+        locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+    ) {
+        let span = parser.token.span.substitute_dummy(self.root_span);
+
+        // Return a special error message if ambiguity reaches the end of the input.
+        if parser.token == token::Eof {
+            let guar = self.dcx.span_err(span, "ambiguity: multiple successful parses");
+            self.result = Some((span, guar));
+            return;
+        }
+
+        // Distinguish meta-variable matchers from others.
+        let (metavar_locs, fixed_locs) = locs
+            .into_iter()
+            .partition::<Vec<_>, _>(|loc| matches!(loc, MatcherLoc::MetaVarDecl { .. }));
+
+        let nts = metavar_locs
+            .iter()
+            .map(|loc| match loc {
+                MatcherLoc::MetaVarDecl { bind, kind, .. } => {
+                    format!("{kind} ('{bind}')")
+                }
+                _ => unreachable!(),
+            })
+            .collect::<Vec<String>>()
+            .join(" or ");
+
+        let message = format!(
+            "local ambiguity when calling macro `{}`: multiple parsing options: {}",
+            self.macro_name,
+            match fixed_locs.len() {
+                0 => format!("built-in NTs {nts}."),
+                n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
+            }
+        );
+
+        let guar = self.dcx.span_err(span, message);
+        self.result = Some((span, guar));
     }
 
     fn description() -> &'static str {
@@ -236,8 +278,15 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 }
 
 impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
-    fn new(dcx: DiagCtxtHandle<'dcx>, root_span: Span) -> Self {
-        Self { dcx, remaining_matcher: None, best_failure: None, root_span, result: None }
+    fn new(macro_name: Ident, dcx: DiagCtxtHandle<'dcx>, root_span: Span) -> Self {
+        Self {
+            macro_name,
+            dcx,
+            remaining_matcher: None,
+            best_failure: None,
+            root_span,
+            result: None,
+        }
     }
 }
 
