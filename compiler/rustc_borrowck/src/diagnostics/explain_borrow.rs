@@ -585,11 +585,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             NllRegionVariableOrigin::FreeRegion,
             outlived_region,
         );
-        let BlameConstraint { category, from_closure, cause, .. } = blame_constraint;
+        let BlameConstraint { category, from_closure, span, .. } = blame_constraint;
 
         let outlived_fr_name = self.give_region_a_name(outlived_region);
 
-        (category, from_closure, cause.span, outlived_fr_name, path)
+        (category, from_closure, span, outlived_fr_name, path)
     }
 
     /// Returns structured explanation for *why* the borrow contains the
