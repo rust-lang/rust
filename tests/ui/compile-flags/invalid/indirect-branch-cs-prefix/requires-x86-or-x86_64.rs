@@ -1,6 +1,6 @@
 //@ revisions: x86 x86_64 aarch64
 
-//@ compile-flags: -Zindirect-branch-cs-prefix
+//@ compile-flags: -Tindirect-branch-cs-prefix -Zunstable-options
 
 //@[x86] check-pass
 //@[x86] needs-llvm-components: x86
@@ -19,4 +19,4 @@
 #![no_core]
 #![no_main]
 
-//[aarch64]~? ERROR `-Zindirect-branch-cs-prefix` is only supported on x86 and x86_64
+//[aarch64]~? ERROR `-Tindirect-branch-cs-prefix` is only supported on x86 and x86_64
