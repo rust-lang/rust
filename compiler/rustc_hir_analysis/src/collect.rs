@@ -15,7 +15,7 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::cell::Cell;
-use std::{assert_matches, iter};
+use std::{assert_matches, debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
@@ -1635,10 +1635,12 @@ fn const_param_default<'tcx>(
 }
 
 fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKind {
+    debug_assert_matches!(tcx.def_kind(def), DefKind::AnonConst | DefKind::InlineConst);
     let hir_id = tcx.local_def_id_to_hir_id(def);
     let const_arg_id = tcx.parent_hir_id(hir_id);
     match tcx.hir_node(const_arg_id) {
-        hir::Node::ConstArg(_) => {
+        hir::Node::ConstArg(const_arg) => {
+            debug_assert_matches!(const_arg.kind, hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) if *def_id == def);
             let parent_hir_node = tcx.hir_node(tcx.parent_hir_id(const_arg_id));
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
