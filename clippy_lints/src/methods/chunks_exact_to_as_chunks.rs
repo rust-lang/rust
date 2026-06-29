@@ -36,11 +36,9 @@ pub(super) fn check<'tcx>(
             return;
         }
 
-        let suggestion_method = if method_name == sym::chunks_exact_mut {
-            "as_chunks_mut"
-        } else {
-            "as_chunks"
-        };
+        let is_mut = method_name == sym::chunks_exact_mut;
+        let suggestion_method = if is_mut { "as_chunks_mut" } else { "as_chunks" };
+        let iter_method = if is_mut { "iter_mut" } else { "iter" };
 
         let mut applicability = Applicability::MachineApplicable;
         let arg_str = snippet_with_context(cx, arg.span, expr.span.ctxt(), "_", &mut applicability).0;
@@ -80,7 +78,7 @@ pub(super) fn check<'tcx>(
                             diag.span_suggestion(
                                 call_span,
                                 "consider using `as_chunks` instead",
-                                format!("{as_chunks}.0.iter()"),
+                                format!("{as_chunks}.0.{iter_method}()"),
                                 applicability,
                             );
                             return;
@@ -95,7 +93,7 @@ pub(super) fn check<'tcx>(
                     && let PatKind::Binding(_, _, ident, _) = let_stmt.pat.kind
                 {
                     diag.note(format!(
-                        "you can access the chunks using `{ident}.0.iter()`, and the remainder using `{ident}.1`"
+                        "you can access the chunks using `{ident}.0.{iter_method}()`, and the remainder using `{ident}.1`"
                     ));
                 }
             },
