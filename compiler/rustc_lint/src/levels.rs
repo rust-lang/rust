@@ -114,11 +114,11 @@ impl LintLevelSets {
     }
 }
 
-fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
+fn skippable_lints(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
     let store = unerased_lint_store(&tcx.sess);
     let root_map = tcx.shallow_lint_levels_on(hir::CRATE_OWNER_ID);
 
-    let mut dont_need_to_run: FxHashSet<LintId> = store
+    let mut skippable: FxHashSet<LintId> = store
         .get_lints()
         .into_iter()
         .filter(|lint| {
@@ -145,13 +145,13 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
         for (_, specs) in map.specs.iter() {
             for (lint, level_spec) in specs.iter() {
                 if !level_spec.is_allow() {
-                    dont_need_to_run.remove(lint);
+                    skippable.remove(lint);
                 }
             }
         }
     }
 
-    dont_need_to_run.into()
+    skippable.into()
 }
 
 #[instrument(level = "trace", skip(tcx), ret)]
@@ -1035,7 +1035,7 @@ where
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { shallow_lint_levels_on, lints_that_dont_need_to_run, ..*providers };
+    *providers = Providers { shallow_lint_levels_on, skippable_lints, ..*providers };
 }
 
 pub(crate) fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {

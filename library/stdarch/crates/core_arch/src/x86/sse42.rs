@@ -569,7 +569,7 @@ pub const fn _mm_cmpgt_epi64(a: __m128i, b: __m128i) -> __m128i {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     // SSE 4.2 string and text comparison ops
     #[link_name = "llvm.x86.sse42.pcmpestrm128"]
     fn pcmpestrm128(a: i8x16, la: i32, b: i8x16, lb: i32, imm8: i8) -> u8x16;

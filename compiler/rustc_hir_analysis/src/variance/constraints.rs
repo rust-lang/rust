@@ -260,15 +260,18 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_args(current, def.did(), args, variance);
             }
 
-            ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
-                args,
-                ..
-            }) => {
+            ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
+                    args,
+                    ..
+                },
+            ) => {
                 self.add_constraints_from_invariant_args(current, args, variance);
             }
 
-            ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) => {
                 let ty = self.tcx().expand_free_alias_tys(ty);
                 self.add_constraints_from_ty(current, ty, variance);
             }
@@ -405,8 +408,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         debug!("add_constraints_from_const(c={:?}, variance={:?})", c, variance);
 
         match &c.kind() {
-            ty::ConstKind::Unevaluated(uv) => {
-                self.add_constraints_from_invariant_args(current, uv.args, variance);
+            ty::ConstKind::Alias(_, alias_const) => {
+                self.add_constraints_from_invariant_args(current, alias_const.args, variance);
             }
             _ => {}
         }

@@ -51,17 +51,19 @@ where
                 .iter_instantiated(cx, inherent_args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred)),
-        );
+        )?;
 
         let normalized: I::Term = match inherent.kind {
             ty::AliasTermKind::InherentTy { def_id } => {
-                cx.type_of(def_id.into()).instantiate(cx, inherent_args).skip_norm_wip().into()
+                let inherent = cx.type_of(def_id.into()).instantiate(cx, inherent_args);
+                let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
+                inherent.into()
             }
-            ty::AliasTermKind::InherentConst { def_id } if cx.is_type_const(def_id.into()) => cx
-                .const_of_item(def_id.into())
-                .instantiate(cx, inherent_args)
-                .skip_norm_wip()
-                .into(),
+            ty::AliasTermKind::InherentConst { def_id } if cx.is_type_const(def_id.into()) => {
+                let inherent = cx.const_of_item(def_id.into()).instantiate(cx, inherent_args);
+                let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
+                inherent.into()
+            }
             ty::AliasTermKind::InherentConst { .. } => {
                 // FIXME(gca): This is dead code at the moment. It should eventually call
                 // self.evaluate_const like projected consts do in consider_impl_candidate in
@@ -78,7 +80,7 @@ where
             goal.param_env,
             goal.predicate.projection_term,
             normalized,
-        );
+        )?;
         self.eq(goal.param_env, goal.predicate.term, normalized)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::source::{IntoSpan, SpanRangeExt};
+use clippy_utils::source::{IntoSpan, SpanExt};
 use clippy_utils::ty::get_field_by_name;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures};
 use clippy_utils::{ExprUseNode, get_expr_use_site, sym};
@@ -47,7 +47,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
         let can_lint = for_each_expr_without_closures(block.stmts, |e| {
             if let ExprKind::Closure(c) = e.kind {
                 // Nested closures don't need to treat returns specially.
-                let _: Option<!> = for_each_expr(cx, cx.tcx.hir_body(c.body).value, |e| {
+                let _: Option<!> = for_each_expr(cx.tcx, cx.tcx.hir_body(c.body).value, |e| {
                     if e.res_local_id() == Some(arg_id) {
                         let (kind, same_ctxt) = check_use(cx, ctxt, e);
                         match (kind, same_ctxt && e.span.ctxt() == ctxt) {

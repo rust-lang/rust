@@ -11903,7 +11903,7 @@ pub unsafe fn vluti4q_lane_s8<const LANE: i32>(a: int8x16_t, b: uint8x8_t) -> in
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.vluti4q.lane.v8i8"
+            link_name = "llvm.aarch64.neon.vluti4q.lane.v16i8"
         )]
         fn _vluti4q_lane_s8(a: int8x16_t, b: uint8x8_t, n: i32) -> int8x16_t;
     }

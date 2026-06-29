@@ -879,6 +879,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.hir_opt_delegation_info(delegation_id).expect("processing delegation")
     }
 
+    pub fn hir_is_delegation_child_segment(self, segment: &PathSegment<'_>) -> bool {
+        let parent_def = self.hir_get_parent_item(segment.hir_id).def_id;
+
+        self.hir_opt_delegation_info(parent_def)
+            .is_some_and(|info| info.child_seg_id == segment.hir_id)
+    }
+
     #[inline]
     fn hir_opt_ident(self, id: HirId) -> Option<Ident> {
         match self.hir_node(id) {
@@ -1275,8 +1282,10 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         opaques,
         nested_bodies,
         eiis,
+        proc_macro_decls,
         ..
     } = collector;
+
     ModuleItems {
         add_root: false,
         submodules: submodules.into_boxed_slice(),
@@ -1288,6 +1297,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
         eiis: eiis.into_boxed_slice(),
+        proc_macro_decls,
     }
 }
 
@@ -1310,6 +1320,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         opaques,
         nested_bodies,
         eiis,
+        proc_macro_decls,
         ..
     } = collector;
 
@@ -1324,40 +1335,32 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
         eiis: eiis.into_boxed_slice(),
+        proc_macro_decls,
     }
 }
 
 struct ItemCollector<'tcx> {
     // When true, it collects all items in the create,
     // otherwise it collects items in some module.
+    // Converting this to generic const didn't lead to significant perf improvements
+    // (see <https://github.com/rust-lang/rust/pull/158119#issuecomment-4751513679>).
     crate_collector: bool,
     tcx: TyCtxt<'tcx>,
-    submodules: Vec<OwnerId>,
-    items: Vec<ItemId>,
-    trait_items: Vec<TraitItemId>,
-    impl_items: Vec<ImplItemId>,
-    foreign_items: Vec<ForeignItemId>,
-    body_owners: Vec<LocalDefId>,
-    opaques: Vec<LocalDefId>,
-    nested_bodies: Vec<LocalDefId>,
-    eiis: Vec<LocalDefId>,
+    submodules: Vec<OwnerId> = vec![],
+    items: Vec<ItemId> = vec![],
+    trait_items: Vec<TraitItemId> = vec![],
+    impl_items: Vec<ImplItemId> = vec![],
+    foreign_items: Vec<ForeignItemId> = vec![],
+    body_owners: Vec<LocalDefId> = vec![],
+    opaques: Vec<LocalDefId> = vec![],
+    nested_bodies: Vec<LocalDefId> = vec![],
+    eiis: Vec<LocalDefId> = vec![],
+    proc_macro_decls: Option<LocalDefId> = None,
 }
 
 impl<'tcx> ItemCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, crate_collector: bool) -> ItemCollector<'tcx> {
-        ItemCollector {
-            crate_collector,
-            tcx,
-            submodules: Vec::default(),
-            items: Vec::default(),
-            trait_items: Vec::default(),
-            impl_items: Vec::default(),
-            foreign_items: Vec::default(),
-            body_owners: Vec::default(),
-            opaques: Vec::default(),
-            nested_bodies: Vec::default(),
-            eiis: Vec::default(),
-        }
+        ItemCollector { crate_collector, tcx, .. }
     }
 }
 
@@ -1373,7 +1376,16 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
             self.body_owners.push(item.owner_id.def_id);
         }
 
-        self.items.push(item.item_id());
+        let item_id = item.item_id();
+
+        if self.crate_collector
+            && self.proc_macro_decls.is_none()
+            && find_attr!(self.tcx, item_id.hir_id(), RustcProcMacroDecls)
+        {
+            self.proc_macro_decls = Some(item_id.owner_id.def_id);
+        }
+
+        self.items.push(item_id);
 
         if let ItemKind::Static(..) | ItemKind::Fn { .. } | ItemKind::Macro(..) = &item.kind
             && item.eii

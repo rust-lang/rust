@@ -993,7 +993,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         loaded_value.to_rvalue()
     }
 
-    fn volatile_load(&mut self, ty: Type<'gcc>, ptr: RValue<'gcc>) -> RValue<'gcc> {
+    fn volatile_load(&mut self, ty: Type<'gcc>, ptr: RValue<'gcc>, _: Align) -> RValue<'gcc> {
+        // FIXME(antoyo): set alignment.
         let ptr = self.context.new_cast(self.location, ptr, ty.make_volatile().make_pointer());
         // (FractalFir): We insert a local here, to ensure this volatile load can't move across
         // blocks.
@@ -1457,6 +1458,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             self.location,
             self.context.new_call(self.location, memset, &[ptr, fill_byte, size]),
         );
+    }
+
+    fn vscale(&mut self, _: Self::Type) -> Self::Value {
+        unimplemented!("`rustc_codegen_gcc` doesn't support scalable vectors yet")
     }
 
     fn select(

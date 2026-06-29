@@ -602,7 +602,9 @@ impl<'a> Parser<'a> {
         // Look for usages of '=>' where '>=' was probably intended
         if self.token == token::FatArrow
             && expected.iter().any(|tok| matches!(tok, TokenType::Operator | TokenType::Le))
-            && !expected.iter().any(|tok| matches!(tok, TokenType::FatArrow | TokenType::Comma))
+            && !expected
+                .iter()
+                .any(|tok| matches!(tok, TokenType::FatArrow | TokenType::CloseBrace))
         {
             err.span_suggestion(
                 self.token.span,

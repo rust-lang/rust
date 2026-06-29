@@ -190,8 +190,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let subdiag = match (
-            self.get_impl_future_output_ty(exp_found.expected),
-            self.get_impl_future_output_ty(exp_found.found),
+            self.tcx.get_impl_future_output_ty(exp_found.expected),
+            self.tcx.get_impl_future_output_ty(exp_found.found),
         ) {
             (Some(exp), Some(found)) if self.same_type_modulo_infer(exp, found) => match cause
                 .code()
@@ -769,20 +769,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 StatementAsExpression::CorrectType
             }
             (
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: last_def_id }, .. }),
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: exp_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: last_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: exp_def_id }, .. }),
             ) if last_def_id == exp_def_id => StatementAsExpression::CorrectType,
             (
-                ty::Alias(ty::AliasTy {
-                    kind: ty::Opaque { def_id: last_def_id },
-                    args: last_bounds,
-                    ..
-                }),
-                ty::Alias(ty::AliasTy {
-                    kind: ty::Opaque { def_id: exp_def_id },
-                    args: exp_bounds,
-                    ..
-                }),
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Opaque { def_id: last_def_id }, args: last_bounds, ..
+                    },
+                ),
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Opaque { def_id: exp_def_id }, args: exp_bounds, ..
+                    },
+                ),
             ) => {
                 debug!(
                     "both opaque, likely future {:?} {:?} {:?} {:?}",

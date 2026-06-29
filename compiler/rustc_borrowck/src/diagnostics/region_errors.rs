@@ -28,6 +28,7 @@ use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 
 use super::{LIMITATION_NOTE, OutlivesSuggestionBuilder, RegionName, RegionNameSource};
+use crate::consumers::RegionInferenceContext;
 use crate::nll::ConstraintDescription;
 use crate::region_infer::{BlameConstraint, TypeTest};
 use crate::session_diagnostics::{
@@ -134,7 +135,7 @@ pub(crate) struct ErrorConstraintInfo<'tcx> {
     pub(super) span: Span,
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+impl<'tcx> RegionInferenceContext<'tcx> {
     /// Converts a region inference variable into a `ty::Region` that
     /// we can use for error reporting. If `r` is universally bound,
     /// then we use the name that we have on record for it. If `r` is
@@ -142,20 +143,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// to find a good name from that. Returns `None` if we can't find
     /// one (e.g., this is just some random part of the CFG).
     pub(super) fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
-        self.to_error_region_vid(r).and_then(|r| self.regioncx.region_definition(r).external_name)
+        self.to_error_region_vid(r).and_then(|r| self.region_definition(r).external_name)
     }
 
     /// Returns the `RegionVid` corresponding to the region returned by
     /// `to_error_region`.
     pub(super) fn to_error_region_vid(&self, r: RegionVid) -> Option<RegionVid> {
-        if self.regioncx.universal_regions().is_universal_region(r) {
+        if self.universal_regions().is_universal_region(r) {
             Some(r)
         } else {
             // We just want something nameable, even if it's not
             // actually an upper bound.
-            let upper_bound = self.regioncx.approx_universal_upper_bound(r);
+            let upper_bound = self.approx_universal_upper_bound(r);
 
-            if self.regioncx.upper_bound_in_region_scc(r, upper_bound) {
+            if self.upper_bound_in_region_scc(r, upper_bound) {
                 self.to_error_region_vid(upper_bound)
             } else {
                 None
@@ -179,14 +180,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(r) = self.to_error_region(fr)
             && let ty::ReLateParam(late_param) = r.kind()
             && let ty::LateParamRegionKind::ClosureEnv = late_param.kind
-            && let DefiningTy::Closure(_, args) = self.regioncx.universal_regions().defining_ty
+            && let DefiningTy::Closure(_, args) = self.universal_regions().defining_ty
         {
             return args.as_closure().kind() == ty::ClosureKind::FnMut;
         }
 
         false
     }
+}
 
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     // For generic associated types (GATs) which implied 'static requirement
     // from higher-ranked trait bounds (HRTB). Try to locate span of the trait
     // and the span which bounded to the trait for adding 'static lifetime suggestion
@@ -309,12 +312,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 RegionErrorKind::TypeTestError { type_test } => {
                     // Try to convert the lower-bound region into something named we can print for
                     // the user.
-                    let lower_bound_region = self.to_error_region(type_test.lower_bound);
+                    let lower_bound_region = self.regioncx.to_error_region(type_test.lower_bound);
 
                     let type_test_span = type_test.span;
 
                     if let Some(lower_bound_region) = lower_bound_region {
-                        let generic_ty = self.name_regions(
+                        let generic_ty = self.regioncx.name_regions(
                             self.infcx.tcx,
                             type_test.generic_kind.to_ty(self.infcx.tcx),
                         );
@@ -324,7 +327,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             self.body.source.def_id().expect_local(),
                             type_test_span,
                             Some(origin),
-                            self.name_regions(self.infcx.tcx, type_test.generic_kind),
+                            self.regioncx.name_regions(self.infcx.tcx, type_test.generic_kind),
                             lower_bound_region,
                         ));
                     } else {
@@ -450,7 +453,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
 
         // Check if we can use one of the "nice region errors".
-        if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
+        if let (Some(f), Some(o)) =
+            (self.regioncx.to_error_region(fr), self.regioncx.to_error_region(outlived_fr))
+        {
             let infer_err = self.infcx.err_ctxt();
             let nice =
                 NiceRegionError::new_from_span(&infer_err, self.mir_def_id(), cause.span, o, f);
@@ -481,7 +486,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 d.note("meoow :c");
                 d
             }
-            (ConstraintCategory::Return(kind), true, false) if self.is_closure_fn_mut(fr) => {
+            (ConstraintCategory::Return(kind), true, false)
+                if self.regioncx.is_closure_fn_mut(fr) =>
+            {
                 self.report_fnmut_error(&errci, kind)
             }
             (ConstraintCategory::Assignment, true, false)
@@ -603,7 +610,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *output_ty.kind() {
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *output_ty.kind() {
             output_ty = self.infcx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip()
         };
 
@@ -736,7 +743,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // Only show an extra note if we can find an 'error region' for both of the region
         // variables. This avoids showing a noisy note that just mentions 'synthetic' regions
         // that don't help the user understand the error.
-        match (self.to_error_region(errci.fr), self.to_error_region(errci.outlived_fr)) {
+        match (
+            self.regioncx.to_error_region(errci.fr),
+            self.regioncx.to_error_region(errci.outlived_fr),
+        ) {
             (Some(f), Some(o)) => {
                 self.maybe_suggest_constrain_dyn_trait_impl(&mut diag, f, o, category);
 
@@ -842,7 +852,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         outlived_fr: RegionVid,
     ) {
         if let (Some(f), Some(outlived_f)) =
-            (self.to_error_region(fr), self.to_error_region(outlived_fr))
+            (self.regioncx.to_error_region(fr), self.regioncx.to_error_region(outlived_fr))
         {
             if outlived_f.kind() != ty::ReStatic {
                 return;
@@ -1013,7 +1023,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     fn suggest_adding_lifetime_params(&self, diag: &mut Diag<'_>, sub: RegionVid, sup: RegionVid) {
-        let (Some(sub), Some(sup)) = (self.to_error_region(sub), self.to_error_region(sup)) else {
+        let (Some(sub), Some(sup)) =
+            (self.regioncx.to_error_region(sub), self.regioncx.to_error_region(sup))
+        else {
             return;
         };
 

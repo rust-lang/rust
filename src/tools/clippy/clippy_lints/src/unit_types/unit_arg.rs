@@ -1,7 +1,7 @@
 use std::iter;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanRangeExt, indent_of, reindent_multiline};
+use clippy_utils::source::{SpanExt, indent_of, reindent_multiline};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::expr_type_is_certain;
 use clippy_utils::{is_empty_block, is_expr_default, is_from_proc_macro};
@@ -85,7 +85,7 @@ fn lint_unit_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, args_to_
                         && block.expr.is_none()
                         && let Some(last_stmt) = block.stmts.iter().last()
                         && let StmtKind::Semi(last_expr) = last_stmt.kind
-                        && let Some(snip) = last_expr.span.get_source_text(cx)
+                        && let Some(snip) = last_expr.span.get_text(cx)
                     {
                         Some((last_stmt.span, snip))
                     } else {
@@ -117,7 +117,7 @@ fn lint_unit_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, args_to_
                 .filter_map(|arg| get_expr_snippet_with_type_certainty(cx, arg))
                 .collect();
 
-            if let Some(call_snippet) = expr.span.get_source_text(cx) {
+            if let Some(call_snippet) = expr.span.get_text(cx) {
                 if arg_snippets_without_redundant_exprs.is_empty()
                     && let suggestions = args_to_recover
                         .iter()

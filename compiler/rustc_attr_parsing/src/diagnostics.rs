@@ -1,4 +1,4 @@
-use rustc_errors::{Applicability, DiagArgValue, E0232, MultiSpan};
+use rustc_errors::{Applicability, DiagArgValue, E0232, E0264, MultiSpan};
 use rustc_hir::AttrPath;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
@@ -169,10 +169,21 @@ pub(crate) struct DocAutoCfgExpectsHideOrShow;
 pub(crate) struct AmbiguousDeriveHelpers;
 
 #[derive(Diagnostic)]
-#[diag("`#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or key/value items")]
+#[diag("`#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or `values(...)`")]
 pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
     pub attr_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("`any()` was used when other values were provided")]
+pub(crate) struct DocAutoCfgHideShowValuesMix {
+    #[label("value declared here")]
+    pub value_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("unexpected item after `values()`")]
+pub(crate) struct DocAutoCfgHideShowUnexpectedItemAfterValues;
 
 #[derive(Diagnostic)]
 #[diag("`#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items")]
@@ -238,6 +249,10 @@ pub(crate) struct DocUnknownAny {
 #[derive(Diagnostic)]
 #[diag("expected boolean for `#[doc(auto_cfg = ...)]`")]
 pub(crate) struct DocAutoCfgWrongLiteral;
+
+#[derive(Diagnostic)]
+#[diag("there must be at least one identifier before `values(...)`")]
+pub(crate) struct DocAutoCfgHideShowNoIdentBeforeValues;
 
 #[derive(Diagnostic)]
 #[diag("`#[doc(test(...)]` takes a list of attributes")]
@@ -800,4 +815,12 @@ pub(crate) struct DupesNotAllowed;
 pub(crate) struct UnsafeAttribute {
     pub attr_path: AttrPath,
     pub note: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown external lang item: `{$lang_item}`", code = E0264)]
+pub(crate) struct UnknownExternLangItem {
+    #[primary_span]
+    pub span: Span,
+    pub lang_item: Symbol,
 }

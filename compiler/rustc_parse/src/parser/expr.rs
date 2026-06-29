@@ -1304,8 +1304,10 @@ impl<'a> Parser<'a> {
         let err_span = self.prev_token.span.to(self.token.span);
         let mut args = thin_vec![self.mk_expr_err(err_span, guar)];
         while !self.token.kind.is_close_delim_or_eof() {
-            if self.eat(exp!(Comma)) && !self.token.kind.is_close_delim_or_eof() {
-                args.push(self.mk_expr_err(self.prev_token.span.shrink_to_hi(), guar));
+            if self.eat(exp!(Comma)) {
+                if !self.token.kind.is_close_delim_or_eof() {
+                    args.push(self.mk_expr_err(self.prev_token.span.shrink_to_hi(), guar));
+                }
             } else {
                 self.parse_token_tree();
             }

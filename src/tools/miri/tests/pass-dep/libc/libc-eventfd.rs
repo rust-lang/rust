@@ -1,6 +1,7 @@
 //@only-target: linux android illumos
 // test_race, test_blocking_read and test_blocking_write depend on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
+//@run-native
 
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
@@ -9,6 +10,7 @@ use std::{io, thread};
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
+use libc_utils::*;
 
 fn main() {
     test_read_write();
@@ -35,8 +37,8 @@ fn write_bytes<const N: usize>(fd: i32, data: [u8; N]) -> io::Result<usize> {
 }
 
 fn test_read_write() {
-    let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+    let fd =
+        errno_result(unsafe { libc::eventfd(0, libc::EFD_NONBLOCK | libc::EFD_CLOEXEC) }).unwrap();
     let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
     // Write 1 to the counter.
     let res = write_bytes(fd, sized_8_data).unwrap();
@@ -97,9 +99,15 @@ fn test_read_write() {
 
 fn test_race() {
     static mut VAL: u8 = 0;
-    let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+
+    let fd =
+        errno_result(unsafe { libc::eventfd(0, libc::EFD_NONBLOCK | libc::EFD_CLOEXEC) }).unwrap();
     let thread1 = thread::spawn(move || {
+        if !cfg!(miri) {
+            // Make sure the write goes first.
+            thread::sleep(std::time::Duration::from_millis(10));
+        }
+
         let mut buf: [u8; 8] = [0; 8];
         let res = read_bytes(fd, &mut buf).unwrap();
         // read returns number of bytes has been read, which is always 8.
@@ -130,8 +138,7 @@ fn test_syscall() {
 // This test will block on eventfd read then get unblocked by `write`.
 fn test_blocking_read() {
     // eventfd read will block when EFD_NONBLOCK flag is clear and counter = 0.
-    let flags = libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+    let fd = errno_result(unsafe { libc::eventfd(0, libc::EFD_CLOEXEC) }).unwrap();
     let thread1 = thread::spawn(move || {
         let mut buf: [u8; 8] = [0; 8];
         // This will block.
@@ -154,8 +161,7 @@ fn test_blocking_read() {
 fn test_blocking_write() {
     // eventfd write will block when EFD_NONBLOCK flag is clear
     // and the addition caused counter to exceed u64::MAX - 1.
-    let flags = libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+    let fd = errno_result(unsafe { libc::eventfd(0, libc::EFD_CLOEXEC) }).unwrap();
     // Write u64 - 1, so the all subsequent write will block.
     let sized_8_data: [u8; 8] = (u64::MAX - 1).to_ne_bytes();
     let res: i64 = unsafe {
@@ -192,8 +198,7 @@ fn test_blocking_write() {
 fn test_two_threads_blocked_on_eventfd() {
     // eventfd write will block when EFD_NONBLOCK flag is clear
     // and the addition caused counter to exceed u64::MAX - 1.
-    let flags = libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+    let fd = errno_result(unsafe { libc::eventfd(0, libc::EFD_CLOEXEC) }).unwrap();
     // Write u64 - 1, so the all subsequent write will block.
     let sized_8_data: [u8; 8] = (u64::MAX - 1).to_ne_bytes();
     let res: i64 = unsafe {

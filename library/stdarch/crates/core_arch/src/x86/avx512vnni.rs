@@ -873,7 +873,7 @@ pub fn _mm256_dpwuuds_epi32(src: __m256i, a: __m256i, b: __m256i) -> __m256i {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.avx512.vpdpwssd.512"]
     fn vpdpwssd(src: i32x16, a: i16x32, b: i16x32) -> i32x16;
     #[link_name = "llvm.x86.avx512.vpdpwssd.256"]

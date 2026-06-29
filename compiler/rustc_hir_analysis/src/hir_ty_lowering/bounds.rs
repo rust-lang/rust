@@ -25,17 +25,17 @@ use crate::hir_ty_lowering::{
 #[derive(Debug, Default)]
 struct CollectedBound {
     /// `Trait`
-    positive: bool,
+    positive: Option<Span>,
     /// `?Trait`
-    maybe: bool,
+    maybe: Option<Span>,
     /// `!Trait`
-    negative: bool,
+    negative: Option<Span>,
 }
 
 impl CollectedBound {
     /// Returns `true` if any of `Trait`, `?Trait` or `!Trait` were encountered.
     fn any(&self) -> bool {
-        self.positive || self.maybe || self.negative
+        self.positive.is_some() || self.maybe.is_some() || self.negative.is_some()
     }
 }
 
@@ -96,9 +96,9 @@ fn collect_bounds<'a, 'tcx>(
         }
 
         match ptr.modifiers.polarity {
-            hir::BoundPolarity::Maybe(_) => collect_into.maybe = true,
-            hir::BoundPolarity::Negative(_) => collect_into.negative = true,
-            hir::BoundPolarity::Positive => collect_into.positive = true,
+            hir::BoundPolarity::Maybe(_) => collect_into.maybe = Some(ptr.span),
+            hir::BoundPolarity::Negative(_) => collect_into.negative = Some(ptr.span),
+            hir::BoundPolarity::Positive => collect_into.positive = Some(ptr.span),
         }
     });
     collect_into
@@ -180,10 +180,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ImpliedBoundsContext::TyParam(..) | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {
             }
         }
-
         let collected = collect_sizedness_bounds(tcx, hir_bounds, context, span);
-        if (collected.sized.maybe || collected.sized.negative)
-            && !collected.sized.positive
+        if let Some(span) = collected.sized.maybe.or(collected.sized.negative)
+            && collected.sized.positive.is_none()
             && !collected.meta_sized.any()
             && !collected.pointee_sized.any()
         {
@@ -590,7 +589,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             .map_bound(|projection_term| projection_term.expect_ty());
                         // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
                         // parameter to have a skipped binder.
-                        let param_ty = Ty::new_alias(tcx, projection_ty.skip_binder());
+                        let param_ty =
+                            Ty::new_alias(tcx, ty::IsRigid::No, projection_ty.skip_binder());
                         self.lower_bounds(
                             param_ty,
                             hir_bounds,
@@ -680,7 +680,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ty::Binder::bind_with_vars(trait_ref, tcx.late_bound_vars(item_segment.hir_id));
 
                 match self.lower_return_type_notation_ty(candidate, item_def_id, hir_ty.span) {
-                    Ok(ty) => Ty::new_alias(tcx, ty),
+                    Ok(ty) => Ty::new_alias(tcx, ty::IsRigid::No, ty),
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
             }
@@ -728,7 +728,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
 
                 match self.lower_return_type_notation_ty(bound, item_def_id, hir_ty.span) {
-                    Ok(ty) => Ty::new_alias(tcx, ty),
+                    Ok(ty) => Ty::new_alias(tcx, ty::IsRigid::No, ty),
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
             }
@@ -792,7 +792,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Next, we need to check that the return-type notation is being used on
         // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
         let output = tcx.fn_sig(item_def_id).skip_binder().output();
-        let output = if let ty::Alias(alias_ty) = *output.skip_binder().kind()
+        let output = if let ty::Alias(_, alias_ty) = *output.skip_binder().kind()
             && let ty::AliasTy { kind: ty::Projection { def_id: projection_def_id }, .. } = alias_ty
             && tcx.is_impl_trait_in_trait(projection_def_id)
         {
@@ -811,7 +811,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
         // and it's no coincidence why.
         let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-        Ok(ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args).skip_norm_wip())
+        Ok(ty::EarlyBinder::bind(tcx, shifted_output).instantiate(tcx, args).skip_norm_wip())
     }
 }
 

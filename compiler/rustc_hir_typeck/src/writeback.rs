@@ -348,7 +348,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         intravisit::walk_ty(self, hir_ty);
         // If there are type checking errors, Type privacy pass will stop,
-        // so we may not get the type from hid_id, see #104513
+        // so we may not get the type from hir_id, see #104513
         if let Some(ty) = self.fcx.node_ty_opt(hir_ty.hir_id) {
             let ty = self.resolve(ty, &hir_ty.span);
             self.write_ty_to_typeck_results(hir_ty.hir_id, ty);
@@ -567,7 +567,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (opaque_type_key, hidden_type) in opaque_types {
             let hidden_type = self.resolve(hidden_type, &hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &hidden_type.span);
-            if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+            if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
                 hidden_type.ty.kind()
                 && def_id == opaque_type_key.def_id.to_def_id()
                 && args == opaque_type_key.args
@@ -661,6 +661,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             self.fcx.typeck_results.borrow_mut().type_dependent_defs_mut().remove(hir_id)
         {
             self.typeck_results.type_dependent_defs_mut().insert(hir_id, def);
+        }
+
+        // Export splatted function call resolutions.
+        if let Some(def) = self.fcx.typeck_results.borrow_mut().splatted_defs_mut().remove(hir_id) {
+            self.typeck_results.splatted_defs_mut().insert(hir_id, def);
         }
 
         // Resolve any borrowings for the node with id `node_id`
@@ -1055,7 +1060,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRecursiveOpaque<'_, 'tcx> {
     type Result = ControlFlow<()>;
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *t.kind()
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *t.kind()
             && let Some(def_id) = def_id.as_local()
         {
             if self.def_id == def_id {

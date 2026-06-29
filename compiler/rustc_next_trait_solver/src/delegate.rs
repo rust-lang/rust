@@ -37,7 +37,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     fn evaluate_const(
         &self,
         param_env: <Self::Interner as Interner>::ParamEnv,
-        uv: ty::UnevaluatedConst<Self::Interner>,
+        alias_const: ty::AliasConst<Self::Interner>,
     ) -> Option<<Self::Interner as Interner>::Const>;
 
     // FIXME: This only is here because `wf::obligations` is in `rustc_trait_selection`!

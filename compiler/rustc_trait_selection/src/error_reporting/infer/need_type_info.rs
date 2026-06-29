@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 GenericArgKind::Type(ty) => {
                     if matches!(
                         ty.kind(),
-                        ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
+                        ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })
                             | ty::Closure(..)
                             | ty::CoroutineClosure(..)
                             | ty::Coroutine(..)
@@ -1079,9 +1079,9 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     }
                 }
                 GenericArgKind::Const(ct) => {
-                    if matches!(ct.kind(), ty::ConstKind::Unevaluated(..)) {
+                    if matches!(ct.kind(), ty::ConstKind::Alias(..)) {
                         // You can't write the generic arguments for
-                        // unevaluated constants.
+                        // alias constants.
                         walker.skip_current_subtree();
                     }
                 }

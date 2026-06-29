@@ -1,6 +1,6 @@
 //! Utility functions for attributes, including Clippy's built-in ones
 
-use crate::source::SpanRangeExt;
+use crate::source::SpanExt;
 use crate::{sym, tokenize_with_text};
 use rustc_ast::attr::AttributeExt;
 use rustc_errors::Applicability;
@@ -37,8 +37,6 @@ pub fn check_clippy_attr<A: AttributeExt>(sess: &Session, attr: &A) {
             | sym::version
             | sym::cognitive_complexity
             | sym::dump
-            | sym::disallowed_profile
-            | sym::disallowed_profiles
             | sym::msrv
             | sym::has_significant_drop
             | sym::format_args => {},
@@ -107,7 +105,12 @@ pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
 
 /// Checks whether the given span contains a `#[cfg(..)]` attribute
 pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
-    s.check_source_text(cx, |src| {
+    s.check_text(cx, |src| {
+        // PERF: A `#[cfg]` needs a literal `#`, so skip the lexer when the source has none.
+        if !src.contains('#') {
+            return false;
+        }
+
         let mut iter = tokenize_with_text(src);
 
         // Search for the token sequence [`#`, `[`, `cfg`]

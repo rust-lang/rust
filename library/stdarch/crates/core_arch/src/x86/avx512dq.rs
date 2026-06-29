@@ -7235,7 +7235,7 @@ pub fn _mm_mask_fpclass_ss_mask<const IMM8: i32>(k1: __mmask8, a: __m128) -> __m
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.avx512.sitofp.round.v2f64.v2i64"]
     fn vcvtqq2pd_128(a: i64x2, rounding: i32) -> f64x2;
     #[link_name = "llvm.x86.avx512.sitofp.round.v4f64.v4i64"]

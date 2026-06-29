@@ -889,16 +889,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             // While opaque types are checked for earlier, if a projection in a struct field
             // normalizes to an opaque type, then it will reach this branch.
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                 FfiUnsafe { ty, reason: msg!("opaque types have no C equivalent"), help: None }
             }
 
             // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
             //  so they are currently ignored for the purposes of this lint.
             ty::Param(..)
-            | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
-            }) if state.can_expect_ty_params() => FfiSafe,
+            | ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. })
+                if state.can_expect_ty_params() =>
+            {
+                FfiSafe
+            }
 
             ty::UnsafeBinder(_) => FfiUnsafe {
                 ty,
@@ -920,10 +922,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             },
 
             ty::Param(..)
-            | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
-                ..
-            })
+            | ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    ..
+                },
+            )
             | ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)
@@ -942,7 +947,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     return ControlFlow::Continue(());
                 }
 
-                if let ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) = ty.kind() {
+                if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) = ty.kind() {
                     ControlFlow::Break(ty)
                 } else {
                     ty.super_visit_with(self)

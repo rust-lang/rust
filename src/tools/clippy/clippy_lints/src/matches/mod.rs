@@ -26,14 +26,15 @@ mod wild_in_or_pats;
 
 use clippy_config::Conf;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::walk_span_to_context;
+use clippy_utils::source::SpanExt;
 use clippy_utils::{
-    higher, is_direct_expn_of, is_in_const_context, is_span_match, span_contains_cfg, span_extract_comments, sym,
+    higher, is_direct_expn_of, is_in_const_context, is_lint_allowed, is_span_match, sym, tokenize_with_text,
 };
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
+use rustc_lexer::{TokenKind, is_whitespace};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
-use rustc_span::{SpanData, SyntaxContext};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -1084,34 +1085,38 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 try_err::check(cx, expr, ex);
             }
 
-            if !from_expansion && !contains_cfg_arm(cx, expr, ex, arms) {
+            if !from_expansion
+                && let mut has_cfg = false
+                && let mut has_comments = false
+                && walk_intra_arm_text(cx, expr.span, ex.span, arms, |s| {
+                    let mut iter = tokenize_with_text(s).filter(|(t, ..)| match t {
+                        TokenKind::Whitespace => false,
+                        TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } => {
+                            has_comments = true;
+                            false
+                        },
+                        _ => true,
+                    });
+                    while let Some((t, ..)) = iter.next() {
+                        if matches!(t, TokenKind::Pound)
+                            && matches!(iter.next(), Some((TokenKind::OpenBracket, ..)))
+                            && matches!(iter.next(), Some((TokenKind::Ident, "cfg", _)))
+                        {
+                            has_cfg = true;
+                        }
+                    }
+                })
+                && !has_cfg
+            {
                 if source == MatchSource::Normal {
-                    if !(self.msrv.meets(cx, msrvs::MATCHES_MACRO)
-                        && match_like_matches::check_match(cx, expr, ex, arms))
-                    {
+                    let is_match_like_matches = self.msrv.meets(cx, msrvs::MATCHES_MACRO)
+                        && match_like_matches::check_match(cx, expr, ex, arms);
+                    if !(is_match_like_matches || is_lint_allowed(cx, MATCH_SAME_ARMS, expr.hir_id)) {
                         match_same_arms::check(cx, arms);
                     }
 
                     redundant_pattern_match::check_match(cx, expr, ex, arms);
-                    let mut match_comments = span_extract_comments(cx, expr.span);
-                    // We remove comments from inside arms block.
-                    if !match_comments.is_empty() {
-                        for arm in arms {
-                            for comment in span_extract_comments(cx, arm.body.span) {
-                                if let Some(index) = match_comments
-                                    .iter()
-                                    .enumerate()
-                                    .find(|(_, cm)| **cm == comment)
-                                    .map(|(index, _)| index)
-                                {
-                                    match_comments.remove(index);
-                                }
-                            }
-                        }
-                    }
-                    // If there are still comments, it means they are outside of the arms. Tell the lint
-                    // code about it.
-                    single_match::check(cx, ex, arms, expr, !match_comments.is_empty());
+                    single_match::check(cx, ex, arms, expr, has_comments);
                     match_bool::check(cx, ex, arms, expr);
                     overlapping_arms::check(cx, ex, arms);
                     match_wild_enum::check(cx, ex, arms);
@@ -1216,64 +1221,51 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 }
 
-/// Checks if there are any arms with a `#[cfg(..)]` attribute.
-fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>]) -> bool {
-    let Some(scrutinee_span) = walk_span_to_context(scrutinee.span, SyntaxContext::root()) else {
-        // Shouldn't happen, but treat this as though a `cfg` attribute were found
-        return true;
-    };
-
-    let start = scrutinee_span.hi();
-    let mut arm_spans = arms.iter().map(|arm| {
-        let data = arm.span.data();
-        (data.ctxt == SyntaxContext::root()).then_some((data.lo, data.hi))
-    });
-    let end = e.span.hi();
-
-    // Walk through all the non-code space before each match arm. The space trailing the final arm is
-    // handled after the `try_fold` e.g.
-    //
-    // match foo {
-    // _________^-                      everything between the scrutinee and arm1
-    //|    arm1 => (),
-    //|---^___________^                 everything before arm2
-    //|    #[cfg(feature = "enabled")]
-    //|    arm2 => some_code(),
-    //|---^____________________^        everything before arm3
-    //|    // some comment about arm3
-    //|    arm3 => some_code(),
-    //|---^____________________^        everything after arm3
-    //|    #[cfg(feature = "disabled")]
-    //|    arm4 = some_code(),
-    //|};
-    //|^
-    let found = arm_spans.try_fold(start, |start, range| {
-        let Some((end, next_start)) = range else {
-            // Shouldn't happen as macros can't expand to match arms, but treat this as though a `cfg` attribute
-            // were found.
-            return Err(());
-        };
-        let span = SpanData {
-            lo: start,
-            hi: end,
-            ctxt: SyntaxContext::root(),
-            parent: None,
-        }
-        .span();
-        (!span_contains_cfg(cx, span)).then_some(next_start).ok_or(())
-    });
-    match found {
-        Ok(start) => {
-            let span = SpanData {
-                lo: start,
-                hi: end,
-                ctxt: SyntaxContext::root(),
-                parent: None,
+/// Calls the given function for each segment of the source text within the
+/// match block which is not part of any arm. For the purposes of this function
+/// attributes on an arm are not considered part of the arm.
+///
+/// This will return whether all the relevant source text could be retrieved. If
+/// all the source text cannot be retrieved it should be assumed that the match
+/// originates from a macro.
+#[must_use]
+fn walk_intra_arm_text(
+    cx: &LateContext<'_>,
+    match_sp: Span,
+    scrutinee_sp: Span,
+    arms: &[Arm<'_>],
+    mut f: impl FnMut(&str),
+) -> bool {
+    if let Some(src) = match_sp.get_source_range(cx)
+        && let scrutinee_sp = scrutinee_sp.source_callsite().data()
+        && let block_start = (scrutinee_sp.hi.0 - src.sf.start_pos.0) as usize
+        && let Some(src_text) = src.sf.src.as_ref().map(|x| &***x)
+        && let Some(block_text) = src_text.get(block_start..src.range.end)
+        && let Some(stripped_text) = block_text.trim_start_matches(is_whitespace).strip_prefix('{')
+        && let arms_start = block_start + (block_text.len() - stripped_text.len())
+        && let Some(arms_end) = stripped_text
+            .trim_end_matches(|c| is_whitespace(c) || c == ')')
+            .strip_suffix('}')
+            .map(|s| src.range.end - (stripped_text.len() - s.len()))
+        && let Some(range) = arms.iter().try_fold(arms_start..arms_end, |range, arm| {
+            let arm_sp: rustc_span::SpanData = arm.span.source_callsite().data();
+            let arm_range = (arm_sp.lo.0 - src.sf.start_pos.0) as usize..(arm_sp.hi.0 - src.sf.start_pos.0) as usize;
+            if range.start <= arm_range.start
+                && arm_range.end <= range.end
+                && let Some(src) = src_text.get(range.start..arm_range.start)
+            {
+                f(src);
+                Some(arm_range.end..range.end)
+            } else {
+                None
             }
-            .span();
-            span_contains_cfg(cx, span)
-        },
-        Err(()) => true,
+        })
+        && let Some(src) = src_text.get(range)
+    {
+        f(src);
+        true
+    } else {
+        false
     }
 }
 

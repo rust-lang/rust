@@ -6,8 +6,7 @@
 #![feature(slice_partition_dedup)]
 #![feature(strict_provenance_lints)]
 #![feature(test)]
-#![deny(fuzzy_provenance_casts)]
-#![deny(lossy_provenance_casts)]
+#![deny(implicit_provenance_casts)]
 
 extern crate test;
 

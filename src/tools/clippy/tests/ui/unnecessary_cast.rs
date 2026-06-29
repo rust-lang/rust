@@ -1,7 +1,9 @@
 //@aux-build:extern_fake_libc.rs
+#![feature(const_trait_impl, const_ops)]
 #![warn(clippy::unnecessary_cast)]
 #![allow(
     clippy::borrow_as_ptr,
+    clippy::identity_op,
     clippy::multiple_bound_locations,
     clippy::no_effect,
     clippy::nonstandard_macro_braces,
@@ -656,3 +658,25 @@ fn issue16475() -> *const u8 {
         //~^ unnecessary_cast
     }
 }
+
+// Make sure that the calculated values aren't changed by the fixes.
+const _: () = {
+    use std::convert::identity;
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!0 as u64).overflowing_shr(1_u32).0);
+    //~^ unnecessary_cast
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!0_u64 as u64).overflowing_shr(1_u32).0);
+    //~^ unnecessary_cast
+    assert!(0 == (!identity(!0_u64) as u64).overflowing_shr(1_u32).0);
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!0 as u64 + 0).overflowing_shr(1_u32).0);
+    //~^ unnecessary_cast
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!(0 as u64 + 0)).overflowing_shr(1_u32).0);
+    //~^ unnecessary_cast
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!((0 + 0) as u64)).overflowing_shr(1_u32).0);
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == identity(!0 as u64).overflowing_shr(1_u32).0);
+    //~^ unnecessary_cast
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!identity(0_u64) as u64).overflowing_shr(1_u32).0);
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!identity(0 as u64)).overflowing_shr(1_u32).0);
+    //~^ unnecessary_cast
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == identity(!0 as u64 + 0).overflowing_shr(1_u32).0);
+    //~^ unnecessary_cast
+};

@@ -344,13 +344,13 @@ where
     let uneval = match constant.const_ {
         Const::Ty(_, ct) => match ct.kind() {
             ty::ConstKind::Param(_) | ty::ConstKind::Error(_) => None,
-            // Unevaluated consts in MIR bodies don't have associated MIR (e.g. `type const`).
-            ty::ConstKind::Unevaluated(_) => None,
+            // Alias consts in MIR bodies don't have associated MIR (e.g. `type const`).
+            ty::ConstKind::Alias(_, _) => None,
             // FIXME(mgca): Investigate whether using `None` for `ConstKind::Value` is overly
             // strict, and if instead we should be doing some kind of value-based analysis.
             ty::ConstKind::Value(_) => None,
             _ => bug!(
-                "expected ConstKind::Param, ConstKind::Value, ConstKind::Unevaluated, or ConstKind::Error here, found {:?}",
+                "expected ConstKind::Param, ConstKind::Value, ConstKind::Alias, or ConstKind::Error here, found {:?}",
                 ct
             ),
         },

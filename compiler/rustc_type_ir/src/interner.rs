@@ -56,13 +56,12 @@ pub trait Interner:
     type CoroutineId: SpecificDefId<Self>;
     type AdtId: SpecificDefId<Self>;
     type ImplId: SpecificDefId<Self>;
-    type UnevaluatedConstId: SpecificDefId<Self>;
+    type AnonConstId: SpecificDefId<Self>;
     type TraitAssocTyId: SpecificDefId<Self>
         + Into<Self::TraitAssocTermId>
         + TryFrom<Self::TraitAssocTermId>;
     type TraitAssocConstId: SpecificDefId<Self>
         + Into<Self::TraitAssocTermId>
-        + Into<Self::UnevaluatedConstId>
         + TryFrom<Self::TraitAssocTermId>;
     type TraitAssocTermId: SpecificDefId<Self>;
     type OpaqueTyId: SpecificDefId<Self, Self::LocalOpaqueTyId>;
@@ -75,19 +74,13 @@ pub trait Interner:
         + Into<Self::DefId>
         + TypeFoldable<Self>;
     type FreeTyAliasId: SpecificDefId<Self> + Into<Self::FreeTermAliasId>;
-    type FreeConstAliasId: SpecificDefId<Self>
-        + Into<Self::UnevaluatedConstId>
-        + Into<Self::FreeTermAliasId>;
+    type FreeConstAliasId: SpecificDefId<Self> + Into<Self::FreeTermAliasId>;
     type FreeTermAliasId: SpecificDefId<Self>;
     type ImplOrTraitAssocTyId: SpecificDefId<Self> + Into<Self::ImplOrTraitAssocTermId>;
-    type ImplOrTraitAssocConstId: SpecificDefId<Self>
-        + Into<Self::UnevaluatedConstId>
-        + Into<Self::ImplOrTraitAssocTermId>;
+    type ImplOrTraitAssocConstId: SpecificDefId<Self> + Into<Self::ImplOrTraitAssocTermId>;
     type ImplOrTraitAssocTermId: SpecificDefId<Self>;
     type InherentAssocTyId: SpecificDefId<Self> + Into<Self::InherentAssocTermId>;
-    type InherentAssocConstId: SpecificDefId<Self>
-        + Into<Self::UnevaluatedConstId>
-        + Into<Self::InherentAssocTermId>;
+    type InherentAssocConstId: SpecificDefId<Self> + Into<Self::InherentAssocTermId>;
     type InherentAssocTermId: SpecificDefId<Self>;
     type Span: Span<Self>;
 
@@ -244,10 +237,7 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn unevaluated_const_kind_from_def_id(
-        self,
-        def_id: Self::DefId,
-    ) -> ty::UnevaluatedConstKind<Self>;
+    fn alias_const_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasConstKind<Self>;
 
     // FIXME: remove in favor of explicit construction
     fn alias_term_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTermKind<Self>;
@@ -291,6 +281,8 @@ pub trait Interner:
     fn features(self) -> Self::Features;
 
     fn assumptions_on_binders(self) -> bool;
+
+    fn renormalize_rigid_aliases(self) -> bool;
 
     fn coroutine_hidden_types(
         self,
@@ -517,7 +509,7 @@ declare_lift_into! {
     TraitId,
     Ty,
     Tys,
-    UnevaluatedConstId,
+    AnonConstId,
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

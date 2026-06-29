@@ -161,7 +161,7 @@ pr:
     env:
       CODEGEN_BACKENDS: gcc
     <<: *job-linux-4c
-  
+
   # This job tests features we want to stabilize soon, to ensure they don't
   # regress.
   - name: x86_64-gnu-next-trait-solver-polonius
@@ -720,6 +720,7 @@ auto:
         --target=i686-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
+        --disable-docs
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift

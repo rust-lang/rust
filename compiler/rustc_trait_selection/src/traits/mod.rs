@@ -280,6 +280,9 @@ fn do_normalize_predicates<'tcx>(
     let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let predicates = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(predicates));
+    // FIXME: opaque types in param env might be in defining scope but we're
+    // using non body analysis for here. So the rigidness marker is wrong.
+    let predicates = ty::set_aliases_to_non_rigid(tcx, predicates).skip_norm_wip();
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
@@ -366,8 +369,8 @@ pub fn normalize_param_env_or_error<'tcx>(
                     // should actually be okay since without `feature(generic_const_exprs)` the only
                     // const arguments that have a non-empty param env are array repeat counts. These
                     // do not appear in the type system though.
-                    if let ty::ConstKind::Unevaluated(uv) = c.kind()
-                        && matches!(uv.kind, ty::UnevaluatedConstKind::Anon { .. })
+                    if let ty::ConstKind::Alias(_, alias_const) = c.kind()
+                        && matches!(alias_const.kind, ty::AliasConstKind::Anon { .. })
                     {
                         let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
                         let c = evaluate_const(&infcx, c, ty::ParamEnv::empty());
@@ -398,10 +401,10 @@ pub fn normalize_param_env_or_error<'tcx>(
             // we cannot prove `T: Trait<u8>`.
             //
             // The same thing is true for const generics- attempting to prove
-            // `T: Trait<ConstKind::Unevaluated(...)>` with the same thing as a where clauses
+            // `T: Trait<ConstKind::Alias(...)>` with the same thing as a where clauses
             // will fail. After normalization we may be attempting to prove `T: Trait<4>` with
-            // the unnormalized where clause `T: Trait<ConstKind::Unevaluated(...)>`. In order
-            // for the obligation to hold `4` must be equal to `ConstKind::Unevaluated(...)`
+            // the unnormalized where clause `T: Trait<ConstKind::Alias(...)>`. In order
+            // for the obligation to hold `4` must be equal to `ConstKind::Alias(...)`
             // but as we do not have lazy norm implemented, equating the two consts fails outright.
             //
             // Ideally we would not normalize consts here at all but it is required for backwards
@@ -544,7 +547,7 @@ pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
 #[derive(Debug)]
 pub enum EvaluateConstErr {
     /// The constant being evaluated was either a generic parameter or inference variable, *or*,
-    /// some unevaluated constant with either generic parameters or inference variables in its
+    /// some alias const with either generic parameters or inference variables in its
     /// generic arguments.
     HasGenericsOrInfers,
     /// The type this constant evaluated to is not valid for use in const generics. This should
@@ -557,7 +560,7 @@ pub enum EvaluateConstErr {
 }
 
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
-// FIXME(generic_const_exprs): Consider accepting a `ty::UnevaluatedConst` when we are not rolling our own
+// FIXME(generic_const_exprs): Consider accepting a `ty::AliasConst` when we are not rolling our own
 // normalization scheme
 /// Evaluates a type system constant returning a `ConstKind::Error` in cases where CTFE failed and
 /// returning the passed in constant if it was not fully concrete (i.e. depended on generic parameters
@@ -580,7 +583,7 @@ pub fn evaluate_const<'tcx>(
 }
 
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
-// FIXME(generic_const_exprs): Consider accepting a `ty::UnevaluatedConst` when we are not rolling our own
+// FIXME(generic_const_exprs): Consider accepting a `ty::AliasConst` when we are not rolling our own
 // normalization scheme
 /// Evaluates a type system constant making sure to not allow constants that depend on generic parameters
 /// or inference variables to succeed in evaluating.
@@ -605,11 +608,9 @@ pub fn try_evaluate_const<'tcx>(
         | ty::ConstKind::Bound(_, _)
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
-        ty::ConstKind::Unevaluated(uv) => {
-            let opt_anon_const_kind = match uv.kind {
-                ty::UnevaluatedConstKind::Anon { def_id } => {
-                    Some((def_id, tcx.anon_const_kind(def_id)))
-                }
+        ty::ConstKind::Alias(_, alias_const) => {
+            let opt_anon_const_kind = match alias_const.kind {
+                ty::AliasConstKind::Anon { def_id } => Some((def_id, tcx.anon_const_kind(def_id))),
                 _ => None,
             };
 
@@ -629,14 +630,14 @@ pub fn try_evaluate_const<'tcx>(
                 // completely fall apart under `generic_const_exprs` and makes this whole function Really hard to reason
                 // about if you have to consider gce whatsoever.
                 Some((def_id, ty::AnonConstKind::GCE)) => {
-                    if uv.has_non_region_infer() || uv.has_non_region_param() {
+                    if alias_const.has_non_region_infer() || alias_const.has_non_region_param() {
                         // `feature(generic_const_exprs)` causes anon consts to inherit all parent generics. This can cause
                         // inference variables and generic parameters to show up in `ty::Const` even though the anon const
                         // does not actually make use of them. We handle this case specially and attempt to evaluate anyway.
                         match tcx.thir_abstract_const(def_id) {
                             Ok(Some(ct)) => {
                                 let ct = tcx.expand_abstract_consts(
-                                    ct.instantiate(tcx, uv.args).skip_norm_wip(),
+                                    ct.instantiate(tcx, alias_const.args).skip_norm_wip(),
                                 );
                                 if let Err(e) = ct.error_reported() {
                                     return Err(EvaluateConstErr::EvaluationFailure(e));
@@ -645,8 +646,10 @@ pub fn try_evaluate_const<'tcx>(
                                     // the generic arguments provided for it, then we should *not* attempt to evaluate it.
                                     return Err(EvaluateConstErr::HasGenericsOrInfers);
                                 } else {
-                                    let args =
-                                        replace_param_and_infer_args_with_placeholder(tcx, uv.args);
+                                    let args = replace_param_and_infer_args_with_placeholder(
+                                        tcx,
+                                        alias_const.args,
+                                    );
                                     let typing_env = infcx
                                         .typing_env(tcx.erase_and_anonymize_regions(param_env))
                                         .with_post_analysis_normalized(tcx);
@@ -663,11 +666,11 @@ pub fn try_evaluate_const<'tcx>(
                         let typing_env = infcx
                             .typing_env(tcx.erase_and_anonymize_regions(param_env))
                             .with_post_analysis_normalized(tcx);
-                        (uv.args, typing_env)
+                        (alias_const.args, typing_env)
                     }
                 }
                 Some((def_id, ty::AnonConstKind::RepeatExprCount)) => {
-                    if uv.has_non_region_infer() {
+                    if alias_const.has_non_region_infer() {
                         // Diagnostics will sometimes replace the identity args of anon consts in
                         // array repeat expr counts with inference variables so we have to handle this
                         // even though it is not something we should ever actually encounter.
@@ -703,9 +706,9 @@ pub fn try_evaluate_const<'tcx>(
                     // logic does not go through type system normalization. If it did this would
                     // be a backwards compatibility problem as we do not enforce "syntactic" non-
                     // usage of generic parameters like we do here.
-                    if uv.args.has_non_region_param()
-                        || uv.args.has_non_region_infer()
-                        || uv.args.has_non_region_placeholders()
+                    if alias_const.args.has_non_region_param()
+                        || alias_const.args.has_non_region_infer()
+                        || alias_const.args.has_non_region_placeholders()
                     {
                         return Err(EvaluateConstErr::HasGenericsOrInfers);
                     }
@@ -714,19 +717,21 @@ pub fn try_evaluate_const<'tcx>(
                     // to prevent query cycle.
                     let typing_env = ty::TypingEnv::fully_monomorphized();
 
-                    (uv.args, typing_env)
+                    (alias_const.args, typing_env)
                 }
             };
 
-            let uv = ty::UnevaluatedConst::new(tcx, uv.kind, args);
-            let erased_uv = tcx.erase_and_anonymize_regions(uv);
+            let alias_const = ty::AliasConst::new(tcx, alias_const.kind, args);
+            let erased_alias_const = tcx.erase_and_anonymize_regions(alias_const);
 
             use rustc_middle::mir::interpret::ErrorHandled;
             // FIXME: `def_span` will point at the definition of this const; ideally, we'd point at
             // where it gets used as a const generic.
-            let span = uv.kind.def_span(tcx);
-            match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, span) {
-                Ok(Ok(val)) => Ok(ty::Const::new_value(tcx, val, uv.type_of(tcx).skip_norm_wip())),
+            let span = alias_const.kind.def_span(tcx);
+            match tcx.const_eval_resolve_for_typeck(typing_env, erased_alias_const, span) {
+                Ok(Ok(val)) => {
+                    Ok(ty::Const::new_value(tcx, val, alias_const.type_of(tcx).skip_norm_wip()))
+                }
                 Ok(Err(_)) => {
                     let e = tcx.dcx().delayed_bug(
                         "Type system constant with non valtree'able type evaluated but no error emitted",
@@ -923,7 +928,9 @@ fn is_impossible_associated_item(
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
-                ty::EarlyBinder::bind(*pred).instantiate(tcx, impl_trait_ref.args).skip_norm_wip(),
+                ty::EarlyBinder::bind(tcx, *pred)
+                    .instantiate(tcx, impl_trait_ref.args)
+                    .skip_norm_wip(),
             )
         })
     });

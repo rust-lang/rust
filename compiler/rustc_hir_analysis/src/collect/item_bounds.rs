@@ -33,6 +33,7 @@ fn associated_type_bounds<'tcx>(
     ty::print::with_reduced_queries!({
         let item_ty = Ty::new_projection_from_args(
             tcx,
+            ty::IsRigid::No,
             assoc_item_def_id.to_def_id(),
             GenericArgs::identity_for_item(tcx, assoc_item_def_id),
         );
@@ -144,6 +145,7 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
 
     let gat_vars = loop {
         if let ty::Alias(
+            _,
             alias_ty @ ty::AliasTy { kind: ty::Projection { def_id: alias_ty_def_id }, .. },
         ) = *clause_ty.kind()
         {
@@ -430,7 +432,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             let opaque_ty = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_opaque_ty();
             let bounds =
                 associated_type_bounds(tcx, def_id, opaque_ty.bounds, opaque_ty.span, filter);
-            return ty::EarlyBinder::bind(bounds);
+            return ty::EarlyBinder::bind_iter(bounds);
         }
         Some(ty::ImplTraitInTraitData::Impl { .. }) => {
             span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
@@ -457,7 +459,7 @@ pub(super) fn explicit_item_bounds_with_filter(
                 in_trait_or_impl: Some(hir::RpitContext::Trait),
             } => {
                 let args = GenericArgs::identity_for_item(tcx, def_id);
-                let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
+                let item_ty = Ty::new_opaque(tcx, ty::IsRigid::No, def_id.to_def_id(), args);
                 let bounds = &*tcx.arena.alloc_slice(
                     &opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter)
                         .to_vec()
@@ -476,7 +478,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             }
             | rustc_hir::OpaqueTyOrigin::TyAlias { parent: _, .. } => {
                 let args = GenericArgs::identity_for_item(tcx, def_id);
-                let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
+                let item_ty = Ty::new_opaque(tcx, ty::IsRigid::No, def_id.to_def_id(), args);
                 let bounds = opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter);
                 assert_only_contains_predicates_from(filter, bounds, item_ty);
                 bounds
@@ -486,7 +488,7 @@ pub(super) fn explicit_item_bounds_with_filter(
         node => bug!("item_bounds called on {def_id:?} => {node:?}"),
     };
 
-    ty::EarlyBinder::bind(bounds)
+    ty::EarlyBinder::bind_iter(bounds)
 }
 
 pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
@@ -515,9 +517,12 @@ pub(super) fn item_non_self_bounds(
     let all_bounds: FxIndexSet<_> = tcx.item_bounds(def_id).skip_binder().iter().collect();
     let own_bounds: FxIndexSet<_> = tcx.item_self_bounds(def_id).skip_binder().iter().collect();
     if all_bounds.len() == own_bounds.len() {
-        ty::EarlyBinder::bind(ty::ListWithCachedTypeInfo::empty())
+        ty::EarlyBinder::bind(tcx, ty::ListWithCachedTypeInfo::empty())
     } else {
-        ty::EarlyBinder::bind(tcx.mk_clauses_from_iter(all_bounds.difference(&own_bounds).copied()))
+        ty::EarlyBinder::bind(
+            tcx,
+            tcx.mk_clauses_from_iter(all_bounds.difference(&own_bounds).copied()),
+        )
     }
 }
 
@@ -549,11 +554,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let &ty::Alias(ty::AliasTy {
-            kind: ty::Projection { def_id: projection_ty_def_id },
-            args,
-            ..
-        }) = ty.kind()
+        if let &ty::Alias(
+            _,
+            ty::AliasTy { kind: ty::Projection { def_id: projection_ty_def_id }, args, .. },
+        ) = ty.kind()
             && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
                 self.tcx.opt_rpitit_info(projection_ty_def_id)
             && fn_def_id == self.fn_def_id

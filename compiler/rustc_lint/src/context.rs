@@ -40,26 +40,45 @@ use self::TargetLint::*;
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 
-type EarlyLintPassFactory = Box<dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync>;
+pub(crate) type EarlyLintPassFactory =
+    Box<dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync>;
 type LateLintPassFactory =
     Box<dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync>;
 
 /// Information about the registered lints.
+//
+// About the pass factories: these should only be called once, but since we
+// want to avoid locks or interior mutability, we don't enforce this. Lints
+// should, in theory, be compatible with being constructed more than once,
+// though not necessarily in a sane manner. This is safe though.
 pub struct LintStore {
     /// Registered lints.
     lints: Vec<&'static Lint>,
 
-    /// Constructor functions for each variety of lint pass.
+    /// This lint pass kind is softly deprecated. It misses expanded code and has caused a few
+    /// errors in the past. Currently, it is only used in Clippy. New implementations
+    /// should avoid using this interface, as it might be removed in the future.
     ///
-    /// These should only be called once, but since we want to avoid locks or
-    /// interior mutability, we don't enforce this (and lints should, in theory,
-    /// be compatible with being constructed more than once, though not
-    /// necessarily in a sane manner. This is safe though.)
-    pub pre_expansion_passes: Vec<EarlyLintPassFactory>,
-    pub early_passes: Vec<EarlyLintPassFactory>,
-    pub late_passes: Vec<LateLintPassFactory>,
-    /// This is unique in that we construct them per-module, so not once.
-    pub late_module_passes: Vec<LateLintPassFactory>,
+    /// * See [rust#69838](https://github.com/rust-lang/rust/pull/69838)
+    /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
+    pub(crate) pre_expansion_lint_passes: Vec<EarlyLintPassFactory>,
+
+    /// These lint passes run on AST nodes.
+    pub(crate) early_lint_passes: Vec<EarlyLintPassFactory>,
+
+    /// These lint passes run on HIR nodes. Each one processes an entire crate. They don't benefit
+    /// from incremental compilation. `late_lint_mod_passes` should be used in preference where
+    /// possible; only use `late_lint_passes` for lints that implement `check_crate` and/or
+    /// `check_crate_post` and accumulate cross-module state.
+    ///
+    /// The exception is Clippy, which uses `late_lint_passes` for all late lint passes. It needs
+    /// `check_crate`/`check_crate_post` for some of its lints and uses late lint passes throughout
+    /// for consistency. This is ok because Clippy isn't wired for incremental compilation.
+    pub(crate) late_lint_passes: Vec<LateLintPassFactory>,
+
+    /// These lint passes run on HIR nodes, and are constructed per-module (i.e. multiple times).
+    /// They benefit from incremental compilation.
+    pub(crate) late_lint_mod_passes: Vec<LateLintPassFactory>,
 
     /// Lints indexed by name.
     by_name: UnordMap<String, TargetLint>,
@@ -135,10 +154,10 @@ impl LintStore {
     pub fn new() -> LintStore {
         LintStore {
             lints: vec![],
-            pre_expansion_passes: vec![],
-            early_passes: vec![],
-            late_passes: vec![],
-            late_module_passes: vec![],
+            pre_expansion_lint_passes: vec![],
+            early_lint_passes: vec![],
+            late_lint_passes: vec![],
+            late_lint_mod_passes: vec![],
             by_name: Default::default(),
             lint_groups: Default::default(),
         }
@@ -165,26 +184,24 @@ impl LintStore {
         self.lint_groups.keys().copied()
     }
 
-    pub fn register_early_pass(&mut self, pass: EarlyLintPassFactory) {
-        self.early_passes.push(pass);
+    /// See the comment on `LintStore::pre_expansion_lint_passes`.
+    pub fn register_pre_expansion_lint_pass(&mut self, pass: EarlyLintPassFactory) {
+        self.pre_expansion_lint_passes.push(pass);
     }
 
-    /// This lint pass is softly deprecated. It misses expanded code and has caused a few
-    /// errors in the past. Currently, it is only used in Clippy. New implementations
-    /// should avoid using this interface, as it might be removed in the future.
-    ///
-    /// * See [rust#69838](https://github.com/rust-lang/rust/pull/69838)
-    /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
-    pub fn register_pre_expansion_pass(&mut self, pass: EarlyLintPassFactory) {
-        self.pre_expansion_passes.push(pass);
+    /// See the comment on `LintStore::early_lint_passes`.
+    pub fn register_early_lint_pass(&mut self, pass: EarlyLintPassFactory) {
+        self.early_lint_passes.push(pass);
     }
 
-    pub fn register_late_pass(&mut self, pass: LateLintPassFactory) {
-        self.late_passes.push(pass);
+    /// See the comment on `LintStore::late_lint_passes`.
+    pub fn register_late_lint_pass(&mut self, pass: LateLintPassFactory) {
+        self.late_lint_passes.push(pass);
     }
 
-    pub fn register_late_mod_pass(&mut self, pass: LateLintPassFactory) {
-        self.late_module_passes.push(pass);
+    /// See the comment on `LintStore::late_lint_mod_passes`.
+    pub fn register_late_lint_mod_pass(&mut self, pass: LateLintPassFactory) {
+        self.late_lint_mod_passes.push(pass);
     }
 
     /// Helper method for register_early/late_pass
@@ -830,7 +847,7 @@ impl<'tcx> LateContext<'tcx> {
         tcx.associated_items(trait_id)
             .find_by_ident_and_kind(tcx, Ident::with_dummy_span(name), ty::AssocTag::Type, trait_id)
             .and_then(|assoc| {
-                let proj = Ty::new_projection(tcx, assoc.def_id, [self_ty]);
+                let proj = Ty::new_projection(tcx, ty::IsRigid::No, assoc.def_id, [self_ty]);
                 tcx.try_normalize_erasing_regions(self.typing_env(), Unnormalized::new_wip(proj))
                     .ok()
             })

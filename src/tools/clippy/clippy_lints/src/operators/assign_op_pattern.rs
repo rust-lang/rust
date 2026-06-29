@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::qualify_min_const_fn::is_stable_const_fn;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{binop_traits, eq_expr_value, is_in_const_context, trait_ref_of_method};
@@ -74,8 +74,8 @@ pub(super) fn check<'tcx>(
                     expr.span,
                     "manual implementation of an assign operation",
                     |diag| {
-                        if let Some(snip_a) = assignee.span.get_source_text(cx)
-                            && let Some(snip_r) = rhs.span.get_source_text(cx)
+                        if let Some(snip_a) = assignee.span.get_text(cx)
+                            && let Some(snip_r) = rhs.span.get_text(cx)
                         {
                             diag.span_suggestion(
                                 expr.span,

@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use crate::common::{
     PASSES,
-    intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, SimdLen, TypeKind},
+    intrinsic_helpers::{IntrinsicType, Sign, SimdLen, TypeDefinition, TypeKind},
 };
 
 /// Maximum size of a SVE vector
@@ -18,13 +18,13 @@ pub const MAX_SVE_BITS: u32 = 2048;
 ///     0x80, 0x3b, 0xff,
 /// ];
 /// ```
-pub fn test_values_array_static<T: IntrinsicTypeDefinition>(
+pub fn test_values_array_static<T: TypeDefinition>(
     w: &mut impl std::io::Write,
     ty: &T,
 ) -> std::io::Result<()> {
     writeln!(
         w,
-        "static {name}: [{ty}; {load_size}] = {values};\n",
+        "static {name}: [{ty}; {load_size}] = {values};",
         name = test_values_array_name(ty),
         ty = ty.rust_scalar_type(),
         load_size = test_values_array_length(&ty),
@@ -34,7 +34,7 @@ pub fn test_values_array_static<T: IntrinsicTypeDefinition>(
 
 /// Returns a string with the name of the static variable containing test values for intrinsic
 /// arguments of this type.
-pub fn test_values_array_name<T: IntrinsicTypeDefinition>(ty: &T) -> String {
+pub fn test_values_array_name<T: TypeDefinition>(ty: &T) -> String {
     format!(
         "{ty}_{load_size}",
         ty = ty.rust_scalar_type().to_uppercase(),

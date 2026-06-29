@@ -16,9 +16,9 @@ use crate::target_checking::Policy::Allow;
 use crate::{AttributeParser, ShouldEmit};
 
 #[derive(Debug)]
-pub(crate) enum AllowedTargets {
-    AllowList(&'static [Policy]),
-    AllowListWarnRest(&'static [Policy]),
+pub(crate) enum AllowedTargets<'a> {
+    AllowList(&'a [Policy]),
+    AllowListWarnRest(&'a [Policy]),
     /// This is useful for argument-dependent target checking.
     /// If debug assertions are enabled,
     /// this emits a delayed bug if the `cx.check_target(...)` method is not called during attribute parsing.
@@ -31,7 +31,7 @@ pub(crate) enum AllowedResult {
     Error,
 }
 
-impl AllowedTargets {
+impl AllowedTargets<'_> {
     pub(crate) fn is_allowed(&self, target: Target) -> AllowedResult {
         match self {
             AllowedTargets::AllowList(list) => {
@@ -94,8 +94,8 @@ pub(crate) enum Policy {
 
 impl<'sess> AttributeParser<'sess> {
     pub(crate) fn check_target(
-        allowed_targets: &AllowedTargets,
-        attribute_args: &'static str,
+        allowed_targets: &AllowedTargets<'_>,
+        attribute_args: &str,
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
         if matches!(cx.should_emit, ShouldEmit::Nothing) {
@@ -137,7 +137,7 @@ impl<'sess> AttributeParser<'sess> {
             target: cx.target.plural_name(),
             only: if only { "only " } else { "" },
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
-            attribute_args,
+            attribute_args: attribute_args.to_string(),
             help: Self::target_checking_help(attribute_args, cx),
             previously_accepted: matches!(result, AllowedResult::Warn) && !is_diagnostic_attr,
             on_macro_call: matches!(cx.target, Target::MacroCall),
@@ -173,7 +173,7 @@ impl<'sess> AttributeParser<'sess> {
     }
 
     fn target_checking_help(
-        attribute_args: &'static str,
+        attribute_args: &str,
         cx: &AcceptContext<'_, '_>,
     ) -> Option<InvalidTargetHelp> {
         match &*cx.attr_path.segments {
@@ -416,6 +416,7 @@ pub(crate) fn allowed_targets_applied(
 
     // ensure a consistent order
     target_strings.sort();
+    target_strings.dedup();
 
     // If there is now only 1 target left, show that as the only possible target
     let only_target = target_strings.len() == 1;
@@ -443,8 +444,8 @@ fn filter_targets(
 impl<'f, 'sess> AcceptContext<'f, 'sess> {
     pub(crate) fn check_target(
         &mut self,
-        attribute_args: &'static str,
-        allowed_targets: &AllowedTargets,
+        attribute_args: &str,
+        allowed_targets: &AllowedTargets<'_>,
     ) {
         self.ignore_target_checks();
         AttributeParser::check_target(allowed_targets, attribute_args, self);

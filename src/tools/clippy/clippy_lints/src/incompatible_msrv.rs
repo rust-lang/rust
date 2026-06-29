@@ -193,10 +193,11 @@ impl IncompatibleMsrv {
             }
         }
 
-        if (self.check_in_tests || !is_in_test(cx.tcx, node))
-            && let Some(current) = self.msrv.current(cx)
+        // Check `is_in_test` last as it walks the HIR parent chain.
+        if let Some(current) = self.msrv.current(cx)
             && let Availability::Since(version) = self.get_def_id_availability(cx.tcx, def_id, needs_const)
             && version > current
+            && (self.check_in_tests || !is_in_test(cx.tcx, node))
         {
             span_lint_and_then(
                 cx,

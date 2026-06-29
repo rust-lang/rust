@@ -1497,6 +1497,10 @@ LLVMRustBuildMemMove(LLVMBuilderRef B, LLVMValueRef Dst, unsigned DstAlign,
                                        unwrap(Size), IsVolatile));
 }
 
+extern "C" LLVMValueRef LLVMRustBuildVScale(LLVMBuilderRef B, LLVMTypeRef Ty) {
+  return wrap(unwrap(B)->CreateVScale(unwrap(Ty)));
+}
+
 extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
                                             unsigned DstAlign, LLVMValueRef Val,
                                             LLVMValueRef Size,

@@ -10,8 +10,8 @@ trait Trait {
 
 impl Trait for () {
     type const A: () = <() as Trait>::A;
-    //~^ ERROR type mismatch resolving `<() as Trait>::A == _`
-    //~| ERROR the constant `<() as Trait>::A` is not of type `()`
+    //~^ ERROR: overflow evaluating the requirement `<() as Trait>::A == _`
+    //~| ERROR: overflow evaluating the requirement `the constant `<() as Trait>::A` has type `()``
 }
 
 fn main() {
