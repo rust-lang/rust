@@ -1,0 +1,26 @@
+error: expected array with 2 elements, found 0 elements
+  --> $DIR/array-const-arg-len-mismatch.rs:18:20
+   |
+LL |     foo::<u8, 2, { [] }>();
+   |                    ^^
+
+error: expected array with 2 elements, found 3 elements
+  --> $DIR/array-const-arg-len-mismatch.rs:20:20
+   |
+LL |     foo::<u8, 2, { [0, 0, 0] }>();
+   |                    ^^^^^^^^^
+
+error: expected array with 2 elements, found 0 elements
+  --> $DIR/array-const-arg-len-mismatch.rs:22:13
+   |
+LL |     bar::<{ [] }>();
+   |             ^^
+
+error: expected array with 2 elements, found 3 elements
+  --> $DIR/array-const-arg-len-mismatch.rs:24:13
+   |
+LL |     bar::<{ [1, 2, 3] }>();
+   |             ^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
