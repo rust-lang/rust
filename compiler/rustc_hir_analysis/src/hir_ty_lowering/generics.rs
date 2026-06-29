@@ -434,7 +434,7 @@ pub(crate) fn check_generic_arg_count(
 
     // Suppress this warning for delegations as it is compiler generated and lifetimes are
     // propagated while late-bound lifetimes may be present.
-    let explicit_late_bound = match tcx.hir_is_delegation_child_segment(seg) {
+    let explicit_late_bound = match seg.delegation_child_segment {
         true => ExplicitLateBound::No,
         false => prohibit_explicit_late_bound_lifetimes(cx, gen_params, gen_args, gen_pos),
     };

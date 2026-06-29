@@ -1014,6 +1014,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 res,
                 args,
                 infer_args: args.is_none(),
+                delegation_child_segment: false,
             }]),
         })
     }

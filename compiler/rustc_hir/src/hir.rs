@@ -387,12 +387,24 @@ pub struct PathSegment<'hir> {
     /// out of those only the segments with no type parameters
     /// to begin with, e.g., `Vec::new` is `<Vec<..>>::new::<..>`.
     pub infer_args: bool,
+
+    /// Whether this segment is a delegation's child segment:
+    /// `reuse Trait::foo`, in this case `foo` is a delegation's child segment.
+    /// Used for faster check during generic args lowering.
+    pub delegation_child_segment: bool,
 }
 
 impl<'hir> PathSegment<'hir> {
     /// Converts an identifier to the corresponding segment.
     pub fn new(ident: Ident, hir_id: HirId, res: Res) -> PathSegment<'hir> {
-        PathSegment { ident, hir_id, res, infer_args: true, args: None }
+        PathSegment {
+            ident,
+            hir_id,
+            res,
+            infer_args: true,
+            args: None,
+            delegation_child_segment: false,
+        }
     }
 
     pub fn invalid() -> Self {

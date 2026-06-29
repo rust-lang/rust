@@ -870,7 +870,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             generic_args: segment.args(),
             infer_args: segment.infer_args,
-            create_synth_args: tcx.hir_is_delegation_child_segment(segment),
+            create_synth_args: segment.delegation_child_segment,
             incorrect_args: &arg_count.correct,
         };
 
