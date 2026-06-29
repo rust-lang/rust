@@ -697,6 +697,13 @@
 # FIXME(#61117): Some tests fail when this option is enabled.
 #rust.debuginfo-level-tests = 0
 
+# Compress debuginfo of Rust and C/C++ code.
+# Valid options:
+# - "off" or false: disable compression
+# - true: compress debuginfo with the default compression method (currently zlib)
+# - "zlib": compress debuginfo with zlib
+#rust.compress-debuginfo = "off"
+
 # Should rustc and the standard library be built with split debuginfo? Default
 # is platform dependent.
 #
@@ -1018,6 +1025,13 @@
 # producing a `.pdb` file. On Windows GNU rustc doesn't support splitting debuginfo,
 # and enabling it causes issues.
 #split-debuginfo = if linux || windows-gnu { off } else if windows-msvc { packed } else if apple { unpacked }
+
+# Compress debuginfo for Rust and C/C++ code of this target.
+# Valid options:
+# - "off" or false: disable compression
+# - true: compress debuginfo with the default compression method (currently zlib)
+# - "zlib": compress debuginfo with zlib
+#compress-debuginfo = "off"
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link
 # against. Note that if this is specified we don't compile LLVM at all for this

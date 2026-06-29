@@ -15,7 +15,8 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::{
-    CompilerBuiltins, LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo, StringOrBool,
+    CompilerBuiltins, CompressDebuginfo, LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo,
+    StringOrBool,
 };
 use crate::{CodegenBackendKind, HashSet, PathBuf, define_config, exit};
 
@@ -68,6 +69,7 @@ pub struct Target {
     pub default_linker_linux_override: DefaultLinuxLinkerOverride,
     pub linker: Option<PathBuf>,
     pub split_debuginfo: Option<SplitDebuginfo>,
+    pub compress_debuginfo: Option<CompressDebuginfo>,
     pub sanitizers: Option<bool>,
     pub profiler: Option<StringOrBool>,
     pub rpath: Option<bool>,

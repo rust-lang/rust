@@ -145,6 +145,8 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
   fi
 else
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.remap-debuginfo=false"
+  # No need to compress debuginfo for tests, and we do not want to depend on zlib
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.compress-debuginfo=off"
 
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
