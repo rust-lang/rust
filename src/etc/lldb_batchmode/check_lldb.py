@@ -65,7 +65,9 @@ ensure we have tested all types in `INPUT_DATA`
 """
 
 
-def type_matches(sbtype: lldb.SBType, sbtarget: lldb.SBTarget) -> Result:
+def type_matches(
+    sbtype: lldb.SBType, sbtarget: lldb.SBTarget, provider_ok: bool = False
+) -> Result:
     """Checks a type and all field/generic types (recursively) against the data contained in
     `INPUT_DATA`."""
     name: str = sbtype.GetName()
@@ -89,7 +91,7 @@ def type_matches(sbtype: lldb.SBType, sbtarget: lldb.SBTarget) -> Result:
         print_error(f"type '{name}'", "type not found in input data")
     else:
         # FIXME improve logic
-        result = ty.matches(expected, name)
+        result = ty.matches(expected, name, provider_ok)
 
     TYPES_TESTED[name] = result
 
@@ -160,13 +162,18 @@ def var_matches(var: Variable, expected: Variable, valobj: lldb.SBValue) -> Resu
     # so we don't have to recalculate them if we need to do error handling
     summary_ok = var.summary == expected.summary
     synthetic_ok = var.synthetic == expected.synthetic
-
-    type_ok = type_matches(valobj.GetType(), valobj.GetTarget())
-
     pretty_type_name_ok = var.pretty_type_name == expected.pretty_type_name
     pretty_print_ok = var.pretty_print == expected.pretty_print
-    value_ok = var.value == expected.value
     format_ok = var.format == expected.format
+
+    type_ok = var.type == expected.type
+    type_match_ok = type_matches(
+        valobj.GetType(),
+        valobj.GetTarget(),
+        summary_ok & synthetic_ok & format_ok & pretty_type_name_ok & pretty_print_ok,
+    )
+
+    value_ok = var.value == expected.value
 
     child_types_ok = Result.Ok
 
@@ -184,6 +191,7 @@ def var_matches(var: Variable, expected: Variable, valobj: lldb.SBValue) -> Resu
 
     if (
         type_ok
+        and type_match_ok
         and pretty_type_name_ok
         and pretty_print_ok
         and value_ok

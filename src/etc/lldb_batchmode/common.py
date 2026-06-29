@@ -210,7 +210,9 @@ class Type:
     # values, so it's not super urgent.
     # static_fields: list[StaticField]
 
-    def matches(self, expected: "Type", type_name: str) -> Result:
+    def matches(
+        self, expected: "Type", type_name: str, provider_ok: bool = False
+    ) -> Result:
         result = Result.Ok
         error_source = f"type '{type_name}'"
         # FIXME handle 32 bit targets
@@ -248,8 +250,7 @@ class Type:
             elif got_set == expected_set:
                 print_error(
                     error_source,
-                    f"Field(s) appear to have been rearranged. If this was expected, \
-try re-running with the `--bless` option\n    Expected:\n\
+                    f"Field(s) appear to have been rearranged:\n    Expected:\n\
 {pformat(self.fields, indent=6)}\n    Got:\n{pformat(expected.fields, indent=6)}",
                 )
             else:
@@ -279,8 +280,7 @@ try re-running with the `--bless` option\n    Expected:\n\
 
                     print_error(
                         error_source,
-                        f"The following field(s) appear to have been renamed. If this is expected,\
-\n  consider rerunning with the `--bless` option: \n    {renames}",
+                        f"The following field(s) appear to have been renamed:\n    {renames}",
                     )
 
                 if types_match and names_match:
@@ -299,6 +299,9 @@ try re-running with the `--bless` option\n    Expected:\n\
                 self.generic_params,
                 expected.generic_params,
             )
+
+        if result == Result.Mismatch and provider_ok:
+            print_error(error_source, "It appears the type changes do")
 
         return result
 
