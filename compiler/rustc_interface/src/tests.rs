@@ -719,6 +719,7 @@ fn test_target_options_tracking_hash() {
     );
     tracked!(fixed_x18, true);
     tracked!(indirect_branch_cs_prefix, true);
+    tracked!(reg_struct_return, true);
     tracked!(regparm, Some(3));
     tracked!(retpoline, true);
     tracked!(retpoline_external_thunk, true);
@@ -894,7 +895,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(precise_enum_drop_elaboration, false);
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profiler_runtime, "abc".to_string());
-    tracked!(reg_struct_return, true);
     tracked!(relax_elf_relocations, Some(true));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
     tracked!(sanitizer, SanitizerSet::ADDRESS);

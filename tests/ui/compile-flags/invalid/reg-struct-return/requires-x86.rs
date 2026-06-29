@@ -1,6 +1,6 @@
 //@ revisions: x86 x86_64 aarch64
 
-//@ compile-flags: -Zreg-struct-return
+//@ compile-flags: -Treg-struct-return -Zunstable-options
 
 //@[x86] check-pass
 //@[x86] needs-llvm-components: x86
@@ -19,5 +19,5 @@
 #![no_core]
 #![no_main]
 
-//[x86_64]~? ERROR `-Zreg-struct-return` is only supported on x86
-//[aarch64]~? ERROR `-Zreg-struct-return` is only supported on x86
+//[x86_64]~? ERROR `-Treg-struct-return` is only supported on x86
+//[aarch64]~? ERROR `-Treg-struct-return` is only supported on x86

@@ -1,5 +1,5 @@
 //@ no-prefer-dynamic
-//@ compile-flags: --target i686-unknown-linux-gnu -Zreg-struct-return=true
+//@ compile-flags: --target i686-unknown-linux-gnu -Treg-struct-return=true -Zunstable-options
 //@ needs-llvm-components: x86
 
 #![feature(no_core)]
