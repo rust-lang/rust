@@ -1821,7 +1821,7 @@ pub(crate) fn notable_trait_badges(item: &clean::Item, cx: &Context<'_>) -> Vec<
                     Ok(info) => (join_path_syms(&info.rust_path), Some(info.url)),
                     Err(_) => (tcx.def_path_str(trait_did), None),
                 };
-                Some((name, NotableTraitBadge { name, full_path, href }))
+                Some((name.clone(), NotableTraitBadge { name, full_path, href }))
             })
             .collect::<BTreeMap<String, NotableTraitBadge>>()
             .into_values()

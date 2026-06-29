@@ -56,8 +56,8 @@ struct PathComponent {
 struct NotableTraitBadgeVars {
     name: String,
     full_path: String,
-    /// Relative URL to the trait page, or empty when not linkable.
-    href: String,
+    /// Relative URL to the trait page, or `None` when not linkable.
+    href: Option<String>,
     /// Pre-rendered `style="..."` attribute.
     style_attr: String,
 }
@@ -139,7 +139,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
                 NotableTraitBadgeVars {
                     name: info.name,
                     full_path: info.full_path,
-                    href: info.href.unwrap_or_default(),
+                    href: info.href,
                     style_attr,
                 }
             })
