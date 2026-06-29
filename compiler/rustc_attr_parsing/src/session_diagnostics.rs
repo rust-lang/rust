@@ -293,6 +293,13 @@ pub(crate) struct EmptyExportName {
 }
 
 #[derive(Diagnostic)]
+#[diag("`section` may not be empty")]
+pub(crate) struct EmptySection {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`export_name` may not contain null characters", code = E0648)]
 pub(crate) struct NullOnExport {
     #[primary_span]
@@ -323,6 +330,13 @@ pub(crate) struct NullOnObjcClass {
 #[derive(Diagnostic)]
 #[diag("`objc::selector!` may not contain null characters")]
 pub(crate) struct NullOnObjcSelector {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`section` may not contain null characters", code = E0648)]
+pub(crate) struct NullOnSection {
     #[primary_span]
     pub span: Span,
 }

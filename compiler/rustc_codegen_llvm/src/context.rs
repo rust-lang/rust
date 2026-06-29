@@ -14,7 +14,6 @@ use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::codegen_fn_attrs::PatchableFunctionEntry;
 use rustc_middle::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -343,14 +342,13 @@ pub(crate) unsafe fn create_module<'ll>(
 
         // Add "kcfi-offset" module flag with -Z patchable-function-entry (See
         // https://reviews.llvm.org/D141172).
-        let pfe =
-            PatchableFunctionEntry::from_config(sess.opts.unstable_opts.patchable_function_entry);
-        if pfe.prefix() > 0 {
+        let patchable_prefix_nops = sess.opts.unstable_opts.patchable_function_entry.prefix();
+        if patchable_prefix_nops > 0 {
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Override,
                 "kcfi-offset",
-                pfe.prefix().into(),
+                patchable_prefix_nops.into(),
             );
         }
 
