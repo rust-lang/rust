@@ -1,0 +1,27 @@
+error: multiple `#[splat]`s are not allowed in the same function
+  --> $DIR/splat-async-fn-tuple-fail.rs:10:28
+   |
+LL | async fn async_multi_splat(#[splat] (_a, _b): (u32, i8), #[splat] (_c, _d): (u32, i8)) {}
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `#[splat]` from all but one argument
+
+error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
+  --> $DIR/splat-async-fn-tuple-fail.rs:7:40
+   |
+LL | async fn async_wrong_type(#[splat] _x: u32) {}
+   |                                        ^^^
+...
+LL |     async_wrong_type(1u32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0057]: this splatted function takes 3 arguments, but 4 were provided
+  --> $DIR/splat-async-fn-tuple-fail.rs:15:5
+   |
+LL |     async_multi_splat(1u32, 2i8, 3u32, 4i8);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0057, E0277.
+For more information about an error, try `rustc --explain E0057`.

@@ -53,26 +53,30 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
 
-    fn new_alias(interner: I, alias_ty: ty::AliasTy<I>) -> Self;
+    fn new_alias(interner: I, is_rigid: ty::IsRigid, alias_ty: ty::AliasTy<I>) -> Self;
 
     fn new_projection_from_args(
         interner: I,
+        is_rigid: ty::IsRigid,
         def_id: I::TraitAssocTyId,
         args: I::GenericArgs,
     ) -> Self {
         Self::new_alias(
             interner,
+            is_rigid,
             ty::AliasTy::new_from_args(interner, ty::AliasTyKind::Projection { def_id }, args),
         )
     }
 
     fn new_projection(
         interner: I,
+        is_rigid: ty::IsRigid,
         def_id: I::TraitAssocTyId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> Self {
         Self::new_alias(
             interner,
+            is_rigid,
             ty::AliasTy::new(interner, ty::AliasTyKind::Projection { def_id }, args),
         )
     }
@@ -190,7 +194,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Alias(_)
+            | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Placeholder(_)
@@ -276,7 +280,7 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_placeholder(interner: I, param: ty::PlaceholderConst<I>) -> Self;
 
-    fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
+    fn new_alias(interner: I, is_rigid: ty::IsRigid, alias_const: ty::AliasConst<I>) -> Self;
 
     fn new_expr(interner: I, expr: I::ExprConst) -> Self;
 
@@ -403,12 +407,25 @@ pub trait Term<I: Interner<Term = Self>>:
     fn to_alias_term(self) -> Option<ty::AliasTerm<I>> {
         match self.kind() {
             ty::TermKind::Ty(ty) => match ty.kind() {
-                ty::Alias(alias_ty) => Some(alias_ty.into()),
+                ty::Alias(_, alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => Some(uv.into()),
+                ty::ConstKind::Alias(_, alias_const) => Some(alias_const.into()),
                 _ => None,
+            },
+        }
+    }
+
+    fn is_non_rigid_alias(self) -> bool {
+        match self.kind() {
+            ty::TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(is_rigid, _) => is_rigid == ty::IsRigid::No,
+                _ => false,
+            },
+            ty::TermKind::Const(ct) => match ct.kind() {
+                ty::ConstKind::Alias(is_rigid, _) => is_rigid == ty::IsRigid::No,
+                _ => false,
             },
         }
     }

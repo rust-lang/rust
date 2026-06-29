@@ -713,8 +713,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             ));
             let can_subst = |ty: Ty<'tcx>| {
                 // Normalize before comparing to see through type aliases and projections.
-                let old_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, generic_args);
-                let new_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, new_args);
+                let old_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, generic_args);
+                let new_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, new_args);
                 if let Ok(old_ty) = tcx.try_normalize_erasing_regions(
                     self.infcx.typing_env(self.infcx.param_env),
                     old_ty,
@@ -1461,15 +1461,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let cause = ObligationCause::misc(expr.span, self.mir_def_id());
             ocx.register_bound(cause, self.infcx.param_env, ty, clone_trait);
             let errors = ocx.evaluate_obligations_error_on_ambiguity();
-            if errors.iter().all(|error| {
-                match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
-                    Some(clause) => match clause.self_ty().skip_binder().kind() {
-                        ty::Adt(def, _) => def.did().is_local() && clause.def_id() == clone_trait,
-                        _ => false,
-                    },
-                    None => false,
-                }
-            }) {
+            if !errors.is_empty()
+                && errors.iter().all(|error| {
+                    match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
+                        Some(clause) => match clause.self_ty().skip_binder().kind() {
+                            ty::Adt(def, _) => {
+                                def.did().is_local() && clause.def_id() == clone_trait
+                            }
+                            _ => false,
+                        },
+                        None => false,
+                    }
+                })
+            {
                 let mut type_spans = vec![];
                 let mut types = FxIndexSet::default();
                 for clause in errors

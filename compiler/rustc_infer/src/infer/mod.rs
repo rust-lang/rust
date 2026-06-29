@@ -960,10 +960,20 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::Region::new_var(self.tcx, region_var)
     }
 
-    pub fn next_term_var_of_kind(&self, term: ty::Term<'tcx>, span: Span) -> ty::Term<'tcx> {
-        match term.kind() {
-            ty::TermKind::Ty(_) => self.next_ty_var(span).into(),
-            ty::TermKind::Const(_) => self.next_const_var(span).into(),
+    pub fn next_term_var_of_alias_kind(
+        &self,
+        alias_term: ty::AliasTerm<'tcx>,
+        span: Span,
+    ) -> ty::Term<'tcx> {
+        match alias_term.kind {
+            ty::AliasTermKind::ProjectionTy { .. }
+            | ty::AliasTermKind::InherentTy { .. }
+            | ty::AliasTermKind::OpaqueTy { .. }
+            | ty::AliasTermKind::FreeTy { .. } => self.next_ty_var(span).into(),
+            ty::AliasTermKind::FreeConst { .. }
+            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::AnonConst { .. }
+            | ty::AliasTermKind::ProjectionConst { .. } => self.next_const_var(span).into(),
         }
     }
 
@@ -1115,7 +1125,10 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Searches for an opaque type key whose hidden type is related to `ty_vid`.
     ///
     /// This only checks for a subtype relation, it does not require equality.
-    pub fn opaques_with_sub_unified_hidden_type(&self, ty_vid: TyVid) -> Vec<ty::AliasTy<'tcx>> {
+    pub fn opaques_with_sub_unified_hidden_type(
+        &self,
+        ty_vid: TyVid,
+    ) -> Vec<ty::OpaqueAliasTy<'tcx>> {
         // Avoid accidentally allowing more code to compile with the old solver.
         if !self.next_trait_solver() {
             return vec![];
@@ -1133,9 +1146,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind() {
                     let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
                     if opaque_sub_vid == ty_sub_vid {
-                        return Some(ty::AliasTy::new_from_args(
+                        return Some(ty::OpaqueAliasTy::new_opaque_from_args(
                             self.tcx,
-                            ty::Opaque { def_id: key.def_id.into() },
+                            key.def_id.into(),
                             key.args,
                         ));
                     }
@@ -1249,10 +1262,11 @@ impl<'tcx> InferCtxt<'tcx> {
                     .unwrap_or(ct),
                 InferConst::Fresh(_) => ct,
             },
+
             ty::ConstKind::Param(_)
             | ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Placeholder(_)
-            | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Alias(_, _)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => ct,

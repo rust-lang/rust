@@ -119,6 +119,15 @@ unsafe fn read_cast_pointer() {
     //~^ ERROR requested `*const u8` is incompatible with next argument of type `usize`
 }
 
+unsafe fn read_cast_lifetime() {
+    // The types are equal up to free lifetimes.
+    const { read_as::<*const &'static i32>(std::ptr::dangling::<&i32>()) };
+
+    // Bound lifetimes do matter.
+    const { read_as::<*const fn(&'static ())>(std::ptr::dangling::<for<'a> fn(&'a ())>()) };
+    //~^ ERROR va_arg type mismatch: requested `*const fn(&())` is incompatible with next argument of type `*const for<'a> fn(&'a ())`
+}
+
 fn use_after_free() {
     const unsafe extern "C" fn helper(ap: ...) -> [u8; size_of::<VaList>()] {
         unsafe { std::mem::transmute(ap) }
@@ -196,6 +205,7 @@ fn main() {
         read_too_many();
         read_cast_numeric();
         read_cast_pointer();
+        read_cast_lifetime();
         manual_copy_read();
         manual_copy_drop();
         manual_copy_forget();

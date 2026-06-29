@@ -245,8 +245,7 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
 #![allow(internal_features)]
-#![deny(fuzzy_provenance_casts)]
-#![deny(lossy_provenance_casts)]
+#![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
@@ -355,6 +354,7 @@
 #![feature(int_from_ascii)]
 #![feature(io_error_inprogress)]
 #![feature(io_error_more)]
+#![feature(io_error_too_many_open_files)]
 #![feature(io_error_uncategorized)]
 #![feature(io_slice_as_bytes)]
 #![feature(ip)]
@@ -390,6 +390,7 @@
 //
 // Library features (alloc):
 // tidy-alphabetical-start
+#![feature(alloc_io)]
 #![feature(allocator_api)]
 #![feature(clone_from_ref)]
 #![feature(get_mut_unchecked)]
@@ -725,13 +726,7 @@ pub mod alloc;
 mod panicking;
 
 #[path = "../../backtrace/src/lib.rs"]
-#[allow(
-    dead_code,
-    unused_attributes,
-    fuzzy_provenance_casts,
-    lossy_provenance_casts,
-    unsafe_op_in_unsafe_fn
-)]
+#[allow(dead_code, unused_attributes, implicit_provenance_casts, unsafe_op_in_unsafe_fn)]
 mod backtrace_rs;
 
 #[stable(feature = "cfg_select", since = "1.95.0")]

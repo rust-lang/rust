@@ -559,7 +559,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             return ProcessResult::Changed(PendingPredicateObligations::new());
                         }
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Unevaluated(uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
+                        ty::ConstKind::Alias(_, alias_const) => {
+                            alias_const.type_of(infcx.tcx).skip_norm_wip()
+                        }
                         // FIXME(generic_const_exprs): we should construct an alias like
                         // `<lhs_ty as Add<rhs_ty>>::Output` when this is an `Expr` representing
                         // `lhs + rhs`.
@@ -677,10 +679,10 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(alias_const)) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.selcx.infcx,
-                        uv,
+                        alias_const,
                         obligation.param_env,
                         obligation.cause.span,
                     ) {
@@ -688,7 +690,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         Err(NotConstEvaluatable::MentionsInfer) => {
                             pending_obligation.stalled_on.clear();
                             pending_obligation.stalled_on.extend(
-                                uv.walk().filter_map(TyOrConstInferVar::maybe_from_generic_arg),
+                                alias_const
+                                    .walk()
+                                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
                             );
                             ProcessResult::Unchanged
                         }
@@ -717,12 +721,12 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         debug!("equating consts:\nc1= {:?}\nc2= {:?}", c1, c2);
 
                         match (c1.kind(), c2.kind()) {
-                            (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
+                            (ty::ConstKind::Alias(_, a), ty::ConstKind::Alias(_, b))
                                 if a.kind == b.kind
                                     && matches!(
                                         a.kind,
-                                        ty::UnevaluatedConstKind::Projection { .. }
-                                            | ty::UnevaluatedConstKind::Inherent { .. }
+                                        ty::AliasConstKind::Projection { .. }
+                                            | ty::AliasConstKind::Inherent { .. }
                                     ) =>
                             {
                                 if let Ok(new_obligations) = infcx
@@ -741,8 +745,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     ));
                                 }
                             }
-                            (_, ty::ConstKind::Unevaluated(_))
-                            | (ty::ConstKind::Unevaluated(_), _) => (),
+                            (_, ty::ConstKind::Alias(_, _)) | (ty::ConstKind::Alias(_, _), _) => (),
                             (_, _) => {
                                 if let Ok(new_obligations) = infcx
                                     .at(&obligation.cause, obligation.param_env)
@@ -762,7 +765,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     let stalled_on = &mut pending_obligation.stalled_on;
 
                     let mut evaluate = |c: Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
+                        if let ty::ConstKind::Alias(_, alias_const) = c.kind() {
                             match super::try_evaluate_const(
                                 self.selcx.infcx,
                                 c,
@@ -771,7 +774,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 Ok(val) => Ok(val),
                                 e @ Err(EvaluateConstErr::HasGenericsOrInfers) => {
                                     stalled_on.extend(
-                                        unevaluated
+                                        alias_const
                                             .args
                                             .iter()
                                             .filter_map(TyOrConstInferVar::maybe_from_generic_arg),

@@ -301,15 +301,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bincode"
-version = "1.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "bitflags"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -696,7 +687,7 @@ dependencies = [
  "color-print",
  "declare_clippy_lint",
  "filetime",
- "itertools",
+ "itertools 0.12.1",
  "pulldown-cmark",
  "regex",
  "rustc_tools_util 0.4.2",
@@ -714,7 +705,7 @@ name = "clippy_config"
 version = "0.1.98"
 dependencies = [
  "clippy_utils",
- "itertools",
+ "itertools 0.12.1",
  "serde",
  "toml 0.7.8",
  "walkdir",
@@ -727,7 +718,7 @@ dependencies = [
  "chrono",
  "clap",
  "indoc",
- "itertools",
+ "itertools 0.12.1",
  "opener",
  "rustc-literal-escaper",
  "walkdir",
@@ -742,7 +733,7 @@ dependencies = [
  "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
- "itertools",
+ "itertools 0.12.1",
  "quine-mc_cluskey",
  "regex-syntax",
  "semver",
@@ -760,7 +751,7 @@ version = "0.0.1"
 dependencies = [
  "clippy_config",
  "clippy_utils",
- "itertools",
+ "itertools 0.12.1",
  "regex",
  "rustc-semver",
 ]
@@ -770,7 +761,7 @@ name = "clippy_utils"
 version = "0.1.98"
 dependencies = [
  "arrayvec",
- "itertools",
+ "itertools 0.12.1",
  "rustc_apfloat",
  "serde",
 ]
@@ -905,6 +896,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "tempfile",
  "tracing",
  "tracing-subscriber",
  "unified-diff",
@@ -941,7 +933,7 @@ name = "coverage-dump"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "itertools",
+ "itertools 0.15.0",
  "leb128",
  "md-5",
  "miniz_oxide",
@@ -2105,18 +2097,19 @@ dependencies = [
 
 [[package]]
 name = "ipc-channel"
-version = "0.20.2"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f93600b5616c2d075f8af8dbd23c1d69278c5d24e4913d220cbc60b14c95c180"
+checksum = "347ef783e380784658248bdb0b87ca1293e3e3df3fc7dee061e129aa5f013d61"
 dependencies = [
- "bincode",
  "crossbeam-channel",
- "fnv",
  "libc",
  "mio",
+ "postcard",
  "rand 0.9.2",
- "serde",
+ "rustc-hash 2.1.1",
+ "serde_core",
  "tempfile",
+ "thiserror 2.0.17",
  "uuid",
  "windows 0.61.3",
 ]
@@ -2132,6 +2125,15 @@ name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
 dependencies = [
  "either",
 ]
@@ -3561,9 +3563,9 @@ checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
 
 [[package]]
 name = "rustc-literal-escaper"
-version = "0.0.7"
+version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8be87abb9e40db7466e0681dc8ecd9dcfd40360cb10b4c8fe24a7c4c3669b198"
+checksum = "bfe6f213fb658c8fb95baabd5420393438cf5a98d707f5dd701d9197c705f71e"
 
 [[package]]
 name = "rustc-main"
@@ -3693,7 +3695,7 @@ dependencies = [
 name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3713,7 +3715,7 @@ dependencies = [
 name = "rustc_ast_pretty"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_ast",
  "rustc_lexer",
  "rustc_span",
@@ -3757,7 +3759,7 @@ name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools",
+ "itertools 0.15.0",
  "polonius-engine",
  "rustc_abi",
  "rustc_data_structures",
@@ -3811,7 +3813,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "gimli 0.31.1",
- "itertools",
+ "itertools 0.15.0",
  "libc",
  "libloading 0.9.0",
  "measureme",
@@ -3847,7 +3849,7 @@ dependencies = [
  "bitflags",
  "bstr",
  "find-msvc-tools",
- "itertools",
+ "itertools 0.15.0",
  "libc",
  "object 0.37.3",
  "pathdiff",
@@ -4117,7 +4119,7 @@ dependencies = [
 name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
@@ -4164,7 +4166,7 @@ dependencies = [
 name = "rustc_hir_typeck"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
@@ -4319,6 +4321,7 @@ dependencies = [
  "rustc_parse_format",
  "rustc_session",
  "rustc_span",
+ "rustc_symbol_mangling",
  "rustc_target",
  "rustc_trait_selection",
  "smallvec",
@@ -4442,7 +4445,7 @@ dependencies = [
 name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
@@ -4486,7 +4489,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
@@ -4691,7 +4694,7 @@ name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
  "indexmap",
- "itertools",
+ "itertools 0.15.0",
  "pulldown-cmark",
  "rustc_arena",
  "rustc_ast",
@@ -4853,7 +4856,7 @@ checksum = "a3b75158011a63889ba12084cf1224baad7bcad50f6ee7c842f772b74aa148ed"
 name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
@@ -4887,7 +4890,7 @@ dependencies = [
 name = "rustc_transmute"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_hir",
@@ -4901,7 +4904,7 @@ dependencies = [
 name = "rustc_ty_utils"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_errors",
@@ -4978,7 +4981,7 @@ dependencies = [
  "base64",
  "expect-test",
  "indexmap",
- "itertools",
+ "itertools 0.15.0",
  "minifier",
  "proc-macro2",
  "pulldown-cmark-escape",
@@ -5066,7 +5069,7 @@ dependencies = [
  "dirs",
  "getopts",
  "ignore",
- "itertools",
+ "itertools 0.12.1",
  "regex",
  "rustfmt-config_proc_macro",
  "semver",

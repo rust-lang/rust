@@ -1,7 +1,8 @@
 use std::fmt;
-use std::ops::Deref;
+use std::ops::{Deref, Range};
 
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::range_set::RangeSet;
 use rustc_macros::StableHash;
 
 use crate::layout::{FieldIdx, VariantIdx};
@@ -281,5 +282,90 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             found = Some((FieldIdx::from_usize(field_idx), field));
         }
         found
+    }
+
+    /// The ranges of bytes that are always ignored by the representation relation of this type.
+    ///
+    /// In other words, for any sequence of bytes, if we reset the these padding bytes to uninit,
+    /// then these two sequences of bytes represent the same value (or they are both invalid).
+    /// This is the "guaranteed" padding. There may be more bytes that are padding for some
+    /// but not all variants of this type; those are not included.
+    /// (E.g. `Option<i8>` has no guaranteed padding so the empty range set is returned, but its `None` value still has padding).
+    pub fn padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let mut data = RangeSet::new();
+        self.add_data_ranges(cx, Size::ZERO, &mut data);
+
+        // Find gaps between the data ranges.
+        let mut uninit_ranges = Vec::new();
+        let mut covered_until = Size::ZERO;
+        for &(offset, size) in data.0.iter() {
+            if offset > covered_until {
+                uninit_ranges.push(covered_until..offset);
+            }
+            covered_until = Ord::max(covered_until, offset + size);
+        }
+
+        // Add trailing padding.
+        if self.size > covered_until {
+            uninit_ranges.push(covered_until..self.size);
+        }
+
+        uninit_ranges
+    }
+
+    /// Extend `out` with all ranges of bytes that *may* carry relevant data for values of this type.
+    /// For enums and unions there are offsets that are initialized for some
+    /// variants but not for others; those offset *will* get added to `out`.
+    fn add_data_ranges<C>(self, cx: &C, base_offset: Size, out: &mut RangeSet<Size>)
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        if self.is_zst() {
+            return;
+        }
+
+        match &self.variants {
+            Variants::Empty => { /* done */ }
+            Variants::Single { index: _ } => match &self.fields {
+                FieldsShape::Primitive => {
+                    out.add_range(base_offset, self.size);
+                }
+                &FieldsShape::Union(field_count) => {
+                    for field in 0..field_count.get() {
+                        let field = self.field(cx, field);
+                        field.add_data_ranges(cx, base_offset, out);
+                    }
+                }
+                &FieldsShape::Array { stride, count } => {
+                    let elem = self.field(cx, 0);
+
+                    // For scalars we know there is no padding between the elements,
+                    // so the entire array is a single big data range.
+                    if elem.backend_repr.is_scalar() {
+                        out.add_range(base_offset, elem.size * count);
+                    } else {
+                        // FIXME: this is really inefficient for large arrays.
+                        for idx in 0..count {
+                            elem.add_data_ranges(cx, base_offset + idx * stride, out);
+                        }
+                    }
+                }
+                FieldsShape::Arbitrary { offsets, in_memory_order: _ } => {
+                    for (field, &offset) in offsets.iter_enumerated() {
+                        let field = self.field(cx, field.as_usize());
+                        field.add_data_ranges(cx, base_offset + offset, out);
+                    }
+                }
+            },
+            Variants::Multiple { variants, .. } => {
+                for variant in variants.indices() {
+                    let variant = self.for_variant(cx, variant);
+                    variant.add_data_ranges(cx, base_offset, out);
+                }
+            }
+        }
     }
 }

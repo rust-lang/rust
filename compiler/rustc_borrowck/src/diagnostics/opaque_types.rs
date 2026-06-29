@@ -28,11 +28,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         let infcx = self.infcx;
-        let mut guar = None;
         let mut last_unexpected_hidden_region: Option<(Span, Ty<'_>, ty::OpaqueTypeKey<'tcx>)> =
             None;
         for error in errors {
-            guar = Some(match error {
+            match error {
                 DeferredOpaqueTypeError::InvalidOpaqueTypeArgs(err) => err.report(infcx),
                 DeferredOpaqueTypeError::LifetimeMismatchOpaqueParam(err) => {
                     infcx.dcx().emit_err(err)
@@ -76,16 +75,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         "non-defining use of `{}` in the defining scope",
                         Ty::new_opaque(
                             infcx.tcx,
+                            ty::IsRigid::No,
                             opaque_type_key.def_id.to_def_id(),
                             opaque_type_key.args
                         )
                     ),
                 ),
-            });
+            };
         }
-        let guar = guar.unwrap();
-        self.root_cx.set_tainted_by_errors(guar);
-        self.infcx.set_tainted_by_errors(guar);
     }
 
     /// Try to note when an opaque is involved in a borrowck error and that
@@ -220,7 +217,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         // If we find an opaque in a local ty, then for each of its captured regions,
         // try to find a path between that captured regions and our borrow region...
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *ty.kind()
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *ty.kind()
             && let hir::OpaqueTyOrigin::FnReturn { parent, in_trait_or_impl: None } =
                 self.tcx.opaque_ty_origin(def_id)
         {
@@ -277,7 +274,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CheckExplicitRegionMentionAndCollectGen
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         match *ty.kind() {
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 if self.seen_opaques.insert(def_id) {
                     for (bound, _) in self
                         .tcx

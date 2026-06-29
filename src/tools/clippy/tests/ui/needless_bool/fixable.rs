@@ -1,15 +1,6 @@
 #![warn(clippy::needless_bool)]
-#![allow(
-    unused,
-    dead_code,
-    clippy::no_effect,
-    clippy::if_same_then_else,
-    clippy::equatable_if_let,
-    clippy::needless_ifs,
-    clippy::needless_return,
-    clippy::self_named_constructors,
-    clippy::struct_field_names
-)]
+#![allow(clippy::no_effect)]
+#![expect(clippy::needless_return)]
 
 use std::cell::Cell;
 
@@ -21,7 +12,6 @@ macro_rules! bool_comparison_trigger {
             $($i: (Cell<bool>, bool, bool)),+
         }
 
-        #[allow(dead_code)]
         impl Trigger {
             pub fn trigger(&self, key: &str) -> bool {
                 $(

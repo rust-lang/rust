@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash;
-use rustc_type_ir::data_structures::{HashMap, HashSet};
+use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
@@ -16,8 +16,8 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
-    OpaqueTypeKey, PredicateKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    OpaqueTypeKey, PredicateKind, TypeFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use tracing::{Level, debug, instrument, trace, warn};
 
@@ -28,6 +28,7 @@ use crate::canonical::{
 };
 use crate::coherence;
 use crate::delegate::SolverDelegate;
+use crate::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use crate::placeholder::BoundVarReplacer;
 use crate::resolve::eager_resolve_vars;
 use crate::solve::search_graph::SearchGraph;
@@ -461,7 +462,7 @@ where
                 Ok(i) => Ok(i),
                 Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution)) => Err(NoSolution),
                 Err(NoSolutionOrRerunNonErased::RerunNonErased(_)) => {
-                    // check th t the opaque_accesses state mirrors the result we got.
+                    // Check that the opaque_accesses state mirrors the result we got.
                     assert!(opaque_accesses.should_bail().is_err());
                     Err(NoSolution)
                 }
@@ -604,7 +605,7 @@ where
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-        let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
+        let (goal, opaque_types) = eager_resolve_vars(&**self.delegate, (goal, opaque_types));
         let typing_mode = self.typing_mode();
         let step_kind = self.step_kind_for_source(source);
 
@@ -1049,15 +1050,20 @@ where
         self.delegate.cx()
     }
 
-    pub(super) fn add_goal(&mut self, source: GoalSource, mut goal: Goal<I, I::Predicate>) {
-        goal.predicate = self.replace_alias_with_infer(goal.predicate, source, goal.param_env);
-        self.add_goal_raw(source, goal);
-    }
-
     #[instrument(level = "debug", skip(self))]
-    fn add_goal_raw(&mut self, source: GoalSource, goal: Goal<I, I::Predicate>) {
+    pub(super) fn add_goal(
+        &mut self,
+        source: GoalSource,
+        mut goal: Goal<I, I::Predicate>,
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
+        goal.predicate = self.normalize(
+            GoalSource::NormalizeGoal(self.step_kind_for_source(source)),
+            goal.param_env,
+            ty::Unnormalized::new_wip(goal.predicate),
+        )?;
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
         self.nested_goals.push((source, goal, None));
+        Ok(())
     }
 
     #[instrument(level = "trace", skip(self, goals))]
@@ -1065,19 +1071,11 @@ where
         &mut self,
         source: GoalSource,
         goals: impl IntoIterator<Item = Goal<I, I::Predicate>>,
-    ) {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         for goal in goals {
-            self.add_goal(source, goal);
+            self.add_goal(source, goal)?;
         }
-    }
-
-    pub(super) fn replace_alias_with_infer<T: TypeFoldable<I>>(
-        &mut self,
-        value: T,
-        source: GoalSource,
-        param_env: I::ParamEnv,
-    ) -> T {
-        value.fold_with(&mut ReplaceAliasWithInfer::new(self, source, param_env))
+        Ok(())
     }
 
     pub(super) fn next_region_var(&mut self) -> I::Region {
@@ -1100,10 +1098,19 @@ where
 
     /// Returns a ty infer or a const infer depending on whether `kind` is a `Ty` or `Const`.
     /// If `kind` is an integer inference variable this will still return a ty infer var.
-    pub(super) fn next_term_infer_of_kind(&mut self, term: I::Term) -> I::Term {
-        match term.kind() {
-            ty::TermKind::Ty(_) => self.next_ty_infer().into(),
-            ty::TermKind::Const(_) => self.next_const_infer().into(),
+    pub(super) fn next_term_infer_of_alias_kind(
+        &mut self,
+        alias_term: ty::AliasTerm<I>,
+    ) -> I::Term {
+        match alias_term.kind {
+            ty::AliasTermKind::ProjectionTy { .. }
+            | ty::AliasTermKind::InherentTy { .. }
+            | ty::AliasTermKind::OpaqueTy { .. }
+            | ty::AliasTermKind::FreeTy { .. } => self.next_ty_infer().into(),
+            ty::AliasTermKind::FreeConst { .. }
+            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::AnonConst { .. }
+            | ty::AliasTermKind::ProjectionConst { .. } => self.next_const_infer().into(),
         }
     }
 
@@ -1240,79 +1247,8 @@ where
         param_env: I::ParamEnv,
         lhs: T,
         rhs: T,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         self.relate(param_env, lhs, ty::Variance::Invariant, rhs)
-    }
-
-    /// This should be used when relating a rigid alias with another type.
-    ///
-    /// Normally we emit a nested `AliasRelate` when equating an inference
-    /// variable and an alias. This causes us to instead constrain the inference
-    /// variable to the alias without emitting a nested alias relate goals.
-    #[instrument(level = "trace", skip(self, param_env), ret)]
-    pub(super) fn relate_rigid_alias_non_alias(
-        &mut self,
-        param_env: I::ParamEnv,
-        alias: ty::AliasTerm<I>,
-        variance: ty::Variance,
-        term: I::Term,
-    ) -> Result<(), NoSolution> {
-        // NOTE: this check is purely an optimization, the structural eq would
-        // always fail if the term is not an inference variable.
-        if term.is_infer() {
-            let cx = self.cx();
-            // We need to relate `alias` to `term` treating only the outermost
-            // constructor as rigid, relating any contained generic arguments as
-            // normal. We do this by first structurally equating the `term`
-            // with the alias constructor instantiated with unconstrained infer vars,
-            // and then relate this with the whole `alias`.
-            //
-            // Alternatively we could modify `Equate` for this case by adding another
-            // variant to `StructurallyRelateAliases`.
-            let def_id = match alias.kind {
-                ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
-                ty::AliasTermKind::InherentTy { def_id } => def_id.into(),
-                ty::AliasTermKind::OpaqueTy { def_id } => def_id.into(),
-                ty::AliasTermKind::FreeTy { def_id } => def_id.into(),
-                ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
-                ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
-                ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
-                ty::AliasTermKind::InherentConst { def_id } => def_id.into(),
-            };
-            let identity_args = self.fresh_args_for_item(def_id);
-            let rigid_ctor = alias.with_args(cx, identity_args);
-            let ctor_term = rigid_ctor.to_term(cx);
-            let obligations = self.delegate.eq_structurally_relating_aliases(
-                param_env,
-                term,
-                ctor_term,
-                self.origin_span,
-            )?;
-            debug_assert!(obligations.is_empty());
-            self.relate(param_env, alias, variance, rigid_ctor)
-        } else {
-            Err(NoSolution)
-        }
-    }
-
-    /// This should only be used when we're either instantiating a previously
-    /// unconstrained "return value" or when we're sure that all aliases in
-    /// the types are rigid.
-    #[instrument(level = "trace", skip(self, param_env), ret)]
-    pub(super) fn eq_structurally_relating_aliases<T: Relate<I>>(
-        &mut self,
-        param_env: I::ParamEnv,
-        lhs: T,
-        rhs: T,
-    ) -> Result<(), NoSolution> {
-        let result = self.delegate.eq_structurally_relating_aliases(
-            param_env,
-            lhs,
-            rhs,
-            self.origin_span,
-        )?;
-        assert_eq!(result, vec![]);
-        Ok(())
     }
 
     #[instrument(level = "trace", skip(self, param_env), ret)]
@@ -1321,7 +1257,7 @@ where
         param_env: I::ParamEnv,
         sub: T,
         sup: T,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         self.relate(param_env, sub, ty::Variance::Covariant, sup)
     }
 
@@ -1332,7 +1268,7 @@ where
         lhs: T,
         variance: ty::Variance,
         rhs: T,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
         for &goal in goals.iter() {
             let source = match goal.predicate.kind().skip_binder() {
@@ -1343,7 +1279,7 @@ where
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => GoalSource::Misc,
                 p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
             };
-            self.add_goal(source, goal);
+            self.add_goal(source, goal)?;
         }
         Ok(())
     }
@@ -1484,7 +1420,7 @@ where
         opaque_args: I::GenericArgs,
         param_env: I::ParamEnv,
         hidden_ty: I::Ty,
-    ) {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         let mut goals = Vec::new();
         self.delegate.add_item_bounds_for_hidden_type(
             opaque_def_id,
@@ -1493,7 +1429,8 @@ where
             hidden_ty,
             &mut goals,
         );
-        self.add_goals(GoalSource::AliasWellFormed, goals);
+        self.add_goals(GoalSource::AliasWellFormed, goals)?;
+        Ok(())
     }
 
     // Try to evaluate a const, or return `None` if the const is too generic.
@@ -1502,13 +1439,13 @@ where
     pub(super) fn evaluate_const(
         &mut self,
         param_env: I::ParamEnv,
-        uv: ty::UnevaluatedConst<I>,
+        alias_const: ty::AliasConst<I>,
     ) -> Result<Option<I::Const>, RerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
-            self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)?;
+            match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
 
-        Ok(self.delegate.evaluate_const(param_env, uv))
+        Ok(self.delegate.evaluate_const(param_env, alias_const))
     }
 
     pub(super) fn evaluate_const_and_instantiate_projection_term(
@@ -1516,9 +1453,9 @@ where
         param_env: I::ParamEnv,
         projection_term: ty::AliasTerm<I>,
         expected_term: I::Term,
-        uv: ty::UnevaluatedConst<I>,
+        alias_const: ty::AliasConst<I>,
     ) -> QueryResultOrRerunNonErased<I> {
-        match self.evaluate_const(param_env, uv)? {
+        match self.evaluate_const(param_env, alias_const)? {
             Some(evaluated) => {
                 self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -1531,19 +1468,18 @@ where
                 // Perhaps we could split EvaluateConstErr::HasGenericsOrInfers into HasGenerics and
                 // HasInfers or something, make evaluate_const return that, and make this branch be
                 // based on that, rather than checking `has_non_region_infer`.
-                if self.resolve_vars_if_possible(uv).has_non_region_infer() {
+                if self.resolve_vars_if_possible(alias_const).has_non_region_infer() {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 } else {
-                    // We do not instantiate to the `uv` passed in, but rather
-                    // `goal.predicate.alias`. The `uv` passed in might correspond to the `impl`
+                    // We do not instantiate to the `alias_const` passed in, but rather
+                    // `goal.predicate.alias`. The `alias_const` passed in might correspond to the `impl`
                     // form of a constant (with generic arguments corresponding to the impl block),
                     // however, we want to structurally instantiate to the original, non-rebased,
                     // trait `Self` form of the constant (with generic arguments being the trait
                     // `Self` type).
-                    self.relate_rigid_alias_non_alias(
+                    self.eq(
                         param_env,
-                        projection_term,
-                        ty::Invariant,
+                        projection_term.to_term(self.cx(), ty::IsRigid::Yes),
                         expected_term,
                     )?;
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -1579,7 +1515,7 @@ where
         symbol: I::Symbol,
     ) -> Result<bool, RerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
-            self.opaque_accesses.rerun_always(RerunReason::MayUseUnstableFeature)?;
+            match self.opaque_accesses.rerun_always(RerunReason::MayUseUnstableFeature)? {}
         }
 
         Ok(may_use_unstable_feature(&**self.delegate, param_env, symbol))
@@ -1588,7 +1524,7 @@ where
     pub(crate) fn opaques_with_sub_unified_hidden_type(
         &self,
         self_ty: I::Ty,
-    ) -> Vec<ty::AliasTy<I>> {
+    ) -> Vec<ty::OpaqueAliasTy<I>> {
         if let ty::Infer(ty::TyVar(vid)) = self_ty.kind() {
             self.delegate.opaques_with_sub_unified_hidden_type(vid)
         } else {
@@ -1695,7 +1631,7 @@ where
         let external_constraints =
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
         let (var_values, mut external_constraints) =
-            eager_resolve_vars(self.delegate, (self.var_values, external_constraints));
+            eager_resolve_vars(&**self.delegate, (self.var_values, external_constraints));
 
         // Remove any trivial or duplicated region constraints once we've resolved regions
         let mut unique = HashSet::default();
@@ -1781,110 +1717,39 @@ where
 
         ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
     }
-}
 
-// FIXME: This should be eventually removed in favor of proper normalization.
-// cc #156742
-/// Eagerly replace aliases with inference variables, emitting `AliasRelate`
-/// goals, used when adding goals to the `EvalCtxt`. We compute the
-/// `AliasRelate` goals before evaluating the actual goal to get all the
-/// constraints we can.
-///
-/// This is a performance optimization to more eagerly detect cycles during trait
-/// solving. See tests/ui/traits/next-solver/cycles/cycle-modulo-ambig-aliases.rs.
-///
-/// The emitted goals get evaluated in the context of the parent goal; by
-/// replacing aliases in nested goals we essentially pull the normalization out of
-/// the nested goal. We want to treat the goal as if the normalization still happens
-/// inside of the nested goal by inheriting the `step_kind` of the nested goal and
-/// storing it in the `GoalSource` of the emitted `AliasRelate` goals.
-/// This is necessary for tests/ui/sized/coinductive-1.rs to compile.
-struct ReplaceAliasWithInfer<'me, 'a, D, I>
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    ecx: &'me mut EvalCtxt<'a, D>,
-    param_env: I::ParamEnv,
-    normalization_goal_source: GoalSource,
-    cache: HashMap<I::Ty, I::Ty>,
-}
-
-impl<'me, 'a, D, I> ReplaceAliasWithInfer<'me, 'a, D, I>
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    fn new(
-        ecx: &'me mut EvalCtxt<'a, D>,
-        for_goal_source: GoalSource,
+    pub(super) fn normalize<T: TypeFoldable<I>>(
+        &mut self,
+        source: GoalSource,
         param_env: I::ParamEnv,
-    ) -> Self {
-        let step_kind = ecx.step_kind_for_source(for_goal_source);
-        ReplaceAliasWithInfer {
-            ecx,
-            param_env,
-            normalization_goal_source: GoalSource::NormalizeGoal(step_kind),
-            cache: Default::default(),
+        value: ty::Unnormalized<I, T>,
+    ) -> Result<T, NoSolutionOrRerunNonErased> {
+        let value = self.delegate.resolve_vars_if_possible(value.skip_normalization());
+
+        if !self.cx().renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
+            return Ok(value);
         }
-    }
-}
 
-impl<D, I> TypeFolder<I> for ReplaceAliasWithInfer<'_, '_, D, I>
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    fn cx(&self) -> I {
-        self.ecx.cx()
-    }
-
-    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-        match ty.kind() {
-            ty::Alias(alias) if !ty.has_escaping_bound_vars() => {
-                let infer_ty = self.ecx.next_ty_infer();
-                let projection = ty::ProjectionPredicate {
-                    projection_term: alias.into(),
-                    term: infer_ty.into(),
-                };
-                self.ecx.add_goal_raw(
-                    self.normalization_goal_source,
-                    Goal::new(self.cx(), self.param_env, projection),
-                );
-                infer_ty
-            }
-            _ => {
-                if !ty.has_aliases() {
-                    ty
-                } else if let Some(&entry) = self.cache.get(&ty) {
-                    return entry;
-                } else {
-                    let res = ty.super_fold_with(self);
-                    assert!(self.cache.insert(ty, res).is_none());
-                    res
+        // To drop the mutable borrow of self early.
+        let infcx = self.delegate.deref();
+        let mut folder = NormalizationFolder::new(infcx, vec![], |alias_term| {
+            let infer_term = self.next_term_infer_of_alias_kind(alias_term);
+            let pred = ty::ProjectionPredicate { projection_term: alias_term, term: infer_term };
+            let goal = Goal::new(self.cx(), param_env, pred);
+            self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
+            let GoalEvaluation { goal, certainty, has_changed: _, stalled_on } =
+                self.evaluate_goal(source, goal, None)?;
+            let normalization_was_ambiguous = match certainty {
+                Certainty::Yes => NormalizationWasAmbiguous::No,
+                Certainty::Maybe(_) => {
+                    self.nested_goals.push((source, goal, stalled_on));
+                    NormalizationWasAmbiguous::Yes
                 }
-            }
-        }
-    }
+            };
 
-    fn fold_const(&mut self, ct: I::Const) -> I::Const {
-        match ct.kind() {
-            ty::ConstKind::Unevaluated(uv) if !ct.has_escaping_bound_vars() => {
-                let infer_ct = self.ecx.next_const_infer();
-                let projection =
-                    ty::ProjectionPredicate { projection_term: uv.into(), term: infer_ct.into() };
-                self.ecx.add_goal_raw(
-                    self.normalization_goal_source,
-                    Goal::new(self.cx(), self.param_env, projection),
-                );
-                infer_ct
-            }
-            _ => ct.super_fold_with(self),
-        }
-    }
-
-    fn fold_predicate(&mut self, predicate: I::Predicate) -> I::Predicate {
-        if predicate.allow_normalization() { predicate.super_fold_with(self) } else { predicate }
+            Ok((self.resolve_vars_if_possible(infer_term), normalization_was_ambiguous))
+        });
+        value.try_fold_with(&mut folder)
     }
 }
 
@@ -1919,7 +1784,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     origin_span: I::Span,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
     let opaque_types = delegate.clone_opaque_types_lookup_table();
-    let (goal, opaque_types) = eager_resolve_vars(delegate, (goal, opaque_types));
+    let (goal, opaque_types) = eager_resolve_vars(&**delegate, (goal, opaque_types));
     let typing_mode = delegate.typing_mode_raw().assert_not_erased();
 
     let (orig_values, canonical_goal) =

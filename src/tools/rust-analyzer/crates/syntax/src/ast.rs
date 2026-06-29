@@ -1,7 +1,6 @@
 //! Abstract Syntax Tree, layered on top of untyped `SyntaxNode`s
 
 pub mod edit;
-pub mod edit_in_place;
 mod expr_ext;
 mod generated;
 pub mod make;

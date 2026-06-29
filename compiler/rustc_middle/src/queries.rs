@@ -541,7 +541,7 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query lints_that_dont_need_to_run(_: ()) -> &'tcx UnordSet<LintId> {
+    query skippable_lints(_: ()) -> &'tcx UnordSet<LintId> {
         arena_cache
         // This depends on the lint store, which includes internal lints when the
         // untracked `-Zunstable-options` flag is set.
@@ -1400,10 +1400,10 @@ rustc_queries! {
     }
 
     /// Generates a MIR body for the shim.
-    query mir_shims(key: ty::InstanceKind<'tcx>) -> &'tcx mir::Body<'tcx> {
+    query mir_shims(key: ty::ShimKind<'tcx>) -> &'tcx mir::Body<'tcx> {
         arena_cache
         desc {
-            "generating MIR shim for `{}`, instance={:?}",
+            "generating MIR shim for `{}`, kind={:?}",
             tcx.def_path_str(key.def_id()),
             key
         }

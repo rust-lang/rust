@@ -1044,7 +1044,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
 #[cfg(feature = "master")]
 pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
     let gcc_name = match name {
-        "llvm.prefetch" => {
+        "llvm.prefetch.p0" => {
             let gcc_name = "__builtin_prefetch";
             let func = cx.context.get_builtin_function(gcc_name);
             cx.functions.borrow_mut().insert(gcc_name.to_string(), func);

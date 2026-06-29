@@ -7,6 +7,7 @@ use std::thread;
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
 use libc_utils::epoll::*;
+use libc_utils::*;
 
 // Test if only one thread is unblocked if multiple threads blocked on same epfd.
 // Expected execution:
@@ -16,14 +17,13 @@ use libc_utils::epoll::*;
 // 4. Thread 1 deadlocks.
 fn main() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create an eventfd instance.
     let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
-    let fd1 = unsafe { libc::eventfd(0, flags) };
+    let fd1 = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
     // Make a duplicate so that we have two file descriptors for the same file description.
-    let fd2 = unsafe { libc::dup(fd1) };
+    let fd2 = errno_result(unsafe { libc::dup(fd1) }).unwrap();
 
     // Register both with epoll.
     epoll_ctl_add(epfd, fd1, EPOLLIN | EPOLLOUT | EPOLLET).unwrap();

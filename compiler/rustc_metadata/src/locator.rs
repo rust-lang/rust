@@ -213,7 +213,7 @@
 //! metadata::locator or metadata::creader for all the juicy details!
 
 use std::borrow::Cow;
-use std::io::{Result as IoResult, Write};
+use std::io::{self, Result as IoResult, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt};
@@ -224,6 +224,7 @@ use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_fs_util::try_canonicalize;
+use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
@@ -821,7 +822,7 @@ fn get_metadata_section<'p>(
     crate_name: Option<Symbol>,
 ) -> Result<MetadataBlob, MetadataError<'p>> {
     if !filename.exists() {
-        return Err(MetadataError::NotPresent(filename.into()));
+        return Err(MetadataError::NotPresent(filename));
     }
     let raw_bytes = match flavor {
         CrateFlavor::Rlib => {
@@ -978,18 +979,29 @@ fn get_flavor_from_path(path: &Path) -> CrateFlavor {
     }
 }
 
-/// A function to get information about all macros inside a proc-macro crate.
+/// A function to fetch about all macros inside a proc-macro crate.
 ///
 /// Used by rust-analyzer-proc-macro-srv.
-pub fn get_proc_macro_info<'p>(
+pub fn get_proc_macros(
     target: &Target,
-    path: &'p Path,
+    path: &Path,
     metadata_loader: &dyn MetadataLoader,
     cfg_version: &'static str,
-) -> Result<Vec<ProcMacroKind>, MetadataError<'p>> {
+) -> IoResult<Vec<(ProcMacroClient, ProcMacroKind)>> {
     let metadata =
-        get_metadata_section(target, CrateFlavor::Dylib, path, metadata_loader, cfg_version, None)?;
-    Ok(metadata.get_proc_macro_info())
+        get_metadata_section(target, CrateFlavor::Dylib, path, metadata_loader, cfg_version, None)
+            .map_err(|err| io::Error::other(err.to_string()))?;
+    let stable_crate_id = metadata.get_root().stable_crate_id();
+
+    let clients = crate::host_dylib::dlsym_proc_macros(path, stable_crate_id).map_err(|err| {
+        let (crate::DylibError::DlOpen(path, err) | crate::DylibError::DlSym(path, err)) = err;
+        io::Error::other(format!("{path}{err}"))
+    })?;
+
+    let proc_macro_info = metadata.get_proc_macro_info();
+    assert_eq!(proc_macro_info.len(), clients.len());
+
+    Ok(clients.into_iter().copied().zip(proc_macro_info).collect())
 }
 
 // ------------------------------------------ Error reporting -------------------------------------
@@ -1039,9 +1051,9 @@ pub(crate) enum CrateError {
 }
 
 #[derive(Debug)]
-pub enum MetadataError<'a> {
+pub(crate) enum MetadataError<'a> {
     /// The file was missing.
-    NotPresent(Cow<'a, Path>),
+    NotPresent(&'a Path),
     /// The file was present and invalid.
     LoadFailure(String),
     /// The file was present, but compiled with a different rustc version.

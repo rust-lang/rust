@@ -146,7 +146,7 @@ fn test_epoll_ctl_del() {
         events: (EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO) as u32,
         u64: u64::try_from(fds[1]).unwrap(),
     };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
+    let res = unsafe { libc::epoll_ctl(epfd, EPOLL_CTL_ADD, fds[1], &mut ev) };
     assert_eq!(res, 0);
 
     // Test EPOLL_CTL_DEL.
@@ -158,10 +158,8 @@ fn test_epoll_ctl_del() {
 // This test is for one fd registered under two different epoll instance.
 fn test_two_epoll_instance() {
     // Create two epoll instance.
-    let epfd1 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd1, -1);
-    let epfd2 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd2, -1);
+    let epfd1 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
+    let epfd2 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
@@ -570,8 +568,7 @@ fn test_epoll_ctl_epfd_equal_fd() {
 // epfd that shouldn't receive a notification in edge-triggered mode.
 fn test_epoll_ctl_notification() {
     // Create an epoll instance.
-    let epfd0 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd0, -1);
+    let epfd0 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
@@ -584,8 +581,7 @@ fn test_epoll_ctl_notification() {
     check_epoll_wait_noblock(epfd0, &[Ev { events: EPOLLOUT, data: fds[0] }]);
 
     // Create another epoll instance.
-    let epfd1 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd1, -1);
+    let epfd1 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Register the same file description for epfd1.
     epoll_ctl_add(epfd1, fds[0], EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO).unwrap();
@@ -692,8 +688,7 @@ fn test_issue_3858() {
 /// Ensure that if a socket becomes un-writable, we don't see it any more.
 fn test_issue_4374() {
     // Create an epoll instance.
-    let epfd0 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd0, -1);
+    let epfd0 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance, make it non-blocking.
     let mut fds = [-1, -1];
@@ -721,8 +716,7 @@ fn test_issue_4374() {
 /// Same as above, but for becoming un-readable.
 fn test_issue_4374_reads() {
     // Create an epoll instance.
-    let epfd0 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd0, -1);
+    let epfd0 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance, make it non-blocking.
     let mut fds = [-1, -1];

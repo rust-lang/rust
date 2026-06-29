@@ -43,6 +43,7 @@ use crate::errors::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
+use crate::intrinsic::ty::typetree::fnc_typetrees;
 use crate::llvm::{self, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
@@ -113,17 +114,17 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
         sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
 
+        sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
+        sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
-        //sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
-        //sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         //sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
         //sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
         //
+        sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
+        sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
-        //sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
-        //sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
         //sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
         //sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
         //
@@ -223,12 +224,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 )
             }
             sym::autodiff => {
-                let result = PlaceRef {
-                    val: result_place.unwrap(),
-                    layout: result_layout,
-                };
-                codegen_autodiff(self, tcx, instance, args, result);
-                return IntrinsicResult::WroteIntoPlace;
+                return codegen_autodiff(self, tcx, instance, args, result_layout, result_place);
             }
             sym::offload => {
                 if tcx.sess.opts.unstable_opts.offload.is_empty() {
@@ -358,25 +354,39 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
-                let result = PlaceRef {
-                    val: result_place.unwrap(),
-                    layout: result_layout,
-                };
-
+                // Note that we cannot just load the `llvm_type` because we should never load non-scalars.
+                // Trying to do so blows up horribly in some cases -- for example loading a
+                // `MaybeUninint<&dyn Trait>` would load as `{ [i64x2] }` which gives assertions later
+                // (if we're lucky) from things not being pointers that ought to be.
                 let ptr = args[0].immediate();
-                let load = self.volatile_load(result_layout.llvm_type(self), ptr);
-                let align = if name == sym::unaligned_volatile_load {
-                    1
+                let abi_align = result_layout.align.abi;
+                let ptr_align = if name == sym::volatile_load { abi_align } else { Align::ONE };
+                if result_layout.is_zst() {
+                    return IntrinsicResult::Operand(OperandValue::ZeroSized);
+                } else if let BackendRepr::Scalar(scalar) = result_layout.backend_repr {
+                    let load = self.volatile_load(self.type_from_scalar(scalar), ptr, ptr_align);
+                    self.to_immediate_scalar(load, scalar)
                 } else {
-                    result_layout.align.bytes() as u32
-                };
-                unsafe {
-                    llvm::LLVMSetAlignment(load, align);
+                    // One day Rust will probably want to define how we split up a volatile load
+                    // of something that's *not* just an ordinary scalar, but for now we can just
+                    // use an LLVM integer type of the correct width and let it split it however.
+                    let llty = self.type_ix(result_layout.size.bits());
+                    let temp = if let Some(result_place) = result_place {
+                        PlaceRef {
+                            val: result_place,
+                            layout: result_layout,
+                        }
+                    } else {
+                        PlaceRef::alloca(self, result_layout)
+                    };
+                    let llval = self.volatile_load(llty, ptr, ptr_align);
+                    self.store(llval, temp.val.llval, abi_align);
+                    return if result_place.is_none() {
+                        IntrinsicResult::Operand(self.load_operand(temp).val)
+                    } else {
+                        IntrinsicResult::WroteIntoPlace
+                    };
                 }
-                if !result_layout.is_zst() {
-                    self.store_to_place(load, result.val);
-                }
-                return IntrinsicResult::WroteIntoPlace;
             }
             sym::volatile_store => {
                 let dst = args[0].deref(self.cx());
@@ -402,7 +412,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let ptr = args[0].immediate();
                 let locality = fn_args.const_at(1).to_leaf().to_i32();
                 self.call_intrinsic(
-                    "llvm.prefetch",
+                    "llvm.prefetch.p0",
                     &[self.val_ty(ptr)],
                     &[
                         ptr,
@@ -1728,8 +1738,9 @@ fn codegen_autodiff<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
-    result: PlaceRef<'tcx, &'ll Value>,
-) {
+    result_layout: ty::layout::TyAndLayout<'tcx>,
+    result_place: Option<PlaceValue<&'ll Value>>,
+) -> IntrinsicResult<'tcx, &'ll Value> {
     if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
         let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutEnable);
     }
@@ -1769,9 +1780,9 @@ fn codegen_autodiff<'ll, 'tcx>(
             diff_id,
             diff_args
         ),
-        Err(_) => {
+        Err(err) => {
             // An error has already been emitted
-            return;
+            return IntrinsicResult::Err(err);
         }
     };
 
@@ -1791,7 +1802,7 @@ fn codegen_autodiff<'ll, 'tcx>(
         &mut diff_attrs.input_activity,
     );
 
-    let fnc_tree = rustc_middle::ty::fnc_typetrees(tcx, source_fn_ptr_ty);
+    let fnc_tree = fnc_typetrees(tcx, source_fn_ptr_ty);
 
     // Build body
     generate_enzyme_call(
@@ -1802,9 +1813,10 @@ fn codegen_autodiff<'ll, 'tcx>(
         llret_ty,
         &val_arr,
         &diff_attrs,
-        result,
+        result_layout,
+        result_place,
         fnc_tree,
-    );
+    )
 }
 
 // Generates the LLVM code to offload a Rust function to a target device (e.g., GPU).

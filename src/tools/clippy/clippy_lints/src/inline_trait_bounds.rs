@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{HasSession, snippet};
+use clippy_utils::source::snippet;
 use clippy_utils::sym;
 use rustc_ast::ast::{Fn, FnRetTy, GenericParam, GenericParamKind};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{HasAttrs as _, NodeId};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 

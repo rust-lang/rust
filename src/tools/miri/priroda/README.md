@@ -8,6 +8,7 @@ Current focus:
 - single-threaded stepping with Miri's interpreter
 - source-location output after stepping
 - source-location breakpoint prototype
+- source-local listing prototype
 
 ## Setup
 
@@ -59,9 +60,11 @@ RUSTC_BLESS=1 cargo test
 
 | Command | Description |
 |---|---|
-| Enter, `s`, `step` | Execute one Miri interpreter step. |
+| Enter, `si`, `stepi` | Execute one Miri interpreter step. |
+| `s`, `step` | Step until the displayed source location changes. |
 | `c`, `continue` | Continue until the program finishes or reaches a breakpoint. |
 | `b <path>:<line>`, `break <path>:<line>` | Add a source-location breakpoint. |
+| `l`, `locals` | List source-level locals in the current frame by name. |
 | `q`, `quit` | Exit Priroda. |
 
 EOF also exits Priroda cleanly.

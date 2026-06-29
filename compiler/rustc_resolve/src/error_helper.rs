@@ -1628,7 +1628,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             in_module.for_each_child(self, |this, ident, orig_ident_span, ns, name_binding| {
                 // Avoid non-importable candidates.
                 if name_binding.is_assoc_item()
-                    && !this.tcx.features().import_trait_associated_functions()
+                    && !this.features.import_trait_associated_functions()
                 {
                     return;
                 }
@@ -1809,10 +1809,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }) => {
                 if span.allows_unstable(feature) {
                     true
-                } else if self.tcx.features().enabled(feature) {
+                } else if self.features.enabled(feature) {
                     true
                 } else if let Some(implied_by) = implied_by
-                    && self.tcx.features().enabled(implied_by)
+                    && self.features.enabled(implied_by)
                 {
                     true
                 } else {
@@ -4144,13 +4144,17 @@ pub(crate) struct OnUnknownData {
 }
 
 impl OnUnknownData {
-    pub(crate) fn from_attrs<'tcx>(
-        tcx: TyCtxt<'tcx>,
+    pub(crate) fn from_attrs(
+        r: &Resolver<'_, '_>,
         attrs: &[ast::Attribute],
     ) -> Option<OnUnknownData> {
-        if tcx.features().diagnostic_on_unknown()
+        if r.features.diagnostic_on_unknown()
             && let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
-                AttributeParser::parse_limited(tcx.sess, attrs, &[sym::diagnostic, sym::on_unknown])
+                AttributeParser::parse_limited(
+                    r.tcx.sess,
+                    attrs,
+                    &[sym::diagnostic, sym::on_unknown],
+                )
         {
             Some(Self { directive: directive? })
         } else {

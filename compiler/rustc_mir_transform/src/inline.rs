@@ -15,7 +15,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
-    self, Instance, InstanceKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized,
+    self, Instance, InstanceKind, ShimKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized,
 };
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::Spanned;
@@ -420,9 +420,10 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
                 work_list.push(target);
 
                 // If the place doesn't actually need dropping, treat it like a regular goto.
-                let ty = callsite
-                    .callee
-                    .instantiate_mir(tcx, ty::EarlyBinder::bind(&place.ty(callee_body, tcx).ty));
+                let ty = callsite.callee.instantiate_mir(
+                    tcx,
+                    ty::EarlyBinder::bind(tcx, place.ty(callee_body, tcx).ty),
+                );
                 if ty.needs_drop(tcx, self.typing_env())
                     && let UnwindAction::Cleanup(unwind) = unwind
                 {
@@ -638,7 +639,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     let Ok(callee_body) = callsite.callee.try_instantiate_mir_and_normalize_erasing_regions(
         tcx,
         inliner.typing_env(),
-        ty::EarlyBinder::bind(callee_body.clone()),
+        ty::EarlyBinder::bind(tcx, callee_body.clone()),
     ) else {
         debug!("failed to normalize callee body");
         return Err("implementation limitation -- could not normalize callee body");
@@ -739,18 +740,21 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         // the correct param-env for types being dropped. Stall resolving
         // the MIR for this instance until all of its const params are
         // substituted.
-        InstanceKind::DropGlue(_, Some(ty)) if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) => {
+        InstanceKind::Shim(ShimKind::DropGlue(_, Some(ty)))
+            if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) =>
+        {
             debug!("still needs substitution");
             return Err("implementation limitation -- HACK for dropping polymorphic type");
         }
-        InstanceKind::AsyncDropGlue(_, ty) | InstanceKind::AsyncDropGlueCtorShim(_, ty) => {
+        InstanceKind::Shim(ShimKind::AsyncDropGlue(_, ty))
+        | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(_, ty)) => {
             return if ty.still_further_specializable() {
                 Err("still needs substitution")
             } else {
                 Ok(())
             };
         }
-        InstanceKind::FutureDropPollShim(_, ty, ty2) => {
+        InstanceKind::Shim(ShimKind::FutureDropPoll(_, ty, ty2)) => {
             return if ty.still_further_specializable() || ty2.still_further_specializable() {
                 Err("still needs substitution")
             } else {
@@ -762,15 +766,15 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         // not get any optimizations run on it. Any subsequent inlining may cause cycles, but we
         // do not need to catch this here, we can wait until the inliner decides to continue
         // inlining a second time.
-        InstanceKind::VTableShim(_)
-        | InstanceKind::ReifyShim(..)
-        | InstanceKind::FnPtrShim(..)
-        | InstanceKind::ClosureOnceShim { .. }
-        | InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | InstanceKind::DropGlue(..)
-        | InstanceKind::CloneShim(..)
-        | InstanceKind::ThreadLocalShim(..)
-        | InstanceKind::FnPtrAddrShim(..) => return Ok(()),
+        InstanceKind::Shim(ShimKind::VTable(_))
+        | InstanceKind::Shim(ShimKind::Reify(..))
+        | InstanceKind::Shim(ShimKind::FnPtr(..))
+        | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
+        | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
+        | InstanceKind::Shim(ShimKind::DropGlue(..))
+        | InstanceKind::Shim(ShimKind::Clone(..))
+        | InstanceKind::Shim(ShimKind::ThreadLocal(..))
+        | InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return Ok(()),
     }
 
     if inliner.tcx().is_constructor(callee_def_id) {
@@ -1022,7 +1026,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     });
 
     // Copy required constants from the callee_body into the caller_body. Although we are only
-    // pushing unevaluated consts to `required_consts`, here they may have been evaluated
+    // pushing constants that still need evaluation to `required_consts`, here they may have been evaluated
     // because we are calling `instantiate_and_normalize_erasing_regions` -- so we filter again.
     caller_body.required_consts.as_mut().unwrap().extend(
         callee_body.required_consts().into_iter().filter(|ct| ct.const_.is_required_const()),
@@ -1370,8 +1374,8 @@ fn try_instance_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: InstanceKind<'tcx>,
 ) -> Result<&'tcx Body<'tcx>, &'static str> {
-    if let ty::InstanceKind::DropGlue(_, Some(ty)) | ty::InstanceKind::AsyncDropGlueCtorShim(_, ty) =
-        instance
+    if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(ty)))
+    | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, ty)) = instance
         && let ty::Adt(def, args) = ty.kind()
     {
         let fields = def.all_fields();

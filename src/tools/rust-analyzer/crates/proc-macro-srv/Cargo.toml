@@ -13,9 +13,6 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-object.workspace = true
-libloading.workspace = true
-memmap2.workspace = true
 temp-dir.workspace = true
 
 paths.workspace = true
@@ -23,9 +20,6 @@ paths.workspace = true
 span = { path = "../span", version = "0.0.0", default-features = false}
 intern.workspace = true
 
-
-[target.'cfg(unix)'.dependencies]
-libc.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true
@@ -35,7 +29,7 @@ line-index.workspace = true
 proc-macro-test.path = "./proc-macro-test"
 
 [features]
-default = ["in-rust-tree"]
+default = []
 in-rust-tree = []
 
 [lints]

@@ -36,6 +36,9 @@ Examples:
         This will print the path to the generated sysroot (and nothing else) on stdout.
         stderr will still contain progress information about how the build is doing.
 
+For documentation on `-Zmiri-...` flags, see Miri's README.md, available at:
+- $(rustc --print sysroot)/share/doc/miri/README.md
+- https://github.com/rust-lang/miri/blob/master/README.md
 ";
 
 fn show_help() {
@@ -342,7 +345,7 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
     let target_crate = is_target_crate();
 
-    let store_json = |info: CrateRunInfo| {
+    let store_json = |info: &CrateRunInfo| {
         if get_arg_flag_value("--emit").unwrap_or_default().split(',').any(|e| e == "dep-info") {
             // Create a stub .d file to stop Cargo from "rebuilding" the crate:
             // https://github.com/rust-lang/miri/issues/1724#issuecomment-787115693
@@ -383,9 +386,9 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
         // like we want them.
         // Instead of compiling, we write JSON into the output file with all the relevant command-line flags
         // and environment variables; this is used when cargo calls us again in the CARGO_TARGET_RUNNER phase.
-        let env = CrateRunEnv::collect(args, inside_rustdoc);
+        let info = CrateRunInfo::collect(args, inside_rustdoc);
 
-        store_json(CrateRunInfo::RunWith(env.clone()));
+        store_json(&info);
 
         // Rustdoc expects us to exit with an error code if the test is marked as `compile_fail`,
         // just creating the JSON file is not enough: we need to detect syntax errors,
@@ -395,7 +398,8 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
 
             // Ensure --emit argument for a check-only build is present.
             if let Some(val) =
-                ArgFlagValueIter::from_str_iter(env.args.iter().map(|s| s as &str), "--emit").next()
+                ArgFlagValueIter::from_str_iter(info.args.iter().map(|s| s as &str), "--emit")
+                    .next()
             {
                 // For `no_run` tests, rustdoc passes a `--emit` flag; make sure it has the right shape.
                 assert_eq!(val, "metadata");
@@ -405,7 +409,7 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
             }
 
             // Alter the `-o` parameter so that it does not overwrite the JSON file we stored above.
-            let mut args = env.args;
+            let mut args = info.args;
             for i in 0..args.len() {
                 if args[i] == "-o" {
                     args[i + 1].push_str(".miri");
@@ -418,23 +422,22 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
             if verbose > 0 {
                 eprintln!(
                     "[cargo-miri rustc inside rustdoc] captured input:\n{}",
-                    std::str::from_utf8(&env.stdin).unwrap()
+                    std::str::from_utf8(&info.stdin).unwrap()
                 );
                 eprintln!("[cargo-miri rustc inside rustdoc] going to run:\n{cmd:?}");
             }
 
-            exec_with_pipe(cmd, &env.stdin);
+            exec_with_pipe(cmd, &info.stdin);
         }
 
         return;
     }
 
+    // Unit tests for `proc-macro` crates are always built for the host so they cannot run in Miri.
     if runnable_crate && get_arg_flag_values("--extern").any(|krate| krate == "proc_macro") {
-        // This is a "runnable" `proc-macro` crate (unit tests). We do not support
-        // interpreting that under Miri now, so we write a JSON file to (display a
-        // helpful message and) skip it in the runner phase.
-        store_json(CrateRunInfo::SkipProcMacroTest);
-        return;
+        // Ideally we'd entirely skip them... but we have no good way of doing that here.
+        // So we run the tests natively on the host instead.
+        eprintln!("warning: unit tests of `proc-macro` crates are executed outside Miri");
     }
 
     let mut cmd = miri();
@@ -537,18 +540,9 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     let file = BufReader::new(file);
     let binary_args = binary_args.collect::<Vec<_>>();
 
-    let info = serde_json::from_reader(file).unwrap_or_else(|_| {
+    let info: CrateRunInfo = serde_json::from_reader(file).unwrap_or_else(|_| {
         show_error!("file {:?} contains outdated or invalid JSON; try `cargo clean`", binary)
     });
-    let info = match info {
-        CrateRunInfo::RunWith(info) => info,
-        CrateRunInfo::SkipProcMacroTest => {
-            eprintln!(
-                "Running unit tests of `proc-macro` crates is not currently supported by Miri."
-            );
-            return;
-        }
-    };
 
     let mut cmd = miri();
 
@@ -631,10 +625,10 @@ pub fn phase_rustdoc(args: impl Iterator<Item = String>) {
     let mut cmd = Command::new(rustdoc);
     cmd.args(args);
 
-    // Doctests of `proc-macro` crates (and their dependencies) are always built for the host,
-    // so we are not able to run them in Miri.
+    // Documentation tests of `proc-macro` crates are always built for the host, so we are not able
+    // to run them in Miri.
     if get_arg_flag_values("--crate-type").any(|crate_type| crate_type == "proc-macro") {
-        eprintln!("Running doctests of `proc-macro` crates is not currently supported by Miri.");
+        eprintln!("warning: doc tests of `proc-macro` crates are not supported by Miri");
         return;
     }
 

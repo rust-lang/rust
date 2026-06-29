@@ -13,7 +13,7 @@ type TraitObject = dyn Generic<<i32 as Trait>::Associated>;
 //~^ ERROR: the trait bound `i32: Trait` is not satisfied
 
 struct Wrap(TraitObject);
-//~^ ERROR: the trait bound `i32: Trait` is not satisfied
+//~^ ERROR: type mismatch resolving `TraitObject == _`
 
 fn cast(x: *mut Wrap) {
     x as *mut Wrap;

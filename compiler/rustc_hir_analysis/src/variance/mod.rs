@@ -139,7 +139,7 @@ fn variance_of_opaque(
         #[instrument(level = "trace", skip(self), ret)]
         fn visit_ty(&mut self, t: Ty<'tcx>) {
             match t.kind() {
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                     self.visit_opaque(*def_id, args);
                 }
                 _ => t.super_visit_with(self),

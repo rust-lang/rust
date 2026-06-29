@@ -17,6 +17,7 @@ pub use rmeta::provide;
 mod dependency_format;
 mod eii;
 mod foreign_modules;
+mod host_dylib;
 mod native_libs;
 mod rmeta;
 
@@ -25,8 +26,8 @@ pub mod diagnostics;
 pub mod fs;
 pub mod locator;
 
-pub use creader::{DylibError, load_symbol_from_dylib};
 pub use fs::{METADATA_FILENAME, emit_wrapper_file};
+pub use host_dylib::{DylibError, load_symbol_from_dylib};
 pub use native_libs::{
     NativeLibSearchFallback, find_native_static_library, try_find_native_dynamic_library,
     try_find_native_static_library, walk_native_lib_search_dirs,

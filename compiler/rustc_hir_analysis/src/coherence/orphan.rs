@@ -194,7 +194,7 @@ pub(crate) fn orphan_check_impl(
                 NonlocalImpl::DisallowOther,
             ),
 
-            ty::Alias(ty::AliasTy { kind, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind, .. }) => {
                 let problematic_kind = match kind {
                     // trait Id { type This: ?Sized; }
                     // impl<T: ?Sized> Id for T {
@@ -440,7 +440,7 @@ fn emit_orphan_check_error<'tcx>(
                             });
                         }
                     }
-                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
+                    ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                         diag.subdiagnostic(diagnostics::OnlyCurrentTraitsOpaque { span });
                     }
                     ty::RawPtr(ptr_ty, mutbl) => {

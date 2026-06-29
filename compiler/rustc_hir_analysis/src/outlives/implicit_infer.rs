@@ -81,8 +81,10 @@ pub(super) fn infer_predicates(
                 .map_or(0, |p| p.as_ref().skip_binder().len());
             if item_required_predicates.len() > item_predicates_len {
                 predicates_added.push(item_did);
-                global_inferred_outlives
-                    .insert(item_did.to_def_id(), ty::EarlyBinder::bind(item_required_predicates));
+                global_inferred_outlives.insert(
+                    item_did.to_def_id(),
+                    ty::EarlyBinder::bind_iter(item_required_predicates),
+                );
             }
         }
 
@@ -154,7 +156,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 );
             }
 
-            ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
                 // This corresponds to a type like `Type<'a, T>`.
                 // We check inferred and explicit predicates.
                 debug!("Free");
@@ -204,7 +206,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 }
             }
 
-            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
                 // This corresponds to a type like `<() as Trait<'a, T>>::Type`.
                 // We only use the explicit predicates of the trait but
                 // not the ones of the associated type itself.
@@ -220,7 +222,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
             }
 
             // FIXME(inherent_associated_types): Use the explicit predicates from the parent impl.
-            ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {}
+            ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {}
 
             _ => {}
         }

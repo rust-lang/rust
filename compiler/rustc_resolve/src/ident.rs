@@ -23,9 +23,9 @@ use crate::late::{
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
-    Determinacy, Finalize, IdentKey, ImportKind, ImportSummary, LateDecl, LocalModule, Module,
-    ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, Res, ResolutionError,
-    Resolver, Scope, ScopeSet, Segment, Stage, Symbol, Used, diagnostics,
+    Determinacy, ExternModule, Finalize, IdentKey, ImportKind, ImportSummary, LateDecl,
+    LocalModule, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError,
+    Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage, Symbol, Used, diagnostics,
 };
 
 #[derive(Copy, Clone)]
@@ -608,21 +608,36 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         finalize.map(|f| Finalize { used: Used::Scope, ..f }),
                     )
                 };
-                let decl = self.reborrow().resolve_ident_in_module_non_globs_unadjusted(
-                    module,
-                    ident,
-                    orig_ident_span,
-                    ns,
-                    adjusted_parent_scope,
-                    if matches!(scope_set, ScopeSet::Module(..)) {
-                        Shadowing::Unrestricted
-                    } else {
-                        Shadowing::Restricted
-                    },
-                    adjusted_finalize,
-                    ignore_decl,
-                    ignore_import,
-                );
+                let shadowing = if matches!(scope_set, ScopeSet::Module(..)) {
+                    Shadowing::Unrestricted
+                } else {
+                    Shadowing::Restricted
+                };
+                let decl = if module.is_local() {
+                    self.reborrow().resolve_ident_in_local_module_non_globs_unadjusted(
+                        module.expect_local(),
+                        ident,
+                        orig_ident_span,
+                        ns,
+                        adjusted_parent_scope,
+                        shadowing,
+                        adjusted_finalize,
+                        ignore_decl,
+                        ignore_import,
+                    )
+                } else {
+                    self.reborrow().resolve_ident_in_extern_module_non_globs_unadjusted(
+                        module.expect_extern(),
+                        ident,
+                        orig_ident_span,
+                        ns,
+                        adjusted_parent_scope,
+                        shadowing,
+                        adjusted_finalize,
+                        ignore_decl,
+                    )
+                };
+
                 match decl {
                     Ok(decl) => {
                         if let Some(lint_id) = derive_fallback_lint_id {
@@ -746,7 +761,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Scope::BuiltinTypes => match self.builtin_type_decls.get(&ident.name) {
                 Some(decl) => {
                     if matches!(ident.name, sym::f16)
-                        && !self.tcx.features().f16()
+                        && !self.features.f16()
                         && !orig_ident_span.allows_unstable(sym::f16)
                         && finalize.is_some()
                     {
@@ -759,7 +774,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         .emit();
                     }
                     if matches!(ident.name, sym::f128)
-                        && !self.tcx.features().f128()
+                        && !self.features.f128()
                         && !orig_ident_span.allows_unstable(sym::f128)
                         && finalize.is_some()
                     {
@@ -1078,10 +1093,49 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    /// Attempts to resolve `ident` in namespace `ns` of non-glob bindings in `module`.
-    fn resolve_ident_in_module_non_globs_unadjusted<'r>(
+    /// Attempts to resolve `ident` in namespace `ns` of non-glob bindings in an external `module`.
+    fn resolve_ident_in_extern_module_non_globs_unadjusted<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
-        module: Module<'ra>,
+        module: ExternModule<'ra>,
+        ident: IdentKey,
+        orig_ident_span: Span,
+        ns: Namespace,
+        parent_scope: &ParentScope<'ra>,
+        shadowing: Shadowing,
+        finalize: Option<Finalize>,
+        // This binding should be ignored during in-module resolution, so that we don't get
+        // "self-confirming" import resolutions during import validation and checking.
+        ignore_decl: Option<Decl<'ra>>,
+    ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
+        let key = BindingKey::new(ident, ns);
+        let resolution =
+            &*self.resolution(module.to_module(), key).ok_or(ControlFlow::Continue(Determined))?;
+
+        let binding = resolution.non_glob_decl.filter(|b| Some(*b) != ignore_decl);
+
+        if let Some(finalize) = finalize {
+            return self.get_mut().finalize_module_binding(
+                ident,
+                orig_ident_span,
+                binding,
+                parent_scope,
+                finalize,
+                shadowing,
+            );
+        }
+
+        // Items and single imports are not shadowable, if we have one, then it's determined.
+        if let Some(binding) = binding {
+            let accessible = self.is_accessible_from(binding.vis(), parent_scope.module);
+            return if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) };
+        }
+        Err(ControlFlow::Continue(Determined))
+    }
+
+    /// Attempts to resolve `ident` in namespace `ns` of non-glob bindings in a local `module`.
+    fn resolve_ident_in_local_module_non_globs_unadjusted<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
+        module: LocalModule<'ra>,
         ident: IdentKey,
         orig_ident_span: Span,
         ns: Namespace,
@@ -1098,7 +1152,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
         // the exclusive access infinite recursion will crash the compiler with stack overflow.
         let resolution = &*self
-            .resolution_or_default(module, key, orig_ident_span)
+            .resolution_or_default(module.to_module(), key, orig_ident_span)
             .try_borrow_mut_unchecked()
             .map_err(|_| ControlFlow::Continue(Determined))?;
 
@@ -1120,11 +1174,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let accessible = self.is_accessible_from(binding.vis(), parent_scope.module);
             return if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) };
         }
-
-        // In extern modules everything is determined from the start.
-        if !module.is_local() {
-            return Err(ControlFlow::Continue(Determined));
-        };
 
         // Check if one of single imports can still define the name, block if it can.
         if self.reborrow().single_import_can_define_name(
@@ -1535,7 +1584,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
 
                         RibKind::ConstParamTy => {
-                            if !self.tcx.features().generic_const_parameter_types() {
+                            if !self.features.generic_const_parameter_types() {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,
@@ -1564,7 +1613,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
-                                                is_gca: self.tcx.features().generic_const_args(),
+                                                is_gca: self.features.generic_const_args(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Type,
                                             }
@@ -1629,7 +1678,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         | RibKind::ForwardGenericParamBan(_) => continue,
 
                         RibKind::ConstParamTy => {
-                            if !self.tcx.features().generic_const_parameter_types() {
+                            if !self.features.generic_const_parameter_types() {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,
@@ -1656,7 +1705,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
-                                                is_gca: self.tcx.features().generic_const_args(),
+                                                is_gca: self.features.generic_const_args(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Const {
                                                     name: rib_ident.name,
@@ -2019,7 +2068,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             module,
                             || {
                                 let import_inherent_item_error_flag =
-                                    self.tcx.features().import_trait_associated_functions()
+                                    self.features.import_trait_associated_functions()
                                         && matches!(
                                             res,
                                             Res::Def(
