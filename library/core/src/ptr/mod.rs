@@ -121,7 +121,10 @@
 //!
 //! Allocations must behave like "normal" memory: in particular, reads must not have
 //! side-effects, and writes must become visible to other threads using the usual synchronization
-//! primitives.
+//! primitives. If atomics are enabled for a target, all allocations in writeable memory must
+//! support all atomic operations. The precise instructions used for atomic operations are
+//! generally not guaranteed, so portable software should use memory regions that support all
+//! atomic instructions.
 //!
 //! For any allocation with `base` address, `size`, and a set of
 //! `addresses`, the following are guaranteed:
