@@ -308,11 +308,8 @@ impl ExtraBackendMethods for AotDriver {
 
 impl WriteBackendMethods for AotDriver {
     type Module = AotModule;
-
-    type TargetMachine = ();
-
     type ModuleBuffer = Infallible;
-
+    type TargetMachine = ();
     type ThinData = Infallible;
 
     fn target_machine_factory(
