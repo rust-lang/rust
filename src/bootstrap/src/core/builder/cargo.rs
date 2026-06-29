@@ -938,7 +938,10 @@ impl Builder<'_> {
         }
 
         let rustdoc_path = match cmd_kind {
-            Kind::Doc | Kind::Test | Kind::MiriTest => self.rustdoc_for_compiler(compiler),
+            Kind::Doc => self.rustdoc_for_compiler(compiler),
+            Kind::Test | Kind::MiriTest if self.test_target.runs_doctests() => {
+                self.rustdoc_for_compiler(compiler)
+            }
             _ => PathBuf::from("/path/to/nowhere/rustdoc/not/required"),
         };
 
