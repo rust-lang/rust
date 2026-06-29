@@ -16,6 +16,7 @@
 /// code, but use an in-memory buffer in our tests. We can do this with
 /// `Cursor`:
 ///
+// FIXME(#74481): Hard-links required to link from `core` to `std`
 /// [bytes]: crate::slice "slice"
 /// [`File`]: ../../std/fs/struct.File.html
 /// [`Read`]: ../../std/io/trait.Read.html
@@ -80,6 +81,7 @@ impl<T> Cursor<T> {
     /// is not empty. So writing to cursor starts with overwriting [`Vec`]
     /// content, not with appending to it.
     ///
+    // FIXME(#74481): Hard-links required to link from `core` to `alloc`
     /// [`Vec`]: ../../alloc/vec/struct.Vec.html
     ///
     /// # Examples

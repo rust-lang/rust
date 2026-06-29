@@ -45,6 +45,7 @@ use crate::{error, fmt, result};
 /// will generally use `io::Result` instead of shadowing the [prelude]'s import
 /// of [`core::result::Result`][`Result`].
 ///
+// FIXME(#74481): Hard-links required to link from `core` to `std`
 /// [`std::io`]: ../../std/io/index.html
 /// [`io::Error`]: Error
 /// [`Result`]: crate::result::Result
@@ -76,6 +77,7 @@ pub type Result<T> = result::Result<T, Error>;
 /// `Error` can be created with crafted error messages and a particular value of
 /// [`ErrorKind`].
 ///
+// FIXME(#74481): Hard-links required to link from `core` to `std`
 /// [Read]: ../../std/io/trait.Read.html
 /// [Write]: ../../std/io/trait.Write.html
 /// [Seek]: ../../std/io/trait.Seek.html
@@ -171,6 +173,7 @@ pub struct SimpleMessage {
 /// Contrary to [`Error::new`][new], this macro does not allocate and can be used in
 /// `const` contexts.
 ///
+// FIXME(#74481): Hard-links required to link from `core` to `alloc` for incoherent method
 /// [new]: ../../alloc/io/struct.Error.html#method.new
 ///
 /// # Example
@@ -286,6 +289,7 @@ impl Error {
     /// [`from_raw_os_error`][from_raw_os_error], then this function will return [`Some`], otherwise
     /// it will return [`None`].
     ///
+    // FIXME(#74481): Hard-links required to link from `core` to `std` for incoherent method
     /// [last_os_error]: ../../std/io/struct.Error.html#method.last_os_error
     /// [from_raw_os_error]: ../../std/io/struct.Error.html#method.from_raw_os_error
     ///
@@ -366,6 +370,7 @@ impl Error {
     /// If this [`Error`] was constructed via [`new`][new] then this function will
     /// return [`Some`], otherwise it will return [`None`].
     ///
+    // FIXME(#74481): Hard-links required to link from `core` to `std`
     /// [new]: ../../alloc/io/struct.Error.html#method.new
     ///
     /// # Examples
@@ -441,6 +446,7 @@ impl Error {
     /// it will be a value inferred from the system's error encoding.
     /// See [`last_os_error`][last_os_error] for more details.
     ///
+    // FIXME(#74481): Hard-links required to link from `core` to `std`
     /// [last_os_error]: ../../std/io/struct.Error.html#method.last_os_error
     ///
     /// # Examples
