@@ -5,7 +5,7 @@
 //@ revisions: KASAN KASAN-RECOVER
 //@ compile-flags: -Copt-level=0
 //@ needs-llvm-components: x86
-//@ compile-flags: -Zsanitizer=kernel-address --target x86_64-unknown-none
+//@ compile-flags: -Tsanitizer=kernel-address --target x86_64-unknown-none -Zunstable-options
 //@[KASAN-RECOVER] compile-flags: -Zsanitizer-recover=kernel-address
 
 #![feature(no_core, sanitize, lang_items)]

@@ -1,7 +1,10 @@
 // Verifies that normalized and generalized type metadata for functions are emitted.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-normalize-integers -Zsanitizer-cfi-generalize-pointers -C unsafe-allow-abi-mismatch=sanitizer,sanitizer-cfi-normalize-integers
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Tsanitizer=cfi
+//@ compile-flags: -Tsanitizer-cfi-normalize-integers -Zsanitizer-cfi-generalize-pointers
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer,sanitizer-cfi-normalize-integers
+//@ compile-flags: -Zunstable-options
 
 #![crate_type = "lib"]
 

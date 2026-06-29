@@ -1,6 +1,6 @@
 //@ no-prefer-dynamic
 //@ needs-sanitizer-kcfi
-//@ compile-flags: -C panic=abort -Zsanitizer=kcfi -Zsanitizer-cfi-normalize-integers
+//@ compile-flags: -C panic=abort -Tsanitizer=kcfi -Tsanitizer-cfi-normalize-integers -Zunstable-options
 
 #![feature(no_core)]
 #![crate_type = "rlib"]

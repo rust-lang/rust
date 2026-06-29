@@ -3,9 +3,9 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 //@ revisions: hwasan khwasan
-//@[hwasan] compile-flags: --target aarch64-unknown-linux-gnu -Zsanitizer=hwaddress
+//@[hwasan] compile-flags: --target aarch64-unknown-linux-gnu -Tsanitizer=hwaddress -Zunstable-options
 //@[hwasan] needs-llvm-components: aarch64
-//@[khwasan] compile-flags: --target aarch64-unknown-none -Zsanitizer=kernel-hwaddress
+//@[khwasan] compile-flags: --target aarch64-unknown-none -Tsanitizer=kernel-hwaddress -Zunstable-options
 //@[khwasan] needs-llvm-components: aarch64
 //@ compile-flags: -Copt-level=1
 

@@ -4,7 +4,8 @@
 //@ needs-sanitizer-memory
 //@ revisions:MSAN-0 MSAN-1 MSAN-2 MSAN-1-LTO MSAN-2-LTO
 //
-//@ compile-flags: -Zsanitizer=memory -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Tsanitizer=memory -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Zunstable-options
 // [MSAN-0] no extra compile-flags
 //@[MSAN-1] compile-flags: -Zsanitizer-memory-track-origins=1
 //@[MSAN-2] compile-flags: -Zsanitizer-memory-track-origins

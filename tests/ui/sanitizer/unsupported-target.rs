@@ -1,4 +1,4 @@
-//@ compile-flags: -Z sanitizer=leak --target i686-unknown-linux-gnu
+//@ compile-flags: -Zsanitizer=leak --target i686-unknown-linux-gnu
 //@ needs-llvm-components: x86
 //@ ignore-backends: gcc
 
