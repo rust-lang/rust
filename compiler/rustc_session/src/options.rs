@@ -460,6 +460,43 @@ macro_rules! require_unstable_options {
         ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
 }
 
+trait TargetModifierOptionValue {
+    fn to_string_for_diag(&self) -> String;
+}
+
+impl TargetModifierOptionValue for bool {
+    fn to_string_for_diag(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl TargetModifierOptionValue for u32 {
+    fn to_string_for_diag(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl TargetModifierOptionValue for BranchProtection {
+    fn to_string_for_diag(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl TargetModifierOptionValue for SanitizerSet {
+    fn to_string_for_diag(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl<T: TargetModifierOptionValue> TargetModifierOptionValue for Option<T> {
+    fn to_string_for_diag(&self) -> String {
+        match self {
+            Some(v) => v.to_string_for_diag(),
+            None => "".to_string(),
+        }
+    }
+}
+
 macro_rules! target_modifier_options {
     (
         $struct_name:ident, // e.g. `UnstableOptions`
@@ -560,8 +597,8 @@ macro_rules! target_modifier_options {
                                 extern_crate,
                                 prefix: $prefix.to_string(),
                                 flag_name,
-                                local_value: self.$opt.to_string(),
-                                extern_value: extern_opts.$opt.to_string(),
+                                local_value: self.$opt.to_string_for_diag(),
+                                extern_value: extern_opts.$opt.to_string_for_diag(),
                             });
                         } else {
                             // If `self` unset and not matching, assume `extern_opts` set `$opt`
@@ -571,7 +608,7 @@ macro_rules! target_modifier_options {
                                 extern_crate,
                                 prefix: $prefix.to_string(),
                                 flag_name,
-                                extern_value: extern_opts.$opt.to_string(),
+                                extern_value: extern_opts.$opt.to_string_for_diag(),
                             });
                         }
                     }
