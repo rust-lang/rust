@@ -9,7 +9,7 @@
 //@ compile-flags: -C target-feature=+avx512bw
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, repr_simd, f16, f128)]
+#![feature(no_core, repr_simd, f16, f128, asm_const_ptr)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
@@ -99,6 +99,15 @@ pub unsafe fn sym_fn() {
 #[no_mangle]
 pub unsafe fn sym_static() {
     asm!("mov al, byte ptr [{}]", sym extern_static);
+}
+
+// CHECK-LABEL: const_ptr:
+// CHECK: #APP
+// CHECK: mov al, byte ptr [{{.*}}anon{{.*}}]
+// CHECK: #NO_APP
+#[no_mangle]
+pub unsafe fn const_ptr() {
+    asm!("mov al, byte ptr [{}]", const &1u8);
 }
 
 macro_rules! check {

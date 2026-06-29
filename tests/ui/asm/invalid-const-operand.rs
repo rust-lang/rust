@@ -3,6 +3,8 @@
 //@ ignore-spirv
 //@ reference: asm.operand-type.supported-operands.const
 
+#![feature(asm_const_ptr)]
+
 use std::arch::{asm, global_asm};
 
 // Const operands must be integers and must be constants.
@@ -13,11 +15,10 @@ global_asm!("{}", const 0i128);
 global_asm!("{}", const 0f32);
 //~^ ERROR invalid type for `const` operand
 global_asm!("{}", const 0 as *mut u8);
-//~^ ERROR invalid type for `const` operand
 
 fn test1() {
     unsafe {
-        // Const operands must be integers and must be constants.
+        // Const operands must be integers or thin pointers
 
         asm!("{}", const 0);
         asm!("{}", const 0i32);
@@ -25,9 +26,14 @@ fn test1() {
         asm!("{}", const 0f32);
         //~^ ERROR invalid type for `const` operand
         asm!("{}", const 0 as *mut u8);
-        //~^ ERROR invalid type for `const` operand
         asm!("{}", const &0);
+        asm!("{}", const b"Foo".as_slice());
         //~^ ERROR invalid type for `const` operand
+
+        asm!("{}", const test1 as fn());
+        asm!("{}", const test1);
+        asm!("{}", const (|| {}) as fn());
+        asm!("{}", const || {});
     }
 }
 

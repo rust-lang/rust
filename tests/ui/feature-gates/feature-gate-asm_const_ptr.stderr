@@ -1,0 +1,33 @@
+error[E0658]: using pointers in asm `const` operand is experimental
+  --> $DIR/feature-gate-asm_const_ptr.rs:5:25
+   |
+LL | global_asm!("/* {} */", const &0);
+   |                         ^^^^^^^^
+   |
+   = note: see issue #128464 <https://github.com/rust-lang/rust/issues/128464> for more information
+   = help: add `#![feature(asm_const_ptr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: using pointers in asm `const` operand is experimental
+  --> $DIR/feature-gate-asm_const_ptr.rs:11:36
+   |
+LL |         naked_asm!("ret /* {} */", const &0);
+   |                                    ^^^^^^^^
+   |
+   = note: see issue #128464 <https://github.com/rust-lang/rust/issues/128464> for more information
+   = help: add `#![feature(asm_const_ptr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: using pointers in asm `const` operand is experimental
+  --> $DIR/feature-gate-asm_const_ptr.rs:19:26
+   |
+LL |         asm!("/* {} */", const &0);
+   |                          ^^^^^^^^
+   |
+   = note: see issue #128464 <https://github.com/rust-lang/rust/issues/128464> for more information
+   = help: add `#![feature(asm_const_ptr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
