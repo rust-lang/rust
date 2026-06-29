@@ -26,7 +26,7 @@ use regex::RegexSetBuilder;
 use rustc_hash::FxHashMap;
 
 use crate::diagnostics::{CheckId, TidyCtx};
-use crate::style::directive::{Directives, match_ignore};
+use crate::style::directive::{Directives, LineNumber, match_ignore};
 use crate::walk::{filter_dirs, walk};
 
 mod directive;
@@ -366,7 +366,8 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             return;
         }
 
-        let file_ignore = Directives::from_line(&path_str, can_contain, true, contents);
+        let file_ignore =
+            Directives::from_line(&path_str, LineNumber::WholeFile, can_contain, contents);
         let mut next_line_ignore = Default::default();
 
         let mut leading_new_lines = false;
@@ -396,9 +397,11 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 trailing_new_lines = 0;
             }
 
+            let line_number = i + 1;
+
             let ignore = file_ignore.create_child(mem::replace(
                 &mut next_line_ignore,
-                Directives::from_line(&path_str, can_contain, false, line),
+                Directives::from_line(&path_str, LineNumber::Line(line_number), can_contain, line),
             ));
 
             let trimmed = line.trim();
@@ -408,7 +411,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             }
 
             let mut err = |msg: &str| {
-                check.error(format!("{}:{}: {msg}", file.display(), i + 1));
+                check.error(format!("{}:{}: {msg}", file.display(), line_number));
             };
 
             if trimmed.contains("dbg!")
@@ -474,13 +477,22 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     directive_line_starts.into_iter().any(|s| line.starts_with(s));
                 let contains_potential_directive =
                     possible_line_start && (line.contains("-tidy") || line.contains("tidy-"));
-                let has_recognized_ignore_directive =
-                    Directives::from_line(&path_str, can_contain, false, line)
-                        .iter()
-                        .any(|(_, directive)| directive.is_ignore_and_defuse())
-                        || Directives::from_line(&path_str, can_contain, true, line)
-                            .iter()
-                            .any(|(_, directive)| directive.is_ignore_and_defuse());
+                let has_recognized_ignore_directive = Directives::from_line(
+                    &path_str,
+                    LineNumber::Line(line_number),
+                    can_contain,
+                    line,
+                )
+                .iter()
+                .any(|(_, directive)| directive.is_ignore_and_defuse())
+                    || Directives::from_line(
+                        &path_str,
+                        LineNumber::Line(line_number),
+                        can_contain,
+                        line,
+                    )
+                    .iter()
+                    .any(|(_, directive)| directive.is_ignore_and_defuse());
                 let has_alphabetical_directive = line.contains("tidy-alphabetical-start")
                     || line.contains("tidy-alphabetical-end");
                 let has_other_tidy_ignore_directive =
@@ -568,7 +580,8 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 };
 
                 if likely_comment(trimmed) {
-                    let (start_line, mut backtick_count) = comment_block.unwrap_or((i + 1, 0));
+                    let (start_line, mut backtick_count) =
+                        comment_block.unwrap_or((line_number, 0));
                     let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
 
                     // Try to split `//`-like comments or `#[cfg_attr(bootstrap), doc = ""]`-like
@@ -595,7 +608,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     let mut err = |msg: &str| {
                         check.error(format!("{}:{start_line}: {msg}", file.display()));
                     };
-                    let block_len = (i + 1) - start_line;
+                    let block_len = line_number - start_line;
                     if block_len == 1 {
                         suppressible_tidy_err!(
                             err,

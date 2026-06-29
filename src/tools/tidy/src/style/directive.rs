@@ -80,7 +80,11 @@ pub enum Directive<'a> {
     /// has been provided, but is unnecessary. `Ignore(true)`
     /// means that it is necessary (i.e. a warning would be
     /// produced if `ignore-tidy-*` was not present).
-    Ignore { used: Cell<DirectiveUsed> },
+    Ignore {
+        /// line on which the ignore was found
+        line_number: LineNumber,
+        used: Cell<DirectiveUsed>,
+    },
 
     /// Some higher-level rule decides whether this directive is denied or ignored.
     Derived(&'a Directive<'a>),
@@ -88,7 +92,7 @@ pub enum Directive<'a> {
 
 impl<'a> Drop for Directive<'a> {
     fn drop(&mut self) {
-        if let Self::Ignore { used } = self
+        if let Self::Ignore { used, .. } = self
             && !matches!(used.get(), DirectiveUsed::Checked)
         {
             panic!("unchecked directive (call Directives::check_usage)");
@@ -103,26 +107,26 @@ impl<'a> Default for Directive<'a> {
 }
 
 impl<'a> Directive<'a> {
-    pub fn set_ignore(&mut self) {
-        if let Self::Ignore { used } = self {
+    pub fn set_ignore(&mut self, line_number: LineNumber) {
+        if let Self::Ignore { used, .. } = self {
             used.set(DirectiveUsed::No);
         } else {
-            *self = Directive::Ignore { used: Cell::new(DirectiveUsed::No) }
+            *self = Directive::Ignore { used: Cell::new(DirectiveUsed::No), line_number }
         }
     }
 
     /// Check whether this directive was ignored unnecessary.
-    fn is_ignore_unused(&self) -> bool {
-        if let Self::Ignore { used } = self {
+    fn is_ignore_unused(&self) -> Result<(), LineNumber> {
+        if let Self::Ignore { used, line_number } = self {
             let used = used.replace(DirectiveUsed::Checked);
-            matches!(used, DirectiveUsed::No)
+            if matches!(used, DirectiveUsed::No) { Err(*line_number) } else { Ok(()) }
         } else {
-            false
+            Ok(())
         }
     }
 
     pub fn is_ignore_and_defuse(&self) -> bool {
-        if let Self::Ignore { used } = self {
+        if let Self::Ignore { used, .. } = self {
             used.set(DirectiveUsed::Checked);
             true
         } else {
@@ -163,7 +167,7 @@ impl<'a> Directive<'a> {
     pub fn check(&self) -> Result<(), ()> {
         match self {
             Self::Deny => Err(()),
-            Self::Ignore { used } => {
+            Self::Ignore { used, .. } => {
                 used.set(DirectiveUsed::Yes);
                 Ok(())
             }
@@ -190,36 +194,32 @@ impl<'a> Directives<'a> {
             filelength,
         } = self;
 
-        if cr.is_ignore_unused() {
-            check.error(format!("{}: ignoring CR characters unnecessarily", file.display()));
+        macro_rules! check {
+            ($e: expr, $fmt: literal $($args: tt)*) => {
+                if let Err(line) = $e.is_ignore_unused() {
+                    let msg = format_args!($fmt $($args)*);
+                    match line {
+                        LineNumber::Line(line) => {
+                            check.error(format!("{}:{}: {}", file.display(), line, msg));
+                        }
+                        LineNumber::WholeFile => {
+                            check.error(format!("{}: {}", file.display(), msg));
+                        }
+                    }
+                }
+            };
         }
-        if tab.is_ignore_unused() {
-            check.error(format!("{}: ignoring tab characters unnecessarily", file.display()));
-        }
-        if end_whitespace.is_ignore_unused() {
-            check.error(format!("{}: ignoring trailing whitespace unnecessarily", file.display()));
-        }
-        if trailing_newlines.is_ignore_unused() {
-            check.error(format!("{}: ignoring trailing newlines unnecessarily", file.display()));
-        }
-        if leading_newlines.is_ignore_unused() {
-            check.error(format!("{}: ignoring leading newlines unnecessarily", file.display()));
-        }
-        if copyright.is_ignore_unused() {
-            check.error(format!("{}: ignoring copyright unnecessarily", file.display()));
-        }
-        if todo.is_ignore_unused() {
-            check.error(format!("{}: ignoring todo usage unnecessarily", file.display()));
-        }
-        if dbg.is_ignore_unused() {
-            check.error(format!("{}: ignoring dbg usage unnecessarily", file.display()));
-        }
-        if odd_backticks.is_ignore_unused() {
-            check.error(format!("{}: ignoring odd backticks unnecessarily", file.display()));
-        }
-        if undocumented_unsafe.is_ignore_unused() {
-            check.error(format!("{}: ignoring undocumented unsafe unnecessarily", file.display()));
-        }
+
+        check!(cr, "ignoring CR characters unnecessarily");
+        check!(tab, "ignoring tab characters unnecessarily");
+        check!(end_whitespace, "ignoring trailing whitespace unnecessarily");
+        check!(trailing_newlines, "ignoring trailing newlines unnecessarily");
+        check!(leading_newlines, "ignoring leading newlines unnecessarily");
+        check!(copyright, "ignoring copyright unnecessarily");
+        check!(todo, "ignoring todo usage unnecessarily");
+        check!(dbg, "ignoring dbg usage unnecessarily");
+        check!(odd_backticks, "ignoring odd backticks unnecessarily");
+        check!(undocumented_unsafe, "ignoring undocumented unsafe unnecessarily");
 
         // We deliberately do not warn about these being unnecessary,
         // that would just lead to annoying churn.
@@ -231,8 +231,8 @@ impl<'a> Directives<'a> {
     // without changing the code in `check` easier.
     pub fn from_line(
         path_str: &str,
+        line_number: LineNumber,
         can_contain_directive_fastpath: bool,
-        whole_file: bool,
         contents: &str,
     ) -> Self {
         let mut directives = Self::default();
@@ -247,16 +247,25 @@ impl<'a> Directives<'a> {
 
         for (check, directive) in directives.iter_mut() {
             if check == LINELENGTH_CHECK && always_ignore_linelength {
-                directive.set_ignore();
+                directive.set_ignore(line_number);
             }
 
-            if match_ignore(contents, whole_file, Some(check)) {
-                directive.set_ignore();
+            if match_ignore(contents, matches!(line_number, LineNumber::WholeFile), Some(check)) {
+                directive.set_ignore(line_number);
             }
         }
 
         directives
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum LineNumber {
+    Line(usize),
+    /// file ignores were used, which scans the whole file for patterns.
+    /// We don't know exactly on which line it happened.
+    /// FIXME: do know
+    WholeFile,
 }
 
 pub fn match_ignore(contents: &str, whole_file: bool, check: Option<&str>) -> bool {
