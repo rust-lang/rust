@@ -1,6 +1,9 @@
 use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
 use rustc_index::IndexVec;
+use rustc_middle::ptrauth::{
+    build_fn_ptr_type_discriminator_input, compute_fn_ptr_type_discriminator,
+};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Mutability, Ty, TyCtxt};
@@ -14,6 +17,13 @@ use super::place::{PlaceRef, PlaceValue, codegen_tag_value};
 use crate::common::{IntPredicate, TypeKind};
 use crate::traits::*;
 use crate::{MemFlags, base};
+
+/// Type metadata used when applying pointer authentication semantics during
+/// transmute lowering.
+struct TransmuteInfo<'tcx> {
+    src_ty: Ty<'tcx>,
+    dst_ty: Ty<'tcx>,
+}
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn try_codegen_const_aggregate_as_immediate(
@@ -87,6 +97,135 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let value = bx.cx().const_uint_big(llty, value);
         bx.store_to_place(value, dest.val);
         true
+    }
+
+    /// Applies pointer-authentication-aware semantic transmute, that is
+    /// ensuring that when a function pointer is transmuted between two types
+    /// that map to different authentication domains (discriminators), the
+    /// resulting pointer is re-signed appropriately.
+    ///
+    /// Only SSA `OperandValue::Immediate` values are eligible for this path.
+    fn codegen_semantic_transmute_operand(
+        &mut self,
+        bx: &mut Bx,
+        operand: OperandRef<'tcx, Bx::Value>,
+        cast: TyAndLayout<'tcx>,
+    ) -> OperandValue<Bx::Value> {
+        let val = self.codegen_transmute_operand(bx, operand, cast);
+
+        let OperandValue::Immediate(ptr) = val else {
+            return val;
+        };
+
+        let info = TransmuteInfo { src_ty: operand.layout.ty, dst_ty: cast.ty };
+
+        OperandValue::Immediate(self.resign_transmuted_fn_ptr(bx, ptr, info))
+    }
+
+    /// Applies pointer-authentication domain correction for a function pointer
+    /// value being transmuted between two types.
+    ///
+    /// The "domain" is defined by the function pointer type discriminator. If
+    /// the source and destination types map to different discriminator values,
+    /// the pointer must be re-signed using `llvm.ptrauth.resign` intrinsic.
+    ///
+    /// A discriminator value of `0` is used to represent non-function-pointer
+    /// or "raw pointer domain" values.
+    /// ```text
+    //   static mut CPTR: *const u8 = 0 as *const u8;
+    //   ... = mem::transmute::<*const u8, unsafe extern "C" fn()>(CPTR);
+    /// ```
+    /// where the source has no authentication domain.
+    fn resign_transmuted_fn_ptr(
+        &mut self,
+        bx: &mut Bx,
+        val: Bx::Value,
+        info: TransmuteInfo<'tcx>,
+    ) -> Bx::Value {
+        let tcx = bx.tcx();
+
+        let src_input = build_fn_ptr_type_discriminator_input(tcx, info.src_ty);
+        let dst_input = build_fn_ptr_type_discriminator_input(tcx, info.dst_ty);
+
+        let src_disc = match src_input {
+            Some(src) => compute_fn_ptr_type_discriminator(tcx, &src),
+            None => 0,
+        };
+
+        let dst_disc = match dst_input {
+            Some(dst) => compute_fn_ptr_type_discriminator(tcx, &dst),
+            None => 0,
+        };
+
+        if src_disc == dst_disc {
+            return val;
+        }
+
+        debug!("resign_transmuted_fn_ptr\t{:#x} -> {:#x}", src_disc, dst_disc);
+
+        let key = self.cx.tcx().sess.pointer_authentication_fn_ptr_key().unwrap() as u32;
+        bx.ptrauth_resign(val, key, src_disc, key, dst_disc)
+    }
+
+    /// Walks through `#[repr(transparent)]` wrappers to find an underlying
+    /// function pointer or function definition.
+    ///
+    /// Returns the corresponding layout if one is found, otherwise `None`.
+    fn transparent_fn_ptr_layout(
+        &self,
+        mut layout: TyAndLayout<'tcx>,
+    ) -> Option<TyAndLayout<'tcx>> {
+        loop {
+            match layout.ty.kind() {
+                ty::FnPtr(..) | ty::FnDef(..) => return Some(layout),
+
+                ty::Adt(def, _) if def.repr().transparent() => {
+                    layout = layout.field(self.cx, 0);
+                }
+
+                _ => return None,
+            }
+        }
+    }
+
+    /// Applies pointer-authentication domain change during a transmute into a
+    /// memory-backed place.
+    ///
+    /// Unlike the operand version, this path handles values stored in memory
+    /// and therefore must unwrap #[repr(transparent)] wrapper types so that pointer
+    /// authentication is based on the underlying function pointer type.
+    ///
+    /// Only immediate values are subject to ptrauth adjustment; other
+    /// representations are passed through unchanged.
+    fn codegen_semantic_transmute_place(
+        &mut self,
+        bx: &mut Bx,
+        src: OperandRef<'tcx, Bx::Value>,
+        dst: PlaceRef<'tcx, Bx::Value>,
+    ) {
+        debug!(
+            "codegen_semantic_transmute_place\tsrc={:?}, dst={:?}",
+            src.layout.ty.kind(),
+            dst.layout.ty.kind()
+        );
+
+        let info = TransmuteInfo {
+            src_ty: self.transparent_fn_ptr_layout(src.layout).map_or(src.layout.ty, |l| l.ty),
+            dst_ty: self.transparent_fn_ptr_layout(dst.layout).map_or(dst.layout.ty, |l| l.ty),
+        };
+
+        let dest = dst.val.with_type(src.layout);
+
+        let val = match src.val {
+            OperandValue::Immediate(v) => {
+                let v = self.resign_transmuted_fn_ptr(bx, v, info);
+                OperandValue::Immediate(v)
+            }
+            other => other,
+        };
+
+        OperandRef { val, layout: src.layout, move_annotation: None }
+            .store_with_annotation(bx, dest);
     }
 
     #[instrument(level = "trace", skip(self, bx))]
@@ -180,8 +319,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Cast(
                 mir::CastKind::Transmute | mir::CastKind::Subtype,
                 ref operand,
-                _ty,
+                ty,
             ) => {
+                if self.cx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+                    let src_ty = operand.ty(self.mir, self.cx.tcx());
+                    let dst_ty = self.monomorphize(ty);
+
+                    if src_ty.is_fn_ptr() || dst_ty.is_fn_ptr() {
+                        let op = self.codegen_operand(bx, operand);
+                        let cast = bx.cx().layout_of(dst_ty);
+
+                        let val = self.codegen_semantic_transmute_operand(bx, op, cast);
+
+                        OperandRef { val, layout: cast, move_annotation: None }
+                            .store_with_annotation(bx, dest);
+
+                        return;
+                    }
+                }
+
                 let src = self.codegen_operand(bx, operand);
                 self.codegen_transmute(bx, src, dest);
             }
@@ -316,7 +472,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // Since in this path we have a place anyway, we can store or copy to it,
             // making sure we use the destination place's alignment even if the
             // source would normally have a higher one.
-            src.store_with_annotation(bx, dst.val.with_type(src.layout));
+
+            if self.cx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+                self.codegen_semantic_transmute_place(bx, src, dst);
+            } else {
+                src.store_with_annotation(bx, dst.val.with_type(src.layout));
+            }
         }
     }
 
@@ -330,6 +491,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         operand: OperandRef<'tcx, Bx::Value>,
         cast: TyAndLayout<'tcx>,
     ) -> OperandValue<Bx::Value> {
+        debug!(
+            "codegen_transmute_operand\t
+                from_ty={:?} to_ty={:?} from_layout={:?} to_layout={:?} is fnptr=({}, {})",
+            operand.layout.ty,
+            cast.ty,
+            operand.layout.backend_repr,
+            cast.backend_repr,
+            operand.layout.ty.is_fn_ptr(),
+            cast.ty.is_fn_ptr()
+        );
         if let abi::BackendRepr::Memory { .. } = cast.backend_repr
             && !cast.is_zst()
         {
@@ -515,12 +686,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     args.no_bound_vars().unwrap(),
                                 )
                                 .unwrap();
-                                OperandValue::Immediate(
-                                    bx.get_fn_addr(
-                                        instance,
-                                        bx.sess().pointer_authentication_functions(),
-                                    ),
-                                )
+                                let mut schema = bx.sess().pointer_authentication_functions();
+
+                                if let Some(ref mut s) = schema {
+                                    if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+                                        if let Some(input) = build_fn_ptr_type_discriminator_input(
+                                            bx.tcx(),
+                                            operand.layout.ty,
+                                        ) {
+                                            s.constant_discriminator =
+                                                compute_fn_ptr_type_discriminator(
+                                                    bx.tcx(),
+                                                    &input,
+                                                ) as u16;
+                                        }
+                                    }
+                                }
+
+                                OperandValue::Immediate(bx.get_fn_addr(instance, schema))
                             }
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
@@ -614,7 +797,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         })
                     }
                     mir::CastKind::Transmute | mir::CastKind::Subtype => {
-                        self.codegen_transmute_operand(bx, operand, cast)
+                        if self.cx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+                            self.codegen_semantic_transmute_operand(bx, operand, cast)
+                        } else {
+                            self.codegen_transmute_operand(bx, operand, cast)
+                        }
                     }
                 };
                 OperandRef { val, layout: cast, move_annotation: None }
