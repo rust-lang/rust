@@ -1664,6 +1664,15 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
+/// `Box` has pass-through impls for `Read`, `Write`, `Iterator`, and `Future` when the
+/// boxed type implements one of those. We don't want to treat every `Box` return
+/// as being notably an `Iterator` (etc), though, so we exempt it. `Pin` has the same
+/// issue, with a pass-through impl for `Future`.
+fn is_notable_trait_passthrough(did: DefId, cx: &Context<'_>) -> bool {
+    let lang_items = cx.tcx().lang_items();
+    Some(did) == lang_items.owned_box() || Some(did) == lang_items.pin_type()
+}
+
 fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt::Display> {
     if ty.is_unit() {
         // Very common fast path.
@@ -1672,13 +1681,7 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
 
     let did = ty.def_id(cx.cache())?;
 
-    // Box has pass-through impls for Read, Write, Iterator, and Future when the
-    // boxed type implements one of those. We don't want to treat every Box return
-    // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
-    // issue, with a pass-through impl for Future.
-    if Some(did) == cx.tcx().lang_items().owned_box()
-        || Some(did) == cx.tcx().lang_items().pin_type()
-    {
+    if is_notable_trait_passthrough(did, cx) {
         return None;
     }
 
@@ -1802,8 +1805,7 @@ pub(crate) struct NotableTraitBadge {
 pub(crate) fn notable_trait_badges(item: &clean::Item, cx: &Context<'_>) -> Vec<NotableTraitBadge> {
     let tcx = cx.tcx();
     if let Some(def_id) = item.def_id()
-        && tcx.lang_items().owned_box() != Some(def_id)
-        && tcx.lang_items().pin_type() != Some(def_id)
+        && !is_notable_trait_passthrough(def_id, cx)
         && let Some(impls) = cx.cache().impls.get(&def_id)
     {
         impls
