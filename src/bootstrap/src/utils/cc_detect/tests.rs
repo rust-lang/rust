@@ -86,7 +86,7 @@ fn test_default_compiler_wasi() {
     build.wasi_sdk_path = Some(wasi_sdk.clone());
 
     let mut cfg = cc::Build::new();
-    if let Some(result) = default_compiler(&mut cfg, Language::C, target.clone(), &build) {
+    if let Some(result) = default_compiler(&cfg, Language::C, target.clone(), &build) {
         let expected = {
             let compiler = format!("{}-clang", target.triple);
             wasi_sdk.join("bin").join(compiler)
@@ -105,7 +105,7 @@ fn test_default_compiler_fallback() {
     let build = Build::new(config);
     let target = TargetSelection::from_user("x86_64-unknown-linux-gnu");
     let mut cfg = cc::Build::new();
-    let result = default_compiler(&mut cfg, Language::C, target, &build);
+    let result = default_compiler(&cfg, Language::C, target, &build);
     assert!(result.is_none(), "default_compiler should return None for generic targets");
 }
 
