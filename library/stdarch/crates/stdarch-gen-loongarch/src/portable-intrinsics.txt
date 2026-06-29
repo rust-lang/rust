@@ -263,6 +263,10 @@ lsx_vshuf4i_b
 lsx_vshuf4i_h
 lsx_vshuf4i_w
 lsx_vshuf4i_d
+lsx_vld
+lsx_vst
+lsx_vldx
+lsx_vstx
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -527,3 +531,7 @@ lasx_xvpackod_d
 lasx_xvshuf4i_b
 lasx_xvshuf4i_h
 lasx_xvshuf4i_w
+lasx_xvld
+lasx_xvst
+lasx_xvldx
+lasx_xvstx

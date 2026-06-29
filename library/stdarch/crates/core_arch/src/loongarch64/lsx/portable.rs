@@ -233,6 +233,10 @@ impl_gv!("lsx", lsx_vreplgr2vr_h, ls::simd_splat, m128i, i16x8, i32);
 impl_gv!("lsx", lsx_vreplgr2vr_w, ls::simd_splat, m128i, i32x4, i32);
 impl_gv!("lsx", lsx_vreplgr2vr_d, ls::simd_splat, m128i, i64x2, i64);
 
+impl_ggv!("lsx", lsx_vldx, simd_ldx, m128i, i8x16, *const i8, i64, unsafe);
+
+impl_gsv!("lsx", lsx_vld, simd_ld, m128i, i8x16, *const i8, 12, const, unsafe);
+
 impl_sv!("lsx", lsx_vrepli_b, ls::simd_splat, m128i, i8x16, 10);
 impl_sv!("lsx", lsx_vrepli_h, ls::simd_splat, m128i, i16x8, 10);
 impl_sv!("lsx", lsx_vrepli_w, ls::simd_splat, m128i, i32x4, 10);
@@ -392,6 +396,10 @@ impl_vvv!("lsx", lsx_vpackod_b, simd_packod_b, m128i, i8x16);
 impl_vvv!("lsx", lsx_vpackod_h, simd_packod_h, m128i, i16x8);
 impl_vvv!("lsx", lsx_vpackod_w, simd_packod_w, m128i, i32x4);
 impl_vvv!("lsx", lsx_vpackod_d, simd_packod_d, m128i, i64x2);
+
+impl_vgg!("lsx", lsx_vstx, simd_stx, m128i, i8x16, *mut i8, i64, unsafe);
+
+impl_vgs!("lsx", lsx_vst, simd_st, m128i, i8x16, *mut i8, 12, const, unsafe);
 
 impl_vuv!("lsx", lsx_vslli_b, is::simd_shl, m128i, i8x16);
 impl_vuv!("lsx", lsx_vslli_h, is::simd_shl, m128i, i16x8);
