@@ -1,5 +1,5 @@
 //@ needs-target-std
-#[path = "../rustdoc-scrape-examples-remap/scrape.rs"]
+#[path = "../remap/scrape.rs"]
 mod scrape;
 
 fn main() {

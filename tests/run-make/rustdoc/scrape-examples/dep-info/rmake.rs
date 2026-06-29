@@ -1,7 +1,7 @@
 //@ needs-target-std
 use run_make_support::{assert_contains, rfs};
 
-#[path = "../rustdoc-scrape-examples-remap/scrape.rs"]
+#[path = "../remap/scrape.rs"]
 mod scrape;
 
 fn main() {
