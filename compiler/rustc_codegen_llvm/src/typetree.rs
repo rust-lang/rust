@@ -73,6 +73,7 @@ fn process_typetree_recursive(
 enum TTLocation {
     Definition,
     Callsite,
+    Intrinsic,
 }
 
 #[cfg_attr(not(feature = "llvm_enzyme"), allow(unused))]
@@ -106,14 +107,19 @@ pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: 
     let attr_name = "enzyme_type";
     let c_attr_name = CString::new(attr_name).unwrap();
 
-    let tt_location: TTLocation =
-        if llvm::LLVMRustIsCall(fn_def) { TTLocation::Callsite } else { TTLocation::Definition };
+    let tt_location: TTLocation = if llvm::LLVMRustIsCall(fn_def) {
+        TTLocation::Callsite
+    } else if llvm::LLVMRustSupportsEnzymeMD(fn_def) {
+        TTLocation::Intrinsic
+    } else {
+        TTLocation::Definition
+    };
 
     let mut offset = 0;
     for (i, input) in inputs.iter().enumerate() {
         let (enzyme_tt, extra_ints) = to_enzyme_typetree(&input, llvm_data_layout, llcx);
 
-        // This scope is just a visual reminder that we *must* drop the enzyme_wrapper before
+        // This scope is a simple solution since we *must* drop the enzyme_wrapper before
         // we drop any typetrees (mainly enzyme_tt and extra_ints). Drop calls can not accept
         // arguments like an enzyme_wrapper, so the typetree drop impl has to call get_instance
         // on the static enzyme instance, which is behind a Mutex. Therefore we'd deadlock if we
@@ -133,6 +139,12 @@ pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: 
                 TTLocation::Callsite => {
                     attributes::apply_to_callsite(fn_def, arg_pos, &[attr]);
                 }
+                TTLocation::Intrinsic => {
+                    let md = enzyme_wrapper.tree_to_md(enzyme_tt.inner, llcx);
+                    unsafe {
+                        llvm::LLVMRustSetEnzymeTypeMD(fn_def, md.unwrap());
+                    }
+                }
             }
             enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
             for v in &extra_ints {
@@ -141,6 +153,12 @@ pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: 
                 let int_attr = llvm::CreateAttrStringValueFromCStr(llcx, &c_attr_name, &c_str);
                 let arg_pos = llvm::AttributePlace::Argument(i as u32 + offset);
                 match tt_location {
+                    TTLocation::Intrinsic => {
+                        let md = enzyme_wrapper.tree_to_md(enzyme_tt.inner, llcx);
+                        unsafe {
+                            llvm::LLVMRustSetEnzymeTypeMD(fn_def, md.unwrap());
+                        }
+                    }
                     TTLocation::Definition => {
                         attributes::apply_to_llfn(fn_def, arg_pos, &[int_attr]);
                     }
@@ -152,8 +170,8 @@ pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: 
             }
         }
     }
-    // We will only fail this if Rust types got lowered to LLVM in a way that we didn't predict.
-    // Error, so we can learn from our mistakes.
+    // We will fail here if Rust types got lowered to LLVM in a way that we didn't predict.
+    // We Error, so we can learn from our mistakes.
     if matches!(tt_location, TTLocation::Definition) {
         let expected = offset as usize + inputs.len();
         let actual = llvm::count_params(fn_def) as usize;
@@ -179,6 +197,12 @@ pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: 
             }
             TTLocation::Callsite => {
                 attributes::apply_to_callsite(fn_def, arg_pos, &[ret_attr]);
+            }
+            TTLocation::Intrinsic => {
+                let md = enzyme_wrapper.tree_to_md(enzyme_tt.inner, llcx);
+                unsafe {
+                    llvm::LLVMRustSetEnzymeTypeMD(fn_def, md.unwrap());
+                }
             }
         }
         enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
