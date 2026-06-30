@@ -43,6 +43,7 @@ fn get_runners() -> Runners {
     );
     runners.insert("--extended-regex-tests", ("Run extended regex tests", extended_regex_tests));
     runners.insert("--mini-tests", ("Run mini tests", mini_tests));
+    runners.insert("--gcc-asm-tests", ("Run cg_gcc asm tests", test_asm));
     runners.insert("--cargo-tests", ("Run cargo tests", cargo_tests));
     runners.insert("--no-builtins-tests", ("Test #![no_builtins] attribute", no_builtins_tests));
     runners.insert("--stdarch-tests", ("Run stdarch tests", test_stdarch as Runner));
@@ -507,6 +508,26 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     Ok(())
 }
 
+fn get_llvm_filecheck(env: &Env) -> Result<String, String> {
+    match run_command_with_env(
+        &[
+            &"bash",
+            &"-c",
+            &"which FileCheck-10 || \
+          which FileCheck-11 || \
+          which FileCheck-12 || \
+          which FileCheck-13 || \
+          which FileCheck-14 || \
+          which FileCheck",
+        ],
+        None,
+        Some(env),
+    ) {
+        Ok(cmd) => Ok(String::from_utf8_lossy(&cmd.stdout).trim().to_string()),
+        Err(_) => Err("Failed to retrieve LLVM FileCheck, ignoring...".to_owned()),
+    }
+}
+
 fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     let toolchain = format!(
         "+{channel}-{host}",
@@ -550,23 +571,10 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
         let rustc = rustc.trim().to_owned();
         if rustc.is_empty() { Err("`rustc` path is empty".to_string()) } else { Ok(rustc) }
     })?;
-    let llvm_filecheck = match run_command_with_env(
-        &[
-            &"bash",
-            &"-c",
-            &"which FileCheck-10 || \
-          which FileCheck-11 || \
-          which FileCheck-12 || \
-          which FileCheck-13 || \
-          which FileCheck-14 || \
-          which FileCheck",
-        ],
-        rust_dir,
-        Some(env),
-    ) {
-        Ok(cmd) => String::from_utf8_lossy(&cmd.stdout).to_string(),
-        Err(_) => {
-            eprintln!("Failed to retrieve LLVM FileCheck, ignoring...");
+    let llvm_filecheck = match get_llvm_filecheck(env) {
+        Ok(l) => l,
+        Err(error) => {
+            eprintln!("{error}");
             // FIXME: the test tests/run-make/no-builtins-attribute will fail if we cannot find
             // FileCheck.
             String::new()
@@ -636,7 +644,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &"0",
             &"--set",
             &"build.compiletest-allow-stage0=true",
-            &"tests/assembly-llvm/asm",
+            &"tests/assembly-gcc/asm",
             &"--compiletest-rustc-args",
             &rustc_args,
         ],
@@ -1323,6 +1331,44 @@ fn remove_files_callback<'a>(
             }
         }
         Ok(true)
+    }
+}
+
+fn test_asm(env: &Env, args: &TestArg) -> Result<(), String> {
+    // FIXME: create a function "display_if_not_quiet" or something along the line.
+    println!("[TEST] cg_gcc assembly");
+    let llvm_filecheck = get_llvm_filecheck(env)?;
+
+    let mut env: HashMap<String, String> = std::env::vars().collect();
+    let mut config = ConfigInfo::default();
+    config.setup(&mut env, false)?;
+
+    let mut test_config = compiletest_rs::Config::default();
+
+    test_config.mode = compiletest_rs::common::Mode::Assembly;
+    test_config.src_base = PathBuf::from("tests/asm");
+    test_config.llvm_filecheck = Some(PathBuf::from(llvm_filecheck));
+    test_config.filters = args.test_args.clone();
+    test_config.strict_headers = true;
+    test_config.build_base = PathBuf::from("build/tests/asm");
+    let rustc_flags = config
+        .rustc_command_vec()
+        .iter()
+        .skip(1)
+        .map(|arg| arg.as_ref().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join(" ");
+    test_config.target_rustcflags = Some(rustc_flags);
+    test_config.link_deps();
+    test_config.clean_rmeta();
+
+    match std::thread::spawn(move || {
+        compiletest_rs::run_tests(&test_config);
+    })
+    .join()
+    {
+        Ok(_) => Ok(()),
+        Err(_) => Err("Assembly tests failed".to_owned()),
     }
 }
 
