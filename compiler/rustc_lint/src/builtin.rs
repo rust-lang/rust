@@ -2068,6 +2068,19 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                     let Res::Def(DefKind::TyParam, def_id) = path.res else {
                                         continue;
                                     };
+                                    // Outlives bounds on `?Sized` type params set the object
+                                    // lifetime default (RFC 599). Removing one that is implied by
+                                    // a field silently changes `Struct<dyn Trait>` from
+                                    // `dyn Trait + 'declared` to `dyn Trait + 'static`.
+                                    if generics.bounds_for_param(def_id.expect_local()).any(|bp| {
+                                        bp.bounds.iter().any(|b| {
+                                            matches!(b, hir::GenericBound::Trait(ptr)
+                                                    if matches!(ptr.modifiers.polarity,
+                                                        hir::BoundPolarity::Maybe(_)))
+                                        })
+                                    }) {
+                                        continue;
+                                    }
                                     let index = ty_generics.param_def_id_to_index[&def_id];
                                     (
                                         Self::lifetimes_outliving_type(
