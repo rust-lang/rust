@@ -60,9 +60,10 @@ impl AbiMap {
             Arch::Msp430 => ArchKind::Msp430,
             Arch::Nvptx64 => ArchKind::Nvptx,
             Arch::RiscV32 | Arch::RiscV64 => ArchKind::Riscv,
+            Arch::SpirV => ArchKind::Spirv,
+            Arch::Wasm32 | Arch::Wasm64 => ArchKind::Wasm,
             Arch::X86 => ArchKind::X86,
             Arch::X86_64 => ArchKind::X86_64,
-            Arch::Wasm32 | Arch::Wasm64 => ArchKind::Wasm,
             _ => ArchKind::Other,
         };
 
@@ -121,7 +122,7 @@ impl AbiMap {
             // always and forever
             (ExternAbi::RustInvalid, _) => return AbiMapping::Invalid,
 
-            (ExternAbi::Custom, ArchKind::Wasm) => return AbiMapping::Invalid,
+            (ExternAbi::Custom, ArchKind::Wasm | ArchKind::Spirv) => return AbiMapping::Invalid,
             (ExternAbi::Custom, _) => CanonAbi::Custom,
 
             (ExternAbi::EfiApi, ArchKind::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
@@ -224,6 +225,7 @@ enum ArchKind {
     X86,
     X86_64,
     Wasm,
+    Spirv,
     /// Architectures which don't need other considerations for ABI lowering
     Other,
 }
