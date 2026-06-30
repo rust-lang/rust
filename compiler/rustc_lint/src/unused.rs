@@ -338,7 +338,7 @@ trait UnusedDelimLint {
                 && !snip.starts_with(' ')
             {
                 " "
-            } else if let Ok(snip) = sm.span_to_prev_source(value_span)
+            } else if let Ok(snip) = sm.span_to_next_source(value_span)
                 && snip.starts_with(|c: char| c.is_alphanumeric())
             {
                 " "
