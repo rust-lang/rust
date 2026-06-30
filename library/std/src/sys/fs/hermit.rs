@@ -48,8 +48,7 @@ impl ReadDir {
 }
 
 pub struct DirEntry {
-    /// path to the entry
-    root: PathBuf,
+    dir: Arc<InnerReadDir>,
     /// 64-bit inode number
     ino: u64,
     /// File type
@@ -217,7 +216,7 @@ impl Iterator for ReadDir {
                 let name_bytes = name.to_bytes();
 
                 return Some(Ok(DirEntry {
-                    root: self.inner.root.clone(),
+                    dir: Arc::clone(&self.inner),
                     ino: unsafe { (*entry_ptr).d_ino },
                     type_: unsafe { (*entry_ptr).d_type },
                     name: OsString::from_vec(name_bytes.to_vec()),
@@ -234,7 +233,7 @@ impl Iterator for ReadDir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.root.join(self.file_name_os_str())
+        self.dir.root.join(self.file_name_os_str())
     }
 
     pub fn file_name(&self) -> OsString {
