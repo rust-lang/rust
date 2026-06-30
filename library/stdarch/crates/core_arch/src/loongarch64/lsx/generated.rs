@@ -429,18 +429,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vfrintrne_s(a: __v4f32) -> __v4f32;
     #[link_name = "llvm.loongarch.lsx.vfrintrne.d"]
     fn __lsx_vfrintrne_d(a: __v2f64) -> __v2f64;
-    #[link_name = "llvm.loongarch.lsx.vfrintrz.s"]
-    fn __lsx_vfrintrz_s(a: __v4f32) -> __v4f32;
-    #[link_name = "llvm.loongarch.lsx.vfrintrz.d"]
-    fn __lsx_vfrintrz_d(a: __v2f64) -> __v2f64;
-    #[link_name = "llvm.loongarch.lsx.vfrintrp.s"]
-    fn __lsx_vfrintrp_s(a: __v4f32) -> __v4f32;
-    #[link_name = "llvm.loongarch.lsx.vfrintrp.d"]
-    fn __lsx_vfrintrp_d(a: __v2f64) -> __v2f64;
-    #[link_name = "llvm.loongarch.lsx.vfrintrm.s"]
-    fn __lsx_vfrintrm_s(a: __v4f32) -> __v4f32;
-    #[link_name = "llvm.loongarch.lsx.vfrintrm.d"]
-    fn __lsx_vfrintrm_d(a: __v2f64) -> __v2f64;
     #[link_name = "llvm.loongarch.lsx.vstelm.b"]
     fn __lsx_vstelm_b(a: __v16i8, b: *mut i8, c: i32, d: u32);
     #[link_name = "llvm.loongarch.lsx.vstelm.h"]
@@ -2456,48 +2444,6 @@ pub fn lsx_vfrintrne_s(a: m128) -> m128 {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lsx_vfrintrne_d(a: m128d) -> m128d {
     unsafe { transmute(__lsx_vfrintrne_d(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vfrintrz_s(a: m128) -> m128 {
-    unsafe { transmute(__lsx_vfrintrz_s(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vfrintrz_d(a: m128d) -> m128d {
-    unsafe { transmute(__lsx_vfrintrz_d(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vfrintrp_s(a: m128) -> m128 {
-    unsafe { transmute(__lsx_vfrintrp_s(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vfrintrp_d(a: m128d) -> m128d {
-    unsafe { transmute(__lsx_vfrintrp_d(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vfrintrm_s(a: m128) -> m128 {
-    unsafe { transmute(__lsx_vfrintrm_s(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vfrintrm_d(a: m128d) -> m128d {
-    unsafe { transmute(__lsx_vfrintrm_d(transmute(a))) }
 }
 
 #[inline]

@@ -2564,31 +2564,37 @@ asm-fmts = xd, xj
 data-types = V4DF, V4DF
 
 /// lasx_xvfrintrz_s
+impl = portable
 name = lasx_xvfrintrz_s
 asm-fmts = xd, xj
 data-types = V8SF, V8SF
 
 /// lasx_xvfrintrz_d
+impl = portable
 name = lasx_xvfrintrz_d
 asm-fmts = xd, xj
 data-types = V4DF, V4DF
 
 /// lasx_xvfrintrp_s
+impl = portable
 name = lasx_xvfrintrp_s
 asm-fmts = xd, xj
 data-types = V8SF, V8SF
 
 /// lasx_xvfrintrp_d
+impl = portable
 name = lasx_xvfrintrp_d
 asm-fmts = xd, xj
 data-types = V4DF, V4DF
 
 /// lasx_xvfrintrm_s
+impl = portable
 name = lasx_xvfrintrm_s
 asm-fmts = xd, xj
 data-types = V8SF, V8SF
 
 /// lasx_xvfrintrm_d
+impl = portable
 name = lasx_xvfrintrm_d
 asm-fmts = xd, xj
 data-types = V4DF, V4DF

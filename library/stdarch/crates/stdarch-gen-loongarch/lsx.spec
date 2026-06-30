@@ -2627,31 +2627,37 @@ asm-fmts = vd, vj
 data-types = V2DF, V2DF
 
 /// lsx_vfrintrz_s
+impl = portable
 name = lsx_vfrintrz_s
 asm-fmts = vd, vj
 data-types = V4SF, V4SF
 
 /// lsx_vfrintrz_d
+impl = portable
 name = lsx_vfrintrz_d
 asm-fmts = vd, vj
 data-types = V2DF, V2DF
 
 /// lsx_vfrintrp_s
+impl = portable
 name = lsx_vfrintrp_s
 asm-fmts = vd, vj
 data-types = V4SF, V4SF
 
 /// lsx_vfrintrp_d
+impl = portable
 name = lsx_vfrintrp_d
 asm-fmts = vd, vj
 data-types = V2DF, V2DF
 
 /// lsx_vfrintrm_s
+impl = portable
 name = lsx_vfrintrm_s
 asm-fmts = vd, vj
 data-types = V4SF, V4SF
 
 /// lsx_vfrintrm_d
+impl = portable
 name = lsx_vfrintrm_d
 asm-fmts = vd, vj
 data-types = V2DF, V2DF
