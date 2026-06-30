@@ -40,6 +40,7 @@ where
 
     /// Register `AliasRelate` obligation(s) that both types must be related to each other.
     fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty);
+    fn ambient_variance(&self) -> ty::Variance;
 }
 
 pub fn super_combine_tys<Infcx, I, R>(
@@ -115,11 +116,59 @@ where
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
 
-        (ty::Alias(ty::IsRigid::No, _), _) | (_, ty::Alias(ty::IsRigid::No, _))
+        (ty::Alias(ty::IsRigid::No, alias), _) | (_, ty::Alias(ty::IsRigid::No, alias))
             if infcx.next_trait_solver()
                 && let StructurallyRelateAliases::No = relation.structurally_relate_aliases() =>
         {
-            relation.register_alias_relate_predicate(a, b);
+            // If both sides are aliases, arbitrarily do the LHS first
+            let terms_are_inverted = !matches!(a.kind(), ty::Alias(ty::IsRigid::No, _));
+            let other = if terms_are_inverted { a } else { b };
+            match (relation.ambient_variance(), terms_are_inverted) {
+                (ty::Invariant, _) => relation.register_predicates([ty::ProjectionPredicate {
+                    projection_term: alias.into(),
+                    term: other.into(),
+                }]),
+                (ty::Covariant, false) | (ty::Contravariant, true) => {
+                    // Generate a new var to represent `alias <: other`
+                    // with `alias == ?A && ?A <: other`
+                    let new_var = infcx.next_ty_infer();
+                    relation.register_predicates([
+                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                            ty::ProjectionPredicate {
+                                projection_term: alias.into(),
+                                term: new_var.into(),
+                            },
+                        )),
+                        ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                            a_is_expected: !terms_are_inverted,
+                            a: new_var,
+                            b: other,
+                        }),
+                    ]);
+                }
+                (ty::Contravariant, false) | (ty::Covariant, true) => {
+                    // a :> b is b <: a
+                    let new_var = infcx.next_ty_infer();
+                    relation.register_predicates([
+                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                            ty::ProjectionPredicate {
+                                projection_term: alias.into(),
+                                term: new_var.into(),
+                            },
+                        )),
+                        ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                            a_is_expected: terms_are_inverted,
+                            a: other,
+                            b: new_var,
+                        }),
+                    ]);
+                }
+                (ty::Bivariant, _) => {
+                    unreachable!(
+                        "cannot handle bivariant aliases in register_projection_with_variance"
+                    )
+                }
+            }
             Ok(a)
         }
 
@@ -200,20 +249,20 @@ where
             Ok(a)
         }
 
-        (ty::ConstKind::Alias(ty::IsRigid::No, _), _)
-        | (_, ty::ConstKind::Alias(ty::IsRigid::No, _))
+        (ty::ConstKind::Alias(ty::IsRigid::No, alias), _)
+        | (_, ty::ConstKind::Alias(ty::IsRigid::No, alias))
             if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver())
                 && let StructurallyRelateAliases::No = relation.structurally_relate_aliases() =>
         {
-            relation.register_predicates([if infcx.next_trait_solver() {
-                ty::PredicateKind::AliasRelate(
-                    a.into(),
-                    b.into(),
-                    ty::AliasRelationDirection::Equate,
-                )
+            if infcx.next_trait_solver() {
+                let other = if matches!(a.kind(), ty::ConstKind::Alias(..)) { b } else { a };
+                relation.register_predicates([ty::ProjectionPredicate {
+                    projection_term: alias.into(),
+                    term: other.into(),
+                }])
             } else {
-                ty::PredicateKind::ConstEquate(a, b)
-            }]);
+                relation.register_predicates([ty::PredicateKind::ConstEquate(a, b)]);
+            }
 
             Ok(b)
         }

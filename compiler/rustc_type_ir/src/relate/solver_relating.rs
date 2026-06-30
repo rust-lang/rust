@@ -406,4 +406,8 @@ where
             }
         })]);
     }
+
+    fn ambient_variance(&self) -> ty::Variance {
+        self.ambient_variance
+    }
 }

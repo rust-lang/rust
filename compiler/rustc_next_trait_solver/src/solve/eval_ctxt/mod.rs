@@ -1272,7 +1272,8 @@ where
         let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
         for &goal in goals.iter() {
             let source = match goal.predicate.kind().skip_binder() {
-                ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {
+                ty::PredicateKind::Subtype { .. }
+                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
                     GoalSource::TypeRelating
                 }
                 // FIXME(-Znext-solver=coinductive): should these WF goals also be unproductive?

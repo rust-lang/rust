@@ -299,4 +299,9 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
             ty::AliasRelationDirection::Equate,
         ))]);
     }
+
+    fn ambient_variance(&self) -> ty::Variance {
+        // FIXME(deferred_projection_equality): This isn't right, I think?
+        ty::Variance::Invariant
+    }
 }
