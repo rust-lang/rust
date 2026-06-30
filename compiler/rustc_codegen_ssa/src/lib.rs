@@ -2,6 +2,7 @@
 #![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(negative_impls)]
+#![feature(option_into_flat_iter)]
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]

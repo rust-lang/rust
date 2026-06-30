@@ -718,8 +718,7 @@ fn layout_of_uncached<'tcx>(
             let discriminants_iter = || {
                 def.is_enum()
                     .then(|| def.discriminants(tcx).map(|(v, d)| (v, d.val as i128)))
-                    .into_iter()
-                    .flatten()
+                    .into_flat_iter()
             };
 
             let maybe_unsized = def.is_struct()

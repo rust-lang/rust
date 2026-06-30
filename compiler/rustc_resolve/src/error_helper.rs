@@ -1469,13 +1469,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::DeriveHelpers(expn_id) => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
                     if filter_fn(res) {
-                        suggestions.extend(
-                            this.helper_attrs.get(&expn_id).into_iter().flatten().map(
-                                |&(ident, orig_ident_span, _)| {
-                                    TypoSuggestion::new(ident.name, orig_ident_span, res)
-                                },
-                            ),
-                        );
+                        suggestions.extend(this.helper_attrs.get(&expn_id).into_flat_iter().map(
+                            |&(ident, orig_ident_span, _)| {
+                                TypoSuggestion::new(ident.name, orig_ident_span, res)
+                            },
+                        ));
                     }
                 }
                 Scope::DeriveHelpersCompat => {

@@ -188,8 +188,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
 
 /// Turns option of iterator into an iterator (this is just flatten)
 fn maybe_iter<I: Iterator>(i: Option<I>) -> impl Iterator<Item = I::Item> {
-    // Flatten is bad perf-vise, we could probably implement a special case here that is better
-    i.into_iter().flatten()
+    i.into_flat_iter()
 }
 
 fn has_own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {

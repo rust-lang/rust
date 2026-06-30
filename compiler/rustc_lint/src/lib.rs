@@ -23,6 +23,7 @@
 #![allow(internal_features)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
+#![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
 #![feature(titlecase)]
 #![feature(try_blocks)]
