@@ -335,3 +335,64 @@ mod deprecated_attribute {}
 ///
 /// [the `warn` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
 mod warn_attribute {}
+
+#[doc(attribute = "cold")]
+//
+/// Hint to the compiler that a function is unlikely to be called.
+///
+/// Marking a function `#[cold]` tells the compiler that calls to it are rare, so it can
+/// optimize for the common case where the function is not called. Like `inline`, it is only a
+/// hint and does not change the function's behavior.
+///
+/// It is typically used on functions that handle uncommon cases, such as error or panic paths:
+///
+/// ```rust
+/// # #![allow(dead_code)]
+/// fn check(value: i32) {
+///     if value < 0 {
+///         report_error("value must be non-negative");
+///     }
+///     // ... the common case continues here ...
+/// }
+///
+/// #[cold]
+/// fn report_error(message: &str) {
+///     eprintln!("error: {message}");
+/// }
+/// ```
+///
+/// For more information, see the Reference on [the `cold` attribute].
+///
+/// [the `cold` attribute]: ../reference/attributes/codegen.html#the-cold-attribute
+mod cold_attribute {}
+
+#[doc(attribute = "track_caller")]
+//
+/// Make a function report the location of its caller instead of its own.
+///
+/// When a function panics, the panic message normally points at the line inside that function
+/// where the panic happened. `#[track_caller]` changes that: it lets the function see the
+/// [`Location`] it was called from, so the panic (and any direct use of [`Location::caller`])
+/// points at the call site instead. The standard library uses this on methods like
+/// [`Option::unwrap`], so a failed `unwrap` blames the line that called it rather than a line
+/// inside the standard library.
+///
+/// ```rust,should_panic
+/// #[track_caller]
+/// fn assert_even(n: i32) {
+///     assert!(n % 2 == 0, "{n} is not even");
+/// }
+///
+/// // The panic blames this line, not the `assert!` inside `assert_even`.
+/// assert_even(3);
+/// ```
+///
+/// The attribute applies to functions with the default `"Rust"` ABI, other than `fn main`.
+///
+/// For more information, see the Reference on [the `track_caller` attribute].
+///
+/// [`Location`]: panic::Location
+/// [`Location::caller`]: panic::Location::caller
+/// [`Option::unwrap`]: Option::unwrap
+/// [the `track_caller` attribute]: ../reference/attributes/codegen.html#the-track_caller-attribute
+mod track_caller_attribute {}
