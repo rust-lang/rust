@@ -1953,7 +1953,7 @@ fn sysroot_metadata_config(
         features: Default::default(),
         targets,
         extra_args: Default::default(),
-        metadata_extra_args: config.metadata_extra_args.clone(),
+        metadata_extra_args: Default::default(),
         extra_env: config.extra_env.clone(),
         toolchain_version,
         kind: "sysroot",
