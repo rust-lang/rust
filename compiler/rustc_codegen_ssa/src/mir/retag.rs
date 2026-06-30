@@ -351,10 +351,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let variant_place = place.project_downcast(bx, *ix);
             self.retag_place(bx, plan, variant_place);
-            // If the variant contains another variant, then the current block
-            // will be different than the one that we created above. We want this
-            // block to jump to the terminator block.
-            variant_blocks.push((variant_discr_val, bx.llbb()));
+
+            variant_blocks.push((variant_discr_val, variant_block));
             bx.br(join_block);
         }
 
