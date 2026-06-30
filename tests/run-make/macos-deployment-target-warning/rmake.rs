@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //! Tests that deployment target linker warnings are shown as `linker-info`, not `linker-messages`
 //! See <https://github.com/rust-lang/rust/issues/156714>
 

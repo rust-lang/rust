@@ -3,7 +3,7 @@
 //! This module contains a set of macros which are exported from the standard
 //! library. Each macro is available for use when linking against the standard
 //! library.
-// ignore-tidy-dbg
+// ignore-tidy-file-dbg
 
 #[cfg(test)]
 mod tests;

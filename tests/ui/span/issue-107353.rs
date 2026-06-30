@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 // Verify that span interning correctly handles having a span of exactly MAX_LEN length.
 //@ compile-flags: --crate-type=lib
 //@ check-pass
