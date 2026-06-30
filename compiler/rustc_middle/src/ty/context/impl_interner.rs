@@ -244,7 +244,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy { def_id },
             DefKind::TyAlias => ty::AliasTermKind::FreeTy { def_id },
             DefKind::Const { .. } => ty::AliasTermKind::FreeConst { def_id },
-            DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
+            DefKind::AnonConst | DefKind::InlineConst | DefKind::Ctor(_, CtorKind::Const) => {
                 ty::AliasTermKind::AnonConst { def_id }
             }
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
@@ -541,8 +541,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     // only want to consider types that *actually* unify with float/int vars.
     fn for_each_relevant_impl<R: VisitorResult>(
         self,
-        trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
+        trait_ref: ty::TraitRef<'tcx>,
         mut f: impl FnMut(DefId) -> R,
     ) -> R {
         macro_rules! ret {
@@ -554,6 +553,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             };
         }
 
+        let trait_def_id = trait_ref.def_id;
+        let self_ty = trait_ref.self_ty();
         let tcx = self;
         let trait_impls = tcx.trait_impls_of(trait_def_id);
         let mut consider_impls_for_simplified_type = |simp| {

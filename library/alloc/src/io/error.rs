@@ -55,6 +55,7 @@ impl Error {
     /// originate from the OS itself. It is a shortcut for [`Error::new`][new]
     /// with [`ErrorKind::Other`].
     ///
+    // FIXME(#74481): Hard-links required to link from `alloc` to `std` for incoherent method
     /// [new]: struct.Error.html#method.new
     ///
     /// # Examples
@@ -84,6 +85,7 @@ impl Error {
     /// then this function will return [`Some`],
     /// otherwise it will return [`None`].
     ///
+    // FIXME(#74481): Hard-links required to link from `alloc` to `std` for incoherent method
     /// [new]: struct.Error.html#method.new
     /// [other]: struct.Error.html#method.other
     ///
@@ -141,6 +143,7 @@ impl Error {
     /// `Box<dyn Error + Sync + Send>::downcast` on the custom boxed error, returned by
     /// [`Error::into_inner`][into_inner].
     ///
+    // FIXME(#74481): Hard-links required to link from `alloc` to `std` for incoherent method
     /// [into_inner]: struct.Error.html#method.into_inner
     ///
     /// # Examples

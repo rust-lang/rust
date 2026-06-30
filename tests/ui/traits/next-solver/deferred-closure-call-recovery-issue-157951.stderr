@@ -1,0 +1,39 @@
+error[E0277]: the size for values of type `(dyn Fn() + 'static)` cannot be known at compilation time
+  --> $DIR/deferred-closure-call-recovery-issue-157951.rs:5:17
+   |
+LL |     let f = |f: dyn Fn()| f;
+   |                 ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     let f = |f: &dyn Fn()| f;
+   |                 +
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/deferred-closure-call-recovery-issue-157951.rs:5:27
+   |
+LL |     let f = |f: dyn Fn()| f;
+   |                           ^ doesn't have a size known at compile-time
+
+error[E0057]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/deferred-closure-call-recovery-issue-157951.rs:8:5
+   |
+LL |     f();
+   |     ^-- argument #1 of type `(dyn Fn() + 'static)` is missing
+   |
+note: closure defined here
+  --> $DIR/deferred-closure-call-recovery-issue-157951.rs:5:13
+   |
+LL |     let f = |f: dyn Fn()| f;
+   |             ^^^^^^^^^^^^^
+help: provide the argument
+   |
+LL |     f(/* (dyn Fn() + 'static) */);
+   |       ++++++++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0057, E0277, E0746.
+For more information about an error, try `rustc --explain E0057`.
