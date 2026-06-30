@@ -18,8 +18,8 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
    |
-LL |         let res: i64 = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8).try_into().unwrap() };
-   |                                                                          ^ thread got stuck here
+LL |         let res = errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8) }).unwrap();
+   |                                                                                  ^ thread got stuck here
    |
    = note: this is on thread `unnamed-ID`
 note: the current function got called indirectly due to this code
