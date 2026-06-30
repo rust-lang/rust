@@ -447,6 +447,6 @@ fn assert_failed_inner(
 #[track_caller]
 #[inline(never)]
 #[cold]
-pub fn outline<T>(f: impl FnOnce() -> T) -> T {
+pub const fn outline<T: ~const FnOnce() -> T>(f: F) -> T {
     f()
 }
