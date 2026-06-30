@@ -1959,11 +1959,13 @@ asm-fmts = vd, vj
 data-types = V2DF, V2DF
 
 /// lsx_vfrecip_s
+impl = portable
 name = lsx_vfrecip_s
 asm-fmts = vd, vj
 data-types = V4SF, V4SF
 
 /// lsx_vfrecip_d
+impl = portable
 name = lsx_vfrecip_d
 asm-fmts = vd, vj
 data-types = V2DF, V2DF

@@ -1872,11 +1872,13 @@ asm-fmts = xd, xj
 data-types = V4DF, V4DF
 
 /// lasx_xvfrecip_s
+impl = portable
 name = lasx_xvfrecip_s
 asm-fmts = xd, xj
 data-types = V8SF, V8SF
 
 /// lasx_xvfrecip_d
+impl = portable
 name = lasx_xvfrecip_d
 asm-fmts = xd, xj
 data-types = V4DF, V4DF

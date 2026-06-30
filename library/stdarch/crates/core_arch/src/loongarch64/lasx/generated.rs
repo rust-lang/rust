@@ -199,10 +199,6 @@ unsafe extern "unadjusted" {
     fn __lasx_xvfclass_s(a: __v8f32) -> __v8i32;
     #[link_name = "llvm.loongarch.lasx.xvfclass.d"]
     fn __lasx_xvfclass_d(a: __v4f64) -> __v4i64;
-    #[link_name = "llvm.loongarch.lasx.xvfrecip.s"]
-    fn __lasx_xvfrecip_s(a: __v8f32) -> __v8f32;
-    #[link_name = "llvm.loongarch.lasx.xvfrecip.d"]
-    fn __lasx_xvfrecip_d(a: __v4f64) -> __v4f64;
     #[link_name = "llvm.loongarch.lasx.xvfrecipe.s"]
     fn __lasx_xvfrecipe_s(a: __v8f32) -> __v8f32;
     #[link_name = "llvm.loongarch.lasx.xvfrecipe.d"]
@@ -1711,20 +1707,6 @@ pub fn lasx_xvfclass_s(a: m256) -> m256i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvfclass_d(a: m256d) -> m256i {
     unsafe { transmute(__lasx_xvfclass_d(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvfrecip_s(a: m256) -> m256 {
-    unsafe { transmute(__lasx_xvfrecip_s(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvfrecip_d(a: m256d) -> m256d {
-    unsafe { transmute(__lasx_xvfrecip_d(transmute(a))) }
 }
 
 #[inline]
