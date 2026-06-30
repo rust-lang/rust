@@ -1,10 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::io::BufWriter;
+use std::panic::Location;
 use std::path::Path;
 
 use crate::core::builder::{AnyDebug, Step, pretty_step_name};
 use crate::t;
+use crate::utils::tracing::format_location;
 
 /// Records the executed steps and their dependencies in a directed graph,
 /// which can then be rendered into a DOT file for visualization.
@@ -20,6 +22,7 @@ pub struct StepGraph {
 }
 
 impl StepGraph {
+    #[track_caller]
     pub fn register_step_execution<S: Step>(
         &mut self,
         step: &S,
@@ -57,6 +60,7 @@ impl StepGraph {
         }
     }
 
+    #[track_caller]
     pub fn register_cached_step<S: Step>(
         &mut self,
         step: &S,
@@ -97,12 +101,18 @@ struct Node {
 struct NodeHandle(usize);
 
 /// Represents a dependency between two bootstrap steps.
-#[derive(PartialEq, Eq, Hash, PartialOrd, Ord)]
-struct Edge {
-    src: NodeHandle,
-    dst: NodeHandle,
+#[derive(Default)]
+struct EdgeData {
     // Was the corresponding execution of a step cached, or was the step actually executed?
     cached: bool,
+    // Locations from where the step was called
+    locations: Vec<Location<'static>>,
+}
+
+#[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Copy, Clone)]
+struct EdgeKey {
+    src: NodeHandle,
+    dst: NodeHandle,
 }
 
 // We could use a library for this, but they either:
@@ -114,8 +124,8 @@ struct Edge {
 #[derive(Default)]
 struct DotGraph {
     nodes: Vec<Node>,
+    edges: HashMap<EdgeKey, EdgeData>,
     /// The `NodeHandle` represents an index within `self.nodes`
-    edges: HashSet<Edge>,
     key_to_index: HashMap<String, NodeHandle>,
 }
 
@@ -127,16 +137,19 @@ impl DotGraph {
         handle
     }
 
+    #[track_caller]
     fn add_edge(&mut self, src: NodeHandle, dst: NodeHandle) {
-        self.edges.insert(Edge { src, dst, cached: false });
+        let key = EdgeKey { src, dst };
+        let edge = self.edges.entry(key).or_default();
+        edge.locations.push(*Location::caller());
     }
 
+    #[track_caller]
     fn add_cached_edge(&mut self, src: NodeHandle, dst: NodeHandle) {
-        // There's no point in rendering both cached and uncached edge
-        let uncached = Edge { src, dst, cached: false };
-        if !self.edges.contains(&uncached) {
-            self.edges.insert(Edge { src, dst, cached: true });
-        }
+        let key = EdgeKey { src, dst };
+        let edge = self.edges.entry(key).or_default();
+        edge.cached = true;
+        edge.locations.push(*Location::caller());
     }
 
     fn get_handle_by_key(&self, key: &str) -> Option<NodeHandle> {
@@ -157,11 +170,23 @@ impl DotGraph {
             )?;
         }
 
-        let mut edges: Vec<&Edge> = self.edges.iter().collect();
-        edges.sort();
-        for edge in edges {
-            let style = if edge.cached { "dashed" } else { "solid" };
-            writeln!(file, r#"{} -> {} [style="{style}"]"#, edge.src.0, edge.dst.0)?;
+        let mut edges: Vec<(&EdgeKey, &EdgeData)> = self.edges.iter().collect();
+        edges.sort_by_key(|(key, _)| **key);
+        for (key, data) in edges {
+            let style = if data.cached { "dashed" } else { "solid" };
+            let mut locations = data
+                .locations
+                .iter()
+                .map(|location| format_location(*location))
+                .collect::<Vec<_>>();
+            locations.sort();
+            locations.dedup();
+            let locations = locations.join(", ");
+            writeln!(
+                file,
+                r#"{} -> {} [style="{style}", tooltip="{locations}"]"#,
+                key.src.0, key.dst.0,
+            )?;
         }
 
         writeln!(file, "}}")
