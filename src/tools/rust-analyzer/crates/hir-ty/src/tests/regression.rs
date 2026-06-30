@@ -2935,3 +2935,15 @@ impl Foo for Bar {
 "#,
     );
 }
+
+#[test]
+fn regression_unresolved_deferred_closure_call_resolution() {
+    check_no_mismatches(
+        r#"
+//- minicore: fn
+fn caller() {
+    let _: &[u8] = &(|| encode_fn())();
+}
+"#,
+    );
+}
