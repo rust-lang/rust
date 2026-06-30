@@ -550,8 +550,8 @@ LL | #[patchable_function_entry]
    |
 help: must be of the form
    |
-LL | #[patchable_function_entry(prefix_nops = m, entry_nops = n)]
-   |                           +++++++++++++++++++++++++++++++++
+LL | #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
+   |                           ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0565]: malformed `coroutine` attribute input
   --> $DIR/malformed-attrs.rs:118:5

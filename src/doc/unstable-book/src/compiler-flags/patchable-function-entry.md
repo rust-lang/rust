@@ -2,10 +2,13 @@
 
 --------------------
 
-The `-Z patchable-function-entry=total_nops,prefix_nops` or `-Z patchable-function-entry=total_nops`
+The `-Z patchable-function-entry=total_nops,prefix_nops,record_section`,
+    `-Z patchable-function-entry=total_nops,prefix_nops`, or
+    `-Z patchable-function-entry=total_nops`
 compiler flag enables nop padding of function entries with 'total_nops' nops, with
-an offset for the entry of the function at 'prefix_nops' nops. In the second form,
-'prefix_nops' defaults to 0.
+an offset for the entry of the function at 'prefix_nops' nops. In the third form,
+'prefix_nops' defaults to 0. record\_section can specify a specific linker section
+to place entry record in, the default is `__patchable_function_entries`.
 
 As an illustrative example, `-Z patchable-function-entry=3,2` would produce:
 
