@@ -790,6 +790,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 self.extract_value(
                     args[0].immediate(),
                     fn_args.const_at(2).to_leaf().to_i32() as u64,
+                    None,
                 )
             }
 
@@ -1073,7 +1074,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             &[],
             &[llvtable, vtable_byte_offset, typeid],
         );
-        self.extract_value(type_checked_load, 0)
+        self.extract_value(type_checked_load, 0, None)
     }
 
     fn va_start(&mut self, va_list: &'ll Value) {
@@ -1185,7 +1186,7 @@ fn autocast<'ll>(
                 iter::zip(bx.struct_element_types(src_ty), bx.struct_element_types(dest_ty))
                     .enumerate()
             {
-                let elt = bx.extract_value(val, idx as u64);
+                let elt = bx.extract_value(val, idx as u64, None);
                 let casted_elt = autocast(bx, elt, src_element_ty, dest_element_ty);
                 ret = bx.insert_value(ret, casted_elt, idx as u64);
             }
@@ -1646,7 +1647,7 @@ fn codegen_gnu_try<'ll, 'tcx>(
         let vals = bx.landing_pad(lpad_ty, bx.eh_personality(), 1);
         let tydesc = bx.const_null(bx.type_ptr());
         bx.add_clause(vals, tydesc);
-        let ptr = bx.extract_value(vals, 0);
+        let ptr = bx.extract_value(vals, 0, None);
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
         bx.call(catch_ty, None, None, catch_func, &[data, ptr], None, None);
         bx.ret(bx.const_bool(true));
@@ -1931,8 +1932,9 @@ fn get_args_from_tuple<'ll, 'tcx>(
                         let field = tuple_place.project_field(bx, tuple_index);
                         let llvm_ty = field.layout.llvm_type(bx.cx);
                         let pair_val = bx.load(llvm_ty, field.val.llval, field.val.align);
-                        result.push(bx.extract_value(pair_val, 0));
-                        result.push(bx.extract_value(pair_val, 1));
+
+                        result.push(bx.extract_value(pair_val, 0, None));
+                        result.push(bx.extract_value(pair_val, 1, None));
                         tuple_index += 1;
                     }
                     PassMode::Indirect { .. } => {
