@@ -100,7 +100,6 @@ pub(super) fn instantiate_and_apply_query_response<D, I>(
     param_env: I::ParamEnv,
     original_values: &[I::GenericArg],
     response: CanonicalResponse<I>,
-    visible_for_leak_check: VisibleForLeakCheck,
     span: I::Span,
 ) -> (NestedNormalizationGoals<I>, Certainty)
 where
@@ -121,7 +120,15 @@ where
     match region_constraints {
         ExternalRegionConstraints::Old(r) => register_region_constraints(
             delegate,
-            r.iter().map(|(c, vis)| (*c, vis.and(visible_for_leak_check))),
+            r.iter().map(|(c, vis)| {
+                // FIXME: We should revisit and consider removing this after *assumptions on
+                // binders* is available, like once we had done in the stabilization of
+                // `-Znext-solver=coherence`(#121848).
+                // We ignore constraints from the nested goals in leak check. This is to match with
+                // the old solver's behavior, which has separated evaluation and fulfillment, and
+                // the former doesn't consider outlives obligations from the later.
+                (*c, vis.and(VisibleForLeakCheck::No))
+            }),
             span,
         ),
         ExternalRegionConstraints::NextGen(r) => {

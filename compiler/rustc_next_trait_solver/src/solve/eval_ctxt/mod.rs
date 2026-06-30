@@ -729,20 +729,11 @@ where
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
-        // FIXME: We should revisit and consider removing this after
-        // *assumptions on binders* is available, like once we had done in the
-        // stabilization of `-Znext-solver=coherence`(#121848).
-        // We ignore constraints from the nested goals in leak check. This is to match
-        // with the old solver's behavior, which has separated evaluation and fulfillment,
-        // and the former doesn't consider outlives obligations from the later.
-        let vis = VisibleForLeakCheck::No;
-
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
             goal.param_env,
             &orig_values,
             response,
-            vis,
             self.origin_span,
         );
 
@@ -1797,7 +1788,6 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         goal.param_env,
         &proof_tree.orig_values,
         response,
-        VisibleForLeakCheck::Yes,
         origin_span,
     );
 
