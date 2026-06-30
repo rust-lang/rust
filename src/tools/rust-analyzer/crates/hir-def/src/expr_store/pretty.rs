@@ -92,12 +92,12 @@ pub fn print_body_hir(
     };
     if let DefWithBodyId::FunctionId(_) = owner {
         p.buf.push('(');
-        if let Some(self_param) = body.self_param() {
-            p.print_binding(self_param);
+        if let Some(self_param) = body.self_param {
+            p.print_binding(self_param.formal);
             p.buf.push_str(", ");
         }
         body.params.iter().for_each(|param| {
-            p.print_pat(*param);
+            p.print_pat(param.formal);
             p.buf.push_str(", ");
         });
         // remove the last ", " in param list
