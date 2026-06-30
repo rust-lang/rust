@@ -447,8 +447,6 @@ unsafe extern "unadjusted" {
     fn __lasx_xvssrln_h_w(a: __v8i32, b: __v8i32) -> __v16i16;
     #[link_name = "llvm.loongarch.lasx.xvssrln.w.d"]
     fn __lasx_xvssrln_w_d(a: __v4i64, b: __v4i64) -> __v8i32;
-    #[link_name = "llvm.loongarch.lasx.xvldi"]
-    fn __lasx_xvldi(a: i32) -> __v4i64;
     #[link_name = "llvm.loongarch.lasx.xvextl.qu.du"]
     fn __lasx_xvextl_qu_du(a: __v4u64) -> __v4u64;
     #[link_name = "llvm.loongarch.lasx.vext2xv.h.b"]
@@ -2595,15 +2593,6 @@ pub fn lasx_xvssrln_h_w(a: m256i, b: m256i) -> m256i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvssrln_w_d(a: m256i, b: m256i) -> m256i {
     unsafe { transmute(__lasx_xvssrln_w_d(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(0)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvldi<const IMM_S13: i32>() -> m256i {
-    static_assert_simm_bits!(IMM_S13, 13);
-    unsafe { transmute(__lasx_xvldi(IMM_S13)) }
 }
 
 #[inline]

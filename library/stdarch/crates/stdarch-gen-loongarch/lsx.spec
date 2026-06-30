@@ -3577,6 +3577,7 @@ asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vldi
+impl = portable
 name = lsx_vldi
 asm-fmts = vd, i13
 data-types = V2DI, HI

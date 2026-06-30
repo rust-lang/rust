@@ -148,6 +148,72 @@ pub(super) const unsafe fn simd_ext_ld<const I: i32, T: Copy>(a: *const i8) -> T
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_ext_ldi<const I: i32, T: Copy + const SimdExt>() -> T {
+    use crate::core_arch::simd::{i8x8, i16x4, i32x2};
+    use crate::mem::transmute;
+
+    #[inline(always)]
+    const fn sext(v: i32, bits: u32) -> i64 {
+        ((v as i64) << (64 - bits)) >> (64 - bits)
+    }
+
+    #[inline(always)]
+    const fn expand_u8(imm: i32) -> u64 {
+        let mut v = imm as u64;
+        v = (v | (v << 28)) & 0x0000000f0000000f;
+        v = (v | (v << 14)) & 0x0003000300030003;
+        v = (v | (v << 7)) & 0x0101010101010101;
+        v.wrapping_mul(0xff)
+    }
+
+    #[inline(always)]
+    const fn fp32_imm(imm: i32) -> i32 {
+        ((imm & 0x80) << 24)
+            | ((!imm & 0x40) << 24)
+            | (((imm & 0x40) >> 6).wrapping_mul(0x1f) << 25)
+            | ((imm & 0x3f) << 19)
+    }
+
+    #[inline(always)]
+    const fn fp64_imm(imm: i32) -> i64 {
+        ((((imm & 0x80) << 24)
+            | ((!imm & 0x40) << 24)
+            | (((imm & 0x40) >> 6).wrapping_mul(0xff) << 22)
+            | ((imm & 0x3f) << 16)) as i64)
+            << 32
+    }
+
+    let imm8 = I & 0xff;
+    let imm10 = I & 0x3ff;
+
+    let r = if (I & 0x1000) == 0 {
+        match (I >> 10) & 3 {
+            0 => transmute(i8x8::splat(imm8 as i8)),
+            1 => transmute(i16x4::splat(sext(imm10, 10) as i16)),
+            2 => transmute(i32x2::splat(sext(imm10, 10) as i32)),
+            3 => sext(imm10, 10),
+            _ => unreachable!(),
+        }
+    } else {
+        match (I >> 8) & 0xf {
+            0..=3 => transmute(i32x2::splat(imm8 << (8 * ((I >> 8) & 3)))),
+            4..=5 => transmute(i16x4::splat((imm8 as i16) << (8 * ((I >> 8) & 1)))),
+            6 => transmute(i32x2::splat((imm8 << 8) | 0xff)),
+            7 => transmute(i32x2::splat((imm8 << 16) | 0xffff)),
+            8 => transmute(i8x8::splat(imm8 as i8)),
+            9 => expand_u8(imm8) as i64,
+            10 => transmute(i32x2::splat(fp32_imm(I))),
+            11 => transmute(i32x2::from_array([fp32_imm(I), 0])),
+            12 => fp64_imm(I),
+            _ => unreachable!(),
+        }
+    };
+
+    simd_ext_splat(r)
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(super) const unsafe fn simd_ext_ldx<T: Copy>(a: *const i8, b: i64) -> T {
     let a = a.offset(b as isize) as *const T;
     core::ptr::read_unaligned(a)
@@ -311,6 +377,19 @@ macro_rules! impl_sv {
             static_assert_simm_bits!(IMM, $ibs);
             unsafe {
                 let r: $ity = $op(IMM.into());
+                transmute(r)
+            }
+        }
+    };
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr, const) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[rustc_legacy_const_generics(0)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub fn $name<const IMM: i32>() -> $oty {
+            static_assert_simm_bits!(IMM, $ibs);
+            unsafe {
+                let r: $ity = $op::<IMM, _>();
                 transmute(r)
             }
         }
