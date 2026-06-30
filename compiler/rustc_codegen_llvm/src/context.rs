@@ -647,7 +647,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             tcx.sess.instrument_coverage().then(coverageinfo::CguCoverageContext::new);
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
-            let dctx = debuginfo::CodegenUnitDebugContext::new(llmod);
+            let dctx = debuginfo::CodegenUnitDebugContext::new(llmod, tcx.sess);
             debuginfo::metadata::build_compile_unit_di_node(
                 tcx,
                 codegen_unit.name().as_str(),
