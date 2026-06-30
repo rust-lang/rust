@@ -3133,21 +3133,25 @@ asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, UV2DI, V2DI
 
 /// lsx_vrotr_b
+impl = portable
 name = lsx_vrotr_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vrotr_h
+impl = portable
 name = lsx_vrotr_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vrotr_w
+impl = portable
 name = lsx_vrotr_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vrotr_d
+impl = portable
 name = lsx_vrotr_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
@@ -3233,21 +3237,25 @@ asm-fmts = vd, vj
 data-types = UV2DI, UV2DI
 
 /// lsx_vrotri_b
+impl = portable
 name = lsx_vrotri_b
 asm-fmts = vd, vj, ui3
 data-types = V16QI, V16QI, UQI
 
 /// lsx_vrotri_h
+impl = portable
 name = lsx_vrotri_h
 asm-fmts = vd, vj, ui4
 data-types = V8HI, V8HI, UQI
 
 /// lsx_vrotri_w
+impl = portable
 name = lsx_vrotri_w
 asm-fmts = vd, vj, ui5
 data-types = V4SI, V4SI, UQI
 
 /// lsx_vrotri_d
+impl = portable
 name = lsx_vrotri_d
 asm-fmts = vd, vj, ui6
 data-types = V2DI, V2DI, UQI

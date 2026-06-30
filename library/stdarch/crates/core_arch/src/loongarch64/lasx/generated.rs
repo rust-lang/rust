@@ -701,14 +701,6 @@ unsafe extern "unadjusted" {
     fn __lasx_xvmaddwod_w_hu_h(a: __v8i32, b: __v16u16, c: __v16i16) -> __v8i32;
     #[link_name = "llvm.loongarch.lasx.xvmaddwod.h.bu.b"]
     fn __lasx_xvmaddwod_h_bu_b(a: __v16i16, b: __v32u8, c: __v32i8) -> __v16i16;
-    #[link_name = "llvm.loongarch.lasx.xvrotr.b"]
-    fn __lasx_xvrotr_b(a: __v32i8, b: __v32i8) -> __v32i8;
-    #[link_name = "llvm.loongarch.lasx.xvrotr.h"]
-    fn __lasx_xvrotr_h(a: __v16i16, b: __v16i16) -> __v16i16;
-    #[link_name = "llvm.loongarch.lasx.xvrotr.w"]
-    fn __lasx_xvrotr_w(a: __v8i32, b: __v8i32) -> __v8i32;
-    #[link_name = "llvm.loongarch.lasx.xvrotr.d"]
-    fn __lasx_xvrotr_d(a: __v4i64, b: __v4i64) -> __v4i64;
     #[link_name = "llvm.loongarch.lasx.xvadd.q"]
     fn __lasx_xvadd_q(a: __v4i64, b: __v4i64) -> __v4i64;
     #[link_name = "llvm.loongarch.lasx.xvsub.q"]
@@ -741,14 +733,6 @@ unsafe extern "unadjusted" {
     fn __lasx_xvexth_du_wu(a: __v8u32) -> __v4u64;
     #[link_name = "llvm.loongarch.lasx.xvexth.qu.du"]
     fn __lasx_xvexth_qu_du(a: __v4u64) -> __v4u64;
-    #[link_name = "llvm.loongarch.lasx.xvrotri.b"]
-    fn __lasx_xvrotri_b(a: __v32i8, b: u32) -> __v32i8;
-    #[link_name = "llvm.loongarch.lasx.xvrotri.h"]
-    fn __lasx_xvrotri_h(a: __v16i16, b: u32) -> __v16i16;
-    #[link_name = "llvm.loongarch.lasx.xvrotri.w"]
-    fn __lasx_xvrotri_w(a: __v8i32, b: u32) -> __v8i32;
-    #[link_name = "llvm.loongarch.lasx.xvrotri.d"]
-    fn __lasx_xvrotri_d(a: __v4i64, b: u32) -> __v4i64;
     #[link_name = "llvm.loongarch.lasx.xvextl.q.d"]
     fn __lasx_xvextl_q_d(a: __v4i64) -> __v4i64;
     #[link_name = "llvm.loongarch.lasx.xvsrlni.b.h"]
@@ -3555,34 +3539,6 @@ pub fn lasx_xvmaddwod_h_bu_b(a: m256i, b: m256i, c: m256i) -> m256i {
 #[inline]
 #[target_feature(enable = "lasx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrotr_b(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvrotr_b(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrotr_h(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvrotr_h(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrotr_w(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvrotr_w(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrotr_d(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvrotr_d(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvadd_q(a: m256i, b: m256i) -> m256i {
     unsafe { transmute(__lasx_xvadd_q(transmute(a), transmute(b))) }
 }
@@ -3690,42 +3646,6 @@ pub fn lasx_xvexth_du_wu(a: m256i) -> m256i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvexth_qu_du(a: m256i) -> m256i {
     unsafe { transmute(__lasx_xvexth_qu_du(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrotri_b<const IMM3: u32>(a: m256i) -> m256i {
-    static_assert_uimm_bits!(IMM3, 3);
-    unsafe { transmute(__lasx_xvrotri_b(transmute(a), IMM3)) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrotri_h<const IMM4: u32>(a: m256i) -> m256i {
-    static_assert_uimm_bits!(IMM4, 4);
-    unsafe { transmute(__lasx_xvrotri_h(transmute(a), IMM4)) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrotri_w<const IMM5: u32>(a: m256i) -> m256i {
-    static_assert_uimm_bits!(IMM5, 5);
-    unsafe { transmute(__lasx_xvrotri_w(transmute(a), IMM5)) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrotri_d<const IMM6: u32>(a: m256i) -> m256i {
-    static_assert_uimm_bits!(IMM6, 6);
-    unsafe { transmute(__lasx_xvrotri_d(transmute(a), IMM6)) }
 }
 
 #[inline]

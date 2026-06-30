@@ -267,6 +267,14 @@ lsx_vld
 lsx_vst
 lsx_vldx
 lsx_vstx
+lsx_vrotr_b
+lsx_vrotr_h
+lsx_vrotr_w
+lsx_vrotr_d
+lsx_vrotri_b
+lsx_vrotri_h
+lsx_vrotri_w
+lsx_vrotri_d
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -535,3 +543,11 @@ lasx_xvld
 lasx_xvst
 lasx_xvldx
 lasx_xvstx
+lasx_xvrotr_b
+lasx_xvrotr_h
+lasx_xvrotr_w
+lasx_xvrotr_d
+lasx_xvrotri_b
+lasx_xvrotri_h
+lasx_xvrotri_w
+lasx_xvrotri_d
