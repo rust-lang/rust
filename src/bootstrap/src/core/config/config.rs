@@ -1206,7 +1206,9 @@ impl Config {
                 | Subcommand::Install => {
                     assert_eq!(
                         stage, 2,
-                        "x.py should be run with `--stage 2` on CI, but was run with `--stage {stage}`",
+                        "\
+x.py was run under CI with an implicit `--stage {stage}`. This is probably wrong and you want stage 2.
+NOTE: Please add `--stage 2` to your command line, or if you're sure you want to run stage {stage} then add `--stage {stage}` explicitly"
                     );
                 }
                 Subcommand::Clean { .. }
