@@ -86,7 +86,7 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// The `let` is pointless, but shows that `return` has type `!`.
+/// The `let` binding above is pointless, but shows that `return` expressions have type `!`.
 ///
 /// [`return`]: ../std/keyword.return.html
 /// [`break`]: ../std/keyword.break.html
@@ -106,11 +106,11 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// This is sound because a value of `!` can never exist, and thus the coercion is never
-/// executed, the value of it can never be observed.
+/// This is sound because a value of type `!` can never exist, and any coercion of such a value will
+/// never actually execute.
 ///
-/// This is very useful when some of the branches of an `if` or a `match` return early (or panic,
-/// or continue a an infinite loop, ...).
+/// This is useful when an `if` branch or `match` arm returns early (or panics, or falls into an
+/// infinite loop, etc.).
 ///
 /// ```
 /// fn mrrrow(option: Option<u32>) {
@@ -118,7 +118,7 @@ mod prim_bool {}
 ///         // `x` has type `u32`
 ///         Some(x) => x,
 ///         // `return` has type `!`, which is then coerced to `u32`,
-///         // allowing the `match` to typecheck
+///         // allowing the `match` to pass type checking.
 ///         None => return,
 ///     };
 ///     // ...
@@ -166,11 +166,9 @@ mod prim_bool {}
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
-/// This is very useful when a trait represents a potentially fallible operation, but the specific
-/// implementation for a given type cannot fail.
 ///
-/// The same works for any enums of course, not just `Result` (and also for any uninhabited types,
-/// not just `!`).
+/// The same works for any enum, not just [`Result`] (and also for any uninhabited type, not just
+/// `!`).
 ///
 /// ```
 /// #![feature(never_type)]
@@ -189,7 +187,7 @@ mod prim_bool {}
 ///     Myaaoo(Option<!>)
 /// }
 ///
-/// // Enum with no variants is an example of an uninhabited type
+/// // An enum with no variants is an example of an uninhabited type
 /// enum Void {}
 ///
 /// use Onomatopoeias::*;
@@ -209,9 +207,9 @@ mod prim_bool {}
 /// At first glance there is no reason to implement any traits for `!`. Most traits take a value
 /// of `Self` as an argument in methods, so you won't be able to call them anyway.
 ///
-/// However, when `!` is used as a generic argument, it might be very handy for it to implement
-/// traits. For example, `Result<T, E>` implements `Clone` if `T: Clone, E: Clone`. So for
-/// [`Result<T, !>`] to implement `Clone`, `!` has to implement it as well.
+/// However, when `!` is used as a generic argument, it must still satisfy any trait bounds imposed
+/// on it. For example, `Result<T, E>` implements [`Clone`] if both `T` and `E` also implement it.
+/// In order for `Result<T, !>` to implement `Clone`, `!` must do so as well.
 ///
 /// In general, if all your trait's functions take an argument of type `Self` (or `&Self`, etc),
 /// it might be nice to implement that trait for `!`. In such cases the implementation is trivial,
@@ -225,13 +223,12 @@ mod prim_bool {}
 /// # }
 /// impl Debug for ! {
 ///     fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         // we can dereference `self` (which has type `&!`),
+///         // and then coerce to `fmt::Result`
 ///         *self
 ///     }
 /// }
 /// ```
-///
-/// `self` here has type `&!`, by dereferencing it we get `!`, which can then coerce to any type,
-/// including `fmt::Result`.
 ///
 /// On the other hand, one trait which would not be appropriate to implement for `!` is [`Default`]:
 ///
@@ -242,9 +239,9 @@ mod prim_bool {}
 /// ```
 ///
 /// Since `!` has no values, it has no default value either. There is no meaningful implementation
-/// for `default`. Since it would have to return `!`, it would also need to diverge. While one
-/// *could* implement it using `panic!` or an infinite loop, or something alike, that would not be
-/// useful.
+/// for `default`, since it would have to return `!` -- in other words it would need to diverge.
+/// While one *could* write an implementation using `panic!` or an infinite loop, or something
+/// alike, that would not be useful.
 ///
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
