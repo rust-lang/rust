@@ -1488,6 +1488,7 @@ supported_targets! {
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
     ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
+    ("aarch64-unknown-linux-pauthtest", aarch64_unknown_linux_pauthtest),
     ("aarch64_be-unknown-linux-musl", aarch64_be_unknown_linux_musl),
     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
@@ -2072,6 +2073,7 @@ crate::target_spec_enum! {
         Ilp32e = "ilp32e",
         Llvm = "llvm",
         MacAbi = "macabi",
+        Pauthtest = "pauthtest",
         Sim = "sim",
         SoftFloat = "softfloat",
         Spe = "spe",
@@ -2112,6 +2114,8 @@ crate::target_spec_enum! {
         // PowerPC
         ElfV1 = "elfv1",
         ElfV2 = "elfv2",
+        // Pointer authentication: Pauthtest
+        Pauthtest = "pauthtest",
 
         Unspecified = "",
     }
@@ -3398,9 +3402,10 @@ impl Target {
                 )
             }
             Arch::AArch64 => {
-                check!(
-                    self.llvm_abiname == LlvmAbi::Unspecified,
-                    "`llvm_abiname` is unused on aarch64"
+                check_matches!(
+                    self.llvm_abiname,
+                    LlvmAbi::Unspecified | LlvmAbi::Pauthtest,
+                    "invalid llvm ABI for aarch64"
                 );
                 check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on aarch64");
                 // FIXME: Ensure that target_abi = "ilp32" correlates with actually using that ABI.
@@ -3413,6 +3418,7 @@ impl Target {
                             CfgAbi::Ilp32
                                 | CfgAbi::Llvm
                                 | CfgAbi::MacAbi
+                                | CfgAbi::Pauthtest
                                 | CfgAbi::Sim
                                 | CfgAbi::Uwp
                                 | CfgAbi::Unspecified
