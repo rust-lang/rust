@@ -500,7 +500,7 @@ rustc_lint::early_lint_methods!(
         UnnestedOrPatterns: unnested_or_patterns::UnnestedOrPatterns = unnested_or_patterns::UnnestedOrPatterns::new(conf),
         EarlyFunctions: functions::EarlyFunctions = functions::EarlyFunctions,
         Documentation: doc::Documentation = doc::Documentation::new(conf),
-        SuspiciousOperationGroupings: suspicious_operation_groupings::SuspiciousOperationGroupings = suspicious_operation_groupings::SuspiciousOperationGroupings,
+        SuspiciousOperationGroupings: suspicious_operation_groupings::SuspiciousOperationGroupings = <suspicious_operation_groupings::SuspiciousOperationGroupings>::default(),
         DoubleParens: double_parens::DoubleParens = double_parens::DoubleParens,
         UnsafeNameRemoval: unsafe_removed_from_name::UnsafeNameRemoval = unsafe_removed_from_name::UnsafeNameRemoval,
         ElseIfWithoutElse: else_if_without_else::ElseIfWithoutElse = else_if_without_else::ElseIfWithoutElse,
