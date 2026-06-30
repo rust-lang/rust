@@ -3,8 +3,6 @@ use std::path::Path;
 
 use crate::diagnostics::RunningCheck;
 
-const LINELENGTH_CHECK: &str = "linelength";
-
 macro_rules! configurable_checks {
         ($($name: ident => $field: expr),* $(,)?) => {
         #[derive(Debug)]
@@ -48,6 +46,7 @@ macro_rules! configurable_checks {
     };
 }
 
+const LINELENGTH_CHECK: &str = "linelength";
 configurable_checks!(
     cr => "cr",
     undocumented_unsafe => "undocumented-unsafe",
@@ -227,29 +226,35 @@ impl<'a> Directives<'a> {
         filelength.force_discard_unsused_ignore();
     }
 
-    // Use a fixed size array in the return type to catch mistakes with changing `CONFIGURABLE_CHECKS`
-    // without changing the code in `check` easier.
     pub fn from_line(
         path_str: &str,
         line_number: LineNumber,
         can_contain_directive_fastpath: bool,
         contents: &str,
     ) -> Self {
-        let mut directives = Self::default();
+        let mut res = if !can_contain_directive_fastpath {
+            Default::default()
+        } else {
+            Self::parse(line_number, contents)
+        };
 
         // The rustdoc-json test syntax often requires very long lines, so the checks
         // for long lines aren't really useful.
         let always_ignore_linelength = path_str.contains("rustdoc-json");
 
-        if !can_contain_directive_fastpath && !always_ignore_linelength {
-            return directives;
+        if always_ignore_linelength {
+            res.linelength.set_ignore(line_number);
         }
 
-        for (check, directive) in directives.iter_mut() {
-            if check == LINELENGTH_CHECK && always_ignore_linelength {
-                directive.set_ignore(line_number);
-            }
+        res
+    }
 
+    // Use a fixed size array in the return type to catch mistakes with changing `CONFIGURABLE_CHECKS`
+    // without changing the code in `check` easier.
+    pub fn parse(line_number: LineNumber, contents: &str) -> Self {
+        let mut directives = Self::default();
+
+        for (check, directive) in directives.iter_mut() {
             if match_ignore(contents, matches!(line_number, LineNumber::WholeFile), Some(check)) {
                 directive.set_ignore(line_number);
             }
@@ -271,7 +276,7 @@ pub enum LineNumber {
 pub fn match_ignore(contents: &str, whole_file: bool, check: Option<&str>) -> bool {
     let check = check.unwrap_or("");
     let file = if whole_file { "file-" } else { "" };
-    contents.contains(&format!("// ignore-tidy-{check}"))
+    contents.contains(&format!("// ignore-tidy-{file}{check}"))
         || contents.contains(&format!("# ignore-tidy-{file}{check}"))
         || contents.contains(&format!("/* ignore-tidy-{file}{check} */"))
         || contents.contains(&format!("<!-- ignore-tidy-{file}{check} -->"))

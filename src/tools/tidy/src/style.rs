@@ -477,22 +477,13 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     directive_line_starts.into_iter().any(|s| line.starts_with(s));
                 let contains_potential_directive =
                     possible_line_start && (line.contains("-tidy") || line.contains("tidy-"));
-                let has_recognized_ignore_directive = Directives::from_line(
-                    &path_str,
-                    LineNumber::Line(line_number),
-                    can_contain,
-                    line,
-                )
-                .iter()
-                .any(|(_, directive)| directive.is_ignore_and_defuse())
-                    || Directives::from_line(
-                        &path_str,
-                        LineNumber::Line(line_number),
-                        can_contain,
-                        line,
-                    )
-                    .iter()
-                    .any(|(_, directive)| directive.is_ignore_and_defuse());
+                let has_recognized_ignore_directive = can_contain
+                    && (Directives::parse(LineNumber::Line(line_number), line)
+                        .iter()
+                        .any(|(_, directive)| directive.is_ignore_and_defuse())
+                        || Directives::parse(LineNumber::WholeFile, line)
+                            .iter()
+                            .any(|(_, directive)| directive.is_ignore_and_defuse()));
                 let has_alphabetical_directive = line.contains("tidy-alphabetical-start")
                     || line.contains("tidy-alphabetical-end");
                 let has_other_tidy_ignore_directive =
