@@ -474,8 +474,14 @@ impl WorkspaceBuildScripts {
                                 cmd.arg("--lockfile-path");
                                 cmd.arg(lockfile_copy.path.as_str());
                             }
-                            LockfileUsage::WithEnvVar => {
+                            LockfileUsage::WithEnvVarUnstable => {
                                 cmd.arg("-Zlockfile-path");
+                                cmd.env(
+                                    "CARGO_RESOLVER_LOCKFILE_PATH",
+                                    lockfile_copy.path.as_os_str(),
+                                );
+                            }
+                            LockfileUsage::WithEnvVar => {
                                 cmd.env(
                                     "CARGO_RESOLVER_LOCKFILE_PATH",
                                     lockfile_copy.path.as_os_str(),
