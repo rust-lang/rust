@@ -1686,13 +1686,15 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         }
 
         /// Adds an unsigned integer to a non-zero value,
-        /// assuming overflow cannot occur.
-        /// Overflow is unchecked, and it is undefined behavior to overflow
-        /// *even if the result would wrap to a non-zero value*.
+        /// assuming overflow cannot occur. Overflow is unchecked.
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
+        /// Callers must ensure:
+        ///
+        /// - The result of the addition must not be zero
+        /// - The addition must not overflow, *even if the result would wrap to a non-zero value*.
+        ///   The behavior is undefined as soon as
         #[doc = concat!("`self + rhs > ", stringify!($Int), "::MAX`.")]
         ///
         /// # Examples
