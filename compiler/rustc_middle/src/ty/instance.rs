@@ -989,6 +989,32 @@ impl<'tcx> Instance<'tcx> {
             tcx.try_normalize_erasing_regions(typing_env, v.instantiate_identity())
         }
     }
+
+    pub fn polymorphize(&self, tcx: TyCtxt<'tcx>) -> Self {
+        let InstanceKind::Item(def_id) = self.def else {
+            return *self;
+        };
+        // TODO: temporary, hacky
+        if tcx.opt_item_name(def_id).map_or(true, |n| n.as_str() != "foopoly") {
+            return *self;
+        }
+        let generics = tcx.generics_of(def_id);
+        let args =
+            tcx.mk_args_from_iter(self.args.iter().enumerate().map(
+                |(idx, arg)| match arg.kind() {
+                    ty::GenericArgKind::Type(ty) => {
+                        let param_ty = ParamTy::for_def(generics.param_at(idx, tcx));
+                        let layout_result =
+                            tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty));
+                        let param_layout = ty::ParamLayout(layout_result.unwrap().layout);
+                        let erased_ty = tcx.mk_ty_from_kind(ty::Erased(param_ty, param_layout));
+                        erased_ty.into()
+                    }
+                    ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Const(_) => arg,
+                },
+            ));
+        Self { def: self.def, args }
+    }
 }
 
 fn needs_fn_once_adapter_shim(
