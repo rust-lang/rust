@@ -430,7 +430,11 @@ pub(crate) fn parse_codegen_backends(
         };
 
         if found_backends.contains(&backend) {
-            continue;
+            panic!(
+                "Duplicate value '{}' for '{section}.codegen-backends'. \
+                Each codegen backend should only be specified once.",
+                backend.name()
+            );
         }
 
         if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.name()) {

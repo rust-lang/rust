@@ -22,7 +22,7 @@ use crate::core::config::{
 };
 use crate::utils::tests::TestCtx;
 use crate::utils::tests::git::git_test;
-use crate::{ChangeId, CodegenBackendKind};
+use crate::ChangeId;
 
 pub(crate) fn parse(config: &str) -> Config {
     TestCtx::new().config("check").with_default_toml_config(config).create_config()
@@ -208,21 +208,11 @@ fn rust_optimize() {
 }
 
 #[test]
-fn deduplicates_codegen_backends() {
-    assert_eq!(
-        parse_codegen_backends(
-            vec!["llvm", "llvm", "cranelift", "llvm"].into_iter().map(str::to_owned).collect(),
-            "rust",
-        ),
-        [CodegenBackendKind::Llvm, CodegenBackendKind::Cranelift]
-    );
-
-    assert_eq!(
-        parse_codegen_backends(
-            vec!["cranelift", "llvm", "cranelift"].into_iter().map(str::to_owned).collect(),
-            "target.x86_64-unknown-linux-gnu",
-        ),
-        [CodegenBackendKind::Cranelift, CodegenBackendKind::Llvm]
+#[should_panic(expected = "Duplicate value 'llvm' for 'rust.codegen-backends'")]
+fn rejects_duplicate_codegen_backends() {
+    parse_codegen_backends(
+        vec!["llvm", "llvm", "cranelift"].into_iter().map(str::to_owned).collect(),
+        "rust",
     );
 }
 
