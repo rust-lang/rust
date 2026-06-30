@@ -57,14 +57,17 @@ pub(crate) fn remove_underscore(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
     }
 
     let new_name = text.trim_start_matches('_');
+    if new_name.is_empty() {
+        return None;
+    }
+    let changes =
+        def.rename(&ctx.sema, new_name, RenameDefinition::Yes, &ctx.config.rename_config()).ok()?;
+
     acc.add(
         AssistId::refactor("remove_underscore_from_used_variables"),
         "Remove underscore from a used variable",
         text_range,
         |builder| {
-            let changes = def
-                .rename(&ctx.sema, new_name, RenameDefinition::Yes, &ctx.config.rename_config())
-                .unwrap();
             builder.source_change = changes;
         },
     )
@@ -173,6 +176,32 @@ fn foo(foo: i32) {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn not_applicable_when_result_is_keyword() {
+        check_assist_not_applicable(
+            remove_underscore,
+            r#"
+fn main() {
+    let _$0crate = 1;
+    _crate;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_when_result_is_empty() {
+        check_assist_not_applicable(
+            remove_underscore,
+            r#"
+fn main() {
+    let _$0_ = 1;
+    __;
+}
+"#,
+        );
     }
 
     #[test]
