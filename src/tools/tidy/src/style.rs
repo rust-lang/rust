@@ -26,7 +26,7 @@ use regex::RegexSetBuilder;
 use rustc_hash::FxHashMap;
 
 use crate::diagnostics::{CheckId, TidyCtx};
-use crate::style::directive::{Directives, LineNumber, match_ignore};
+use crate::style::directive::{Directive, Directives, LineNumber, match_ignore};
 use crate::walk::{filter_dirs, walk};
 
 mod directive;
@@ -352,7 +352,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
         };
 
         // When you change this, also change the `directive_line_starts` variable below
-        let can_contain = match_ignore(contents, false, None);
+        let can_contain = match_ignore(contents, false, None) || match_ignore(contents, true, None);
 
         // Enable testing ICE's that require specific (untidy)
         // file formats easily eg. `issue-1234-ignore-tidy.rs`
@@ -368,13 +368,14 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
 
         let file_ignore =
             Directives::from_line(&path_str, LineNumber::WholeFile, can_contain, contents);
+        // the ignores set in this line, meant for the next line
         let mut next_line_ignore = Default::default();
 
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;
         let mut last_safety_comment = false;
-        let mut comment_block: Option<(usize, usize)> = None;
+        let mut comment_block: Option<(usize, usize, Directive<'_>)> = None;
         let is_test = file.components().any(|c| c.as_os_str() == "tests")
             || file.file_stem().unwrap() == "tests";
         let is_codegen_test = is_test && file.components().any(|c| c.as_os_str() == "codegen-llvm");
@@ -399,7 +400,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
 
             let line_number = i + 1;
 
-            let ignore = file_ignore.create_child(mem::replace(
+            let mut ignore = file_ignore.create_child(mem::replace(
                 &mut next_line_ignore,
                 Directives::from_line(&path_str, LineNumber::Line(line_number), can_contain, line),
             ));
@@ -564,6 +565,10 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 // comment blocks. Technically, this can have false negatives (or false positives),
                 // but as a heuristic this is fine.
                 let likely_comment = |trimmed: &str| {
+                    if trimmed.contains("ignore-tidy") {
+                        return false;
+                    }
+
                     // Line comments, doc comments
                     trimmed.contains("//")
                         // Also account for `#[cfg_attr(bootstrap, doc = "")]` cases.
@@ -571,8 +576,9 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 };
 
                 if likely_comment(trimmed) {
-                    let (start_line, mut backtick_count) =
-                        comment_block.unwrap_or((line_number, 0));
+                    let (start_line, mut backtick_count, directive) = comment_block
+                        .take()
+                        .unwrap_or((line_number, 0, mem::take(&mut ignore.odd_backticks)));
                     let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
 
                     // Try to split `//`-like comments or `#[cfg_attr(bootstrap), doc = ""]`-like
@@ -592,8 +598,8 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     if line_backticks % 2 == 1 {
                         backtick_count += comment_text.chars().filter(|ch| *ch == '`').count();
                     }
-                    comment_block = Some((start_line, backtick_count));
-                } else if let Some((start_line, backtick_count)) = comment_block.take()
+                    comment_block = Some((start_line, backtick_count, directive));
+                } else if let Some((start_line, backtick_count, directive)) = comment_block.take()
                     && backtick_count % 2 == 1
                 {
                     let mut err = |msg: &str| {
@@ -603,16 +609,22 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     if block_len == 1 {
                         suppressible_tidy_err!(
                             err,
-                            ignore.odd_backticks,
+                            // use the directives from when the block started
+                            directive,
                             "comment with odd number of backticks"
                         );
                     } else {
                         suppressible_tidy_err!(
                             err,
-                            ignore.odd_backticks,
+                            // use the directives from when the block started
+                            directive,
                             "{block_len}-line comment block with odd number of backticks"
                         );
                     }
+
+                    let mut fake_directives = Directives::default();
+                    fake_directives.odd_backticks = directive;
+                    fake_directives.check_usage(&mut check, file);
                 }
             }
 
@@ -651,6 +663,12 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             suppressible_tidy_err!(err, file_ignore.filelength, "");
         }
 
+        if let Some((_, _, directive)) = comment_block.take() {
+            let mut fake_directives = Directives::default();
+            fake_directives.odd_backticks = directive;
+            fake_directives.check_usage(&mut check, file);
+        }
+        drop(comment_block);
         next_line_ignore.check_usage(&mut check, file);
         file_ignore.check_usage(&mut check, file);
     });
