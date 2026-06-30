@@ -82,6 +82,10 @@ impl TargetSelection {
         self.contains("windows")
     }
 
+    pub fn is_apple(&self) -> bool {
+        self.contains("apple")
+    }
+
     pub fn is_windows_gnu(&self) -> bool {
         self.ends_with("windows-gnu")
     }

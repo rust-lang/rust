@@ -343,7 +343,12 @@ impl Cargo {
         if !builder.config.dry_run() {
             match builder.config.compress_debuginfo(target) {
                 CompressDebuginfo::Zlib => {
-                    self.rustflags.arg("-Clink-arg=-Wl,--compress-debug-sections=zlib");
+                    // Do not enable Zlib compression on:
+                    // - Windows, because MSVC/PDB doesn't support it
+                    // - macOS, because its linker doesn't know the flag
+                    if !self.target.is_windows() && !self.target.is_apple() {
+                        self.rustflags.arg("-Clink-arg=-Wl,--compress-debug-sections=zlib");
+                    }
                 }
                 CompressDebuginfo::Off => {}
             }
