@@ -32,7 +32,8 @@
     abi_riscv_interrupt,
     abi_cmse_nonsecure_call,
     abi_vectorcall,
-    cmse_nonsecure_entry
+    cmse_nonsecure_entry,
+    abi_custom
 )]
 
 extern crate minicore;
@@ -141,3 +142,10 @@ extern "cmse-nonsecure-entry" {}
 extern "cdecl" {}
 //[x64_win]~^ WARN unsupported_calling_conventions
 //[x64_win]~^^ WARN this was previously accepted
+
+fn custom_ptr(f: extern "custom" fn()) {
+    //[wasm32,wasm64]~^ ERROR is not a supported ABI
+    let _ = f;
+}
+extern "custom" {}
+//[wasm32,wasm64]~^ ERROR is not a supported ABI
