@@ -121,6 +121,16 @@ pub(super) const unsafe fn simd_frecip_d<T: Copy>(a: T) -> T {
 }
 
 #[inline(always)]
+pub(super) unsafe fn simd_frsqrt_s<T: Copy>(a: T) -> T {
+    ls::simd_frecip_s(is::simd_fsqrt(a))
+}
+
+#[inline(always)]
+pub(super) unsafe fn simd_frsqrt_d<T: Copy>(a: T) -> T {
+    ls::simd_frecip_d(is::simd_fsqrt(a))
+}
+
+#[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(super) const unsafe fn simd_ld<const I: i32, T: Copy>(a: *const i8) -> T {
     let a = a.offset(I as isize) as *const T;

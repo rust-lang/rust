@@ -1914,11 +1914,13 @@ asm-fmts = xd, xj
 data-types = V4DF, V4DF
 
 /// lasx_xvfrsqrt_s
+impl = portable
 name = lasx_xvfrsqrt_s
 asm-fmts = xd, xj
 data-types = V8SF, V8SF
 
 /// lasx_xvfrsqrt_d
+impl = portable
 name = lasx_xvfrsqrt_d
 asm-fmts = xd, xj
 data-types = V4DF, V4DF
