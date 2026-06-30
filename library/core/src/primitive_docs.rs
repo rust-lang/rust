@@ -67,7 +67,7 @@ mod prim_bool {}
 /// `!` is the canonical uninhabited type. `!` represents the type of diverging computations --
 /// computations which never resolve to any value.
 ///
-/// A different way to look at it is that since `!` is uninhabited, since it has no values, it is a
+/// Another way to look at it is that since `!` has no values (since it is uninhabited), it is a
 /// marker for unreachable code.
 ///
 /// For example, the [`exit`] function is defined as returning `!`, to signify that it doesn't
@@ -154,26 +154,22 @@ mod prim_bool {}
 /// converting a string into a string will never result in an error, we would like to guarantee to
 /// the caller that we never return [`Err(_)`][Err].
 ///
-/// One way to do this is to set the error type to `!`. Since `!` has no values, the [`Err`]
-/// variant of a [`Result<T, !>`] cannot be created either. Thus the caller knows that
-/// [`Result<T, !>`] is always [`Ok(_)`].
-///
-/// Moreover, the compiler can recognise that the [`Err`] variant cannot be created, and doesn't
-/// require you to handle it:
+/// One way to do this is to set the error type to `!`. Since the never type has no values, the
+/// [`Err`] variant of a [`Result<T, !>`] cannot be created either. Moreover, the compiler can
+/// recognise this fact, and doesn't require you to handle the [`Err`] case:
 ///
 /// ```
 /// # use std::str::FromStr;
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
-///
-/// The same works for any enum, not just [`Result`] (and also for any uninhabited type, not just
-/// `!`).
+/// The same works for any enum, not just [`Result`], and also for any uninhabited type, not just
+/// `!`.
 ///
 /// ```
 /// #![feature(never_type)]
 /// enum Onomatopoeias {
-///     // this variant can't be created and thus doesn't have to be matched
+///     // This variant can't be created and thus doesn't have to be matched
 ///     Miu(!),
 ///     // It doesn't matter if there are other fields,
 ///     // as long as at least one of them is uninhabited
@@ -204,8 +200,8 @@ mod prim_bool {}
 ///
 /// # Implementing traits for `!`
 ///
-/// At first glance there is no reason to implement any traits for `!`. Most traits take a value
-/// of `Self` as an argument in methods, so you won't be able to call them anyway.
+/// At first glance there is no reason to implement any traits for `!`. Many trait methods take
+/// `self` as an argument, so calling them on `!` is impossible.
 ///
 /// However, when `!` is used as a generic argument, it must still satisfy any trait bounds imposed
 /// on it. For example, `Result<T, E>` implements [`Clone`] if both `T` and `E` also implement it.
@@ -223,8 +219,8 @@ mod prim_bool {}
 /// # }
 /// impl Debug for ! {
 ///     fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         // we can dereference `self` (which has type `&!`),
-///         // and then coerce to `fmt::Result`
+///         // we can dereference `self` (which has type `&!`) to get `!`,
+///         // which then coerces to `fmt::Result`
 ///         *self
 ///     }
 /// }
@@ -277,9 +273,9 @@ mod prim_bool {}
 ///   = help: the trait `Iterator` is not implemented for `!`
 /// ```
 ///
-/// This is because `impl Trait` is not a specific type in and of itself, but instead a marker that
-/// the return type of the function is hidden and the only thing that can be assumed by the caller
-/// is that whatever the type is, it implements `Trait`.
+/// This is because `impl Trait` is not a concrete type, but rather a marker that the return type
+/// of the function is hidden and the only thing that can be assumed by the caller is that whatever
+/// the type is, it implements `Trait`.
 ///
 /// In case of using `todo!()` the hidden return type is inferred to be `!`, which may not
 /// implement the trait.
