@@ -54,12 +54,15 @@ rustflags = [
     # complete list of features, so for that reason we don't enable checking of
     # features for std crates.
     "--check-cfg=cfg(feature,values(any()))",
+    # Sometimes bootstrap sets rustflags with unstable options, so we preemptively pass it
+    # here. This shouldn't be needed for the `dist` profile unless the configuration of
+    # distributed std changes in the future.
+    "-Zunstable-options",
     # Always enable inlining MIR when building the standard library.
     # Without this flag, MIR inlining is disabled when incremental compilation is enabled.
     # That causes some mir-opt tests which inline functions from the standard library to
     # break when incremental compilation is enabled. So this overrides the "no inlining
     # during incremental builds" heuristic for the standard library.
-    "-Zunstable-options",
     "-Zinline-mir",
     # Similarly, we need to keep debug info for functions inlined into other std functions,
     # even if we're not going to output debuginfo for the crate we're currently building,

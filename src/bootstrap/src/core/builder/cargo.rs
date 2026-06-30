@@ -752,12 +752,11 @@ impl Builder<'_> {
 
         // Add extra cfg not defined in/by rustc
         //
-        // Note: Although it would seems that "-Zunstable-options" to `rustflags` is useless as
-        // cargo would implicitly add it, it was discover that sometimes bootstrap only use
-        // `rustflags` without `cargo` making it required.
-        // This shouldn't be needed for DistStd unless the configuration of distributed std changes
-        // in the future.
-        if mode != Mode::DistStd {
+        // Note: Although it would seem that "-Zunstable-options" to `rustflags` is useless as
+        // cargo would implicitly add it, it was discovered that sometimes bootstrap uses
+        // `rustflags` that require it without `cargo` requiring it.
+        // The library profile sets this for std.
+        if !mode.is_std() {
             rustflags.arg("-Zunstable-options");
         }
 
