@@ -82,7 +82,7 @@ where
             },
             |ecx| {
                 ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
-                    this.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias)?;
+                    this.instantiate_normalizes_to_as_rigid(goal)?;
                     this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 })
             },
@@ -146,18 +146,14 @@ where
         Ok(())
     }
 
-    /// Unlike `instantiate_normalizes_to_term` this instantiates the expected term
-    /// with a rigid alias. Using this is pretty much always wrong.
-    fn structurally_instantiate_normalizes_to_term(
+    fn instantiate_normalizes_to_as_rigid(
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
-        term: ty::AliasTerm<I>,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
-        self.relate(
+        self.eq(
             goal.param_env,
-            term.to_term(self.cx(), ty::IsRigid::Yes),
-            ty::Invariant,
             goal.predicate.term,
+            goal.predicate.alias.to_term(self.cx(), ty::IsRigid::Yes),
         )
     }
 }
@@ -353,10 +349,7 @@ where
                             | ty::TypingMode::PostBorrowck { .. }
                             | ty::TypingMode::PostAnalysis
                             | ty::TypingMode::Codegen => {
-                                ecx.structurally_instantiate_normalizes_to_term(
-                                    goal,
-                                    goal.predicate.alias,
-                                )?;
+                                ecx.instantiate_normalizes_to_as_rigid(goal)?;
                                 return ecx.evaluate_added_goals_and_make_canonical_response(
                                     Certainty::Yes,
                                 );
@@ -391,10 +384,7 @@ where
                         ecx.add_goal(GoalSource::Misc, goal.with(cx, PredicateKind::Ambiguous))?;
                         return then(ecx, Certainty::Yes);
                     } else {
-                        ecx.structurally_instantiate_normalizes_to_term(
-                            goal,
-                            goal.predicate.alias,
-                        )?;
+                        ecx.instantiate_normalizes_to_as_rigid(goal)?;
                         return then(ecx, Certainty::Yes);
                     }
                 } else {
@@ -767,10 +757,7 @@ where
                 // as rigid.
                 return alias_bound_result.or_else(|NoSolution| {
                     ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|this| {
-                        this.structurally_instantiate_normalizes_to_term(
-                            goal,
-                            goal.predicate.alias,
-                        )?;
+                        this.instantiate_normalizes_to_as_rigid(goal)?;
                         this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     })
                 });
@@ -1026,7 +1013,7 @@ where
             // this impl candidate anyways. It's still a bit scuffed.
             ty::Alias(ty::IsRigid::Yes, _) | ty::Param(_) | ty::Placeholder(..) => {
                 return ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                    ecx.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias)?;
+                    ecx.instantiate_normalizes_to_as_rigid(goal)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 });
             }
