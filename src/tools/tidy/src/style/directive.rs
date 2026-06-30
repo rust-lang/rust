@@ -269,10 +269,21 @@ pub enum LineNumber {
 }
 
 pub fn match_ignore(contents: &str, whole_file: bool, check: Option<&str>) -> bool {
-    let check = check.unwrap_or("");
+    let comments = [("// ", ""), ("# ", ""), ("/* ", " */"), ("<!-- ", " -->")];
+    let base = "ignore-tidy";
     let file = if whole_file { "file-" } else { "" };
-    contents.contains(&format!("// ignore-tidy-{file}{check}"))
-        || contents.contains(&format!("# ignore-tidy-{file}{check}"))
-        || contents.contains(&format!("/* ignore-tidy-{file}{check} */"))
-        || contents.contains(&format!("<!-- ignore-tidy-{file}{check} -->"))
+
+    for (start, end) in comments {
+        if let Some(check) = check {
+            if contents.contains(&format!("{start}{base}-{file}{check}{end}")) {
+                return true;
+            }
+        } else {
+            if contents.contains(&format!("{start}{base}")) {
+                return true;
+            }
+        }
+    }
+
+    false
 }
