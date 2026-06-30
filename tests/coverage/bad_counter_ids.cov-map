@@ -1,5 +1,5 @@
 Function name: bad_counter_ids::eq_bad
-Raw bytes (24): 0x[01, 01, 00, 04, 01, 24, 01, 00, 0c, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 00, 01, 01, 00, 02]
+Raw bytes (24): 0x[01, 02, 00, 04, 01, 24, 01, 00, 0c, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/bad_counter_ids.rs
 Number of expressions: 0
@@ -7,11 +7,24 @@ Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 36, 1) to (start + 0, 12)
 - Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
 - Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
-- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: bad_counter_ids::eq_bad::{closure#0}
+Raw bytes (30): 0x[01, 01, 00, 05, 01, 33, 33, 00, 53, 01, 00, 54, 00, 58, 01, 00, 5a, 00, 64, 01, 00, 66, 00, 71, 01, 00, 73, 00, 8f, 01]
+Number of files: 1
+- file 0 => $SRC_DIR/core/src/macros/mod.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 51, 51) to (start + 0, 83)
+- Code(Counter(0)) at (prev + 0, 84) to (start + 0, 88)
+- Code(Counter(0)) at (prev + 0, 90) to (start + 0, 100)
+- Code(Counter(0)) at (prev + 0, 102) to (start + 0, 113)
+- Code(Counter(0)) at (prev + 0, 115) to (start + 0, 143)
 Highest counter ID seen: c0
 
 Function name: bad_counter_ids::eq_bad_message
-Raw bytes (24): 0x[01, 01, 00, 04, 01, 29, 01, 00, 14, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 00, 01, 01, 00, 02]
+Raw bytes (24): 0x[01, 02, 00, 04, 01, 29, 01, 00, 14, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/bad_counter_ids.rs
 Number of expressions: 0
@@ -19,11 +32,24 @@ Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 41, 1) to (start + 0, 20)
 - Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
 - Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
-- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: bad_counter_ids::eq_bad_message::{closure#0}
+Raw bytes (30): 0x[01, 01, 00, 05, 01, 40, 32, 00, 52, 01, 00, 53, 00, 57, 01, 00, 59, 00, 63, 01, 00, 65, 00, 70, 01, 00, 72, 00, ae, 01]
+Number of files: 1
+- file 0 => $SRC_DIR/core/src/macros/mod.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 64, 50) to (start + 0, 82)
+- Code(Counter(0)) at (prev + 0, 83) to (start + 0, 87)
+- Code(Counter(0)) at (prev + 0, 89) to (start + 0, 99)
+- Code(Counter(0)) at (prev + 0, 101) to (start + 0, 112)
+- Code(Counter(0)) at (prev + 0, 114) to (start + 0, 174)
 Highest counter ID seen: c0
 
 Function name: bad_counter_ids::eq_good
-Raw bytes (24): 0x[01, 01, 00, 04, 01, 10, 01, 00, 0d, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
+Raw bytes (24): 0x[01, 02, 00, 04, 01, 10, 01, 00, 0d, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/bad_counter_ids.rs
 Number of expressions: 0
@@ -34,8 +60,21 @@ Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
 Highest counter ID seen: c0
 
+Function name: bad_counter_ids::eq_good::{closure#0} (unused)
+Raw bytes (30): 0x[01, 01, 00, 05, 00, 33, 33, 00, 53, 00, 00, 54, 00, 58, 00, 00, 5a, 00, 64, 00, 00, 66, 00, 71, 00, 00, 73, 00, 8f, 01]
+Number of files: 1
+- file 0 => $SRC_DIR/core/src/macros/mod.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Zero) at (prev + 51, 51) to (start + 0, 83)
+- Code(Zero) at (prev + 0, 84) to (start + 0, 88)
+- Code(Zero) at (prev + 0, 90) to (start + 0, 100)
+- Code(Zero) at (prev + 0, 102) to (start + 0, 113)
+- Code(Zero) at (prev + 0, 115) to (start + 0, 143)
+Highest counter ID seen: (none)
+
 Function name: bad_counter_ids::eq_good_message
-Raw bytes (24): 0x[01, 01, 00, 04, 01, 15, 01, 00, 15, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
+Raw bytes (24): 0x[01, 02, 00, 04, 01, 15, 01, 00, 15, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/bad_counter_ids.rs
 Number of expressions: 0
@@ -46,8 +85,21 @@ Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
 Highest counter ID seen: c0
 
+Function name: bad_counter_ids::eq_good_message::{closure#0} (unused)
+Raw bytes (30): 0x[01, 01, 00, 05, 00, 40, 32, 00, 52, 00, 00, 53, 00, 57, 00, 00, 59, 00, 63, 00, 00, 65, 00, 70, 00, 00, 72, 00, ae, 01]
+Number of files: 1
+- file 0 => $SRC_DIR/core/src/macros/mod.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Zero) at (prev + 64, 50) to (start + 0, 82)
+- Code(Zero) at (prev + 0, 83) to (start + 0, 87)
+- Code(Zero) at (prev + 0, 89) to (start + 0, 99)
+- Code(Zero) at (prev + 0, 101) to (start + 0, 112)
+- Code(Zero) at (prev + 0, 114) to (start + 0, 174)
+Highest counter ID seen: (none)
+
 Function name: bad_counter_ids::ne_bad
-Raw bytes (24): 0x[01, 01, 00, 04, 01, 2e, 01, 00, 0c, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 00, 01, 01, 00, 02]
+Raw bytes (24): 0x[01, 02, 00, 04, 01, 2e, 01, 00, 0c, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/bad_counter_ids.rs
 Number of expressions: 0
@@ -55,11 +107,24 @@ Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 46, 1) to (start + 0, 12)
 - Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
 - Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
-- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: bad_counter_ids::ne_bad::{closure#0}
+Raw bytes (30): 0x[01, 01, 00, 05, 01, 6b, 33, 00, 53, 01, 00, 54, 00, 58, 01, 00, 5a, 00, 64, 01, 00, 66, 00, 71, 01, 00, 73, 00, 8f, 01]
+Number of files: 1
+- file 0 => $SRC_DIR/core/src/macros/mod.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 107, 51) to (start + 0, 83)
+- Code(Counter(0)) at (prev + 0, 84) to (start + 0, 88)
+- Code(Counter(0)) at (prev + 0, 90) to (start + 0, 100)
+- Code(Counter(0)) at (prev + 0, 102) to (start + 0, 113)
+- Code(Counter(0)) at (prev + 0, 115) to (start + 0, 143)
 Highest counter ID seen: c0
 
 Function name: bad_counter_ids::ne_bad_message
-Raw bytes (24): 0x[01, 01, 00, 04, 01, 33, 01, 00, 14, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 00, 01, 01, 00, 02]
+Raw bytes (24): 0x[01, 02, 00, 04, 01, 33, 01, 00, 14, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/bad_counter_ids.rs
 Number of expressions: 0
@@ -67,11 +132,24 @@ Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 51, 1) to (start + 0, 20)
 - Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
 - Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
-- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: bad_counter_ids::ne_bad_message::{closure#0}
+Raw bytes (30): 0x[01, 01, 00, 05, 01, 78, 33, 00, 53, 01, 00, 54, 00, 58, 01, 00, 5a, 00, 64, 01, 00, 66, 00, 71, 01, 00, 73, 00, af, 01]
+Number of files: 1
+- file 0 => $SRC_DIR/core/src/macros/mod.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 120, 51) to (start + 0, 83)
+- Code(Counter(0)) at (prev + 0, 84) to (start + 0, 88)
+- Code(Counter(0)) at (prev + 0, 90) to (start + 0, 100)
+- Code(Counter(0)) at (prev + 0, 102) to (start + 0, 113)
+- Code(Counter(0)) at (prev + 0, 115) to (start + 0, 175)
 Highest counter ID seen: c0
 
 Function name: bad_counter_ids::ne_good
-Raw bytes (24): 0x[01, 01, 00, 04, 01, 1a, 01, 00, 0d, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
+Raw bytes (24): 0x[01, 02, 00, 04, 01, 1a, 01, 00, 0d, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/bad_counter_ids.rs
 Number of expressions: 0
@@ -82,8 +160,21 @@ Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
 Highest counter ID seen: c0
 
+Function name: bad_counter_ids::ne_good::{closure#0} (unused)
+Raw bytes (30): 0x[01, 01, 00, 05, 00, 6b, 33, 00, 53, 00, 00, 54, 00, 58, 00, 00, 5a, 00, 64, 00, 00, 66, 00, 71, 00, 00, 73, 00, 8f, 01]
+Number of files: 1
+- file 0 => $SRC_DIR/core/src/macros/mod.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Zero) at (prev + 107, 51) to (start + 0, 83)
+- Code(Zero) at (prev + 0, 84) to (start + 0, 88)
+- Code(Zero) at (prev + 0, 90) to (start + 0, 100)
+- Code(Zero) at (prev + 0, 102) to (start + 0, 113)
+- Code(Zero) at (prev + 0, 115) to (start + 0, 143)
+Highest counter ID seen: (none)
+
 Function name: bad_counter_ids::ne_good_message
-Raw bytes (24): 0x[01, 01, 00, 04, 01, 1f, 01, 00, 15, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
+Raw bytes (24): 0x[01, 02, 00, 04, 01, 1f, 01, 00, 15, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0f, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/bad_counter_ids.rs
 Number of expressions: 0
@@ -93,4 +184,17 @@ Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
 Highest counter ID seen: c0
+
+Function name: bad_counter_ids::ne_good_message::{closure#0} (unused)
+Raw bytes (30): 0x[01, 01, 00, 05, 00, 78, 33, 00, 53, 00, 00, 54, 00, 58, 00, 00, 5a, 00, 64, 00, 00, 66, 00, 71, 00, 00, 73, 00, af, 01]
+Number of files: 1
+- file 0 => $SRC_DIR/core/src/macros/mod.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Zero) at (prev + 120, 51) to (start + 0, 83)
+- Code(Zero) at (prev + 0, 84) to (start + 0, 88)
+- Code(Zero) at (prev + 0, 90) to (start + 0, 100)
+- Code(Zero) at (prev + 0, 102) to (start + 0, 113)
+- Code(Zero) at (prev + 0, 115) to (start + 0, 175)
+Highest counter ID seen: (none)
 

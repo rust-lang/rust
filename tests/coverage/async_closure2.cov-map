@@ -21,7 +21,7 @@ Number of file 0 mappings: 3
 Highest counter ID seen: c0
 
 Function name: async_closure2::main
-Raw bytes (54): 0x[01, 01, 00, 0a, 01, 10, 01, 00, 0e, 01, 01, 09, 00, 16, 01, 04, 05, 00, 17, 01, 00, 18, 00, 21, 01, 00, 22, 00, 2f, 01, 01, 05, 00, 0f, 01, 00, 10, 00, 15, 01, 00, 16, 00, 1a, 01, 00, 1b, 00, 2b, 05, 01, 01, 00, 02]
+Raw bytes (54): 0x[01, 01, 00, 0a, 01, 10, 01, 00, 0e, 01, 01, 09, 00, 16, 01, 04, 05, 00, 17, 01, 00, 18, 00, 21, 01, 00, 22, 00, 2f, 01, 01, 05, 00, 0f, 01, 00, 10, 00, 15, 01, 00, 16, 00, 1a, 01, 00, 1b, 00, 2b, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/async_closure2.rs
 Number of expressions: 0
@@ -35,8 +35,8 @@ Number of file 0 mappings: 10
 - Code(Counter(0)) at (prev + 0, 16) to (start + 0, 21)
 - Code(Counter(0)) at (prev + 0, 22) to (start + 0, 26)
 - Code(Counter(0)) at (prev + 0, 27) to (start + 0, 43)
-- Code(Counter(1)) at (prev + 1, 1) to (start + 0, 2)
-Highest counter ID seen: c1
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
 
 Function name: async_closure2::main::{closure#0}
 Raw bytes (44): 0x[01, 01, 00, 08, 01, 11, 22, 00, 23, 01, 01, 09, 00, 0e, 01, 00, 0f, 00, 18, 01, 00, 1c, 00, 2c, 01, 01, 09, 00, 0e, 01, 00, 0f, 00, 18, 01, 00, 1c, 00, 2c, 01, 01, 05, 00, 06]
@@ -69,4 +69,17 @@ Number of file 0 mappings: 8
 - Code(Zero) at (prev + 0, 28) to (start + 0, 44)
 - Code(Zero) at (prev + 1, 5) to (start + 0, 6)
 Highest counter ID seen: (none)
+
+Function name: async_closure2::main::{closure#1}
+Raw bytes (30): 0x[01, 02, 00, 05, 01, 33, 33, 00, 53, 01, 00, 54, 00, 58, 01, 00, 5a, 00, 64, 01, 00, 66, 00, 71, 01, 00, 73, 00, 8f, 01]
+Number of files: 1
+- file 0 => $SRC_DIR/core/src/macros/mod.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 51, 51) to (start + 0, 83)
+- Code(Counter(0)) at (prev + 0, 84) to (start + 0, 88)
+- Code(Counter(0)) at (prev + 0, 90) to (start + 0, 100)
+- Code(Counter(0)) at (prev + 0, 102) to (start + 0, 113)
+- Code(Counter(0)) at (prev + 0, 115) to (start + 0, 143)
+Highest counter ID seen: c0
 
