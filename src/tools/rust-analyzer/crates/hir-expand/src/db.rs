@@ -275,7 +275,7 @@ pub fn expand_speculative(
         }
         MacroDefKind::Declarative(it, _) => db
             .decl_macro_expander(loc.krate, it)
-            .expand_unhygienic(db, tt, loc.kind.call_style(), span),
+            .expand_unhygienic(db, &tt, loc.kind.call_style(), span),
         MacroDefKind::BuiltIn(_, it) => {
             it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
         }
@@ -547,9 +547,9 @@ fn macro_expand<'db>(
 
             let arg = macro_arg;
             let res = match loc.def.kind {
-                MacroDefKind::Declarative(id, _) => db
-                    .decl_macro_expander(loc.def.krate, id)
-                    .expand(db, arg.clone(), macro_call_id, span),
+                MacroDefKind::Declarative(id, _) => {
+                    db.decl_macro_expander(loc.def.krate, id).expand(db, arg, macro_call_id, span)
+                }
                 MacroDefKind::BuiltIn(_, it) => {
                     it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
                 }
@@ -589,7 +589,7 @@ fn macro_expand<'db>(
                 }
                 MacroDefKind::ProcMacro(_, _, _) => unreachable!(),
             };
-            (ExpandResult { value: res.value, err: res.err }, span)
+            (res, span)
         }
     };
 

@@ -32,7 +32,7 @@ impl DeclarativeMacroExpander {
     pub fn expand(
         &self,
         db: &dyn ExpandDatabase,
-        tt: tt::TopSubtree,
+        tt: &tt::TopSubtree,
         call_id: MacroCallId,
         span: Span,
     ) -> ExpandResult<(tt::TopSubtree, Option<u32>)> {
@@ -46,7 +46,7 @@ impl DeclarativeMacroExpander {
                 .mac
                 .expand(
                     db,
-                    &tt,
+                    tt,
                     |s| {
                         s.ctx =
                             apply_mark(db, s.ctx, call_id.into(), self.transparency, self.edition)
@@ -61,7 +61,7 @@ impl DeclarativeMacroExpander {
     pub fn expand_unhygienic(
         &self,
         db: &dyn ExpandDatabase,
-        tt: tt::TopSubtree,
+        tt: &tt::TopSubtree,
         call_style: MacroCallStyle,
         call_site: Span,
     ) -> ExpandResult<tt::TopSubtree> {
@@ -72,7 +72,7 @@ impl DeclarativeMacroExpander {
             ),
             None => self
                 .mac
-                .expand(db, &tt, |_| (), call_style, call_site)
+                .expand(db, tt, |_| (), call_style, call_site)
                 .map(TupleExt::head)
                 .map_err(Into::into),
         }
