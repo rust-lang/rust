@@ -222,7 +222,7 @@ error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetim
 LL |     let _: [u8; faz::<'a>(&())];
    |                       ^^
    |
-note: the late bound lifetime parameter is introduced here
+note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
   --> $DIR/const-arg-in-const-arg.rs:10:14
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
@@ -234,7 +234,7 @@ error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetim
 LL |     let _: [u8; faz::<'b>(&())];
    |                       ^^
    |
-note: the late bound lifetime parameter is introduced here
+note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
   --> $DIR/const-arg-in-const-arg.rs:10:14
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
@@ -273,7 +273,7 @@ error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetim
 LL |     let _ = [0; faz::<'a>(&())];
    |                       ^^
    |
-note: the late bound lifetime parameter is introduced here
+note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
   --> $DIR/const-arg-in-const-arg.rs:10:14
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
@@ -285,7 +285,7 @@ error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetim
 LL |     let _ = [0; faz::<'b>(&())];
    |                       ^^
    |
-note: the late bound lifetime parameter is introduced here
+note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
   --> $DIR/const-arg-in-const-arg.rs:10:14
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
@@ -308,7 +308,7 @@ error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetim
 LL |     let _: Foo<{ faz::<'a>(&()) }>;
    |                        ^^
    |
-note: the late bound lifetime parameter is introduced here
+note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
   --> $DIR/const-arg-in-const-arg.rs:10:14
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
@@ -320,7 +320,7 @@ error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetim
 LL |     let _: Foo<{ faz::<'b>(&()) }>;
    |                        ^^
    |
-note: the late bound lifetime parameter is introduced here
+note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
   --> $DIR/const-arg-in-const-arg.rs:10:14
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
@@ -343,7 +343,7 @@ error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetim
 LL |     let _ = Foo::<{ faz::<'a>(&()) }>;
    |                           ^^
    |
-note: the late bound lifetime parameter is introduced here
+note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
   --> $DIR/const-arg-in-const-arg.rs:10:14
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
@@ -355,7 +355,7 @@ error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetim
 LL |     let _ = Foo::<{ faz::<'b>(&()) }>;
    |                           ^^
    |
-note: the late bound lifetime parameter is introduced here
+note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
   --> $DIR/const-arg-in-const-arg.rs:10:14
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }

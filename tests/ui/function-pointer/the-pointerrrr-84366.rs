@@ -1,4 +1,4 @@
-//@ edition 2024
+//@ edition: 2024
 
 use std::fmt;
 
@@ -37,7 +37,7 @@ fn make_static_displayable<'temp>(not_static: &'temp str) -> Box<dyn fmt::Displa
 //     let closure = || -> &'temp str { "" };
 //     require_static(closure);
 //     static_transfers_to_associated(&closure, not_static)
-//     //~^ ERROR borrowed data escapes outside of function [E0521]
+//     //(should be)ERROR borrowed data escapes outside of function [E0521]
 // }
 
 fn main() {

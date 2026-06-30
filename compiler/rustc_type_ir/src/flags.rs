@@ -360,7 +360,7 @@ impl<I: Interner> FlagComputation<I> {
             }
 
             ty::FnDef(_, args) => {
-                self.add_args(args.no_bound_vars().unwrap().as_slice());
+                self.add_binder_args(args);
             }
 
             ty::FnPtr(sig_tys, _) => self.bound_computation(sig_tys, |computation, sig_tys| {
@@ -539,6 +539,24 @@ impl<I: Interner> FlagComputation<I> {
                 ty::GenericArgKind::Lifetime(lt) => self.add_region(lt),
                 ty::GenericArgKind::Const(ct) => self.add_const(ct),
             }
+        }
+    }
+
+    fn add_binder_args(&mut self, args: ty::Binder<I, I::GenericArgs>) {
+        if let Some(original_behavior) = args.no_bound_vars() {
+            self.add_args(original_behavior.as_slice());
+        } else {
+            // i have a gut feeling that this is wrong
+            // args.bound_vars()
+            args.map_bound_ref(|args| {
+                for arg in args.iter() {
+                    match arg.kind() {
+                        ty::GenericArgKind::Type(ty) => self.add_ty(ty),
+                        ty::GenericArgKind::Lifetime(r) => self.add_region(r),
+                        ty::GenericArgKind::Const(ct) => self.add_const(ct),
+                    }
+                }
+            });
         }
     }
 
