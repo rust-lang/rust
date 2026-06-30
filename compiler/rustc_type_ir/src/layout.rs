@@ -50,6 +50,31 @@ impl<I: Interner> AsRef<LayoutData<FieldIdx, VariantIdx>> for TyAndLayout<I> {
     }
 }
 
+#[cfg(feature = "nightly")]
+impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E> for TyAndLayout<I>
+where
+    I::Layout: rustc_serialize::Encodable<E>,
+    I::Ty: rustc_serialize::Encodable<E>,
+{
+    fn encode(&self, s: &mut E) {
+        self.layout.encode(s);
+        self.ty.encode(s);
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D> for TyAndLayout<I>
+where
+    I::Layout: rustc_serialize::Decodable<D>,
+    I::Ty: rustc_serialize::Decodable<D>,
+{
+    fn decode(decoder: &mut D) -> Self {
+        let layout = I::Layout::decode(decoder);
+        let ty = I::Ty::decode(decoder);
+        Self { layout, ty }
+    }
+}
+
 /// Trait that needs to be implemented by the higher-level type representation
 /// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
 pub trait TyAbiInterface<C>: Interner {

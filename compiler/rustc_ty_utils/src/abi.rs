@@ -596,7 +596,7 @@ fn fn_abi_new_uncached<'tcx>(
         let _entered = span.enter();
         let is_return = arg_idx.is_none();
 
-        let layout = cx.layout_of(ty).map_err(|err| &*tcx.arena.alloc(FnAbiError::Layout(*err)))?;
+        let layout = cx.layout_of(ty).map_err(|err| &*tcx.arena.alloc(FnAbiError::Layout(err)))?;
         let layout = if is_virtual_call && arg_idx == Some(0) {
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`

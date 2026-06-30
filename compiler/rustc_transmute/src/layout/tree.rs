@@ -272,8 +272,8 @@ pub(crate) mod rustc {
         TypeError(ErrorGuaranteed),
     }
 
-    impl<'tcx> From<&LayoutError<'tcx>> for Err {
-        fn from(err: &LayoutError<'tcx>) -> Self {
+    impl<'tcx> From<LayoutError<'tcx>> for Err {
+        fn from(err: LayoutError<'tcx>) -> Self {
             match err {
                 LayoutError::Unknown(..)
                 | LayoutError::ReferencesError(..)

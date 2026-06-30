@@ -1736,10 +1736,11 @@ rustc_queries! {
     /// executes in `TypingMode::PostAnalysis`, and will normalize the input type.
     query layout_of(
         key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>
-    ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
+    ) -> Result<ty::layout::TyAndLayout<'tcx>, ty::layout::LayoutError<'tcx>> {
         depth_limit
         desc { "computing layout of `{}`", key.value }
         handle_cycle_error
+        cache_on_disk
     }
 
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
@@ -2644,7 +2645,7 @@ rustc_queries! {
         desc { "computing the backend features for CLI flags" }
     }
 
-    query check_validity_requirement(key: (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>)) -> Result<bool, &'tcx ty::layout::LayoutError<'tcx>> {
+    query check_validity_requirement(key: (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>)) -> Result<bool, ty::layout::LayoutError<'tcx>> {
         desc { "checking validity requirement for `{}`: {}", key.1.value, key.0 }
     }
 

@@ -1886,8 +1886,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Arena-alloc of LayoutError for coroutine layout
-    fn layout_error(self, err: LayoutError<'tcx>) -> &'tcx LayoutError<'tcx> {
-        self.arena.alloc(err)
+    fn layout_error(self, err: LayoutError<'tcx>) -> LayoutError<'tcx> {
+        err
     }
 
     /// Returns layout of a non-async-drop coroutine. Layout might be unavailable if the
@@ -1899,7 +1899,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, LayoutError<'tcx>> {
         let coroutine_kind_ty = args.as_coroutine().kind_ty();
         let mir = self.optimized_mir(def_id);
         let ty = || Ty::new_coroutine(self, def_id, args);
@@ -1940,7 +1940,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, LayoutError<'tcx>> {
         let ty = || Ty::new_coroutine(self, def_id, args);
         if args[0].has_placeholders() || args[0].has_non_region_param() {
             return Err(self.layout_error(LayoutError::TooGeneric(ty())));
@@ -1957,7 +1957,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, LayoutError<'tcx>> {
         if self.is_async_drop_in_place_coroutine(def_id) {
             // layout of `async_drop_in_place<T>::{closure}` in case,
             // when T is a coroutine, contains this internal coroutine's ptr in upvars

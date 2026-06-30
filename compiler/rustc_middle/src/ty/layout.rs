@@ -333,7 +333,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         span: Span,
-    ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
         Self::compute_inner(ty, tcx, typing_env, span, 0)
     }
 
@@ -343,7 +343,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
         span: Span,
         depth: usize,
-    ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
         debug_assert!(!ty.has_non_region_infer());
 
         // Bail out if we've recursed too deeply (issue #156137); a cyclic type
@@ -361,7 +361,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 ty,
                 suggested_limit,
             });
-            return Err(tcx.arena.alloc(LayoutError::ReferencesError(reported)));
+            return Err(LayoutError::ReferencesError(reported));
         }
 
         // First try computing a static layout.
@@ -371,7 +371,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     return Ok(SizeSkeleton::Known(layout.size, Some(layout.align.abi)));
                 } else {
                     // Just to be safe, don't claim a known layout for unsized types.
-                    return Err(tcx.arena.alloc(LayoutError::Unknown(ty)));
+                    return Err(LayoutError::Unknown(ty));
                 }
             }
             Err(err @ LayoutError::TooGeneric(_)) => err,
@@ -423,7 +423,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     }
                     ty::Error(guar) => {
                         // Fixes ICE #124031
-                        return Err(tcx.arena.alloc(LayoutError::ReferencesError(*guar)));
+                        return Err(LayoutError::ReferencesError(*guar));
                     }
                     _ => bug!(
                         "SizeSkeleton::compute({ty}): layout errored ({err:?}), yet \
@@ -445,7 +445,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                             let size = s
                                 .bytes()
                                 .checked_mul(c)
-                                .ok_or_else(|| &*tcx.arena.alloc(LayoutError::SizeOverflow(ty)))?;
+                                .ok_or_else(|| LayoutError::SizeOverflow(ty))?;
                             // Alignment is unchanged by arrays.
                             return Ok(SizeSkeleton::Known(Size::from_bytes(size), a));
                         }
@@ -754,7 +754,7 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
 
         MaybeResult::from(
             tcx.layout_of(self.typing_env().as_query_input(ty))
-                .map_err(|err| self.handle_layout_err(*err, span, ty)),
+                .map_err(|err| self.handle_layout_err(err, span, ty)),
         )
     }
 }
@@ -762,16 +762,11 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
 impl<'tcx, C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
 
 impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx> {
-    type LayoutOfResult = Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>;
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     #[inline]
-    fn handle_layout_err(
-        &self,
-        err: LayoutError<'tcx>,
-        _: Span,
-        _: Ty<'tcx>,
-    ) -> &'tcx LayoutError<'tcx> {
-        self.tcx().arena.alloc(err)
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
+        err
     }
 }
 
