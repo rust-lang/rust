@@ -1117,13 +1117,30 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn export_symbols(
-        &mut self,
-        _tmpdir: &Path,
-        _crate_type: CrateType,
-        _symbols: &[SymbolExport],
-    ) {
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, _symbols: &[SymbolExport]) {
         // We already add /EXPORT arguments to the .drectve section of symbols.o.
+        // Keep passing an empty .def file: link.exe otherwise skips the import
+        // library for DLLs with no exports.
+        if crate_type == CrateType::Executable {
+            let should_export_executable_symbols =
+                self.sess.opts.unstable_opts.export_executable_symbols;
+            if !should_export_executable_symbols {
+                return;
+            }
+        }
+
+        let path = tmpdir.join("lib.def");
+        let res = try {
+            let mut f = File::create_buffered(&path)?;
+            writeln!(f, "LIBRARY")?;
+            writeln!(f, "EXPORTS")?;
+        };
+        if let Err(error) = res {
+            self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
+        }
+        let mut arg = OsString::from("/DEF:");
+        arg.push(path);
+        self.link_arg(&arg);
     }
 
     fn windows_subsystem(&mut self, subsystem: WindowsSubsystemKind) {
