@@ -342,7 +342,7 @@ impl File {
         }
 
         let fd = unsafe { cvt(hermit_abi::open(path.as_ptr(), flags, mode))? };
-        Ok(File(unsafe { FileDesc::from_raw_fd(fd as i32) }))
+        Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
@@ -516,7 +516,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
     let fd_raw = run_path_with_cstr(path, &|path| {
         cvt(unsafe { hermit_abi::open(path.as_ptr(), O_RDONLY | O_DIRECTORY, 0) })
     })?;
-    let fd = unsafe { FileDesc::from_raw_fd(fd_raw as i32) };
+    let fd = unsafe { FileDesc::from_raw_fd(fd_raw) };
     let root = path.to_path_buf();
 
     // read all director entries
