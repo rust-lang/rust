@@ -7,7 +7,7 @@ const fn test() -> impl [const] Fn() {
         match sl {
             [first, remainder @ ..] => {
                 assert_eq!(first, &b'f');
-                //~^ ERROR cannot call non-const function
+                //~^ ERROR is not satisfied
             }
             [] => panic!(),
         }

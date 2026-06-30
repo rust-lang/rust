@@ -448,6 +448,6 @@ fn assert_failed_inner(
 #[inline(never)]
 #[cold]
 #[rustc_const_unstable(feature = "panic_internals", issue = "none")]
-pub const fn outline<T, F: ~const FnOnce() -> T>(f: F) -> T {
+pub const fn outline<T, F: [const] FnOnce() -> T>(f: F) -> T {
     f()
 }
