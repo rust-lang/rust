@@ -99,3 +99,9 @@ src/ci/docker/scripts/solaris-toolchain.sh
 # Shell scripts with alignments with previous line
 src/ci/docker/host-x86_64/disabled/dist-x86_64-haiku/llvm-config.sh
 src/etc/pre-push.sh
+
+# The clap_complete output uses tabs but there is a fix for the next version:
+# https://github.com/clap-rs/clap/pull/6422
+# When src/bootstrap/Cargo.toml is using a clap_complete version with that fix,
+# this ignore can be removed.
+src/etc/completions/*.fish
