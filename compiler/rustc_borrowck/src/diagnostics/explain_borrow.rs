@@ -20,9 +20,9 @@ use tracing::{debug, instrument};
 
 use super::{RegionName, UseSpans, find_use};
 use crate::borrow_set::BorrowData;
-use crate::constraints::OutlivesConstraint;
+use crate::consumers::OutlivesConstraint;
 use crate::nll::ConstraintDescription;
-use crate::region_infer::{BlameConstraint, Cause};
+use crate::region_infer::{BestBlame, Cause};
 use crate::{MirBorrowckCtxt, WriteKind};
 
 #[derive(Debug)]
@@ -35,12 +35,9 @@ pub(crate) enum BorrowExplanation<'tcx> {
         should_note_order: bool,
     },
     MustBeValidFor {
-        category: ConstraintCategory<'tcx>,
-        from_closure: bool,
-        span: Span,
+        best_blame: BestBlame<'tcx>,
         region_name: RegionName,
         opt_place_desc: Option<String>,
-        path: Vec<OutlivesConstraint<'tcx>>,
     },
     Unexplained,
 }
@@ -376,13 +373,13 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 }
             }
             BorrowExplanation::MustBeValidFor {
-                category,
-                span,
                 ref region_name,
                 ref opt_place_desc,
-                from_closure: _,
-                ref path,
+                ref best_blame,
             } => {
+                let OutlivesConstraint { category, span, .. } = *best_blame.constraint();
+                let path = best_blame.path();
+
                 region_name.highlight_region_name(err);
 
                 if let Some(desc) = opt_place_desc {
@@ -689,22 +686,18 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 // Here, under NLL: no cause was found. Under polonius: no cause was found, or a
                 // boring local was found, which we ignore like NLLs do to match its diagnostics.
                 if let Some(region) = self.regioncx.to_error_region_vid(borrow_region_vid) {
-                    let (blame_constraint, path) = self.regioncx.best_blame_constraint(
+                    let best_blame = self.regioncx.best_blame_constraint(
                         borrow_region_vid,
                         NllRegionVariableOrigin::FreeRegion,
                         region,
                     );
-                    let BlameConstraint { category, from_closure, span, .. } = blame_constraint;
 
                     if let Some(region_name) = self.give_region_a_name(region) {
                         let opt_place_desc = self.describe_place(borrow.borrowed_place.as_ref());
                         BorrowExplanation::MustBeValidFor {
-                            category,
-                            from_closure,
-                            span,
                             region_name,
                             opt_place_desc,
-                            path,
+                            best_blame,
                         }
                     } else {
                         debug!("Could not generate a region name");
