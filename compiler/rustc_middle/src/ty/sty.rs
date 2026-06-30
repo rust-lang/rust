@@ -1256,6 +1256,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_erased(self) -> bool {
+        matches!(self.kind(), ty::Erased(..))
+    }
+
+    #[inline]
     pub fn is_slice(self) -> bool {
         matches!(self.kind(), Slice(_))
     }

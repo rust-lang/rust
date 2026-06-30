@@ -1,5 +1,5 @@
 use std::fmt::Write;
-use std::hash::Hasher;
+use std::hash::{Hash, Hasher};
 use std::iter;
 use std::ops::Range;
 
@@ -324,6 +324,18 @@ impl<'tcx> V0SymbolMangler<'tcx> {
             }
         })
     }
+
+    fn print_param_layout(
+        &mut self,
+        param_layout: ty::ParamLayout<'tcx>,
+    ) -> Result<(), std::fmt::Error> {
+        // TODO: this hashing is a really hacky temporary approach
+        let mut hasher = std::hash::DefaultHasher::new();
+        param_layout.hash(&mut hasher);
+        let hash = hasher.finish();
+        self.push_integer_62(hash);
+        Ok(())
+    }
 }
 
 impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
@@ -534,8 +546,13 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             }
             ty::Tuple(_) if ty.is_unit() => unreachable!(),
             ty::Param(_) => unreachable!(),
-            // TODO: implement
-            ty::Erased(..) => todo!(),
+            // TODO: this needs more thought and design work
+            ty::Erased(param_ty, param_layout) => {
+                self.push("C5EP");
+                self.push_integer_62(param_ty.index.into());
+                self.push("L");
+                self.print_param_layout(param_layout)?;
+            }
 
             ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
 
