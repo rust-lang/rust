@@ -2422,8 +2422,7 @@ impl Config {
         });
         let sysroot_src =
             self.cargo_sysrootSrc(source_root).as_ref().map(|sysroot| self.root_path.join(sysroot));
-        let config_path =
-            self.cargo_configPath(source_root).as_ref().map(|path| self.root_path.join(path));
+        let config_path = self.cargo_config_path(source_root);
         let extra_includes = self
             .vfs_extraIncludes(source_root)
             .iter()
@@ -2580,6 +2579,7 @@ impl Config {
             extra_env: self.extra_env(source_root).clone(),
             target_dir_config: self.target_dir_from_config(source_root),
             set_test: true,
+            config_path: self.cargo_config_path(source_root),
         }
     }
 
@@ -2636,12 +2636,17 @@ impl Config {
                     extra_args: self.check_extra_args(source_root),
                     extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
                     extra_env: self.check_extra_env(source_root),
+                    config_path: self.cargo_config_path(source_root),
                     target_dir_config: self.target_dir_from_config(source_root),
                     set_test: *self.cfg_setTest(source_root),
                 },
                 ansi_color_output: self.color_diagnostic_output(),
             },
         }
+    }
+
+    fn cargo_config_path(&self, source_root: Option<SourceRootId>) -> Option<AbsPathBuf> {
+        self.cargo_configPath(source_root).as_ref().map(|path| self.root_path.join(path))
     }
 
     fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> TargetDirectoryConfig {
