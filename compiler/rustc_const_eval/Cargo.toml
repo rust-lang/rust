@@ -19,7 +19,6 @@ rustc_middle = { path = "../rustc_middle" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
-rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 tracing = "0.1"
 # tidy-alphabetical-end

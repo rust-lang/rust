@@ -3,10 +3,10 @@
 use rustc_abi::{BackendRepr, CanonAbi, ExternAbi, RegKind, X86Call};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
-use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, FnAbi, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
-use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_target::callconv::PassMode;
 
 use crate::diagnostics;
 
@@ -50,7 +50,7 @@ fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorReg
 /// this is only relevant for the wording in the emitted error.
 fn do_check_simd_vector_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
-    abi: &FnAbi<'tcx, Ty<'tcx>>,
+    abi: &FnAbi<'tcx>,
     def_id: DefId,
     is_call: bool,
     loc: impl Fn() -> (Span, HirId),
@@ -130,7 +130,7 @@ fn do_check_simd_vector_abi<'tcx>(
 /// this is only relevant for the wording in the emitted error.
 fn do_check_unsized_params<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    fn_abi: &FnAbi<'tcx>,
     is_call: bool,
     loc: impl Fn() -> (Span, HirId),
 ) {

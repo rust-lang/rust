@@ -1,11 +1,15 @@
+#![allow(rustc::direct_use_of_rustc_type_ir)]
+
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
+use derive_where::derive_where;
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Primitive,
-    Reg, RegKind, Scalar, Size, TyAbiInterface, TyAndLayout, Variants,
+    AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout,
+    Heterogeneous, HomogeneousAggregate, Primitive, Reg, RegKind, Scalar, Size, Variants,
 };
-use rustc_macros::StableHash;
+use rustc_macros::{StableHash, StableHash_NoContext};
+use rustc_type_ir::{Interner, TyAbiInterface, TyAndLayout};
 
 pub use crate::spec::AbiMap;
 use crate::spec::{Arch, HasTargetSpec, HasX86AbiOpt};
@@ -373,25 +377,29 @@ impl CastTarget {
 
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
-#[derive(Clone, PartialEq, Eq, Hash, StableHash)]
-pub struct ArgAbi<'a, Ty> {
-    pub layout: TyAndLayout<'a, Ty>,
+#[derive_where(Clone, PartialEq, Eq, Hash; I: Interner)]
+#[derive(StableHash_NoContext)]
+pub struct ArgAbi<I: Interner> {
+    pub layout: TyAndLayout<I>,
     pub mode: PassMode,
 }
 
 // Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
-impl<'a, Ty: fmt::Display> fmt::Debug for ArgAbi<'a, Ty> {
+impl<I: Interner> fmt::Debug for ArgAbi<I>
+where
+    I::Ty: fmt::Display,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ArgAbi { layout, mode } = self;
         f.debug_struct("ArgAbi").field("layout", layout).field("mode", mode).finish()
     }
 }
 
-impl<'a, Ty> ArgAbi<'a, Ty> {
+impl<I: Interner> ArgAbi<I> {
     /// This defines the "default ABI" for that type, that is then later adjusted in `fn_abi_adjust_for_abi`.
     pub fn new(
         cx: &impl HasDataLayout,
-        layout: TyAndLayout<'a, Ty>,
+        layout: TyAndLayout<I>,
         scalar_attrs: impl Fn(Scalar, Size) -> ArgAttributes,
     ) -> Self {
         let mode = match layout.backend_repr {
@@ -408,7 +416,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         ArgAbi { layout, mode }
     }
 
-    fn indirect_pass_mode(layout: &TyAndLayout<'a, Ty>) -> PassMode {
+    fn indirect_pass_mode(layout: &TyAndLayout<I>) -> PassMode {
         let mut attrs = ArgAttributes::new();
 
         // For non-immediate arguments the callee gets its own copy of
@@ -553,10 +561,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
     /// Checks if these two `ArgAbi` are equal enough to be considered "the same for all
     /// function call ABIs".
-    pub fn eq_abi(&self, other: &Self) -> bool
-    where
-        Ty: PartialEq,
-    {
+    pub fn eq_abi(&self, other: &Self) -> bool {
         // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
         // at the type.
         self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode) && {
@@ -600,13 +605,14 @@ impl RiscvInterruptKind {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(Clone, PartialEq, Eq, Hash, StableHash)]
-pub struct FnAbi<'a, Ty> {
+#[derive_where(Clone, PartialEq, Eq, Hash; I: Interner)]
+#[derive(StableHash_NoContext)]
+pub struct FnAbi<I: Interner> {
     /// The type, layout, and information about how each argument is passed.
-    pub args: Box<[ArgAbi<'a, Ty>]>,
+    pub args: Box<[ArgAbi<I>]>,
 
     /// The layout, type, and the way a value is returned from this function.
-    pub ret: ArgAbi<'a, Ty>,
+    pub ret: ArgAbi<I>,
 
     /// Marks this function as variadic (accepting a variable number of arguments).
     pub c_variadic: bool,
@@ -623,7 +629,7 @@ pub struct FnAbi<'a, Ty> {
 }
 
 // Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
-impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
+impl<I: Interner> fmt::Debug for FnAbi<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let FnAbi { args, ret, c_variadic, fixed_count, conv, can_unwind } = self;
         f.debug_struct("FnAbi")
@@ -637,10 +643,10 @@ impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
     }
 }
 
-impl<'a, Ty> FnAbi<'a, Ty> {
+impl<I: Interner> FnAbi<I> {
     pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C, abi: ExternAbi)
     where
-        Ty: TyAbiInterface<'a, C> + Copy,
+        I: TyAbiInterface<C> + Copy,
         C: HasDataLayout + HasTargetSpec + HasX86AbiOpt,
     {
         if abi == ExternAbi::X86Interrupt {
@@ -727,7 +733,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 
     pub fn adjust_for_rust_abi<C>(&mut self, cx: &C)
     where
-        Ty: TyAbiInterface<'a, C> + Copy,
+        I: TyAbiInterface<C>,
         C: HasDataLayout + HasTargetSpec,
     {
         let spec = cx.target_spec();
@@ -864,15 +870,158 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     }
 }
 
+/// Returns `Homogeneous` if this layout is an aggregate containing fields of
+/// only a single type (e.g., `(u32, u32)`). Such aggregates are often
+/// special-cased in ABIs.
+///
+/// Note: We generally ignore 1-ZST fields when computing this value (see #56877).
+///
+/// This is public so that it can be used in unit tests, but
+/// should generally only be relevant to the ABI details of
+/// specific targets.
+#[tracing::instrument(skip(cx), level = "debug")]
+pub fn homogeneous_aggregate<C, I: Interner>(
+    cx: &C,
+    layout: TyAndLayout<I>,
+) -> Result<HomogeneousAggregate, Heterogeneous>
+where
+    I: TyAbiInterface<C>,
+    I::Ty: std::fmt::Display,
+{
+    match layout.backend_repr {
+        // The primitive for this algorithm.
+        BackendRepr::Scalar(scalar) => {
+            let kind = match scalar.primitive() {
+                Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
+                Primitive::Float(_) => RegKind::Float,
+            };
+            Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: layout.size }))
+        }
+
+        BackendRepr::SimdVector { element, count: _ } => {
+            assert!(!layout.is_zst());
+
+            Ok(HomogeneousAggregate::Homogeneous(Reg {
+                kind: RegKind::Vector { hint_vector_elem: element.primitive() },
+                size: layout.size,
+            }))
+        }
+
+        BackendRepr::SimdScalableVector { .. } => {
+            unreachable!("`homogeneous_aggregate` should not be called for scalable vectors")
+        }
+
+        BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
+            // Helper for computing `homogeneous_aggregate`, allowing a custom
+            // starting offset (used below for handling variants).
+            let from_fields_at =
+                |layout: TyAndLayout<I>,
+                 start: Size|
+                 -> Result<(HomogeneousAggregate, Size), Heterogeneous> {
+                    let is_union = match layout.fields {
+                        FieldsShape::Primitive => {
+                            unreachable!("aggregates can't have `FieldsShape::Primitive`")
+                        }
+                        FieldsShape::Array { count, .. } => {
+                            assert_eq!(start, Size::ZERO);
+
+                            let result = if count > 0 {
+                                homogeneous_aggregate(cx, layout.field(cx, 0))?
+                            } else {
+                                HomogeneousAggregate::NoData
+                            };
+                            return Ok((result, layout.size));
+                        }
+                        FieldsShape::Union(_) => true,
+                        FieldsShape::Arbitrary { .. } => false,
+                    };
+
+                    let mut result = HomogeneousAggregate::NoData;
+                    let mut total = start;
+
+                    for i in 0..layout.fields.count() {
+                        let field = layout.field(cx, i);
+                        if field.is_1zst() {
+                            // No data here and no impact on layout, can be ignored.
+                            // (We might be able to also ignore all aligned ZST but that's less clear.)
+                            continue;
+                        }
+
+                        if !is_union && total != layout.fields.offset(i) {
+                            // This field isn't just after the previous one we considered, abort.
+                            return Err(Heterogeneous);
+                        }
+
+                        result = result.merge(homogeneous_aggregate(cx, field)?)?;
+
+                        // Keep track of the offset (without padding).
+                        let size = field.size;
+                        if is_union {
+                            total = total.max(size);
+                        } else {
+                            total += size;
+                        }
+                    }
+
+                    Ok((result, total))
+                };
+
+            let (mut result, mut total) = from_fields_at(layout, Size::ZERO)?;
+
+            match &layout.variants {
+                Variants::Single { .. } | Variants::Empty => {}
+                Variants::Multiple { variants, .. } => {
+                    // Treat enum variants like union members.
+                    // HACK(eddyb) pretend the `enum` field (discriminant)
+                    // is at the start of every variant (otherwise the gap
+                    // at the start of all variants would disqualify them).
+                    //
+                    // NB: for all tagged `enum`s (which include all non-C-like
+                    // `enum`s with defined FFI representation), this will
+                    // match the homogeneous computation on the equivalent
+                    // `struct { tag; union { variant1; ... } }` and/or
+                    // `union { struct { tag; variant1; } ... }`
+                    // (the offsets of variant fields should be identical
+                    // between the two for either to be a homogeneous aggregate).
+                    let variant_start = total;
+                    for variant_idx in variants.indices() {
+                        let (variant_result, variant_total) =
+                            from_fields_at(layout.for_variant(cx, variant_idx), variant_start)?;
+
+                        result = result.merge(variant_result)?;
+                        total = total.max(variant_total);
+                    }
+                }
+            }
+
+            // There needs to be no padding.
+            if total != layout.size {
+                Err(Heterogeneous)
+            } else {
+                match result {
+                    HomogeneousAggregate::Homogeneous(_) => {
+                        assert_ne!(total, Size::ZERO);
+                    }
+                    HomogeneousAggregate::NoData => {
+                        assert_eq!(total, Size::ZERO);
+                    }
+                }
+                Ok(result)
+            }
+        }
+        BackendRepr::Memory { sized: false } => Err(Heterogeneous),
+    }
+}
+
 /// Determines whether `layout` contains no uninit bytes (no padding, no unions),
 /// using only the computed layout.
 ///
 /// Conservative: returns `false` for anything it cannot prove fully initialized,
 /// including multi-variant enums and SIMD vectors.
 // FIXME: extend to multi-variant enums (per-variant padding analysis needed).
-fn layout_is_noundef<'a, Ty, C>(layout: TyAndLayout<'a, Ty>, cx: &C) -> bool
+fn layout_is_noundef<I: Interner, C>(layout: TyAndLayout<I>, cx: &C) -> bool
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     match layout.backend_repr {
@@ -902,9 +1051,9 @@ where
 
 /// Returns `true` if the fields of `layout` contiguously cover bytes `0..layout.size`
 /// with no padding gaps and each field is recursively `layout_is_noundef`.
-fn fields_are_noundef<'a, Ty, C>(layout: TyAndLayout<'a, Ty>, cx: &C) -> bool
+fn fields_are_noundef<I: Interner, C>(layout: TyAndLayout<I>, cx: &C) -> bool
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     let mut cursor = Size::ZERO;
@@ -922,16 +1071,4 @@ where
         cursor += field.size;
     }
     cursor == layout.size
-}
-
-// Some types are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(target_pointer_width = "64")]
-mod size_asserts {
-    use rustc_data_structures::static_assert_size;
-
-    use super::*;
-    // tidy-alphabetical-start
-    static_assert_size!(ArgAbi<'_, usize>, 56);
-    static_assert_size!(FnAbi<'_, usize>, 80);
-    // tidy-alphabetical-end
 }

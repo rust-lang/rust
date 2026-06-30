@@ -1,7 +1,6 @@
 use rustc_abi::CanonAbi;
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
+use rustc_middle::ty::FnAbi;
 
 use super::{
     packssdw, packsswb, packusdw, packuswb, permute, permute2, pmaddbw, pmaddwd, psadbw, pshufb,
@@ -13,7 +12,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_avx512_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {

@@ -17,9 +17,8 @@ use itertools::Itertools;
 use rustc_abi::AddressSpace;
 use rustc_codegen_ssa::traits::{MiscCodegenMethods, TypeMembershipCodegenMethods};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_middle::ty::{Instance, Ty};
+use rustc_middle::ty::{FnAbi, Instance};
 use rustc_sanitizers::{cfi, kcfi};
-use rustc_target::callconv::FnAbi;
 use smallvec::SmallVec;
 use tracing::debug;
 
@@ -173,7 +172,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn declare_fn(
         &self,
         name: &str,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx>,
         instance: Option<Instance<'tcx>>,
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);

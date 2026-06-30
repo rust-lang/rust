@@ -4,10 +4,10 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};
 use rustc_middle::mono::{MonoItemData, Visibility};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{ArgAbi, FnAbi, Instance, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, ty};
 use rustc_span::sym;
-use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
+use rustc_target::callconv::PassMode;
 use rustc_target::spec::{Arch, BinaryFormat, Env, Os};
 
 use crate::common;
@@ -18,7 +18,7 @@ pub fn codegen_naked_asm<
     'a,
     'tcx,
     Cx: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
-        + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
+        + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx>>
         + AsmCodegenMethods<'tcx>,
 >(
     cx: &'a mut Cx,
@@ -120,7 +120,7 @@ fn prefix_and_suffix<'tcx>(
     instance: Instance<'tcx>,
     asm_name: &str,
     item_data: MonoItemData,
-    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    fn_abi: &FnAbi<'tcx>,
 ) -> (String, String) {
     use std::fmt::Write;
 
@@ -389,7 +389,7 @@ fn prefix_and_suffix<'tcx>(
 /// The webassembly type signature for the given function.
 ///
 /// Used by the `.functype` directive on wasm targets.
-fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> String {
+fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx>) -> String {
     let mut signature = String::with_capacity(64);
 
     let ptr_type = match tcx.data_layout.pointer_size().bits() {
@@ -428,7 +428,7 @@ fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Str
     signature
 }
 
-fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_type: &'static str) {
+fn wasm_type(signature: &mut String, arg_abi: &ArgAbi<'_>, ptr_type: &'static str) {
     match arg_abi.mode {
         PassMode::Ignore => { /* do nothing */ }
         PassMode::Direct(_) => {

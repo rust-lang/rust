@@ -260,7 +260,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // `Layout` is interned, so we can do a cheap check for things that are
         // exactly the same and thus don't need any handling.
-        if abi::Layout::eq(&operand.layout.layout, &cast.layout) {
+        if ty::Layout::eq(&operand.layout.layout, &cast.layout) {
             return operand.val;
         }
 

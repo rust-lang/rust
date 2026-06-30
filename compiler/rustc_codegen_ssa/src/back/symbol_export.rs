@@ -618,7 +618,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
 fn calling_convention_for_symbol<'tcx>(
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
-) -> (CanonAbi, &'tcx [rustc_target::callconv::ArgAbi<'tcx, Ty<'tcx>>]) {
+) -> (CanonAbi, &'tcx [ty::ArgAbi<'tcx>]) {
     let instance = match symbol {
         ExportedSymbol::NonGeneric(def_id) | ExportedSymbol::Generic(def_id, _)
             if tcx.is_static(def_id) =>

@@ -19,11 +19,10 @@ use indexmap::IndexSet;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
-use rustc_middle::ty::Unnormalized;
+use rustc_middle::ty::{FnAbi, Unnormalized};
 use rustc_session::Session;
 use rustc_session::config::DebugInfo;
 use rustc_span::{RemapPathScopeComponents, SourceFileHash, StableSourceFileId};
-use rustc_target::callconv::FnAbi;
 
 pub(crate) use self::emit::{DebugReloc, DebugRelocName};
 pub(crate) use self::types::TypeDebugContext;
@@ -215,7 +214,7 @@ impl DebugContext {
         tcx: TyCtxt<'tcx>,
         type_dbg: &mut TypeDebugContext<'tcx>,
         instance: Instance<'tcx>,
-        fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &'tcx FnAbi<'tcx>,
         linkage_name: &str,
         function_span: Span,
     ) -> FunctionDebugContext {

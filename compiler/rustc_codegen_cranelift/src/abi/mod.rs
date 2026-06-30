@@ -18,10 +18,10 @@ use rustc_codegen_ssa::errors::CompilerBuiltinsCannotCall;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{ShimKind, TypeVisitableExt};
+use rustc_middle::ty::{FnAbi, ShimKind, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Spanned;
-use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_target::callconv::PassMode;
 use rustc_target::spec::Arch;
 use smallvec::{SmallVec, smallvec};
 
@@ -39,7 +39,7 @@ struct ArgValue<'tcx> {
 fn clif_sig_from_fn_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     default_call_conv: CallConv,
-    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    fn_abi: &FnAbi<'tcx>,
 ) -> Signature {
     let call_conv = conv_to_call_conv(tcx.sess, fn_abi.conv, default_call_conv);
 
@@ -621,7 +621,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     fn adjust_call_for_c_variadic<'tcx>(
         fx: &mut FunctionCx<'_, '_, 'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx>,
         source_info: mir::SourceInfo,
         target: CallTarget,
         call_args: &mut Vec<Value>,

@@ -2,9 +2,10 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use rustc_abi::{HasDataLayout, TyAbiInterface};
+use rustc_abi::HasDataLayout;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
-use crate::callconv::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
+use crate::callconv::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform, homogeneous_aggregate};
 use crate::spec::{HasTargetSpec, LlvmAbi, Os};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -15,16 +16,16 @@ enum ABI {
 }
 use ABI::*;
 
-fn is_homogeneous_aggregate<'a, Ty, C>(
+fn is_homogeneous_aggregate<I: Interner, C>(
     cx: &C,
-    arg: &mut ArgAbi<'a, Ty>,
+    arg: &mut ArgAbi<I>,
     abi: ABI,
 ) -> Option<Uniform>
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
-    arg.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()).and_then(|unit| {
+    homogeneous_aggregate(cx, arg.layout).ok().and_then(|ha| ha.unit()).and_then(|unit| {
         // ELFv1 and AIX only passes one-member aggregates transparently.
         // ELFv2 passes up to eight uniquely addressable members.
         if ((abi == ELFv1 || abi == AIX) && arg.layout.size > unit.size)
@@ -43,9 +44,9 @@ where
     })
 }
 
-fn classify<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, abi: ABI, is_ret: bool)
+fn classify<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>, abi: ABI, is_ret: bool)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     if arg.is_ignore() || !arg.layout.is_sized() {
@@ -101,9 +102,9 @@ where
     };
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     let abi = match cx.target_spec().options.llvm_abiname {

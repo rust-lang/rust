@@ -9,13 +9,11 @@ use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{ArgAbi, FnAbi, Ty};
 use rustc_middle::{bug, ty};
 use rustc_session::{Session, config};
-use rustc_target::callconv::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode,
-};
+use rustc_target::callconv::{ArgAttribute, ArgAttributes, ArgExtension, CastTarget, PassMode};
 use rustc_target::spec::{Arch, SanitizerSet};
 use smallvec::SmallVec;
 
@@ -227,7 +225,7 @@ trait ArgAbiExt<'ll, 'tcx> {
     );
 }
 
-impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
+impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx> {
     /// Stores a direct/indirect value described by this ArgAbi into a
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
@@ -318,7 +316,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
 impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn store_fn_arg(
         &mut self,
-        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        arg_abi: &ArgAbi<'tcx>,
         idx: &mut usize,
         dst: PlaceRef<'tcx, Self::Value>,
     ) {
@@ -326,7 +324,7 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
     fn store_arg(
         &mut self,
-        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        arg_abi: &ArgAbi<'tcx>,
         val: &'ll Value,
         dst: PlaceRef<'tcx, &'ll Value>,
     ) {
@@ -351,7 +349,7 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
     fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value);
 }
 
-impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
+impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.

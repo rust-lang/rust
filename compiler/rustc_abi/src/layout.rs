@@ -18,12 +18,6 @@ use crate::{
 mod coroutine;
 mod simple;
 
-#[cfg(feature = "nightly")]
-mod ty;
-
-#[cfg(feature = "nightly")]
-pub use ty::{Layout, TyAbiInterface, TyAndLayout};
-
 rustc_index::newtype_index! {
     /// The *source-order* index of a field in a variant.
     ///
@@ -86,11 +80,11 @@ rustc_index::newtype_index! {
 // but *not* an encoding of the discriminant (e.g., a tag value).
 // See issue #49298 for more details on the need to leave space
 // for non-ZST uninhabited data (mostly partial initialization).
-fn absent<'a, FieldIdx, VariantIdx, F>(fields: &IndexSlice<FieldIdx, F>) -> bool
+fn absent<FieldIdx, VariantIdx, F>(fields: &IndexSlice<FieldIdx, F>) -> bool
 where
     FieldIdx: Idx,
     VariantIdx: Idx,
-    F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
+    F: Deref<Target = LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
 {
     let uninhabited = fields.iter().any(|f| f.is_uninhabited());
     // We cannot ignore alignment; that might lead us to entirely discard a variant and
@@ -240,8 +234,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     /// This uses dedicated code instead of [`Self::layout_of_struct_or_enum`], as coroutine
     /// fields may be shared between multiple variants (see the [`coroutine`] module for details).
     pub fn coroutine<
-        'a,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
         VariantIdx: Idx,
         FieldIdx: Idx,
         LocalIdx: Idx,
@@ -264,10 +257,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     }
 
     pub fn univariant<
-        'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
@@ -339,10 +331,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     }
 
     pub fn layout_of_struct_or_enum<
-        'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         repr: &ReprOptions,
@@ -393,10 +384,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     }
 
     pub fn layout_of_union<
-        'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         repr: &ReprOptions,
@@ -519,10 +509,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
     /// single-variant enums are just structs, if you think about it
     fn layout_of_struct<
-        'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         repr: &ReprOptions,
@@ -572,10 +561,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     }
 
     fn layout_of_enum<
-        'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         repr: &ReprOptions,
@@ -1092,10 +1080,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     }
 
     fn univariant_biased<
-        'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
@@ -1433,10 +1420,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     }
 
     fn format_field_niches<
-        'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
+        F: Deref<Target = LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
     >(
         &self,
         layout: &LayoutData<FieldIdx, VariantIdx>,

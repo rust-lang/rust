@@ -4,7 +4,7 @@ use rustc_apfloat::ieee::Single;
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
+use rustc_middle::ty::FnAbi;
 use rustc_target::spec::Arch;
 
 use self::helpers::bool_to_simd_element;
@@ -29,7 +29,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {

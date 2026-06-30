@@ -164,6 +164,12 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Region<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Layout<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.0.0.encode(e);
+    }
+}
+
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Const<'tcx> {
     fn encode(&self, e: &mut E) {
         self.0.0.encode(e);
@@ -365,6 +371,14 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
         decoder.interner().mk_poly_existential_predicates_from_iter(
             (0..len).map::<ty::Binder<'tcx, _>, _>(|_| Decodable::decode(decoder)),
         )
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Layout<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        let data: rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi::VariantIdx> =
+            Decodable::decode(decoder);
+        decoder.interner().mk_layout(data)
     }
 }
 

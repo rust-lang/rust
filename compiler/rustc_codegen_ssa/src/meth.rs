@@ -1,8 +1,7 @@
 use rustc_middle::bug;
-use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, FnAbi, GenericArgKind, Ty, TyCtxt};
 use rustc_session::config::Lto;
 use rustc_symbol_mangling::typeid_for_trait_ref;
-use rustc_target::callconv::FnAbi;
 use tracing::{debug, instrument};
 
 use crate::traits::*;
@@ -20,7 +19,7 @@ impl<'a, 'tcx> VirtualIndex {
         bx: &mut Bx,
         llvtable: Bx::Value,
         ty: Ty<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx>,
         nonnull: bool,
     ) -> Bx::Value {
         // Load the function pointer from the object.
@@ -38,7 +37,7 @@ impl<'a, 'tcx> VirtualIndex {
         bx: &mut Bx,
         llvtable: Bx::Value,
         ty: Ty<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx>,
     ) -> Bx::Value {
         self.get_fn_inner(bx, llvtable, ty, fn_abi, false)
     }
@@ -48,7 +47,7 @@ impl<'a, 'tcx> VirtualIndex {
         bx: &mut Bx,
         llvtable: Bx::Value,
         ty: Ty<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx>,
     ) -> Bx::Value {
         self.get_fn_inner(bx, llvtable, ty, fn_abi, true)
     }

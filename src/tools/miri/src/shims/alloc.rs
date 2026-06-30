@@ -1,8 +1,7 @@
 use rustc_abi::{Align, AlignFromBytesError, CanonAbi, Size};
 use rustc_ast::expand::allocator::SpecialAllocatorMethod;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::FnAbi;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, Os};
 
 use crate::*;
@@ -115,7 +114,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         method: SpecialAllocatorMethod,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {

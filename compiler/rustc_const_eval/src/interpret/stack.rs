@@ -8,11 +8,10 @@ use rustc_hir as hir;
 use rustc_hir::definitions::DefPathData;
 use rustc_index::IndexVec;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ArgAbi, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_mir_dataflow::impls::always_storage_live_locals;
 use rustc_span::Span;
-use rustc_target::callconv::ArgAbi;
 use tracing::field::Empty;
 use tracing::{info_span, instrument, trace};
 
@@ -640,8 +639,8 @@ impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
         mut callee_abis: J,
     ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>>
     where
-        I: Iterator<Item = (&'a FnArg<'tcx, M::Provenance>, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
-        J: Iterator<Item = (usize, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
+        I: Iterator<Item = (&'a FnArg<'tcx, M::Provenance>, &'a ArgAbi<'tcx>)>,
+        J: Iterator<Item = (usize, &'a ArgAbi<'tcx>)>,
     {
         // Consume the remaining arguments and store them in fresh allocations.
         let mut varargs = Vec::new();

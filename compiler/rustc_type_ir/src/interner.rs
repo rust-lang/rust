@@ -170,6 +170,11 @@ pub trait Interner:
         + SliceLike<Item = Self::Pat>;
     type Safety: Safety<Self>;
 
+    // Layouts
+    type Layout: Layout<Self>;
+    type FieldsShapeRef;
+    type VariantsRef;
+
     // Kinds of consts
     type Const: Const<Self>;
     type Consts: Copy + Debug + Hash + Eq + SliceLike<Item = Self::Const> + Default;

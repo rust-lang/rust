@@ -38,7 +38,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Endian {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
+impl<'tcx> Stable<'tcx> for ty::TyAndLayout<'tcx> {
     type T = TyAndLayout;
 
     fn stable<'cx>(
@@ -50,7 +50,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_abi::Layout<'tcx> {
+impl<'tcx> Stable<'tcx> for ty::Layout<'tcx> {
     type T = Layout;
 
     fn stable<'cx>(
@@ -80,7 +80,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi
     }
 }
 
-impl<'tcx> Stable<'tcx> for callconv::FnAbi<'tcx, ty::Ty<'tcx>> {
+impl<'tcx> Stable<'tcx> for ty::FnAbi<'tcx> {
     type T = FnAbi;
 
     fn stable<'cx>(
@@ -100,7 +100,7 @@ impl<'tcx> Stable<'tcx> for callconv::FnAbi<'tcx, ty::Ty<'tcx>> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for callconv::ArgAbi<'tcx, ty::Ty<'tcx>> {
+impl<'tcx> Stable<'tcx> for ty::ArgAbi<'tcx> {
     type T = ArgAbi;
 
     fn stable<'cx>(

@@ -9,8 +9,8 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, Ty};
-use rustc_target::callconv::{CastTarget, FnAbi};
+use rustc_middle::ty::{self, FnAbi};
+use rustc_target::callconv::CastTarget;
 
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::common;
@@ -313,10 +313,10 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn cast_backend_type(&self, ty: &CastTarget) -> &'ll Type {
         ty.llvm_type(self)
     }
-    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
+    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx>) -> &'ll Type {
         fn_abi.llvm_type(self)
     }
-    fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
+    fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx>) -> &'ll Type {
         fn_abi.ptr_to_llvm_type(self)
     }
     fn reg_backend_type(&self, ty: &Reg) -> &'ll Type {

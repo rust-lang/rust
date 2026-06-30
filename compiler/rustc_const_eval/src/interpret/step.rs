@@ -8,10 +8,9 @@ use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexSlice;
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, FnAbi, Instance};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::Spanned;
-use rustc_target::callconv::FnAbi;
 use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
@@ -25,7 +24,7 @@ struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
     callee: FnVal<'tcx, M::ExtraFnVal>,
     args: Vec<FnArg<'tcx, M::Provenance>>,
     fn_sig: ty::FnSig<'tcx>,
-    fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+    fn_abi: &'tcx FnAbi<'tcx>,
     /// True if the function is marked as `#[track_caller]` ([`ty::InstanceKind::requires_caller_location`])
     with_caller_location: bool,
 }

@@ -26,7 +26,7 @@ pub fn check_validity_requirement<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: ValidityRequirement,
     input: PseudoCanonicalInput<'tcx, Ty<'tcx>>,
-) -> Result<bool, &'tcx LayoutError<'tcx>> {
+) -> Result<bool, LayoutError<'tcx>> {
     let layout = tcx.layout_of(input)?;
 
     // There is nothing strict or lax about inhabitedness.
@@ -92,7 +92,7 @@ fn check_validity_requirement_lax<'tcx>(
     this: TyAndLayout<'tcx>,
     cx: &LayoutCx<'tcx>,
     init_kind: ValidityRequirement,
-) -> Result<bool, &'tcx LayoutError<'tcx>> {
+) -> Result<bool, LayoutError<'tcx>> {
     let scalar_allows_raw_init = move |s: Scalar| -> bool {
         match init_kind {
             ValidityRequirement::Inhabited => {

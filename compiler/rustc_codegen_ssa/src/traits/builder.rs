@@ -6,10 +6,9 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{AtomicOrdering, Instance, Ty};
+use rustc_middle::ty::{AtomicOrdering, FnAbi, Instance, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
-use rustc_target::callconv::FnAbi;
 
 use super::abi::AbiBuilderMethods;
 use super::asm::AsmBuilderMethods;
@@ -35,7 +34,7 @@ pub enum OverflowOp {
 pub trait BuilderMethods<'a, 'tcx>:
     Sized
     + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
-    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
+    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx>>
     + Deref<Target = Self::CodegenCx>
     + CoverageInfoBuilderMethods<'tcx>
     + DebugInfoBuilderMethods<'tcx>
@@ -131,7 +130,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         &mut self,
         llty: Self::FunctionSignature,
         fn_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         llfn: Self::Value,
         args: &[Self::Value],
         then: Self::BasicBlock,
@@ -640,7 +639,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         &mut self,
         llty: Self::FunctionSignature,
         caller_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         fn_val: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
@@ -651,7 +650,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         &mut self,
         llty: Self::FunctionSignature,
         caller_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx>,
         llfn: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,

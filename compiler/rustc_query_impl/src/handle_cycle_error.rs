@@ -133,7 +133,7 @@ pub(crate) fn layout_of<'tcx>(
     _key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
     cycle: Cycle<'tcx>,
     err: Diag<'_>,
-) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
+) -> Result<ty::layout::TyAndLayout<'tcx>, ty::layout::LayoutError<'tcx>> {
     let _guar = err.delay_as_bug();
     let diag = search_for_cycle_permutation(
         &cycle.frames,

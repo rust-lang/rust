@@ -5,7 +5,6 @@
 
 use std::fmt::{self, Debug};
 
-use rustc_abi::TyAndLayout;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Spanned;
@@ -15,8 +14,8 @@ use super::{GenericArg, GenericArgKind, Pattern, Region};
 use crate::mir::PlaceElem;
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::{
-    self, FallibleTypeFolder, Lift, Term, TermKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, FallibleTypeFolder, Lift, Term, TermKind, Ty, TyAndLayout, TyCtxt, TypeFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
 impl fmt::Debug for ty::TraitDef {
@@ -733,7 +732,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for rustc_span::ErrorGuaranteed {
     }
 }
 
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for TyAndLayout<'tcx, Ty<'tcx>> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for TyAndLayout<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_ty(self.ty)
     }

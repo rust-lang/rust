@@ -10,9 +10,9 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, FnAbi, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
-use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_target::callconv::PassMode;
 use rustc_target::spec::{Arch, RelocModel};
 use tracing::debug;
 
@@ -84,7 +84,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         visibility: Visibility,
         symbol_name: &str,
     ) -> &'ll llvm::Value {
-        let fn_abi: &FnAbi<'tcx, Ty<'tcx>> = self.fn_abi_of_instance(instance, ty::List::empty());
+        let fn_abi: &FnAbi<'tcx> = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, fn_abi, Some(instance));
         llvm::set_linkage(lldecl, base::linkage_to_llvm(linkage));
         base::set_link_section(lldecl, attrs);
@@ -184,8 +184,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 symbol_name.name,
             );
 
-            let fn_abi: &FnAbi<'tcx, Ty<'tcx>> =
-                self.fn_abi_of_instance(aliasee_instance, ty::List::empty());
+            let fn_abi: &FnAbi<'tcx> = self.fn_abi_of_instance(aliasee_instance, ty::List::empty());
 
             // both the alias and the aliasee have the same ty
             let fn_ty = fn_abi.llvm_type(self);

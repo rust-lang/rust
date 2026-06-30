@@ -1,11 +1,11 @@
 use std::{cmp, fmt};
 
-use rustc_abi as abi;
 use rustc_abi::{
-    AddressSpace, Align, ExternAbi, FieldIdx, FieldsShape, HasDataLayout, LayoutData, PointeeInfo,
-    PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
-    TyAbiInterface, VariantIdx, Variants,
+    self as abi, AbiAlign, AddressSpace, Align, BackendRepr, ExternAbi, FieldIdx, FieldsShape,
+    HasDataLayout, LayoutData, Niche, PointeeInfo, PointerKind, Primitive, ReprFlags, ReprOptions,
+    Scalar, Size, TagEncoding, TargetDataLayout, VariantIdx, Variants,
 };
+use rustc_data_structures::intern::Interned;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
@@ -15,8 +15,8 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
+use rustc_type_ir::TyAbiInterface;
 use tracing::debug;
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -333,7 +333,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         span: Span,
-    ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
         Self::compute_inner(ty, tcx, typing_env, span, 0)
     }
 
@@ -343,7 +343,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
         span: Span,
         depth: usize,
-    ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
         debug_assert!(!ty.has_non_region_infer());
 
         // Bail out if we've recursed too deeply (issue #156137); a cyclic type
@@ -361,7 +361,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 ty,
                 suggested_limit,
             });
-            return Err(tcx.arena.alloc(LayoutError::ReferencesError(reported)));
+            return Err(LayoutError::ReferencesError(reported));
         }
 
         // First try computing a static layout.
@@ -371,7 +371,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     return Ok(SizeSkeleton::Known(layout.size, Some(layout.align.abi)));
                 } else {
                     // Just to be safe, don't claim a known layout for unsized types.
-                    return Err(tcx.arena.alloc(LayoutError::Unknown(ty)));
+                    return Err(LayoutError::Unknown(ty));
                 }
             }
             Err(err @ LayoutError::TooGeneric(_)) => err,
@@ -423,7 +423,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     }
                     ty::Error(guar) => {
                         // Fixes ICE #124031
-                        return Err(tcx.arena.alloc(LayoutError::ReferencesError(*guar)));
+                        return Err(LayoutError::ReferencesError(*guar));
                     }
                     _ => bug!(
                         "SizeSkeleton::compute({ty}): layout errored ({err:?}), yet \
@@ -445,7 +445,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                             let size = s
                                 .bytes()
                                 .checked_mul(c)
-                                .ok_or_else(|| &*tcx.arena.alloc(LayoutError::SizeOverflow(ty)))?;
+                                .ok_or_else(|| LayoutError::SizeOverflow(ty))?;
                             // Alignment is unchanged by arrays.
                             return Ok(SizeSkeleton::Known(Size::from_bytes(size), a));
                         }
@@ -705,8 +705,6 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
     }
 }
 
-pub type TyAndLayout<'tcx> = rustc_abi::TyAndLayout<'tcx, Ty<'tcx>>;
-
 /// Trait for contexts that want to be able to compute layouts of types.
 /// This automatically gives access to `LayoutOf`, through a blanket `impl`.
 pub trait LayoutOfHelpers<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasTypingEnv<'tcx> {
@@ -756,7 +754,7 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
 
         MaybeResult::from(
             tcx.layout_of(self.typing_env().as_query_input(ty))
-                .map_err(|err| self.handle_layout_err(*err, span, ty)),
+                .map_err(|err| self.handle_layout_err(err, span, ty)),
         )
     }
 }
@@ -764,20 +762,105 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
 impl<'tcx, C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
 
 impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx> {
-    type LayoutOfResult = Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>;
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     #[inline]
-    fn handle_layout_err(
-        &self,
-        err: LayoutError<'tcx>,
-        _: Span,
-        _: Ty<'tcx>,
-    ) -> &'tcx LayoutError<'tcx> {
-        self.tcx().arena.alloc(err)
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
+        err
     }
 }
 
-impl<'tcx, C> TyAbiInterface<'tcx, C> for Ty<'tcx>
+pub type TyAndLayout<'tcx> = rustc_type_ir::TyAndLayout<TyCtxt<'tcx>>;
+pub type ArgAbi<'tcx> = rustc_target::callconv::ArgAbi<TyCtxt<'tcx>>;
+pub type FnAbi<'tcx> = rustc_target::callconv::FnAbi<TyCtxt<'tcx>>;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
+#[rustc_pass_by_value]
+pub struct Layout<'tcx>(pub Interned<'tcx, LayoutData<FieldIdx, VariantIdx>>);
+
+impl<'tcx> fmt::Debug for Layout<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // See comment on `<LayoutData as Debug>::fmt` above.
+        self.0.0.fmt(f)
+    }
+}
+
+impl<'tcx> std::ops::Deref for Layout<'tcx> {
+    type Target = LayoutData<FieldIdx, VariantIdx>;
+    fn deref(&self) -> &LayoutData<FieldIdx, VariantIdx> {
+        self.0.0
+    }
+}
+
+impl<'tcx> Layout<'tcx> {
+    pub fn fields(self) -> &'tcx FieldsShape<FieldIdx> {
+        &self.0.0.fields
+    }
+
+    pub fn variants(self) -> &'tcx Variants<FieldIdx, VariantIdx> {
+        &self.0.0.variants
+    }
+
+    pub fn backend_repr(self) -> BackendRepr {
+        self.0.0.backend_repr
+    }
+
+    pub fn largest_niche(self) -> Option<Niche> {
+        self.0.0.largest_niche
+    }
+
+    pub fn align(self) -> AbiAlign {
+        self.0.0.align
+    }
+
+    pub fn size(self) -> Size {
+        self.0.0.size
+    }
+
+    pub fn max_repr_align(self) -> Option<Align> {
+        self.0.0.max_repr_align
+    }
+
+    pub fn unadjusted_abi_align(self) -> Align {
+        self.0.0.unadjusted_abi_align
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::Layout<TyCtxt<'tcx>> for Layout<'tcx> {
+    fn fields(self) -> &'tcx FieldsShape<FieldIdx> {
+        self.fields()
+    }
+
+    fn variants(self) -> &'tcx Variants<FieldIdx, VariantIdx> {
+        self.variants()
+    }
+
+    fn backend_repr(self) -> BackendRepr {
+        self.backend_repr()
+    }
+
+    fn largest_niche(self) -> Option<Niche> {
+        self.largest_niche()
+    }
+
+    fn align(self) -> AbiAlign {
+        self.align()
+    }
+
+    fn size(self) -> Size {
+        self.size()
+    }
+
+    fn max_repr_align(self) -> Option<Align> {
+        self.max_repr_align()
+    }
+
+    fn unadjusted_abi_align(self) -> Align {
+        self.unadjusted_abi_align()
+    }
+}
+
+impl<'tcx, C> TyAbiInterface<C> for TyCtxt<'tcx>
 where
     C: HasTyCtxt<'tcx> + HasTypingEnv<'tcx>,
 {
@@ -1346,7 +1429,7 @@ pub enum FnAbiRequest<'tcx> {
 pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
     /// The `&FnAbi`-wrapping type (or `&FnAbi` itself), which will be
     /// returned from `fn_abi_of_*` (see also `handle_fn_abi_err`).
-    type FnAbiOfResult: MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>> = &'tcx FnAbi<'tcx, Ty<'tcx>>;
+    type FnAbiOfResult: MaybeResult<&'tcx FnAbi<'tcx>> = &'tcx FnAbi<'tcx>;
 
     /// Helper used for `fn_abi_of_*`, to adapt `tcx.fn_abi_of_*(...)` into a
     /// `Self::FnAbiOfResult` (which does not need to be a `Result<...>`).
@@ -1360,7 +1443,7 @@ pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
         err: FnAbiError<'tcx>,
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
-    ) -> <Self::FnAbiOfResult as MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>>>::Error;
+    ) -> <Self::FnAbiOfResult as MaybeResult<&'tcx FnAbi<'tcx>>>::Error;
 }
 
 /// Blanket extension trait for contexts that can compute `FnAbi`s.
@@ -1467,3 +1550,17 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
 }
 
 impl<'tcx, C: FnAbiOfHelpers<'tcx>> FnAbiOf<'tcx> for C {}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // FIXME: ideally these asserts would be at the definitions for ArgAbi and FnAbi,
+    // but they need an I: Interner, so we have to do it here
+    // tidy-alphabetical-start
+    static_assert_size!(ArgAbi<'_>, 56);
+    static_assert_size!(FnAbi<'_>, 80);
+    // tidy-alphabetical-end
+}

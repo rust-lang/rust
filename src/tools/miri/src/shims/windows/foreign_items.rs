@@ -3,9 +3,8 @@ use std::path::{self, Path, PathBuf};
 use std::{io, iter, str};
 
 use rustc_abi::{Align, Size};
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
+use rustc_middle::ty::FnAbi;
 use rustc_target::spec::Env;
 
 use self::shims::windows::handle::{Handle, PseudoHandle};
@@ -131,7 +130,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {

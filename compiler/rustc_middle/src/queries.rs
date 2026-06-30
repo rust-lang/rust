@@ -1736,10 +1736,11 @@ rustc_queries! {
     /// executes in `TypingMode::PostAnalysis`, and will normalize the input type.
     query layout_of(
         key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>
-    ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
+    ) -> Result<ty::layout::TyAndLayout<'tcx>, ty::layout::LayoutError<'tcx>> {
         depth_limit
         desc { "computing layout of `{}`", key.value }
         handle_cycle_error
+        cache_on_disk
     }
 
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
@@ -1748,7 +1749,7 @@ rustc_queries! {
     /// instead, where the instance is an `InstanceKind::Virtual`.
     query fn_abi_of_fn_ptr(
         key: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+    ) -> Result<&'tcx rustc_middle::ty::FnAbi<'tcx>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}` function pointers", key.value.0 }
     }
 
@@ -1765,7 +1766,7 @@ rustc_queries! {
     ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     query fn_abi_of_instance_no_deduced_attrs(
         key: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+    ) -> Result<&'tcx rustc_middle::ty::FnAbi<'tcx>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing unadjusted call ABI of `{}`", key.value.0 }
     }
 
@@ -1785,7 +1786,7 @@ rustc_queries! {
     ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     query fn_abi_of_instance_raw(
         key: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+    ) -> Result<&'tcx rustc_middle::ty::FnAbi<'tcx>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}`", key.value.0 }
     }
 
@@ -2644,7 +2645,7 @@ rustc_queries! {
         desc { "computing the backend features for CLI flags" }
     }
 
-    query check_validity_requirement(key: (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>)) -> Result<bool, &'tcx ty::layout::LayoutError<'tcx>> {
+    query check_validity_requirement(key: (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>)) -> Result<bool, ty::layout::LayoutError<'tcx>> {
         desc { "checking validity requirement for `{}`: {}", key.1.value, key.0 }
     }
 

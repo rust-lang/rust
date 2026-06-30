@@ -3,7 +3,7 @@ use rustc_abi as abi;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
+    AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout,
     LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
     VariantIdx, Variants, WrappingRange,
 };
@@ -19,7 +19,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt,
+    self, AdtDef, CoroutineArgsExt, EarlyBinder, Layout, PseudoCanonicalInput, Ty, TyCtxt,
     TypeVisitableExt, Unnormalized,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
@@ -38,7 +38,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
-) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+) -> Result<TyAndLayout<'tcx>, LayoutError<'tcx>> {
     let PseudoCanonicalInput { typing_env: original_typing_env, value: original_ty } = query;
     debug!(?original_ty);
 
@@ -61,10 +61,10 @@ fn layout_of<'tcx>(
     let normalized_ty = match tcx.try_normalize_erasing_regions(typing_env, unnormalized_ty) {
         Ok(t) => t,
         Err(normalization_error) => {
-            return Err(tcx.arena.alloc(LayoutError::NormalizationFailure(
+            return Err(LayoutError::NormalizationFailure(
                 unnormalized_ty.skip_normalization(),
                 normalization_error,
-            )));
+            ));
         }
     };
 
@@ -107,15 +107,15 @@ fn layout_of<'tcx>(
     Ok(layout)
 }
 
-fn error<'tcx>(cx: &LayoutCx<'tcx>, err: LayoutError<'tcx>) -> &'tcx LayoutError<'tcx> {
-    cx.tcx().arena.alloc(err)
+fn error<'tcx>(_cx: &LayoutCx<'tcx>, err: LayoutError<'tcx>) -> LayoutError<'tcx> {
+    err
 }
 
 fn map_error<'tcx>(
     cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
     err: LayoutCalculatorError<TyAndLayout<'tcx>>,
-) -> &'tcx LayoutError<'tcx> {
+) -> LayoutError<'tcx> {
     let err = match err {
         LayoutCalculatorError::SizeOverflow => {
             // This is sometimes not a compile error in `check` builds.
@@ -168,7 +168,7 @@ fn extract_const_value<'tcx>(
     cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
     ct: ty::Const<'tcx>,
-) -> Result<ty::Value<'tcx>, &'tcx LayoutError<'tcx>> {
+) -> Result<ty::Value<'tcx>, LayoutError<'tcx>> {
     match ct.kind() {
         ty::ConstKind::Value(cv) => Ok(cv),
         ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) => {
@@ -204,7 +204,7 @@ fn extract_const_value<'tcx>(
 fn layout_of_uncached<'tcx>(
     cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
-) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
+) -> Result<Layout<'tcx>, LayoutError<'tcx>> {
     // Types that reference `ty::Error` pessimistically don't have a meaningful layout.
     // The only side-effect of this is possibly worse diagnostics in case the layout
     // was actually computable (like if the `ty::Error` showed up only in a `PhantomData`).

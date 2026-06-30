@@ -71,8 +71,6 @@ pub use canon_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 pub use extern_abi::CVariadicStatus;
 pub use extern_abi::{ExternAbi, all_names};
 pub use layout::{FIRST_VARIANT, FieldIdx, LayoutCalculator, LayoutCalculatorError, VariantIdx};
-#[cfg(feature = "nightly")]
-pub use layout::{Layout, TyAbiInterface, TyAndLayout};
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
@@ -1150,7 +1148,7 @@ impl Align {
 ///
 /// An example of a rare thing actually affected by preferred alignment is aligning of statics.
 /// It is of effectively no consequence for layout in structs and on the stack.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct AbiAlign {
     pub abi: Align,
@@ -1342,7 +1340,18 @@ impl Integer {
 }
 
 /// Floating-point types.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Debug,
+    Encodable_NoContext,
+    Decodable_NoContext
+)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Float {
     F16,
@@ -1377,7 +1386,7 @@ impl Float {
 }
 
 /// Fundamental unit of memory access and layout.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Primitive {
     /// The `bool` is the signedness of the `Integer` type.
@@ -1425,7 +1434,7 @@ impl Primitive {
 ///    254 (-2), 255 (-1), 0, 1, 2
 ///
 /// This is intended specifically to mirror LLVM’s `!range` metadata semantics.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct WrappingRange {
     pub start: u128,
@@ -1537,7 +1546,7 @@ impl fmt::Debug for WrappingRange {
 }
 
 /// Information about one scalar component of a Rust type.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Scalar {
     Initialized {
@@ -1641,7 +1650,7 @@ impl Scalar {
 
 // NOTE: This struct is generic over the FieldIdx for rust-analyzer usage.
 /// Describes how the fields of a type are located in memory.
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum FieldsShape<FieldIdx: Idx> {
     /// Scalar primitives and `!`, which never have fields.
@@ -1726,7 +1735,18 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
 /// An identifier that specifies the address space that some operation
 /// should operate on. Special address spaces have an effect on code generation,
 /// depending on the target and the address spaces it implements.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Encodable_NoContext,
+    Decodable_NoContext
+)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct AddressSpace(pub u32);
 
@@ -1739,7 +1759,7 @@ impl AddressSpace {
 }
 
 /// How many scalable vectors are in a `BackendRepr::ScalableVector`?
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct NumScalableVectors(pub u8);
 
@@ -1788,7 +1808,7 @@ impl IntoDiagArg for NumScalableVectors {
 ///
 /// Generally, a codegen backend will prefer to handle smaller values as a scalar or short vector,
 /// and larger values will usually prefer to be represented as memory.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum BackendRepr {
     Scalar(Scalar),
@@ -1932,7 +1952,7 @@ impl BackendRepr {
 }
 
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// A type with no valid variants. Must be uninhabited.
@@ -1959,7 +1979,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
 }
 
 // NOTE: This struct is generic over the VariantIdx for rust-analyzer usage.
-#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum TagEncoding<VariantIdx: Idx> {
     /// The tag directly stores the discriminant, but possibly with a smaller layout
@@ -2000,7 +2020,7 @@ pub enum TagEncoding<VariantIdx: Idx> {
     },
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct Niche {
     pub offset: Size,
@@ -2097,7 +2117,7 @@ impl Niche {
 }
 
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// Says where the fields are located within the layout.
@@ -2322,7 +2342,7 @@ pub enum AbiFromStrErr {
 }
 
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct VariantLayout<FieldIdx: Idx> {
     pub size: Size,

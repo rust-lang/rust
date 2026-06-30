@@ -1,15 +1,16 @@
-use rustc_abi::{BackendRepr, Float, Integer, Primitive, Size, TyAbiInterface};
+use rustc_abi::{BackendRepr, Float, Integer, Primitive, Size};
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::{HasTargetSpec, RustcAbi};
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
-pub(crate) fn compute_abi_info<'a, Ty, C: HasTargetSpec>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<I: Interner, C: HasTargetSpec>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
 {
-    let fixup = |a: &mut ArgAbi<'_, Ty>, is_ret: bool| {
+    let fixup = |a: &mut ArgAbi<I>, is_ret: bool| {
         match a.layout.backend_repr {
             BackendRepr::Memory { sized: false } => {}
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {

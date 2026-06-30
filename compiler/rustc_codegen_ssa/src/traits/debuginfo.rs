@@ -1,9 +1,8 @@
 use std::ops::Range;
 
 use rustc_abi::Size;
-use rustc_middle::ty::{ExistentialTraitRef, Instance, Ty};
+use rustc_middle::ty::{ExistentialTraitRef, FnAbi, Instance, Ty};
 use rustc_span::{BytePos, SourceFile, Span, Symbol};
-use rustc_target::callconv::FnAbi;
 
 use super::BackendTypes;
 use crate::mir::debuginfo::VariableKind;
@@ -29,7 +28,7 @@ pub trait DebugInfoCodegenMethods<'tcx>: BackendTypes {
     fn dbg_scope_fn(
         &self,
         instance: Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx>,
         maybe_definition_llfn: Option<Self::Function>,
     ) -> Self::DIScope;
 

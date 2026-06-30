@@ -1,10 +1,11 @@
 use arrayvec::ArrayVec;
-use rustc_abi::{HasDataLayout, Reg, Size, TyAbiInterface};
+use rustc_abi::{HasDataLayout, Reg, Size};
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use super::CastTarget;
 use crate::callconv::{ArgAbi, FnAbi, Uniform};
 
-fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
+fn classify_ret<I: Interner>(ret: &mut ArgAbi<I>) {
     if ret.layout.is_aggregate() && ret.layout.is_sized() {
         classify_aggregate(ret)
     } else if ret.layout.size.bits() < 32 && ret.layout.is_sized() {
@@ -12,9 +13,9 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
 {
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
@@ -28,7 +29,7 @@ where
 }
 
 /// the pass mode used for aggregates in arg and ret position
-fn classify_aggregate<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+fn classify_aggregate<I: Interner>(arg: &mut ArgAbi<I>) {
     let align_bytes = arg.layout.align.bytes();
     let size = arg.layout.size;
 
@@ -50,9 +51,9 @@ fn classify_aggregate<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg_kernel<'a, Ty, C>(_cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg_kernel<I: Interner, C>(_cx: &C, arg: &mut ArgAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     match arg.mode {
@@ -87,9 +88,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
@@ -103,9 +104,9 @@ where
     }
 }
 
-pub(crate) fn compute_ptx_kernel_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_ptx_kernel_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     if !fn_abi.ret.layout.is_unit() && !fn_abi.ret.layout.is_never() {

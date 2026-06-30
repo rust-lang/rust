@@ -52,7 +52,6 @@ use rustc_session::config::OptLevel;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
-use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 #[allow(
@@ -85,6 +84,7 @@ pub use self::context::{
 };
 pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShimKind};
+pub use self::layout::{ArgAbi, FnAbi, Layout, TyAndLayout};
 pub(crate) use self::list::RawList;
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
@@ -1886,8 +1886,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Arena-alloc of LayoutError for coroutine layout
-    fn layout_error(self, err: LayoutError<'tcx>) -> &'tcx LayoutError<'tcx> {
-        self.arena.alloc(err)
+    fn layout_error(self, err: LayoutError<'tcx>) -> LayoutError<'tcx> {
+        err
     }
 
     /// Returns layout of a non-async-drop coroutine. Layout might be unavailable if the
@@ -1899,7 +1899,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, LayoutError<'tcx>> {
         let coroutine_kind_ty = args.as_coroutine().kind_ty();
         let mir = self.optimized_mir(def_id);
         let ty = || Ty::new_coroutine(self, def_id, args);
@@ -1940,7 +1940,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, LayoutError<'tcx>> {
         let ty = || Ty::new_coroutine(self, def_id, args);
         if args[0].has_placeholders() || args[0].has_non_region_param() {
             return Err(self.layout_error(LayoutError::TooGeneric(ty())));
@@ -1957,7 +1957,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<&'tcx CoroutineLayout<'tcx>, LayoutError<'tcx>> {
         if self.is_async_drop_in_place_coroutine(def_id) {
             // layout of `async_drop_in_place<T>::{closure}` in case,
             // when T is a coroutine, contains this internal coroutine's ptr in upvars
@@ -2291,7 +2291,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn fn_abi_of_instance(
         self,
         query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-    ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
+    ) -> Result<&'tcx FnAbi<'tcx>, &'tcx FnAbiError<'tcx>> {
         // Only deduce attrs in full, optimized builds. Otherwise, avoid the query system overhead
         // of ever invoking the `fn_abi_of_instance_raw` query.
         if self.sess.opts.optimize != OptLevel::No && self.sess.opts.incremental.is_none() {

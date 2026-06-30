@@ -1,8 +1,8 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
-    TyAndLayout, Variants,
+    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, Variants,
 };
+use rustc_type_ir::{Interner, TyAbiInterface, TyAndLayout};
 
 use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Uniform};
 use crate::spec::{HasTargetSpec, Os};
@@ -24,13 +24,13 @@ enum Word {
     Integer,
 }
 
-fn classify<'a, Ty, C>(
+fn classify<I: Interner, C>(
     cx: &C,
-    arg_layout: &TyAndLayout<'a, Ty>,
+    arg_layout: &TyAndLayout<I>,
     offset: Size,
     double_words: &mut [DoubleWord; 4],
 ) where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     // If this function does not update the `double_words` array, the value will be passed via
@@ -100,13 +100,13 @@ fn classify<'a, Ty, C>(
     }
 }
 
-fn classify_arg<'a, Ty, C>(
+fn classify_arg<I: Interner, C>(
     cx: &C,
-    arg: &mut ArgAbi<'a, Ty>,
+    arg: &mut ArgAbi<I>,
     in_registers_max: Size,
     total_double_word_count: &mut usize,
 ) where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     // 64-bit SPARC allocates argument stack space in 64-bit chunks (double words), some of which
@@ -193,9 +193,9 @@ fn classify_arg<'a, Ty, C>(
     arg.cast_to_and_pad_i32(cast_target.with_attrs(attrs.into()), pad);
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() && fn_abi.ret.layout.is_sized() {

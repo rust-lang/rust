@@ -30,19 +30,19 @@
 //! compatible with AVR-GCC - Rust and AVR-GCC only differ in the small amount
 //! of compiler frontend specific calling convention logic implemented here.
 
-use rustc_abi::TyAbiInterface;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi};
 
-fn classify_ret_ty<Ty>(ret: &mut ArgAbi<'_, Ty>) {
+fn classify_ret_ty<I: Interner>(ret: &mut ArgAbi<I>) {
     if ret.layout.is_aggregate() {
         ret.make_indirect();
     }
 }
 
-fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg_ty<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
 {
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
@@ -53,9 +53,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fty: &mut FnAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
 {
     if !fty.ret.is_ignore() {
         classify_ret_ty(&mut fty.ret);

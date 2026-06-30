@@ -15,7 +15,7 @@ use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
-use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
+use rustc_abi::{ExternAbi, FieldIdx, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::FxHashMap;
@@ -68,10 +68,10 @@ use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, Predefi
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, FnSigKind, GenericArg,
-    GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst,
-    Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
-    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    ValTree, ValTreeKind, Visibility,
+    GenericArgs, GenericArgsRef, GenericParamDefKind, Layout, List, ListWithCachedTypeInfo,
+    ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
+    PredicateKind, PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
+    TyKind, TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {

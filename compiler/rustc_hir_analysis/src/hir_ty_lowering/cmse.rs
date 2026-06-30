@@ -77,7 +77,7 @@ fn is_valid_cmse_inputs<'tcx>(
     fn_sig: ty::PolyFnSig<'tcx>,
     fn_decl: &hir::FnDecl<'tcx>,
     abi: ExternAbi,
-) -> Result<(), (Span, &'tcx LayoutError<'tcx>)> {
+) -> Result<(), (Span, LayoutError<'tcx>)> {
     let mut accum = 0u64;
     let mut excess_argument_spans = Vec::new();
 
@@ -88,7 +88,7 @@ fn is_valid_cmse_inputs<'tcx>(
     for (ty, hir_ty) in fn_sig.inputs().iter().zip(fn_decl.inputs) {
         if ty.has_infer_types() {
             let err = LayoutError::Unknown(*ty);
-            return Err((hir_ty.span, tcx.arena.alloc(err)));
+            return Err((hir_ty.span, err));
         }
 
         let layout = tcx
@@ -123,7 +123,7 @@ fn is_valid_cmse_output<'tcx>(
     fn_sig: ty::PolyFnSig<'tcx>,
     fn_decl: &hir::FnDecl<'tcx>,
     abi: ExternAbi,
-) -> Result<(), &'tcx LayoutError<'tcx>> {
+) -> Result<(), LayoutError<'tcx>> {
     // this type is only used for layout computation, which does not rely on regions
     let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
     let fn_sig = tcx.erase_and_anonymize_regions(fn_sig);
@@ -145,7 +145,7 @@ fn is_valid_cmse_output<'tcx>(
 
     if return_type.has_infer_types() {
         let err = LayoutError::Unknown(return_type);
-        return Err(tcx.arena.alloc(err));
+        return Err(err);
     }
 
     let typing_env = ty::TypingEnv::fully_monomorphized();
@@ -176,7 +176,7 @@ fn is_valid_cmse_output_layout<'tcx>(cx: LayoutCx<'tcx>, layout: TyAndLayout<'tc
     )
 }
 
-fn should_emit_layout_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError<'tcx>) -> bool {
+fn should_emit_layout_error<'tcx>(abi: ExternAbi, layout_err: LayoutError<'tcx>) -> bool {
     use LayoutError::*;
 
     match layout_err {

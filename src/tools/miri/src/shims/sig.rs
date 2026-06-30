@@ -1,9 +1,8 @@
 //! Everything related to checking the signature of shim invocations.
 
 use rustc_abi::{CanonAbi, ExternAbi};
-use rustc_middle::ty::{Binder, FnSig, FnSigKind, Ty};
+use rustc_middle::ty::{Binder, FnAbi, FnSig, FnSigKind, Ty};
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -144,8 +143,8 @@ macro_rules! shim_sig_arg {
 /// Helper function to compare two ABIs.
 fn check_shim_abi<'tcx>(
     this: &MiriInterpCx<'tcx>,
-    callee_abi: &FnAbi<'tcx, Ty<'tcx>>,
-    caller_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    callee_abi: &FnAbi<'tcx>,
+    caller_abi: &FnAbi<'tcx>,
 ) -> InterpResult<'tcx> {
     if callee_abi.conv != caller_abi.conv {
         throw_ub_format!(
@@ -226,7 +225,7 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn check_shim_sig_lenient<'a, const N: usize>(
         &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         exp_abi: CanonAbi,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
@@ -262,7 +261,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         shim_sig: fn(&MiriInterpCx<'tcx>) -> ShimSig<'tcx, N>,
         link_name: Symbol,
-        caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        caller_fn_abi: &FnAbi<'tcx>,
         caller_args: &'a [OpTy<'tcx>],
     ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
         let this = self.eval_context_mut();
@@ -296,7 +295,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Returns a tuple that consisting of an array of fixed args, and a slice of varargs.
     fn check_shim_sig_variadic_lenient<'a, const N: usize>(
         &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         exp_abi: CanonAbi,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],

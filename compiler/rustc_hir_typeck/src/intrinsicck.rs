@@ -42,7 +42,7 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 /// Try to display a sensible error with as much information as possible.
 fn skeleton_string<'tcx>(
     ty: Ty<'tcx>,
-    sk: Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>>,
+    sk: Result<SizeSkeleton<'tcx>, LayoutError<'tcx>>,
 ) -> String {
     match sk {
         Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
@@ -57,7 +57,7 @@ fn skeleton_string<'tcx>(
             }
         }
         Err(LayoutError::TooGeneric(bad)) => {
-            if *bad == ty {
+            if bad == ty {
                 "this type does not have a fixed size".to_owned()
             } else {
                 format!("size can vary because of {bad}")

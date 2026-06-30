@@ -1,9 +1,9 @@
 // see https://github.com/llvm/llvm-project/blob/main/llvm/lib/Target/BPF/BPFCallingConv.td
-use rustc_abi::TyAbiInterface;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi};
 
-fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
+fn classify_ret<I: Interner>(ret: &mut ArgAbi<I>) {
     if ret.layout.is_aggregate() || ret.layout.size.bits() > 64 {
         ret.make_indirect();
     } else {
@@ -11,9 +11,9 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
 {
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
@@ -26,9 +26,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
@@ -42,7 +42,7 @@ where
     }
 }
 
-pub(crate) fn compute_rust_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_rust_abi_info<I: Interner>(fn_abi: &mut FnAbi<I>) {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
     }

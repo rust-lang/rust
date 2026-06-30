@@ -3,9 +3,11 @@
 //! scope when programming in interner-agnostic settings, and to avoid importing any of these
 //! directly elsewhere (i.e. specify the full path for an implementation downstream).
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
+use std::ops::Deref;
 
+use rustc_abi::{AbiAlign, Align, BackendRepr, FieldIdx, LayoutData, Niche, Size, VariantIdx};
 use rustc_ast_ir::Mutability;
 
 use crate::elaborate::Elaboratable;
@@ -21,6 +23,7 @@ use crate::{
 pub trait Ty<I: Interner<Ty = Self>>:
     Copy
     + Debug
+    + Display
     + Hash
     + Eq
     + Into<I::GenericArg>
@@ -226,6 +229,20 @@ pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
 
     /// The string prefix for this safety mode.
     fn prefix_str(self) -> &'static str;
+}
+
+#[rust_analyzer::prefer_underscore_import]
+pub trait Layout<I: Interner<Layout = Self>>:
+    Copy + Debug + Hash + Eq + Deref<Target = LayoutData<FieldIdx, VariantIdx>>
+{
+    fn fields(self) -> I::FieldsShapeRef;
+    fn variants(self) -> I::VariantsRef;
+    fn backend_repr(self) -> BackendRepr;
+    fn largest_niche(self) -> Option<Niche>;
+    fn align(self) -> AbiAlign;
+    fn size(self) -> Size;
+    fn max_repr_align(self) -> Option<Align>;
+    fn unadjusted_abi_align(self) -> Align;
 }
 
 #[rust_analyzer::prefer_underscore_import]

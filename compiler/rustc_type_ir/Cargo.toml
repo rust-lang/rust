@@ -36,6 +36,7 @@ nightly = [
     "dep:rustc_macros",
     "dep:rustc_serialize",
     "dep:rustc_span",
+    "rustc_abi/nightly",
     "rustc_ast_ir/nightly",
     "rustc_index/nightly",
     "rustc_type_ir_macros/nightly",

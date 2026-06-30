@@ -1,12 +1,13 @@
 // Reference: ELF Application Binary Interface s390x Supplement
 // https://github.com/IBM/s390x-abi
 
-use rustc_abi::{BackendRepr, HasDataLayout, TyAbiInterface};
+use rustc_abi::{BackendRepr, HasDataLayout};
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::{Env, HasTargetSpec, Os};
 
-fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
+fn classify_ret<I: Interner>(ret: &mut ArgAbi<I>) {
     let size = ret.layout.size;
     if size.bits() <= 128 && matches!(ret.layout.backend_repr, BackendRepr::SimdVector { .. }) {
         return;
@@ -18,9 +19,9 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !arg.layout.is_sized() {
@@ -77,9 +78,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {

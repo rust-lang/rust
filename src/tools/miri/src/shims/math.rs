@@ -1,8 +1,7 @@
 use rustc_abi::CanonAbi;
 use rustc_apfloat::Float;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::FnAbi;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 
 use self::math::{ToHost, ToSoft};
 use crate::*;
@@ -12,7 +11,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {

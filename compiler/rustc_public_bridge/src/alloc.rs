@@ -4,11 +4,11 @@
 //! the actual memory allocations. The stable interface in `rustc_public::alloc`
 //! delegates all query-related operations to this implementation.
 
-use rustc_abi::{Size, TyAndLayout};
+use rustc_abi::Size;
 use rustc_middle::mir::interpret::{
     AllocId, AllocInit, AllocRange, Allocation, ConstAllocation, Pointer, Scalar, alloc_range,
 };
-use rustc_middle::ty::{Ty, layout};
+use rustc_middle::ty::{Ty, TyAndLayout, layout};
 
 use super::{CompilerCtxt, Tables};
 use crate::bridge::Allocation as _;
@@ -17,13 +17,13 @@ use crate::{Bridge, Error};
 pub fn create_ty_and_layout<'tcx, B: Bridge>(
     cx: &CompilerCtxt<'tcx, B>,
     ty: Ty<'tcx>,
-) -> Result<TyAndLayout<'tcx, Ty<'tcx>>, &'tcx layout::LayoutError<'tcx>> {
+) -> Result<TyAndLayout<'tcx>, layout::LayoutError<'tcx>> {
     use crate::context::TypingEnvHelpers;
     cx.tcx.layout_of(cx.fully_monomorphized().as_query_input(ty))
 }
 
 pub fn try_new_scalar<'tcx, B: Bridge>(
-    layout: TyAndLayout<'tcx, Ty<'tcx>>,
+    layout: TyAndLayout<'tcx>,
     scalar: Scalar,
     cx: &CompilerCtxt<'tcx, B>,
 ) -> Result<Allocation, B::Error> {
@@ -37,7 +37,7 @@ pub fn try_new_scalar<'tcx, B: Bridge>(
 }
 
 pub fn try_new_slice<'tcx, B: Bridge>(
-    layout: TyAndLayout<'tcx, Ty<'tcx>>,
+    layout: TyAndLayout<'tcx>,
     alloc_id: AllocId,
     meta: u64,
     cx: &CompilerCtxt<'tcx, B>,

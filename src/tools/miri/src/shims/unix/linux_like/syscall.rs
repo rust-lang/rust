@@ -1,7 +1,6 @@
 use rustc_abi::CanonAbi;
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
+use rustc_middle::ty::FnAbi;
 
 use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::env::EvalContextExt;
@@ -13,7 +12,7 @@ use crate::*;
 pub fn syscall<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     link_name: Symbol,
-    abi: &FnAbi<'tcx, Ty<'tcx>>,
+    abi: &FnAbi<'tcx>,
     args: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {

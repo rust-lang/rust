@@ -25,12 +25,11 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
     HasTyCtxt, HasTypingEnv, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
 };
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, FnAbi, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, Os};
 
 use crate::alloc_addresses::EvalContextExt;
@@ -435,7 +434,7 @@ pub struct PrimitiveLayouts<'tcx> {
 }
 
 impl<'tcx> PrimitiveLayouts<'tcx> {
-    fn new(layout_cx: LayoutCx<'tcx>) -> Result<Self, &'tcx LayoutError<'tcx>> {
+    fn new(layout_cx: LayoutCx<'tcx>) -> Result<Self, LayoutError<'tcx>> {
         let tcx = layout_cx.tcx();
         let mut_raw_ptr = Ty::new_mut_ptr(tcx, tcx.types.unit);
         let const_raw_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
@@ -1247,7 +1246,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn find_mir_or_eval_fn(
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[FnArg<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -1283,7 +1282,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn call_extra_fn(
         ecx: &mut MiriInterpCx<'tcx>,
         fn_val: DynSym,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[FnArg<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,

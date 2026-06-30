@@ -1,8 +1,8 @@
 use bitflags::bitflags;
-use rustc_abi::{BackendRepr, TyAbiInterface};
-use rustc_target::callconv::ArgAbi;
+use rustc_abi::BackendRepr;
 
-use crate::ty::{self, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
+use crate::ty::layout::{HasTyCtxt, HasTypingEnv};
+use crate::ty::{self, ArgAbi, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 
 #[derive(Debug, Copy, Clone)]
 pub struct OffloadMetadata {
@@ -70,10 +70,10 @@ impl OffloadMetadata {
         cx: &C,
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
-        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        arg_abi: &ArgAbi<'tcx>,
     ) -> Vec<(Self, Ty<'tcx>)>
     where
-        Ty<'tcx>: TyAbiInterface<'tcx, C>,
+        C: HasTyCtxt<'tcx> + HasTypingEnv<'tcx>,
     {
         match arg_abi.layout.backend_repr {
             BackendRepr::ScalarPair(_, _) => (0..2)

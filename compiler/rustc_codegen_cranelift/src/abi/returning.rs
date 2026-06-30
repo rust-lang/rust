@@ -1,6 +1,7 @@
 //! Return value handling
 
-use rustc_target::callconv::{ArgAbi, PassMode};
+use rustc_middle::ty::ArgAbi;
+use rustc_target::callconv::PassMode;
 use smallvec::{SmallVec, smallvec};
 
 use crate::prelude::*;
@@ -44,7 +45,7 @@ pub(super) fn codegen_return_param<'tcx>(
 /// returns the call return value(s) if any are written to the correct place.
 pub(super) fn codegen_with_call_return_arg<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    ret_arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+    ret_arg_abi: &ArgAbi<'tcx>,
     ret_place: CPlace<'tcx>,
     f: impl FnOnce(&mut FunctionCx<'_, '_, 'tcx>, Option<Value>) -> SmallVec<[Value; 2]>,
 ) {

@@ -49,7 +49,7 @@ pub struct Tables<'tcx, B: Bridge> {
     pub instances: IndexMap<ty::Instance<'tcx>, B::InstanceDef>,
     pub ty_consts: IndexMap<ty::Const<'tcx>, B::TyConstId>,
     pub mir_consts: IndexMap<mir::Const<'tcx>, B::MirConstId>,
-    pub layouts: IndexMap<rustc_abi::Layout<'tcx>, B::Layout>,
+    pub layouts: IndexMap<ty::Layout<'tcx>, B::Layout>,
 }
 
 impl<'tcx, B: Bridge> Default for Tables<'tcx, B> {
@@ -105,7 +105,7 @@ impl<'tcx, B: Bridge> Tables<'tcx, B> {
         self.instances.create_or_fetch(instance)
     }
 
-    pub fn layout_id(&mut self, layout: rustc_abi::Layout<'tcx>) -> B::Layout {
+    pub fn layout_id(&mut self, layout: ty::Layout<'tcx>) -> B::Layout {
         self.layouts.create_or_fetch(layout)
     }
 
