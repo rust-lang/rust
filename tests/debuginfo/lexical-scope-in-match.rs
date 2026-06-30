@@ -1,6 +1,7 @@
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
+//@ min-lldb-version: 2100
 
 // === GDB TESTS ===================================================================================
 
