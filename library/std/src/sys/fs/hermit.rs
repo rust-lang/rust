@@ -36,12 +36,6 @@ struct InnerReadDir {
     dir: Vec<u8>,
 }
 
-impl InnerReadDir {
-    pub fn new(root: PathBuf, dir: Vec<u8>) -> Self {
-        Self { root, dir }
-    }
-}
-
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
     pos: usize,
@@ -551,7 +545,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
         }
     }
 
-    Ok(ReadDir::new(InnerReadDir::new(root, vec)))
+    Ok(ReadDir::new(InnerReadDir { root, dir: vec }))
 }
 
 pub fn unlink(path: &Path) -> io::Result<()> {
