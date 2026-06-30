@@ -73,10 +73,6 @@ indent_size = 2
 indent_size = 1
 [yarn.lock]
 indent_size = 2
-# The completions are auto generated with clap_complete and this uses tabs for fish shell
-# Asked for the reason there: https://github.com/clap-rs/clap/discussions/6418
-[src/etc/completions/*.fish]
-indent_style = tab
 
 [{Makefile,Makefile.in,.gitmodules}]
 indent_style = tab
