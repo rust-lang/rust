@@ -813,7 +813,7 @@ fn rename_elided_lifetime(
     new_name: &str,
 ) -> RenameResult<SourceChange> {
     let parent = lifetime_token.parent().unwrap();
-    let root = parent.ancestors().last().unwrap();
+    let root = parent.tree_top();
 
     let mut builder = SourceChangeBuilder::new(position.file_id);
 

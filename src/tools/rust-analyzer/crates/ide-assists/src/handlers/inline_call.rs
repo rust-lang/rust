@@ -79,7 +79,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_, '_>
 
     let function = ctx.sema.to_def(&ast_func)?;
 
-    let def_file_editor = SyntaxEditor::new(ast_func.syntax().ancestors().last().unwrap()).0;
+    let def_file_editor = SyntaxEditor::new(ast_func.syntax().tree_top()).0;
     let params = get_fn_params(ctx.sema.db, function, &param_list, def_file_editor.make())?;
 
     let mut file_editors = FxHashMap::default();
@@ -255,7 +255,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
         return None;
     }
     let syntax = call_info.node.syntax().clone();
-    let editor = SyntaxEditor::new(syntax.ancestors().last().unwrap()).0;
+    let editor = SyntaxEditor::new(syntax.tree_top()).0;
     let params = get_fn_params(ctx.sema.db, function, &param_list, editor.make())?;
 
     if call_info.arguments.len() != params.len() {
