@@ -24,21 +24,17 @@
 //@ [with_softfloat] build-pass
 //@ [with_softfloat] needs-llvm-components: systemz
 
-#![feature(s390x_target_feature)]
 #![crate_type = "rlib"]
-#![feature(no_core,lang_items)]
+#![feature(no_core, lang_items)]
 #![no_core]
 
 extern crate minicore;
 use minicore::*;
 
 #[no_mangle]
-#[cfg_attr(backchain_attr,target_feature(enable = "backchain"))]
-pub fn test() {
-}
+#[cfg_attr(backchain_attr, target_feature(enable = "backchain"))]
+pub fn test() {}
 
 //[wrong_arch]~? ERROR `-Zpacked-stack` is only supported on s390x
-//[backchain_cli]~? WARN unstable feature specified for `-Ctarget-feature`: `backchain`
 //[backchain_cli]~? ERROR `-Zpacked-stack` is incompatible with `backchain` target feature
 //[backchain_attr]~? ERROR `-Zpacked-stack` is incompatible with `backchain` target feature
-//[with_softfloat]~? WARN unstable feature specified for `-Ctarget-feature`: `backchain`
