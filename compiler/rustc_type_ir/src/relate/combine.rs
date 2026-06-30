@@ -38,8 +38,6 @@ where
         obligations: impl IntoIterator<Item: Upcast<I, I::Predicate>>,
     );
 
-    /// Register `AliasRelate` obligation(s) that both types must be related to each other.
-    fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty);
     fn ambient_variance(&self) -> ty::Variance;
 }
 

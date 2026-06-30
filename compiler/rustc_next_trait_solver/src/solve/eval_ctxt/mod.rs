@@ -735,16 +735,7 @@ where
         // We ignore constraints from the nested goals in leak check. This is to match
         // with the old solver's behavior, which has separated evaluation and fulfillment,
         // and the former doesn't consider outlives obligations from the later.
-        let vis = match goal.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(_)
-            | ty::PredicateKind::DynCompatible(_)
-            | ty::PredicateKind::Subtype(_)
-            | ty::PredicateKind::Coerce(_)
-            | ty::PredicateKind::ConstEquate(_, _)
-            | ty::PredicateKind::Ambiguous
-            | ty::PredicateKind::NormalizesTo(_) => VisibleForLeakCheck::No,
-            ty::PredicateKind::AliasRelate(_, _, _) => VisibleForLeakCheck::Yes,
-        };
+        let vis = VisibleForLeakCheck::No;
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
@@ -961,11 +952,6 @@ where
                 ty::PredicateKind::NormalizesTo(predicate) => {
                     ecx.compute_normalizes_to_goal(Goal { param_env, predicate })?
                 }
-                ty::PredicateKind::AliasRelate(lhs, rhs, direction) => ecx
-                    .compute_alias_relate_goal(Goal {
-                        param_env,
-                        predicate: (lhs, rhs, direction),
-                    })?,
                 ty::PredicateKind::Ambiguous => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)?
                 }
