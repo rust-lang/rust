@@ -236,7 +236,6 @@ impl<'tcx> Generics {
     /// Returns the `GenericParamDef` with the given index.
     pub fn param_at(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
         if let Some(index) = param_index.checked_sub(self.parent_count) {
-            // TODO: check for OOB
             &self.own_params[index]
         } else {
             tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))

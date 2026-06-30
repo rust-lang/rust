@@ -379,7 +379,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         let lifetimes = tcx.opaque_captured_lifetimes(def_id);
         debug!(?lifetimes);
 
-        // TODO: check if filter_map with matches as a predicate would be better here?
+        // FIXME: check if filter_map with matches as a predicate would be better here?
         own_params.extend(lifetimes.iter().map(|&(_arg, param)| ty::GenericParamDef {
             name: tcx.item_name(param.to_def_id()),
             index: next_index(),
@@ -445,7 +445,7 @@ fn param_default_policy(node: Node<'_>) -> Option<ParamDefaultPolicy> {
     })
 }
 
-// TODO: use this for better reasons
+// FIXME: use this for better reasons
 fn _has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<Span> {
     struct LateBoundRegionsDetector<'tcx> {
         tcx: TyCtxt<'tcx>,

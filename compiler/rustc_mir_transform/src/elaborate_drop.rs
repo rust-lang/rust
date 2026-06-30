@@ -249,7 +249,8 @@ where
 
         let fut_ty = tcx
             .instantiate_bound_regions_with_erased(
-                Ty::new_fn_def(tcx, async_drop_fn_def_id, [drop_ty]).fn_sig(tcx),
+                // FIXME: actually instantiate the binder correctly (turbofishing/fndef changes)
+                Ty::new_fn_def(tcx, async_drop_fn_def_id, ty::Binder::dummy([drop_ty])).fn_sig(tcx),
             )
             .output();
         let fut = self.new_temp(fut_ty);
@@ -371,7 +372,13 @@ where
             unwind_with_dead,
             vec![self.storage_live(fut)],
             TerminatorKind::Call {
-                func: Operand::function_handle(tcx, async_drop_fn_def_id, [drop_ty.into()], span),
+                // FIXME: actually instantiate the binder correctly (turbofishing/fndef changes)
+                func: Operand::function_handle(
+                    tcx,
+                    async_drop_fn_def_id,
+                    ty::Binder::dummy([drop_ty.into()]),
+                    span,
+                ),
                 args: [dummy_spanned(drop_arg)].into(),
                 destination: fut.into(),
                 target: Some(succ_yield_loop),
@@ -399,7 +406,8 @@ where
                 func: Operand::function_handle(
                     tcx,
                     pin_obj_new_unchecked_fn,
-                    [obj_ref_ty.into()],
+                    // FIXME: actually instantiate the binder correctly (turbofishing/fndef changes)
+                    ty::Binder::dummy([obj_ref_ty.into()]),
                     span,
                 ),
                 args: [dummy_spanned(Operand::Move(obj_ref_place))].into(),
@@ -564,7 +572,13 @@ where
             unwind,
             Vec::new(),
             TerminatorKind::Call {
-                func: Operand::function_handle(tcx, poll_fn, [fut_ty.into()], source_info.span),
+                // FIXME: actually instantiate the binder correctly (turbofishing/fndef changes)
+                func: Operand::function_handle(
+                    tcx,
+                    poll_fn,
+                    ty::Binder::dummy([fut_ty.into()]),
+                    source_info.span,
+                ),
                 args: [
                     dummy_spanned(Operand::Move(fut_pin_local.into())),
                     dummy_spanned(Operand::Move(context_ref_local.into())),
@@ -593,7 +607,11 @@ where
                     func: Operand::function_handle(
                         tcx,
                         get_context_fn,
-                        [tcx.lifetimes.re_erased.into(), tcx.lifetimes.re_erased.into()],
+                        // FIXME: actually instantiate the binder correctly (turbofishing/fndef changes)
+                        ty::Binder::dummy([
+                            tcx.lifetimes.re_erased.into(),
+                            tcx.lifetimes.re_erased.into(),
+                        ]),
                         source_info.span,
                     ),
                     args: [dummy_spanned(Operand::Move(entry_resume_local.into()))].into(),
@@ -623,7 +641,7 @@ where
                 func: Operand::function_handle(
                     tcx,
                     fut_pin_new_unchecked_fn,
-                    [fut_ref_ty.into()],
+                    ty::Binder::dummy([fut_ref_ty.into()]),
                     source_info.span,
                 ),
                 args: [dummy_spanned(Operand::Move(fut_ref_local.into()))].into(),
@@ -1226,7 +1244,13 @@ where
                 ),
             )],
             TerminatorKind::Call {
-                func: Operand::function_handle(tcx, drop_fn, [ty.into()], self.source_info.span),
+                // FIXME: actually instantiate the binder correctly (turbofishing/fndef changes)
+                func: Operand::function_handle(
+                    tcx,
+                    drop_fn,
+                    ty::Binder::dummy([ty.into()]),
+                    self.source_info.span,
+                ),
                 args: [dummy_spanned(Operand::Move(Place::from(ref_place)))].into(),
                 destination: unit_temp,
                 target: Some(succ),

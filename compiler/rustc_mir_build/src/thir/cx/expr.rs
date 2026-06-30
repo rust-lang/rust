@@ -1251,7 +1251,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
         (
             Expr {
                 temp_scope_id: expr.hir_id.local_id,
-                ty: Ty::new_fn_def(self.tcx, def_id, self.typeck_results.node_args(expr.hir_id)),
+                // FIXME: actually instantiate the binder correctly (turbofishing/fndef changes)
+                ty: Ty::new_fn_def(
+                    self.tcx,
+                    def_id,
+                    ty::Binder::dummy(self.typeck_results.node_args(expr.hir_id)),
+                ),
                 span,
                 kind: ExprKind::ZstLiteral { user_ty },
             },

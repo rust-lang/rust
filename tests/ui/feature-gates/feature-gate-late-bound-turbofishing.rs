@@ -1,4 +1,4 @@
-// TODO: repalce E0794 with E0658?
+// FIXME: eventually replace E0794 with E0658
 
 // 'a is late bound
 fn foo<'a>(b: &'a u32) -> &'a u32 { b }
