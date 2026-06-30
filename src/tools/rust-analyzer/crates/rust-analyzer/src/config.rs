@@ -833,6 +833,10 @@ config_data! {
         cargo_cfgs: Vec<String> = {
             vec!["debug_assertions".into(), "miri".into()]
         },
+        /// Path to a `.cargo/config.toml` style file to pass to cargo via `--config`
+        /// for every cargo invocation (metadata, build scripts, config discovery).
+        /// Useful to give rust-analyzer a consistent view of the project configuration.
+        cargo_configPath: Option<Utf8PathBuf> = None,
         /// Extra arguments that are passed to every cargo invocation.
         cargo_extraArgs: Vec<String> = vec![],
         /// Extra environment variables that will be set when running cargo, rustc
@@ -2418,6 +2422,8 @@ impl Config {
         });
         let sysroot_src =
             self.cargo_sysrootSrc(source_root).as_ref().map(|sysroot| self.root_path.join(sysroot));
+        let config_path =
+            self.cargo_configPath(source_root).as_ref().map(|path| self.root_path.join(path));
         let extra_includes = self
             .vfs_extraIncludes(source_root)
             .iter()
@@ -2484,6 +2490,7 @@ impl Config {
             set_test: *self.cfg_setTest(source_root),
             no_deps: *self.cargo_noDeps(source_root),
             metadata_extra_args: self.cargo_metadataExtraArgs(source_root).clone(),
+            config_path,
         }
     }
 
