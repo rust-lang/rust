@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //! Test `#[splat]` fails over the 255th argument index (or higher).
 //! FIXME(splat): The 255 argument limit is a temporary performance hack.
 
