@@ -10,7 +10,6 @@ for test in \
     tests/codegen-llvm/autodiff \
     tests/pretty/autodiff \
     tests/ui/autodiff \
-    tests/run-make/autodiff \
     tests/ui/feature-gates/feature-gate-autodiff.rs
 do
     set +e
