@@ -119,7 +119,7 @@ fn swap_sibling_in_list<A: AstNode + Clone, I: Iterator<Item = A>>(
     range: TextRange,
     direction: Direction,
 ) -> Option<TextEdit> {
-    let list_lookup = list.array_windows::<2>().find(|[l, r]| match direction {
+    let list_lookup = list.array_windows().find(|[l, r]| match direction {
         Direction::Up => r.syntax().text_range().contains_range(range),
         Direction::Down => l.syntax().text_range().contains_range(range),
     });

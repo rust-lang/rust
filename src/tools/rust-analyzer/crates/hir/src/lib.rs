@@ -6849,7 +6849,7 @@ impl<'db> Layout<'db> {
                     .into_iter()
                     .flatten()
                     .chain(iter::once((0, self.0.size.bytes())))
-                    .array_windows::<2>()
+                    .array_windows()
                     .filter_map(|[(i, start), (_, end)]| {
                         let size = field_size(i)?;
                         end.checked_sub(start)?.checked_sub(size)

@@ -205,7 +205,7 @@ fn check_test_attrs(path: &Path, text: &str) {
     }
     if let Some((line, _)) = text
         .lines()
-        .array_windows::<2>()
+        .array_windows()
         .enumerate()
         .find(|(_, [a, b])| b.contains("#[should_panic") && !a.contains("FIXME"))
     {

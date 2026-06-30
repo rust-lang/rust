@@ -3501,7 +3501,7 @@ impl FullConfigInput {
         fields.sort_by_key(|&(x, ..)| x);
         fields
             .iter()
-            .array_windows::<2>()
+            .array_windows()
             .for_each(|[a, b]| assert!(a.0 != b.0, "{a:?} duplicate field"));
         fields
     }
