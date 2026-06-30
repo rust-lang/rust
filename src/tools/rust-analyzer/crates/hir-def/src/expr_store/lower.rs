@@ -1562,6 +1562,10 @@ impl<'db> ExprCollector<'db> {
                         args.reserve_exact(num_params);
                         arg_types.reserve_exact(num_params);
                         for param in pl.params() {
+                            if !this.check_cfg(&param) {
+                                continue;
+                            }
+
                             let pat = this.collect_pat_top(param.pat());
                             let type_ref =
                                 param.ty().map(|it| this.lower_type_ref_disallow_impl_trait(it));
@@ -1666,7 +1670,7 @@ impl<'db> ExprCollector<'db> {
                 }
             }
             ast::Expr::TupleExpr(e) => {
-                let mut exprs: Vec<_> = e.fields().map(|expr| self.collect_expr(expr)).collect();
+                let mut exprs: Vec<_> = e.fields().filter_map(|expr| self.maybe_collect_expr(expr)).collect();
                 // if there is a leading comma, the user is most likely to type out a leading expression
                 // so we insert a missing expression at the beginning for IDE features
                 if comma_follows_token(e.l_paren_token()) {
@@ -1681,13 +1685,7 @@ impl<'db> ExprCollector<'db> {
                 match kind {
                     ArrayExprKind::ElementList(e) => {
                         let elements = e
-                            .filter_map(|expr| {
-                                if self.check_cfg(&expr) {
-                                    Some(self.collect_expr(expr))
-                                } else {
-                                    None
-                                }
-                            })
+                            .filter_map(|expr| self.maybe_collect_expr(expr))
                             .collect();
                         self.alloc_expr(Expr::Array(Array::ElementList { elements }), syntax_ptr)
                     }
@@ -1728,16 +1726,18 @@ impl<'db> ExprCollector<'db> {
                 let e = e.macro_call()?;
                 let macro_ptr = AstPtr::new(&e);
                 let id = self.collect_macro_call(e, macro_ptr, true, |this, expansion| {
-                    expansion.map(|it| this.collect_expr(it))
+                    expansion.map(|it| this.maybe_collect_expr(it))
                 });
                 match id {
-                    Some(id) => {
+                    Some(Some(id)) => {
                         // Make the macro-call point to its expanded expression so we can query
                         // semantics on syntax pointers to the macro
                         let src = self.expander.in_file(syntax_ptr);
                         self.store.expr_map.insert(src, id.into());
                         id
                     }
+                    // Macro expanded into a disabled cfg (yes, there is such thing, see the weird_cfgs test).
+                    Some(None) => return None,
                     None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
