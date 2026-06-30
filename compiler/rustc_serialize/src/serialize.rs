@@ -7,6 +7,7 @@ use std::hash::{BuildHasher, Hash};
 use std::marker::{PhantomData, PointeeSized};
 use std::num::NonZero;
 use std::path;
+use std::range::RangeInclusive;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -250,6 +251,33 @@ impl<S: Encoder> Encodable<S> for NonZero<u32> {
 impl<D: Decoder> Decodable<D> for NonZero<u32> {
     fn decode(d: &mut D) -> Self {
         NonZero::new(d.read_u32()).unwrap()
+    }
+}
+
+impl<S: Encoder> Encodable<S> for NonZero<usize> {
+    fn encode(&self, s: &mut S) {
+        s.emit_usize(self.get());
+    }
+}
+
+impl<D: Decoder> Decodable<D> for NonZero<usize> {
+    fn decode(d: &mut D) -> Self {
+        NonZero::new(d.read_usize()).unwrap()
+    }
+}
+
+impl<S: Encoder, I: Encodable<S>> Encodable<S> for RangeInclusive<I> {
+    fn encode(&self, s: &mut S) {
+        self.start.encode(s);
+        self.last.encode(s);
+    }
+}
+
+impl<D: Decoder, I: Decodable<D>> Decodable<D> for RangeInclusive<I> {
+    fn decode(d: &mut D) -> Self {
+        let start = I::decode(d);
+        let last = I::decode(d);
+        Self { start, last }
     }
 }
 
