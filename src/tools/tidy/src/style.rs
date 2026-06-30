@@ -15,7 +15,6 @@
 //!
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
-// ignore-tidy-dbg
 
 use std::ffi::OsStr;
 use std::mem;
@@ -415,7 +414,8 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 check.error(format!("{}:{}: {msg}", file.display(), line_number));
             };
 
-            if trimmed.contains("dbg!")
+            if !is_this_file
+                && trimmed.contains("dbg!")
                 && !trimmed.starts_with("//")
                 && !file.ancestors().any(|a| {
                     (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
@@ -430,7 +430,8 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 )
             }
 
-            if trimmed.contains("todo!")
+            if !is_this_file
+                && trimmed.contains("todo!")
                 && !trimmed.starts_with("//")
                 && !file.ancestors().any(|a| {
                     (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
@@ -496,7 +497,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     err("Unrecognized tidy directive")
                 }
                 // Allow using TODO in diagnostic suggestions by marking the
-                // relevant line with `// ignore-tidy-todo`.
+                // relevant line with `ignore-tidy-todo`.
                 if trimmed.contains("TODO") && !trimmed.contains("ignore-tidy-todo") {
                     err(
                         "TODO is used for tasks that should be done before merging a PR; If you want to leave a message in the codebase use FIXME",
@@ -656,7 +657,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             let mut err = |_| {
                 check.error(format!(
                     "{}: too many lines ({lines}) (add `// \
-                     ignore-tidy-filelength` to the file to suppress this error)",
+                     ignore-tidy-file-filelength` to the file to suppress this error)",
                     file.display(),
                 ));
             };

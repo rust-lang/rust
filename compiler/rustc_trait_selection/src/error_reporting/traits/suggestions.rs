@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 
 use std::borrow::Cow;
 use std::path::PathBuf;

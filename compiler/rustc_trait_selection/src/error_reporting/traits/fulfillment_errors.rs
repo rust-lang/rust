@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 use core::ops::ControlFlow;
 use std::borrow::Cow;
 use std::collections::hash_set;

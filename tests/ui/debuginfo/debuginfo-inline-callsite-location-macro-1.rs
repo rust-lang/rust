@@ -1,7 +1,7 @@
 //@ check-pass
 //@ compile-flags: -Cdebuginfo=2 -Copt-level=0 -Zmir-enable-passes=+Inline
 //@ ignore-msvc
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 
 #[derive(Default)]
 struct Something {}

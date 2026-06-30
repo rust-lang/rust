@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 // This test ensures that the items declaration content overflow is handled inside the <pre> directly.
 
 // We need to disable this check because

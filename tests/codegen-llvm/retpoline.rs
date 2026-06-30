@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 // Test that the
 // `retpoline-external-thunk`, `retpoline-indirect-branches`, `retpoline-indirect-calls`
 // target features are (not) emitted when the `retpoline/retpoline-external-thunk` flag is (not) set.
