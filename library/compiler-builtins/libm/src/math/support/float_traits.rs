@@ -337,31 +337,34 @@ macro_rules! float_impl {
                 Self::from_bits(a)
             }
             fn abs(self) -> Self {
-                cfg_if! {
+                cfg_select! {
                     // FIXME(msrv): `abs` is available in `core` starting with 1.85.
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         self.abs()
-                    } else {
+                    }
+                    _ => {
                         super::super::generic::fabs(self)
                     }
                 }
             }
             fn copysign(self, other: Self) -> Self {
-                cfg_if! {
+                cfg_select! {
                     // FIXME(msrv): `copysign` is available in `core` starting with 1.85.
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         self.copysign(other)
-                    } else {
+                    }
+                    _ => {
                         super::super::generic::copysign(self, other)
                     }
                 }
             }
             fn fma(self, y: Self, z: Self) -> Self {
-                cfg_if! {
+                cfg_select! {
                     // fma is not yet available in `core`
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         core::intrinsics::$fma_intrinsic(self, y, z)
-                    } else {
+                    }
+                    _ => {
                         super::super::$fma_fn(self, y, z)
                     }
                 }

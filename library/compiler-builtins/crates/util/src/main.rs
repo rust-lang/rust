@@ -8,8 +8,7 @@ use std::env;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use cfg_if::cfg_if;
-use libm::support::{Float, Hex, hf32, hf64};
+use libm::support::{Float, Hex, cfg_select, hf32, hf64};
 #[cfg(feature = "build-mpfr")]
 use libm_test::mpfloat::MpOp;
 use libm_test::{MathOp, TupleCall, builtins_wrapper};
@@ -127,13 +126,14 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
 fn do_classify(inputs: &[&str]) {
     for s in inputs {
         if let Some(s) = s.strip_suffix("f16") {
-            cfg_if! {
-                if #[cfg(f16_enabled)] {
+            cfg_select! {
+                f16_enabled => {
                     let s = s.trim_end_matches("_");
                     let x: f16 = parse(&[s], 0);
                     classify_print(x);
                     continue;
-                } else {
+                }
+                _ => {
                     panic!("parsing this type requires f16 support: `{s}`");
                 }
             }
@@ -150,13 +150,14 @@ fn do_classify(inputs: &[&str]) {
             continue;
         }
         if let Some(s) = s.strip_suffix("f128") {
-            cfg_if! {
-                if #[cfg(all(f128_enabled, feature = "build-mpfr"))] {
+            cfg_select! {
+                all(f128_enabled, feature = "build-mpfr") => {
                     let s = s.trim_end_matches("_");
                     let x: f128 = parse_rug(&[s], 0);
                     classify_print(x);
                     continue;
-                } else {
+                }
+                _ => {
                     panic!("parsing this type requires f128 support and \
                             the `build-mpfr` feature: `{s}`");
                 }

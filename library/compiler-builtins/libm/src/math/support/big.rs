@@ -294,11 +294,12 @@ impl fmt::Debug for i256 {
 
 impl fmt::LowerHex for u256 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        cfg_if! {
-            if #[cfg(feature = "compiler-builtins")] {
+        cfg_select! {
+            feature = "compiler-builtins" => {
                 let _ = f;
                 unimplemented!()
-            } else {
+            }
+            _ => {
                 let pfx= if f.alternate() { "0x"} else {""};
                 write!(f, "{pfx}{:032x}{:032x}", self.hi, self.lo)
             }

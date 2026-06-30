@@ -14,7 +14,7 @@ mod modular;
 pub use big::{i256, u256};
 // Clippy seems to have a false positive
 #[allow(unused_imports, clippy::single_component_path_imports)]
-pub(crate) use cfg_if;
+pub use cfg_select;
 pub use env::{FpResult, Round, Status};
 #[allow(unused_imports)]
 pub use float_traits::{DFloat, Float, HFloat, HalfRep, IntTy};
@@ -40,8 +40,8 @@ pub fn cold_path() {
 ///
 /// `y` must not be zero and the result must not overflow (`x > i32::MIN`).
 pub unsafe fn unchecked_div_i32(x: i32, y: i32) -> i32 {
-    cfg_if! {
-        if #[cfg(all(not(debug_assertions), intrinsics_enabled))] {
+    cfg_select! {
+        all(not(debug_assertions), intrinsics_enabled) => {
             // Temporary macro to avoid panic codegen for division (in debug mode too). At
             // the time of this writing this is only used in a few places, and once
             // rust-lang/rust#72751 is fixed then this macro will no longer be necessary and
@@ -50,7 +50,8 @@ pub unsafe fn unchecked_div_i32(x: i32, y: i32) -> i32 {
             // Note: I am not sure whether the above comment is still up to date, we need
             // to double check whether panics are elided where we use this.
             unsafe { core::intrinsics::unchecked_div(x, y) }
-        } else {
+        }
+        _ => {
             x / y
         }
     }
@@ -60,10 +61,11 @@ pub unsafe fn unchecked_div_i32(x: i32, y: i32) -> i32 {
 ///
 /// `y` must not be zero and the result must not overflow (`x > isize::MIN`).
 pub unsafe fn unchecked_div_isize(x: isize, y: isize) -> isize {
-    cfg_if! {
-        if #[cfg(all(not(debug_assertions), intrinsics_enabled))] {
+    cfg_select! {
+        all(not(debug_assertions), intrinsics_enabled) => {
             unsafe { core::intrinsics::unchecked_div(x, y) }
-        } else {
+        }
+              _ => {
             x / y
         }
     }

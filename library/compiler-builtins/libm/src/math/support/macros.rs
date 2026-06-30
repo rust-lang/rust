@@ -1,67 +1,25 @@
-/// `libm` cannot have dependencies, so this is vendored directly from the `cfg-if` crate
-/// (with some comments stripped for compactness).
-macro_rules! cfg_if {
+// Because `cfg_select` requires rust verion 1.95 and we support older versions,
+// we use the following replacement until that is no longer true.
+// FIXME(msrv)
+#[macro_export]
+macro_rules! cfg_select {
+    ({ $($tt:tt)* }) => {{
+        $crate::cfg_select! { $($tt)* }
+    }};
+    (_ => { $($output:tt)* }) => {
+        $($output)*
+    };
     (
-        if #[cfg( $($i_meta:tt)+ )] { $( $i_tokens:tt )* }
+        $cfg:meta => $output:tt
+        $($( $rest:tt )+)?
+    ) => {
+        #[cfg($cfg)]
+        cfg_select! { _ => $output }
         $(
-            else if #[cfg( $($ei_meta:tt)+ )] { $( $ei_tokens:tt )* }
-        )*
-        $(
-            else { $( $e_tokens:tt )* }
+            #[cfg(not($cfg))]
+            cfg_select! { $($rest)+ }
         )?
-    ) => {
-        cfg_if! {
-            @__items () ;
-            (( $($i_meta)+ ) ( $( $i_tokens )* )),
-            $(
-                (( $($ei_meta)+ ) ( $( $ei_tokens )* )),
-            )*
-            $(
-                (() ( $( $e_tokens )* )),
-            )?
-        }
-    };
-
-    // Internal and recursive macro to emit all the items
-    //
-    // Collects all the previous cfgs in a list at the beginning, so they can be
-    // negated. After the semicolon are all the remaining items.
-    (@__items ( $( ($($_:tt)*) , )* ) ; ) => {};
-    (
-        @__items ( $( ($($no:tt)+) , )* ) ;
-        (( $( $($yes:tt)+ )? ) ( $( $tokens:tt )* )),
-        $( $rest:tt , )*
-    ) => {
-        // Emit all items within one block, applying an appropriate #[cfg]. The
-        // #[cfg] will require all `$yes` matchers specified and must also negate
-        // all previous matchers.
-        #[cfg(all(
-            $( $($yes)+ , )?
-            not(any( $( $($no)+ ),* ))
-        ))]
-        // Subtle: You might think we could put `$( $tokens )*` here. But if
-        // that contains multiple items then the `#[cfg(all(..))]` above would
-        // only apply to the first one. By wrapping `$( $tokens )*` in this
-        // macro call, we temporarily group the items into a single thing (the
-        // macro call) that will be included/excluded by the `#[cfg(all(..))]`
-        // as appropriate. If the `#[cfg(all(..))]` succeeds, the macro call
-        // will be included, and then evaluated, producing `$( $tokens )*`. See
-        // also the "issue #90" test below.
-        cfg_if! { @__temp_group $( $tokens )* }
-
-        // Recurse to emit all other items in `$rest`, and when we do so add all
-        // our `$yes` matchers to the list of `$no` matchers as future emissions
-        // will have to negate everything we just matched as well.
-        cfg_if! {
-            @__items ( $( ($($no)+) , )* $( ($($yes)+) , )? ) ;
-            $( $rest , )*
-        }
-    };
-
-    // See the "Subtle" comment above.
-    (@__temp_group $( $tokens:tt )* ) => {
-        $( $tokens )*
-    };
+    }
 }
 
 /// Choose between using an arch-specific implementation and the function body. Returns directly
