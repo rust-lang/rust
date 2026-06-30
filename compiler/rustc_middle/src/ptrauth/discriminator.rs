@@ -67,7 +67,7 @@ This implementation intentionally approximates Clang's behavior for extern "C"
 function types only. It does NOT attempt to model full type system rules.
 */
 
-use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx};
+use rustc_abi::ExternAbi;
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_span::sym;
 
@@ -236,24 +236,6 @@ fn is_complex_compatible_float(ty: Ty<'_>) -> bool {
     }
 }
 
-fn scalar_size_bytes(tcx: TyCtxt<'_>, ty: Ty<'_>) -> u64 {
-    match ty.kind() {
-        ty::Bool | ty::Uint(ty::UintTy::U8) | ty::Int(ty::IntTy::I8) => 1,
-        ty::Uint(ty::UintTy::U16) | ty::Int(ty::IntTy::I16) => 2,
-        ty::Uint(ty::UintTy::U32) | ty::Int(ty::IntTy::I32) | ty::Float(ty::FloatTy::F32) => 4,
-        ty::Uint(ty::UintTy::U64) | ty::Int(ty::IntTy::I64) | ty::Float(ty::FloatTy::F64) => 8,
-        ty::Float(ty::FloatTy::F128) => 16,
-
-        ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) => tcx.data_layout.pointer_size().bytes(),
-
-        _ => {
-            // SIMD only allows scalars anyway
-            tcx.dcx().delayed_bug("invalid SIMD element type");
-            1
-        }
-    }
-}
-
 // Canonicalize `Option<fn ptr>` to `fn ptr`. This is so that we can express C's null ptr argument.
 // Please see pauth-fn-ptr-type-discrimination-null-arg.rs test for an example.
 fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -309,35 +291,23 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
 
         // enums to integer collapse
         ty::Adt(def, _) if def.is_enum() => ClangDiscTy::EnumLikeInt,
-
-        // This is borrowed from the logic in rust_ty_utils/src/layout.rs
+        // simd vectors
         ty::Adt(def, args) if def.repr().simd() => {
-            let variant = &def.variant(FIRST_VARIANT);
-            let field = &variant.fields[FieldIdx::from_u32(0)];
+            // Clang encodes SIMD vectors by their total size
+            let input = ty::PseudoCanonicalInput {
+                typing_env: ty::TypingEnv::fully_monomorphized(),
+                value: ty,
+            };
 
-            let field_ty = field.ty(tcx, args).skip_norm_wip();
-
-            let ty::Array(e_ty, e_len) = *field_ty.kind() else {
-                tcx.dcx().delayed_bug("invalid repr(simd) shape");
+            let Ok(layout) = tcx.layout_of(input) else {
+                tcx.dcx().delayed_bug("could not compute SIMD layout");
                 return ClangDiscTy::Opaque;
             };
 
-            // lane count WITHOUT const eval:
-            let lanes = match e_len.kind() {
-                ty::ConstKind::Value(val) => val.try_to_target_usize(tcx).unwrap_or(0),
-                ty::ConstKind::Unevaluated(..) => {
-                    // monomorphic SIMD should never hit this
-                    tcx.dcx().delayed_bug("generic SIMD in ptrauth encoding");
-                    0
-                }
-                _ => 0,
-            };
+            let bytes = layout.size.bytes();
 
-            let elem_size = scalar_size_bytes(tcx, e_ty);
-
-            ClangDiscTy::Vector { bytes: elem_size * lanes }
+            ClangDiscTy::Vector { bytes }
         }
-
         // structs/unions to name-based identity
         ty::Adt(def, _) => {
             let name = tcx.item_name(def.did()).to_string();
@@ -370,10 +340,6 @@ impl PtrauthEncoder {
 
     fn finish(&self) -> u16 {
         llvm_pointer_auth_stable_siphash(&self.buf)
-    }
-
-    fn as_string(&self) -> String {
-        String::from_utf8_lossy(&self.buf).to_string()
     }
 }
 
