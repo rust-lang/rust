@@ -1962,9 +1962,15 @@ fn sysroot_metadata_config(
     CargoMetadataConfig {
         features: Default::default(),
         targets,
+        // NOTE: Not passing extra_args / metadata_extra_args / config_path here is very
+        // intentional. The sysroot config has nothing to do with the workspace's config, so it's
+        // very unlikely to do the right thing (e.g. it'd could try to use vendored dependencies in
+        // the project's config for libstd or what not).
         extra_args: Default::default(),
         metadata_extra_args: Default::default(),
         config_path: Default::default(),
+        // FIXME: Passing extra_env is somewhat dubious here, for the same reason we don't pass
+        // extra_args.
         extra_env: config.extra_env.clone(),
         toolchain_version,
         kind: "sysroot",
