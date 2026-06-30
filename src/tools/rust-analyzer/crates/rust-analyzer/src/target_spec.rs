@@ -204,6 +204,10 @@ impl CargoTargetSpec {
             }
         }
         cargo_args.extend(config.cargo_extra_args.iter().cloned());
+        if let Some(config_path) = &config.config_path {
+            cargo_args.push("--config".to_owned());
+            cargo_args.push(config_path.to_string());
+        }
         (cargo_args, executable_args)
     }
 

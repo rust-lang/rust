@@ -1688,6 +1688,8 @@ pub struct RunnablesConfig {
     pub override_cargo: Option<String>,
     /// Additional arguments for the `cargo`, e.g. `--release`.
     pub cargo_extra_args: Vec<String>,
+    /// Path to an extra config file passed to cargo via `--config`.
+    pub config_path: Option<AbsPathBuf>,
     /// Additional arguments for the binary being run, if it is a test or benchmark.
     pub extra_test_binary_args: Vec<String>,
     /// Subcommand used for doctest runnables instead of `test`.
@@ -2669,6 +2671,7 @@ impl Config {
         RunnablesConfig {
             override_cargo: self.runnables_command(source_root).clone(),
             cargo_extra_args: self.runnables_extraArgs(source_root).clone(),
+            config_path: self.cargo_config_path(source_root),
             extra_test_binary_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
             test_command: self.runnables_test_command(source_root).clone(),
             test_override_command: self.runnables_test_overrideCommand(source_root).clone(),

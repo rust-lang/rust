@@ -1074,6 +1074,10 @@ pub(crate) fn handle_runnables(
                     cargo_args.push("--all-targets".to_owned());
                 }
                 cargo_args.extend(config.cargo_extra_args.iter().cloned());
+                if let Some(config_path) = &config.config_path {
+                    cargo_args.push("--config".to_owned());
+                    cargo_args.push(config_path.to_string());
+                }
                 res.push(lsp_ext::Runnable {
                     label: format!(
                         "cargo {cmd} -p {}{all_targets}",
@@ -1104,6 +1108,10 @@ pub(crate) fn handle_runnables(
             {
                 let mut cargo_args = vec!["check".to_owned(), "--workspace".to_owned()];
                 cargo_args.extend(config.cargo_extra_args.iter().cloned());
+                if let Some(config_path) = &config.config_path {
+                    cargo_args.push("--config".to_owned());
+                    cargo_args.push(config_path.to_string());
+                }
                 res.push(lsp_ext::Runnable {
                     label: "cargo check --workspace".to_owned(),
                     location: None,
