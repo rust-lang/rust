@@ -2472,10 +2472,10 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         && tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some()
     {
         let saved_path = &work_product.saved_files["rmeta"];
-        let incr_comp_session_dir = tcx.sess.incr_comp_session_dir_opt().unwrap();
-        let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, saved_path);
-        debug!("copying preexisting metadata from {source_file:?} to {path:?}");
-        match rustc_fs_util::link_or_copy(&source_file, path) {
+        let incr_comp_session_dir = tcx.sess.incr_comp_session_dir();
+        let source_file_in_incr_dir = &incr_comp_session_dir.join(saved_path);
+        debug!("copying preexisting metadata from {source_file_in_incr_dir:?} to {path:?}");
+        match rustc_fs_util::link_or_copy(&source_file_in_incr_dir, path) {
             Ok(_) => {}
             Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
         };
