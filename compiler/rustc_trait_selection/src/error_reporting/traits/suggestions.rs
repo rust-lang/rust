@@ -1611,7 +1611,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => None,
         };
 
-        [typeck_results.expr_ty_adjusted_opt(expr)].into_iter().flatten().any(|expr_ty| {
+        typeck_results.expr_ty_adjusted_opt(expr).is_some_and(|expr_ty| {
             self.can_eq(obligation.param_env, expr_ty, old_self_ty)
                 || inner_old_self_ty
                     .is_some_and(|inner_ty| self.can_eq(obligation.param_env, expr_ty, inner_ty))

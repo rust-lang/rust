@@ -479,10 +479,9 @@ fn fn_sig_suggestion<'tcx>(
                     }
                 }
             };
-            Some(format!("{splat}{arg_ty}"))
+            format!("{splat}{arg_ty}")
         })
-        .chain(std::iter::once(if sig.c_variadic() { Some("...".to_string()) } else { None }))
-        .flatten()
+        .chain(if sig.c_variadic() { Some("...".to_string()) } else { None })
         .collect::<Vec<String>>()
         .join(", ");
     let mut output = sig.output();
