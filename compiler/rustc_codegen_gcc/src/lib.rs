@@ -248,8 +248,6 @@ impl CodegenBackend for GccCodegenBackend {
         {
             let lto_supported = gccjit::is_lto_supported();
             self.lto_supported.store(lto_supported, Ordering::SeqCst);
-
-            gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
         }
 
         #[cfg(not(feature = "master"))]
@@ -290,6 +288,8 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
+        #[cfg(feature = "master")]
+        self.set_personality_function(tcx);
         Box::new(codegen_crate(self.clone(), tcx))
     }
 
@@ -312,6 +312,17 @@ impl CodegenBackend for GccCodegenBackend {
 
     fn fallback_intrinsics(&self) -> Vec<Symbol> {
         vec![sym::type_id_eq]
+    }
+}
+
+impl GccCodegenBackend {
+    #[cfg(feature = "master")]
+    fn set_personality_function(&self, tcx: TyCtxt<'_>) {
+        let personality_symbol =
+            CString::new(rustc_symbol_mangling::eh_personality_symbol(tcx)).unwrap();
+        // FIXME: Change gccjit to store an owned string internally (https://github.com/rust-lang/rust/pull/148413#discussion_r2749777937)
+        let personality_symbol = Box::leak(personality_symbol.into_boxed_c_str());
+        gccjit::set_global_personality_function_name(personality_symbol.to_bytes_with_nul());
     }
 }
 
