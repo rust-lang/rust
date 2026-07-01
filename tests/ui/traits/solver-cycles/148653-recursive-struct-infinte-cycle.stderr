@@ -1,0 +1,27 @@
+error: type parameter `T` is only used recursively
+  --> $DIR/148653-recursive-struct-infinte-cycle.rs:3:15
+   |
+LL | struct Vec<T> {
+   |            - type parameter must be used non-recursively in the definition
+LL |     data: Vec<T>,
+   |               ^
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
+error[E0072]: recursive type `Vec` has infinite size
+  --> $DIR/148653-recursive-struct-infinte-cycle.rs:2:1
+   |
+LL | struct Vec<T> {
+   | ^^^^^^^^^^^^^
+LL |     data: Vec<T>,
+   |           ------ recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     data: Box<Vec<T>>,
+   |           ++++      +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0072`.
