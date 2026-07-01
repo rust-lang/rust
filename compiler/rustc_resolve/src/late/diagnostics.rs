@@ -133,7 +133,7 @@ pub(super) struct MissingLifetime {
 
 /// Description of the lifetimes appearing in a function parameter.
 /// This is used to provide a literal explanation to the elision failure.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(super) struct ElisionFnParameter {
     /// The index of the argument in the original definition.
     pub index: usize,
