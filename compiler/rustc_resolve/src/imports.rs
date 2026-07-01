@@ -69,7 +69,6 @@ impl<'ra> PendingDecl<'ra> {
 }
 
 /// Contains data for specific kinds of imports.
-#[derive(Clone)]
 pub(crate) enum ImportKind<'ra> {
     Single {
         /// `source` in `use prefix::source as target`.
@@ -157,7 +156,7 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
 }
 
 /// One import.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct ImportData<'ra> {
     pub kind: ImportKind<'ra>,
 
@@ -280,7 +279,7 @@ impl<'ra> ImportData<'ra> {
 }
 
 /// Records information about the resolution of a name in a namespace of a module.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct NameResolution<'ra> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
@@ -377,7 +376,7 @@ pub(crate) mod cycle_detection {
 
 /// An error that may be transformed into a diagnostic later. Used to combine multiple unresolved
 /// import errors within the same use tree into a single diagnostic.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct UnresolvedImportError {
     pub(crate) span: Span,
     pub(crate) label: Option<String>,
@@ -396,7 +395,7 @@ fn pub_use_of_private_extern_crate_hack(
     import: ImportSummary,
     decl: Decl<'_>,
 ) -> Option<LocalDefId> {
-    match (import.is_single, decl.kind) {
+    match (import.is_single, &decl.kind) {
         (true, DeclKind::Import { import: decl_import, .. })
             if let ImportKind::ExternCrate { def_id, .. } = decl_import.kind
                 && import.vis.is_public() =>
