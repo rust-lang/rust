@@ -234,29 +234,35 @@ error: manual implementation of `Option::is_none_or`
 LL |     let _ = opt.is_some_and(then_fn) || opt.is_none();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `opt.is_none_or(then_fn)`
 
+error: called `.map() == Some()`
+  --> tests/ui/manual_is_variant_and.rs:264:13
+   |
+LL |     let _ = opt.map(|x| x > 0) == Some(true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `opt.is_some_and(|x| x > 0)`
+
 error: manual implementation of `Option::is_some_and`
-  --> tests/ui/manual_is_variant_and.rs:259:5
+  --> tests/ui/manual_is_variant_and.rs:272:5
    |
 LL |     opt.filter(|x| condition(x)).is_some();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `opt.as_ref().is_some_and(|x| condition(x))`
 
 error: manual implementation of `Option::is_none_or`
-  --> tests/ui/manual_is_variant_and.rs:261:5
+  --> tests/ui/manual_is_variant_and.rs:274:5
    |
 LL |     opt.filter(|x| condition(x)).is_none();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `opt.as_ref().is_none_or(|x| !condition(x))`
 
 error: called `.ok().is_some_and(..)` on a `Result` value
-  --> tests/ui/manual_is_variant_and.rs:273:13
+  --> tests/ui/manual_is_variant_and.rs:286:13
    |
 LL |     let _ = res.ok().is_some_and(|x| x > 0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `is_ok_and` instead: `res.is_ok_and(|x| x > 0)`
 
 error: called `.ok().is_some_and(..)` on a `Result` value
-  --> tests/ui/manual_is_variant_and.rs:276:13
+  --> tests/ui/manual_is_variant_and.rs:289:13
    |
 LL |     let _ = res.ok().is_some_and(|x| x > 0) || res.is_err();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `is_ok_and` instead: `res.is_ok_and(|x| x > 0)`
 
-error: aborting due to 37 previous errors
+error: aborting due to 38 previous errors
 
