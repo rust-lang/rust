@@ -1,21 +1,35 @@
+use core::num::niche_types::Nanoseconds;
+
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
-use crate::sys::helpers::mul_div_u64;
 use crate::sys::pal::time::{
     INTERVALS_PER_SEC, checked_dur2intervals, intervals2dur, perf_counter,
 };
 use crate::sys::{IntoInner, c};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{fmt, mem};
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct Instant {
-    // This duration is relative to an arbitrary microsecond epoch
-    // from the winapi QueryPerformanceCounter function.
-    t: Duration,
+pub fn now() -> Instant {
+    // High precision timing on windows operates in "Performance Counter"
+    // units, as returned by the WINAPI QueryPerformanceCounter function.
+    // These relate to seconds by a factor of QueryPerformanceFrequency.
+
+    let freq = perf_counter::frequency();
+    let counts = perf_counter::now();
+
+    let secs = counts.div_euclid(freq);
+    let subsec_counts = counts.rem_euclid(freq) as u64;
+
+    // "QPC does not go backward.", so the frequency cannot be negative.
+    let freq = freq as u64;
+    let nanos = Nanoseconds::new((NANOS_PER_SEC.strict_mul(subsec_counts) / freq) as u32).unwrap();
+
+    Instant { secs, nanos }
 }
+
+pub use perf_counter::epsilon;
 
 #[derive(Copy, Clone)]
 pub struct SystemTime {
@@ -24,48 +38,6 @@ pub struct SystemTime {
 
 pub const UNIX_EPOCH: SystemTime =
     SystemTime::from_intervals(11_644_473_600 * INTERVALS_PER_SEC as i64);
-
-impl Instant {
-    pub fn now() -> Instant {
-        // High precision timing on windows operates in "Performance Counter"
-        // units, as returned by the WINAPI QueryPerformanceCounter function.
-        // These relate to seconds by a factor of QueryPerformanceFrequency.
-        // In order to keep unit conversions out of normal interval math, we
-        // measure in QPC units and immediately convert to nanoseconds.
-
-        let freq = perf_counter::frequency() as u64;
-        let now = perf_counter::now();
-
-        // We convert now to `u64` to be able to use `Duration`.
-        let instant_nsec = mul_div_u64(now as u64, NANOS_PER_SEC, freq);
-        // We can add an arbitrary offset to shift the epoch of this clock. We do that to avoid
-        // being too close to 0 which would lead to underflow when computing times in the past. Also
-        // see <https://github.com/rust-lang/rust/issues/156142>.
-        let instant_nsec = instant_nsec + (u64::MAX / 4);
-
-        Self { t: Duration::from_nanos(instant_nsec) }
-    }
-
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        // On windows there's a threshold below which we consider two timestamps
-        // equivalent due to measurement error. For more details + doc link,
-        // check the docs on epsilon.
-        let epsilon = perf_counter::epsilon();
-        if other.t > self.t && other.t - self.t <= epsilon {
-            Some(Duration::new(0, 0))
-        } else {
-            self.t.checked_sub(other.t)
-        }
-    }
-
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant { t: self.t.checked_add(*other)? })
-    }
-
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant { t: self.t.checked_sub(*other)? })
-    }
-}
 
 impl SystemTime {
     pub const MAX: SystemTime = SystemTime::from_intervals(i64::MAX);

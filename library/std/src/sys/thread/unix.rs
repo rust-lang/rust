@@ -563,7 +563,7 @@ pub fn sleep(dur: Duration) {
             // of `nanosleep` which used `CLOCK_REALTIME` even though it is unsupported
             // on WASIp2. Using `clock_nanosleep` directly bypasses the issue.
             unsafe fn nanosleep(rqtp: *const libc::timespec, rmtp: *mut libc::timespec) -> libc::c_int {
-                unsafe { libc::clock_nanosleep(crate::sys::time::Instant::CLOCK_ID, 0, rqtp, rmtp) }
+                unsafe { libc::clock_nanosleep(crate::sys::time::CLOCK_ID, 0, rqtp, rmtp) }
             }
         }
         _ => {
@@ -647,7 +647,10 @@ pub fn sleep(dur: Duration) {
     target_os = "wasi",
 ))]
 pub fn sleep_until(deadline: crate::time::Instant) {
+    use crate::sys::pal::time::Timespec;
     use crate::time::Instant;
+
+    let ts = Timespec { tv_sec: deadline.secs, tv_nsec: deadline.nanos };
 
     #[cfg(all(
         target_os = "linux",
@@ -671,11 +674,11 @@ pub fn sleep_until(deadline: crate::time::Instant) {
         }
 
         if let Some(clock_nanosleep) = __clock_nanosleep_time64.get() {
-            let ts = deadline.into_inner().into_timespec().to_timespec64();
+            let ts = ts.to_timespec64();
             loop {
                 let r = unsafe {
                     clock_nanosleep(
-                        crate::sys::time::Instant::CLOCK_ID,
+                        crate::sys::time::CLOCK_ID,
                         libc::TIMER_ABSTIME,
                         &ts,
                         core::ptr::null_mut(),
@@ -699,7 +702,7 @@ pub fn sleep_until(deadline: crate::time::Instant) {
         }
     }
 
-    let Some(ts) = deadline.into_inner().into_timespec().to_timespec() else {
+    let Some(ts) = ts.to_timespec() else {
         // The deadline is further in the future then can be passed to
         // clock_nanosleep. We have to use Self::sleep instead. This might
         // happen on 32 bit platforms, especially closer to 2038.
@@ -714,7 +717,7 @@ pub fn sleep_until(deadline: crate::time::Instant) {
         // When we get interrupted (res = EINTR) call clock_nanosleep again
         loop {
             let res = libc::clock_nanosleep(
-                crate::sys::time::Instant::CLOCK_ID,
+                crate::sys::time::CLOCK_ID,
                 libc::TIMER_ABSTIME,
                 &ts,
                 core::ptr::null_mut(), // not required with TIMER_ABSTIME
@@ -736,6 +739,12 @@ pub fn sleep_until(deadline: crate::time::Instant) {
 
 #[cfg(target_vendor = "apple")]
 pub fn sleep_until(deadline: crate::time::Instant) {
+    #[repr(C)]
+    struct mach_timebase_info {
+        numer: u32,
+        denom: u32,
+    }
+
     unsafe extern "C" {
         // This is defined in the public header mach/mach_time.h alongside
         // `mach_absolute_time`, and like it has been available since the very
@@ -745,15 +754,28 @@ pub fn sleep_until(deadline: crate::time::Instant) {
         // short reference in technical note 2169:
         // https://developer.apple.com/library/archive/technotes/tn2169/_index.html
         safe fn mach_wait_until(deadline: u64) -> libc::kern_return_t;
+        unsafe fn mach_timebase_info(info: *mut mach_timebase_info) -> libc::kern_return_t;
     }
 
-    // Make sure to round up to ensure that we definitely sleep until after
-    // the deadline has elapsed.
-    let Some(deadline) = deadline.into_inner().into_mach_absolute_time_ceil() else {
-        // Since the deadline is before the system boot time, it has already
-        // passed, so we can return immediately.
+    // `mach_wait_until` assumes that the `deadline` is in units of `mach_absolute_time`,
+    // so we need to convert the second/nanosecond-based `Instant` to those.
+    let Ok(secs) = u64::try_from(deadline.secs) else {
+        // The epoch of `Instant` is the system boot time. Since the deadline
+        // is that, it has already passed, so we can return immediately.
         return;
     };
+
+    let mut timebase = mach_timebase_info { numer: 0, denom: 0 };
+    assert_eq!(unsafe { mach_timebase_info(&mut timebase) }, libc::KERN_SUCCESS);
+
+    // Since `secs` is 64-bit and `nanos` is smaller than 1 billion,
+    // this cannot overflow. The resulting number needs at most 94 bits.
+    let nanos = 1_000_000_000 * u128::from(secs) + u128::from(deadline.nanos.as_inner());
+    // This multiplication cannot overflow since multiplying a 94-bit
+    // number by a 32-bit number yields a number that needs at most
+    // 126 bits. Make sure to round up to ensure that we definitely
+    // sleep until after the deadline has elapsed.
+    let deadline = (nanos * u128::from(timebase.denom)).div_ceil(u128::from(timebase.numer));
 
     // If the deadline is not representable, then sleep for the maximum duration
     // possible and worry about the potential clock issues later (in ca. 600 years).
