@@ -214,8 +214,11 @@ fn test_can_not_overflow() {
     for base in 2..=36 {
         let num = <u128>::MAX;
         let max_len_string = format_radix(num, base as u128);
-        // base 16 fits perfectly for u128 and won't overflow:
-        assert_eq!(can_overflow::<u128>(base, &max_len_string), base != 16);
+        // Powers of two that divide 128 (2, 4, 16) produce a max-length
+        // string equal to u128::MAX itself, so the precise overflow check
+        // sees it as safe.
+        let fits_exactly = matches!(base, 2 | 4 | 16);
+        assert_eq!(can_overflow::<u128>(base, &max_len_string), !fits_exactly);
     }
 }
 
