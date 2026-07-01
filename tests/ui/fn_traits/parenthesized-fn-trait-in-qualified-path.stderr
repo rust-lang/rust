@@ -1,5 +1,5 @@
 error[E0229]: associated item constraints are not allowed here
-  --> $DIR/issue-39687.rs:4:14
+  --> $DIR/parenthesized-fn-trait-in-qualified-path.rs:5:14
    |
 LL |     <fn() as Fn()>::call;
    |              ^^^^ associated item constraint not allowed here

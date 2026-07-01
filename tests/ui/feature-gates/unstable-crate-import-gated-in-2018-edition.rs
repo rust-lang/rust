@@ -1,8 +1,9 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/52489>
 //@ edition:2018
-//@ aux-build:issue-52489.rs
-//@ compile-flags:--extern issue_52489
+//@ aux-build:unstable-crate-import-gated-in-2018-edition.rs
+//@ compile-flags: --extern unstable_crate_import_gated_in_2018_edition
 
-use issue_52489;
-//~^ ERROR use of unstable library feature `issue_52489_unstable`
+use unstable_crate_import_gated_in_2018_edition;
+//~^ ERROR use of unstable library feature `unstable_crate_import_gated_in_2018_edition`
 
 fn main() {}
