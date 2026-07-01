@@ -21,18 +21,21 @@ fn square(x: &f32) -> f32 {
 }
 
 // The base ("scalar") case d_square3, without batching.
-// CHECK: define internal fastcc float @fwddiffesquare(float %x.0.val, float %"x'.0.val")
-// CHECK:   %0 = fadd fast float %"x'.0.val", %"x'.0.val"
-// CHECK-NEXT:   %1 = fmul fast float %0, %x.0.val
-// CHECK-NEXT:   ret float %1
+// CHECK: define internal float @fwddiffesquare(ptr {{.*}} %x, ptr {{.*}} %"x'")
+// CHECK: %"_2'ipl" = load float, ptr %"x'", align 4
+// CHECK-NEXT: %_2 = load float, ptr %x, align 4
+// CHECK-NEXT: %0 = fmul fast float %"_2'ipl", %_2
+// CHECK-NEXT: %1 = fmul fast float %"_2'ipl", %_2
+// CHECK-NEXT: %2 = fadd fast float %0, %1
+// CHECK-NEXT: ret float %2
 // CHECK-NEXT: }
 
 // d_square2
-// CHECK: define internal fastcc [4 x float] @fwddiffe4square(float %x.0.val, [4 x ptr] %"x'")
+// CHECK: define internal [4 x float] @fwddiffe4square(ptr {{.*}} %x, [4 x ptr] %"x'")
 // CHECK:   ret [4 x float]
 // CHECK-NEXT:   }
 
-// CHECK: define internal fastcc { float, [4 x float] } @fwddiffe4square.{{.*}}(float %x.0.val, [4 x ptr] %"x'")
+// CHECK: define internal { float, [4 x float] } @fwddiffe4square.{{.*}}(ptr {{.*}} %x, [4 x ptr] %"x'")
 // CHECK:   ret { float, [4 x float] }
 // CHECK-NEXT:   }
 
