@@ -282,6 +282,11 @@ pub const trait Clone: Sized {
 #[marker]
 pub const unsafe trait TrivialClone: [const] Clone {}
 
+pub(crate) fn trivial_clone<T: TrivialClone>(x: &T) -> T {
+    // SAFETY: the point of the trait is that this is sound.
+    unsafe { crate::ptr::read(x) }
+}
+
 /// Derive macro generating an impl of the trait `Clone`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
