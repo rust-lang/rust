@@ -191,6 +191,42 @@ mod allow_attribute {}
 /// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
 mod cfg_attribute {}
 
+#[doc(attribute = "cfg_attr")]
+//
+/// Used for conditional application of attributes.
+///
+/// The `cfg_attr` attribute applies one or more attributes to an item only if a given
+/// configuration predicate is true. If the condition is false, the attributes are ignored.
+///
+/// Example:
+///
+/// ```rust
+/// // This function is annotated with `#[test]` only when testing is active.
+/// #[cfg_attr(test, test)]
+/// fn my_function() {
+///     // ...
+/// }
+/// ```
+///
+/// You can apply multiple attributes by grouping them in parentheses:
+///
+/// ```rust
+/// #[cfg_attr(feature = "nightly", allow(dead_code))]
+/// // This function only gets the `allow(dead_code)` attribute when `feature = "nightly"` is
+/// // active.
+/// fn nightly_only_function() {
+///     // ...
+/// }
+/// ```
+///
+/// The predicate uses the same syntax as [`cfg`]. For complex conditions, you can combine
+/// `all(...)`, `any(...)`, and `not(...)` just like with `cfg`.
+///
+/// For more information, see the Reference on [the `cfg_attr` attribute].
+///
+/// [the `cfg_attr` attribute]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
+mod cfg_attr_attribute {}
+
 #[doc(attribute = "deny")]
 //
 /// Emits an error, preventing the compilation from finishing, when a lint check has failed.
@@ -335,3 +371,185 @@ mod deprecated_attribute {}
 ///
 /// [the `warn` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
 mod warn_attribute {}
+
+#[doc(attribute = "used")]
+//
+/// The `#[used]` attribute can be applied to static variables to prevent the Rust compiler
+/// from optimizing them away even if they are not referenced anywhere else in the code.
+///
+/// It tells the compiler that an item is still in use or needed elsewhere and, because of this,
+/// it is kept in the output object.
+///
+/// Example:
+///
+/// ```rust
+/// #[used]
+/// static FOO: u16 = 42; // FOO is not optimized away as dead code.
+///
+/// static BAR: u16 = 12; // BAR may be optimized away.
+/// fn main() {
+/// }
+/// ```
+/// To confirm, we compile this program into an object file, you'll see that `FOO` makes it to the
+/// object file but `BAR` doesn't. Neither static variable is used by the program.
+///
+/// ```text
+/// rustc -C opt-level=3 --emit=obj used.rs
+/// nm -C used.o
+/// 0000000000000000 T main
+///                  U std::rt::lang_start_internal
+/// 0000000000000000 T std::rt::lang_start
+/// 0000000000000000 t std::rt::lang_start::{{closure}}
+/// 0000000000000000 t std::sys::backtrace::__rust_begin_short_backtrace
+/// 0000000000000000 t core::ops::function::FnOnce::call_once{{vtable.shim}}
+/// 0000000000000000 r used::FOO
+/// 0000000000000000 T used::main
+/// ```
+///
+/// For more information, see the Reference on [the `used` attribute].
+///
+/// [the `used` attribute]: ../reference/abi.html#the-used-attribute
+mod used_attribute {}
+
+#[doc(attribute = "ignore")]
+//
+/// The `ignore` attribute is used with the `test` attribute to stop the test harness from
+/// executing a function as a test. The `ignore` attribute may only be applied to functions
+/// annotated with the test attribute.
+///
+/// Example:
+///
+/// ```rust
+/// #[test]
+/// #[ignore]
+/// fn test() {
+///   // ... This test is ignored by the test harness (the compiler still compiles it).
+/// }
+/// ```
+///
+/// The `ignore` attribute can be very useful when a test is incomplete and we need to compile the
+/// code.
+///
+/// To run ignored tests, use `cargo test -- --ignored`.
+///
+/// For more information, see the Reference on [the `ignore` attribute].
+///
+/// [the `ignore` attribute]: ../reference/attributes/testing.html#the-ignore-attribute
+mod ignore_attribute {}
+
+#[doc(attribute = "expect")]
+//
+/// The `#[expect]` attribute declares that a particular lint is expected to be emitted.
+/// If the lint would be emitted, it is suppressed and the expectation is fulfilled.
+/// If the lint is not emitted at all, the expectation is unfulfilled and a warning is generated.
+///
+/// `expect` can be overridden by `warn` or `allow` in an inner scope leaving the outer `expect` attribute
+/// unfulfilled.
+///
+/// Example:
+///
+/// ```rust
+/// fn main() {
+///     #[expect(unused_variables)]
+///     let name = "rust-lang"; // The `unused_variables` warning is suppressed.
+/// }
+/// ```
+///
+/// Multiple lints can be set to `expect` at once, each one is expected separately. For a lint group, it’s enough
+/// if one lint inside the group has been emitted:
+///
+/// ```rust,compile_fail
+/// #[expect(unused_mut, unused_variables)]
+/// fn main() {
+///     // This attribute creates two lint expectations. The `unused_mut` lint will be
+///     // suppressed and with that fulfill the first expectation. The `unused_variables`
+///     // wouldn't be emitted, since the variable is used. That expectation will therefore
+///     // be unsatisfied, and a warning will be emitted.
+///     let mut x = 42;
+///     println!("x: {x}");
+/// }
+/// ```
+///
+/// For more information, see the Reference on [the `expect` attribute].
+///
+/// [the `expect` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
+mod expect_attribute {}
+
+#[doc(attribute = "should_panic")]
+//
+/// The `should_panic` attribute is used with the `test` attribute to pass a test that is expected
+/// to panic.
+///
+/// The `should_panic` attribute may only be applied to functions annotated with the test attribute.
+///
+/// ```rust
+/// fn add(a: i32, b: i32) -> i32 {
+///     a + b
+/// }
+///
+/// fn main() {
+///   // ...
+/// }
+///
+/// #[cfg(test)]
+/// mod tests {
+///     use super::*;
+///     #[test]
+///     fn test_add() {
+///         assert_eq!(add(2,3), 5); // This test passes.
+///     }
+///
+///     #[test]
+///     #[should_panic]
+///     fn test_add_neg() {
+///         assert_eq!(add(-1, 1), 10); // Panics (0 != 10), so the test passes.
+///     }
+///
+///     #[test]
+///     #[should_panic]
+///     fn failing_test() {
+///         panic!("This test is meant to panic"); // This test passes.
+///     }
+/// }
+/// ```
+/// For more information, see the Reference on [the `should_panic` attribute].
+///
+/// [the `should_panic` attribute]: ../reference/attributes/testing.html#the-should_panic-attribute
+mod should_panic_attribute {}
+
+#[doc(attribute = "path")]
+//
+/// The `#[path = "..."]` attribute tells the compiler where to find a module's source file, overriding the default
+/// file lookup.
+///
+/// Example:
+///
+/// ```rust,compile_fail
+/// mod foo; // By default `rustc` loads the source from `foo.rs`.
+/// ```
+///
+/// `path` overrides this behavior:
+///
+/// ```rust,compile_fail
+/// #[path = "bar.rs"]
+/// mod foo; // Now bar.rs is loaded as foo.
+/// ```
+///
+/// You can combine `#[path]` with `#[cfg]` to load platform-specific files:
+///
+/// ```rust,compile_fail
+/// // On Linux, the platform/linux.rs source file is loaded.
+/// #[cfg(target_os = "linux")]
+/// #[path = "platform/linux.rs"]
+/// mod platform;
+///
+/// // On Windows, the platform/windows.rs source file is loaded.
+/// #[cfg(target_os = "windows")]
+/// #[path = "platform/windows.rs"]
+/// mod platform;
+/// ```
+///
+/// For more information, see the Reference on [the `path` attribute].
+///
+/// [the `path` attribute]: ../reference/items/modules.html#the-path-attribute
+mod path_attribute {}
