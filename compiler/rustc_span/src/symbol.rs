@@ -270,6 +270,7 @@ symbols! {
         PartialOrd,
         Pending,
         PinDerefMutHelper,
+        PinMacroHelper,
         Pointer,
         Poll,
         Range,

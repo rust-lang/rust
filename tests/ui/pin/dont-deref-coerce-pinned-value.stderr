@@ -6,11 +6,11 @@ LL | fn wrong_pin<T>(data: &mut T, callback: impl FnOnce(Pin<&mut T>)) {
 LL |     callback(pin!(data));
    |              ^^^^^^^^^^
    |              |
-   |              expected `&mut PinMacroHelper<T>`, found `&mut PinMacroHelper<&mut T>`
+   |              expected type parameter `T`, found `&mut T`
    |              arguments to this function are incorrect
    |
-   = note: expected mutable reference `&mut std::pin::PinMacroHelper<_>`
-              found mutable reference `&mut std::pin::PinMacroHelper<&mut _>`
+   = note: expected type parameter `_`
+           found mutable reference `&mut _`
 note: function defined here
   --> $SRC_DIR/core/src/pin.rs:LL:COL
 
