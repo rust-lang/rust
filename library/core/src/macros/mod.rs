@@ -39,6 +39,7 @@ macro_rules! panic {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "assert_eq_macro"]
 #[allow_internal_unstable(panic_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => {{
         match (&$left, &$right) {
@@ -95,6 +96,7 @@ macro_rules! assert_eq {
 #[stable(feature = "assert_ne", since = "1.13.0")]
 #[rustc_diagnostic_item = "assert_ne_macro"]
 #[allow_internal_unstable(panic_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => {{
         match (&$left, &$right) {
@@ -284,6 +286,7 @@ pub macro cfg_select($($tt:tt)*) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "debug_assert_macro"]
 #[allow_internal_unstable(edition_panic)]
+#[rustc_diagnostic_opaque]
 macro_rules! debug_assert {
     ($($arg:tt)*) => {
         if $crate::cfg!(debug_assertions) {
@@ -600,6 +603,7 @@ macro_rules! r#try {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "write_macro"]
+#[rustc_diagnostic_opaque]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => {
         $dst.write_fmt($crate::format_args!($($arg)*))
@@ -638,6 +642,7 @@ macro_rules! write {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "writeln_macro"]
 #[allow_internal_unstable(format_args_nl)]
+#[rustc_diagnostic_opaque]
 macro_rules! writeln {
     ($dst:expr $(,)?) => {
         $crate::write!($dst, "\n")
@@ -793,6 +798,7 @@ macro_rules! unreachable {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "unimplemented_macro"]
 #[allow_internal_unstable(panic_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! unimplemented {
     () => {
         $crate::panicking::panic("not implemented")
@@ -873,6 +879,7 @@ macro_rules! unimplemented {
 #[stable(feature = "todo_macro", since = "1.40.0")]
 #[rustc_diagnostic_item = "todo_macro"]
 #[allow_internal_unstable(panic_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! todo {
     () => {
         $crate::panicking::panic("not yet implemented")

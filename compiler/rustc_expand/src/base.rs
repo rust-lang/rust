@@ -843,9 +843,9 @@ pub struct SyntaxExtension {
     /// Should debuginfo for the macro be collapsed to the outermost expansion site (in other
     /// words, was the macro definition annotated with `#[collapse_debuginfo]`)?
     pub collapse_debuginfo: bool,
-    /// Suppresses the "this error originates in the macro" note when a diagnostic points at this
-    /// macro.
-    pub hide_backtrace: bool,
+    /// Prevents diagnostics pointing into this macro and suppresses the "this error originates in
+    /// the macro" note when a diagnostic points at this macro.
+    pub diagnostic_opaque: bool,
 }
 
 impl SyntaxExtension {
@@ -879,7 +879,7 @@ impl SyntaxExtension {
             allow_internal_unsafe: false,
             local_inner_macros: false,
             collapse_debuginfo: false,
-            hide_backtrace: false,
+            diagnostic_opaque: false,
         }
     }
 
@@ -907,12 +907,6 @@ impl SyntaxExtension {
             [true,  true,  true,  true],
         ];
         collapse_table[flag as usize][attr as usize]
-    }
-
-    fn get_hide_backtrace(attrs: &[hir::Attribute]) -> bool {
-        // FIXME(estebank): instead of reusing `#[rustc_diagnostic_item]` as a proxy, introduce a
-        // new attribute purely for this under the `#[diagnostic]` namespace.
-        find_attr!(attrs, RustcDiagnosticItem(..))
     }
 
     /// Constructs a syntax extension with the given properties
@@ -949,7 +943,8 @@ impl SyntaxExtension {
             // Not a built-in macro
             None => (None, helper_attrs),
         };
-        let hide_backtrace = builtin_name.is_some() || Self::get_hide_backtrace(attrs);
+        let diagnostic_opaque = builtin_name.is_some()
+            || (!sess.opts.unstable_opts.macro_backtrace && find_attr!(attrs, Opaque));
 
         let stability = find_attr!(attrs, Stability { stability, .. } => *stability);
 
@@ -977,7 +972,7 @@ impl SyntaxExtension {
             allow_internal_unsafe,
             local_inner_macros,
             collapse_debuginfo,
-            hide_backtrace,
+            diagnostic_opaque,
         }
     }
 
@@ -1063,7 +1058,7 @@ impl SyntaxExtension {
             self.allow_internal_unsafe,
             self.local_inner_macros,
             self.collapse_debuginfo,
-            self.hide_backtrace,
+            self.diagnostic_opaque,
         )
     }
 }
