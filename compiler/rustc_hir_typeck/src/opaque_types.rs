@@ -191,6 +191,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                                 infer_var,
                                 TypeAnnotationNeeded::E0282,
                                 false,
+                                self.param_env,
+                                None,
                             )
                             .emit()
                     }

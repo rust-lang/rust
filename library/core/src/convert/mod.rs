@@ -766,6 +766,7 @@ where
 // From implies Into
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[rustc_diagnostic_item = "blanket_into_impl"]
 const impl<T, U> Into<U> for T
 where
     U: [const] From<T>,

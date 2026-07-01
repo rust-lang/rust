@@ -23,7 +23,27 @@ LL |     String::from("x".as_ref());
 help: try using a fully qualified path to specify the expected types
    |
 LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+LL +     String::from(<str as AsRef<OsStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<Path>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<str>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<ByteStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<[u8]>>::as_ref("x"));
    |
 
 error[E0283]: type annotations needed
@@ -51,7 +71,27 @@ LL |     |x| String::from("x".as_ref());
 help: try using a fully qualified path to specify the expected types
    |
 LL -     |x| String::from("x".as_ref());
-LL +     |x| String::from(<str as AsRef<T>>::as_ref("x"));
+LL +     |x| String::from(<str as AsRef<OsStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     |x| String::from("x".as_ref());
+LL +     |x| String::from(<str as AsRef<Path>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     |x| String::from("x".as_ref());
+LL +     |x| String::from(<str as AsRef<str>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     |x| String::from("x".as_ref());
+LL +     |x| String::from(<str as AsRef<ByteStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     |x| String::from("x".as_ref());
+LL +     |x| String::from(<str as AsRef<[u8]>>::as_ref("x"));
    |
 
 error[E0283]: type annotations needed for `&_`
@@ -68,7 +108,7 @@ LL |     let _ = "x".as_ref();
            - impl AsRef<str> for str;
 help: consider giving this pattern a type, where the type for type parameter `T` is specified
    |
-LL |     let _: &T = "x".as_ref();
+LL |     let _: &_ = "x".as_ref();
    |          ++++
 
 error[E0283]: type annotations needed
@@ -96,7 +136,27 @@ LL |     String::from("x".as_ref());
 help: try using a fully qualified path to specify the expected types
    |
 LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+LL +     String::from(<str as AsRef<OsStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<Path>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<str>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<ByteStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<[u8]>>::as_ref("x"));
    |
 
 error[E0283]: type annotations needed
@@ -124,7 +184,27 @@ LL |     String::from("x".as_ref());
 help: try using a fully qualified path to specify the expected types
    |
 LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+LL +     String::from(<str as AsRef<OsStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<Path>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<str>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<ByteStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<[u8]>>::as_ref("x"));
    |
 
 error[E0283]: type annotations needed
@@ -152,7 +232,27 @@ LL |     String::from("x".as_ref());
 help: try using a fully qualified path to specify the expected types
    |
 LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+LL +     String::from(<str as AsRef<OsStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<Path>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<str>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<ByteStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<[u8]>>::as_ref("x"));
    |
 
 error[E0283]: type annotations needed
@@ -180,7 +280,27 @@ LL |     String::from("x".as_ref());
 help: try using a fully qualified path to specify the expected types
    |
 LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+LL +     String::from(<str as AsRef<OsStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<Path>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<str>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<ByteStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<[u8]>>::as_ref("x"));
    |
 
 error[E0283]: type annotations needed
@@ -208,7 +328,27 @@ LL |     String::from("x".as_ref());
 help: try using a fully qualified path to specify the expected types
    |
 LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+LL +     String::from(<str as AsRef<OsStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<Path>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<str>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<ByteStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<[u8]>>::as_ref("x"));
    |
 
 error[E0283]: type annotations needed
@@ -236,7 +376,27 @@ LL |     String::from("x".as_ref());
 help: try using a fully qualified path to specify the expected types
    |
 LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+LL +     String::from(<str as AsRef<OsStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<Path>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<str>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<ByteStr>>::as_ref("x"));
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<[u8]>>::as_ref("x"));
    |
 
 error: aborting due to 17 previous errors

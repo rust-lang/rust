@@ -1535,6 +1535,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty.into(),
                     TypeAnnotationNeeded::E0282,
                     true,
+                    self.param_env,
+                    None,
                 )
                 .emit()
         });
@@ -1561,6 +1563,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ct.into(),
                         TypeAnnotationNeeded::E0282,
                         true,
+                        self.param_env,
+                        None,
                     )
                     .emit()
             });
