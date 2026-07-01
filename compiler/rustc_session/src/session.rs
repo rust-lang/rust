@@ -39,7 +39,7 @@ pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, Varian
 use crate::config::{
     self, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType,
     FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, OptLevel, OutFileName, OutputType,
-    SwitchWithOptPath,
+    SwitchWithOptPath, is_native_cpu,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -1409,6 +1409,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if sess.opts.unstable_opts.packed_stack {
         if sess.target.arch != Arch::S390x {
             sess.dcx().emit_err(errors::UnsupportedPackedStack);
+        }
+    }
+
+    if let Some(ref cpu_name) = sess.opts.cg.target_cpu {
+        if is_native_cpu(cpu_name) && sess.target.requires_consistent_cpu {
+            sess.dcx().emit_fatal(errors::NativeTargetCpuNotAllowed {
+                target_triple: &sess.opts.target_triple,
+                need_explicit_cpu: sess.target.need_explicit_cpu.into(),
+            });
         }
     }
 }
