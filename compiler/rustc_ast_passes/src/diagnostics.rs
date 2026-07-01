@@ -151,6 +151,22 @@ pub(crate) struct CVarArgsAndSplat {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[splat]` is not allowed on closures")]
+#[help("remove `#[splat]` or turn the closure into a function")]
+pub(crate) struct SplatNotAllowedOnClosures {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[splat]` is not allowed on functions with the `rust-call` ABI")]
+#[help("remove `#[splat]` or change the ABI")]
+pub(crate) struct SplatNotAllowedOnRustCall {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag("documentation comments cannot be applied to function parameters")]
 pub(crate) struct FnParamDocComment {
     #[primary_span]

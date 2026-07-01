@@ -45,6 +45,13 @@ enum SelfSemantic {
     No,
 }
 
+/// Is `#[splat]` allowed semantically on a parameter of a `FnDecl`?
+enum SplatSemantic {
+    Yes,
+    NoClosures(Span),
+    NoRustCall(Span),
+}
+
 enum TraitOrImpl {
     Trait { vis: Span, constness: Const },
     TraitImpl { constness: Const, polarity: ImplPolarity, trait_ref_span: Span },
@@ -350,10 +357,15 @@ impl<'a> AstValidator<'a> {
         });
     }
 
-    fn check_fn_decl(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
+    fn check_fn_decl(
+        &self,
+        fn_decl: &FnDecl,
+        self_semantic: SelfSemantic,
+        splat_semantic: SplatSemantic,
+    ) {
         self.check_decl_num_args(fn_decl);
         let c_variadic_span = self.check_decl_cvariadic_pos(fn_decl);
-        self.check_decl_splatting(fn_decl, c_variadic_span);
+        self.check_decl_splatting(fn_decl, c_variadic_span, splat_semantic);
         self.check_decl_attrs(fn_decl);
         self.check_decl_self_param(fn_decl, self_semantic);
     }
@@ -399,8 +411,13 @@ impl<'a> AstValidator<'a> {
     /// Emits an error if a function declaration has more than one splatted argument, with a
     /// C-variadic parameter, or a splat at an unsupported index (for performance).
     /// Example: `fn foo(#[splat] x: (), #[splat] y: ())` will emit an error.
-    fn check_decl_splatting(&self, fn_decl: &FnDecl, c_variadic_span: Option<Span>) {
-        let (splatted_arg_indexes, mut splatted_spans): (Vec<u16>, Vec<Span>) = fn_decl
+    fn check_decl_splatting(
+        &self,
+        fn_decl: &FnDecl,
+        c_variadic_span: Option<Span>,
+        splat_semantic: SplatSemantic,
+    ) {
+        let (splatted_arg_indexes, splatted_spans): (Vec<u16>, Vec<Span>) = fn_decl
             .inputs
             .iter()
             .enumerate()
@@ -433,8 +450,27 @@ impl<'a> AstValidator<'a> {
         if let Some(c_variadic_span) = c_variadic_span
             && !splatted_spans.is_empty()
         {
+            let mut splatted_spans = splatted_spans.clone();
             splatted_spans.push(c_variadic_span);
             self.dcx().emit_err(diagnostics::CVarArgsAndSplat { spans: splatted_spans });
+        }
+
+        if !splatted_arg_indexes.is_empty() {
+            match splat_semantic {
+                SplatSemantic::NoClosures(closure_span) => {
+                    let mut splatted_spans = splatted_spans.clone();
+                    splatted_spans.push(closure_span);
+                    self.dcx()
+                        .emit_err(diagnostics::SplatNotAllowedOnClosures { spans: splatted_spans });
+                }
+                SplatSemantic::NoRustCall(abi_span) => {
+                    let mut splatted_spans = splatted_spans;
+                    splatted_spans.push(abi_span);
+                    self.dcx()
+                        .emit_err(diagnostics::SplatNotAllowedOnRustCall { spans: splatted_spans });
+                }
+                SplatSemantic::Yes => {}
+            }
         }
     }
 
@@ -1055,7 +1091,7 @@ impl<'a> AstValidator<'a> {
         match &ty.kind {
             TyKind::FnPtr(bfty) => {
                 self.check_fn_ptr_safety(bfty.decl_span, bfty.safety);
-                self.check_fn_decl(&bfty.decl, SelfSemantic::No);
+                self.check_fn_decl(&bfty.decl, SelfSemantic::No, SplatSemantic::Yes);
                 Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
                     self.dcx().emit_err(diagnostics::PatternFnPointer { span });
                 });
@@ -1746,7 +1782,24 @@ impl Visitor<'_> for AstValidator<'_> {
             Some(FnCtxt::Assoc(_)) => SelfSemantic::Yes,
             _ => SelfSemantic::No,
         };
-        self.check_fn_decl(fk.decl(), self_semantic);
+        let splat_semantic = match fk {
+            FnKind::Fn(_, _, _) => match fk.header().unwrap().ext {
+                Extern::None => SplatSemantic::Yes,
+                // FIXME(splat): should splatting extern "C" or other ABIs be allowed?
+                Extern::Implicit(_) => SplatSemantic::Yes,
+                // For now, splatting rust-call is banned, because it already de-tuples args.
+                Extern::Explicit(abi_str, span)
+                    if abi_str.symbol_unescaped.as_str() == "rust-call" =>
+                {
+                    SplatSemantic::NoRustCall(span)
+                }
+                Extern::Explicit(_abi_str, _span) => SplatSemantic::Yes,
+            },
+            // Splatting closures is banned, because closure arguments are already de-tupled.
+            FnKind::Closure(_, _, _, expr) => SplatSemantic::NoClosures(expr.span),
+        };
+
+        self.check_fn_decl(fk.decl(), self_semantic, splat_semantic);
 
         if let Some(&FnHeader { safety, .. }) = fk.header() {
             self.check_item_safety(span, safety);
