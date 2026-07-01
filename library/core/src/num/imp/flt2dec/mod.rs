@@ -73,18 +73,6 @@ available in `strategy::dragon` and `strategy::grisu` respectively,
 extensively describes all necessary justifications and many proofs for them.
 (It is still difficult to follow though. You have been warned.)
 
-Both implementations expose two public functions:
-
-- `format_shortest(decoded, buf)`, which always needs at least
-  `MAX_SIG_DIGITS` digits of buffer. Implements the shortest mode.
-
-- `format_exact(decoded, buf, limit)`, which accepts as small as
-  one digit of buffer. Implements exact and fixed modes.
-
-They try to fill the `u8` buffer with digits and returns the number of digits
-written and the exponent `k`. They are total for all finite `f32` and `f64`
-inputs (Grisu internally falls back to Dragon if necessary).
-
 The rendered digits are formatted into the actual string form with
 four functions:
 
@@ -141,6 +129,79 @@ pub mod strategy {
 /// significant decimal digits from formatting algorithms with the shortest result.
 /// The exact formula is `ceil(# bits in mantissa * log_10 2 + 1)`.
 pub const MAX_SIG_DIGITS: usize = 17;
+
+/// Formats a finite, non-zero floating-point number in decimal form.
+///
+/// The return pair `(digits, pow10)` represents:
+///
+///   v = (0.d₀d₁…dₙ₋₁) × 10ᵏ
+///
+/// where `digits = [d₀,…,dₙ₋₁]` and `pow10 = k`. The leading digit satisfies
+/// `d₀ ≠ 0`, ensuring `0.1 ≤ mantissa < 1`.
+///
+/// Given an input floating-point value `f`, the produced decimal `v` is the
+/// closest such `n`-digit value satisfying:
+///
+///    |f − v| ≤ ½ × 10^(k−n)
+///
+/// If two `n`-digit decimals are equally close, a deterministic tie-breaking
+/// rule is applied so that parsing the produced decimal recovers `f` exactly.
+///
+/// In short mode, the minimal `n ≥ 1` satisfying the above property is chosen.
+/// The result is therefore the shortest decimal that round-trips back to the
+/// original floating-point value. This formatting matches common expectations;
+/// for example `0.1f32` prints as `"0.1"`.
+pub fn format_short<'a>(d: &Decoded, buf: &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16) {
+    // SAFETY: The borrow checker is not smart enough to let us use `buf`
+    // in the second branch, so we launder the lifetime here. But we only re-use
+    // `buf` if `format_short` returned `None` so this is okay.
+    match strategy::grisu::format_short(d, unsafe { &mut *(buf as *mut _) }) {
+        Some(ret) => ret,
+        None => strategy::dragon::format_short(d, buf),
+    }
+}
+
+/// Disables `format_fixed` argument explicitly.
+pub const UNLIMITED_RESOLUTION: i16 = i16::MIN;
+
+/// Formats a finite, non-zero floating-point number in decimal form.
+///
+/// The return pair `(digits, pow10)` represents:
+///
+///   v = (0.d₀d₁…dₙ₋₁) × 10ᵏ
+///
+/// where `digits = [d₀,…,dₙ₋₁]` and `pow10 = k`. The leading digit satisfies
+/// `d₀ ≠ 0`, ensuring `0.1 ≤ mantissa < 1`.
+///
+/// Given an input floating-point value `f`, the produced decimal `v` is the
+/// closest such `n`-digit value satisfying:
+///
+///    |f − v| ≤ ½ × 10^(k−n)
+///
+/// If two `n`-digit decimals are equally close, a deterministic tie-breaking
+/// rule is applied so that parsing the produced decimal recovers `f` exactly.
+///
+/// In fixed mode, the number of digits `n` is limited by the buffer size. The
+/// `resolution` parameter may further restrict `n` by requiring `v` to be an
+/// integer multiple of `10^resolution`. For example, a resolution of `-3`
+/// causes rounding to three decimal places, i.e., values are multiples of
+/// `0.001`. Use of [`UNLIMITED_RESOLUTION`] can get expensive.
+///
+/// Note: If the resolution causes the value to round to zero, then the returned
+/// digit slice is empty. This preserves the invariant d₀ ≠ 0.
+pub fn format_fixed<'a>(
+    d: &Decoded,
+    buf: &'a mut [MaybeUninit<u8>],
+    resolution: i16,
+) -> (&'a [u8], i16) {
+    // SAFETY: The borrow checker is not smart enough to let us use `buf`
+    // in the second branch, so we launder the lifetime here. But we only re-use
+    // `buf` if `format_exact_opt` returned `None` so this is okay.
+    match strategy::grisu::format_fixed(d, unsafe { &mut *(buf as *mut _) }, resolution) {
+        Some(ret) => ret,
+        None => strategy::dragon::format_fixed(d, buf, resolution),
+    }
+}
 
 /// When `d` contains decimal digits, increase the last digit and propagate carry.
 /// Returns a next digit when it causes the length to change.
@@ -578,7 +639,7 @@ where
             let sig_digits = if frac_digits < maxlen { frac_digits + 1 } else { maxlen };
             assert!(buf.len() >= sig_digits);
 
-            let (buf, exp) = format_exact(decoded, &mut buf[..sig_digits], i16::MIN);
+            let (buf, exp) = format_exact(decoded, &mut buf[..sig_digits], UNLIMITED_RESOLUTION);
             Formatted { sign, parts: digits_to_exp_str(buf, exp, frac_digits, upper, parts) }
         }
     }
@@ -653,13 +714,12 @@ where
             // it *is* possible that `frac_digits` is ridiculously large.
             // `format_exact` will end rendering digits much earlier in this case,
             // because we are strictly limited by `maxlen`.
-            let limit = if frac_digits < 0x8000 { -(frac_digits as i16) } else { i16::MIN };
+            let limit =
+                if frac_digits < 0x8000 { -(frac_digits as i16) } else { UNLIMITED_RESOLUTION };
             let (buf, exp) = format_exact(decoded, &mut buf[..maxlen], limit);
-            if exp <= limit {
-                // the restriction couldn't been met, so this should render like zero no matter
-                // `exp` was. this does not include the case that the restriction has been met
-                // only after the final rounding-up; it's a regular case with `exp = limit + 1`.
-                debug_assert_eq!(buf.len(), 0);
+            if buf.len() == 0 {
+                // The number rounds down to zero at the given resolution.
+                debug_assert!(exp <= limit);
                 if frac_digits > 0 {
                     // [0.][0000]
                     parts[0] = MaybeUninit::new(Part::Copy(b"0."));
