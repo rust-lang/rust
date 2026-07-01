@@ -3,7 +3,6 @@
 //! See <https://rustc-dev-guide.rust-lang.org/diagnostics.html> for an
 //! overview of how lints are implemented.
 
-use std::cell::Cell;
 use std::slice;
 
 use rustc_abi as abi;
@@ -484,11 +483,8 @@ pub struct LateContext<'tcx> {
     /// Current body, or `None` if outside a body.
     pub enclosing_body: Option<hir::BodyId>,
 
-    /// Type-checking results for the current body. Access using the `typeck_results`
-    /// and `maybe_typeck_results` methods, which handle querying the typeck results on demand.
-    // FIXME(eddyb) move all the code accessing internal fields like this,
-    // to this module, to avoid exposing it to lint logic.
-    pub(super) cached_typeck_results: Cell<Option<&'tcx ty::TypeckResults<'tcx>>>,
+    /// Type-checking results for the current body.
+    pub typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
 
     /// Parameter environment for the item we are in.
     pub param_env: ty::ParamEnv<'tcx>,
@@ -663,24 +659,13 @@ impl<'tcx> LateContext<'tcx> {
         self.tcx.type_is_use_cloned_modulo_regions(self.typing_env(), ty)
     }
 
-    /// Gets the type-checking results for the current body,
-    /// or `None` if outside a body.
-    pub fn maybe_typeck_results(&self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
-        self.cached_typeck_results.get().or_else(|| {
-            self.enclosing_body.map(|body| {
-                let typeck_results = self.tcx.typeck_body(body);
-                self.cached_typeck_results.set(Some(typeck_results));
-                typeck_results
-            })
-        })
-    }
-
     /// Gets the type-checking results for the current body.
     /// As this will ICE if called outside bodies, only call when working with
     /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
+    #[inline]
     #[track_caller]
     pub fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
-        self.maybe_typeck_results().expect("`LateContext::typeck_results` called outside of body")
+        self.typeck_results.expect("`LateContext::typeck_results` called outside of body")
     }
 
     /// Returns the final resolution of a `QPath`, or `Res::Err` if unavailable.
@@ -690,7 +675,7 @@ impl<'tcx> LateContext<'tcx> {
         match *qpath {
             hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) => self
-                .maybe_typeck_results()
+                .typeck_results
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
                     self.tcx

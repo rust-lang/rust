@@ -69,7 +69,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            maybe_typeck_results: cx.maybe_typeck_results().map(|x| (x, x)),
+            maybe_typeck_results: cx.typeck_results.map(|x| (x, x)),
             allow_side_effects: true,
             expr_fallback: None,
             path_check: PathCheck::default(),
@@ -1140,7 +1140,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            maybe_typeck_results: cx.maybe_typeck_results(),
+            maybe_typeck_results: cx.typeck_results,
             s: FxHasher::default(),
             path_check: PathCheck::default(),
         }
