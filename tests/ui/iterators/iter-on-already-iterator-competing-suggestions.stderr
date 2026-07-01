@@ -1,0 +1,16 @@
+error[E0599]: no method named `iter` found for type parameter `impl Iterator<Item = i32>` in the current scope
+  --> $DIR/iter-on-already-iterator-competing-suggestions.rs:15:18
+   |
+LL |     let _ = iter.iter();
+   |                  ^^^^
+   |
+   = note: `impl Iterator<Item = i32>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = iter.iter();
+LL +     let _ = iter;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

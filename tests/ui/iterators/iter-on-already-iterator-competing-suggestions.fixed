@@ -1,0 +1,19 @@
+//@ run-rustfix
+#![allow(dead_code, unused_imports)]
+// Regression test for short-circuiting redundant iter() diagnostics
+// to prevent competing suggestions.
+
+mod out_of_scope {
+    pub trait MyIterExt {
+        fn iter(&self) {}
+    }
+    impl<T: Iterator> MyIterExt for T {}
+}
+
+fn out_of_scope_trait(iter: impl Iterator<Item = i32>) {
+    // Out-of-scope trait that actually has `.iter()`.
+    let _ = iter;
+    //~^ ERROR no method named `iter` found
+}
+
+fn main() {}
