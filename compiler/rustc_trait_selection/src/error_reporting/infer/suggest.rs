@@ -411,6 +411,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
         match (expected_inner.kind(), found_inner.kind()) {
             (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
+                let args = args.no_bound_vars().unwrap();
+
                 let sig = sig_tys.with(*hdr);
                 let expected_sig = self.normalize_fn_sig(Unnormalized::new_wip(sig));
                 let found_sig =
@@ -449,6 +451,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 diag.subdiagnostic(sugg);
             }
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
+                let args1 = args1.no_bound_vars().unwrap();
+                let args2 = args2.no_bound_vars().unwrap();
+
                 let expected_sig =
                     self.normalize_fn_sig(self.tcx.fn_sig(*did1).instantiate(self.tcx, args1));
                 let found_sig =
@@ -492,6 +497,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 diag.subdiagnostic(sug);
             }
             (ty::FnDef(did, args), ty::FnPtr(sig_tys, hdr)) => {
+                let args = args.no_bound_vars().unwrap();
+
                 let expected_sig =
                     self.normalize_fn_sig(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
                 let found_sig = self.normalize_fn_sig(Unnormalized::new_wip(sig_tys.with(*hdr)));

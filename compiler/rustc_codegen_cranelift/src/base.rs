@@ -706,7 +706,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                                     fx.tcx,
                                     ty::TypingEnv::fully_monomorphized(),
                                     def_id,
-                                    args,
+                                    args.no_bound_vars().unwrap(),
                                 )
                                 .unwrap(),
                             );

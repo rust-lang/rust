@@ -934,7 +934,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let fn_ty = instance.ty(tcx, self.typing_env());
         let fn_sig = match *fn_ty.kind() {
             ty::FnDef(def_id, args) => tcx.instantiate_bound_regions_with_erased(
-                tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip(),
+                tcx.fn_sig(def_id).instantiate(tcx, args.no_bound_vars().unwrap()).skip_norm_wip(),
             ),
             _ => unreachable!(),
         };
@@ -1777,7 +1777,7 @@ fn codegen_autodiff<'ll, 'tcx>(
     let fn_to_diff = args[0].immediate();
 
     let (diff_id, diff_args) = match fn_args.into_type_list(tcx)[1].kind() {
-        ty::FnDef(def_id, diff_args) => (def_id, diff_args),
+        ty::FnDef(def_id, diff_args) => (def_id, diff_args.no_bound_vars().unwrap()),
         _ => bug!("invalid args"),
     };
 
@@ -1841,7 +1841,7 @@ fn codegen_offload<'ll, 'tcx>(
     let fn_args = instance.args;
 
     let (target_id, target_args) = match fn_args.into_type_list(tcx)[0].kind() {
-        ty::FnDef(def_id, params) => (def_id, params),
+        ty::FnDef(def_id, params) => (def_id, params.no_bound_vars().unwrap()),
         _ => bug!("invalid offload intrinsic arg"),
     };
 

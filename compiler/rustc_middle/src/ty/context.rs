@@ -9,6 +9,7 @@ use std::borrow::{Borrow, Cow};
 use std::cmp::Ordering;
 use std::env::VarError;
 use std::ffi::OsStr;
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PointeeSized;
 use std::ops::Deref;
@@ -2127,21 +2128,26 @@ impl<'tcx> TyCtxt<'tcx> {
         nested: bool,
     ) -> bool {
         let generics = self.generics_of(def_id);
+        let def_kind = self.def_kind(def_id);
+        let def_parent = self.def_kind(self.parent(def_id));
 
         // IATs and IACs (inherent associated types/consts with `type const`) themselves have a
         // weird arg setup (self + own args), but nested items *in* IATs (namely: opaques, i.e.
         // ATPITs) do not.
-        let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
-            && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
+        let is_parent_impl = matches!(def_parent, DefKind::Impl { of_trait: false });
+        let is_inherent_assoc_ty = matches!(def_kind, DefKind::AssocTy) && is_parent_impl;
+
         let is_inherent_assoc_type_const =
-            matches!(self.def_kind(def_id), DefKind::AssocConst { is_type_const: true })
-                && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
+            matches!(def_kind, DefKind::AssocConst { is_type_const: true }) && is_parent_impl;
+
         let own_args = if !nested && (is_inherent_assoc_ty || is_inherent_assoc_type_const) {
             if generics.own_params.len() + 1 != args.len() {
+                // tracing::debug!("turbofish={is_fn_turbofish:?} @ 2107");
                 return false;
             }
 
             if !matches!(args[0].kind(), ty::GenericArgKind::Type(_)) {
+                // tracing::debug!("turbofish={is_fn_turbofish:?} @ 2112");
                 return false;
             }
 
@@ -2156,6 +2162,7 @@ impl<'tcx> TyCtxt<'tcx> {
             if let Some(parent) = generics.parent
                 && !self.check_args_compatible_inner(parent, parent_args, true)
             {
+                // tracing::debug!("turbofish={is_fn_turbofish:?} @ 2133");
                 return false;
             }
 
@@ -2167,7 +2174,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
                 | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
                 | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}
-                _ => return false,
+                _ => {
+                    // tracing::debug!("turbofish={is_fn_turbofish:?} @ 2146");
+                    return false;
+                }
             }
         }
 
@@ -2178,14 +2188,16 @@ impl<'tcx> TyCtxt<'tcx> {
     /// and print out the args if not.
     pub fn debug_assert_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) {
         if cfg!(debug_assertions) && !self.check_args_compatible(def_id, args) {
-            let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
-                && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
+            let def_kind = self.def_kind(def_id);
+            let def_parent = self.def_kind(self.parent(def_id));
+
+            let is_inherent_assoc_ty = matches!(def_kind, DefKind::AssocTy)
+                && matches!(def_parent, DefKind::Impl { of_trait: false });
+
             let is_inherent_assoc_type_const =
                 matches!(self.def_kind(def_id), DefKind::AssocConst { is_type_const: true })
-                    && matches!(
-                        self.def_kind(self.parent(def_id)),
-                        DefKind::Impl { of_trait: false }
-                    );
+                    && matches!(def_parent, DefKind::Impl { of_trait: false });
+
             if is_inherent_assoc_ty || is_inherent_assoc_type_const {
                 bug!(
                     "args not compatible with generics for {}: args={:#?}, generics={:#?}",
@@ -2202,11 +2214,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     )
                 );
             } else {
+                // let cname = self.crate_name(LOCAL_CRATE);
                 bug!(
-                    "args not compatible with generics for {}: args={:#?}, generics={:#?}",
+                    "(dk={def_kind:?}) args not compatible with generics for {}: args={:#?}, generics={:#?}",
                     self.def_path_str(def_id),
                     args,
-                    ty::GenericArgs::identity_for_item(self, def_id)
+                    ty::GenericArgs::identity_for_item(self, def_id),
                 );
             }
         }

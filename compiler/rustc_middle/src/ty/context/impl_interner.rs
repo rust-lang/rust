@@ -581,7 +581,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
-            | ty::FnDef(_, _)
+            | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Dynamic(_, _)
             | ty::Closure(..)

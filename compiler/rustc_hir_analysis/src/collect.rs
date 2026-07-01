@@ -1482,21 +1482,6 @@ fn polarity_of_impl(
     }
 }
 
-/// Returns the early-bound lifetimes declared in this generics
-/// listing. For anything other than fns/methods, this is just all
-/// the lifetimes that are declared. For fns or methods, we have to
-/// screen out those that do not appear in any where-clauses etc using
-/// `resolve_lifetime::early_bound_lifetimes`.
-fn early_bound_lifetimes_from_generics<'a, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    generics: &'a hir::Generics<'a>,
-) -> impl Iterator<Item = &'a hir::GenericParam<'a>> {
-    generics.params.iter().filter(move |param| match param.kind {
-        GenericParamKind::Lifetime { .. } => !tcx.is_late_bound(param.hir_id),
-        _ => false,
-    })
-}
-
 fn compute_sig_of_foreign_fn_decl<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,

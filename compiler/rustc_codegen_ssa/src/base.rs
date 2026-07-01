@@ -445,7 +445,7 @@ where
                             cx.tcx(),
                             ty::TypingEnv::fully_monomorphized(),
                             def_id,
-                            args,
+                            args.no_bound_vars().unwrap(),
                             expr.span,
                         ),
                         _ => span_bug!(*op_sp, "asm sym is not a function"),

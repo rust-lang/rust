@@ -13,6 +13,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 0,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -23,6 +24,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 1,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -30,6 +32,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 2,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -37,6 +40,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 3,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Const {
                       has_default: false,
                   },
@@ -46,6 +50,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 4,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -56,6 +61,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 5,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -111,6 +117,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 0,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -121,6 +128,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 1,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -128,6 +136,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 2,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -135,6 +144,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 3,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Const {
                       has_default: false,
                   },
@@ -144,6 +154,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 4,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -154,6 +165,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 5,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -209,6 +221,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 0,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -216,6 +229,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 1,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -223,6 +237,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 2,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Const {
                       has_default: false,
                   },
@@ -232,6 +247,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 3,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -242,6 +258,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 4,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -293,6 +310,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 0,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -300,6 +318,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 1,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -307,6 +326,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 2,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Const {
                       has_default: false,
                   },
@@ -316,6 +336,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 3,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -326,6 +347,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 4,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -377,6 +399,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 0,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -384,6 +407,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 1,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -391,6 +415,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 2,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Const {
                       has_default: false,
                   },
@@ -400,6 +425,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 3,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -410,6 +436,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 4,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -461,6 +488,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 0,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -468,6 +496,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 1,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Const {
                       has_default: false,
                   },
@@ -477,6 +506,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 2,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -487,6 +517,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 3,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -536,6 +567,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 0,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -546,6 +578,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 1,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -553,6 +586,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 2,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -560,6 +594,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 3,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Const {
                       has_default: false,
                   },
@@ -569,6 +604,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 4,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -579,6 +615,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 5,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -634,6 +671,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 0,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -641,6 +679,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 1,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Lifetime,
               },
               GenericParamDef {
@@ -648,6 +687,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 2,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Const {
                       has_default: false,
                   },
@@ -657,6 +697,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 3,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -667,6 +708,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 4,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -739,6 +781,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 6,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Type {
                       has_default: false,
                       synthetic: false,
@@ -801,6 +844,7 @@ note: Generics {
                   def_id: DefId(..),
                   index: 6,
                   pure_wrt_drop: false,
+                  is_late_bound: false,
                   kind: Const {
                       has_default: false,
                   },

@@ -1,9 +1,6 @@
 warning: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/issue-83466.rs:11:14
    |
-LL |     fn func<'a, U>(self) -> U {
-   |             -- the late bound lifetime parameter is introduced here
-...
 LL |     S.func::<'a, 10_u32>()
    |              ^^
    |

@@ -215,7 +215,13 @@ fn check_call_site_abi<'tcx>(
             if tcx.intrinsic(def_id).is_some() {
                 return;
             }
-            let instance = ty::Instance::expect_resolve(tcx, typing_env, def_id, args, DUMMY_SP);
+            let instance = ty::Instance::expect_resolve(
+                tcx,
+                typing_env,
+                def_id,
+                args.no_bound_vars().unwrap(),
+                DUMMY_SP,
+            );
             tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
         }
         _ => {

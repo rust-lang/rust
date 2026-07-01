@@ -1,4 +1,4 @@
-//@ check-pass
+//
 
 fn assert_static<T: 'static>(_: T) {}
 
@@ -8,6 +8,7 @@ fn capture_lifetime<'a: 'a>() {}
 
 fn test_lifetime<'a>() {
     assert_static(capture_lifetime::<'a>);
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}
