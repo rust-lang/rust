@@ -291,3 +291,13 @@ fn test_double_ended_chain() {
     assert_eq!(CrazyIterator::new().chain(0..10).rev().last(), Some(0));
     assert!((0..10).chain(CrazyIterator::new()).rev().any(|i| i == 0));
 }
+
+#[test]
+fn chain_implements_exact_size() {
+    fn requires_exact_size<I: ExactSizeIterator>(_i: &I) {}
+
+    let chain = [1, 2, 3].into_iter().chain([4, 5, 6]);
+    requires_exact_size(&chain);
+
+    assert_eq!(chain.len(), 6);
+}

@@ -304,6 +304,18 @@ where
 {
 }
 
+#[stable(feature = "chain_exact_size", since = "CURRENT_RUSTC_VERSION")]
+impl<A, B> ExactSizeIterator for Chain<A, B>
+where
+    A: ExactSizeIterator,
+    B: ExactSizeIterator<Item = A::Item>,
+{
+    fn len(&self) -> usize {
+        self.a.as_ref().map_or(0, ExactSizeIterator::len)
+            + self.b.as_ref().map_or(0, ExactSizeIterator::len)
+    }
+}
+
 #[stable(feature = "default_iters", since = "1.70.0")]
 impl<A: Default, B: Default> Default for Chain<A, B> {
     /// Creates a `Chain` from the default values for `A` and `B`.
