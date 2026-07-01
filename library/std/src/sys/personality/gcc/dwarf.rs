@@ -10,8 +10,6 @@
 #[cfg(test)]
 mod tests;
 
-pub mod eh;
-
 pub struct DwarfReader {
     pub ptr: *const u8,
 }
