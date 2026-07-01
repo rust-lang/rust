@@ -211,6 +211,17 @@ fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Sess
     }
 }
 
+fn maybe_emit_macro_metavar_dollar_dollar_crate_feature(
+    features: &Features,
+    sess: &Session,
+    span: Span,
+) {
+    if !features.macro_metavar_expr_dollar_dollar_crate() {
+        let msg = "the `$$crate` meta-variable expression is unstable";
+        feature_err(sess, sym::macro_metavar_expr_dollar_dollar_crate, span, msg).emit();
+    }
+}
+
 /// Takes a `tokenstream::TokenTree` and returns a `self::TokenTree`. Specifically, this takes a
 /// generic `TokenTree`, such as is used in the rest of the compiler, and returns a `TokenTree`
 /// for use in parsing a macro.
@@ -347,6 +358,18 @@ fn parse_tree<'a>(
                     } else {
                         maybe_emit_macro_metavar_expr_feature(features, sess, dollar_span2);
                     }
+
+                    // Gate `$$crate`.
+                    if let Some(tokenstream::TokenTree::Token(token, _)) = iter.peek()
+                        && let Some((ident, is_raw)) = token.ident()
+                        && ident.name == kw::Crate
+                        && matches!(is_raw, IdentIsRaw::No)
+                    {
+                        maybe_emit_macro_metavar_dollar_dollar_crate_feature(
+                            features, sess, ident.span,
+                        );
+                    }
+
                     TokenTree::token(token::Dollar, dollar_span2)
                 }
 
