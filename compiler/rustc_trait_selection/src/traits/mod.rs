@@ -249,6 +249,72 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
     }
 }
 
+fn set_projection_term_to_non_rigid<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    tcx: TyCtxt<'tcx>,
+    value: T,
+) -> T {
+    value.fold_with(&mut ProjectionTermToNonRigid { tcx })
+}
+
+struct ProjectionTermToNonRigid<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ProjectionTermToNonRigid<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
+            && let ty::ClauseKind::Projection(projection_pred) = clause
+        {
+            p.kind()
+                .rebind(ty::ProjectionPredicate {
+                    projection_term: projection_pred.projection_term,
+                    term: ty::set_aliases_to_non_rigid(self.tcx, projection_pred.term)
+                        .skip_norm_wip(),
+                })
+                .upcast(self.tcx)
+        } else {
+            p
+        }
+    }
+}
+
+struct OpaqueToNonRigid<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueToNonRigid<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if !(t.has_rigid_aliases() && t.has_opaque_types()) {
+            return t;
+        }
+
+        if let ty::Alias(ty::IsRigid::Yes, alias_ty @ ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
+            t.kind()
+        {
+            let alias_ty = alias_ty.fold_with(self);
+            Ty::new_alias(self.tcx, ty::IsRigid::No, alias_ty)
+        } else {
+            t.super_fold_with(self)
+        }
+    }
+
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if c.has_rigid_aliases() && c.has_opaque_types() { c.super_fold_with(self) } else { c }
+    }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if p.has_rigid_aliases() && p.has_opaque_types() { p.super_fold_with(self) } else { p }
+    }
+}
+
 #[instrument(level = "debug", skip(tcx, elaborated_env))]
 fn do_normalize_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -272,10 +338,30 @@ fn do_normalize_predicates<'tcx>(
     let span = cause.span;
     let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    // FIXME: The `elaborated_env` is not really rigid. We do this to be
+    // consistent with the old solver. It fixes several issues with
+    // lazy norm of param env but unfix others.
+    let elaborated_env = if tcx.next_trait_solver_globally() && !tcx.disable_param_env_hack() {
+        // FIXME: combine them into one if the perf is bad.
+        let elaborated_env = ty::set_aliases_to_rigid(tcx, elaborated_env);
+        set_projection_term_to_non_rigid(tcx, elaborated_env)
+    } else {
+        elaborated_env
+    };
     let predicates = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(predicates));
-    // FIXME: opaque types in param env might be in defining scope but we're
-    // using non body analysis for here. So the rigidness marker is wrong.
-    let predicates = ty::set_aliases_to_non_rigid(tcx, predicates).skip_norm_wip();
+    let predicates = if tcx.next_trait_solver_globally() {
+        if !tcx.disable_param_env_hack() {
+            let predicates = set_projection_term_to_non_rigid(tcx, predicates);
+            // FIXME(type_alias_impl_trait): opaque types in param env might be
+            // in defining scope but we're using non body analysis here.
+            // So the rigidness marker is wrong.
+            predicates.fold_with(&mut OpaqueToNonRigid { tcx })
+        } else {
+            ty::set_aliases_to_non_rigid(tcx, predicates).skip_norm_wip()
+        }
+    } else {
+        predicates
+    };
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {

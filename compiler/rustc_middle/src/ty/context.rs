@@ -2692,6 +2692,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.disable_fast_paths
     }
 
+    pub fn disable_param_env_hack(self) -> bool {
+        self.sess.opts.unstable_opts.disable_param_env_hack
+    }
+
     pub fn renormalize_rigid_aliases(self) -> bool {
         self.sess.opts.unstable_opts.renormalize_rigid_aliases
     }

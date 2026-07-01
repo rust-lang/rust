@@ -2347,6 +2347,8 @@ options! {
         "disable various performance optimizations in trait solving"),
     disable_incr_comp_backend_caching: bool = (false, parse_bool, [TRACKED],
         "disable caching of compiled objects by the codegen backend during incremental compilation"),
+    disable_param_env_hack: bool = (false, parse_bool, [TRACKED],
+        "do not try to mark param env as rigid for the next solver"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
