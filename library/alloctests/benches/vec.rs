@@ -193,6 +193,117 @@ fn bench_extend_1000_1000(b: &mut Bencher) {
     do_bench_extend(b, 1000, 1000)
 }
 
+fn do_bench_extend_chain_filter(b: &mut Bencher, dst_len: usize, src_len: usize) {
+    let dst: Vec<_> = FromIterator::from_iter(0..dst_len);
+    let src1: Vec<_> = FromIterator::from_iter(dst_len..dst_len + src_len);
+    let src2: Vec<_> = FromIterator::from_iter(dst_len + src_len..dst_len + src_len * 2);
+
+    b.bytes = src_len as u64 * 2;
+
+    b.iter(|| {
+        let mut dst = dst.clone();
+        dst.extend(src1.iter().chain(src2.iter()).filter(|&&x| x < usize::MAX));
+        dst
+    });
+}
+
+#[bench]
+fn bench_extend_chain_filter_0000_0000(b: &mut Bencher) {
+    do_bench_extend_chain_filter(b, 0, 0)
+}
+
+#[bench]
+fn bench_extend_chain_filter_0000_0010(b: &mut Bencher) {
+    do_bench_extend_chain_filter(b, 0, 10)
+}
+
+#[bench]
+fn bench_extend_chain_filter_0000_0100(b: &mut Bencher) {
+    do_bench_extend_chain_filter(b, 0, 100)
+}
+
+#[bench]
+fn bench_extend_chain_filter_0000_1000(b: &mut Bencher) {
+    do_bench_extend_chain_filter(b, 0, 1000)
+}
+
+#[bench]
+fn bench_extend_chain_filter_0010_0010(b: &mut Bencher) {
+    do_bench_extend_chain_filter(b, 10, 10)
+}
+
+#[bench]
+fn bench_extend_chain_filter_0100_0100(b: &mut Bencher) {
+    do_bench_extend_chain_filter(b, 100, 100)
+}
+
+#[bench]
+fn bench_extend_chain_filter_1000_1000(b: &mut Bencher) {
+    do_bench_extend_chain_filter(b, 1000, 1000)
+}
+
+fn do_bench_collect_chain_filter(b: &mut Bencher, src_len: usize) {
+    let src1: Vec<usize> = FromIterator::from_iter(0..src_len);
+    let src2: Vec<usize> = FromIterator::from_iter(src_len..src_len * 2);
+
+    b.bytes = src_len as u64 * 2;
+
+    b.iter(|| src1.iter().chain(src2.iter()).filter(|&&x| x < usize::MAX).collect::<Vec<_>>());
+}
+
+#[bench]
+fn bench_collect_chain_filter_0010(b: &mut Bencher) {
+    do_bench_collect_chain_filter(b, 10)
+}
+
+#[bench]
+fn bench_collect_chain_filter_0100(b: &mut Bencher) {
+    do_bench_collect_chain_filter(b, 100)
+}
+
+#[bench]
+fn bench_collect_chain_filter_1000(b: &mut Bencher) {
+    do_bench_collect_chain_filter(b, 1000)
+}
+
+fn do_bench_extend_flatten(b: &mut Bencher, inner_len: usize, outer_len: usize) {
+    let src: Vec<Vec<u32>> =
+        (0..outer_len).map(|i| (i as u32..i as u32 + inner_len as u32).collect()).collect();
+
+    b.bytes = (inner_len * outer_len) as u64;
+
+    b.iter(|| {
+        let mut v: Vec<&u32> = Vec::new();
+        v.extend(src.iter().flatten());
+        v
+    });
+}
+
+#[bench]
+fn bench_extend_flatten_0001_0000(b: &mut Bencher) {
+    do_bench_extend_flatten(b, 1, 0)
+}
+
+#[bench]
+fn bench_extend_flatten_0001_0010(b: &mut Bencher) {
+    do_bench_extend_flatten(b, 1, 10)
+}
+
+#[bench]
+fn bench_extend_flatten_0010_0100(b: &mut Bencher) {
+    do_bench_extend_flatten(b, 10, 100)
+}
+
+#[bench]
+fn bench_extend_flatten_0100_0100(b: &mut Bencher) {
+    do_bench_extend_flatten(b, 100, 100)
+}
+
+#[bench]
+fn bench_extend_flatten_1000_0010(b: &mut Bencher) {
+    do_bench_extend_flatten(b, 1000, 10)
+}
+
 fn do_bench_extend_from_slice(b: &mut Bencher, dst_len: usize, src_len: usize) {
     let dst: Vec<_> = FromIterator::from_iter(0..dst_len);
     let src: Vec<_> = FromIterator::from_iter(dst_len..dst_len + src_len);
