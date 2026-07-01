@@ -1,0 +1,26 @@
+error[E0573]: expected type, found constant `ADD1`
+  --> $DIR/type_const-tuple-call-expr-missing-field.rs:13:27
+   |
+LL | type const AliasFnUnused: ADD1 = ADD1::<{ Wrap(Some::<usize> {}) }>;
+   |                           ^^^^ not a type
+
+error: unconstrained generic constant
+  --> $DIR/type_const-tuple-call-expr-missing-field.rs:11:1
+   |
+LL | type const ADD1<const N: usize>: usize = const { N + 1 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | type const ADD1<const N: usize>: usize where [(); const { N + 1 }]: = const { N + 1 };
+   |                                        ++++++++++++++++++++++++++++
+
+error: struct expression with missing field initialiser for `0`
+  --> $DIR/type_const-tuple-call-expr-missing-field.rs:13:48
+   |
+LL | type const AliasFnUnused: ADD1 = ADD1::<{ Wrap(Some::<usize> {}) }>;
+   |                                                ^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

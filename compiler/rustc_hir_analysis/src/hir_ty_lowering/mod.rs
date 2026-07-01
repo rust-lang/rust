@@ -2490,9 +2490,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|elem| self.lower_const_arg(elem, *elem_ty))
             .collect::<Vec<_>>();
 
-        let valtree = ty::ValTree::from_branches(tcx, elems);
-
-        ty::Const::new_value(tcx, valtree, ty)
+        ty::Const::new_value_from_branches(tcx, elems, ty)
     }
 
     fn lower_const_arg_tuple_call(
@@ -2590,9 +2588,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             None
         };
 
-        let valtree = ty::ValTree::from_branches(tcx, opt_discr_const.into_iter().chain(fields));
-        let adt_ty = Ty::new_adt(tcx, adt_def, adt_args);
-        ty::Const::new_value(tcx, valtree, adt_ty)
+        ty::Const::new_value_from_branches(
+            tcx,
+            opt_discr_const.into_iter().chain(fields),
+            Ty::new_adt(tcx, adt_def, adt_args),
+        )
     }
 
     fn lower_const_arg_tup(
@@ -2632,8 +2632,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|(expr, ty)| self.lower_const_arg(expr, ty))
             .collect::<Vec<_>>();
 
-        let valtree = ty::ValTree::from_branches(tcx, exprs);
-        ty::Const::new_value(tcx, valtree, ty)
+        ty::Const::new_value_from_branches(tcx, exprs, ty)
     }
 
     fn lower_const_arg_struct(
@@ -2775,8 +2774,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             None
         };
 
-        let valtree = ty::ValTree::from_branches(tcx, opt_discr_const.into_iter().chain(fields));
-        ty::Const::new_value(tcx, valtree, ty)
+        ty::Const::new_value_from_branches(tcx, opt_discr_const.into_iter().chain(fields), ty)
     }
 
     pub fn lower_path_for_struct_expr(
