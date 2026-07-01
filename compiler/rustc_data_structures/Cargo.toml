@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 arrayvec = { version = "0.7", default-features = false }
+backtrace = "0.3.75"
 bitflags = "2.4.1"
 either = "1.0"
 elsa = "1.11.0"
