@@ -26,7 +26,7 @@ fn main() {
     // FIXME(rustfmt): the attribute gets deleted by rustfmt
     #[rustfmt::skip]
     let fn_ptr: fn(#[splat] (u32, i8)) = tuple_args;
-    fn_ptr(1, 2); //~ ERROR no splatted def for function or method callee
+    fn_ptr(1, 2); //~ ERROR splatted FnPtr side-tables are not yet implemented
     // The ICE means that code after this line is not fully checked
     fn_ptr(1u32, 2i8);
 
@@ -38,4 +38,9 @@ fn main() {
     let fn_ptr: fn(#[splat] (u32, i8), f64) = splat_non_terminal_arg;
     fn_ptr(1, 2, 3.5);
     fn_ptr(1u32, 2i8, 3.5f64);
+
+    // Bug #158603 regression test
+    #[rustfmt::skip]
+    let x: fn(#[splat] (i32,)) = None.unwrap();
+    x(1);
 }

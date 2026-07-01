@@ -1,5 +1,5 @@
-//! Test using `#[splat]` on tuple arguments of pointers to pointers to simple functions.
-//! Currently ICEs, but if we fix it, we'll want to know and update this test to pass.
+//! Test using `#[splat]` on tuple arguments of generic function constants.
+//! Currently ICEs (#158603), but if we fix it, we'll want to know and update this test to pass.
 
 //@ failure-status: 101
 
@@ -14,29 +14,21 @@
 //@ normalize-stderr: ".*--> .*/splat-fn-ptr-tuple.rs:\d{1,}:\d{1,}.*\n" -> ""
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(splat, tuple_trait)]
 
-fn tuple_args(#[splat] (_a, _b): (u32, i8)) {}
+use std::marker::Tuple;
 
-fn splat_non_terminal_arg(#[splat] (_a, _b): (u32, i8), _c: f64) {}
+fn f<Args: Tuple>(#[splat] args: Args) {}
 
 fn main() {
     // FIXME(splat): not currently supported, can be supported when we no longer require a DefId in
     // MIR lowering
     // FIXME(rustfmt): the attribute gets deleted by rustfmt
     #[rustfmt::skip]
-    let fn_pp: *const fn(#[splat] (u32, i8)) = tuple_args as *const fn(#[splat] (u32, i8));
-    unsafe {
-        (*fn_pp)(1, 2); //~ ERROR splatted FnPtr side-tables are not yet implemented
-        // The ICE means that code after this line is not fully checked
-        (*fn_pp)(1u32, 2i8);
-    }
+    const F2: fn(#[splat] (u8, u32)) = f::<(u8, u32)>;
+    const R2: () = F2(1, 2); //~ ERROR splatted FnPtr side-tables are not yet implemented
 
     #[rustfmt::skip]
-    let fn_pp: *const fn(#[splat] (u32, i8), f64) =
-        splat_non_terminal_arg as *const fn(#[splat] (u32, i8), f64);
-    unsafe {
-        (*fn_pp)(1, 2, 3.5);
-        (*fn_pp)(1u32, 2i8, 3.5f64);
-    }
+    const F1: fn(#[splat] ((u8, u32),)) = f::<((u8, u32),)>;
+    const R1: () = F1((1, 2)); //~ ERROR splatted FnPtr side-tables are not yet implemented
 }
