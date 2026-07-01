@@ -2438,7 +2438,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
             // Check if this ADT has a constrained layout (like `NonNull` and friends).
             if let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(ty)) {
-                if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair { a: scalar, .. } =
                     &layout.backend_repr
                 {
                     let range = scalar.valid_range(cx);

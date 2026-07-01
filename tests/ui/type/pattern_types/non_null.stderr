@@ -143,8 +143,8 @@ error: layout_of((*const [u8]) is !null) = Layout {
            align: AbiAlign {
                abi: Align(8 bytes),
            },
-           backend_repr: ScalarPair(
-               Initialized {
+           backend_repr: ScalarPair {
+               a: Initialized {
                    value: Pointer(
                        AddressSpace(
                            0,
@@ -152,14 +152,15 @@ error: layout_of((*const [u8]) is !null) = Layout {
                    ),
                    valid_range: 1..=18446744073709551615,
                },
-               Initialized {
+               b: Initialized {
                    value: Int(
                        I64,
                        false,
                    ),
                    valid_range: 0..=18446744073709551615,
                },
-           ),
+               b_offset: Size(8 bytes),
+           },
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),

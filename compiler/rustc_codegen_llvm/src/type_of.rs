@@ -73,7 +73,7 @@ fn uncached_llvm_type<'a, 'tcx>(
                 _ => bug!("`#[rustc_scalable_vector]` tuple struct with too many fields"),
             };
         }
-        BackendRepr::Memory { .. } | BackendRepr::ScalarPair(..) => {}
+        BackendRepr::Memory { .. } | BackendRepr::ScalarPair { .. } => {}
     }
 
     let name = match layout.ty.kind() {
@@ -228,13 +228,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
             | BackendRepr::SimdScalableVector { .. } => true,
-            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
+            BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => false,
         }
     }
 
     fn is_llvm_scalar_pair(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::ScalarPair(..) => true,
+            BackendRepr::ScalarPair { .. } => true,
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
             | BackendRepr::SimdScalableVector { .. }
@@ -313,7 +313,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                     return cx.type_i1();
                 }
             }
-            BackendRepr::ScalarPair(..) => {
+            BackendRepr::ScalarPair { .. } => {
                 // An immediate pair always contains just the two elements, without any padding
                 // filler, as it should never be stored to memory.
                 return cx.type_struct(
@@ -346,7 +346,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
-        let BackendRepr::ScalarPair(a, b) = self.backend_repr else {
+        let BackendRepr::ScalarPair { a, b, b_offset: _ } = self.backend_repr else {
             bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self);
         };
         let scalar = [a, b][index];
