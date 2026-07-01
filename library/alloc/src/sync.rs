@@ -25,7 +25,7 @@ use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Lega
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Residual, Try};
 use core::panic::{RefUnwindSafe, UnwindSafe};
-use core::pin::{Pin, PinCoerceUnsized};
+use core::pin::{Pin, PinSafePointer};
 use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
@@ -2449,8 +2449,16 @@ impl<T: ?Sized, A: Allocator> Deref for Arc<T, A> {
     }
 }
 
+// The API of this pointer type enforces that if the `T` is pinned, then *all*
+// clones of this `Arc<T>` are wrapped as `Pin<Arc<T>>`. Since an `&Arc<T>`
+// could be used to obtain an `Arc<T>` that is not wrapped in `Pin` (and later
+// used with `Arc::get_mut`), this means that this type treats `&Arc<T>` as
+// evidence that the `T` is not pinned. The implementations of various traits
+// are written accordingly. Since this type is not fundamental, downstream
+// crates cannot provide malicious implementations of any of the traits relevant
+// for `Pin`.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Arc<T, A> {}
+unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for Arc<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Arc<T, A> {}
@@ -4891,7 +4899,7 @@ impl<T: ?Sized, A: Allocator> Deref for UniqueArc<T, A> {
 
 // #[unstable(feature = "unique_rc_arc", issue = "112566")]
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for UniqueArc<T> {}
+unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for UniqueArc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> DerefMut for UniqueArc<T, A> {
