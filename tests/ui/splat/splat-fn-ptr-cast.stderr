@@ -1,0 +1,10 @@
+warning: feature `splat` is declared but not used
+  --> $DIR/splat-fn-ptr-cast.rs:5:12
+   |
+LL | #![feature(splat)]
+   |            ^^^^^
+   |
+   = note: `#[warn(unused_features)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+
