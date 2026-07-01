@@ -2007,11 +2007,21 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn div_euclid(x: f32, rhs: f32) -> f32 {
-        let q = trunc(x / rhs);
-        if x % rhs < 0.0 {
-            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
+        // Use floor() directly as the initial guess (Euclidean division
+        // with positive divisor is the same as floor division).
+        let q = (x / rhs).floor();
+        // Compute b * q - a with a single rounding error.
+        let diff = rhs.mul_add(q, -x);
+        if diff > 0.0 { // take care of NaN: NaN > 0.0 is false, keeping the return result.
+            if rhs > 0.0 {
+                // q was one unit too high – move down to the next representable value.
+                q.next_down().floor()
+            } else {
+                q.next_up().ceil()
+            }
+        } else {
+            q
         }
-        q
     }
 
     /// Experimental version of `rem_euclid` in `core`. See [`f32::rem_euclid`] for details.

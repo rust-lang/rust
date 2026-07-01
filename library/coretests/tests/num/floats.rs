@@ -995,6 +995,22 @@ float_test! {
 }
 
 float_test! {
+    name: div_rem_euclid,
+    attrs: {
+        const: #[cfg(false)],
+        // Miri only uses softfloats here, so that always works
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+    },
+    test {
+        assert_approx_eq!(flt(11.0).div_euclid(flt(2.2)) * flt(2.2) + flt(11.0).rem_euclid(flt(2.2)), flt(11.0));
+        assert_approx_eq!(flt(12.0).div_euclid(flt(2.4)) * flt(2.4) + flt(12.0).rem_euclid(flt(2.4)), flt(12.0));
+        assert_approx_eq!(flt(13.0).div_euclid(flt(2.6)) * flt(2.6) + flt(13.0).rem_euclid(flt(2.6)), flt(13.0));
+        assert_approx_eq!(flt(14.0).div_euclid(flt(2.8)) * flt(2.8) + flt(14.0).rem_euclid(flt(2.8)), flt(14.0));
+    }
+}
+
+float_test! {
     name: floor,
     attrs: {
         // Miri only uses softfloats here, so that always works
