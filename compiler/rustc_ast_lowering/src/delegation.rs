@@ -53,7 +53,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{Asyncness, PerOwnerResolverData};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::kw;
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, sym};
 
 use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
 use crate::diagnostics::{
@@ -661,11 +661,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let callee_path = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(new_path), span));
         let args = self.arena.alloc_from_iter(args);
-        let call = self.arena.alloc(self.mk_expr(hir::ExprKind::Call(callee_path, args), span));
+        let call = self.mk_expr(hir::ExprKind::Call(callee_path, args), span);
+
+        let expr = if let Some((parent, of_trait)) = self.should_wrap_return_value(delegation) {
+            let res = Res::SelfTyAlias { alias_to: parent.to_def_id(), is_trait_impl: of_trait };
+            let ident = Ident::new(kw::SelfUpper, span);
+            let path = self.create_resolved_path(res, ident, span);
+
+            // FIXME(fn_delegation): add default `..` for all other fields.
+            let initializer = hir::ExprKind::Struct(
+                self.arena.alloc(path),
+                self.arena.alloc_slice(&[hir::ExprField {
+                    hir_id: self.next_id(),
+                    is_shorthand: false,
+                    ident: Ident::new(sym::integer(0), span),
+                    expr: self.arena.alloc(call),
+                    span,
+                }]),
+                hir::StructTailExpr::None,
+            );
+
+            self.arena.alloc(self.mk_expr(initializer, span))
+        } else {
+            self.arena.alloc(call)
+        };
 
         let block = self.arena.alloc(hir::Block {
             stmts,
-            expr: Some(call),
+            expr: Some(expr),
             hir_id: self.next_id(),
             rules: hir::BlockCheckMode::DefaultBlock,
             span,
@@ -673,6 +696,45 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         (self.mk_expr(hir::ExprKind::Block(block, None), span), call.hir_id)
+    }
+
+    fn should_wrap_return_value(&self, delegation: &Delegation) -> Option<(LocalDefId, bool)> {
+        // Heuristic: don't do wrapping if there is no target expression.
+        if delegation.body.is_none() {
+            return None;
+        }
+
+        let tcx = self.tcx;
+        let parent = tcx.local_parent(self.owner.def_id);
+        let parent_kind = tcx.def_kind(parent);
+
+        // Apply wrapping for delegations inside
+        // 1) Trait impls, as the return type of both signature function
+        //    and generated delegation has `Self` generic param returned
+        //    (checked below).
+        //    FIXME(fn_delegation): think of enabling wrapping in more scenarios:
+        //      trait-(impl)-to-free
+        //      trait-(impl)-to-inherent
+        //      inherent-to-free
+        // 2) Inherent methods when delegating to trait, as we change the type of
+        //    `Self` to type of struct or enum we delegate from.
+        if !matches!(tcx.def_kind(parent), DefKind::Impl { .. }) {
+            return None;
+        }
+
+        let is_trait_impl = parent_kind == DefKind::Impl { of_trait: true };
+
+        // Check that delegation path resolves to a trait AssocFn, not to a free method.
+        Some((parent, is_trait_impl)).filter(|_| {
+            self.get_resolution_id(delegation.id).is_some_and(|id| {
+                tcx.def_kind(id) == DefKind::AssocFn
+                    // Check that the return type of the callee is `Self` param.
+                    // After previous check we are sure that `sig_id` and `delegation.id`
+                    // point to the same function.
+                    && tcx.def_kind(tcx.parent(id)) == DefKind::Trait
+                    && tcx.fn_sig(id).skip_binder().output().skip_binder().is_param(0)
+            })
+        })
     }
 
     fn process_segment(
