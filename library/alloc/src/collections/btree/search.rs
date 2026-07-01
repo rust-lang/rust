@@ -1,5 +1,4 @@
-use core::borrow::Borrow;
-use core::cmp::Ordering;
+use core::cmp::{Comparable, Ordering};
 use core::ops::{Bound, RangeBounds};
 
 use SearchBound::*;
@@ -46,16 +45,15 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
-    pub(super) fn search_tree<Q: ?Sized>(
+    pub(super) fn search_tree<Q: Clone>(
         mut self,
-        key: &Q,
+        key: Q,
     ) -> SearchResult<BorrowType, K, V, marker::LeafOrInternal, marker::Leaf>
     where
-        Q: Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         loop {
-            self = match self.search_node(key) {
+            self = match self.search_node(key.clone()) {
                 Found(handle) => return Found(handle),
                 GoDown(handle) => match handle.force() {
                     Leaf(leaf) => return GoDown(leaf),
@@ -95,7 +93,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     >
     where
         Q: Ord,
-        K: Borrow<Q>,
+        K: for<'a> Comparable<&'a Q>,
         R: RangeBounds<Q>,
     {
         // Determine if map or set is being searched
@@ -156,13 +154,12 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     /// the matching child node, if `self` is an internal node.
     ///
     /// The result is meaningful only if the tree is ordered by key.
-    pub(super) fn find_lower_bound_edge<'r, Q>(
+    pub(super) fn find_lower_bound_edge<Q: Clone>(
         self,
-        bound: SearchBound<&'r Q>,
-    ) -> (Handle<Self, marker::Edge>, SearchBound<&'r Q>)
+        bound: SearchBound<Q>,
+    ) -> (Handle<Self, marker::Edge>, SearchBound<Q>)
     where
-        Q: ?Sized + Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         let (edge_idx, bound) = self.find_lower_bound_index(bound);
         let edge = unsafe { Handle::new_edge(self, edge_idx) };
@@ -170,13 +167,12 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     }
 
     /// Clone of `find_lower_bound_edge` for the upper bound.
-    pub(super) fn find_upper_bound_edge<'r, Q>(
+    pub(super) fn find_upper_bound_edge<Q: Clone>(
         self,
-        bound: SearchBound<&'r Q>,
-    ) -> (Handle<Self, marker::Edge>, SearchBound<&'r Q>)
+        bound: SearchBound<Q>,
+    ) -> (Handle<Self, marker::Edge>, SearchBound<Q>)
     where
-        Q: ?Sized + Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         let (edge_idx, bound) = unsafe { self.find_upper_bound_index(bound, 0) };
         let edge = unsafe { Handle::new_edge(self, edge_idx) };
@@ -192,13 +188,9 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
-    pub(super) fn search_node<Q: ?Sized>(
-        self,
-        key: &Q,
-    ) -> SearchResult<BorrowType, K, V, Type, Type>
+    pub(super) fn search_node<Q: Clone>(self, key: Q) -> SearchResult<BorrowType, K, V, Type, Type>
     where
-        Q: Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         match unsafe { self.find_key_index(key, 0) } {
             IndexResult::KV(idx) => Found(unsafe { Handle::new_kv(self, idx) }),
@@ -214,19 +206,18 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     ///
     /// # Safety
     /// `start_index` must be a valid edge index for the node.
-    unsafe fn find_key_index<Q: ?Sized>(&self, key: &Q, start_index: usize) -> IndexResult
+    unsafe fn find_key_index<Q: Clone>(&self, key: Q, start_index: usize) -> IndexResult
     where
-        Q: Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         let node = self.reborrow();
         let keys = node.keys();
         debug_assert!(start_index <= keys.len());
         for (offset, k) in unsafe { keys.get_unchecked(start_index..) }.iter().enumerate() {
-            match key.cmp(k.borrow()) {
-                Ordering::Greater => {}
+            match k.compare(key.clone()) {
+                Ordering::Less => {}
                 Ordering::Equal => return IndexResult::KV(start_index + offset),
-                Ordering::Less => return IndexResult::Edge(start_index + offset),
+                Ordering::Greater => return IndexResult::Edge(start_index + offset),
             }
         }
         IndexResult::Edge(keys.len())
@@ -237,22 +228,18 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// the matching child node, if `self` is an internal node.
     ///
     /// The result is meaningful only if the tree is ordered by key.
-    fn find_lower_bound_index<'r, Q>(
-        &self,
-        bound: SearchBound<&'r Q>,
-    ) -> (usize, SearchBound<&'r Q>)
+    fn find_lower_bound_index<Q: Clone>(&self, bound: SearchBound<Q>) -> (usize, SearchBound<Q>)
     where
-        Q: ?Sized + Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         match bound {
-            Included(key) => match unsafe { self.find_key_index(key, 0) } {
+            Included(key) => match unsafe { self.find_key_index(key.clone(), 0) } {
                 IndexResult::KV(idx) => (idx, AllExcluded),
-                IndexResult::Edge(idx) => (idx, bound),
+                IndexResult::Edge(idx) => (idx, Included(key)),
             },
-            Excluded(key) => match unsafe { self.find_key_index(key, 0) } {
+            Excluded(key) => match unsafe { self.find_key_index(key.clone(), 0) } {
                 IndexResult::KV(idx) => (idx + 1, AllIncluded),
-                IndexResult::Edge(idx) => (idx, bound),
+                IndexResult::Edge(idx) => (idx, Excluded(key)),
             },
             AllIncluded => (0, AllIncluded),
             AllExcluded => (self.len(), AllExcluded),
@@ -264,23 +251,22 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     ///
     /// # Safety
     /// `start_index` must be a valid edge index for the node.
-    unsafe fn find_upper_bound_index<'r, Q>(
+    unsafe fn find_upper_bound_index<Q: Clone>(
         &self,
-        bound: SearchBound<&'r Q>,
+        bound: SearchBound<Q>,
         start_index: usize,
-    ) -> (usize, SearchBound<&'r Q>)
+    ) -> (usize, SearchBound<Q>)
     where
-        Q: ?Sized + Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         match bound {
-            Included(key) => match unsafe { self.find_key_index(key, start_index) } {
+            Included(key) => match unsafe { self.find_key_index(key.clone(), start_index) } {
                 IndexResult::KV(idx) => (idx + 1, AllExcluded),
-                IndexResult::Edge(idx) => (idx, bound),
+                IndexResult::Edge(idx) => (idx, Included(key)),
             },
-            Excluded(key) => match unsafe { self.find_key_index(key, start_index) } {
+            Excluded(key) => match unsafe { self.find_key_index(key.clone(), start_index) } {
                 IndexResult::KV(idx) => (idx, AllIncluded),
-                IndexResult::Edge(idx) => (idx, bound),
+                IndexResult::Edge(idx) => (idx, Excluded(key)),
             },
             AllIncluded => (self.len(), AllIncluded),
             AllExcluded => (start_index, AllExcluded),

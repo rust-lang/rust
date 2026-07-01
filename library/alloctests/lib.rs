@@ -17,6 +17,7 @@
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
 #![feature(char_internals)]
+#![feature(comparable_trait)]
 #![feature(const_alloc_error)]
 #![feature(const_cmp)]
 #![feature(const_convert)]
