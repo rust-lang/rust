@@ -1,0 +1,106 @@
+error: unknown character escape: `\u{2033}`
+  --> $DIR/unicode-quote.rs:4:12
+   |
+LL |     dbg!("\″"); //U+2033
+   |            ^ unknown character escape
+   |
+   = help: \u{2033} is not an ascii quote, but may look like one in some fonts; consider writing it in its escaped form for clarity.
+help: if you meant to use a unicode quote; consider using its escaped form for clarity
+   |
+LL -     dbg!("\″"); //U+2033
+LL +     dbg!("\u{2033}"); //U+2033
+   |
+
+error: unknown character escape: `\u{2ba}`
+  --> $DIR/unicode-quote.rs:6:12
+   |
+LL |     dbg!("\ʺ"); //U+02BA
+   |            ^ unknown character escape
+   |
+   = help: \u{2ba} is not an ascii quote, but may look like one in some fonts; consider writing it in its escaped form for clarity.
+help: if you meant to use a unicode quote; consider using its escaped form for clarity
+   |
+LL -     dbg!("\ʺ"); //U+02BA
+LL +     dbg!("\u{2ba}"); //U+02BA
+   |
+
+error: unknown character escape: `\u{2dd}`
+  --> $DIR/unicode-quote.rs:8:12
+   |
+LL |     dbg!("\˝"); //U+02DD
+   |            ^ unknown character escape
+   |
+   = help: \u{2dd} is not an ascii quote, but may look like one in some fonts; consider writing it in its escaped form for clarity.
+help: if you meant to use a unicode quote; consider using its escaped form for clarity
+   |
+LL -     dbg!("\˝"); //U+02DD
+LL +     dbg!("\u{2dd}"); //U+02DD
+   |
+
+error: unknown character escape: `\u{30b}`
+  --> $DIR/unicode-quote.rs:10:12
+   |
+LL |     dbg!("\̋"); //U+030B
+   |            ^ unknown character escape
+   |
+   = help: \u{30b} is not an ascii quote, but may look like one in some fonts; consider writing it in its escaped form for clarity.
+help: if you meant to use a unicode quote; consider using its escaped form for clarity
+   |
+LL -     dbg!("\̋"); //U+030B
+LL +     dbg!("\u{30b}"); //U+030B
+   |
+
+error: unknown character escape: `\u{30e}`
+  --> $DIR/unicode-quote.rs:12:12
+   |
+LL |     dbg!("\̎"); //U+030E
+   |            ^ unknown character escape
+   |
+   = help: \u{30e} is not an ascii quote, but may look like one in some fonts; consider writing it in its escaped form for clarity.
+help: if you meant to use a unicode quote; consider using its escaped form for clarity
+   |
+LL -     dbg!("\̎"); //U+030E
+LL +     dbg!("\u{30e}"); //U+030E
+   |
+
+error: unknown character escape: `\u{5f4}`
+  --> $DIR/unicode-quote.rs:14:12
+   |
+LL |     dbg!("\״"); //U+05F4
+   |            ^ unknown character escape
+   |
+   = help: \u{5f4} is not an ascii quote, but may look like one in some fonts; consider writing it in its escaped form for clarity.
+help: if you meant to use a unicode quote; consider using its escaped form for clarity
+   |
+LL -     dbg!("\״"); //U+05F4
+LL +     dbg!("\u{5f4}"); //U+05F4
+   |
+
+error: unknown character escape: `\u{201c}`
+  --> $DIR/unicode-quote.rs:16:12
+   |
+LL |     dbg!("\“"); //U+201C
+   |            ^ unknown character escape
+   |
+   = help: \u{201c} is not an ascii quote, but may look like one in some fonts; consider writing it in its escaped form for clarity.
+help: if you meant to use a unicode quote; consider using its escaped form for clarity
+   |
+LL -     dbg!("\“"); //U+201C
+LL +     dbg!("\u{201c}"); //U+201C
+   |
+
+error: unknown character escape: `\u{201d}`
+  --> $DIR/unicode-quote.rs:18:12
+   |
+LL |     dbg!("\”"); //U+201D
+   |            ^ unknown character escape
+   |
+   = help: \u{201d} is not an ascii quote, but may look like one in some fonts; consider writing it in its escaped form for clarity.
+help: if you meant to use a unicode quote; consider using its escaped form for clarity
+   |
+LL -     dbg!("\”"); //U+201D
+LL +     dbg!("\u{201d}"); //U+201D
+   |
+
+error: aborting due to 8 previous errors
+
