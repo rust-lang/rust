@@ -1513,6 +1513,13 @@ where
         BoundVarReplacer::replace_bound_vars(&**self.delegate, universes, t).0
     }
 
+    pub(super) fn insert_empty_placeholder_assumptions(&self, u: ty::UniverseIndex) {
+        self.delegate.insert_placeholder_assumptions(
+            u,
+            Some(rustc_type_ir::region_constraint::Assumptions::empty()),
+        );
+    }
+
     pub(super) fn may_use_unstable_feature(
         &mut self,
         param_env: I::ParamEnv,
