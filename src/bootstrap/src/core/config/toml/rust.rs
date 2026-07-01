@@ -422,23 +422,33 @@ pub(crate) fn parse_codegen_backends(
                 Please, use '{stripped}' instead."
             )
         }
-        if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.as_str()) {
-            if CiEnv::is_rust_lang_managed_ci_job() {
-                eprintln!("Unknown codegen backend {backend}");
-                exit!(1);
-            }
-
-            println!(
-                "HELP: '{backend}' for '{section}.codegen-backends' might fail. \
-                List of known codegen backends: {BUILTIN_CODEGEN_BACKENDS:?}"
-            );
-        }
         let backend = match backend.as_str() {
             "llvm" => CodegenBackendKind::Llvm,
             "cranelift" => CodegenBackendKind::Cranelift,
             "gcc" => CodegenBackendKind::Gcc,
             backend => CodegenBackendKind::Custom(backend.to_string()),
         };
+
+        if found_backends.contains(&backend) {
+            panic!(
+                "Duplicate value '{}' for '{section}.codegen-backends'. \
+                Each codegen backend should only be specified once.",
+                backend.name()
+            );
+        }
+
+        if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.name()) {
+            if CiEnv::is_rust_lang_managed_ci_job() {
+                eprintln!("Unknown codegen backend {}", backend.name());
+                exit!(1);
+            }
+
+            println!(
+                "HELP: '{}' for '{section}.codegen-backends' might fail. \
+                List of known codegen backends: {BUILTIN_CODEGEN_BACKENDS:?}",
+                backend.name()
+            );
+        }
         found_backends.push(backend);
     }
     if found_backends.is_empty() {
