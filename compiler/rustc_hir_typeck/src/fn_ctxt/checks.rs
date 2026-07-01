@@ -592,6 +592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 untupled_expected_input_tys: expected_input_tys,
             };
         };
+        let first_tupled_arg_index_usz = usize::from(first_tupled_arg_index);
 
         // The argument difference can range from -1 to u16::MAX - 1, so we count the number
         // of tupled arguments instead.
@@ -610,7 +611,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If earlier code has modified the FnSig argument list without adjusting the splatted
         // argument, indexing into the formal input types will panic.
-        if first_tupled_arg_index >= formal_input_tys.len() {
+        if first_tupled_arg_index_usz >= formal_input_tys.len() {
             span_bug!(
                 call_span,
                 "splatted argument index is out of bounds: {first_tupled_arg_index:?} >= {}, \
@@ -622,10 +623,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
+        let formal_input_tupled_ty = formal_input_tys[first_tupled_arg_index_usz];
         // Keep the type variable if the argument is splatted, so we can force it to be a tuple later.
         let tuple_type = if tuple_arguments.is_splatted() {
-            let callee_tuple_type =
-                self.resolve_vars_with_obligations(formal_input_tys[first_tupled_arg_index]);
+            let callee_tuple_type = self.resolve_vars_with_obligations(formal_input_tupled_ty);
             if callee_tuple_type.is_ty_var()
                 && let Some(tupled_args_count) = tupled_args_count
             {
@@ -674,7 +675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 callee_tuple_type
             }
         } else {
-            self.structurally_resolve_type(call_span, formal_input_tys[first_tupled_arg_index])
+            self.structurally_resolve_type(call_span, formal_input_tupled_ty)
         };
 
         // We expected a tuple and got a tuple (or made one ourselves).
@@ -687,7 +688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err_code = Some(E0057);
             }
             if let Some(ref mut expected_input_tys) = expected_input_tys
-                && let Some(ty) = expected_input_tys.get(first_tupled_arg_index)
+                && let Some(ty) = expected_input_tys.get(first_tupled_arg_index_usz)
                 && let ty::Tuple(detup_expected_arg_tys) = ty.kind()
             {
                 let substitute_tys = if Some(detup_expected_arg_tys.len()) == tupled_args_count {
@@ -697,13 +698,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     detup_formal_arg_tys.iter()
                 };
 
-                expected_input_tys
-                    .splice(first_tupled_arg_index..=first_tupled_arg_index, substitute_tys);
+                expected_input_tys.splice(
+                    first_tupled_arg_index_usz..=first_tupled_arg_index_usz,
+                    substitute_tys,
+                );
             } else {
                 expected_input_tys = None;
             }
             formal_input_tys.splice(
-                first_tupled_arg_index..=first_tupled_arg_index,
+                first_tupled_arg_index_usz..=first_tupled_arg_index_usz,
                 detup_formal_arg_tys.iter(),
             );
             if let Some(ref expected_input_tys) = expected_input_tys {
@@ -711,7 +714,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     formal_input_tys.len(),
                     expected_input_tys.len(),
                     "incorrectly constructed input type tuples, argument counts must match: \
-                    tuple_arguments: {tuple_arguments:?}",
+                    tuple_arguments: {tuple_arguments:?}, \
+                    first_tupled_arg_index: {first_tupled_arg_index}",
                 )
             }
         }
@@ -738,7 +742,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let spans = if let Some(def_id) = fn_def_id
                         && let Some(hir_node) = self.tcx.hir_get_if_local(def_id)
                         && let Some(fn_decl) = hir_node.fn_decl()
-                        && let Some(arg_ty) = fn_decl.inputs.get(first_tupled_arg_index)
+                        && let Some(arg_ty) = fn_decl.inputs.get(first_tupled_arg_index_usz)
                     {
                         let arg_def_span = arg_ty.span;
                         vec![call_span, arg_def_span]
@@ -755,7 +759,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         tuple_type.kind(),
                         self.structurally_resolve_type(
                             call_span,
-                            formal_input_tys[first_tupled_arg_index]
+                            formal_input_tys[first_tupled_arg_index_usz]
                         )
                         .kind(),
                     )
@@ -798,7 +802,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     call_span,
                     fn_def_id,
                     callee_generic_args,
-                    first_tupled_arg_index.try_into().unwrap(),
+                    first_tupled_arg_index,
                     tupled_args_count.unwrap().try_into().unwrap(),
                 );
             }
