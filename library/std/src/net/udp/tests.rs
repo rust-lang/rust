@@ -354,6 +354,19 @@ fn ttl() {
 }
 
 #[test]
+#[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+fn hop_limit() {
+    let hlim = 100;
+
+    let addr = next_test_ip6();
+
+    let stream = t!(UdpSocket::bind(&addr));
+
+    t!(stream.set_hop_limit_v6(hlim));
+    assert_eq!(hlim, t!(stream.hop_limit_v6()));
+}
+
+#[test]
 fn set_nonblocking() {
     each_ip(&mut |socket, _| {
         let addr = t!(socket.local_addr());
