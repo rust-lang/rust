@@ -73,12 +73,13 @@ pub fn foo3() -> Box<dyn Iterator<Item = usize>> {
 }
 
 //~ MONO_ITEM fn <Counter as std::iter::Iterator::advance_by::SpecAdvanceBy>::spec_advance_by
-//~ MONO_ITEM fn <Counter as std::iter::Iterator::advance_by::SpecAdvanceBy>::spec_advance_by::{closure#0}
+//~ MONO_ITEM fn <I as std::iter::Iterator::advance_by::SpecAdvanceBy>::spec_advance_by::try_minus_one::<usize>
 //~ MONO_ITEM fn <Counter as std::iter::Iterator>::advance_by
 //~ MONO_ITEM fn <Counter as std::iter::Iterator>::next
 //~ MONO_ITEM fn <Counter as std::iter::Iterator>::nth
 //~ MONO_ITEM fn <Counter as std::iter::Iterator>::size_hint
-//~ MONO_ITEM fn <Counter as std::iter::Iterator>::try_fold::<std::num::NonZero<usize>, {closure@<Counter as std::iter::Iterator::advance_by::SpecAdvanceBy>::spec_advance_by::{closure#0}}, std::option::Option<std::num::NonZero<usize>>>
+//~ MONO_ITEM fn <Counter as std::iter::Iterator>::try_fold::<std::num::NonZero<usize>, fn(std::num::NonZero<usize>, usize) -> std::option::Option<std::num::NonZero<usize>> {<I as std::iter::Iterator::advance_by::SpecAdvanceBy>::spec_advance_by::try_minus_one::<usize>}, std::option::Option<std::num::NonZero<usize>>>
+//~ MONO_ITEM fn <fn(std::num::NonZero<usize>, usize) -> std::option::Option<std::num::NonZero<usize>> {<I as std::iter::Iterator::advance_by::SpecAdvanceBy>::spec_advance_by::try_minus_one::<usize>} as std::ops::FnMut<(std::num::NonZero<usize>, usize)>>::call_mut - shim(fn(std::num::NonZero<usize>, usize) -> std::option::Option<std::num::NonZero<usize>> {<I as std::iter::Iterator::advance_by::SpecAdvanceBy>::spec_advance_by::try_minus_one::<usize>})
 //~ MONO_ITEM fn <std::option::Option<std::num::NonZero<usize>> as std::ops::FromResidual<std::option::Option<std::convert::Infallible>>>::from_residual
 //~ MONO_ITEM fn <std::option::Option<std::num::NonZero<usize>> as std::ops::Try>::branch
 //~ MONO_ITEM fn <std::option::Option<std::num::NonZero<usize>> as std::ops::Try>::from_output
