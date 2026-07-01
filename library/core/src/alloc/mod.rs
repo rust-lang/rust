@@ -123,9 +123,11 @@ impl fmt::Display for AllocError {
 /// * owning an allocator that memory block is allocated with, and
 /// * not publicly exposing `&mut` access to that allocator.
 ///
-/// Also note that accessing an allocator with `&` access cannot invalidate
-/// its memory blocks. Therefore, collections may safely expose `&` access
-/// to its allocator.
+/// Also note that safe public API of an allocator with `&` access is not
+/// allowed to invalidate its memory blocks. Furthermore, unsafe public API
+/// of an allocator with `&` access must document that they invalidate
+/// memory blocks (e.g., by calling `deallocate`) if they do. Therefore,
+/// collections may safely expose `&` access to its allocator.
 ///
 /// Also note that, even in cases where are other "alive" allocators known to be
 /// equivalent to a given collection's allocator, most collections still should
