@@ -690,6 +690,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 CVarArgs,
                 Dummy,
                 FieldOf,
+                View,
                 Err
             ]
         );

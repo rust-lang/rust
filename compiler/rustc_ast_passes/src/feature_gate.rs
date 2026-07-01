@@ -285,6 +285,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::Pat(..) => {
                 gate!(self, pattern_types, ty.span, "pattern types are unstable");
             }
+            ast::TyKind::View(..) => {
+                gate!(self, view_types, ty.span, "view types are unstable");
+            }
             _ => {}
         }
         visit::walk_ty(self, ty)

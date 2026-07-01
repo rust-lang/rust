@@ -1054,6 +1054,14 @@ impl Rewrite for ast::Ty {
                 result.push_str(&rewrite);
                 Ok(result)
             }
+
+            ast::TyKind::View(..) => {
+                // This doesn't normally occur in the AST because macros aren't expanded. However,
+                // rustfmt tries to parse macro arguments when formatting macros, so it's not
+                // totally impossible for rustfmt to come across this node when formatting a file.
+                // Also, rustfmt might get passed the output from `-Zunpretty=expanded`.
+                Err(RewriteError::Unknown)
+            }
         }
     }
 }

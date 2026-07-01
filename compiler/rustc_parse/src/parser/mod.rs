@@ -1090,7 +1090,7 @@ impl<'a> Parser<'a> {
     /// Parses a comma-separated sequence, including both delimiters.
     /// The function `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    fn parse_delim_comma_seq<T>(
+    pub fn parse_delim_comma_seq<T>(
         &mut self,
         open: ExpTokenPair,
         close: ExpTokenPair,
@@ -1355,7 +1355,7 @@ impl<'a> Parser<'a> {
     /// ```enbf
     /// FieldName = IntLit | Ident
     /// ```
-    fn parse_field_name(&mut self) -> PResult<'a, Ident> {
+    pub fn parse_field_name(&mut self) -> PResult<'a, Ident> {
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind
         {
             if let Some(suffix) = suffix {

@@ -1,0 +1,52 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/syntax-errors.rs:12:48
+   |
+LL |     fn not_a_field(self: &mut view_type!(Foo.{ _ }), _: &mut view_type!(Foo.{ _ })) {}
+   |                                                ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/syntax-errors.rs:12:79
+   |
+LL |     fn not_a_field(self: &mut view_type!(Foo.{ _ }), _: &mut view_type!(Foo.{ _ })) {}
+   |                                                                               ^ expected identifier, found reserved identifier
+
+error: expected identifier, found keyword `where`
+  --> $DIR/syntax-errors.rs:16:44
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ where }), _: &mut view_type!(Foo.{ for })) {}
+   |                                            ^^^^^ expected identifier, found keyword
+   |
+help: escape `where` to use it as an identifier
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ r#where }), _: &mut view_type!(Foo.{ for })) {}
+   |                                            ++
+
+error: expected identifier, found keyword `for`
+  --> $DIR/syntax-errors.rs:16:79
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ where }), _: &mut view_type!(Foo.{ for })) {}
+   |                                                                               ^^^ expected identifier, found keyword
+   |
+help: escape `for` to use it as an identifier
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ where }), _: &mut view_type!(Foo.{ r#for })) {}
+   |                                                                               ++
+
+error: expected one of `,` or `}`, found `baz`
+  --> $DIR/syntax-errors.rs:20:49
+   |
+LL |     fn no_comma(self: &mut view_type!(Foo.{ bar baz }), _: &mut view_type!(Foo.{ bar baz })) {}
+   |                                                -^^^ expected one of `,` or `}`
+   |                                                |
+   |                                                help: missing `,`
+
+error: expected one of `,` or `}`, found `baz`
+  --> $DIR/syntax-errors.rs:20:86
+   |
+LL |     fn no_comma(self: &mut view_type!(Foo.{ bar baz }), _: &mut view_type!(Foo.{ bar baz })) {}
+   |                                                                                     -^^^ expected one of `,` or `}`
+   |                                                                                     |
+   |                                                                                     help: missing `,`
+
+error: aborting due to 6 previous errors
+
