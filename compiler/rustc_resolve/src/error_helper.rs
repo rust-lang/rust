@@ -109,7 +109,7 @@ impl TypoSuggestion {
 }
 
 /// A free importable items suggested in case of resolution failure.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct ImportSuggestion {
     pub did: Option<DefId>,
     pub descr: &'static str,

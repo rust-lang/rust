@@ -984,7 +984,7 @@ impl<'ra> fmt::Debug for LocalModule<'ra> {
 }
 
 /// Data associated with any name declaration.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct DeclData<'ra> {
     kind: DeclKind<'ra>,
     ambiguity: CmCell<Option<(Decl<'ra>, bool /*warning*/)>>,
@@ -1018,7 +1018,7 @@ impl std::hash::Hash for DeclData<'_> {
 }
 
 /// Name declaration kind.
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 enum DeclKind<'ra> {
     /// The name declaration is a definition (possibly without a `DefId`),
     /// can be provided by source code or built into the language.
