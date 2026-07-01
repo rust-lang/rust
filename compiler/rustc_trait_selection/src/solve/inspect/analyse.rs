@@ -32,6 +32,7 @@ pub struct InspectGoal<'a, 'tcx> {
     infcx: &'a SolverDelegate<'tcx>,
     depth: usize,
     orig_values: Vec<ty::GenericArg<'tcx>>,
+    max_input_universe: ty::UniverseIndex,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     result: Result<Certainty, NoSolution>,
     final_revision: &'tcx inspect::Probe<TyCtxt<'tcx>>,
@@ -102,7 +103,14 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             match **step {
                 inspect::ProbeStep::AddGoal(source, goal) => instantiated_goals.push((
                     source,
-                    instantiate_canonical_state(infcx, span, param_env, &mut orig_values, goal),
+                    instantiate_canonical_state(
+                        infcx,
+                        span,
+                        param_env,
+                        self.goal.max_input_universe,
+                        &mut orig_values,
+                        goal,
+                    ),
                 )),
                 inspect::ProbeStep::RecordImplArgs { .. } => {}
                 inspect::ProbeStep::MakeCanonicalResponse { .. }
@@ -110,8 +118,14 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             }
         }
 
-        let () =
-            instantiate_canonical_state(infcx, span, param_env, &mut orig_values, self.final_state);
+        let () = instantiate_canonical_state(
+            infcx,
+            span,
+            param_env,
+            self.goal.max_input_universe,
+            &mut orig_values,
+            self.final_state,
+        );
 
         instantiated_goals
             .into_iter()
@@ -139,6 +153,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                         infcx,
                         span,
                         param_env,
+                        self.goal.max_input_universe,
                         &mut orig_values,
                         impl_args,
                     );
@@ -147,6 +162,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                         infcx,
                         span,
                         param_env,
+                        self.goal.max_input_universe,
                         &mut orig_values,
                         self.final_state,
                     );
@@ -321,8 +337,13 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
     ) -> Self {
         let infcx = <&SolverDelegate<'tcx>>::from(infcx);
 
-        let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, final_revision, result } =
-            root;
+        let inspect::GoalEvaluation {
+            uncanonicalized_goal,
+            orig_values,
+            max_input_universe,
+            final_revision,
+            result,
+        } = root;
         // If there's a normalizes-to goal, AND the evaluation result with the result of
         // constraining the normalizes-to RHS and computing the nested goals.
         let result = result.map(|ok| ok.value.certainty);
@@ -331,6 +352,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             infcx,
             depth,
             orig_values,
+            max_input_universe,
             goal: eager_resolve_vars(&**infcx, uncanonicalized_goal),
             result,
             final_revision,

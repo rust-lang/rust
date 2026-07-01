@@ -1793,6 +1793,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
 
     let (orig_values, canonical_goal) =
         canonicalize_goal(delegate, goal, &opaque_types, typing_mode.into());
+    let max_input_universe = canonical_goal.canonical.max_universe;
 
     let (canonical_result, final_revision) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal);
@@ -1800,6 +1801,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let proof_tree = inspect::GoalEvaluation {
         uncanonicalized_goal: goal,
         orig_values,
+        max_input_universe,
         final_revision,
         result: canonical_result,
     };
