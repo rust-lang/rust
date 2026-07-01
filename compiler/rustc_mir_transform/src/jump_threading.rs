@@ -54,9 +54,10 @@
 use itertools::Itertools as _;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::Visitor;
@@ -99,48 +100,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
         }
 
         let typing_env = body.typing_env(tcx);
-        let mut finder = TOFinder {
-            tcx,
-            typing_env,
-            ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
-            body,
-            map: Map::new(tcx, body, PlaceCollectionMode::OnDemand),
-            maybe_loop_headers: maybe_loop_headers(body),
-            entry_states: IndexVec::from_elem(ConditionSet::default(), &body.basic_blocks),
-        };
-
-        for (bb, bbdata) in traversal::postorder(body) {
-            if bbdata.is_cleanup {
-                continue;
-            }
-
-            let mut state = finder.populate_from_outgoing_edges(bb);
-            trace!("output_states[{bb:?}] = {state:?}");
-
-            finder.process_terminator(bb, &mut state);
-            trace!("pre_terminator_states[{bb:?}] = {state:?}");
-
-            for stmt in bbdata.statements.iter().rev() {
-                if state.is_empty() {
-                    break;
-                }
-
-                finder.process_statement(stmt, &mut state);
-
-                // When a statement mutates a place, assignments to that place that happen
-                // above the mutation cannot fulfill a condition.
-                //   _1 = 5 // Whatever happens here, it won't change the result of a `SwitchInt`.
-                //   _1 = 6
-                if let Some((lhs, tail)) = finder.mutated_statement(stmt) {
-                    finder.flood_state(lhs, tail, &mut state);
-                }
-            }
-
-            trace!("entry_states[{bb:?}] = {state:?}");
-            finder.entry_states[bb] = state;
-        }
-
-        let mut entry_states = finder.entry_states;
+        let mut entry_states = compute_entry_states(tcx, typing_env, body);
         simplify_conditions(body, &mut entry_states);
         remove_costly_conditions(tcx, typing_env, body, &mut entry_states);
 
@@ -154,13 +114,92 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
     }
 }
 
+#[instrument(level = "debug", skip(tcx, typing_env, body))]
+fn compute_entry_states<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    body: &Body<'tcx>,
+) -> IndexVec<BasicBlock, ConditionSet> {
+    let mut finder = TOFinder {
+        tcx,
+        typing_env,
+        ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
+        body,
+        map: Map::new(tcx, body, PlaceCollectionMode::OnDemand),
+        entry_states: IndexVec::from_elem(ConditionSet::default(), &body.basic_blocks),
+    };
+
+    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+    for (bb, _) in traversal::postorder(body) {
+        dirty_queue.insert(bb);
+    }
+
+    let predecessors = body.basic_blocks.predecessors();
+    while let Some(bb) = dirty_queue.pop() {
+        let bbdata = &body.basic_blocks[bb];
+        if bbdata.is_cleanup {
+            continue;
+        }
+
+        let mut state = finder.populate_from_outgoing_edges(bb);
+        trace!("output_states[{bb:?}] = {state:?}");
+
+        finder.process_terminator(bb, &mut state);
+        trace!("pre_terminator_states[{bb:?}] = {state:?}");
+
+        for stmt in bbdata.statements.iter().rev() {
+            if state.is_empty() {
+                break;
+            }
+
+            finder.process_statement(stmt, &mut state);
+            trace!(?state);
+
+            // When a statement mutates a place, assignments to that place that happen
+            // above the mutation cannot fulfill a condition.
+            //   _1 = 5 // Whatever happens here, it won't change the result of a `SwitchInt`.
+            //   _1 = 6
+            if let Some((lhs, tail)) = finder.mutated_statement(stmt) {
+                finder.flood_state(lhs, tail, &mut state);
+                trace!(?state);
+            }
+        }
+
+        trace!("entry_states[{bb:?}] = {state:?}");
+
+        // Assert the fixpoint iteration is monotonic. All conditions in the "old" set must be in
+        // the new one, *in the same order*. But we could have some new conditions interspersed, so
+        // we cannot use `starts_with`.
+        if cfg!(debug_assertions) {
+            let mut new = state.active.iter();
+            for (_, c) in finder.entry_states[bb].active.iter() {
+                let pos = new.find(|(_, c2)| c2 == c);
+                debug_assert!(
+                    pos.is_some(),
+                    "condition {c:?} vanished from state={:?} old={:?}",
+                    state.active,
+                    finder.entry_states[bb].active,
+                );
+            }
+        }
+
+        if state.active.len() > finder.entry_states[bb].active.len() {
+            for &pred in predecessors[bb].iter() {
+                dirty_queue.insert(pred);
+            }
+        }
+        finder.entry_states[bb] = state;
+    }
+
+    finder.entry_states
+}
+
 struct TOFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
     body: &'a Body<'tcx>,
     map: Map<'tcx>,
-    maybe_loop_headers: DenseBitSet<BasicBlock>,
     /// This stores the state of each visited block on entry,
     /// and the current state of the block being visited.
     // Invariant: for each `bb`, each condition in `entry_states[bb]` has a `chain` that
@@ -176,14 +215,14 @@ rustc_index::newtype_index! {
 
 /// Represent the following statement. If we can prove that the current local is equal/not-equal
 /// to `value`, jump to `target`.
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 struct Condition {
     place: ValueIndex,
     value: ScalarInt,
     polarity: Polarity,
 }
 
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 enum Polarity {
     Ne,
     Eq,
@@ -300,58 +339,47 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
     fn populate_from_outgoing_edges(&mut self, bb: BasicBlock) -> ConditionSet {
         let bbdata = &self.body[bb];
 
-        // This should be the first time we populate `entry_states[bb]`.
-        debug_assert!(self.entry_states[bb].is_empty());
-
         let state_len =
             bbdata.terminator().successors().map(|succ| self.entry_states[succ].active.len()).sum();
-        let mut state = ConditionSet {
-            active: Vec::with_capacity(state_len),
-            targets: IndexVec::with_capacity(state_len),
-            fulfilled: Vec::new(),
-        };
 
         // Use an index-set to deduplicate conditions coming from different successor blocks.
-        let mut known_conditions =
-            FxIndexSet::with_capacity_and_hasher(state_len, Default::default());
-        let mut insert = |condition, succ_block, succ_condition| {
-            let (index, new) = known_conditions.insert_full(condition);
-            let index = ConditionIndex::from_usize(index);
-            if new {
-                state.active.push((index, condition));
-                let _index = state.targets.push(Vec::new());
-                debug_assert_eq!(_index, index);
-            }
-            let target = EdgeEffect::Chain { succ_block, succ_condition };
-            debug_assert!(
-                !state.targets[index].contains(&target),
-                "duplicate targets for index={index:?} as {target:?} targets={:#?}",
-                &state.targets[index],
-            );
-            state.targets[index].push(target);
-        };
+        let mut known_conditions = FxIndexMap::<Condition, Vec<_>>::with_capacity_and_hasher(
+            state_len,
+            Default::default(),
+        );
 
         // A given block may have several times the same successor.
         let mut seen = FxHashSet::default();
         for succ in bbdata.terminator().successors() {
-            if !seen.insert(succ) {
-                continue;
-            }
-
-            // Do not thread through loop headers.
-            if self.maybe_loop_headers.contains(succ) {
+            if succ == bb || !seen.insert(succ) {
                 continue;
             }
 
             for &(succ_index, cond) in self.entry_states[succ].active.iter() {
-                insert(cond, succ, succ_index);
+                known_conditions
+                    .entry(cond)
+                    .or_default()
+                    .push(EdgeEffect::Chain { succ_block: succ, succ_condition: succ_index });
             }
         }
 
+        // If we just rely on the order in the successors, we may have a different order when
+        // re-propagating from dirtied successors. This will make us fail to converge. To avoid
+        // this, always use the same order by sorting conditions.
+        known_conditions.sort_keys();
+
         let num_conditions = known_conditions.len();
-        debug_assert_eq!(num_conditions, state.active.len());
-        debug_assert_eq!(num_conditions, state.targets.len());
-        state.fulfilled.reserve(num_conditions);
+        let mut state = ConditionSet {
+            active: Vec::with_capacity(num_conditions),
+            targets: IndexVec::with_capacity(num_conditions),
+            fulfilled: Vec::with_capacity(num_conditions),
+        };
+        for (index, (condition, targets)) in known_conditions.into_iter().enumerate() {
+            let index = ConditionIndex::from_usize(index);
+            state.active.push((index, condition));
+            let _index = state.targets.push(targets);
+            debug_assert_eq!(_index, index);
+        }
 
         state
     }
@@ -890,9 +918,13 @@ fn remove_costly_conditions<'tcx>(
         entry_states.len(),
     );
 
-    let reverse_postorder = basic_blocks.reverse_postorder();
+    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+    for (bb, _) in traversal::postorder(body) {
+        dirty_queue.insert(bb);
+    }
 
-    for &bb in reverse_postorder.iter().rev() {
+    let predecessors = body.basic_blocks.predecessors();
+    while let Some(bb) = dirty_queue.pop() {
         let state = &entry_states[bb];
         trace!(?bb, ?state);
 
@@ -924,12 +956,17 @@ fn remove_costly_conditions<'tcx>(
         }
 
         trace!("condition_cost[{bb:?}] = {:?}", current_costs);
+        if current_costs != condition_cost[bb] {
+            for &pred in predecessors[bb].iter() {
+                dirty_queue.insert(pred);
+            }
+        }
         condition_cost[bb] = current_costs;
     }
 
     trace!(?condition_cost);
 
-    for &bb in reverse_postorder {
+    for bb in entry_states.indices() {
         for (index, targets) in entry_states[bb].targets.iter_enumerated_mut() {
             if condition_cost[bb][index] >= MAX_COST {
                 trace!(?bb, ?index, ?targets, c = ?condition_cost[bb][index], "remove");
@@ -1009,7 +1046,7 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
         // Use a while-pop to allow modifying `targets` from inside the loop.
         targets.reverse();
         while let Some(target) = targets.pop() {
-            debug!(?target);
+            trace!(?target);
             trace!(term = ?self.basic_blocks[bb].terminator().kind);
 
             // By construction, `target.block()` is a successor of `bb`.
@@ -1104,30 +1141,4 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
 
         Some(new_target)
     }
-}
-
-/// Compute the set of loop headers in the given body. A loop header is usually defined as a block
-/// which dominates one of its predecessors. This definition is only correct for reducible CFGs.
-/// However, computing dominators is expensive, so we approximate according to the post-order
-/// traversal order. A loop header for us is a block which is visited after its predecessor in
-/// post-order. This is ok as we mostly need a heuristic.
-fn maybe_loop_headers(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
-    let mut maybe_loop_headers = DenseBitSet::new_empty(body.basic_blocks.len());
-    let mut visited = DenseBitSet::new_empty(body.basic_blocks.len());
-    for (bb, bbdata) in traversal::postorder(body) {
-        // Post-order means we visit successors before the block for acyclic CFGs.
-        // If the successor is not visited yet, consider it a loop header.
-        for succ in bbdata.terminator().successors() {
-            if !visited.contains(succ) {
-                maybe_loop_headers.insert(succ);
-            }
-        }
-
-        // Only mark `bb` as visited after we checked the successors, in case we have a self-loop.
-        //     bb1: goto -> bb1;
-        let _new = visited.insert(bb);
-        debug_assert!(_new);
-    }
-
-    maybe_loop_headers
 }
