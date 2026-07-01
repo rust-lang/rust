@@ -7,6 +7,7 @@ use rustc_hir::attrs::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
     DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
 };
+use rustc_hir::target::GenericParamKind;
 use rustc_span::Symbol;
 
 use super::prelude::*;
@@ -90,6 +91,20 @@ impl NoArgsAttributeParser for RustcNeverReturnsNullPtrParser {
 
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNeverReturnsNullPtr;
 }
+
+pub(crate) struct RustcPanicsWhenZeroParser;
+
+impl NoArgsAttributeParser for RustcPanicsWhenZeroParser {
+    const PATH: &[Symbol] = &[sym::rustc_panics_when_zero];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::GenericParam { kind: GenericParamKind::Const, has_default: true }),
+        Allow(Target::GenericParam { kind: GenericParamKind::Const, has_default: false }),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPanicsWhenZero;
+}
+
 pub(crate) struct RustcNoImplicitAutorefsParser;
 
 impl NoArgsAttributeParser for RustcNoImplicitAutorefsParser {
