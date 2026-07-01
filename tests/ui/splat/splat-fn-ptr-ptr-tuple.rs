@@ -1,4 +1,4 @@
-//! Test using `#[splat]` on tuple arguments of pointers to simple functions.
+//! Test using `#[splat]` on tuple arguments of pointers to pointers to simple functions.
 //! Currently ICEs, but if we fix it, we'll want to know and update this test to pass.
 
 //@ failure-status: 101
@@ -25,17 +25,18 @@ fn main() {
     // MIR lowering
     // FIXME(rustfmt): the attribute gets deleted by rustfmt
     #[rustfmt::skip]
-    let fn_ptr: fn(#[splat] (u32, i8)) = tuple_args;
-    fn_ptr(1, 2); //~ ERROR no splatted def for function or method callee
-    // The ICE means that code after this line is not fully checked
-    fn_ptr(1u32, 2i8);
-
-    // FIXME(splat): should splatted functions be callable with tupled and un-tupled arguments?
-    // Add a tupled test for each call if they are.
-    //fn_ptr((1, 2)); // ERROR this splatted function takes 2 arguments, but 1 was provided
+    let fn_pp: *const fn(#[splat] (u32, i8)) = tuple_args as *const fn(#[splat] (u32, i8));
+    unsafe {
+        (*fn_pp)(1, 2); //~ ERROR no splatted def for function or method callee
+        // The ICE means that code after this line is not fully checked
+        (*fn_pp)(1u32, 2i8);
+    }
 
     #[rustfmt::skip]
-    let fn_ptr: fn(#[splat] (u32, i8), f64) = splat_non_terminal_arg;
-    fn_ptr(1, 2, 3.5);
-    fn_ptr(1u32, 2i8, 3.5f64);
+    let fn_pp: *const fn(#[splat] (u32, i8), f64) =
+        splat_non_terminal_arg as *const fn(#[splat] (u32, i8), f64);
+    unsafe {
+        (*fn_pp)(1, 2, 3.5);
+        (*fn_pp)(1u32, 2i8, 3.5f64);
+    }
 }
