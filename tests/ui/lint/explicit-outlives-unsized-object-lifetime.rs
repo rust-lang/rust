@@ -1,10 +1,14 @@
 //@ check-pass
 // Regression test for https://github.com/rust-lang/rust/issues/134902
 //
-// `explicit_outlives_requirements` must not suggest removing `T: 'a` from a `?Sized`
-// type param. Such a bound sets the object lifetime default for `dyn Trait` uses of
-// that struct (RFC 599): removing it silently changes `Struct<dyn Trait>` from
-// implying `dyn Trait + 'a` to implying `dyn Trait + 'static`, breaking callers.
+// `explicit_outlives_requirements` must not suggest removing `T: 'r` when T is not
+// `Sized` (i.e. can hold trait object types). Such a bound can set the object lifetime
+// default for `Struct<'r, dyn Trait>` (RFC 599): removing it may silently change
+// `dyn Trait + 'r` to `dyn Trait + 'static`, breaking callers.
+//
+// Note: higher-ranked predicates (`for<'x> T: 'r`) are excluded from RFC 599 and are
+// always safe to remove; and when T is `Sized` (e.g. `T: ?Sized + Sized` or `T: Clone`),
+// it cannot hold trait object types so the bound is also safe to remove.
 
 #![deny(explicit_outlives_requirements)]
 #![allow(unused)]
