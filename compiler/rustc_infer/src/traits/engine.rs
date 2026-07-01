@@ -33,7 +33,7 @@ impl<'tcx> ScrubbedTraitError<'tcx> {
     }
 }
 
-pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
+pub trait TraitEngine<'tcx, E>: 'tcx {
     /// Requires that `ty` must implement the trait with `def_id` in
     /// the given environment. This trait must not have any type
     /// parameters (except for `Self`).
