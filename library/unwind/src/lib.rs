@@ -56,7 +56,9 @@ cfg_select! {
     }
 }
 
-// For pauthtest the only supported unwinding mechanism is provided by libunwind.
+// `target_abi = "pauthtest"` is currently only used by the Linux/musl
+// `aarch64-unknown-linux-pauthtest` target. That target only supports unwinding
+// via libunwind.
 #[cfg(target_abi = "pauthtest")]
 #[link(name = "unwind")]
 unsafe extern "C" {}
