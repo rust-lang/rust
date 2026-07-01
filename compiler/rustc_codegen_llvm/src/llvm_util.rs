@@ -303,6 +303,11 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
                 s => Some(LLVMFeature::new(s)),
             }
         }
+        Arch::Nvptx64 => match s {
+            "sm_88" | "ptx90" if major < 22 => None,
+            s if s.starts_with("sm_110") && major < 22 => None,
+            s => Some(LLVMFeature::new(s)),
+        },
         _ => Some(LLVMFeature::new(s)),
     }
 }
