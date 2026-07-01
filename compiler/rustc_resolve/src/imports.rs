@@ -326,23 +326,23 @@ impl<'ra> NameResolution<'ra> {
 pub(crate) mod cycle_detection {
     use std::ptr;
 
-    use crate::CacheRefCell;
-    use crate::imports::NameResolutionRef;
+    use crate::{BindingKey, CacheRefCell, LocalModule};
 
     thread_local!(
         /// During import resolution, recursive imports can form cycles.
         /// This set stores the active resolution stack for the current thread.
-        /// So it's essentially a recursion stack.
+        /// By keeping track of the module and `BindingKey` pair that identifies
+        /// the specific resolution.
         ///
-        /// The key is the interned address of a `RefCell<NameResolution<'ra>>` allocated
+        /// The pointer is the interned address of a `Interned<'ra, ModuleData>` allocated
         /// in the `Resolver Arenas` (lifetime `'ra`), it is thus stable and allows casting
         /// to a `*const ()` for comparison. This is done because we can't use lifetimes
         /// other than `'static` in thread local storage.
-        static ACTIVE_RESOLUTIONS: CacheRefCell<Vec<*const ()>> = Default::default();
+        static ACTIVE_RESOLUTIONS: CacheRefCell<Vec<(*const (), BindingKey)>> = Default::default();
     );
 
     pub(crate) struct ActiveResolutionGuard {
-        key: *const (),
+        key: (*const (), BindingKey),
     }
 
     impl Drop for ActiveResolutionGuard {
@@ -360,9 +360,11 @@ pub(crate) mod cycle_detection {
     /// Returns `Err(())` if a cycle is detected, otherwise this returns a
     /// guard that will remove the resolution when dropped.
     pub(crate) fn enter_cycle_detector<'ra>(
-        resolution: NameResolutionRef<'ra>,
+        module: LocalModule<'ra>,
+        binding_key: BindingKey,
     ) -> Result<ActiveResolutionGuard, ()> {
-        let key = ptr::from_ref(resolution.0).cast::<()>();
+        let module_key = ptr::from_ref(module.0.0).cast();
+        let key = (module_key, binding_key);
         ACTIVE_RESOLUTIONS.with_borrow_mut(|ar| {
             if ar.contains(&key) {
                 return Err(());
