@@ -426,44 +426,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .tupled_inputs_ty
                     .tuple_fields()
                     .len();
+                let coroutine_def_id =
+                    self.tcx.coroutine_for_closure(closure_def_id).expect_local();
+                let explicit_captures = self
+                    .tcx
+                    .hir_node_by_def_id(coroutine_def_id)
+                    .expect_closure()
+                    .explicit_captures;
                 let typeck_results = self.typeck_results.borrow();
+                let parent_captures = typeck_results
+                    .closure_min_captures_flattened(closure_def_id)
+                    .collect::<Vec<_>>();
 
                 let tupled_upvars_ty_for_borrow = Ty::new_tup_from_iter(
                     self.tcx,
-                    ty::analyze_coroutine_closure_captures(
-                        typeck_results.closure_min_captures_flattened(closure_def_id),
-                        typeck_results
-                            .closure_min_captures_flattened(
-                                self.tcx.coroutine_for_closure(closure_def_id).expect_local(),
-                            )
-                            // Skip the captures that are just moving the closure's args
-                            // into the coroutine. These are always by move, and we append
-                            // those later in the `CoroutineClosureSignature` helper functions.
-                            .skip(num_args),
-                        |(_, parent_capture), (_, child_capture)| {
-                            // This is subtle. See documentation on function.
-                            let needs_ref = should_reborrow_from_env_of_parent_coroutine_closure(
-                                parent_capture,
-                                child_capture,
-                            );
-
+                    typeck_results
+                        .closure_min_captures_flattened(coroutine_def_id)
+                        // Skip the captures that are just moving the closure's args
+                        // into the coroutine. These are always by move, and we append
+                        // those later in the `CoroutineClosureSignature` helper functions.
+                        .skip(num_args)
+                        .map(|child_capture| {
                             let upvar_ty = child_capture.place.ty();
                             let capture = child_capture.info.capture_kind;
-                            // Not all upvars are captured by ref, so use
-                            // `apply_capture_kind_on_capture_ty` to ensure that we
-                            // compute the right captured type.
-                            apply_capture_kind_on_capture_ty(
-                                self.tcx,
-                                upvar_ty,
-                                capture,
-                                if needs_ref {
+                            let region = if explicit_captures.iter().any(|explicit| {
+                                explicit.var_hir_id == child_capture.get_root_variable()
+                            }) {
+                                // Synthetic move-expression locals are captured by
+                                // value into the generated coroutine. They do not
+                                // reborrow from the parent coroutine-closure env.
+                                self.tcx.lifetimes.re_erased
+                            } else {
+                                let Some(parent_capture) =
+                                    parent_captures.iter().copied().find(|parent_capture| {
+                                        ty::child_prefix_matches_parent_projections(
+                                            parent_capture,
+                                            child_capture,
+                                        )
+                                    })
+                                else {
+                                    bug!("child capture did not match a parent coroutine capture");
+                                };
+
+                                // This is subtle. See documentation on function.
+                                if should_reborrow_from_env_of_parent_coroutine_closure(
+                                    parent_capture,
+                                    child_capture,
+                                ) {
                                     closure_env_region
                                 } else {
                                     self.tcx.lifetimes.re_erased
-                                },
-                            )
-                        },
-                    ),
+                                }
+                            };
+
+                            // Not all upvars are captured by ref, so use
+                            // `apply_capture_kind_on_capture_ty` to ensure that we
+                            // compute the right captured type.
+                            apply_capture_kind_on_capture_ty(self.tcx, upvar_ty, capture, region)
+                        }),
                 );
                 let coroutine_captures_by_ref_ty = Ty::new_fn_ptr(
                     self.tcx,

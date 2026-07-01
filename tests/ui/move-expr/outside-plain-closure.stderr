@@ -1,4 +1,4 @@
-error: `move(expr)` is only supported in plain closures
+error: `move(expr)` is only supported in closures, `async`, `gen`, and `async gen` blocks
   --> $DIR/outside-plain-closure.rs:5:13
    |
 LL |     let _ = move(String::from("nope"));
