@@ -4,7 +4,7 @@ use std::vec;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use queries::{GeneratedInputStruct, Queries, TrackedQuery, Transparent};
+use queries::{Queries, TrackedQuery, Transparent};
 use quote::{ToTokens, format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
@@ -83,7 +83,6 @@ fn filter_attrs(attrs: Vec<Attribute>) -> (Vec<Attribute>, Vec<SalsaAttr>) {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum QueryKind {
-    Tracked,
     TrackedWithSalsaStruct,
     Transparent,
 }
@@ -193,11 +192,6 @@ pub(crate) fn query_group_impl(
                         let c = syn::parse::<Parenthesized<Cycle>>(tts)?;
                         cycle = Some(c.0);
                     }
-                    "invoke_interned" => {
-                        let path = syn::parse::<Parenthesized<Path>>(tts)?;
-                        invoke = Some(path.0.clone());
-                        query_kind = QueryKind::Tracked;
-                    }
                     "invoke" => {
                         let path = syn::parse::<Parenthesized<Path>>(tts)?;
                         invoke = Some(path.0.clone());
@@ -224,27 +218,9 @@ pub(crate) fn query_group_impl(
             }
 
             match (query_kind, invoke) {
-                // tracked function. it might have an invoke, or might not.
-                (QueryKind::Tracked, invoke) => {
-                    let method = TrackedQuery {
-                        trait_name: trait_name_ident.clone(),
-                        generated_struct: Some(GeneratedInputStruct {
-                            input_struct_name: input_struct_name.clone(),
-                            create_data_ident: create_data_ident.clone(),
-                        }),
-                        signature: signature.clone(),
-                        pat_and_tys: pat_and_tys.clone(),
-                        invoke,
-                        cycle,
-                        default: method.default.take(),
-                    };
-
-                    trait_methods.push(Queries::TrackedQuery(method));
-                }
                 (QueryKind::TrackedWithSalsaStruct, invoke) => {
                     let method = TrackedQuery {
                         trait_name: trait_name_ident.clone(),
-                        generated_struct: None,
                         signature: signature.clone(),
                         pat_and_tys: pat_and_tys.clone(),
                         invoke,

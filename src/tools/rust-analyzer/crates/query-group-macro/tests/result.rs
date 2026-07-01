@@ -14,10 +14,10 @@ struct InputString {
 
 #[query_group]
 pub trait ResultDatabase: salsa::Database {
-    #[salsa::invoke_interned(length)]
+    #[salsa::transparent]
     fn length(&self, key: ()) -> Result<usize, Error>;
 
-    #[salsa::invoke_interned(length2)]
+    #[salsa::transparent]
     fn length2(&self, key: ()) -> Result<usize, Error>;
 }
 
@@ -37,14 +37,5 @@ fn test_queries_with_results() {
     assert_eq!(db.length(()), Ok(input.len()));
     assert_eq!(db.length2(()), Ok(input.len()));
 
-    db.assert_logs(expect![[r#"
-        [
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: create_data_ResultDatabase(Id(400)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: length_shim(Id(c00)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: length2_shim(Id(1000)) })",
-        ]"#]]);
+    db.assert_logs(expect!["[]"]);
 }

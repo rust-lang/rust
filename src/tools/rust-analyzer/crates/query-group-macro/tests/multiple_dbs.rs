@@ -8,13 +8,13 @@ struct InputString {
 #[query_group]
 pub trait DatabaseOne: salsa::Database {
     // unadorned query
-    #[salsa::invoke_interned(length)]
+    #[salsa::transparent]
     fn length(&self, key: ()) -> usize;
 }
 
 #[query_group]
 pub trait DatabaseTwo: DatabaseOne {
-    #[salsa::invoke_interned(second_length)]
+    #[salsa::transparent]
     fn second_length(&self, key: ()) -> usize;
 }
 

@@ -11,7 +11,7 @@ struct InputString {
 
 #[query_group]
 pub trait HelloWorldDatabase: salsa::Database {
-    #[salsa::invoke_interned(length_query)]
+    #[salsa::transparent]
     fn length_query(&self, key: ()) -> (usize, usize);
 }
 
@@ -28,11 +28,5 @@ fn query() {
     let len = db.length_query(());
 
     assert_eq!(len, (13, 13));
-    db.assert_logs(expect![[r#"
-        [
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: create_data_HelloWorldDatabase(Id(400)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: length_query_shim(Id(c00)) })",
-        ]"#]]);
+    db.assert_logs(expect!["[]"]);
 }

@@ -12,12 +12,6 @@ pub(crate) struct TrackedQuery {
     pub(crate) invoke: Option<Path>,
     pub(crate) default: Option<syn::Block>,
     pub(crate) cycle: Option<Cycle>,
-    pub(crate) generated_struct: Option<GeneratedInputStruct>,
-}
-
-pub(crate) struct GeneratedInputStruct {
-    pub(crate) input_struct_name: Ident,
-    pub(crate) create_data_ident: Ident,
 }
 
 impl ToTokens for TrackedQuery {
@@ -64,37 +58,16 @@ impl ToTokens for TrackedQuery {
             }
         };
 
-        let method = match &self.generated_struct {
-            Some(generated_struct) => {
-                let input_struct_name = &generated_struct.input_struct_name;
-                let create_data_ident = &generated_struct.create_data_ident;
+        let method = quote! {
+            #sig {
+                #annotation
+                fn #shim<'db>(
+                    db: &'db dyn #trait_name,
+                    #(#pat_and_tys),*
+                ) #ret
+                    #invoke_block
 
-                quote! {
-                    #sig {
-                        #annotation
-                        fn #shim<'db>(
-                            db: &'db dyn #trait_name,
-                            _input: #input_struct_name,
-                            #(#pat_and_tys),*
-                        ) #ret
-                            #invoke_block
-                        #shim(self, #create_data_ident(self), #(#params),*)
-                    }
-                }
-            }
-            None => {
-                quote! {
-                    #sig {
-                        #annotation
-                        fn #shim<'db>(
-                            db: &'db dyn #trait_name,
-                            #(#pat_and_tys),*
-                        ) #ret
-                            #invoke_block
-
-                        #shim(self, #(#params),*)
-                    }
-                }
+                #shim(self, #(#params),*)
             }
         };
 
