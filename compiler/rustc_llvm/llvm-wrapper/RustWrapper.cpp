@@ -160,6 +160,29 @@ extern "C" void LLVMRustPrintStatisticsJSON(RustStringRef OutBuf) {
   llvm::PrintStatisticsJSON(OS);
 }
 
+extern "C" bool LLVMRustSupportsEnzymeMD(LLVMValueRef V) {
+    auto *I = llvm::dyn_cast<llvm::Instruction>(llvm::unwrap(V));
+    return I && llvm::isa<llvm::ExtractValueInst>(I);
+}
+
+extern "C" void LLVMRustSetEnzymeTypeMD(LLVMValueRef V, LLVMValueRef MDV) {
+  llvm::errs() << "setting MD" << "\n";
+  auto *I = llvm::dyn_cast<llvm::Instruction>(llvm::unwrap(V));
+  assert(I && "expected instruction for !enzyme_type metadata");
+
+  auto *MAV = llvm::dyn_cast<llvm::MetadataAsValue>(llvm::unwrap(MDV));
+  assert(MAV && "expected MetadataAsValue");
+
+  auto *MD = llvm::dyn_cast<llvm::MDNode>(MAV->getMetadata());
+  assert(MD && "expected MDNode");
+
+  I->setMetadata("enzyme_type", MD);
+}
+
+extern "C" bool LLVMRustIsCall(LLVMValueRef V) {
+  return llvm::isa<llvm::CallBase>(llvm::unwrap(V));
+}
+
 // Some of the functions here rely on LLVM modules that may not always be
 // available. As such, we only try to build it in the first place, if
 // llvm.offload is enabled.
