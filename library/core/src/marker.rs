@@ -1357,10 +1357,28 @@ pub trait Reborrow {
     /* compiler built-in */
 }
 
+/// Derive macro generating an impl of the trait `Reborrow`.
+#[rustc_builtin_macro(Reborrow)]
+#[allow_internal_unstable(reborrow)]
+#[unstable(feature = "reborrow", issue = "145612")]
+pub macro Reborrow($item:item) {
+    /* compiler built-in */
+}
+
 /// Allows reborrowable value to be reborrowed as shared, creating a copy
 /// that disables the source for writes for the lifetime of the copy.
 #[lang = "coerce_shared"]
 #[unstable(feature = "reborrow", issue = "145612")]
 pub trait CoerceShared<Target: Copy>: Reborrow {
+    /* compiler built-in */
+}
+
+/// Derive macro generating an impl of the trait `CoerceShared`.
+///
+/// The shared target type must be specified with `#[coerce_shared(Target)]`.
+#[rustc_builtin_macro(CoerceShared, attributes(coerce_shared))]
+#[allow_internal_unstable(reborrow)]
+#[unstable(feature = "reborrow", issue = "145612")]
+pub macro CoerceShared($item:item) {
     /* compiler built-in */
 }
