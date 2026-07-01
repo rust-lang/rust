@@ -88,6 +88,7 @@ error: layout_of(MissingPayloadField) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:17:1
@@ -204,6 +205,7 @@ error: layout_of(CommonPayloadField) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:26:1
@@ -317,6 +319,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:34:1
@@ -440,6 +443,7 @@ error: layout_of(NicheFirst) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:42:1
@@ -563,6 +567,7 @@ error: layout_of(NicheSecond) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:51:1
