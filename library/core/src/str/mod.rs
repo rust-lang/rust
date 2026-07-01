@@ -372,11 +372,12 @@ impl str {
     #[rustc_const_stable(feature = "const_is_char_boundary", since = "1.86.0")]
     #[inline]
     pub const fn is_char_boundary(&self, index: usize) -> bool {
-        // 0 is always ok.
+        // Since str is valid UTF-8, 0 is always ok.
         // Test for 0 explicitly so that it can optimize out the check
         // easily and skip reading string data for that case.
         // Note that optimizing `self.get(..index)` relies on this.
-        if index == 0 {
+        let is_start = index == 0;
+        if crate::intrinsics::is_val_statically_known(is_start) && is_start {
             return true;
         }
 
@@ -424,7 +425,11 @@ impl str {
         if index >= self.len() {
             return self.len();
         }
-        if self.as_bytes()[index].is_utf8_char_boundary() {
+        // Since str is valid UTF-8, 0 is always ok.
+        let is_start = index == 0;
+        if (crate::intrinsics::is_val_statically_known(is_start) && is_start)
+            || self.as_bytes()[index].is_utf8_char_boundary()
+        {
             return index;
         }
         // Unlike `ceil_char_boundary`, the loop is unrolled manually to prevent the compiler from

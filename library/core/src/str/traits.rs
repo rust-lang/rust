@@ -125,6 +125,7 @@ const unsafe impl SliceIndex<str> for ops::RangeFull {
 const fn check_range(slice: &str, range: crate::range::Range<usize>) -> bool {
     let crate::range::Range { start, end } = range;
     let bytes = slice.as_bytes();
+    let is_start = start == 0;
 
     if start > end || end > slice.len() {
         return false;
@@ -136,13 +137,17 @@ const fn check_range(slice: &str, range: crate::range::Range<usize>) -> bool {
     }
 
     // SAFETY:
-    // `start > end || end > slice.len()` is false, so `start <= end <= slice.len()` is true.
+    // `start > end || end > slice.len()` is false, so `0 <= start <= end <= slice.len()` is true.
     // `start == slice.len()` is false, so `start < slice.len()` is also true.
+    // If `slice` is empty, we have `0 <= start <= end <= 0`, so `start == end == 0`, but `start < slice.len()`. Thus `slice` is non-empty.
     //
     // No need to check for `end == 0`, because if `end == 0` is true then `start == slice.len()`
     // would also be true, which is already handled above.
+    //
+    // No need to check for `start == 0`, because `slice[0]` is in-range, and valid UTF-8.
     unsafe {
-        (start == 0 || bytes.as_ptr().add(start).read().is_utf8_char_boundary())
+        ((crate::intrinsics::is_val_statically_known(is_start) && is_start)
+            || bytes.as_ptr().add(start).read().is_utf8_char_boundary())
             && (end == slice.len() || bytes.as_ptr().add(end).read().is_utf8_char_boundary())
     }
 }
