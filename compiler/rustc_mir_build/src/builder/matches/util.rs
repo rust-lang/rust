@@ -6,7 +6,10 @@ use tracing::debug;
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::PlaceBase;
-use crate::builder::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestableCase};
+use crate::builder::matches::{
+    Binding, Candidate, FlatPat, MatchPairTree, MatchPairsQueue, OrMatchPairTree, TestableCase,
+    TestableMatchPairTree,
+};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Creates a false edge to `imaginary_target` and a real edge to
@@ -142,8 +145,13 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
                 self.visit_binding(binding);
             }
         }
-        for match_pair in &candidate.match_pairs {
-            self.visit_match_pair(match_pair);
+
+        let MatchPairsQueue { testable_match_pairs, or_match_pairs } = &candidate.match_pairs;
+        for testable_match_pair in testable_match_pairs {
+            self.visit_testable_match_pair(testable_match_pair);
+        }
+        for or_match_pair in or_match_pairs {
+            self.visit_or_match_pair(or_match_pair);
         }
     }
 
@@ -159,11 +167,16 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_match_pair(&mut self, match_pair: &MatchPairTree<'tcx>) {
-        if let TestableCase::Or { pats, .. } = &match_pair.testable_case {
-            for flat_pat in pats.iter() {
-                self.visit_flat_pat(flat_pat)
+        match match_pair {
+            MatchPairTree::Testable { testable_match_pair } => {
+                self.visit_testable_match_pair(testable_match_pair)
             }
-        } else if matches!(match_pair.testable_case, TestableCase::Deref { .. }) {
+            MatchPairTree::Or { or_match_pair } => self.visit_or_match_pair(or_match_pair),
+        }
+    }
+
+    fn visit_testable_match_pair(&mut self, testable_match_pair: &TestableMatchPairTree<'tcx>) {
+        if matches!(testable_match_pair.testable_case, TestableCase::Deref { .. }) {
             // The subpairs of a deref pattern are all places relative to the deref temporary, so we
             // don't fake borrow them. Problem is, if we only shallowly fake-borrowed
             // `match_pair.place`, this would allow:
@@ -177,18 +190,21 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
             // }
             // ```
             // Hence we fake borrow using a deep borrow.
-            if let Some(place) = match_pair.place {
-                self.fake_borrow(place, FakeBorrowKind::Deep);
-            }
+            self.fake_borrow(testable_match_pair.place, FakeBorrowKind::Deep);
         } else {
             // Insert a Shallow borrow of any place that is switched on.
-            if let Some(place) = match_pair.place {
-                self.fake_borrow(place, FakeBorrowKind::Shallow);
-            }
+            self.fake_borrow(testable_match_pair.place, FakeBorrowKind::Shallow);
 
-            for subpair in &match_pair.subpairs {
+            for subpair in &testable_match_pair.subpairs {
                 self.visit_match_pair(subpair);
             }
+        }
+    }
+
+    fn visit_or_match_pair(&mut self, or_match_pair: &OrMatchPairTree<'tcx>) {
+        let OrMatchPairTree { or_subpats, pattern_span: _ } = or_match_pair;
+        for subpat in or_subpats {
+            self.visit_flat_pat(subpat);
         }
     }
 
