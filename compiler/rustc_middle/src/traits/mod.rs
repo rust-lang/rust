@@ -241,6 +241,8 @@ pub enum ObligationCauseCode<'tcx> {
     SizedCallReturnType,
     /// Yield type must be `Sized`.
     SizedYieldType,
+    /// Moved values must be `Move`.
+    MovingMove,
     /// Inline asm operand type must be `Sized`.
     InlineAsmSized,
     /// Captured closure type must be `Sized`.

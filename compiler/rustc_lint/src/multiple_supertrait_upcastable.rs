@@ -50,7 +50,8 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
                 .map(Unnormalized::skip_norm_wip)
                 .filter_map(|(pred, _)| pred.as_trait_clause())
                 .filter(|pred| !cx.tcx.is_lang_item(pred.def_id(), hir::LangItem::MetaSized))
-                .filter(|pred| !cx.tcx.is_default_trait(pred.def_id()));
+                // nia: fixme: sized
+                .filter(|pred| !cx.tcx.is_implicit_trait(pred.def_id(), false));
             if direct_super_traits_iter.count() > 1 {
                 cx.emit_span_lint(
                     MULTIPLE_SUPERTRAIT_UPCASTABLE,

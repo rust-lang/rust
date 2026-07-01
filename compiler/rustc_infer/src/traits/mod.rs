@@ -20,7 +20,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
 use thin_vec::ThinVec;
 
-pub use self::engine::{FromSolverError, ScrubbedTraitError, TraitEngine};
+pub use self::engine::{EngineError, FromSolverError, ScrubbedTraitError, TraitEngine};
 pub(crate) use self::project::UndoLog;
 pub use self::project::{
     MismatchedProjectionTypes, Normalized, NormalizedTerm, ProjectionCache, ProjectionCacheEntry,
