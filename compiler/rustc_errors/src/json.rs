@@ -54,6 +54,7 @@ pub struct JsonEmitter {
     macro_backtrace: bool,
     track_diagnostics: bool,
     terminal_url: TerminalUrl,
+    show_suggestions_with_unavailable_source: bool,
 }
 
 impl JsonEmitter {
@@ -76,6 +77,7 @@ impl JsonEmitter {
             macro_backtrace: false,
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
+            show_suggestions_with_unavailable_source: false,
         }
     }
 
@@ -373,6 +375,7 @@ impl Diagnostic {
             .terminal_url(je.terminal_url)
             .ui_testing(je.ui_testing)
             .ignored_directories_in_source_blocks(je.ignored_directories_in_source_blocks.clone())
+            .show_suggestions_with_unavailable_source(je.show_suggestions_with_unavailable_source)
             .theme(if je.json_rendered.unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
             .emit_diagnostic(diag);
 

@@ -283,36 +283,54 @@ error[E0040]: explicit use of destructor method
    |
 LL |             Drop::pin_drop(todo!());
    |             ^^^^^^^^^^^^^^ explicit destructor calls not allowed
+   |
+help: consider using `drop` function
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
 
 error[E0040]: explicit use of destructor method
   --> $DIR/pinned-drop-check.rs:156:13
    |
 LL |             Drop::pin_drop(todo!());
    |             ^^^^^^^^^^^^^^ explicit destructor calls not allowed
+   |
+help: consider using `drop` function
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
 
 error[E0040]: explicit use of destructor method
   --> $DIR/pinned-drop-check.rs:168:13
    |
 LL |             Drop::drop(todo!());
    |             ^^^^^^^^^^ explicit destructor calls not allowed
+   |
+help: consider using `drop` function
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
 
 error[E0040]: explicit use of destructor method
   --> $DIR/pinned-drop-check.rs:173:13
    |
 LL |             Drop::drop(todo!());
    |             ^^^^^^^^^^ explicit destructor calls not allowed
+   |
+help: consider using `drop` function
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
 
 error[E0040]: explicit use of destructor method
   --> $DIR/pinned-drop-check.rs:183:13
    |
 LL |             Drop::drop(todo!());
    |             ^^^^^^^^^^ explicit destructor calls not allowed
+   |
+help: consider using `drop` function
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
 
 error[E0040]: explicit use of destructor method
   --> $DIR/pinned-drop-check.rs:184:13
    |
 LL |             Drop::pin_drop(todo!());
    |             ^^^^^^^^^^^^^^ explicit destructor calls not allowed
+   |
+help: consider using `drop` function
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
 
 error: aborting due to 25 previous errors
 
