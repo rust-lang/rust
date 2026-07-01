@@ -1,7 +1,6 @@
 //! LoongArch64 SIMD helpers
 
-use self as ls;
-use crate::intrinsics::simd as is;
+use crate::intrinsics::simd::*;
 
 // Internal extension trait for concrete `Simd<T, N>` types.
 //
@@ -23,7 +22,7 @@ macro_rules! impl_simd_ext {
 
             #[inline(always)]
             unsafe fn splat(v: i64) -> Self {
-                is::simd_splat(v as Self::Elem)
+                simd_splat(v as Self::Elem)
             }
         }
     };
@@ -58,189 +57,189 @@ impl_simd_ext!(u128x4, u128);
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_abs<T: Copy + const SimdExt>(a: T) -> T {
-    let m: T = is::simd_lt(a, ls::simd_splat(0));
-    is::simd_select(m, is::simd_neg(a), a)
+pub(super) const unsafe fn simd_ext_abs<T: Copy + const SimdExt>(a: T) -> T {
+    let m: T = simd_lt(a, simd_ext_splat(0));
+    simd_select(m, simd_neg(a), a)
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_absd<T: Copy>(a: T, b: T) -> T {
-    let m: T = is::simd_gt(a, b);
-    is::simd_select(m, is::simd_sub(a, b), is::simd_sub(b, a))
+pub(super) const unsafe fn simd_ext_absd<T: Copy>(a: T, b: T) -> T {
+    let m: T = simd_gt(a, b);
+    simd_select(m, simd_sub(a, b), simd_sub(b, a))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_adda<T: Copy + const SimdExt>(a: T, b: T) -> T {
-    is::simd_add(ls::simd_abs(a), ls::simd_abs(b))
+pub(super) const unsafe fn simd_ext_adda<T: Copy + const SimdExt>(a: T, b: T) -> T {
+    simd_add(simd_ext_abs(a), simd_ext_abs(b))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_andn<T: Copy + const SimdExt>(a: T, b: T) -> T {
-    is::simd_and(ls::simd_not(a), b)
+pub(super) const unsafe fn simd_ext_andn<T: Copy + const SimdExt>(a: T, b: T) -> T {
+    simd_and(simd_ext_not(a), b)
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_bitclr<T: Copy + const SimdExt>(a: T, b: T) -> T {
-    ls::simd_andn(ls::simd_shl(ls::simd_splat(1), b), a)
+pub(super) const unsafe fn simd_ext_bitclr<T: Copy + const SimdExt>(a: T, b: T) -> T {
+    simd_ext_andn(simd_ext_shl(simd_ext_splat(1), b), a)
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_bitrev<T: Copy + const SimdExt>(a: T, b: T) -> T {
-    is::simd_xor(ls::simd_shl(ls::simd_splat(1), b), a)
+pub(super) const unsafe fn simd_ext_bitrev<T: Copy + const SimdExt>(a: T, b: T) -> T {
+    simd_xor(simd_ext_shl(simd_ext_splat(1), b), a)
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_bitset<T: Copy + const SimdExt>(a: T, b: T) -> T {
-    is::simd_or(ls::simd_shl(ls::simd_splat(1), b), a)
+pub(super) const unsafe fn simd_ext_bitset<T: Copy + const SimdExt>(a: T, b: T) -> T {
+    simd_or(simd_ext_shl(simd_ext_splat(1), b), a)
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_fmsub<T: Copy>(a: T, b: T, c: T) -> T {
-    is::simd_fma(a, b, is::simd_neg(c))
+pub(super) const unsafe fn simd_ext_fmsub<T: Copy>(a: T, b: T, c: T) -> T {
+    simd_fma(a, b, simd_neg(c))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_fnmadd<T: Copy>(a: T, b: T, c: T) -> T {
-    is::simd_neg(is::simd_fma(a, b, c))
+pub(super) const unsafe fn simd_ext_fnmadd<T: Copy>(a: T, b: T, c: T) -> T {
+    simd_neg(simd_fma(a, b, c))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_fnmsub<T: Copy>(a: T, b: T, c: T) -> T {
-    is::simd_neg(ls::simd_fmsub(a, b, c))
+pub(super) const unsafe fn simd_ext_fnmsub<T: Copy>(a: T, b: T, c: T) -> T {
+    simd_neg(simd_ext_fmsub(a, b, c))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_frecip_s<T: Copy>(a: T) -> T {
-    is::simd_div(is::simd_splat(1.0f32), a)
+pub(super) const unsafe fn simd_ext_frecip_s<T: Copy>(a: T) -> T {
+    simd_div(simd_splat(1.0f32), a)
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_frecip_d<T: Copy>(a: T) -> T {
-    is::simd_div(is::simd_splat(1.0f64), a)
+pub(super) const unsafe fn simd_ext_frecip_d<T: Copy>(a: T) -> T {
+    simd_div(simd_splat(1.0f64), a)
 }
 
 #[inline(always)]
-pub(super) unsafe fn simd_frsqrt_s<T: Copy>(a: T) -> T {
-    ls::simd_frecip_s(is::simd_fsqrt(a))
+pub(super) unsafe fn simd_ext_frsqrt_s<T: Copy>(a: T) -> T {
+    simd_ext_frecip_s(simd_fsqrt(a))
 }
 
 #[inline(always)]
-pub(super) unsafe fn simd_frsqrt_d<T: Copy>(a: T) -> T {
-    ls::simd_frecip_d(is::simd_fsqrt(a))
+pub(super) unsafe fn simd_ext_frsqrt_d<T: Copy>(a: T) -> T {
+    simd_ext_frecip_d(simd_fsqrt(a))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_ld<const I: i32, T: Copy>(a: *const i8) -> T {
+pub(super) const unsafe fn simd_ext_ld<const I: i32, T: Copy>(a: *const i8) -> T {
     let a = a.offset(I as isize) as *const T;
     core::ptr::read_unaligned(a)
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_ldx<T: Copy>(a: *const i8, b: i64) -> T {
+pub(super) const unsafe fn simd_ext_ldx<T: Copy>(a: *const i8, b: i64) -> T {
     let a = a.offset(b as isize) as *const T;
     core::ptr::read_unaligned(a)
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_madd<T: Copy>(a: T, b: T, c: T) -> T {
-    is::simd_add(a, is::simd_mul(b, c))
+pub(super) const unsafe fn simd_ext_madd<T: Copy>(a: T, b: T, c: T) -> T {
+    simd_add(a, simd_mul(b, c))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_msub<T: Copy>(a: T, b: T, c: T) -> T {
-    is::simd_sub(a, is::simd_mul(b, c))
+pub(super) const unsafe fn simd_ext_msub<T: Copy>(a: T, b: T, c: T) -> T {
+    simd_sub(a, simd_mul(b, c))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_muh<T: Copy, W: Copy + const SimdExt>(a: T, b: T) -> T {
-    let a: W = is::simd_cast(a);
-    let b: W = is::simd_cast(b);
-    let p = is::simd_mul(a, b);
-    is::simd_cast(is::simd_shr(
+pub(super) const unsafe fn simd_ext_muh<T: Copy, W: Copy + const SimdExt>(a: T, b: T) -> T {
+    let a: W = simd_cast(a);
+    let b: W = simd_cast(b);
+    let p = simd_mul(a, b);
+    simd_cast(simd_shr(
         p,
-        ls::simd_splat((size_of::<W::Elem>() * 8 / 2) as i64),
+        simd_ext_splat((size_of::<W::Elem>() * 8 / 2) as i64),
     ))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_nor<T: Copy + const SimdExt>(a: T, b: T) -> T {
-    ls::simd_not(is::simd_or(a, b))
+pub(super) const unsafe fn simd_ext_nor<T: Copy + const SimdExt>(a: T, b: T) -> T {
+    simd_ext_not(simd_or(a, b))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_not<T: Copy + const SimdExt>(a: T) -> T {
-    is::simd_xor(a, ls::simd_splat(!0))
+pub(super) const unsafe fn simd_ext_not<T: Copy + const SimdExt>(a: T) -> T {
+    simd_xor(a, simd_ext_splat(!0))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_orn<T: Copy + const SimdExt>(a: T, b: T) -> T {
-    is::simd_or(a, ls::simd_not(b))
+pub(super) const unsafe fn simd_ext_orn<T: Copy + const SimdExt>(a: T, b: T) -> T {
+    simd_or(a, simd_ext_not(b))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_rotr<T: Copy + const SimdExt>(a: T, b: T) -> T {
+pub(super) const unsafe fn simd_ext_rotr<T: Copy + const SimdExt>(a: T, b: T) -> T {
     let m = (size_of::<T::Elem>() * 8 - 1) as i64;
-    let r = is::simd_and(b, ls::simd_splat(m));
-    let l = is::simd_and(is::simd_sub(ls::simd_splat(m + 1), r), ls::simd_splat(m));
-    is::simd_or(is::simd_shr(a, r), is::simd_shl(a, l))
+    let r = simd_and(b, simd_ext_splat(m));
+    let l = simd_and(simd_sub(simd_ext_splat(m + 1), r), simd_ext_splat(m));
+    simd_or(simd_shr(a, r), simd_shl(a, l))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_shl<T: Copy + const SimdExt>(a: T, b: T) -> T {
+pub(super) const unsafe fn simd_ext_shl<T: Copy + const SimdExt>(a: T, b: T) -> T {
     let m = (size_of::<T::Elem>() * 8 - 1) as i64;
-    is::simd_shl(a, is::simd_and(b, ls::simd_splat(m)))
+    simd_shl(a, simd_and(b, simd_ext_splat(m)))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_shr<T: Copy + const SimdExt>(a: T, b: T) -> T {
+pub(super) const unsafe fn simd_ext_shr<T: Copy + const SimdExt>(a: T, b: T) -> T {
     let m = (size_of::<T::Elem>() * 8 - 1) as i64;
-    is::simd_shr(a, is::simd_and(b, ls::simd_splat(m)))
+    simd_shr(a, simd_and(b, simd_ext_splat(m)))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_splat<T: Copy + const SimdExt>(a: i64) -> T {
+pub(super) const unsafe fn simd_ext_splat<T: Copy + const SimdExt>(a: i64) -> T {
     T::splat(a)
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_st<const I: i32, T: Copy>(a: T, b: *mut i8) {
+pub(super) const unsafe fn simd_ext_st<const I: i32, T: Copy>(a: T, b: *mut i8) {
     let b = b.offset(I as isize) as *mut T;
     core::ptr::write_unaligned(b, a);
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_stx<T: Copy>(a: T, b: *mut i8, c: i64) {
+pub(super) const unsafe fn simd_ext_stx<T: Copy>(a: T, b: *mut i8, c: i64) {
     let b = b.offset(c as isize) as *mut T;
     core::ptr::write_unaligned(b, a);
 }
 
 macro_rules! impl_vv {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ty) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ty) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
@@ -257,7 +256,7 @@ macro_rules! impl_vv {
 pub(super) use impl_vv;
 
 macro_rules! impl_gv {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $gty:ty) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
@@ -273,7 +272,7 @@ macro_rules! impl_gv {
 pub(super) use impl_gv;
 
 macro_rules! impl_ggv {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $gty:ty, $xty:ty, unsafe) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty, $xty:ty, unsafe) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
@@ -303,7 +302,7 @@ macro_rules! impl_gsv {
 pub(super) use impl_gsv;
 
 macro_rules! impl_sv {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $ibs:expr) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[rustc_legacy_const_generics(0)]
@@ -321,7 +320,7 @@ macro_rules! impl_sv {
 pub(super) use impl_sv;
 
 macro_rules! impl_vvv {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ty) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ty) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
@@ -352,7 +351,7 @@ macro_rules! impl_vvv {
 pub(super) use impl_vvv;
 
 macro_rules! impl_vgg {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $gty:ty, $xty:ty, unsafe) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty, $xty:ty, unsafe) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
@@ -380,7 +379,7 @@ macro_rules! impl_vgs {
 pub(super) use impl_vgs;
 
 macro_rules! impl_vuv {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[rustc_legacy_const_generics(1)]
@@ -389,13 +388,13 @@ macro_rules! impl_vuv {
             static_assert_uimm_bits!(IMM, (size_of::<<$ity as SimdExt>::Elem>() * 8).ilog2());
             unsafe {
                 let a: $ity = transmute(a);
-                let b: $ity = ls::simd_splat(IMM.into());
+                let b: $ity = simd_ext_splat(IMM.into());
                 let r: $ity = $op(a, b);
                 transmute(r)
             }
         }
     };
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $ibs:expr) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[rustc_legacy_const_generics(1)]
@@ -404,7 +403,7 @@ macro_rules! impl_vuv {
             static_assert_uimm_bits!(IMM, $ibs);
             unsafe {
                 let a: $ity = transmute(a);
-                let b: $ity = ls::simd_splat(IMM.into());
+                let b: $ity = simd_ext_splat(IMM.into());
                 let r: $ity = $op(a, b);
                 transmute(r)
             }
@@ -429,7 +428,7 @@ macro_rules! impl_vuv {
 pub(super) use impl_vuv;
 
 macro_rules! impl_vug {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $gty:ty, $ibs:expr) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[rustc_legacy_const_generics(1)]
@@ -448,7 +447,7 @@ macro_rules! impl_vug {
 pub(super) use impl_vug;
 
 macro_rules! impl_vsv {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $ibs:expr) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[rustc_legacy_const_generics(1)]
@@ -457,7 +456,7 @@ macro_rules! impl_vsv {
             static_assert_simm_bits!(IMM, $ibs);
             unsafe {
                 let a: $ity = transmute(a);
-                let b: $ity = ls::simd_splat(IMM.into());
+                let b: $ity = simd_ext_splat(IMM.into());
                 let r: $ity = $op(a, b);
                 transmute(r)
             }
@@ -468,7 +467,7 @@ macro_rules! impl_vsv {
 pub(super) use impl_vsv;
 
 macro_rules! impl_vvvv {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ty) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ty) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
@@ -507,7 +506,7 @@ macro_rules! impl_vvuv {
 pub(super) use impl_vvuv;
 
 macro_rules! impl_vugv {
-    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $gty:ty, $ibs:expr) => {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
         #[rustc_legacy_const_generics(2)]
