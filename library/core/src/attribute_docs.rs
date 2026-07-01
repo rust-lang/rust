@@ -208,19 +208,19 @@ mod cfg_attribute {}
 /// }
 /// ```
 ///
-/// You can apply multiple attributes by grouping them in parentheses:
+/// You can apply multiple attributes by separating them with commas:
 ///
 /// ```rust
-/// #[cfg_attr(feature = "nightly", allow(dead_code))]
-/// // This function only gets the `allow(dead_code)` attribute when `feature = "nightly"` is
-/// // active.
+/// #[cfg_attr(feature = "nightly", allow(dead_code), deny(unused_variables))]
+/// // This function only gets the `allow(dead_code)` and `deny(unused_variables)` attributes when
+/// // `feature = "nightly"` is active.
 /// fn nightly_only_function() {
-///     // ...
+///     let x = 42;
 /// }
 /// ```
 ///
 /// The predicate uses the same syntax as [`cfg`]. For complex conditions, you can combine
-/// `all(...)`, `any(...)`, and `not(...)` just like with `cfg`.
+/// `all(...)`, `any(...)`, and `not(...)` just like with [`cfg`].
 ///
 /// For more information, see the Reference on [the `cfg_attr` attribute].
 ///
@@ -386,15 +386,14 @@ mod warn_attribute {}
 /// static FOO: u16 = 42; // FOO is not optimized away as dead code.
 ///
 /// static BAR: u16 = 12; // BAR may be optimized away.
-/// fn main() {
-/// }
 /// ```
+///
 /// To confirm, we compile this program into an object file, you'll see that `FOO` makes it to the
 /// object file but `BAR` doesn't. Neither static variable is used by the program.
 ///
-/// ```text
-/// rustc -C opt-level=3 --emit=obj used.rs
-/// nm -C used.o
+/// ```shell
+/// $ rustc -C opt-level=3 --emit=obj used.rs
+/// $ nm -C used.o
 /// 0000000000000000 T main
 ///                  U std::rt::lang_start_internal
 /// 0000000000000000 T std::rt::lang_start
@@ -429,7 +428,8 @@ mod used_attribute {}
 /// The `ignore` attribute can be very useful when a test is incomplete and we need to compile the
 /// code.
 ///
-/// To run ignored tests, use `cargo test -- --ignored`.
+/// To run ignored tests, use `cargo test -- --ignored` or with `rustc` using `--include-ignored`
+/// flag.
 ///
 /// For more information, see the Reference on [the `ignore` attribute].
 ///
@@ -439,19 +439,16 @@ mod ignore_attribute {}
 #[doc(attribute = "expect")]
 //
 /// The `#[expect]` attribute declares that a particular lint is expected to be emitted.
-/// If the lint would be emitted, it is suppressed and the expectation is fulfilled.
-/// If the lint is not emitted at all, the expectation is unfulfilled and a warning is generated.
+/// It is an equivalent of the `allow` attribute, except that it will fail compilation if the `expect`ed lint
+/// wasn't emitted.
 ///
-/// `expect` can be overridden by `warn` or `allow` in an inner scope leaving the outer `expect` attribute
-/// unfulfilled.
+/// `expect` can be overridden by `warn`, `allow`, `deny` and, `forbid`.
 ///
 /// Example:
 ///
 /// ```rust
-/// fn main() {
-///     #[expect(unused_variables)]
-///     let name = "rust-lang"; // The `unused_variables` warning is suppressed.
-/// }
+/// #[expect(unused_variables)]
+/// let name = "rust-lang"; // The `unused_variables` warning is suppressed.
 /// ```
 ///
 /// Multiple lints can be set to `expect` at once, each one is expected separately. For a lint group, it’s enough
