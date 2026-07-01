@@ -12,7 +12,6 @@ pub(crate) struct TrackedQuery {
     pub(crate) invoke: Option<Path>,
     pub(crate) default: Option<syn::Block>,
     pub(crate) cycle: Option<Cycle>,
-    pub(crate) lru: Option<u32>,
     pub(crate) generated_struct: Option<GeneratedInputStruct>,
 }
 
@@ -47,8 +46,7 @@ impl ToTokens for TrackedQuery {
                 let options = cycle_fn.into_iter().chain(cycle_initial).chain(cycle_result);
                 quote!(#(#options),*)
             })
-            .into_iter()
-            .chain(self.lru.map(|lru| quote!(lru = #lru)));
+            .into_iter();
         let annotation = quote!(#[salsa_macros::tracked( #(#options),* )]);
 
         let pat_and_tys = &self.pat_and_tys;
