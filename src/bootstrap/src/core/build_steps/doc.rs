@@ -815,7 +815,7 @@ fn doc_std(
         Kind::Doc,
     );
 
-    compile::std_cargo(builder, target, &mut cargo, requested_crates);
+    compile::std_cargo(builder, Mode::Std, target, &mut cargo, requested_crates);
     cargo
         .arg("--no-deps")
         .arg("--target-dir")
