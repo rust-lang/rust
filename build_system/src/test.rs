@@ -9,8 +9,8 @@ use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
     create_dir, get_sysroot_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file,
-    run_command, run_command_with_env, run_command_with_output_and_env, rustc_version_info,
-    split_args, walk_dir,
+    run_command, run_command_with_env, run_command_with_output_and_env,
+    run_command_with_output_and_env_no_err, rustc_version_info, split_args, walk_dir,
 };
 
 type Env = HashMap<String, String>;
@@ -1343,33 +1343,24 @@ fn test_asm(env: &Env, args: &TestArg) -> Result<(), String> {
     let mut config = ConfigInfo::default();
     config.setup(&mut env, false)?;
 
-    let mut test_config = compiletest_rs::Config::default();
-
-    test_config.mode = compiletest_rs::common::Mode::Assembly;
-    test_config.src_base = PathBuf::from("tests/asm");
-    test_config.llvm_filecheck = Some(PathBuf::from(llvm_filecheck));
-    test_config.filters = args.test_args.clone();
-    test_config.strict_headers = true;
-    test_config.build_base = PathBuf::from("build/tests/asm");
-    let rustc_flags = config
-        .rustc_command_vec()
-        .iter()
-        .skip(1)
-        .map(|arg| arg.as_ref().to_string_lossy())
-        .collect::<Vec<_>>()
-        .join(" ");
-    test_config.target_rustcflags = Some(rustc_flags);
-    test_config.link_deps();
-    test_config.clean_rmeta();
-
-    match std::thread::spawn(move || {
-        compiletest_rs::run_tests(&test_config);
-    })
-    .join()
-    {
-        Ok(_) => Ok(()),
-        Err(_) => Err("Assembly tests failed".to_owned()),
+    let mut test_asm_args: Vec<&dyn AsRef<OsStr>> = vec![
+        &"cargo",
+        &"run",
+        &"--manifest-path",
+        &"build_system/asm-tester/Cargo.toml",
+        &"--",
+        &"--llvm-filecheck",
+        &llvm_filecheck,
+    ];
+    for test_arg in &args.test_args {
+        test_asm_args.push(&"--filter");
+        test_asm_args.push(test_arg);
     }
+    test_asm_args.push(&"--");
+    for arg in config.rustc_command_vec().into_iter().skip(1) {
+        test_asm_args.push(arg);
+    }
+    run_command_with_output_and_env_no_err(&test_asm_args, Some(Path::new(".")), Some(&env))
 }
 
 fn run_all(env: &Env, args: &TestArg) -> Result<(), String> {
