@@ -1,4 +1,4 @@
-error[E0080]: pointer passed to `const_make_global` does not point to a heap allocation: ALLOC0<imm>
+error[E0080]: pointer passed to `const_make_global` does not point to a heap allocation: ALLOC$ID<imm>
   --> $DIR/make-global-other.rs:11:8
    |
 LL |     &*(intrinsics::const_make_global(X as *const i32 as *mut u8) as *const i32)
