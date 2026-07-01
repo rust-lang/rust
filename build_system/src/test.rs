@@ -1335,6 +1335,12 @@ fn remove_files_callback<'a>(
 }
 
 fn test_asm(env: &Env, args: &TestArg) -> Result<(), String> {
+    fn is_path_time_more_recent(ref_time: std::time::SystemTime, path: &str) -> bool {
+        std::fs::metadata(path)
+            .and_then(|metadata| metadata.modified())
+            .is_ok_and(|time| ref_time < time)
+    }
+
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] cg_gcc assembly");
     let llvm_filecheck = get_llvm_filecheck(env)?;
@@ -1343,12 +1349,35 @@ fn test_asm(env: &Env, args: &TestArg) -> Result<(), String> {
     let mut config = ConfigInfo::default();
     config.setup(&mut env, false)?;
 
+    let target_dir = std::env::current_dir().unwrap().join("build_system/asm-tester/target");
+
+    // All this code is because `cargo` keeps recompiling this file, and we can't figure out why.
+    let binary_file_path = "build_system/asm-tester/target/debug/asm-tester";
+    let mut need_recompilation = true;
+    if let Ok(metadata) = std::fs::metadata(binary_file_path)
+        && let Ok(ref_time) = metadata.modified()
+        && !is_path_time_more_recent(ref_time, "build_system/asm-tester/Cargo.toml")
+        && !is_path_time_more_recent(ref_time, "build_system/asm-tester/Cargo.lock")
+        && !is_path_time_more_recent(ref_time, "build_system/asm-tester/src/main.rs")
+    {
+        need_recompilation = false;
+    }
+
+    if need_recompilation {
+        let build_asm_args: Vec<&dyn AsRef<OsStr>> = vec![
+            &"cargo",
+            &"build",
+            &"--manifest-path",
+            &"build_system/asm-tester/Cargo.toml",
+            &"--target-dir",
+            &target_dir,
+            &"--",
+        ];
+        run_command_with_output_and_env_no_err(&build_asm_args, Some(Path::new(".")), Some(&env))?;
+    }
+
     let mut test_asm_args: Vec<&dyn AsRef<OsStr>> = vec![
-        &"cargo",
-        &"run",
-        &"--manifest-path",
-        &"build_system/asm-tester/Cargo.toml",
-        &"--",
+        &"build_system/asm-tester/target/debug/asm-tester",
         &"--llvm-filecheck",
         &llvm_filecheck,
     ];
