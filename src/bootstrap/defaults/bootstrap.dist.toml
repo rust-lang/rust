@@ -26,6 +26,8 @@ download-rustc = false
 llvm-bitcode-linker = true
 # Required to make builds reproducible.
 remap-debuginfo = true
+# Fail compilation when there are warnings.
+deny-warnings = true
 
 [dist]
 # Use better compression when preparing tarballs.
