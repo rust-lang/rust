@@ -1,4 +1,8 @@
 //@ run-pass
+//@ reference: items.union.pattern
+//@ reference: items.union.pattern.intro
+//@ reference: items.union.pattern.safety
+//@ reference: items.union.pattern.subpattern
 
 #![allow(dead_code)]
 
