@@ -15,10 +15,16 @@ pub(crate) fn discover_gdb<'a>(
 ) -> Option<Gdb<'a>> {
     // If there's an explicitly-configured gdb, use that.
     if let Some(gdb) = builder.config.gdb.as_deref() {
-        // FIXME(Zalathar): Consider returning None if gdb is an empty string,
-        // as a way to explicitly disable ambient gdb discovery.
+        if gdb.as_os_str().is_empty() {
+            return None;
+        }
+
         let gdb = Cow::Borrowed(gdb);
-        return Some(Gdb { gdb });
+        if verify_gdb(builder, &gdb) {
+            return Some(Gdb { gdb });
+        } else {
+            return None;
+        }
     }
 
     // Otherwise, fall back to whatever gdb is sitting around in PATH.
@@ -31,12 +37,12 @@ pub(crate) fn discover_gdb<'a>(
         None => Path::new("gdb").into(),
     };
 
-    // Check whether an ambient gdb exists, by running `gdb --version`.
-    let output = {
-        let mut gdb_command = BootstrapCommand::new(gdb.as_ref()).allow_failure();
-        gdb_command.arg("--version");
-        gdb_command.run_capture(builder)
-    };
+    if verify_gdb(builder, &gdb) { Some(Gdb { gdb }) } else { None }
+}
 
-    if output.is_success() { Some(Gdb { gdb }) } else { None }
+// Check whether an ambient gdb exists, by running `gdb --version`.
+fn verify_gdb(builder: &Builder<'_>, gdb: &Path) -> bool {
+    let mut cmd = BootstrapCommand::new(gdb).allow_failure();
+    cmd.arg("--version");
+    cmd.run_capture(builder).is_success()
 }
