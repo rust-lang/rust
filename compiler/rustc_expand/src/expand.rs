@@ -789,11 +789,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                         _,
                                         _,
                                         ModKind::Unloaded
-                                            | ModKind::Loaded(_, Inline::No { .. }, _),
+                                            | ModKind::Loaded(_, Inline::No { .. }, _), // Only for out of line modules, as inline modules don't need a fake token stream, as they have already been parsed before.
                                     )
                                 ) =>
                         {
-                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                            rustc_parse::fake_token_stream_for_out_of_line_module(
+                                &self.cx.sess.psess,
+                                item_inner,
+                            )
                         }
                         Annotatable::Item(item_inner) if item_inner.tokens.is_none() => {
                             rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)

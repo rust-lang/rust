@@ -13,9 +13,8 @@ use std::path::{Path, PathBuf};
 use std::str::Utf8Error;
 use std::sync::Arc;
 
-use rustc_ast as ast;
-use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{self as ast, ItemKind, ModKind, token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
 pub use rustc_lexer::UNICODE_VERSION;
@@ -255,6 +254,68 @@ pub fn fake_token_stream_for_item(psess: &ParseSess, item: &ast::Item) -> TokenS
     let source = pprust::item_to_string(item);
     let filename = FileName::macro_expansion_source_code(&source);
     unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, Some(item.span)))
+}
+
+#[allow(unused)]
+pub fn fake_token_stream_for_out_of_line_module(
+    psess: &ParseSess,
+    item: &ast::Item,
+) -> TokenStream {
+    if item.tokens.is_some() {
+        panic!("Gained.")
+    } else {
+        let ItemKind::Mod(_, _, mod_kind) = &item.kind else { panic!() };
+        let ModKind::Loaded(items, _, mod_spans) = mod_kind else { panic!() };
+
+        let inner_span = mod_spans.inner_span;
+        let filename = psess.source_map().span_to_filename(inner_span);
+
+        let source_file = psess.source_map().get_source_file(&filename).unwrap();
+
+        let source_weird =
+            source_file.src.as_ref().unwrap().as_str().split_once('\n').unwrap().1.to_owned();
+        //panic!("{source_weird}");
+
+        //let source = pprust::item_to_string(item);
+        //panic!("{source}");
+        //unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, None))
+        //unwrap_or_emit_fatal(source_file_to_stream(psess, source_file, None, StripTokens::Shebang))
+
+        /*
+        self.print_inner_attributes(&item.attrs);
+        for item in items {
+            self.print_item(item);
+        }
+        */
+
+        let mut source_new = String::new();
+        for attribute in &item.attrs {
+            if attribute.style == ast::AttrStyle::Inner {
+                source_new += &pprust::attribute_to_string(attribute);
+                //source_new += "\n";
+            }
+        }
+        for item in items {
+            source_new += &pprust::item_to_string(item);
+            //source_new += "\n";
+        }
+
+        let source = pprust::item_to_string(item);
+
+        //panic!("SOURCE\n{source}\nSOURCE NEW\n{source_new}");
+
+        unwrap_or_emit_fatal(lexer::lex_token_trees(
+            psess,
+            &source_weird,
+            source_file.start_pos,
+            None,
+            StripTokens::Shebang,
+        ))
+    }
+
+    //if let Some()
+    //let token_stream = TokenStream::from_ast(item);
+    //panic!("{token_stream:?}");
 }
 
 pub fn fake_token_stream_for_foreign_item(
