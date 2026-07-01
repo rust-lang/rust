@@ -1374,6 +1374,7 @@ fn run_all(env: &Env, args: &TestArg) -> Result<(), String> {
     cargo_tests(env, args)?;
     no_builtins_tests(env, args)?;
     test_rustc(env, args)?;
+    test_asm(env, args)?;
 
     Ok(())
 }

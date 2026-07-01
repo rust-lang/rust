@@ -36,6 +36,7 @@ jobs:
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
           "--projects",
+          "--gcc-asm-tests",
         ]
 
     steps:
