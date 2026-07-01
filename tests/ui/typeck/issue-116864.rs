@@ -1,6 +1,7 @@
 //@ compile-flags: -Znext-solver
-//@ check-pass
 //@ edition: 2021
+
+// This was fixed by lazy norm of param env.
 
 use std::future::Future;
 
@@ -21,6 +22,7 @@ where
 }
 
 async fn foo<BAZ>(_: BAZ, mut cb: impl for<'any> FnMutFut<&'any BAZ::Param, ()>)
+//~^ ERROR: expected an `FnOnce(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
 where
     BAZ: Baz<Param = i32>,
 {
