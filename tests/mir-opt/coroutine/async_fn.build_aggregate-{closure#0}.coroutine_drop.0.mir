@@ -86,120 +86,104 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
 
     bb0: {
         _50 = discriminant((*_1));
-        switchInt(move _50) -> [0: bb16, 3: bb19, 4: bb20, otherwise: bb21];
+        switchInt(move _50) -> [0: bb12, 3: bb15, 4: bb16, otherwise: bb17];
     }
 
     bb1: {
         StorageDead(_46);
         StorageDead(_45);
-        drop((((*_1) as variant#4).1: {async fn body of add()})) -> [return: bb2, unwind: bb10];
+        drop((((*_1) as variant#4).1: {async fn body of add()})) -> [return: bb2, unwind: bb8];
     }
 
     bb2: {
         nop;
         StorageDead(_28);
         nop;
-        goto -> bb3;
+        StorageDead(_29);
+        goto -> bb5;
     }
 
     bb3: {
-        StorageDead(_29);
-        goto -> bb6;
+        StorageDead(_27);
+        StorageDead(_26);
+        drop((((*_1) as variant#3).2: {async fn body of add()})) -> [return: bb4, unwind: bb9];
     }
 
     bb4: {
-        StorageDead(_27);
-        StorageDead(_26);
-        drop((((*_1) as variant#3).2: {async fn body of add()})) -> [return: bb5, unwind: bb12];
+        nop;
+        nop;
+        goto -> bb5;
     }
 
     bb5: {
+        StorageDead(_9);
+        StorageDead(_7);
         nop;
         nop;
-        goto -> bb6;
+        StorageDead(_4);
+        StorageDead(_3);
+        goto -> bb13;
     }
 
     bb6: {
-        goto -> bb7;
-    }
-
-    bb7: {
-        StorageDead(_9);
-        StorageDead(_7);
-        nop;
-        nop;
-        StorageDead(_4);
-        StorageDead(_3);
-        goto -> bb17;
-    }
-
-    bb8: {
         return;
     }
 
-    bb9 (cleanup): {
+    bb7 (cleanup): {
         resume;
     }
 
-    bb10 (cleanup): {
+    bb8 (cleanup): {
         nop;
         StorageDead(_28);
         nop;
-        goto -> bb11;
-    }
-
-    bb11 (cleanup): {
         StorageDead(_29);
-        goto -> bb13;
+        goto -> bb10;
     }
 
-    bb12 (cleanup): {
+    bb9 (cleanup): {
         nop;
         nop;
-        goto -> bb13;
+        goto -> bb10;
     }
 
-    bb13 (cleanup): {
-        goto -> bb14;
-    }
-
-    bb14 (cleanup): {
+    bb10 (cleanup): {
         StorageDead(_9);
         StorageDead(_7);
         nop;
         nop;
         StorageDead(_4);
         StorageDead(_3);
-        goto -> bb9;
+        goto -> bb7;
     }
 
-    bb15: {
+    bb11: {
         return;
     }
 
-    bb16: {
-        goto -> bb18;
+    bb12: {
+        goto -> bb14;
     }
 
-    bb17: {
-        goto -> bb8;
+    bb13: {
+        goto -> bb6;
     }
 
-    bb18: {
-        goto -> bb15;
+    bb14: {
+        goto -> bb11;
     }
 
-    bb19: {
+    bb15: {
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_7);
         StorageLive(_9);
         StorageLive(_26);
         StorageLive(_27);
-        goto -> bb4;
+        goto -> bb3;
     }
 
-    bb20: {
+    bb16: {
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_7);
@@ -211,7 +195,7 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
         goto -> bb1;
     }
 
-    bb21: {
+    bb17: {
         return;
     }
 }

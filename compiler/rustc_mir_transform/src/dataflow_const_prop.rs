@@ -239,9 +239,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             TerminatorKind::Drop { place, .. } => {
                 state.flood_with(place.as_ref(), &self.map, FlatSet::<Scalar>::BOTTOM);
             }
-            TerminatorKind::Yield { .. } => {
-                // They would have an effect, but are not allowed in this phase.
-                bug!("encountered disallowed terminator");
+            TerminatorKind::Yield { resume_arg, .. } => {
+                state.flood_with(resume_arg.as_ref(), &self.map, FlatSet::<Scalar>::BOTTOM);
             }
             TerminatorKind::SwitchInt { discr, targets } => {
                 return self.handle_switch_int(discr, targets, state);
