@@ -1,9 +1,10 @@
+use core::convert::Into;
 use std::fmt;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::{Symbol, sym};
 
-use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
+use super::{InlineAsmArch, InlineAsmSize, InlineAsmType, ModifierInfo};
 use crate::spec::{Env, Os, RelocModel, Target};
 
 def_reg_class! {
@@ -11,6 +12,7 @@ def_reg_class! {
         reg,
         vreg,
         vreg_low16,
+        zreg,
         preg,
     }
 }
@@ -20,7 +22,8 @@ impl AArch64InlineAsmRegClass {
         match self {
             Self::reg => &['w', 'x'],
             Self::vreg | Self::vreg_low16 => &['b', 'h', 's', 'd', 'q', 'v'],
-            Self::preg => &[],
+            Self::zreg => &['z'],
+            Self::preg => &['p'],
         }
     }
 
@@ -30,27 +33,32 @@ impl AArch64InlineAsmRegClass {
 
     pub fn suggest_modifier(self, _arch: InlineAsmArch, ty: InlineAsmType) -> Option<ModifierInfo> {
         match self {
-            Self::reg => match ty.size().bits() {
-                64 => None,
-                _ => Some(('w', "w0", 32).into()),
+            Self::reg => match ty.size() {
+                InlineAsmSize::FixedInBytes(8) => None,
+                _ => Some(('w', "w0", InlineAsmSize::FixedInBytes(4)).into()),
             },
-            Self::vreg | Self::vreg_low16 => match ty.size().bits() {
-                8 => Some(('b', "b0", 8).into()),
-                16 => Some(('h', "h0", 16).into()),
-                32 => Some(('s', "s0", 32).into()),
-                64 => Some(('d', "d0", 64).into()),
-                128 => Some(('q', "q0", 128).into()),
+            Self::vreg | Self::vreg_low16 => match ty.size() {
+                InlineAsmSize::FixedInBytes(1) => Some(('b', "b0", ty.size()).into()),
+                InlineAsmSize::FixedInBytes(2) => Some(('h', "h0", ty.size()).into()),
+                InlineAsmSize::FixedInBytes(4) => Some(('s', "s0", ty.size()).into()),
+                InlineAsmSize::FixedInBytes(8) => Some(('d', "d0", ty.size()).into()),
+                InlineAsmSize::FixedInBytes(16) => Some(('q', "q0", ty.size()).into()),
+                InlineAsmSize::Scalable => Some(('z', "z0", InlineAsmSize::Scalable).into()),
                 _ => None,
             },
-            Self::preg => None,
+            Self::zreg => Some(('z', "z0", ty.size()).into()),
+            Self::preg => Some(('p', "p0", ty.size()).into()),
         }
     }
 
     pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<ModifierInfo> {
         match self {
-            Self::reg => Some(('x', "x0", 64).into()),
-            Self::vreg | Self::vreg_low16 => Some(('v', "v0", 128).into()),
-            Self::preg => None,
+            Self::reg => Some(('x', "x0", InlineAsmSize::FixedInBytes(8)).into()),
+            Self::vreg | Self::vreg_low16 => {
+                Some(('v', "v0", InlineAsmSize::FixedInBytes(16)).into())
+            }
+            Self::zreg => Some(('z', "z0", InlineAsmSize::Scalable).into()),
+            Self::preg => Some(('p', "p0", InlineAsmSize::Scalable).into()),
         }
     }
 
@@ -64,9 +72,14 @@ impl AArch64InlineAsmRegClass {
                 neon: I8, I16, I32, I64, F16, F32, F64, F128,
                     VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF16(4), VecF32(2), VecF64(1),
                     VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
-                // Note: When adding support for SVE vector types, they must be rejected for Arm64EC.
             },
-            Self::preg => &[],
+            Self::zreg => types! {
+                sve: SveVecI8, SveVecI16, SveVecI32, SveVecI64, SveVecI128, SveVecF16, SveVecF32,
+                SveVecF64, SveVecI128, SveVecF128;
+            },
+            Self::preg => types! {
+                sve: SveVecBool;
+            },
         }
     }
 }
@@ -105,7 +118,7 @@ fn restricted_for_arm64ec(
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if arch == InlineAsmArch::Arm64EC {
-        Err("x13, x14, x23, x24, x28, v16-v31, p*, ffr cannot be used for Arm64EC")
+        Err("x13, x14, x23, x24, x28, v16-v31, z*, p*, ffr cannot be used for Arm64EC")
     } else {
         Ok(())
     }
@@ -142,38 +155,70 @@ def_regs! {
         x27: reg = ["x27", "w27"],
         x28: reg = ["x28", "w28"] % restricted_for_arm64ec,
         x30: reg = ["x30", "w30", "lr", "wlr"],
-        v0: vreg, vreg_low16 = ["v0", "b0", "h0", "s0", "d0", "q0", "z0"],
-        v1: vreg, vreg_low16 = ["v1", "b1", "h1", "s1", "d1", "q1", "z1"],
-        v2: vreg, vreg_low16 = ["v2", "b2", "h2", "s2", "d2", "q2", "z2"],
-        v3: vreg, vreg_low16 = ["v3", "b3", "h3", "s3", "d3", "q3", "z3"],
-        v4: vreg, vreg_low16 = ["v4", "b4", "h4", "s4", "d4", "q4", "z4"],
-        v5: vreg, vreg_low16 = ["v5", "b5", "h5", "s5", "d5", "q5", "z5"],
-        v6: vreg, vreg_low16 = ["v6", "b6", "h6", "s6", "d6", "q6", "z6"],
-        v7: vreg, vreg_low16 = ["v7", "b7", "h7", "s7", "d7", "q7", "z7"],
-        v8: vreg, vreg_low16 = ["v8", "b8", "h8", "s8", "d8", "q8", "z8"],
-        v9: vreg, vreg_low16 = ["v9", "b9", "h9", "s9", "d9", "q9", "z9"],
-        v10: vreg, vreg_low16 = ["v10", "b10", "h10", "s10", "d10", "q10", "z10"],
-        v11: vreg, vreg_low16 = ["v11", "b11", "h11", "s11", "d11", "q11", "z11"],
-        v12: vreg, vreg_low16 = ["v12", "b12", "h12", "s12", "d12", "q12", "z12"],
-        v13: vreg, vreg_low16 = ["v13", "b13", "h13", "s13", "d13", "q13", "z13"],
-        v14: vreg, vreg_low16 = ["v14", "b14", "h14", "s14", "d14", "q14", "z14"],
-        v15: vreg, vreg_low16 = ["v15", "b15", "h15", "s15", "d15", "q15", "z15"],
-        v16: vreg = ["v16", "b16", "h16", "s16", "d16", "q16", "z16"] % restricted_for_arm64ec,
-        v17: vreg = ["v17", "b17", "h17", "s17", "d17", "q17", "z17"] % restricted_for_arm64ec,
-        v18: vreg = ["v18", "b18", "h18", "s18", "d18", "q18", "z18"] % restricted_for_arm64ec,
-        v19: vreg = ["v19", "b19", "h19", "s19", "d19", "q19", "z19"] % restricted_for_arm64ec,
-        v20: vreg = ["v20", "b20", "h20", "s20", "d20", "q20", "z20"] % restricted_for_arm64ec,
-        v21: vreg = ["v21", "b21", "h21", "s21", "d21", "q21", "z21"] % restricted_for_arm64ec,
-        v22: vreg = ["v22", "b22", "h22", "s22", "d22", "q22", "z22"] % restricted_for_arm64ec,
-        v23: vreg = ["v23", "b23", "h23", "s23", "d23", "q23", "z23"] % restricted_for_arm64ec,
-        v24: vreg = ["v24", "b24", "h24", "s24", "d24", "q24", "z24"] % restricted_for_arm64ec,
-        v25: vreg = ["v25", "b25", "h25", "s25", "d25", "q25", "z25"] % restricted_for_arm64ec,
-        v26: vreg = ["v26", "b26", "h26", "s26", "d26", "q26", "z26"] % restricted_for_arm64ec,
-        v27: vreg = ["v27", "b27", "h27", "s27", "d27", "q27", "z27"] % restricted_for_arm64ec,
-        v28: vreg = ["v28", "b28", "h28", "s28", "d28", "q28", "z28"] % restricted_for_arm64ec,
-        v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29", "z29"] % restricted_for_arm64ec,
-        v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30", "z30"] % restricted_for_arm64ec,
-        v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31", "z31"] % restricted_for_arm64ec,
+        v0: vreg, vreg_low16 = ["v0", "b0", "h0", "s0", "d0", "q0"],
+        v1: vreg, vreg_low16 = ["v1", "b1", "h1", "s1", "d1", "q1"],
+        v2: vreg, vreg_low16 = ["v2", "b2", "h2", "s2", "d2", "q2"],
+        v3: vreg, vreg_low16 = ["v3", "b3", "h3", "s3", "d3", "q3"],
+        v4: vreg, vreg_low16 = ["v4", "b4", "h4", "s4", "d4", "q4"],
+        v5: vreg, vreg_low16 = ["v5", "b5", "h5", "s5", "d5", "q5"],
+        v6: vreg, vreg_low16 = ["v6", "b6", "h6", "s6", "d6", "q6"],
+        v7: vreg, vreg_low16 = ["v7", "b7", "h7", "s7", "d7", "q7"],
+        v8: vreg, vreg_low16 = ["v8", "b8", "h8", "s8", "d8", "q8"],
+        v9: vreg, vreg_low16 = ["v9", "b9", "h9", "s9", "d9", "q9"],
+        v10: vreg, vreg_low16 = ["v10", "b10", "h10", "s10", "d10", "q10"],
+        v11: vreg, vreg_low16 = ["v11", "b11", "h11", "s11", "d11", "q11"],
+        v12: vreg, vreg_low16 = ["v12", "b12", "h12", "s12", "d12", "q12"],
+        v13: vreg, vreg_low16 = ["v13", "b13", "h13", "s13", "d13", "q13"],
+        v14: vreg, vreg_low16 = ["v14", "b14", "h14", "s14", "d14", "q14"],
+        v15: vreg, vreg_low16 = ["v15", "b15", "h15", "s15", "d15", "q15"],
+        v16: vreg = ["v16", "b16", "h16", "s16", "d16", "q16"] % restricted_for_arm64ec,
+        v17: vreg = ["v17", "b17", "h17", "s17", "d17", "q17"] % restricted_for_arm64ec,
+        v18: vreg = ["v18", "b18", "h18", "s18", "d18", "q18"] % restricted_for_arm64ec,
+        v19: vreg = ["v19", "b19", "h19", "s19", "d19", "q19"] % restricted_for_arm64ec,
+        v20: vreg = ["v20", "b20", "h20", "s20", "d20", "q20"] % restricted_for_arm64ec,
+        v21: vreg = ["v21", "b21", "h21", "s21", "d21", "q21"] % restricted_for_arm64ec,
+        v22: vreg = ["v22", "b22", "h22", "s22", "d22", "q22"] % restricted_for_arm64ec,
+        v23: vreg = ["v23", "b23", "h23", "s23", "d23", "q23"] % restricted_for_arm64ec,
+        v24: vreg = ["v24", "b24", "h24", "s24", "d24", "q24"] % restricted_for_arm64ec,
+        v25: vreg = ["v25", "b25", "h25", "s25", "d25", "q25"] % restricted_for_arm64ec,
+        v26: vreg = ["v26", "b26", "h26", "s26", "d26", "q26"] % restricted_for_arm64ec,
+        v27: vreg = ["v27", "b27", "h27", "s27", "d27", "q27"] % restricted_for_arm64ec,
+        v28: vreg = ["v28", "b28", "h28", "s28", "d28", "q28"] % restricted_for_arm64ec,
+        v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29"] % restricted_for_arm64ec,
+        v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30"] % restricted_for_arm64ec,
+        v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31"] % restricted_for_arm64ec,
+        z0: zreg = ["z0"] % restricted_for_arm64ec,
+        z1: zreg = ["z1"] % restricted_for_arm64ec,
+        z2: zreg = ["z2"] % restricted_for_arm64ec,
+        z3: zreg = ["z3"] % restricted_for_arm64ec,
+        z4: zreg = ["z4"] % restricted_for_arm64ec,
+        z5: zreg = ["z5"] % restricted_for_arm64ec,
+        z6: zreg = ["z6"] % restricted_for_arm64ec,
+        z7: zreg = ["z7"] % restricted_for_arm64ec,
+        z8: zreg = ["z8"] % restricted_for_arm64ec,
+        z9: zreg = ["z9"] % restricted_for_arm64ec,
+        z10: zreg = ["z10"] % restricted_for_arm64ec,
+        z11: zreg = ["z11"] % restricted_for_arm64ec,
+        z12: zreg = ["z12"] % restricted_for_arm64ec,
+        z13: zreg = ["z13"] % restricted_for_arm64ec,
+        z14: zreg = ["z14"] % restricted_for_arm64ec,
+        z15: zreg = ["z15"] % restricted_for_arm64ec,
+        z16: zreg = ["z16"] % restricted_for_arm64ec,
+        z17: zreg = ["z17"] % restricted_for_arm64ec,
+        z18: zreg = ["z18"] % restricted_for_arm64ec,
+        z19: zreg = ["z19"] % restricted_for_arm64ec,
+        z20: zreg = ["z20"] % restricted_for_arm64ec,
+        z21: zreg = ["z21"] % restricted_for_arm64ec,
+        z22: zreg = ["z22"] % restricted_for_arm64ec,
+        z23: zreg = ["z23"] % restricted_for_arm64ec,
+        z24: zreg = ["z24"] % restricted_for_arm64ec,
+        z25: zreg = ["z25"] % restricted_for_arm64ec,
+        z26: zreg = ["z26"] % restricted_for_arm64ec,
+        z27: zreg = ["z27"] % restricted_for_arm64ec,
+        z28: zreg = ["z28"] % restricted_for_arm64ec,
+        z29: zreg = ["z29"] % restricted_for_arm64ec,
+        z30: zreg = ["z30"] % restricted_for_arm64ec,
+        z31: zreg = ["z31"] % restricted_for_arm64ec,
         p0: preg = ["p0"] % restricted_for_arm64ec,
         p1: preg = ["p1"] % restricted_for_arm64ec,
         p2: preg = ["p2"] % restricted_for_arm64ec,

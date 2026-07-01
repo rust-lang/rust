@@ -17,6 +17,8 @@ fn f(x: f64) {
     unsafe {
         asm!("", out("p0") _);
         //~^ ERROR cannot use register `p0`
+        asm!("", out("z0") _);
+        //~^ ERROR cannot use register `z0`
         asm!("", out("ffr") _);
         //~^ ERROR cannot use register `ffr`
     }
