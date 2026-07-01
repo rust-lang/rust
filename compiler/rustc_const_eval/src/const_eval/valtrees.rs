@@ -119,7 +119,7 @@ fn const_to_valtree_inner<'tcx>(
             let val = ecx.read_immediate(place).report_err()?;
             // We could allow wide raw pointers where both sides are integers in the future,
             // but for now we reject them.
-            if matches!(val.layout.backend_repr, BackendRepr::ScalarPair(..)) {
+            if matches!(val.layout.backend_repr, BackendRepr::ScalarPair { .. }) {
                 return Err(ValTreeCreationError::NonSupportedType(ty));
             }
             let val = val.to_scalar();

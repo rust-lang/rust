@@ -441,7 +441,7 @@ fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_t
             signature.push_str(direct_type);
         }
         PassMode::Pair(_, _) => match arg_abi.layout.backend_repr {
-            BackendRepr::ScalarPair(a, b) => {
+            BackendRepr::ScalarPair { a, b, b_offset: _ } => {
                 signature.push_str(wasm_primitive(a.primitive(), ptr_type));
                 signature.push_str(", ");
                 signature.push_str(wasm_primitive(b.primitive(), ptr_type));

@@ -564,7 +564,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
         BackendRepr::Scalar(scalar) => {
             registers_for_primitive(scalar.primitive());
         }
-        BackendRepr::ScalarPair(scalar1, scalar2) => {
+        BackendRepr::ScalarPair { a: scalar1, b: scalar2, b_offset: _ } => {
             registers_for_primitive(scalar1.primitive());
             registers_for_primitive(scalar2.primitive());
         }
@@ -641,7 +641,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
             }
             Primitive::Float(_) => bx.inbounds_ptradd(reg_save_area_v, fp_offset_v),
         },
-        BackendRepr::ScalarPair(scalar1, scalar2) => {
+        BackendRepr::ScalarPair { a: scalar1, b: scalar2, b_offset: offset } => {
             let ty_lo = bx.cx().scalar_pair_element_backend_type(layout, 0, false);
             let ty_hi = bx.cx().scalar_pair_element_backend_type(layout, 1, false);
 
@@ -665,9 +665,8 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
                     let reg_lo = bx.load(ty_lo, reg_lo_addr, align_lo);
                     let reg_hi = bx.load(ty_hi, reg_hi_addr, align_hi);
 
-                    let offset = scalar1.size(bx.cx).align_to(align_hi).bytes();
                     let field0 = tmp;
-                    let field1 = bx.inbounds_ptradd(tmp, bx.const_u32(offset as u32));
+                    let field1 = bx.inbounds_ptradd(tmp, bx.const_u32(offset.bytes() as u32));
 
                     bx.store(reg_lo, field0, align);
                     bx.store(reg_hi, field1, align);
@@ -688,9 +687,8 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
                     let reg_lo = bx.load(ty_lo, reg_lo_addr, align_lo);
                     let reg_hi = bx.load(ty_hi, reg_hi_addr, align_hi);
 
-                    let offset = scalar1.size(bx.cx).align_to(align_hi).bytes();
                     let field0 = tmp;
-                    let field1 = bx.inbounds_ptradd(tmp, bx.const_u32(offset as u32));
+                    let field1 = bx.inbounds_ptradd(tmp, bx.const_u32(offset.bytes() as u32));
 
                     bx.store(reg_lo, field0, align_lo);
                     bx.store(reg_hi, field1, align_hi);

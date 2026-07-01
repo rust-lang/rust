@@ -486,7 +486,7 @@ fn fn_abi_sanity_check<'tcx>(
                     BackendRepr::Scalar(_)
                     | BackendRepr::SimdVector { .. }
                     | BackendRepr::SimdScalableVector { .. } => {}
-                    BackendRepr::ScalarPair(..) => {
+                    BackendRepr::ScalarPair { .. } => {
                         panic!("`PassMode::Direct` used for ScalarPair type {}", arg.layout.ty)
                     }
                     BackendRepr::Memory { sized } => {
@@ -513,7 +513,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // Similar to `Direct`, we need to make sure that backends use `layout.backend_repr`
                 // and ignore the rest of the layout.
                 assert!(
-                    matches!(arg.layout.backend_repr, BackendRepr::ScalarPair(..)),
+                    matches!(arg.layout.backend_repr, BackendRepr::ScalarPair { .. }),
                     "PassMode::Pair for type {}",
                     arg.layout.ty
                 );
@@ -612,7 +612,7 @@ fn fn_abi_new_uncached<'tcx>(
             layout
         };
 
-        Ok(ArgAbi::new(cx, layout, |scalar, offset| {
+        Ok(ArgAbi::new(layout, |scalar, offset| {
             arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, determined_fn_def_id)
         }))
     };
@@ -741,7 +741,7 @@ fn make_thin_self_ptr<'tcx>(
         Ty::new_mut_ptr(tcx, layout.ty)
     } else {
         match layout.backend_repr {
-            BackendRepr::ScalarPair(..) | BackendRepr::Scalar(..) => (),
+            BackendRepr::ScalarPair { .. } | BackendRepr::Scalar(..) => (),
             _ => bug!("receiver type has unsupported layout: {:?}", layout),
         }
 

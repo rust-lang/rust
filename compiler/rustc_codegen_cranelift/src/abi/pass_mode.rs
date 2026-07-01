@@ -112,7 +112,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 _ => unreachable!("{:?}", self.layout.backend_repr),
             },
             PassMode::Pair(attrs_a, attrs_b) => match self.layout.backend_repr {
-                BackendRepr::ScalarPair(a, b) => {
+                BackendRepr::ScalarPair { a, b, b_offset: _ } => {
                     let a = scalar_to_clif_type(tcx, a);
                     let b = scalar_to_clif_type(tcx, b);
                     smallvec![
@@ -167,7 +167,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 _ => unreachable!("{:?}", self.layout.backend_repr),
             },
             PassMode::Pair(attrs_a, attrs_b) => match self.layout.backend_repr {
-                BackendRepr::ScalarPair(a, b) => {
+                BackendRepr::ScalarPair { a, b, b_offset: _ } => {
                     let a = scalar_to_clif_type(tcx, a);
                     let b = scalar_to_clif_type(tcx, b);
                     (

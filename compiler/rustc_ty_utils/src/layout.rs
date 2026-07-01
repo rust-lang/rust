@@ -291,7 +291,8 @@ fn layout_of_uncached<'tcx>(
                     }
                 }
                 ty::PatternKind::NotNull => {
-                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                    if let BackendRepr::Scalar(scalar)
+                    | BackendRepr::ScalarPair { a: scalar, b: _, b_offset: _ } =
                         &mut layout.backend_repr
                     {
                         scalar.valid_range_mut().start = 1;
