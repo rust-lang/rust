@@ -285,6 +285,14 @@ lsx_vfrintrm_s
 lsx_vfrintrm_d
 lsx_vfrintrz_s
 lsx_vfrintrz_d
+lsx_vmuh_b
+lsx_vmuh_h
+lsx_vmuh_w
+lsx_vmuh_d
+lsx_vmuh_bu
+lsx_vmuh_hu
+lsx_vmuh_wu
+lsx_vmuh_du
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -571,3 +579,11 @@ lasx_xvfrintrm_s
 lasx_xvfrintrm_d
 lasx_xvfrintrz_s
 lasx_xvfrintrz_d
+lasx_xvmuh_b
+lasx_xvmuh_h
+lasx_xvmuh_w
+lasx_xvmuh_d
+lasx_xvmuh_bu
+lasx_xvmuh_hu
+lasx_xvmuh_wu
+lasx_xvmuh_du
