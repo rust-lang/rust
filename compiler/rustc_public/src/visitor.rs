@@ -171,6 +171,7 @@ impl Visitable for RigidTy {
             | RigidTy::CoroutineClosure(_, args)
             | RigidTy::FnDef(_, args) => args.visit(visitor),
             RigidTy::FnPtr(sig) => sig.visit(visitor),
+            RigidTy::UnsafeBinder(binder) => binder.visit(visitor),
             RigidTy::Dynamic(pred, r) => {
                 pred.visit(visitor)?;
                 r.visit(visitor)

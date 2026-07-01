@@ -880,7 +880,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let ty::UnsafeBinder(binder_ty) = *binder_ty.ty.kind() else {
                     self.fail(
                         location,
-                        format!("WrapUnsafeBinder does not produce a ty::UnsafeBinder"),
+                        format!("WrapUnsafeBinder does not produce a ty::UnsafeBinder, found {binder_ty:?}"),
                     );
                     return;
                 };
@@ -1440,7 +1440,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let ty::UnsafeBinder(binder_ty) = *ty.kind() else {
                     self.fail(
                         location,
-                        format!("WrapUnsafeBinder does not produce a ty::UnsafeBinder"),
+                        format!(
+                            "WrapUnsafeBinder does not produce a ty::UnsafeBinder, found {ty:?}"
+                        ),
                     );
                     return;
                 };

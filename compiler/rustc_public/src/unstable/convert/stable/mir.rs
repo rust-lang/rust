@@ -245,7 +245,10 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 crate::mir::Rvalue::Aggregate(agg_kind.stable(tables, cx), operands)
             }
             CopyForDeref(place) => crate::mir::Rvalue::CopyForDeref(place.stable(tables, cx)),
-            WrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
+            WrapUnsafeBinder(operand, ty) => crate::mir::Rvalue::WrapUnsafeBinder(
+                operand.stable(tables, cx),
+                ty.stable(tables, cx),
+            ),
         }
     }
 }
@@ -446,7 +449,9 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             // found at https://github.com/rust-lang/rust/pull/117517#issuecomment-1811683486
             Downcast(_, idx) => crate::mir::ProjectionElem::Downcast(idx.stable(tables, cx)),
             OpaqueCast(ty) => crate::mir::ProjectionElem::OpaqueCast(ty.stable(tables, cx)),
-            UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
+            UnwrapUnsafeBinder(ty) => {
+                crate::mir::ProjectionElem::UnwrapUnsafeBinder(ty.stable(tables, cx))
+            }
         }
     }
 }

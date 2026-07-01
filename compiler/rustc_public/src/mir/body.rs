@@ -534,6 +534,9 @@ pub enum Rvalue {
     /// deref operation, immediately followed by one or more projections.
     CopyForDeref(Place),
 
+    /// Wraps a value in an unsafe binder.
+    WrapUnsafeBinder(Operand, Ty),
+
     /// Computes the discriminant of the place, returning it as an integer.
     /// Returns zero for types without discriminant.
     ///
@@ -650,6 +653,7 @@ impl Rvalue {
                 AggregateKind::RawPtr(ty, mutability) => Ok(Ty::new_ptr(ty, mutability)),
             },
             Rvalue::CopyForDeref(place) => place.ty(locals),
+            Rvalue::WrapUnsafeBinder(_, ty) => Ok(*ty),
         }
     }
 }
@@ -835,6 +839,10 @@ pub enum ProjectionElem {
     /// Like an explicit cast from an opaque type to a concrete type, but without
     /// requiring an intermediate variable.
     OpaqueCast(Ty),
+
+    /// A transmute from an unsafe binder to the type that it wraps. This is a projection
+    /// of a place, so it doesn't necessarily constitute a move out of the binder.
+    UnwrapUnsafeBinder(Ty),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -1069,6 +1077,7 @@ impl ProjectionElem {
             }
             ProjectionElem::Downcast(_) => Ok(ty),
             ProjectionElem::OpaqueCast(ty) => Ok(*ty),
+            ProjectionElem::UnwrapUnsafeBinder(ty) => Ok(*ty),
         }
     }
 

@@ -364,6 +364,9 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
         Rvalue::CopyForDeref(deref) => {
             write!(writer, "CopyForDeref({deref:?})")
         }
+        Rvalue::WrapUnsafeBinder(operand, ty) => {
+            write!(writer, "wrap_binder!({operand:?}; {ty:?})")
+        }
         Rvalue::Discriminant(place) => {
             write!(writer, "discriminant({place:?})")
         }

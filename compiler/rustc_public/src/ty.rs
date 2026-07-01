@@ -561,6 +561,7 @@ pub enum RigidTy {
     Ref(Region, Ty, Mutability),
     FnDef(FnDef, GenericArgs),
     FnPtr(PolyFnSig),
+    UnsafeBinder(Binder<Ty>),
     Closure(ClosureDef, GenericArgs),
     Coroutine(CoroutineDef, GenericArgs),
     CoroutineClosure(CoroutineClosureDef, GenericArgs),
