@@ -1,5 +1,5 @@
 use core::cell::RefCell;
-use core::iter::zip;
+use core::iter::{PeekableIterator, zip};
 use core::num::NonZero;
 
 /// A wrapper struct that implements `Eq` and `Ord` based on the wrapped
@@ -679,6 +679,32 @@ fn test_extend_for_tuple_side_effects_order() {
     p.extend(zip([(1, 2), (3, 4)], [(), ()]));
     let effects = effects.into_inner();
     assert_eq!(effects, [("l", vec![1]), ("r", vec![2]), ("l", vec![3]), ("r", vec![4])]);
+}
+
+#[test]
+fn test_peekable_slice_into() {
+    let mut b = [3, 1, 4, 1, 5].into_iter();
+
+    assert!(b.peek_with(|x| x == Some(&3)));
+    assert_eq!(b.next_if_eq(&3), Some(3));
+
+    assert_eq!(b.next_if_eq(&1), Some(1));
+    assert_eq!(b.next_if(|x| x == &4), Some(4));
+
+    // iterator shouldn't move forward
+    b.next_if(|_| false);
+    assert_eq!(b.next(), Some(1));
+}
+
+#[test]
+fn test_peekable_chars() {
+    let mut a = "hello world!".chars();
+
+    assert!(a.peek_with(|x| x == Some(&'h')));
+    // element not consumed
+    assert_eq!(a.next_if_eq(&'h'), Some('h'));
+    // moves only if condition holds
+    assert_eq!(a.next_if(|x| x == &'l'), None)
 }
 
 // just tests by whether or not this compiles
