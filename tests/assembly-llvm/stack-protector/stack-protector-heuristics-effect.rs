@@ -8,7 +8,7 @@
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [basic] compile-flags: -Z stack-protector=basic
 //@ [none] compile-flags: -Z stack-protector=none
-//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
+//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled -Z allow-partial-mitigations=stack-protector
 
 // NOTE: the heuristics for stack smash protection inappropriately rely on types in LLVM IR,
 // despite those types having no semantic meaning. This means that the `basic` and `strong`
