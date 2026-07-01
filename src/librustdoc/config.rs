@@ -25,7 +25,6 @@ use crate::externalfiles::ExternalHtml;
 use crate::html::markdown::IdMap;
 use crate::html::render::StylePath;
 use crate::html::static_files;
-use crate::passes::{self, Condition};
 use crate::scrape_examples::{AllCallLocations, ScrapeExamplesOptions};
 use crate::{html, opts, theme};
 
@@ -443,40 +442,7 @@ impl Options {
         // check for deprecated options
         check_deprecated_options(matches, dcx);
 
-        if matches.opt_strs("passes") == ["list"] {
-            println!("Available passes for running rustdoc:");
-            for pass in passes::PASSES {
-                println!("{:>20} - {}", pass.name, pass.description);
-            }
-            println!("\nDefault passes for rustdoc:");
-            for p in passes::DEFAULT_PASSES {
-                print!("{:>20}", p.pass.name);
-                println_condition(p.condition);
-            }
-
-            if nightly_options::match_is_nightly_build(matches) {
-                println!("\nPasses run with `--show-coverage`:");
-                for p in passes::COVERAGE_PASSES {
-                    print!("{:>20}", p.pass.name);
-                    println_condition(p.condition);
-                }
-            }
-
-            fn println_condition(condition: Condition) {
-                use Condition::*;
-                match condition {
-                    Always => println!(),
-                    WhenDocumentPrivate => println!("  (when --document-private-items)"),
-                    WhenNotDocumentPrivate => println!("  (when not --document-private-items)"),
-                    WhenNotDocumentHidden => println!("  (when not --document-hidden-items)"),
-                }
-            }
-
-            return None;
-        }
-
         let should_test = matches.opt_present("test");
-
         let show_coverage = matches.opt_present("show-coverage");
         let output_format_s = matches.opt_str("output-format");
         let output_format = match output_format_s {
