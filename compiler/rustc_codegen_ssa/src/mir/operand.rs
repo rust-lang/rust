@@ -69,6 +69,12 @@ pub enum OperandValue<V> {
     /// `is_zst` on its `Layout` returns `true`. Note however that
     /// these values can still require alignment.
     ZeroSized,
+    /// A value for which all bytes are entirely uninitialized.
+    ///
+    /// Storing this value is a no-op; it propagates through field extraction.
+    /// Used to avoid emitting memcpys from uninit globals (which LLVM may
+    /// otherwise materialize as zero-fills) for `const <uninit>` operands.
+    Uninit,
 }
 
 impl<V: CodegenObject> OperandValue<V> {
@@ -78,7 +84,7 @@ impl<V: CodegenObject> OperandValue<V> {
         match self {
             OperandValue::Immediate(llptr) => Some((llptr, None)),
             OperandValue::Pair(llptr, llextra) => Some((llptr, Some(llextra))),
-            OperandValue::Ref(_) | OperandValue::ZeroSized => None,
+            OperandValue::Ref(_) | OperandValue::ZeroSized | OperandValue::Uninit => None,
         }
     }
 
@@ -114,6 +120,7 @@ impl<V: CodegenObject> OperandValue<V> {
             OperandValue::Immediate(_) => cx.is_backend_immediate(ty),
             OperandValue::Pair(_, _) => cx.is_backend_scalar_pair(ty),
             OperandValue::Ref(_) => cx.is_backend_ref(ty),
+            OperandValue::Uninit => true,
         }
     }
 }
@@ -375,7 +382,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             );
         }
 
-        let val = if field.is_zst() {
+        let val = if let OperandValue::Uninit = self.val {
+            OperandValue::Uninit
+        } else if field.is_zst() {
             OperandValue::ZeroSized
         } else if field.size == self.layout.size {
             assert_eq!(offset.bytes(), 0);
@@ -471,6 +480,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         // Read the tag/niche-encoded discriminant from memory.
         let tag_op = match self.val {
             OperandValue::ZeroSized => bug!(),
+            OperandValue::Uninit => return bx.cx().const_poison(cast_to),
             OperandValue::Immediate(_) | OperandValue::Pair(_, _) => {
                 self.extract_field(fx, bx, tag_field.as_usize())
             }
@@ -725,12 +735,15 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
         field: FieldIdx,
         field_operand: OperandRef<'tcx, V>,
     ) {
-        if let OperandValue::ZeroSized = field_operand.val {
+        if matches!(field_operand.val, OperandValue::ZeroSized | OperandValue::Uninit) {
             // A ZST never adds any state, so just ignore it.
             // This special-casing is worth it because of things like
             // `Result<!, !>` where `Ok(never)` is legal to write,
             // but the type shows as FieldShape::Primitive so we can't
             // actually look at the layout for the field being set.
+            //
+            // Likewise, an uninit field does not contribute any value;
+            // the builder's unset slots will produce `const_undef` in `build()`.
             return;
         }
 
@@ -946,6 +959,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             OperandValue::ZeroSized => {
                 // Avoid generating stores of zero-sized values, because the only way to have a
                 // zero-sized value is through `undef`/`poison`, and the store itself is useless.
+            }
+            OperandValue::Uninit => {
+                // Storing an entirely uninit value is a no-op: the destination is left
+                // uninitialized, which is valid since the value itself is uninit.
             }
             OperandValue::Ref(val) => {
                 assert!(dest.layout.is_sized(), "cannot directly store unsized values");
