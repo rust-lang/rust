@@ -709,7 +709,9 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             Hexagon(HexagonInlineAsmRegClass::vreg_pair) => "v",
             Hexagon(HexagonInlineAsmRegClass::qreg) => unreachable!("clobber-only"),
             LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
-            LoongArch(LoongArchInlineAsmRegClass::freg) => "f",
+            LoongArch(LoongArchInlineAsmRegClass::freg)
+            | LoongArch(LoongArchInlineAsmRegClass::vreg)
+            | LoongArch(LoongArchInlineAsmRegClass::xreg) => "f",
             Mips(MipsInlineAsmRegClass::reg) => "r",
             Mips(MipsInlineAsmRegClass::freg) => "f",
             Nvptx(NvptxInlineAsmRegClass::reg16) => "h",
@@ -814,7 +816,22 @@ fn modifier_to_llvm(
         }
         Amdgpu(_) => None,
         Hexagon(_) => None,
-        LoongArch(_) => None,
+        LoongArch(LoongArchInlineAsmRegClass::reg) => None,
+        LoongArch(LoongArchInlineAsmRegClass::freg) => modifier,
+        LoongArch(LoongArchInlineAsmRegClass::vreg) => {
+            if modifier.is_none() {
+                Some('w')
+            } else {
+                modifier
+            }
+        }
+        LoongArch(LoongArchInlineAsmRegClass::xreg) => {
+            if modifier.is_none() {
+                Some('u')
+            } else {
+                modifier
+            }
+        }
         Mips(_) => None,
         Nvptx(_) => None,
         PowerPC(PowerPCInlineAsmRegClass::vsreg) => {
@@ -917,6 +934,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         Hexagon(HexagonInlineAsmRegClass::qreg) => unreachable!("clobber-only"),
         LoongArch(LoongArchInlineAsmRegClass::reg) => cx.type_i32(),
         LoongArch(LoongArchInlineAsmRegClass::freg) => cx.type_f32(),
+        LoongArch(LoongArchInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i32(), 4),
+        LoongArch(LoongArchInlineAsmRegClass::xreg) => cx.type_vector(cx.type_i32(), 8),
         Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
         Mips(MipsInlineAsmRegClass::freg) => cx.type_f32(),
         Nvptx(NvptxInlineAsmRegClass::reg16) => cx.type_i16(),
