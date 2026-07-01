@@ -63,7 +63,7 @@ pub use imp::{
     ReadDir,
 };
 
-pub fn read_dir(path: &Path) -> io::Result<ReadDir> {
+pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
     // FIXME: use with_native_path on all platforms
     imp::readdir(path)
 }

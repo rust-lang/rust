@@ -297,7 +297,7 @@ impl fmt::Debug for File {
     }
 }
 
-pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
+pub fn readdir<P: AsRef<Path>>(_p: P) -> io::Result<ReadDir> {
     unsupported()
 }
 
