@@ -1083,6 +1083,10 @@ See [Tracking issue for pin ergonomics #130494](https://github.com/rust-lang/rus
 
 See [`std::pin`](https://doc.rust-lang.org/std/pin/).
 
+## `tests/ui/pointer_authentication/`
+
+Tests for `-Zpointer-authentication` compiler flag.
+
 ## `tests/ui/precondition-checks/`
 
 Exercises on some unsafe precondition checks.

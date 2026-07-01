@@ -56,7 +56,12 @@ cfg_select! {
     }
 }
 
-#[cfg(target_env = "musl")]
+// For pauthtest the only supported unwinding mechanism is provided by libunwind.
+#[cfg(target_abi = "pauthtest")]
+#[link(name = "unwind")]
+unsafe extern "C" {}
+
+#[cfg(all(target_env = "musl", not(target_abi = "pauthtest")))]
 cfg_select! {
     all(feature = "llvm-libunwind", feature = "system-llvm-libunwind") => {
         compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
