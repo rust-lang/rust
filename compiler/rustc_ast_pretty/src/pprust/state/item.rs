@@ -1,5 +1,5 @@
 use ast::StaticItem;
-use itertools::{Itertools, Position};
+use itertools::Itertools;
 use rustc_ast::{self as ast, EiiImpl, ModKind, Safety, TraitAlias};
 use rustc_span::Ident;
 
@@ -344,9 +344,9 @@ impl<'a> State<'a> {
                     let ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } =
                         *of_trait;
                     self.print_defaultness(defaultness);
+                    self.print_constness(*constness);
                     self.print_safety(safety);
                     impl_generics(self);
-                    self.print_constness(*constness);
                     if let ast::ImplPolarity::Negative(_) = polarity {
                         self.word("!");
                     }
@@ -923,7 +923,7 @@ impl<'a> State<'a> {
                     self.zerobreak();
                     let ib = self.ibox(0);
                     for (pos, use_tree) in items.iter().with_position() {
-                        let is_last = matches!(pos, Position::Last | Position::Only);
+                        let is_last = pos.is_last();
                         self.print_use_tree(&use_tree.0);
                         if !is_last {
                             self.word(",");

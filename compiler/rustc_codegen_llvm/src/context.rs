@@ -14,7 +14,6 @@ use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::codegen_fn_attrs::PatchableFunctionEntry;
 use rustc_middle::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -343,14 +342,13 @@ pub(crate) unsafe fn create_module<'ll>(
 
         // Add "kcfi-offset" module flag with -Z patchable-function-entry (See
         // https://reviews.llvm.org/D141172).
-        let pfe =
-            PatchableFunctionEntry::from_config(sess.opts.unstable_opts.patchable_function_entry);
-        if pfe.prefix() > 0 {
+        let patchable_prefix_nops = sess.opts.unstable_opts.patchable_function_entry.prefix();
+        if patchable_prefix_nops > 0 {
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Override,
                 "kcfi-offset",
-                pfe.prefix().into(),
+                patchable_prefix_nops.into(),
             );
         }
 
@@ -647,7 +645,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             tcx.sess.instrument_coverage().then(coverageinfo::CguCoverageContext::new);
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
-            let dctx = debuginfo::CodegenUnitDebugContext::new(llmod);
+            let dctx = debuginfo::CodegenUnitDebugContext::new(llmod, tcx.sess);
             debuginfo::metadata::build_compile_unit_di_node(
                 tcx,
                 codegen_unit.name().as_str(),
@@ -725,6 +723,24 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             // (a.k.a the "non-fragile ABI").
             2
         }
+    }
+
+    pub(crate) fn add_ptrauth_elf_got_flag(&self) {
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "ptrauth-elf-got",
+            1,
+        );
+    }
+
+    pub(crate) fn add_ptrauth_sign_personality_flag(&self) {
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "ptrauth-sign-personality",
+            1,
+        );
     }
 
     // We do our best here to match what Clang does when compiling Objective-C natively.
@@ -871,8 +887,24 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>) -> &'ll Value {
-        get_fn(self, instance)
+    fn get_fn_addr(&self, instance: Instance<'tcx>, pac: Option<PacMetadata>) -> &'ll Value {
+        // When pointer authentication metadata is provided, `get_fn_addr` will
+        // attempt to sign the pointer using LLVM's `ConstPtrAuth` constant
+        // expression.
+        //
+        // FIXME(jchlanda) Currently, all function addresses requested from
+        // within LLVM codegen are signed. This behavior is too broad, resulting
+        // in the logic being applied to function values, not just pointers
+        // (addresses).
+        //
+        // See the discussion in the rust-lang issue:
+        // <https://github.com/rust-lang/rust/issues/152532>, and comment in
+        // builder's `ptrauth_operand_bundle`.
+        let llfn = get_fn(self, instance);
+        match pac {
+            Some(pac) => common::maybe_sign_fn_ptr(self, instance, llfn, pac),
+            None => llfn,
+        }
     }
 
     fn eh_personality(&self) -> &'ll Value {
@@ -914,13 +946,16 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if name.is_none() => self.get_fn_addr(ty::Instance::expect_resolve(
-                tcx,
-                self.typing_env(),
-                def_id,
-                ty::List::empty(),
-                DUMMY_SP,
-            )),
+            Some(def_id) if name.is_none() => self.get_fn_addr(
+                ty::Instance::expect_resolve(
+                    tcx,
+                    self.typing_env(),
+                    def_id,
+                    ty::List::empty(),
+                    DUMMY_SP,
+                ),
+                Some(PacMetadata::default()),
+            ),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");
                 if let Some(llfn) = self.get_declared_value(name) {

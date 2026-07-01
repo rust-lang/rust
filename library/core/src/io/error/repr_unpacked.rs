@@ -2,15 +2,15 @@
 //! non-64bit targets, where the packed 64 bit representation wouldn't work, and
 //! would have no benefit.
 
-use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
+use super::{Custom, CustomOwner, ErrorData, ErrorKind, RawOsError, SimpleMessage};
 
-type Inner = ErrorData<Box<Custom>>;
+type Inner = ErrorData<CustomOwner>;
 
 pub(super) struct Repr(Inner);
 
 impl Repr {
     #[inline]
-    pub(super) fn new_custom(b: Box<Custom>) -> Self {
+    pub(super) fn new_custom(b: CustomOwner) -> Self {
         Self(Inner::Custom(b))
     }
     #[inline]
@@ -26,7 +26,7 @@ impl Repr {
         Self(Inner::SimpleMessage(m))
     }
     #[inline]
-    pub(super) fn into_data(self) -> ErrorData<Box<Custom>> {
+    pub(super) fn into_data(self) -> ErrorData<CustomOwner> {
         self.0
     }
     #[inline]
@@ -35,7 +35,7 @@ impl Repr {
             Inner::Os(c) => ErrorData::Os(*c),
             Inner::Simple(k) => ErrorData::Simple(*k),
             Inner::SimpleMessage(m) => ErrorData::SimpleMessage(*m),
-            Inner::Custom(m) => ErrorData::Custom(&*m),
+            Inner::Custom(m) => ErrorData::Custom(m.custom_ref()),
         }
     }
     #[inline]
@@ -44,7 +44,7 @@ impl Repr {
             Inner::Os(c) => ErrorData::Os(*c),
             Inner::Simple(k) => ErrorData::Simple(*k),
             Inner::SimpleMessage(m) => ErrorData::SimpleMessage(*m),
-            Inner::Custom(m) => ErrorData::Custom(&mut *m),
+            Inner::Custom(m) => ErrorData::Custom(m.custom_mut()),
         }
     }
 }

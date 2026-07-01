@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `i32`
+error[E0277]: expected an `FnOnce(&'a mut i32)` closure, found `i32`
   --> $DIR/issue-76168-hr-outlives-3.rs:6:1
    |
 LL | / async fn wrapper<F>(f: F)
@@ -9,7 +9,7 @@ LL | |     for<'a> <i32 as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> 
    |
    = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `i32`
 
-error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `i32`
+error[E0277]: expected an `FnOnce(&'a mut i32)` closure, found `i32`
   --> $DIR/issue-76168-hr-outlives-3.rs:6:26
    |
 LL | async fn wrapper<F>(f: F)
@@ -17,7 +17,7 @@ LL | async fn wrapper<F>(f: F)
    |
    = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `i32`
 
-error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `i32`
+error[E0277]: expected an `FnOnce(&'a mut i32)` closure, found `i32`
   --> $DIR/issue-76168-hr-outlives-3.rs:6:26
    |
 LL | async fn wrapper<F>(f: F)

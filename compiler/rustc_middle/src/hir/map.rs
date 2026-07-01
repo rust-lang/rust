@@ -22,7 +22,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 use crate::hir::{ModuleItems, ProjectedMaybeOwner, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::{IntoQueryKey, LocalCrate};
-use crate::ty::TyCtxt;
+use crate::ty::{self, TyCtxt};
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
 /// Constructed using `tcx.hir_parent_iter(hir_id)`.
@@ -879,13 +879,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.hir_opt_delegation_info(delegation_id).expect("processing delegation")
     }
 
-    pub fn hir_is_delegation_child_segment(self, segment: &PathSegment<'_>) -> bool {
-        let parent_def = self.hir_get_parent_item(segment.hir_id).def_id;
-
-        self.hir_opt_delegation_info(parent_def)
-            .is_some_and(|info| info.child_seg_id == segment.hir_id)
-    }
-
     #[inline]
     fn hir_opt_ident(self, id: HirId) -> Option<Ident> {
         match self.hir_node(id) {
@@ -1113,6 +1106,12 @@ impl<'tcx> TyCtxt<'tcx> {
             }) => Some(*param_id),
             _ => None,
         }
+    }
+
+    pub fn is_type_system_inline_const(self, def_id: impl IntoQueryKey<DefId>) -> bool {
+        let def_id = def_id.into_query_key();
+        debug_assert_eq!(self.def_kind(def_id), DefKind::InlineConst);
+        self.anon_const_kind(def_id) != ty::AnonConstKind::NonTypeSystem
     }
 
     pub fn hir_maybe_get_struct_pattern_shorthand_field(self, expr: &Expr<'_>) -> Option<Symbol> {

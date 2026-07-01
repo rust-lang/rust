@@ -482,16 +482,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
         let parent_def_id = self.item_def_id();
+        // In this path, `Some(context)` should be `ConstArgument`: enum
+        // discriminants are handled earlier by resolve. We still use the helper so
+        // nested inline consts are checked in the outer const-argument context.
         if let Res::Def(DefKind::ConstParam, _) = res
-            && tcx.def_kind(parent_def_id) == DefKind::AnonConst
-            && let ty::AnonConstKind::MCG = tcx.anon_const_kind(parent_def_id)
+            && let Some(context) = self.anon_const_forbids_generic_params()
         {
             let folder = ForbidParamUsesFolder {
                 tcx,
                 anon_const_def_id: parent_def_id,
                 span,
                 is_self_alias: false,
-                context: ForbidParamContext::ConstArgument,
+                context,
             };
             return Err(folder.error());
         }
@@ -512,15 +514,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Inline consts and closures can be nested inside anon consts that forbid generic
         // params (e.g. an enum discriminant). Walk up the def parent chain to find the
         // nearest enclosing AnonConst and use that to determine the context.
+        let parent_def_id = tcx.typeck_root_def_id(parent_def_id.into());
+
         let anon_const_def_id = match tcx.def_kind(parent_def_id) {
             DefKind::AnonConst => parent_def_id,
-            DefKind::InlineConst | DefKind::Closure => {
-                let root = tcx.typeck_root_def_id(parent_def_id.into());
-                match tcx.def_kind(root) {
-                    DefKind::AnonConst => root.expect_local(),
-                    _ => return None,
-                }
-            }
+            DefKind::InlineConst if tcx.is_type_system_inline_const(parent_def_id) => parent_def_id,
             _ => return None,
         };
 
@@ -870,7 +868,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             generic_args: segment.args(),
             infer_args: segment.infer_args,
-            create_synth_args: tcx.hir_is_delegation_child_segment(segment),
+            create_synth_args: segment.delegation_child_segment,
             incorrect_args: &arg_count.correct,
         };
 
