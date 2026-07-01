@@ -357,7 +357,17 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target_pair: GccTargetPair)
         .arg("--silent")
         .arg(format!("-j{}", builder.jobs()))
         .run_capture_stdout(builder);
-    command("make").current_dir(out_dir).arg("--silent").arg("install").run_capture_stdout(builder);
+    // Since the GNU build system allows overriding the installation path using
+    // DESTDIR during the install phase,and the rustc bootstrap process itself
+    // may also specify DESTDIR to set the toolchain installation path, it is
+    // necessary to eliminate potential installation path errors for libgccjit.so
+    // caused by DESTDIR during make install.
+    command("make")
+        .current_dir(out_dir)
+        .arg("--silent")
+        .arg("install")
+        .env_remove("DESTDIR")
+        .run_capture_stdout(builder);
 }
 
 /// Configures a Cargo invocation so that it can build the GCC codegen backend.
