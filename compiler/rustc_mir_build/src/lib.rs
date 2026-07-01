@@ -2,6 +2,7 @@
 
 // tidy-alphabetical-start
 #![feature(deref_patterns)]
+#![feature(never_type)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
