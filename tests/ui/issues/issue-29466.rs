@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 //
 //@ run-pass
 

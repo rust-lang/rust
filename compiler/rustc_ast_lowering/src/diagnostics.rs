@@ -365,6 +365,7 @@ pub(crate) struct MatchArmWithNoBody {
     pub span: Span,
     #[suggestion(
         "add a body after the pattern",
+        // ignore-tidy-todo
         code = " => todo!(),",
         applicability = "has-placeholders"
     )]

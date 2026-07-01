@@ -15,9 +15,9 @@
 //!
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
-// ignore-tidy-dbg
 
 use std::ffi::OsStr;
+use std::mem;
 use std::path::Path;
 use std::sync::LazyLock;
 
@@ -25,7 +25,10 @@ use regex::RegexSetBuilder;
 use rustc_hash::FxHashMap;
 
 use crate::diagnostics::{CheckId, TidyCtx};
+use crate::style::directive::{Directive, Directives, LineNumber, match_ignore};
 use crate::walk::{filter_dirs, walk};
+
+mod directive;
 
 #[cfg(test)]
 mod tests;
@@ -71,23 +74,6 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "//@ lldb",
     "//@ cdb",
     "//@ normalize-stderr",
-];
-
-const LINELENGTH_CHECK: &str = "linelength";
-
-// If you edit this, also edit where it gets used in `check` (calling `contains_ignore_directives`)
-const CONFIGURABLE_CHECKS: [&str; 11] = [
-    "cr",
-    "undocumented-unsafe",
-    "tab",
-    LINELENGTH_CHECK,
-    "filelength",
-    "end-whitespace",
-    "trailing-newlines",
-    "leading-newlines",
-    "copyright",
-    "dbg",
-    "odd-backticks",
 ];
 
 fn generate_problems<'a>(
@@ -239,58 +225,10 @@ fn long_line_is_ok(extension: &str, is_error_code: bool, max_columns: usize, lin
     }
 }
 
-#[derive(Clone, Copy)]
-enum Directive {
-    /// By default, tidy always warns against style issues.
-    Deny,
-
-    /// `Ignore(false)` means that an `ignore-tidy-*` directive
-    /// has been provided, but is unnecessary. `Ignore(true)`
-    /// means that it is necessary (i.e. a warning would be
-    /// produced if `ignore-tidy-*` was not present).
-    Ignore(bool),
-}
-
-// Use a fixed size array in the return type to catch mistakes with changing `CONFIGURABLE_CHECKS`
-// without changing the code in `check` easier.
-fn contains_ignore_directives<const N: usize>(
-    path_str: &str,
-    can_contain: bool,
-    contents: &str,
-    checks: [&str; N],
-) -> [Directive; N] {
-    // The rustdoc-json test syntax often requires very long lines, so the checks
-    // for long lines aren't really useful.
-    let always_ignore_linelength = path_str.contains("rustdoc-json");
-
-    if !can_contain && !always_ignore_linelength {
-        return [Directive::Deny; N];
-    }
-
-    checks.map(|check| {
-        if check == LINELENGTH_CHECK && always_ignore_linelength {
-            return Directive::Ignore(false);
-        }
-
-        // Update `can_contain` when changing this
-        if contents.contains(&format!("// ignore-tidy-{check}"))
-            || contents.contains(&format!("# ignore-tidy-{check}"))
-            || contents.contains(&format!("/* ignore-tidy-{check} */"))
-            || contents.contains(&format!("<!-- ignore-tidy-{check} -->"))
-        {
-            Directive::Ignore(false)
-        } else {
-            Directive::Deny
-        }
-    })
-}
-
 macro_rules! suppressible_tidy_err {
-    ($err:ident, $skip:ident, $msg:literal) => {
-        if let Directive::Deny = $skip {
+    ($err:ident, $skip:expr, $msg:literal) => {
+        if let Err(()) = $skip.check() {
             $err(&format!($msg));
-        } else {
-            $skip = Directive::Ignore(true);
         }
     };
 }
@@ -413,10 +351,8 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
         };
 
         // When you change this, also change the `directive_line_starts` variable below
-        let can_contain = contents.contains("// ignore-tidy-")
-            || contents.contains("# ignore-tidy-")
-            || contents.contains("/* ignore-tidy-")
-            || contents.contains("<!-- ignore-tidy-");
+        let can_contain = match_ignore(contents, false, None) || match_ignore(contents, true, None);
+
         // Enable testing ICE's that require specific (untidy)
         // file formats easily eg. `issue-1234-ignore-tidy.rs`
         if filename.contains("ignore-tidy") {
@@ -428,24 +364,17 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
         {
             return;
         }
-        let [
-            mut skip_cr,
-            mut skip_undocumented_unsafe,
-            mut skip_tab,
-            mut skip_line_length,
-            mut skip_file_length,
-            mut skip_end_whitespace,
-            mut skip_trailing_newlines,
-            mut skip_leading_newlines,
-            mut skip_copyright,
-            mut skip_dbg,
-            mut skip_odd_backticks,
-        ] = contains_ignore_directives(&path_str, can_contain, contents, CONFIGURABLE_CHECKS);
+
+        let file_ignore =
+            Directives::from_line(&path_str, LineNumber::WholeFile, can_contain, contents);
+        // the ignores set in this line, meant for the next line
+        let mut next_line_ignore = Default::default();
+
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;
         let mut last_safety_comment = false;
-        let mut comment_block: Option<(usize, usize)> = None;
+        let mut comment_block: Option<(usize, usize, Directive<'_>)> = None;
         let is_test = file.components().any(|c| c.as_os_str() == "tests")
             || file.file_stem().unwrap() == "tests";
         let is_codegen_test = is_test && file.components().any(|c| c.as_os_str() == "codegen-llvm");
@@ -468,6 +397,13 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 trailing_new_lines = 0;
             }
 
+            let line_number = i + 1;
+
+            let mut ignore = file_ignore.create_child(mem::replace(
+                &mut next_line_ignore,
+                Directives::from_line(&path_str, LineNumber::Line(line_number), can_contain, line),
+            ));
+
             let trimmed = line.trim();
 
             if !trimmed.starts_with("//") {
@@ -475,10 +411,11 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             }
 
             let mut err = |msg: &str| {
-                check.error(format!("{}:{}: {msg}", file.display(), i + 1));
+                check.error(format!("{}:{}: {msg}", file.display(), line_number));
             };
 
-            if trimmed.contains("dbg!")
+            if !is_this_file
+                && trimmed.contains("dbg!")
                 && !trimmed.starts_with("//")
                 && !file.ancestors().any(|a| {
                     (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
@@ -488,8 +425,24 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             {
                 suppressible_tidy_err!(
                     err,
-                    skip_dbg,
+                    ignore.dbg,
                     "`dbg!` macro is intended as a debugging tool. It should not be in version control."
+                )
+            }
+
+            if !is_this_file
+                && trimmed.contains("todo!")
+                && !trimmed.starts_with("//")
+                && !file.ancestors().any(|a| {
+                    (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
+                        || a.ends_with("library/alloctests")
+                })
+                && filename != "tests.rs"
+            {
+                suppressible_tidy_err!(
+                    err,
+                    ignore.todo,
+                    "the `todo!` macro is used for tasks that should be done before merging a PR. If you want to panic here, use `panic!`, `unimplemented!`, `unreachable!`, `rustc_middle::bug!` or an assertion"
                 )
             }
 
@@ -504,21 +457,21 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             {
                 suppressible_tidy_err!(
                     err,
-                    skip_line_length,
+                    ignore.linelength,
                     "line longer than {max_columns} chars"
                 );
             }
             if !is_css_file && line.contains('\t') {
-                suppressible_tidy_err!(err, skip_tab, "tab character");
+                suppressible_tidy_err!(err, ignore.tab, "tab character");
             }
             if line.ends_with(' ') || line.ends_with('\t') {
-                suppressible_tidy_err!(err, skip_end_whitespace, "trailing whitespace");
+                suppressible_tidy_err!(err, ignore.end_whitespace, "trailing whitespace");
             }
             if is_css_file && line.starts_with(' ') {
                 err("CSS files use tabs for indent");
             }
             if line.contains('\r') {
-                suppressible_tidy_err!(err, skip_cr, "CR character");
+                suppressible_tidy_err!(err, ignore.cr, "CR character");
             }
             if !is_this_file && !is_codegen_tidy_file {
                 let directive_line_starts = ["// ", "# ", "/* ", "<!-- "];
@@ -526,10 +479,13 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     directive_line_starts.into_iter().any(|s| line.starts_with(s));
                 let contains_potential_directive =
                     possible_line_start && (line.contains("-tidy") || line.contains("tidy-"));
-                let has_recognized_ignore_directive =
-                    contains_ignore_directives(&path_str, can_contain, line, CONFIGURABLE_CHECKS)
-                        .into_iter()
-                        .any(|directive| matches!(directive, Directive::Ignore(_)));
+                let has_recognized_ignore_directive = can_contain
+                    && (Directives::parse(LineNumber::Line(line_number), line)
+                        .iter()
+                        .any(|(_, directive)| directive.is_ignore_and_defuse())
+                        || Directives::parse(LineNumber::WholeFile, line)
+                            .iter()
+                            .any(|(_, directive)| directive.is_ignore_and_defuse()));
                 let has_alphabetical_directive = line.contains("tidy-alphabetical-start")
                     || line.contains("tidy-alphabetical-end");
                 let has_other_tidy_ignore_directive =
@@ -541,7 +497,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     err("Unrecognized tidy directive")
                 }
                 // Allow using TODO in diagnostic suggestions by marking the
-                // relevant line with `// ignore-tidy-todo`.
+                // relevant line with `ignore-tidy-todo`.
                 if trimmed.contains("TODO") && !trimmed.contains("ignore-tidy-todo") {
                     err(
                         "TODO is used for tasks that should be done before merging a PR; If you want to leave a message in the codebase use FIXME",
@@ -561,7 +517,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 && file.components().any(|c| c.as_os_str() == "core")
                 && !is_test
             {
-                suppressible_tidy_err!(err, skip_undocumented_unsafe, "undocumented unsafe");
+                suppressible_tidy_err!(err, ignore.undocumented_unsafe, "undocumented unsafe");
             }
             if trimmed.contains("// SAFETY:") {
                 last_safety_comment = true;
@@ -578,7 +534,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             {
                 suppressible_tidy_err!(
                     err,
-                    skip_copyright,
+                    ignore.copyright,
                     "copyright notices attributed to the Rust Project Developers are deprecated"
                 );
             }
@@ -610,6 +566,10 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 // comment blocks. Technically, this can have false negatives (or false positives),
                 // but as a heuristic this is fine.
                 let likely_comment = |trimmed: &str| {
+                    if trimmed.contains("ignore-tidy") {
+                        return false;
+                    }
+
                     // Line comments, doc comments
                     trimmed.contains("//")
                         // Also account for `#[cfg_attr(bootstrap, doc = "")]` cases.
@@ -617,7 +577,9 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 };
 
                 if likely_comment(trimmed) {
-                    let (start_line, mut backtick_count) = comment_block.unwrap_or((i + 1, 0));
+                    let (start_line, mut backtick_count, directive) = comment_block
+                        .take()
+                        .unwrap_or((line_number, 0, mem::take(&mut ignore.odd_backticks)));
                     let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
 
                     // Try to split `//`-like comments or `#[cfg_attr(bootstrap), doc = ""]`-like
@@ -637,45 +599,57 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     if line_backticks % 2 == 1 {
                         backtick_count += comment_text.chars().filter(|ch| *ch == '`').count();
                     }
-                    comment_block = Some((start_line, backtick_count));
-                } else if let Some((start_line, backtick_count)) = comment_block.take()
+                    comment_block = Some((start_line, backtick_count, directive));
+                } else if let Some((start_line, backtick_count, directive)) = comment_block.take()
                     && backtick_count % 2 == 1
                 {
                     let mut err = |msg: &str| {
                         check.error(format!("{}:{start_line}: {msg}", file.display()));
                     };
-                    let block_len = (i + 1) - start_line;
+                    let block_len = line_number - start_line;
                     if block_len == 1 {
                         suppressible_tidy_err!(
                             err,
-                            skip_odd_backticks,
+                            // use the directives from when the block started
+                            directive,
                             "comment with odd number of backticks"
                         );
                     } else {
                         suppressible_tidy_err!(
                             err,
-                            skip_odd_backticks,
+                            // use the directives from when the block started
+                            directive,
                             "{block_len}-line comment block with odd number of backticks"
                         );
                     }
+
+                    let mut fake_directives = Directives::default();
+                    fake_directives.odd_backticks = directive;
+                    fake_directives.check_usage(&mut check, file);
                 }
             }
+
+            ignore.check_usage(&mut check, file);
         }
         if leading_new_lines {
             let mut err = |_| {
                 check.error(format!("{}: leading newline", file.display()));
             };
-            suppressible_tidy_err!(err, skip_leading_newlines, "missing leading newline");
+            suppressible_tidy_err!(err, file_ignore.leading_newlines, "missing leading newline");
         }
         let mut err = |msg: &str| {
             check.error(format!("{}: {}", file.display(), msg));
         };
         match trailing_new_lines {
-            0 => suppressible_tidy_err!(err, skip_trailing_newlines, "missing trailing newline"),
+            0 => suppressible_tidy_err!(
+                err,
+                file_ignore.trailing_newlines,
+                "missing trailing newline"
+            ),
             1 => {}
             n => suppressible_tidy_err!(
                 err,
-                skip_trailing_newlines,
+                file_ignore.trailing_newlines,
                 "too many trailing newlines ({n})"
             ),
         };
@@ -683,34 +657,20 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             let mut err = |_| {
                 check.error(format!(
                     "{}: too many lines ({lines}) (add `// \
-                     ignore-tidy-filelength` to the file to suppress this error)",
+                     ignore-tidy-file-filelength` to the file to suppress this error)",
                     file.display(),
                 ));
             };
-            suppressible_tidy_err!(err, skip_file_length, "");
+            suppressible_tidy_err!(err, file_ignore.filelength, "");
         }
 
-        if let Directive::Ignore(false) = skip_cr {
-            check.error(format!("{}: ignoring CR characters unnecessarily", file.display()));
+        if let Some((_, _, directive)) = comment_block.take() {
+            let mut fake_directives = Directives::default();
+            fake_directives.odd_backticks = directive;
+            fake_directives.check_usage(&mut check, file);
         }
-        if let Directive::Ignore(false) = skip_tab {
-            check.error(format!("{}: ignoring tab characters unnecessarily", file.display()));
-        }
-        if let Directive::Ignore(false) = skip_end_whitespace {
-            check.error(format!("{}: ignoring trailing whitespace unnecessarily", file.display()));
-        }
-        if let Directive::Ignore(false) = skip_trailing_newlines {
-            check.error(format!("{}: ignoring trailing newlines unnecessarily", file.display()));
-        }
-        if let Directive::Ignore(false) = skip_leading_newlines {
-            check.error(format!("{}: ignoring leading newlines unnecessarily", file.display()));
-        }
-        if let Directive::Ignore(false) = skip_copyright {
-            check.error(format!("{}: ignoring copyright unnecessarily", file.display()));
-        }
-        // We deliberately do not warn about these being unnecessary,
-        // that would just lead to annoying churn.
-        let _unused = skip_line_length;
-        let _unused = skip_file_length;
+        drop(comment_block);
+        next_line_ignore.check_usage(&mut check, file);
+        file_ignore.check_usage(&mut check, file);
     });
 }

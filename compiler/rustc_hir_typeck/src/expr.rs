@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 // FIXME: we should move the field error reporting code somewhere else.
 
 //! Type checking expressions.

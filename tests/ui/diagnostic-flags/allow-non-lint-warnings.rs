@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //! Check that `-A warnings` cli flag applies to non-lint warnings as well.
 //!
 //! This test tries to exercise that by checking that a non-lint warning (normally

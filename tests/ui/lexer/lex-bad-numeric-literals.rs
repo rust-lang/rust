@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 fn main() {
     0o1.0; //~ ERROR: octal float literal is not supported

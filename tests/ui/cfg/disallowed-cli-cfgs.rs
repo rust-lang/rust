@@ -1,4 +1,4 @@
-// ignore-tidy-linelength (target_has_atomic_primitive_alignment below overflows the linelength limit and  @ [revision]compile-flags isn't detected by tidy as something to ignore)
+// ignore-tidy-file-linelength (target_has_atomic_primitive_alignment below overflows the linelength limit and  @ [revision]compile-flags isn't detected by tidy as something to ignore)
 
 //@ check-fail
 //@ revisions: overflow_checks_ debug_assertions_ ub_checks_ sanitize_
