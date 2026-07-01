@@ -1,0 +1,398 @@
+{
+ "bless_metadata": {
+  "python_version": "3.14.5 (main, May 11 2026, 00:00:00) [GCC 16.1.1 20260501 (Red Hat 16.1.1-1)]",
+  "debugger_version": "lldb version 22.1.7",
+  "feature_flags": "LLDBFeature.StaticFields|TypeRecognizers|Float128"
+ },
+ "types": {
+  "&[i32]": {
+   "size": 16,
+   "basic_type": 0,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "int *",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "unsigned long",
+     "offset": 8
+    }
+   ],
+   "generic_params": []
+  },
+  "int *": {
+   "size": 8,
+   "basic_type": 0,
+   "type_class": 4096,
+   "fields": [],
+   "generic_params": []
+  },
+  "unsigned long": {
+   "size": 8,
+   "basic_type": 16,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "int": {
+   "size": 4,
+   "basic_type": 13,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "&mut [i32]": {
+   "size": 16,
+   "basic_type": 0,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "int *",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "unsigned long",
+     "offset": 8
+    }
+   ],
+   "generic_params": []
+  },
+  "&str": {
+   "size": 16,
+   "basic_type": 0,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "unsigned char *",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "unsigned long",
+     "offset": 8
+    }
+   ],
+   "generic_params": []
+  },
+  "unsigned char *": {
+   "size": 8,
+   "basic_type": 0,
+   "type_class": 4096,
+   "fields": [],
+   "generic_params": []
+  },
+  "unsigned char": {
+   "size": 1,
+   "basic_type": 4,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "&mut str": {
+   "size": 16,
+   "basic_type": 0,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "unsigned char *",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "unsigned long",
+     "offset": 8
+    }
+   ],
+   "generic_params": []
+  }
+ },
+ "breakpoints": [
+  {
+   "slice": {
+    "type": "&[i32]",
+    "pretty_type_name": null,
+    "pretty_print": "size=3",
+    "value": null,
+    "synthetic": "lldb_lookup.StdSliceSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "format": null,
+    "children": [
+     {
+      "name": "[0]",
+      "type": "int",
+      "value": 0,
+      "children": []
+     },
+     {
+      "name": "[1]",
+      "type": "int",
+      "value": 1,
+      "children": []
+     },
+     {
+      "name": "[2]",
+      "type": "int",
+      "value": 2,
+      "children": []
+     }
+    ]
+   },
+   "mut_slice": {
+    "type": "&mut [i32]",
+    "pretty_type_name": null,
+    "pretty_print": "size=4",
+    "value": null,
+    "synthetic": "lldb_lookup.StdSliceSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "format": null,
+    "children": [
+     {
+      "name": "[0]",
+      "type": "int",
+      "value": 2,
+      "children": []
+     },
+     {
+      "name": "[1]",
+      "type": "int",
+      "value": 3,
+      "children": []
+     },
+     {
+      "name": "[2]",
+      "type": "int",
+      "value": 5,
+      "children": []
+     },
+     {
+      "name": "[3]",
+      "type": "int",
+      "value": 7,
+      "children": []
+     }
+    ]
+   },
+   "str_slice": {
+    "type": "&str",
+    "pretty_type_name": null,
+    "pretty_print": "\"string slice\"",
+    "value": null,
+    "synthetic": "lldb_lookup.StdSliceSyntheticProvider",
+    "summary": "lldb_lookup.StdStrSummaryProvider",
+    "format": null,
+    "children": [
+     {
+      "name": "[0]",
+      "type": "unsigned char",
+      "value": 115,
+      "children": []
+     },
+     {
+      "name": "[1]",
+      "type": "unsigned char",
+      "value": 116,
+      "children": []
+     },
+     {
+      "name": "[2]",
+      "type": "unsigned char",
+      "value": 114,
+      "children": []
+     },
+     {
+      "name": "[3]",
+      "type": "unsigned char",
+      "value": 105,
+      "children": []
+     },
+     {
+      "name": "[4]",
+      "type": "unsigned char",
+      "value": 110,
+      "children": []
+     },
+     {
+      "name": "[5]",
+      "type": "unsigned char",
+      "value": 103,
+      "children": []
+     },
+     {
+      "name": "[6]",
+      "type": "unsigned char",
+      "value": 32,
+      "children": []
+     },
+     {
+      "name": "[7]",
+      "type": "unsigned char",
+      "value": 115,
+      "children": []
+     },
+     {
+      "name": "[8]",
+      "type": "unsigned char",
+      "value": 108,
+      "children": []
+     },
+     {
+      "name": "[9]",
+      "type": "unsigned char",
+      "value": 105,
+      "children": []
+     },
+     {
+      "name": "[10]",
+      "type": "unsigned char",
+      "value": 99,
+      "children": []
+     },
+     {
+      "name": "[11]",
+      "type": "unsigned char",
+      "value": 101,
+      "children": []
+     }
+    ]
+   },
+   "mut_str_slice": {
+    "type": "&mut str",
+    "pretty_type_name": null,
+    "pretty_print": "\"mutable string slice\"",
+    "value": null,
+    "synthetic": "lldb_lookup.StdSliceSyntheticProvider",
+    "summary": "lldb_lookup.StdStrSummaryProvider",
+    "format": null,
+    "children": [
+     {
+      "name": "[0]",
+      "type": "unsigned char",
+      "value": 109,
+      "children": []
+     },
+     {
+      "name": "[1]",
+      "type": "unsigned char",
+      "value": 117,
+      "children": []
+     },
+     {
+      "name": "[2]",
+      "type": "unsigned char",
+      "value": 116,
+      "children": []
+     },
+     {
+      "name": "[3]",
+      "type": "unsigned char",
+      "value": 97,
+      "children": []
+     },
+     {
+      "name": "[4]",
+      "type": "unsigned char",
+      "value": 98,
+      "children": []
+     },
+     {
+      "name": "[5]",
+      "type": "unsigned char",
+      "value": 108,
+      "children": []
+     },
+     {
+      "name": "[6]",
+      "type": "unsigned char",
+      "value": 101,
+      "children": []
+     },
+     {
+      "name": "[7]",
+      "type": "unsigned char",
+      "value": 32,
+      "children": []
+     },
+     {
+      "name": "[8]",
+      "type": "unsigned char",
+      "value": 115,
+      "children": []
+     },
+     {
+      "name": "[9]",
+      "type": "unsigned char",
+      "value": 116,
+      "children": []
+     },
+     {
+      "name": "[10]",
+      "type": "unsigned char",
+      "value": 114,
+      "children": []
+     },
+     {
+      "name": "[11]",
+      "type": "unsigned char",
+      "value": 105,
+      "children": []
+     },
+     {
+      "name": "[12]",
+      "type": "unsigned char",
+      "value": 110,
+      "children": []
+     },
+     {
+      "name": "[13]",
+      "type": "unsigned char",
+      "value": 103,
+      "children": []
+     },
+     {
+      "name": "[14]",
+      "type": "unsigned char",
+      "value": 32,
+      "children": []
+     },
+     {
+      "name": "[15]",
+      "type": "unsigned char",
+      "value": 115,
+      "children": []
+     },
+     {
+      "name": "[16]",
+      "type": "unsigned char",
+      "value": 108,
+      "children": []
+     },
+     {
+      "name": "[17]",
+      "type": "unsigned char",
+      "value": 105,
+      "children": []
+     },
+     {
+      "name": "[18]",
+      "type": "unsigned char",
+      "value": 99,
+      "children": []
+     },
+     {
+      "name": "[19]",
+      "type": "unsigned char",
+      "value": 101,
+      "children": []
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,359 @@
+{
+ "bless_metadata": {
+  "python_version": "3.14.5 (main, May 11 2026, 00:00:00) [GCC 16.1.1 20260501 (Red Hat 16.1.1-1)]",
+  "debugger_version": "lldb version 22.1.7",
+  "feature_flags": "LLDBFeature.StaticFields|TypeRecognizers|Float128"
+ },
+ "types": {
+  "simple_struct::NoPadding16": {
+   "size": 4,
+   "basic_type": 0,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "x",
+     "type": "unsigned short",
+     "offset": 0
+    },
+    {
+     "name": "y",
+     "type": "short",
+     "offset": 2
+    }
+   ],
+   "generic_params": []
+  },
+  "unsigned short": {
+   "size": 2,
+   "basic_type": 12,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "short": {
+   "size": 2,
+   "basic_type": 11,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "simple_struct::NoPadding32": {
+   "size": 12,
+   "basic_type": 0,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "x",
+     "type": "int",
+     "offset": 0
+    },
+    {
+     "name": "y",
+     "type": "float",
+     "offset": 4
+    },
+    {
+     "name": "z",
+     "type": "unsigned int",
+     "offset": 8
+    }
+   ],
+   "generic_params": []
+  },
+  "int": {
+   "size": 4,
+   "basic_type": 13,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "float": {
+   "size": 4,
+   "basic_type": 23,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "unsigned int": {
+   "size": 4,
+   "basic_type": 14,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "simple_struct::NoPadding64": {
+   "size": 24,
+   "basic_type": 0,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "x",
+     "type": "double",
+     "offset": 0
+    },
+    {
+     "name": "y",
+     "type": "long",
+     "offset": 8
+    },
+    {
+     "name": "z",
+     "type": "unsigned long",
+     "offset": 16
+    }
+   ],
+   "generic_params": []
+  },
+  "double": {
+   "size": 8,
+   "basic_type": 24,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "long": {
+   "size": 8,
+   "basic_type": 15,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "unsigned long": {
+   "size": 8,
+   "basic_type": 16,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "simple_struct::NoPadding163264": {
+   "size": 16,
+   "basic_type": 0,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "a",
+     "type": "short",
+     "offset": 12
+    },
+    {
+     "name": "b",
+     "type": "unsigned short",
+     "offset": 14
+    },
+    {
+     "name": "c",
+     "type": "int",
+     "offset": 8
+    },
+    {
+     "name": "d",
+     "type": "unsigned long",
+     "offset": 0
+    }
+   ],
+   "generic_params": []
+  },
+  "simple_struct::InternalPadding": {
+   "size": 16,
+   "basic_type": 0,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "x",
+     "type": "unsigned short",
+     "offset": 8
+    },
+    {
+     "name": "y",
+     "type": "long",
+     "offset": 0
+    }
+   ],
+   "generic_params": []
+  },
+  "simple_struct::PaddingAtEnd": {
+   "size": 16,
+   "basic_type": 0,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "x",
+     "type": "long",
+     "offset": 0
+    },
+    {
+     "name": "y",
+     "type": "unsigned short",
+     "offset": 8
+    }
+   ],
+   "generic_params": []
+  }
+ },
+ "breakpoints": [
+  {
+   "no_padding16": {
+    "type": "simple_struct::NoPadding16",
+    "pretty_type_name": null,
+    "pretty_print": "{x:10000, y:-10001}",
+    "value": null,
+    "synthetic": "lldb_lookup.synthetic_lookup",
+    "summary": "lldb_lookup.StructSummaryProvider",
+    "format": null,
+    "children": [
+     {
+      "name": "x",
+      "type": "unsigned short",
+      "value": 10000,
+      "children": []
+     },
+     {
+      "name": "y",
+      "type": "short",
+      "value": -10001,
+      "children": []
+     }
+    ]
+   },
+   "no_padding32": {
+    "type": "simple_struct::NoPadding32",
+    "pretty_type_name": null,
+    "pretty_print": "{x:-10002, y:-10003.5, z:10004}",
+    "value": null,
+    "synthetic": "lldb_lookup.synthetic_lookup",
+    "summary": "lldb_lookup.StructSummaryProvider",
+    "format": null,
+    "children": [
+     {
+      "name": "x",
+      "type": "int",
+      "value": -10002,
+      "children": []
+     },
+     {
+      "name": "y",
+      "type": "float",
+      "value": -10003.5,
+      "children": []
+     },
+     {
+      "name": "z",
+      "type": "unsigned int",
+      "value": 10004,
+      "children": []
+     }
+    ]
+   },
+   "no_padding64": {
+    "type": "simple_struct::NoPadding64",
+    "pretty_type_name": null,
+    "pretty_print": "{x:-10005.5, y:10006, z:10007}",
+    "value": null,
+    "synthetic": "lldb_lookup.synthetic_lookup",
+    "summary": "lldb_lookup.StructSummaryProvider",
+    "format": null,
+    "children": [
+     {
+      "name": "x",
+      "type": "double",
+      "value": -10005.5,
+      "children": []
+     },
+     {
+      "name": "y",
+      "type": "long",
+      "value": 10006,
+      "children": []
+     },
+     {
+      "name": "z",
+      "type": "unsigned long",
+      "value": 10007,
+      "children": []
+     }
+    ]
+   },
+   "no_padding163264": {
+    "type": "simple_struct::NoPadding163264",
+    "pretty_type_name": null,
+    "pretty_print": "{a:-10008, b:10009, c:10010, d:10011}",
+    "value": null,
+    "synthetic": "lldb_lookup.synthetic_lookup",
+    "summary": "lldb_lookup.StructSummaryProvider",
+    "format": null,
+    "children": [
+     {
+      "name": "a",
+      "type": "short",
+      "value": -10008,
+      "children": []
+     },
+     {
+      "name": "b",
+      "type": "unsigned short",
+      "value": 10009,
+      "children": []
+     },
+     {
+      "name": "c",
+      "type": "int",
+      "value": 10010,
+      "children": []
+     },
+     {
+      "name": "d",
+      "type": "unsigned long",
+      "value": 10011,
+      "children": []
+     }
+    ]
+   },
+   "internal_padding": {
+    "type": "simple_struct::InternalPadding",
+    "pretty_type_name": null,
+    "pretty_print": "{x:10012, y:-10013}",
+    "value": null,
+    "synthetic": "lldb_lookup.synthetic_lookup",
+    "summary": "lldb_lookup.StructSummaryProvider",
+    "format": null,
+    "children": [
+     {
+      "name": "x",
+      "type": "unsigned short",
+      "value": 10012,
+      "children": []
+     },
+     {
+      "name": "y",
+      "type": "long",
+      "value": -10013,
+      "children": []
+     }
+    ]
+   },
+   "padding_at_end": {
+    "type": "simple_struct::PaddingAtEnd",
+    "pretty_type_name": null,
+    "pretty_print": "{x:-10014, y:10015}",
+    "value": null,
+    "synthetic": "lldb_lookup.synthetic_lookup",
+    "summary": "lldb_lookup.StructSummaryProvider",
+    "format": null,
+    "children": [
+     {
+      "name": "x",
+      "type": "long",
+      "value": -10014,
+      "children": []
+     },
+     {
+      "name": "y",
+      "type": "unsigned short",
+      "value": 10015,
+      "children": []
+     }
+    ]
+   }
+  }
+ ]
+}

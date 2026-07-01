@@ -1,12 +1,13 @@
 """Contains the class definitions outlining the schema of the test data. For LLDB conversion
 from/into these types, see `./from_lldb.py`"""
 
-import enum
 import json
 import os
+from enum import Enum
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from types import NoneType
 from typing import Any, Optional, get_origin, Final
+from pprint import pformat
 
 char = str
 Primitive = int | float | bool | char
@@ -17,7 +18,37 @@ ByteSize = int
 JsonType = int | str | float | list["JsonType"] | bool | None | dict[str, "JsonType"]
 
 
-class Target(enum.Enum):
+class Result(Enum):
+    Ok = True
+    Mismatch = False
+
+    def __and__(self, other: "Result") -> "Result":
+        return Result(self.value & other.value)
+
+
+def print_error(error_source: str, message: str):
+    print(f"  [repr error: {error_source}] {message}")
+
+
+def format_mismatch(label: str, got: Optional[Any], expected: Optional[Any]) -> str:
+    match got, expected:
+        case None, e:
+            return f"{label} not found, expected: '{e}'"
+        case g, None:
+            return f"{label} '{g}' found when none was expected."
+        case _:
+            return (
+                f"{label} does not match.\n    Expected: '{expected}'\n    Got: '{got}'"
+            )
+
+
+def print_mismatch(
+    error_source: str, label: str, got: Optional[Any], expected: Optional[Any]
+):
+    print_error(error_source, format_mismatch(label, got, expected))
+
+
+class Target(Enum):
     """Due to the differences between PDB and DWARF debug info, we cannot guarantee their output
     will be identical. Since LLDB can handle both, we need to conditionally select the correct
     test data to use.
@@ -36,6 +67,7 @@ class Target(enum.Enum):
 def get_target() -> Target:
     # set by compiletest when launching LLDB
     t: str = os.environ["LLDB_BATCHMODE_TARGET_TRIPLE"]
+
     if t.endswith("windows-msvc"):
         return Target.WindowsMsvc
     if t.endswith("windows-gnu") or t.endswith("windows-gnullvm"):
@@ -47,6 +79,7 @@ def get_target() -> Target:
 BLESS: Final[bool] = os.environ["LLDB_BATCHMODE_BLESS_TEST_DATA"] == "1"
 """Global constant set by `compiletest` that determines whether or not we are blessing the test
 data."""
+
 
 TARGET: Final[Target] = get_target()
 """Global constant set by `compiletest`. Determines which target the tests were run for, thus which
@@ -137,7 +170,7 @@ changed intentionally, use the `--bless` option to update test data to the new s
     return data
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class Field:
     name: str
     type: str
@@ -161,7 +194,13 @@ class Type:
     recognizer functions."""
 
     fields: list[Field]
-    """Stored as a list due to our reliance on `SBType.GetFieldAtIndex()`"""
+    """Stored as a list due to our reliance on `SBType.GetFieldAtIndex()`
+
+    Note: LLDB **does not** reorder the fields of a type based on their offset. For example,
+    `GetFieldAtIndex(0).GetByteOffset()` may return `8`. Instead, the order of the fields is a
+    direct reflection of their ordering in the debug info (which, as far as I know, is the same as
+    their declaration order in the source code).
+    """
 
     generic_params: list[str]
     """Stored as a list due to our reliance on `SBType.GetTemplateArgumentType()` and the sequential
@@ -170,6 +209,101 @@ class Type:
     # to discover them. ATM only sum-type enums on MSVC use static fields, and those are fixed
     # values, so it's not super urgent.
     # static_fields: list[StaticField]
+
+    def matches(
+        self, expected: "Type", type_name: str, provider_ok: bool = False
+    ) -> Result:
+        result = Result.Ok
+        error_source = f"type '{type_name}'"
+        # FIXME handle 32 bit targets
+        if self.size != expected.size:
+            result = Result.Mismatch
+            print_mismatch(error_source, "size", self.size, expected.size)
+
+        if self.fields != expected.fields:
+            result = Result.Mismatch
+            # Extra processing for better error messages
+            got_set = set(self.fields)
+            expected_set = set(expected.fields)
+
+            if len(self.fields) != len(expected.fields):
+                new_fields = got_set.difference(expected_set)
+
+                missing_fields = expected_set.difference(got_set)
+
+                if len(missing_fields) != 0:
+                    print_error(
+                        error_source,
+                        f"The following field(s) appear to have been removed from the type:\n\
+    {missing_fields}",
+                    )
+
+                if len(new_fields) != 0:
+                    print_error(
+                        error_source,
+                        f"The following field(s) appear to have been added to the type:\n\
+    {new_fields}",
+                    )
+
+            # are all of the same fields present, regardless of order? If so, they were rearranged
+            # in the source code, but the compiler kept the same ordering
+            elif got_set == expected_set:
+                print_error(
+                    error_source,
+                    f"Field(s) appear to have been rearranged:\n    Expected:\n\
+{pformat(self.fields, indent=6)}\n    Got:\n{pformat(expected.fields, indent=6)}",
+                )
+            else:
+                got_names = [f.name for f in self.fields]
+                got_types = [f.type for f in self.fields]
+                got_offsets = [f.offset for f in self.fields]
+
+                expected_names = [f.name for f in expected.fields]
+                expected_types = [f.type for f in expected.fields]
+                expected_offsets = [f.offset for f in expected.fields]
+
+                types_match = got_types == expected_types
+                offsets_match = got_offsets == expected_offsets
+                names_match = got_names == expected_names
+
+                # names_diff = set(got_names).difference(set(expected_names))
+                # types_diff = set(got_types).difference(set(expected_types))
+                # offset_diff = set(got_offsets).difference(set(expected_offsets))
+
+                # If the types and offsets are the same but the names aren't, we know fields have
+                # been renamed.
+                if types_match and offsets_match:
+                    renames = []
+                    for g, e in zip(got_names, expected_names):
+                        if g != e:
+                            renames.append(f"{e} -> {g}")
+
+                    print_error(
+                        error_source,
+                        f"The following field(s) appear to have been renamed:\n    {renames}",
+                    )
+
+                if types_match and names_match:
+                    # FIXME (todo) fields reordered by compiler
+                    pass
+
+                if names_match and offsets_match:
+                    # FIXME (todo) field retyped, new type is the same size
+                    pass
+
+        if self.generic_params != expected.generic_params:
+            result = Result.Mismatch
+            print_mismatch(
+                error_source,
+                "generic_params",
+                self.generic_params,
+                expected.generic_params,
+            )
+
+        if result == Result.Mismatch and provider_ok:
+            print_error(error_source, "It appears the type changes do")
+
+        return result
 
 
 @dataclass(slots=True)
@@ -233,13 +367,12 @@ class Variable:
 @dataclass(slots=True)
 class BlessMetadata:
     """
-    Contains additional context about the tools at the time the test data was generated
+    Contains additional context about the tools at the time the test data was generated.
     """
 
     python_version: str = ""
     debugger_version: str = ""
-    # FIXME (todo)
-    # feature_flags: str
+    feature_flags: str = ""
 
 
 @dataclass(slots=True)
@@ -287,6 +420,9 @@ class TargetData:
 generated for this test yet, consider using the `--bless` option."
                 )
 
+        if BLESS:
+            return result
+
         with open(path, "r") as f:
             try:
                 result = from_dict(TargetData, json.load(f))
@@ -324,5 +460,13 @@ generated for this test yet, consider using the `--bless` option."
         x = json.dumps(asdict(self), indent=" ")
         _ = json.loads(x)
 
+        # ensure the necessary directories exist first
+        import pathlib
+
+        os.makedirs(pathlib.Path(path).parent, exist_ok=True)
+
         with open(path, "w") as f:
             f.write(x)
+
+
+INPUT_DATA: TargetData = TargetData.initialize()
