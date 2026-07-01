@@ -1,4 +1,4 @@
 mod rustfmt {}
 
-#[rustfmt::skip] //~ ERROR: cannot find `skip` in `rustfmt`
+#[rustfmt::skip] //~ ERROR: ambiguous
 fn main() {}

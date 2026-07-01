@@ -1,8 +1,10 @@
-error[E0433]: cannot find module `clippy` in this scope
+error[E0433]: cannot find module or crate `clippy` in this scope
   --> $DIR/tool-import.rs:3:5
    |
 LL | use clippy::time::Instant;
-   |     ^^^^^^ `clippy` is a tool module, not a module
+   |     ^^^^^^ use of unresolved module or unlinked crate `clippy`
+   |
+   = help: you might be missing a crate named `clippy`
 
 error: aborting due to 1 previous error
 
