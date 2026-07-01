@@ -3027,6 +3027,9 @@ where
     S: BuildHasher,
     A: Allocator,
 {
+    /// Add all elements from `iter` to this map by calling [`HashMap::insert`]
+    /// in a loop. Its return value is ignored. This means duplicate elements
+    /// will be overwritten.
     #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         self.base.extend(iter)
@@ -3051,6 +3054,9 @@ where
     S: BuildHasher,
     A: Allocator,
 {
+    /// Add all elements from `iter` to this map by calling [`HashMap::insert`]
+    /// in a loop. Its return value is ignored. This means duplicate elements
+    /// will be overwritten. Keys and values are copied.
     #[inline]
     fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
         self.base.extend(iter)

@@ -2556,6 +2556,9 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V, A: Allocator + Clone> Extend<(K, V)> for BTreeMap<K, V, A> {
+    /// Add all elements from `iter` to this map by calling [`BTreeMap::insert`]
+    /// in a loop. Its return value is ignored. This means duplicate elements
+    /// will be overwritten.
     #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         iter.into_iter().for_each(move |(k, v)| {
@@ -2573,6 +2576,9 @@ impl<K: Ord, V, A: Allocator + Clone> Extend<(K, V)> for BTreeMap<K, V, A> {
 impl<'a, K: Ord + Copy, V: Copy, A: Allocator + Clone> Extend<(&'a K, &'a V)>
     for BTreeMap<K, V, A>
 {
+    /// Add all elements from `iter` to this map by calling [`BTreeMap::insert`]
+    /// in a loop. Its return value is ignored. This means duplicate elements
+    /// will be overwritten. Keys and values are copied.
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
     }
