@@ -455,6 +455,14 @@ language_item_table! {
     MemCmp,                  sym::memcmp_fn,           memcmp_fn,                  Target::Fn,             GenericRequirement::None;
     Bcmp,                    sym::bcmp_fn,             bcmp_fn,                    Target::Fn,             GenericRequirement::None;
     StrLen,                  sym::strlen_fn,           strlen_fn,                  Target::Fn,             GenericRequirement::None;
+    Open,                    sym::open_fn,             open_fn,                    Target::Fn,             GenericRequirement::None;
+    Read,                    sym::read_fn,             read_fn,                    Target::Fn,             GenericRequirement::None;
+    Write,                   sym::write_fn,            write_fn,                   Target::Fn,             GenericRequirement::None;
+    Close,                   sym::close_fn,            close_fn,                   Target::Fn,             GenericRequirement::None;
+    Malloc,                  sym::malloc_fn,           malloc_fn,                  Target::Fn,             GenericRequirement::None;
+    Realloc,                 sym::realloc_fn,          realloc_fn,                 Target::Fn,             GenericRequirement::None;
+    Free,                    sym::free_fn,             free_fn,                    Target::Fn,             GenericRequirement::None;
+    Exit,                    sym::exit_fn,             exit_fn,                    Target::Fn,             GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item
