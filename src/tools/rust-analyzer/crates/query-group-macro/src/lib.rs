@@ -176,7 +176,6 @@ pub(crate) fn query_group_impl(
             let mut query_kind = QueryKind::TrackedWithSalsaStruct;
             let mut invoke = None;
             let mut cycle = None;
-            let mut lru = None;
 
             let params: Vec<FnArg> = signature.inputs.clone().into_iter().collect();
             let pat_and_tys = params
@@ -209,12 +208,6 @@ pub(crate) fn query_group_impl(
                     "tracked" if method.default.is_some() => {
                         query_kind = QueryKind::TrackedWithSalsaStruct;
                     }
-                    "lru" => {
-                        let lru_count = syn::parse::<Parenthesized<syn::LitInt>>(tts)?;
-                        let lru_count = lru_count.0.base10_parse::<u32>()?;
-
-                        lru = Some(lru_count);
-                    }
                     "transparent" => {
                         query_kind = QueryKind::Transparent;
                     }
@@ -243,7 +236,6 @@ pub(crate) fn query_group_impl(
                         pat_and_tys: pat_and_tys.clone(),
                         invoke,
                         cycle,
-                        lru,
                         default: method.default.take(),
                     };
 
@@ -257,7 +249,6 @@ pub(crate) fn query_group_impl(
                         pat_and_tys: pat_and_tys.clone(),
                         invoke,
                         cycle,
-                        lru,
                         default: method.default.take(),
                     };
 
