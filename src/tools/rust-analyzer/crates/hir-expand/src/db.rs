@@ -107,14 +107,6 @@ pub trait ExpandDatabase: SourceDatabase {
         id: AstId<ast::Macro>,
     ) -> &DeclarativeMacroExpander;
 
-    /// Retrieves the span to be used for a proc-macro expansions spans.
-    /// This is a firewall query as it requires parsing the file, which we don't want proc-macros to
-    /// directly depend on as that would cause to frequent invalidations, mainly because of the
-    /// parse queries being LRU cached. If they weren't the invalidations would only happen if the
-    /// user wrote in the file that defines the proc-macro.
-    #[salsa::invoke_interned(proc_macro_span)]
-    fn proc_macro_span(&self, fun: AstId<ast::Fn>) -> Span;
-
     #[salsa::invoke(parse_macro_expansion_error)]
     #[salsa::transparent]
     fn parse_macro_expansion_error(
@@ -249,7 +241,7 @@ pub fn expand_speculative(
     // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
     let mut speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(ast, expander, _) => {
-            let span = db.proc_macro_span(ast);
+            let span = proc_macro_span(db, ast);
             tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
             tt.set_top_subtree_delimiter_span(tt::DelimSpan::from_single(span));
             expander.expand(
@@ -598,15 +590,24 @@ fn macro_expand<'db>(
     ExpandResult { value: (Cow::Owned(tt), matched_arm), err }
 }
 
+/// Retrieves the span to be used for a proc-macro expansions spans.
+/// This is a firewall query as it requires parsing the file, which we don't want proc-macros to
+/// directly depend on as that would cause to frequent invalidations, mainly because of the
+/// parse queries being LRU cached. If they weren't the invalidations would only happen if the
+/// user wrote in the file that defines the proc-macro.
 fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
-    let root = db.parse_or_expand(ast.file_id);
-    let ast_id_map = db.ast_id_map(ast.file_id);
-    let span_map = db.span_map(ast.file_id);
+    #[salsa::tracked]
+    fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>, _: ()) -> Span {
+        let root = db.parse_or_expand(ast.file_id);
+        let ast_id_map = db.ast_id_map(ast.file_id);
+        let span_map = db.span_map(ast.file_id);
 
-    let node = ast_id_map.get(ast.value).to_node(&root);
-    let range = ast::HasName::name(&node)
-        .map_or_else(|| node.syntax().text_range(), |name| name.syntax().text_range());
-    span_map.span_for_range(range)
+        let node = ast_id_map.get(ast.value).to_node(&root);
+        let range = ast::HasName::name(&node)
+            .map_or_else(|| node.syntax().text_range(), |name| name.syntax().text_range());
+        span_map.span_for_range(range)
+    }
+    proc_macro_span(db, ast, ())
 }
 
 /// Special case of [`macro_expand`] for procedural macros. We can't LRU
@@ -629,7 +630,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<t
     };
 
     let ExpandResult { value: mut tt, err } = {
-        let span = db.proc_macro_span(ast);
+        let span = proc_macro_span(db, ast);
         expander.expand(
             db,
             loc.def.krate,
