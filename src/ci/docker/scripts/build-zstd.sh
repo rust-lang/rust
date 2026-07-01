@@ -2,20 +2,20 @@
 set -ex
 
 hide_output() {
-  set +x
-  on_err="
+    set +x
+    on_err="
 echo ERROR: An error was encountered with the build.
 cat /tmp/zstd_build.log
 exit 1
 "
-  trap "$on_err" ERR
-  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
-  PING_LOOP_PID=$!
-  "$@" &> /tmp/zstd_build.log
-  trap - ERR
-  kill $PING_LOOP_PID
-  rm /tmp/zstd_build.log
-  set -x
+    trap "$on_err" ERR
+    bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
+    PING_LOOP_PID=$!
+    "$@" &> /tmp/zstd_build.log
+    trap - ERR
+    kill $PING_LOOP_PID
+    rm /tmp/zstd_build.log
+    set -x
 }
 
 ZSTD=1.5.6

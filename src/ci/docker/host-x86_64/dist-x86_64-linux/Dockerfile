@@ -8,39 +8,39 @@ WORKDIR /build
 
 # CentOS 7 EOL is June 30, 2024, but the repos remain in the vault.
 RUN sed -i /etc/yum.repos.d/*.repo -e 's!^mirrorlist!#mirrorlist!' \
-  -e 's!^#baseurl=http://mirror.centos.org/!baseurl=https://vault.centos.org/!'
+    -e 's!^#baseurl=http://mirror.centos.org/!baseurl=https://vault.centos.org/!'
 RUN sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
 
 RUN yum upgrade -y && \
     yum install -y \
-      automake \
-      bzip2 \
-      file \
-      gcc \
-      gcc-c++ \
-      git \
-      glibc-devel.i686 \
-      glibc-devel.x86_64 \
-      glibc-static.i686 \
-      glibc-static.x86_64 \
-      libedit-devel \
-      libstdc++-devel.i686 \
-      libstdc++-devel.x86_64 \
-      make \
-      ncurses-devel \
-      openssl-devel \
-      patch \
-      perl \
-      perl-core \
-      pkgconfig \
-      python3 \
-      unzip \
-      wget \
-      flex \
-      xz \
-      zlib-devel.i686 \
-      zlib-devel.x86_64 \
-      && yum clean all
+        automake \
+        bzip2 \
+        file \
+        gcc \
+        gcc-c++ \
+        git \
+        glibc-devel.i686 \
+        glibc-devel.x86_64 \
+        glibc-static.i686 \
+        glibc-static.x86_64 \
+        libedit-devel \
+        libstdc++-devel.i686 \
+        libstdc++-devel.x86_64 \
+        make \
+        ncurses-devel \
+        openssl-devel \
+        patch \
+        perl \
+        perl-core \
+        pkgconfig \
+        python3 \
+        unzip \
+        wget \
+        flex \
+        xz \
+        zlib-devel.i686 \
+        zlib-devel.x86_64 \
+        && yum clean all
 
 RUN mkdir -p /rustroot/bin
 
@@ -81,19 +81,19 @@ ENV PGO_HOST=x86_64-unknown-linux-gnu
 ENV HOSTS=x86_64-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
-      --enable-sanitizers \
-      --enable-profiler \
-      --enable-compiler-docs \
-      --set target.x86_64-unknown-linux-gnu.linker=clang \
-      --set target.x86_64-unknown-linux-gnu.ar=/rustroot/bin/llvm-ar \
-      --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
-      --set llvm.thin-lto=true \
-      --set llvm.ninja=false \
-      --set llvm.libzstd=true \
-      --set rust.jemalloc \
-      --set rust.bootstrap-override-lld=true \
-      --set rust.lto=thin \
-      --set rust.codegen-units=1"
+    --enable-sanitizers \
+    --enable-profiler \
+    --enable-compiler-docs \
+    --set target.x86_64-unknown-linux-gnu.linker=clang \
+    --set target.x86_64-unknown-linux-gnu.ar=/rustroot/bin/llvm-ar \
+    --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
+    --set llvm.thin-lto=true \
+    --set llvm.ninja=false \
+    --set llvm.libzstd=true \
+    --set rust.jemalloc \
+    --set rust.bootstrap-override-lld=true \
+    --set rust.lto=thin \
+    --set rust.codegen-units=1"
 
 COPY host-x86_64/dist-x86_64-linux/dist.sh /scripts/
 COPY host-x86_64/dist-x86_64-linux/dist-alt.sh /scripts/

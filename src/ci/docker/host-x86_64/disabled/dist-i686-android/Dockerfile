@@ -20,9 +20,9 @@ ENV DEP_Z_ROOT=/android/ndk/x86-14/sysroot/usr/
 ENV HOSTS=i686-linux-android
 
 ENV RUST_CONFIGURE_ARGS="--i686-linux-android-ndk=/android/ndk/x86 \
-      --disable-rpath \
-      --enable-extended \
-      --enable-cargo-openssl-static"
+    --disable-rpath \
+    --enable-extended \
+    --enable-cargo-openssl-static"
 
 # We support api level 14, but api level 21 is required to build llvm. To
 # overcome this problem we use a ndk with api level 21 to build llvm and then
@@ -32,7 +32,7 @@ ENV RUST_CONFIGURE_ARGS="--i686-linux-android-ndk=/android/ndk/x86 \
 # build to finish we use --warn-unresolved-symbols. Note that the missing
 # symbols does not affect std, only the compiler (llvm) and cargo (openssl).
 ENV SCRIPT="python3 ../x.py --stage 2 build src/llvm --host $HOSTS --target $HOSTS && \
-  (export RUSTFLAGS=\"-C link-arg=-Wl,--warn-unresolved-symbols\"; \
+    (export RUSTFLAGS=\"-C link-arg=-Wl,--warn-unresolved-symbols\"; \
     rm /android/ndk/x86 && \
     ln -s /android/ndk/x86-14 /android/ndk/x86 && \
     python3 ../x.py dist --host $HOSTS --target $HOSTS)"

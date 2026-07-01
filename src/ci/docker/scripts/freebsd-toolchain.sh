@@ -11,19 +11,19 @@ triple=$arch-unknown-freebsd14
 sysroot=/usr/local/$triple
 
 hide_output() {
-  set +x
-  local on_err="
+    set +x
+    local on_err="
 echo ERROR: An error was encountered with the build.
 cat /tmp/build.log
 exit 1
 "
-  trap "$on_err" ERR
-  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
-  local ping_loop_pid=$!
-  "$@" &> /tmp/build.log
-  trap - ERR
-  kill $ping_loop_pid
-  set -x
+    trap "$on_err" ERR
+    bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
+    local ping_loop_pid=$!
+    "$@" &> /tmp/build.log
+    trap - ERR
+    kill $ping_loop_pid
+    set -x
 }
 
 # First up, build binutils
@@ -35,7 +35,7 @@ curl https://ci-mirrors.rust-lang.org/rustc/binutils-${binutils_version}.tar.bz2
 mkdir binutils-build
 cd binutils-build
 hide_output ../binutils-${binutils_version}/configure \
-  --target="$triple" --with-sysroot="$sysroot"
+    --target="$triple" --with-sysroot="$sysroot"
 hide_output make -j"$(getconf _NPROCESSORS_ONLN)"
 hide_output make install
 cd ../..
@@ -44,9 +44,9 @@ rm -rf binutils
 # Next, download the FreeBSD libraries and header files
 mkdir -p "$sysroot"
 case $arch in
-  (x86_64) freebsd_arch=amd64 ;;
-  (i686) freebsd_arch=i386 ;;
-  (aarch64) freebsd_arch=arm64 ;;
+    (x86_64) freebsd_arch=amd64 ;;
+    (i686) freebsd_arch=i386 ;;
+    (aarch64) freebsd_arch=arm64 ;;
 esac
 
 files_to_extract=(
@@ -55,10 +55,10 @@ files_to_extract=(
 )
 # Try to unpack only the libraries the build needs, to save space.
 for lib in c c++ cxxrt gcc_s m thr util; do
-  files_to_extract=("${files_to_extract[@]}" "./lib/lib${lib}.*" "./usr/lib/lib${lib}.*")
+    files_to_extract=("${files_to_extract[@]}" "./lib/lib${lib}.*" "./usr/lib/lib${lib}.*")
 done
 for lib in c_nonshared compiler_rt execinfo gcc pthread rt ssp_nonshared procstat devstat kvm memstat; do
-  files_to_extract=("${files_to_extract[@]}" "./usr/lib/lib${lib}.*")
+    files_to_extract=("${files_to_extract[@]}" "./usr/lib/lib${lib}.*")
 done
 
 # Originally downloaded from:
@@ -78,10 +78,10 @@ curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
 # anything predicated on the version number in the __FreeBSD__
 # preprocessor macro.
 for tool in clang clang++; do
-  tool_path=/usr/local/bin/${triple}-${tool}
-  cat > "$tool_path" <<EOF
+    tool_path=/usr/local/bin/${triple}-${tool}
+    cat > "$tool_path" <<EOF
 #!/bin/sh
 exec $tool --sysroot=$sysroot --prefix=${sysroot}/bin "\$@" --target=$triple
 EOF
-  chmod +x "$tool_path"
+    chmod +x "$tool_path"
 done

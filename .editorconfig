@@ -22,8 +22,26 @@ trim_trailing_whitespace = false
 [tests/**.{rs,js}]
 trim_trailing_whitespace = true
 # these specific source files need to have trailing whitespace.
-[tests/ui/{frontmatter/frontmatter-whitespace-3.rs,parser/shebang/shebang-space.rs}]
+[tests/ui/{frontmatter/{fence-whitespace-trailing-1.rs,frontmatter-whitespace-3.rs},parser/shebang/shebang-space.rs}]
 trim_trailing_whitespace = false
+# these specific files have an UTF-8 BOM to test with that charset
+[tests/ui/codemap_tests/utf8-bom.rs]
+charset = utf-8-bom
+# these specific files have CRLF line endings to test on them
+[tests/{rustdoc-ui/intra-doc/warning-crlf.rs,ui/{frontmatter/frontmatter-crlf.rs,lexer/lexer-crlf-*.rs}}]
+end_of_line = crlf
+# these specific files have an UTF-8 BOM and CRLF line endings to test on these
+[tests/ui/{include-macros/data.bin,json/json-bom-plus-crlf*.rs}]
+charset = utf-8-bom
+end_of_line = crlf
+# these specific files have no trailing newline to test on these
+[tests/ui/{lint/unused_parens_multibyte_recovery.rs,parser/{macro/macro-missing-right-paren.rs,missing_right_paren.rs}}]
+insert_final_newline = false
+[tests/{pretty/issue-74745.rs,ui/{parser/issues/issue-{62524,68730,58094-missing-right-square-bracket}.rs,type/issue-91268.rs}}]
+insert_final_newline = false
+# Most args files have to be without final newline, otherwise tests in aarch64-gnu-llvm-21-1 fail
+[tests/**.args]
+insert_final_newline = false
 
 [src/llvm-project]
 indent_style = unset
@@ -36,9 +54,36 @@ max_line_length = 100
 # double whitespace at end of line
 # denotes a line break in Markdown
 trim_trailing_whitespace = false
+# Markdown has heavily context specific indentations.
+# For example, the indentation in lists depend on the length of the list marker
+# (such as '- ' or '100. '), at least in the GitHub Markdown flavor:
+# https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#nested-lists
+# Therefore, pressing tab should insert a single space to encourage situative accurate indentations.
+indent_size = 1
 
-[*.yml]
+[*.{json,json5,yml,yaml,askama,ll,natvis,nix}]
 indent_size = 2
 
-[Makefile]
+[{src/doc/full-toc.inc,src/etc/xhelp,src/tools/nix-dev-shell/envrc-flake}]
+indent_size = 2
+
+# You should NOT modify these files with your editor,
+# but if you do it anyway use the correct formatting.
+[Cargo.lock]
+indent_size = 1
+[yarn.lock]
+indent_size = 2
+
+[{Makefile,Makefile.in,.gitmodules}]
 indent_style = tab
+
+# The license texts should NEVER be modified.
+# Therefore disable everything to avoid accidental changes on save.
+[**{LICENSE,COPY{ING,RIGHT}}**]
+charset = unset
+indent_style = unset
+indent_size = unset
+tab_width = unset
+trim_trailing_whitespace = unset
+insert_final_newline = unset
+spelling_language = unset

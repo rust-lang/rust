@@ -1,0 +1,107 @@
+# Ignore external repositories as checking for EditorConfig violations there
+# is their responsibility and out of scope for here. See also:
+# https://github.com/rust-lang/rustc-dev-guide/blob/main/src/external-repos.md
+# Subtrees
+src/tools/clippy
+src/tools/miri
+library/portable-simd
+src/tools/rustfmt
+src/tools/rust-analyzer
+compiler/rustc_codegen_cranelift
+compiler/rustc_codegen_gcc
+src/doc/rustc-dev-guide
+library/compiler-builtins
+library/stdarch
+# Submodules
+src/doc/nomicon
+src/tools/cargo
+src/doc/reference
+src/doc/book
+src/doc/rust-by-example
+src/doc/edition-guide
+src/llvm-project
+src/doc/embedded-book
+library/backtrace
+src/tools/rustc-perf
+src/tools/enzyme
+src/gcc
+
+# Ignore binary files
+src/etc/installer/gfx/*
+*.auxv
+*.png
+*.ico
+*.woff
+*.woff2
+tests/run-make/checksum-freshness/binary_file
+tests/ui/macros/not-utf8.bin
+
+# Some special cases cannot be handled:
+# Markdown file (space indentation) with 'make' code (tab indentation)
+src/doc/rustc/src/jobserver.md
+# Test file with different line endings and indentations
+tests/pretty/block-comment-wchar.rs
+# Test file for normalize some CRFL line endings to LF
+tests/ui/asm/normalize-offsets-for-crlf.s
+# Test file with CR in frontmatter
+tests/ui/frontmatter/content-cr.rs
+# Test file which uses CRLF line endings but only inside strings
+tests/ui/lexer/crlf-in-byte-string-literal.rs
+# Test files with CR line ending but only in some doc comments
+tests/ui/lexer/lex-bare-cr-*
+tests/ui/parser/several-carriage-returns-in-doc-comment.rs
+# Test file with tab indentation and one CR line ending
+tests/ui/parser/bad-char-literals.rs
+# Test file with CR line ending inside string
+tests/ui/parser/raw/raw-byte-string-literals.rs
+tests/ui/parser/trailing-carriage-return-in-string.rs
+
+# File types with a mixed formatting which is perhaps intentional.
+# Disabling only check for some properties (like indent_size) is currently not supported.
+
+# There are different languages in these files (for example css and xml in svg files)
+*.diff
+*.svg
+src/ci/docker/host-x86_64/disabled/dist-x86_64-dragonfly/patch-toolchain
+# Often mixed indentation for example due to alignment with previous line
+*.c
+*.coverage
+*.cpp
+*.css
+*.err
+*.fixed
+*.goml
+*.h
+*.js
+*.ld
+*.py
+*.rs
+*.stderr
+*.stdout
+*.ts
+*.wxs
+tests/run-make/linker-warning/*.txt
+tests/run-make/macos-deployment-target-warning/*.txt
+library/std/src/sys/pal/sgx/abi/entry.S
+tests/pretty/block-comment-wchar.pp
+tests/run-make-cargo/thumb-none-qemu/example/memory.x
+src/bootstrap/mk/Makefile.in
+src/etc/rust_analyzer_eglot.el
+src/librustdoc/html/static/fonts/README.txt
+# The first { in these files is always indented with one space
+*.mir
+# Alignment and some test files without final newline
+*.html
+*.html.template
+# Shell scripts with the content of patches inlines
+src/ci/docker/scripts/musl.sh
+src/ci/docker/scripts/solaris-toolchain.sh
+# Shell scripts with alignments with previous line
+src/ci/docker/host-x86_64/disabled/dist-x86_64-haiku/llvm-config.sh
+src/etc/pre-push.sh
+
+# The clap_complete output uses tabs but there is a fix for the next version:
+# https://github.com/clap-rs/clap/pull/6422
+# When src/bootstrap/Cargo.toml is using a clap_complete version with that fix,
+# this ignore can be removed.
+src/etc/completions/*.fish

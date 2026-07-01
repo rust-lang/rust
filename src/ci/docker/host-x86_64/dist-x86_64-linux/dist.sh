@@ -16,6 +16,6 @@ python3 ../x.py build --set rust.debug=true opt-dist
 # Only build GCC on full builds, not try builds
 if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
     CC=/rustroot/bin/cc CXX=/rustroot/bin/c++ python3 ../x.py dist \
-      gcc-dev \
-      gcc
+        gcc-dev \
+        gcc
 fi

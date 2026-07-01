@@ -2,24 +2,24 @@ FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
-      bc \
-      bzip2 \
-      ca-certificates \
-      cmake \
-      cpio \
-      curl \
-      file \
-      g++ \
-      g++-arm-linux-gnueabihf \
-      git \
-      libc6-dev \
-      libc6-dev-armhf-cross \
-      libssl-dev \
-      make \
-      ninja-build \
-      python3 \
-      qemu-system-arm \
-      xz-utils
+    bc \
+    bzip2 \
+    ca-certificates \
+    cmake \
+    cpio \
+    curl \
+    file \
+    g++ \
+    g++-arm-linux-gnueabihf \
+    git \
+    libc6-dev \
+    libc6-dev-armhf-cross \
+    libssl-dev \
+    make \
+    ninja-build \
+    python3 \
+    qemu-system-arm \
+    xz-utils
 
 ENV ARCH=arm \
     CROSS_COMPILE=arm-linux-gnueabihf-
@@ -36,33 +36,33 @@ WORKDIR /build
 # followed by `make menuconfig` and then enabling the IPv6 protocol page.
 COPY host-x86_64/armhf-gnu/vexpress_config /build/.config
 RUN curl https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.14.320.tar.xz | \
-      tar xJf - && \
-      cd /build/linux-4.14.320 && \
-      cp /build/.config . && \
-      make -j$(nproc) all && \
-      cp arch/arm/boot/zImage /tmp && \
-      cd /build &&  \
-      rm -rf linux-4.14.320
+    tar xJf - && \
+    cd /build/linux-4.14.320 && \
+    cp /build/.config . && \
+    make -j$(nproc) all && \
+    cp arch/arm/boot/zImage /tmp && \
+    cd /build &&  \
+    rm -rf linux-4.14.320
 
 # Compile an instance of busybox as this provides a lightweight system and init
 # binary which we will boot into. Only trick here is configuring busybox to
 # build static binaries.
 RUN curl https://www.busybox.net/downloads/busybox-1.32.1.tar.bz2 | tar xjf - && \
-      cd busybox-1.32.1 && \
-      make defconfig && \
-      sed -i 's/.*CONFIG_STATIC.*/CONFIG_STATIC=y/' .config && \
-      make -j$(nproc) && \
-      make install && \
-      mv _install /tmp/rootfs && \
-      cd /build && \
-      rm -rf busybox-1.32.1
+    cd busybox-1.32.1 && \
+    make defconfig && \
+    sed -i 's/.*CONFIG_STATIC.*/CONFIG_STATIC=y/' .config && \
+    make -j$(nproc) && \
+    make install && \
+    mv _install /tmp/rootfs && \
+    cd /build && \
+    rm -rf busybox-1.32.1
 
 # Download the ubuntu rootfs, which we'll use as a chroot for all our tests.
 WORKDIR /tmp
 RUN mkdir rootfs/ubuntu
 RUN curl https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04.2-base-armhf.tar.gz | \
-      tar xzf - -C rootfs/ubuntu && \
-      cd rootfs && mkdir proc sys dev etc etc/init.d
+    tar xzf - -C rootfs/ubuntu && \
+    cd rootfs && mkdir proc sys dev etc etc/init.d
 
 # Copy over our init script, which starts up our test server and also a few
 # other misc tasks.

@@ -3,35 +3,35 @@
 set -e
 
 if [ -n "$CI_JOB_NAME" ]; then
-  echo "[CI_JOB_NAME=$CI_JOB_NAME]"
+    echo "[CI_JOB_NAME=$CI_JOB_NAME]"
 fi
 
 if [ -n "$CI_JOB_DOC_URL" ]; then
-  echo "[CI_JOB_DOC_URL=$CI_JOB_DOC_URL]"
+    echo "[CI_JOB_DOC_URL=$CI_JOB_DOC_URL]"
 fi
 
 if [ "$NO_CHANGE_USER" = "" ]; then
-  if [ "$LOCAL_USER_ID" != "" ]; then
-    id -u user &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
-    export HOME=/home/user
-    unset LOCAL_USER_ID
+    if [ "$LOCAL_USER_ID" != "" ]; then
+        id -u user &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
+        export HOME=/home/user
+        unset LOCAL_USER_ID
 
-    # Ensure that runners are able to execute git commands in the worktree,
-    # overriding the typical git protections. In our docker container we're running
-    # as root, while the user owning the checkout is not root.
-    # This is only necessary when we change the user, otherwise we should
-    # already be running with the right user.
-    #
-    # For NO_CHANGE_USER done in the small number of Dockerfiles affected.
-    echo -e '[safe]\n\tdirectory = *' > /home/user/.gitconfig
+        # Ensure that runners are able to execute git commands in the worktree,
+        # overriding the typical git protections. In our docker container we're running
+        # as root, while the user owning the checkout is not root.
+        # This is only necessary when we change the user, otherwise we should
+        # already be running with the right user.
+        #
+        # For NO_CHANGE_USER done in the small number of Dockerfiles affected.
+        echo -e '[safe]\n\tdirectory = *' > /home/user/.gitconfig
 
-    exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
-  fi
+        exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
+    fi
 fi
 
 # only enable core dump on Linux
 if [ -f /proc/sys/kernel/core_pattern ]; then
-  ulimit -c unlimited
+    ulimit -c unlimited
 fi
 
 # There was a bad interaction between "old" 32-bit binaries on current 64-bit
@@ -40,10 +40,10 @@ fi
 # This is probably a kernel bug, but setting `ulimit -Hs` works around it.
 # See also `dist-i686-linux` where this setting is enabled.
 if [ "$SET_HARD_RLIMIT_STACK" = "1" ]; then
-  rlimit_stack=$(ulimit -Ss)
-  if [ "$rlimit_stack" != "" ]; then
-    ulimit -Hs "$rlimit_stack"
-  fi
+    rlimit_stack=$(ulimit -Ss)
+    if [ "$rlimit_stack" != "" ]; then
+        ulimit -Hs "$rlimit_stack"
+    fi
 fi
 
 ci_dir=`cd $(dirname $0) && pwd`
@@ -59,9 +59,9 @@ if [ "$FORCE_CI_RUSTC" == "" ]; then
 fi
 
 if [[ "$RUST_CONFIGURE_ARGS" == *"rust.codegen-backends"* ]]; then
-  echo "error: Please specify codegen backends using the CODEGEN_BACKENDS environment variable, \
+    echo "error: Please specify codegen backends using the CODEGEN_BACKENDS environment variable, \
 not via RUST_CONFIGURE_ARGS."
-  exit 1
+    exit 1
 fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
@@ -95,19 +95,19 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --dist-compression-formats=xz"
 # Enable the `c` feature for compiler_builtins, but only when the `compiler-rt` source is available
 # (to avoid spending a lot of time cloning llvm)
 if [ "$EXTERNAL_LLVM" = "" ]; then
-  # Enable building & shipping lld
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.lld=true"
+    # Enable building & shipping lld
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.lld=true"
 
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.optimized-compiler-builtins"
-  # Likewise, only demand we test all LLVM components if we know we built LLVM with them
-  export COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS=1
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.optimized-compiler-builtins"
+    # Likewise, only demand we test all LLVM components if we know we built LLVM with them
+    export COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS=1
 elif [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
     echo "error: dist builds should always use optimized compiler-rt!" >&2
     exit 1
 fi
 
 if [ "$DIST_SRC" = "" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
 fi
 
 # Always set the release channel for bootstrap; this is normally not important (i.e., only dist
@@ -117,99 +117,100 @@ export RUST_RELEASE_CHANNEL=$(releaseChannel)
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
 
 if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
-  if [[ "$CI_JOB_NAME" == *ohos* ]]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-static-stdcpp"
-  else
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
-  fi
+    if [[ "$CI_JOB_NAME" == *ohos* ]]; then
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-static-stdcpp"
+    else
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
+    fi
 
-  if [ "$DEPLOY_ALT" != "" ] && isLinux; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level=2"
-  else
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level-std=1"
-  fi
+    if [ "$DEPLOY_ALT" != "" ] && isLinux; then
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level=2"
+    else
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level-std=1"
+    fi
 
-  if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
-  elif [ "$DEPLOY_ALT" != "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
-  fi
+    if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
+    elif [ "$DEPLOY_ALT" != "" ]; then
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
+    fi
 
-  CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm}"
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
+    CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm}"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
 
-  # Unless explicitly disabled, we want rustc debug assertions on the -alt builds
-  if [ "$DEPLOY_ALT" != "" ] && [ "$NO_DEBUG_ASSERTIONS" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
-  fi
+    # Unless explicitly disabled, we want rustc debug assertions on the -alt builds
+    if [ "$DEPLOY_ALT" != "" ] && [ "$NO_DEBUG_ASSERTIONS" = "" ]; then
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
+    fi
 else
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.remap-debuginfo=false"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.remap-debuginfo=false"
 
-  # We almost always want debug assertions enabled, but sometimes this takes too
-  # long for too little benefit, so we just turn them off.
-  if [ "$NO_DEBUG_ASSERTIONS" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
-  fi
+    # We almost always want debug assertions enabled, but sometimes this takes too
+    # long for too little benefit, so we just turn them off.
+    if [ "$NO_DEBUG_ASSERTIONS" = "" ]; then
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
+    fi
 
-  # Same for overflow checks
-  if [ "$NO_OVERFLOW_CHECKS" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-overflow-checks"
-  fi
+    # Same for overflow checks
+    if [ "$NO_OVERFLOW_CHECKS" = "" ]; then
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-overflow-checks"
+    fi
 
-  # In general we always want to run tests with LLVM assertions enabled, but not
-  # all platforms currently support that, so we have an option to disable.
-  if [ "$NO_LLVM_ASSERTIONS" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
-  fi
+    # In general we always want to run tests with LLVM assertions enabled, but not
+    # all platforms currently support that, so we have an option to disable.
+    if [ "$NO_LLVM_ASSERTIONS" = "" ]; then
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
+    fi
 
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
 
-  # When running gcc backend tests, we need to install `libgccjit` and to not run llvm codegen
-  # tests as it will fail them.
-  if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
-    # Test the Cranelift and GCC backends in CI. Bootstrap knows which targets to run tests on.
-    CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm,cranelift,gcc}"
-  else
-    # Test the Cranelift backend in CI. Bootstrap knows which targets to run tests on.
-    CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm,cranelift}"
-  fi
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
+    # When running gcc backend tests, we need to install `libgccjit` and to not run llvm codegen
+    # tests as it will fail them.
+    if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
+        # Test the Cranelift and GCC backends in CI. Bootstrap knows which targets to run tests on.
+        CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm,cranelift,gcc}"
+    else
+        # Test the Cranelift backend in CI. Bootstrap knows which targets to run tests on.
+        CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm,cranelift}"
+    fi
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
 
-  # We enable this for non-dist builders, since those aren't trying to produce
-  # fresh binaries. We currently don't entirely support distributing a fresh
-  # copy of the compiler (including llvm tools, etc.) if we haven't actually
-  # built LLVM, since not everything necessary is copied into the
-  # local-usage-only LLVM artifacts. If that changes, this could maybe be made
-  # true for all builds. In practice it's probably a good idea to keep building
-  # LLVM continuously on at least some builders to ensure it works, though.
-  # (And PGO is its own can of worms).
-  if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-unchanged"
-  else
-    # CI rustc requires CI LLVM to be enabled (see https://github.com/rust-lang/rust/issues/123586).
-    NO_DOWNLOAD_CI_RUSTC=1
-    # When building for CI we want to use the static C++ Standard library
-    # included with LLVM, since a dynamic libstdcpp may not be available.
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
-  fi
+    # We enable this for non-dist builders, since those aren't trying to produce
+    # fresh binaries. We currently don't entirely support distributing a fresh
+    # copy of the compiler (including llvm tools, etc.) if we haven't actually
+    # built LLVM, since not everything necessary is copied into the
+    # local-usage-only LLVM artifacts. If that changes, this could maybe be made
+    # true for all builds. In practice it's probably a good idea to keep building
+    # LLVM continuously on at least some builders to ensure it works, though.
+    # (And PGO is its own can of worms).
+    if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-unchanged"
+    else
+        # CI rustc requires CI LLVM to be enabled
+        # (see https://github.com/rust-lang/rust/issues/123586).
+        NO_DOWNLOAD_CI_RUSTC=1
+        # When building for CI we want to use the static C++ Standard library
+        # included with LLVM, since a dynamic libstdcpp may not be available.
+        RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
+    fi
 
-  # Download GCC from CI on test builders
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=true"
+    # Download GCC from CI on test builders
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=true"
 
-  # download-rustc seems to be broken on CI after the stage0 redesign
-  # Disable it until these issues are debugged and resolved
+    # download-rustc seems to be broken on CI after the stage0 redesign
+    # Disable it until these issues are debugged and resolved
 #  if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
 #    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
 #  fi
 fi
 
 if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then
-  # If `ENABLE_GCC_CODEGEN` is set and not empty, we add the `--enable-new-symbol-mangling`
-  # argument to `RUST_CONFIGURE_ARGS` and set the `GCC_EXEC_PREFIX` environment variable.
-  # `cg_gcc` doesn't support the legacy mangling so we need to enforce the new one
-  # if we run `cg_gcc` tests.
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-new-symbol-mangling"
+    # If `ENABLE_GCC_CODEGEN` is set and not empty, we add the `--enable-new-symbol-mangling`
+    # argument to `RUST_CONFIGURE_ARGS` and set the `GCC_EXEC_PREFIX` environment variable.
+    # `cg_gcc` doesn't support the legacy mangling so we need to enforce the new one
+    # if we run `cg_gcc` tests.
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-new-symbol-mangling"
 fi
 
 # If bootstrap fails, we want to see its backtrace
@@ -219,25 +220,25 @@ export RUST_BACKTRACE=1
 # check for clock drifts. An HTTP URL is used instead of HTTPS since on Azure
 # Pipelines it happened that the certificates were marked as expired.
 datecheck() {
-  # If an error has happened, we do not want to start a new group, because that will collapse
-  # a previous group that might have contained the error log.
-  exit_code=$?
+    # If an error has happened, we do not want to start a new group, because that will collapse
+    # a previous group that might have contained the error log.
+    exit_code=$?
 
-  if [ $exit_code -eq 0 ]
-  then
-    echo "::group::Clock drift check"
-  fi
+    if [ $exit_code -eq 0 ]
+    then
+        echo "::group::Clock drift check"
+    fi
 
-  echo -n "  local time: "
-  date
-  echo -n "  network time: "
-  curl -fs --head http://ci-caches.rust-lang.org | grep ^Date: \
-      | sed 's/Date: //g' || true
+    echo -n "  local time: "
+    date
+    echo -n "  network time: "
+    curl -fs --head http://ci-caches.rust-lang.org | grep ^Date: \
+        | sed 's/Date: //g' || true
 
-  if [ $exit_code -eq 0 ]
-  then
-    echo "::endgroup::"
-  fi
+    if [ $exit_code -eq 0 ]
+    then
+        echo "::endgroup::"
+    fi
 }
 datecheck
 trap datecheck EXIT
@@ -270,17 +271,17 @@ fi
 echo "::endgroup::"
 
 if [ ! -z "$SCRIPT" ]; then
-  echo "Executing ${SCRIPT}"
-  sh -x -c "$SCRIPT"
+    echo "Executing ${SCRIPT}"
+    sh -x -c "$SCRIPT"
 else
-  do_make() {
+    do_make() {
     echo "make -j $ncpus $1"
     make -j $ncpus $1
     local retval=$?
     return $retval
-  }
+    }
 
-  do_make "$RUST_CHECK_TARGET"
+    do_make "$RUST_CHECK_TARGET"
 fi
 
 echo "::group::sccache stats"

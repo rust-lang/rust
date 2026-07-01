@@ -4,36 +4,36 @@
 set -eux
 
 hide_output() {
-  set +x
-  on_err="
+    set +x
+    on_err="
 echo ERROR: An error was encountered with the build.
 cat /tmp/build.log
 exit 1
 "
-  trap "$on_err" ERR
-  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
-  PING_LOOP_PID=$!
-  "$@" &> /tmp/build.log
-  rm /tmp/build.log
-  trap - ERR
-  kill $PING_LOOP_PID
-  set -x
+    trap "$on_err" ERR
+    bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
+    PING_LOOP_PID=$!
+    "$@" &> /tmp/build.log
+    rm /tmp/build.log
+    trap - ERR
+    kill $PING_LOOP_PID
+    set -x
 }
 
 # Download, verify SHA512, and remove the downloaded file
 # Usage: <file name> <url> <file sha> <full tar command using fname>
 download() {
-  fname="$1"
-  shift
-  url="$1"
-  shift
-  sha="$1"
-  shift
+    fname="$1"
+    shift
+    url="$1"
+    shift
+    sha="$1"
+    shift
 
-  curl "$url" -o "$fname"
-  echo "$sha  $fname" | shasum -a 512 --check || exit 1
-  "$@"
-  rm "$fname"
+    curl "$url" -o "$fname"
+    echo "$sha  $fname" | shasum -a 512 --check || exit 1
+    "$@"
+    rm "$fname"
 }
 
 mkdir netbsd
@@ -57,9 +57,9 @@ download syssrc.tgz "$SOURCE_URL-syssrc.tgz" "$SYSSRC_SHA" tar xzf syssrc.tgz
 
 BINARY_URL=https://ci-mirrors.rust-lang.org/rustc/2025-03-14-netbsd-9.0-amd64-binary
 download base.tar.xz "$BINARY_URL-base.tar.xz" "$BASE_SHA" \
-  tar xJf base.tar.xz -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib ./lib
+    tar xJf base.tar.xz -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib ./lib
 download comp.tar.xz "$BINARY_URL-comp.tar.xz" "$COMP_SHA" \
-  tar xJf comp.tar.xz -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib
+    tar xJf comp.tar.xz -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib
 
 cd usr/src
 
