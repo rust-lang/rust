@@ -34,6 +34,7 @@ mod define_opaque;
 mod derive;
 mod deriving;
 mod diagnostics;
+mod direct_const_arg;
 mod edition_panic;
 mod eii;
 mod env;
@@ -80,6 +81,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         concat_bytes: concat_bytes::expand_concat_bytes,
         const_format_args: format::expand_format_args,
         core_panic: edition_panic::expand_panic,
+        direct_const_arg: direct_const_arg::expand,
         env: env::expand_env,
         file: source_util::expand_file,
         format_args: format::expand_format_args,

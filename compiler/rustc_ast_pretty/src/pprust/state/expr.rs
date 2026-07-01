@@ -883,6 +883,12 @@ impl<'a> State<'a> {
                 self.word("/*DUMMY*/");
                 self.pclose();
             }
+            ast::ExprKind::DirectConstArg(expr) => {
+                self.word_nbsp("core::direct_const_arg!");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose()
+            }
         }
 
         self.ann.post(self, AnnNode::Expr(expr));

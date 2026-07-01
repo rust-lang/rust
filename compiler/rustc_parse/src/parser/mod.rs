@@ -36,8 +36,8 @@ use rustc_ast::util::classify;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, BinOpKind, ByRef, Const, CoroutineKind,
     DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, ImplRestriction,
-    MgcaDisambiguation, MutRestriction, Mutability, Recovered, RestrictionKind, Safety, StrLit,
-    Visibility, VisibilityKind,
+    MutRestriction, Mutability, Recovered, RestrictionKind, Safety, StrLit, Visibility,
+    VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -1298,7 +1298,6 @@ impl<'a> Parser<'a> {
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
             value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
-            mgca_disambiguation: MgcaDisambiguation::AnonConst,
         };
         let blk_span = anon_const.value.span;
         let kind = if pat {
