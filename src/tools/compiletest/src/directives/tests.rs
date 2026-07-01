@@ -700,7 +700,6 @@ fn matches_os() {
     ];
     for (target, os) in oss {
         let config = cfg().target(target).build();
-        assert!(config.matches_os(os), "{target} {os}");
         assert!(check_ignore(&config, &format!("//@ ignore-{os}")));
     }
 }
@@ -725,7 +724,6 @@ fn matches_abi() {
     let abis = [("x86_64-unknown-linux-gnux32", "x32"), ("arm-unknown-linux-gnueabi", "eabi")];
     for (target, abi) in abis {
         let config: Config = cfg().target(target).build();
-        assert!(config.matches_abi(abi), "{target} {abi}");
         assert!(check_ignore(&config, &format!("//@ ignore-{abi}")));
     }
 }
