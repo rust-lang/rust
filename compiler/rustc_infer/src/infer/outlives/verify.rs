@@ -64,17 +64,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             param_bounds.push(VerifyBound::OutlivedBy(r));
         }
 
-        if param_bounds.is_empty() {
-            // We know that all types `T` outlive `'empty`, so if we
-            // can find no other bound, then check that the region
-            // being tested is `'empty`.
-            VerifyBound::IsEmpty
-        } else if param_bounds.len() == 1 {
+        if param_bounds.len() == 1 {
             // Micro-opt: no need to store the vector if it's just len 1
             param_bounds.pop().unwrap()
         } else {
-            // If we can find any other bound `R` such that `T: R`, then
-            // we don't need to check for `'empty`, because `R: 'empty`.
             VerifyBound::AnyBound(param_bounds)
         }
     }
