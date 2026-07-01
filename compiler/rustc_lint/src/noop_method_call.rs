@@ -1,5 +1,5 @@
 use rustc_hir::def::DefKind;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_middle::ty;
 use rustc_middle::ty::Unnormalized;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
@@ -87,10 +87,10 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
 
         let Some(trait_id) = cx.tcx.trait_of_assoc(did) else { return };
 
-        let Some(trait_) = cx.tcx.get_diagnostic_name(trait_id) else { return };
-
-        if !matches!(trait_, sym::Borrow | sym::Clone | sym::Deref) {
-            return;
+        let trait_ = match cx.tcx.get_diagnostic_name(trait_id) {
+            Some(trait_ @ (sym::Borrow | sym::Clone)) => trait_,
+            None if cx.tcx.is_lang_item(trait_id, LangItem::Deref) => sym::Deref,
+            _ => return,
         };
 
         let args = cx.tcx.normalize_erasing_regions(
