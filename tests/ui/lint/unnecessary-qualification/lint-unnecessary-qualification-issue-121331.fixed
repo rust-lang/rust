@@ -43,8 +43,8 @@ pub fn main() {
     #[allow(unused_imports)]
     use std::string::String;
     let s = String::new();
-    let y = std::string::String::new();
-    // unnecessary qualification
+    let y = String::new();
+    //~^ ERROR unnecessary qualification
     println!("{} {}", s, y);
 
 }

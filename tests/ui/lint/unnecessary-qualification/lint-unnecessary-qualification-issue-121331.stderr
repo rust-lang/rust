@@ -27,5 +27,17 @@ LL -     foo::bar();
 LL +     bar();
    |
 
-error: aborting due to 2 previous errors
+error: unnecessary qualification
+  --> $DIR/lint-unnecessary-qualification-issue-121331.rs:46:13
+   |
+LL |     let y = std::string::String::new();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the unnecessary path segments
+   |
+LL -     let y = std::string::String::new();
+LL +     let y = String::new();
+   |
+
+error: aborting due to 3 previous errors
 

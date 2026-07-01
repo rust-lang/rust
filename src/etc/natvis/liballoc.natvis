@@ -40,7 +40,7 @@
       </LinkedListItems>
     </Expand>
   </Type>
-  <Type Name="alloc::string::String">
+  <Type Name="alloc::string::generic::String&lt;*&gt;">
     <DisplayString>{(char*)vec.buf.inner.ptr.pointer.pointer,[vec.len]s8}</DisplayString>
     <StringView>(char*)vec.buf.inner.ptr.pointer.pointer,[vec.len]s8</StringView>
     <Expand>

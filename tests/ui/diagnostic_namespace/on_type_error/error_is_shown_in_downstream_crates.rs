@@ -10,6 +10,7 @@ fn main() {
     let s: S<i32> = S(String::new());
     //~^ ERROR mismatched types
     //~| NOTE arguments to this struct are incorrect
+    //~| NOTE expected type `i32`
     //~| NOTE expected `i32`, found `String`
     //~| NOTE this argument influences the type of `S`
     //~| NOTE tuple struct defined here

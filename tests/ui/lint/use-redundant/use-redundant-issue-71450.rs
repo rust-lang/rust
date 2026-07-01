@@ -23,7 +23,7 @@ mod foo {
 fn main() {
 
     {
-        use std::string::String; //~ WARNING the item `String` is imported redundantly
+        use std::prelude::rust_2024::String; //~ WARNING the item `String` is imported redundantly
         // 'String' from 'std::string::String'.
         let s = String::new();
         println!("{}", s);

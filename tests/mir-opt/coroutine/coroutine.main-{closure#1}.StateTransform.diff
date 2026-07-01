@@ -18,20 +18,20 @@
 +         }
 +         storage_conflicts = BitMatrix(1x1) {(_s0, _s0)}
 +     }
-+     debug arg => (((*_18) as variant#4).0: std::string::String);
++     debug arg => (((*_18) as variant#4).0: std::string::generic::String);
 +     coroutine debug arg => _s0;
-+     let mut _0: std::ops::CoroutineState<(&str, std::string::String, &std::panic::Location<'_>), ()>;
-      let _3: std::string::String;
-      let mut _4: (&str, std::string::String, &std::panic::Location<'_>);
-      let mut _5: std::string::String;
-      let mut _6: &std::string::String;
++     let mut _0: std::ops::CoroutineState<(&str, std::string::generic::String, &std::panic::Location<'_>), ()>;
+      let _3: std::string::generic::String;
+      let mut _4: (&str, std::string::generic::String, &std::panic::Location<'_>);
+      let mut _5: std::string::generic::String;
+      let mut _6: &std::string::generic::String;
       let mut _7: &std::panic::Location<'_>;
-      let _8: std::string::String;
-      let mut _9: (&str, std::string::String, &std::panic::Location<'_>);
+      let _8: std::string::generic::String;
+      let mut _9: (&str, std::string::generic::String, &std::panic::Location<'_>);
       let mut _10: &str;
       let _11: &str;
-      let mut _12: std::string::String;
-      let mut _13: &std::string::String;
+      let mut _12: std::string::generic::String;
+      let mut _13: &std::string::generic::String;
       let mut _14: &std::panic::Location<'_>;
       let _15: &std::panic::Location<'_>;
 +     let mut _16: ();
@@ -95,7 +95,7 @@
           StorageLive(_13);
 -         _13 = &_2;
 -         _12 = <String as Clone>::clone(move _13) -> [return: bb7, unwind: bb28];
-+         _13 = &(((*_18) as variant#4).0: std::string::String);
++         _13 = &(((*_18) as variant#4).0: std::string::generic::String);
 +         _12 = <String as Clone>::clone(move _13) -> [return: bb7, unwind: bb19];
       }
   
@@ -144,7 +144,7 @@
 -         _0 = const ();
 -         drop(_2) -> [return: bb13, unwind: bb36];
 +         _16 = const ();
-+         drop((((*_18) as variant#4).0: std::string::String)) -> [return: bb13, unwind: bb27];
++         drop((((*_18) as variant#4).0: std::string::generic::String)) -> [return: bb13, unwind: bb27];
       }
   
       bb13: {
@@ -247,7 +247,7 @@
       bb26 (cleanup): {
 -         StorageDead(_9);
 -         goto -> bb27;
-+         drop((((*_18) as variant#4).0: std::string::String)) -> [return: bb27, unwind terminate(cleanup)];
++         drop((((*_18) as variant#4).0: std::string::generic::String)) -> [return: bb27, unwind terminate(cleanup)];
       }
   
       bb27 (cleanup): {
@@ -333,12 +333,12 @@
 -     bb38 (cleanup): {
 -         drop(_1) -> [return: bb37, unwind terminate(cleanup)];
 +     bb36: {
-+         (((*_18) as variant#4).0: std::string::String) = move _2;
++         (((*_18) as variant#4).0: std::string::generic::String) = move _2;
 +         StorageLive(_3);
 +         StorageLive(_4);
 +         StorageLive(_5);
 +         StorageLive(_6);
-+         _6 = &(((*_18) as variant#4).0: std::string::String);
++         _6 = &(((*_18) as variant#4).0: std::string::generic::String);
 +         _5 = <String as Clone>::clone(move _6) -> [return: bb1, unwind: bb22];
       }
   }

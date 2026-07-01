@@ -1,4 +1,4 @@
-error[E0423]: expected value, found struct `String`
+error[E0423]: expected value, found type alias `String`
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:10:13
    |
 LL |     let _ = String.new();
@@ -10,7 +10,7 @@ LL -     let _ = String.new();
 LL +     let _ = String::new();
    |
 
-error[E0423]: expected value, found struct `String`
+error[E0423]: expected value, found type alias `String`
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:14:13
    |
 LL |     let _ = String.default;

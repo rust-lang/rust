@@ -6,7 +6,7 @@ use std::clone::UseCloned;
 
 pub fn ergonomic_clone_closure_move() -> String {
     // CHECK-LABEL: fn ergonomic_clone_closure_move(
-    // CHECK: _0 = move (_1.0: std::string::String);
+    // CHECK: _0 = move (_1.0: std::string::generic::String);
     // CHECK-NOT: <String as Clone>::clone
     let s = String::from("hi");
 
