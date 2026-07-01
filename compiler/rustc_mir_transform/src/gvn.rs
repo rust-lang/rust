@@ -742,7 +742,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                                 a1.size(&self.ecx) == a2.size(&self.ecx)
                                     && b1.size(&self.ecx) == b2.size(&self.ecx)
                                     // The alignment of the second component determines its offset, so that also needs to match.
-                                    && b1.align(&self.ecx) == b2.align(&self.ecx)
+                                    && b1.default_align(&self.ecx) == b2.default_align(&self.ecx)
                                     // None of the inputs may be a pointer.
                                     && !matches!(a1.primitive(), Primitive::Pointer(..))
                                     && !matches!(b1.primitive(), Primitive::Pointer(..))

@@ -1096,6 +1096,7 @@ pub mod consts {
     /// * `"netbsd"`
     /// * `"nto"`
     /// * `"openbsd"`
+    /// * `"qnx"`
     /// * `"redox"`
     /// * `"solaris"`
     /// * `"solid_asp3"`

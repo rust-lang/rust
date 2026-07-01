@@ -16,7 +16,7 @@ cfg_select! {
         type UserId = u16;
         type GroupId = u16;
     }
-    target_os = "nto" => {
+    any(target_os = "nto", target_os = "qnx") => {
         // Both IDs are signed, see `sys/target_nto.h` of the QNX Neutrino SDP.
         // Only positive values should be used, see e.g.
         // https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/s/setuid.html
