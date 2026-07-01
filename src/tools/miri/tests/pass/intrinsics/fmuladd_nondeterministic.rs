@@ -8,6 +8,10 @@ mod utils;
 use utils::check_nondet;
 
 fn main() {
+    if cfg!(force_intrinsic_fallback) {
+        return;
+    }
+
     check_nondet(|| {
         let a = std::hint::black_box(0.1_f64);
         let b = std::hint::black_box(0.2);
