@@ -107,13 +107,6 @@ pub trait ExpandDatabase: SourceDatabase {
         id: AstId<ast::Macro>,
     ) -> &DeclarativeMacroExpander;
 
-    /// Special case of the previous query for procedural macros. We can't LRU
-    /// proc macros, since they are not deterministic in general, and
-    /// non-determinism breaks salsa in a very, very, very bad way.
-    /// @edwin0cheng heroically debugged this once! See #4315 for details
-    #[salsa::invoke(expand_proc_macro)]
-    #[salsa::transparent]
-    fn expand_proc_macro(&self, call: MacroCallId) -> &ExpandResult<tt::TopSubtree>;
     /// Retrieves the span to be used for a proc-macro expansions spans.
     /// This is a firewall query as it requires parsing the file, which we don't want proc-macros to
     /// directly depend on as that would cause to frequent invalidations, mainly because of the
@@ -275,7 +268,7 @@ pub fn expand_speculative(
         }
         MacroDefKind::Declarative(it, _) => db
             .decl_macro_expander(loc.krate, it)
-            .expand_unhygienic(db, tt, loc.kind.call_style(), span),
+            .expand_unhygienic(db, &tt, loc.kind.call_style(), span),
         MacroDefKind::BuiltIn(_, it) => {
             it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
         }
@@ -535,8 +528,7 @@ fn macro_expand<'db>(
 
     let (ExpandResult { value: (tt, matched_arm), err }, span) = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => {
-            return db
-                .expand_proc_macro(macro_call_id)
+            return expand_proc_macro(db, macro_call_id)
                 .as_ref()
                 .map(|it| (Cow::Borrowed(it), None));
         }
@@ -547,9 +539,9 @@ fn macro_expand<'db>(
 
             let arg = macro_arg;
             let res = match loc.def.kind {
-                MacroDefKind::Declarative(id, _) => db
-                    .decl_macro_expander(loc.def.krate, id)
-                    .expand(db, arg.clone(), macro_call_id, span),
+                MacroDefKind::Declarative(id, _) => {
+                    db.decl_macro_expander(loc.def.krate, id).expand(db, arg, macro_call_id, span)
+                }
                 MacroDefKind::BuiltIn(_, it) => {
                     it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
                 }
@@ -589,7 +581,7 @@ fn macro_expand<'db>(
                 }
                 MacroDefKind::ProcMacro(_, _, _) => unreachable!(),
             };
-            (ExpandResult { value: res.value, err: res.err }, span)
+            (res, span)
         }
     };
 
@@ -617,6 +609,10 @@ fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
     span_map.span_for_range(range)
 }
 
+/// Special case of [`macro_expand`] for procedural macros. We can't LRU
+/// proc macros, since they are not deterministic in general, and
+/// non-determinism breaks salsa in a very, very, very bad way.
+/// @edwin0cheng heroically debugged this once! See #4315 for details
 #[salsa_macros::tracked(returns(ref))]
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<tt::TopSubtree> {
     let loc = id.loc(db);
