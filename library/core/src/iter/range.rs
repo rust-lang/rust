@@ -1325,18 +1325,33 @@ impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
         }
 
         let mut accum = init;
+        let mut i: T = self.start;
+        // We use loop with postcondition because
+        // it allows us to finish loop even when `self.end` is `T::MAX`.
+        // Precondition is checked before loop at the beginning of the function.
+        loop {
+            let current = i;
+            let is_last: bool = i == self.end;
 
-        while self.start < self.end {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::forward_unchecked(self.start, 1) };
-            let n = mem::replace(&mut self.start, n);
-            accum = f(accum, n)?;
-        }
+            // Need to update both fields before calling function
+            // because we can eagerly exit due to panic or ? operator.
 
-        self.exhausted = true;
+            // Writing to `self.exhausted` at every iteration is cheaper than branching.
+            // Especially because we need to write neighbouring field _anyway_.
+            self.exhausted = is_last;
+            // This should compile to conditional move for simple types.
+            self.start = if is_last {
+                current
+            } else {
+                // SAFETY: just checked precondition
+                i = unsafe { Step::forward_unchecked(i, 1) };
+                i
+            };
 
-        if self.start == self.end {
-            accum = f(accum, self.start)?;
+            accum = f(accum, current)?;
+            if is_last {
+                break;
+            }
         }
 
         try { accum }
@@ -1365,23 +1380,33 @@ impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
         F: FnMut(B, T) -> R,
         R: Try<Output = B>,
     {
+        // Code of this implementation is almost the same as `spec_try_fold`
+        // except it updates self.end and decrements counter.
+        // See it for comments for justification of code structure
+
         if self.is_empty() {
             return try { init };
         }
 
         let mut accum = init;
+        let mut i: T = self.end;
+        loop {
+            let current = i;
+            let is_last: bool = i == self.start;
 
-        while self.start < self.end {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::backward_unchecked(self.end, 1) };
-            let n = mem::replace(&mut self.end, n);
-            accum = f(accum, n)?;
-        }
+            self.exhausted = is_last;
+            self.end = if is_last {
+                current
+            } else {
+                // SAFETY: just checked precondition
+                i = unsafe { Step::backward_unchecked(i, 1) };
+                i
+            };
 
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start)?;
+            accum = f(accum, current)?;
+            if is_last {
+                break;
+            }
         }
 
         try { accum }
