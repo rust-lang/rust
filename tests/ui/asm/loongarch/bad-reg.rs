@@ -4,11 +4,13 @@
 //@[loongarch32_ilp32d] needs-llvm-components: loongarch
 //@[loongarch32_ilp32s] compile-flags: --target loongarch32-unknown-none-softfloat
 //@[loongarch32_ilp32s] needs-llvm-components: loongarch
-//@[loongarch64_lp64d] compile-flags: --target loongarch64-unknown-linux-gnu
+//@[loongarch64_lp64d] compile-flags: --target loongarch64-unknown-linux-gnu -Ctarget-feature=+lasx
 //@[loongarch64_lp64d] needs-llvm-components: loongarch
 //@[loongarch64_lp64s] compile-flags: --target loongarch64-unknown-none-softfloat
 //@[loongarch64_lp64s] needs-llvm-components: loongarch
 //@ ignore-backends: gcc
+
+#![cfg_attr(loongarch64_lp64d, feature(asm_experimental_reg))]
 
 #![crate_type = "lib"]
 #![feature(no_core)]
@@ -45,5 +47,48 @@ fn f() {
         //[loongarch32_ilp32s,loongarch64_lp64s]~^ ERROR register class `freg` requires at least one of the following target features: d, f
         asm!("/* {} */", out(freg) d);
         //[loongarch32_ilp32s,loongarch64_lp64s]~^ ERROR register class `freg` requires at least one of the following target features: d, f
+
+        asm!("", out("$vr0") _); // ok
+        asm!("/* {} */", in(vreg) f);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `vreg` can only be used as a clobber in stable
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR type `f32` cannot be used with this register class in stable
+        asm!("/* {} */", out(vreg) _);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `vreg` can only be used as a clobber in stable
+        asm!("/* {} */", in(vreg) d);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `vreg` can only be used as a clobber in stable
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR type `f64` cannot be used with this register class in stable
+        asm!("/* {} */", out(vreg) d);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `vreg` can only be used as a clobber in stable
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR type `f64` cannot be used with this register class in stable
+
+        asm!("", out("$xr0") _); // ok
+        asm!("/* {} */", in(xreg) f);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `xreg` can only be used as a clobber in stable
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR type `f32` cannot be used with this register class in stable
+        asm!("/* {} */", out(xreg) _);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `xreg` can only be used as a clobber in stable
+        asm!("/* {} */", in(xreg) d);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `xreg` can only be used as a clobber in stable
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR type `f64` cannot be used with this register class in stable
+        asm!("/* {} */", out(xreg) d);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `xreg` can only be used as a clobber in stable
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR type `f64` cannot be used with this register class in stable
+
+        asm!("", in("$f0") f, in("$vr0") d);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `vreg` can only be used as a clobber in stable
+        //[loongarch32_ilp32s,loongarch64_lp64s]~| ERROR register class `freg` requires at least one of the following target features: d, f
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR type `f64` cannot be used with this register class in stable
+        //[loongarch64_lp64d]~^^^^ ERROR register `$vr0` conflicts with register `$f0`
+        asm!("", in("$f0") f, in("$xr0") d);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `xreg` can only be used as a clobber in stable
+        //[loongarch32_ilp32s,loongarch64_lp64s]~| ERROR register class `freg` requires at least one of the following target features: d, f
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR type `f64` cannot be used with this register class in stable
+        //[loongarch64_lp64d]~^^^^ ERROR register `$xr0` conflicts with register `$f0`
+        asm!("", in("$vr0") f, in("$xr0") d);
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~^ ERROR register class `vreg` can only be used as a clobber in stable
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR register class `xreg` can only be used as a clobber in stable
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR type `f32` cannot be used with this register class in stable
+        //[loongarch32_ilp32s,loongarch32_ilp32d,loongarch64_lp64s]~| ERROR type `f64` cannot be used with this register class in stable
+        //[loongarch64_lp64d]~^^^^^ ERROR register `$xr0` conflicts with register `$vr0`
     }
 }

@@ -948,7 +948,8 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
         // definition of the field
         let ident = Ident::new(sym::dummy, use_ctxt);
-        let (_, def_id) = self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id);
+        let (_, def_id) =
+            self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id.owner.def_id);
         !field.vis.is_accessible_from(def_id, self.tcx)
     }
 
