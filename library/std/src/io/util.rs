@@ -6,7 +6,7 @@ mod tests;
 use crate::fmt;
 use crate::io::{
     self, BorrowedCursor, BufRead, Empty, IoSlice, IoSliceMut, Read, Repeat, Seek, SeekFrom, Sink,
-    SizeHint, Write,
+    Write,
 };
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -99,13 +99,6 @@ impl Seek for Empty {
     #[inline]
     fn stream_position(&mut self) -> io::Result<u64> {
         Ok(0)
-    }
-}
-
-impl SizeHint for Empty {
-    #[inline]
-    fn upper_bound(&self) -> Option<usize> {
-        Some(0)
     }
 }
 
@@ -237,18 +230,6 @@ impl Read for Repeat {
     #[inline]
     fn is_read_vectored(&self) -> bool {
         true
-    }
-}
-
-impl SizeHint for Repeat {
-    #[inline]
-    fn lower_bound(&self) -> usize {
-        usize::MAX
-    }
-
-    #[inline]
-    fn upper_bound(&self) -> Option<usize> {
-        None
     }
 }
 
