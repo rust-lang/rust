@@ -171,7 +171,7 @@ place.
   If a test suite can
   randomly spuriously fail due to flaky tests, did the whole test suite pass or
   did I just get lucky/unlucky?
-- Flaky tests can randomly fail in full CI, wasting precious full CI resources.
+- Flaky tests can randomly fail in full CI, wasting precious resources.
 
 ## Compiletest directives
 
