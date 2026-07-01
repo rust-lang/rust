@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC1<imm>, but expected a vtable pointer
+error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC$ID<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:18:1
    |
 LL | const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
@@ -6,10 +6,10 @@ LL | const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC0<imm>╼ ╾ALLOC1<imm>╼                         │ ╾──╼╾──╼
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼                         │ ╾──╼╾──╼
            }
 
-error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC3<imm>, but expected a vtable pointer
+error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC$ID<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:22:1
    |
 LL | const INVALID_VTABLE_SIZE: &dyn Trait =
@@ -17,10 +17,10 @@ LL | const INVALID_VTABLE_SIZE: &dyn Trait =
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC2<imm>╼ ╾ALLOC3<imm>╼                         │ ╾──╼╾──╼
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼                         │ ╾──╼╾──╼
            }
 
-error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC5<imm>, but expected a vtable pointer
+error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC$ID<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:31:1
    |
 LL | const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
@@ -28,10 +28,10 @@ LL | const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC4<imm>╼ ╾ALLOC5<imm>╼                         │ ╾──╼╾──╼
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼                         │ ╾──╼╾──╼
            }
 
-error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC7<imm>, but expected a vtable pointer
+error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC$ID<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:35:1
    |
 LL | const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
@@ -39,10 +39,10 @@ LL | const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC6<imm>╼ ╾ALLOC7<imm>╼                         │ ╾──╼╾──╼
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼                         │ ╾──╼╾──╼
            }
 
-error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC9<imm>, but expected a vtable pointer
+error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC$ID<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:40:1
    |
 LL | const INVALID_VTABLE_UB: W<&dyn Trait> =
@@ -50,7 +50,7 @@ LL | const INVALID_VTABLE_UB: W<&dyn Trait> =
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC8<imm>╼ ╾ALLOC9<imm>╼                         │ ╾──╼╾──╼
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: constructing invalid value of type Wide<'_>: at .1, encountered a dangling reference (going beyond the bounds of its allocation)
@@ -61,7 +61,7 @@ LL | const G: Wide = unsafe { Transmute { t: FOO }.u };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC10<imm>╼ ╾ALLOC11╼                         │ ╾──╼╾──╼
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼                         │ ╾──╼╾──╼
            }
 
 error: aborting due to 6 previous errors
