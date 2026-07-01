@@ -4,6 +4,7 @@ mod tests;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
+use core::num::NonZero;
 
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use crate::{io, iter, option, slice, vec};
@@ -171,6 +172,14 @@ impl ToSocketAddrs for (IpAddr, u16) {
     }
 }
 
+#[stable(feature = "nonzerou16_to_socket_addrs", since = "CURRENT_RUSTC_VERSION")]
+impl ToSocketAddrs for (IpAddr, NonZero<u16>) {
+    type Iter = <(IpAddr, u16) as ToSocketAddrs>::Iter;
+    fn to_socket_addrs(&self) -> io::Result<Self::Iter> {
+        (self.0, self.1.get()).to_socket_addrs()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToSocketAddrs for (Ipv4Addr, u16) {
     type Iter = option::IntoIter<SocketAddr>;
@@ -180,12 +189,28 @@ impl ToSocketAddrs for (Ipv4Addr, u16) {
     }
 }
 
+#[stable(feature = "nonzerou16_to_socket_addrs", since = "CURRENT_RUSTC_VERSION")]
+impl ToSocketAddrs for (Ipv4Addr, NonZero<u16>) {
+    type Iter = <(Ipv4Addr, u16) as ToSocketAddrs>::Iter;
+    fn to_socket_addrs(&self) -> io::Result<Self::Iter> {
+        (self.0, self.1.get()).to_socket_addrs()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToSocketAddrs for (Ipv6Addr, u16) {
     type Iter = option::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<option::IntoIter<SocketAddr>> {
         let (ip, port) = *self;
         SocketAddrV6::new(ip, port, 0, 0).to_socket_addrs()
+    }
+}
+
+#[stable(feature = "nonzerou16_to_socket_addrs", since = "CURRENT_RUSTC_VERSION")]
+impl ToSocketAddrs for (Ipv6Addr, NonZero<u16>) {
+    type Iter = <(Ipv6Addr, u16) as ToSocketAddrs>::Iter;
+    fn to_socket_addrs(&self) -> io::Result<Self::Iter> {
+        (self.0, self.1.get()).to_socket_addrs()
     }
 }
 
@@ -206,10 +231,26 @@ impl ToSocketAddrs for (&str, u16) {
     }
 }
 
+#[stable(feature = "nonzerou16_to_socket_addrs", since = "CURRENT_RUSTC_VERSION")]
+impl<'a> ToSocketAddrs for (&'a str, NonZero<u16>) {
+    type Iter = <(&'a str, u16) as ToSocketAddrs>::Iter;
+    fn to_socket_addrs(&self) -> io::Result<Self::Iter> {
+        (self.0, self.1.get()).to_socket_addrs()
+    }
+}
+
 #[stable(feature = "string_u16_to_socket_addrs", since = "1.46.0")]
 impl ToSocketAddrs for (String, u16) {
     type Iter = vec::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
+        (&*self.0, self.1).to_socket_addrs()
+    }
+}
+
+#[stable(feature = "nonzerou16_to_socket_addrs", since = "CURRENT_RUSTC_VERSION")]
+impl ToSocketAddrs for (String, NonZero<u16>) {
+    type Iter = <(String, u16) as ToSocketAddrs>::Iter;
+    fn to_socket_addrs(&self) -> io::Result<Self::Iter> {
         (&*self.0, self.1).to_socket_addrs()
     }
 }
