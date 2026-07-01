@@ -126,7 +126,8 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "slice::from_raw_parts requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
+            "slice::from_raw_parts requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX` \
+            (data:{data}, size:{size}, align:{align}, len:{len})",
             (
                 data: *mut () = data as *mut (),
                 size: usize = size_of::<T>(),
@@ -181,7 +182,8 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "slice::from_raw_parts_mut requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
+            "slice::from_raw_parts_mut requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX` \
+            (data:{data}, size:{size}, align:{align}, len:{len})",
             (
                 data: *mut () = data as *mut (),
                 size: usize = size_of::<T>(),

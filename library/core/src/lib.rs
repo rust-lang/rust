@@ -336,6 +336,9 @@ pub mod alloc;
 
 // note: does not need to be public
 mod bool;
+#[doc(hidden)]
+#[unstable(feature = "ub_checks", issue = "none")]
+pub mod displaywrapper;
 mod escape;
 mod tuple;
 mod unit;
