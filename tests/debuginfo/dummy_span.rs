@@ -1,13 +1,11 @@
 //@ min-lldb-version: 310
 
 //@ compile-flags:-g
-// FIXME: Investigate why test fails without SimplifyComparisonIntegral pass.
-//@ compile-flags: -Zmir-enable-passes=+SimplifyComparisonIntegral
 //@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
-//@ gdb-command:run 7
+//@ gdb-command:run
 
 //@ gdb-command:next
 //@ gdb-command:next
@@ -17,7 +15,7 @@
 
 // === LLDB TESTS ==================================================================================
 
-//@ lldb-command:run 7
+//@ lldb-command:run
 
 //@ lldb-command:next
 //@ lldb-command:next
@@ -30,10 +28,15 @@
 use std::env;
 use std::num::ParseIntError;
 
+struct Foo;
+
+impl Drop for Foo {
+    fn drop(&mut self) {}
+}
+
 fn main() -> Result<(), ParseIntError> {
-    let args = env::args();
-    let number_str = args.skip(1).next().unwrap();
-    let number = number_str.parse::<i32>()?;
+    let foo = Foo;
+    let number = Ok(7)?;
     zzz(); // #break
     if number % 7 == 0 {
         // This generates code with a dummy span for
@@ -41,7 +44,6 @@ fn main() -> Result<(), ParseIntError> {
         // test will not test what it wants to test.
         return Ok(()); // #loc1
     }
-    println!("{}", number);
     Ok(())
 } // #loc2
 
