@@ -15,7 +15,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           # Make sure that we have enough commits to find the parent merge commit.
           # Since all merges should be through merge commits, fetching two commits
