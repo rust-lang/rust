@@ -1,6 +1,6 @@
 //! Compiled declarative macro expanders (`macro_rules!` and `macro`)
 
-use std::{cell::OnceCell, ops::ControlFlow};
+use std::ops::ControlFlow;
 
 use base_db::Crate;
 use span::{Edition, Span, SyntaxContext};
@@ -91,10 +91,10 @@ impl DeclarativeMacroExpander {
         let root = root.syntax_node();
 
         let transparency = |node: ast::AnyHasAttrs| {
-            let cfg_options = OnceCell::new();
+            let mut cfg_options = None;
             expand_cfg_attr(
                 node.attrs(),
-                || cfg_options.get_or_init(|| def_crate.cfg_options(db)),
+                || cfg_options.get_or_insert_with(|| def_crate.cfg_options(db)),
                 |attr, _| {
                     if let ast::Meta::KeyValueMeta(attr) = attr
                         && attr.path().is1("rustc_macro_transparency")
