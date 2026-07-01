@@ -2076,14 +2076,6 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
 }
 
 #[derive(Diagnostic)]
-#[diag("`Trait(...)` syntax does not support named parameters")]
-pub(crate) struct FnPathFoundNamedParams {
-    #[primary_span]
-    #[suggestion("remove the parameter name", applicability = "machine-applicable", code = "")]
-    pub named_param_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`Trait(...)` syntax does not support c_variadic parameters")]
 pub(crate) struct PathFoundCVariadicParams {
     #[primary_span]
