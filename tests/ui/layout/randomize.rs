@@ -49,6 +49,52 @@ const _: () = {
     assert!(std::mem::offset_of!(Result::<&usize, ()>, Ok.0) == 0);
 };
 
+// these types only have their size checked, they're never constructed.
+// these repr(Rust) types must remain zero-sized.
+#[allow(dead_code)]
+pub struct UnitStruct;
+#[allow(dead_code)]
+pub struct EmptyTupleStruct();
+#[allow(dead_code)]
+pub struct EmptyStruct {}
+#[allow(dead_code)]
+pub struct ZstFieldsTupleStruct((), [u64; 0], [u8; 0], [(); 42]);
+#[allow(dead_code)]
+pub struct ZstFieldsStruct {
+    a: (),
+    b: [u64; 0],
+    c: [u8; 0],
+    d: [(); 42],
+}
+#[allow(dead_code)]
+pub enum EmptyEnum {}
+#[allow(dead_code)]
+pub enum SingleUnitVariantEnum { A }
+#[allow(dead_code)]
+pub enum SingleZstFieldTupleVariantEnum { A((), [u64; 0], [u8; 0], [(); 42]) }
+#[allow(dead_code)]
+pub enum SingleZstFieldVariantEnum {
+    A {
+        a: (),
+        b: [u64; 0],
+        c: [u8; 0],
+        d: [(); 42],
+    }
+}
+
+// all these types must remain zero-sized.
+const _: () = {
+    assert!(size_of::<UnitStruct>() == 0);
+    assert!(size_of::<EmptyTupleStruct>() == 0);
+    assert!(size_of::<EmptyStruct>() == 0);
+    assert!(size_of::<ZstFieldsTupleStruct>() == 0);
+    assert!(size_of::<ZstFieldsStruct>() == 0);
+    assert!(size_of::<EmptyEnum>() == 0);
+    assert!(size_of::<SingleUnitVariantEnum>() == 0);
+    assert!(size_of::<SingleZstFieldTupleVariantEnum>() == 0);
+    assert!(size_of::<SingleZstFieldVariantEnum>() == 0);
+};
+
 #[allow(dead_code)]
 struct Unsizable<T: ?Sized>(usize, T);
 
