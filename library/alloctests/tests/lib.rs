@@ -37,6 +37,7 @@
 #![feature(strict_provenance_lints)]
 #![feature(string_replace_in_place)]
 #![feature(vec_deque_truncate_front)]
+#![feature(vec_deque_truncate_to_range)]
 #![feature(unique_rc_arc)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(vec_peek_mut)]
