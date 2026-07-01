@@ -264,6 +264,18 @@ fn process_builtin_attrs(
                         Visibility::Default,
                     ));
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+
+                    // If the declaration is `#[track_caller]`, derive it onto the implementation
+                    // too. The shim that forwards to this impl (see `add_function_aliases`) takes
+                    // its ABI from the impl's `fn_abi`, so every impl must agree on whether the
+                    // caller-location argument is present, otherwise it would be silently dropped.
+                    if tcx
+                        .body_codegen_attrs(foreign_item)
+                        .flags
+                        .contains(CodegenFnAttrFlags::TRACK_CALLER)
+                    {
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
+                    }
                 }
             }
             AttributeKind::ThreadLocal => {
