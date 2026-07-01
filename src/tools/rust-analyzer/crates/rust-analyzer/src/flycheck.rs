@@ -51,6 +51,7 @@ pub(crate) struct CargoOptions {
     pub(crate) extra_args: Vec<String>,
     pub(crate) extra_test_bin_args: Vec<String>,
     pub(crate) extra_env: FxHashMap<String, Option<String>>,
+    pub(crate) config_path: Option<AbsPathBuf>,
     pub(crate) target_dir_config: TargetDirectoryConfig,
 }
 
@@ -107,6 +108,9 @@ impl CargoOptions {
                 cmd.arg("--features");
                 cmd.arg(features);
             }
+        }
+        if let Some(config_path) = &self.config_path {
+            cmd.arg("--config").arg(config_path);
         }
         if let Some(target_dir) = self.target_dir_config.target_dir(ws_target_dir) {
             cmd.arg("--target-dir").arg(target_dir.as_ref());
@@ -1169,6 +1173,7 @@ mod tests {
                 extra_args: vec![],
                 extra_test_bin_args: vec![],
                 extra_env: FxHashMap::default(),
+                config_path: None,
                 target_dir_config: TargetDirectoryConfig::default(),
             },
             ansi_color_output: true,
