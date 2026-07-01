@@ -74,6 +74,7 @@ impl_binder_encode_decode! {
     ty::HostEffectPredicate<I>,
 }
 
+#[cfg(feature = "nightly")]
 impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, E: rustc_serialize::Encoder>
     rustc_serialize::Encodable<E> for ty::Binder<I, T>
 where
@@ -85,6 +86,8 @@ where
         self.as_ref().skip_binder().encode(e);
     }
 }
+
+#[cfg(feature = "nightly")]
 impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, D: rustc_serialize::Decoder>
     rustc_serialize::Decodable<D> for ty::Binder<I, T>
 where
