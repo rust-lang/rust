@@ -15,7 +15,7 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     self, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_target::spec::{Arch, Cc, CfgAbi, LinkOutputKind, LinkerFlavor, Lld, Os};
@@ -25,7 +25,7 @@ use super::command::Command;
 use super::symbol_export;
 use crate::back::symbol_export::allocator_shim_symbols;
 use crate::base::needs_allocator_shim_for_linking;
-use crate::errors;
+use crate::{SymbolExport, errors};
 
 #[cfg(test)]
 mod tests;
@@ -338,12 +338,7 @@ pub(crate) trait Linker {
     fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]);
     fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
-    fn export_symbols(
-        &mut self,
-        tmpdir: &Path,
-        crate_type: CrateType,
-        symbols: &[(String, SymbolExportKind)],
-    );
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[SymbolExport]);
     fn windows_subsystem(&mut self, subsystem: WindowsSubsystemKind);
     fn linker_plugin_lto(&mut self);
     fn add_eh_frame_header(&mut self) {}
@@ -794,12 +789,7 @@ impl<'a> Linker for GccLinker<'a> {
         }
     }
 
-    fn export_symbols(
-        &mut self,
-        tmpdir: &Path,
-        crate_type: CrateType,
-        symbols: &[(String, SymbolExportKind)],
-    ) {
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[SymbolExport]) {
         // Symbol visibility in object files typically takes care of this.
         if crate_type == CrateType::Executable {
             let should_export_executable_symbols =
@@ -826,9 +816,9 @@ impl<'a> Linker for GccLinker<'a> {
             // Write a plain, newline-separated list of symbols
             let res = try {
                 let mut f = File::create_buffered(&path)?;
-                for (sym, _) in symbols {
-                    debug!("  _{sym}");
-                    writeln!(f, "_{sym}")?;
+                for sym in symbols {
+                    debug!("  _{}", sym.name);
+                    writeln!(f, "_{}", sym.name)?;
                 }
             };
             if let Err(error) = res {
@@ -842,12 +832,13 @@ impl<'a> Linker for GccLinker<'a> {
                 // .def file similar to MSVC one but without LIBRARY section
                 // because LD doesn't like when it's empty
                 writeln!(f, "EXPORTS")?;
-                for (symbol, kind) in symbols {
-                    let kind_marker = if *kind == SymbolExportKind::Data { " DATA" } else { "" };
-                    debug!("  _{symbol}");
+                for symbol in symbols {
+                    let kind_marker =
+                        if symbol.kind == SymbolExportKind::Data { " DATA" } else { "" };
+                    debug!("  _{}", symbol.name);
                     // Quote the name in case it's reserved by linker in some way
                     // (this accounts for names with dots in particular).
-                    writeln!(f, "  \"{symbol}\"{kind_marker}")?;
+                    writeln!(f, "  \"{}\"{kind_marker}", symbol.name)?;
                 }
             };
             if let Err(error) = res {
@@ -856,16 +847,16 @@ impl<'a> Linker for GccLinker<'a> {
             self.link_arg(path);
         } else if self.sess.target.is_like_wasm {
             self.link_arg("--no-export-dynamic");
-            for (sym, _) in symbols {
-                self.link_arg("--export").link_arg(sym);
+            for sym in symbols {
+                self.link_arg("--export").link_arg(&sym.name);
             }
         } else if crate_type == CrateType::Executable && !self.sess.target.is_like_solaris {
             let res = try {
                 let mut f = File::create_buffered(&path)?;
                 writeln!(f, "{{")?;
-                for (sym, _) in symbols {
-                    debug!(sym);
-                    writeln!(f, "  {sym};")?;
+                for sym in symbols {
+                    debug!("{}", sym.name);
+                    writeln!(f, "  {};", sym.name)?;
                 }
                 writeln!(f, "}};")?;
             };
@@ -880,9 +871,9 @@ impl<'a> Linker for GccLinker<'a> {
                 writeln!(f, "{{")?;
                 if !symbols.is_empty() {
                     writeln!(f, "  global:")?;
-                    for (sym, _) in symbols {
-                        debug!("    {sym};");
-                        writeln!(f, "    {sym};")?;
+                    for sym in symbols {
+                        debug!("    {};", sym.name);
+                        writeln!(f, "    {};", sym.name)?;
                     }
                 }
                 writeln!(f, "\n  local:\n    *;\n}};")?;
@@ -1126,25 +1117,10 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
-    // export symbols from a dynamic library. When building a dynamic library,
-    // however, we're going to want some symbols exported, so this function
-    // generates a DEF file which lists all the symbols.
-    //
-    // The linker will read this `*.def` file and export all the symbols from
-    // the dynamic library. Note that this is not as simple as just exporting
-    // all the symbols in the current crate (as specified by `codegen.reachable`)
-    // but rather we also need to possibly export the symbols of upstream
-    // crates. Upstream rlibs may be linked statically to this dynamic library,
-    // in which case they may continue to transitively be used and hence need
-    // their symbols exported.
-    fn export_symbols(
-        &mut self,
-        tmpdir: &Path,
-        crate_type: CrateType,
-        symbols: &[(String, SymbolExportKind)],
-    ) {
-        // Symbol visibility takes care of this typically
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, _symbols: &[SymbolExport]) {
+        // We already add /EXPORT arguments to the .drectve section of symbols.o.
+        // Keep passing an empty .def file: link.exe otherwise skips the import
+        // library for DLLs with no exports.
         if crate_type == CrateType::Executable {
             let should_export_executable_symbols =
                 self.sess.opts.unstable_opts.export_executable_symbols;
@@ -1156,16 +1132,8 @@ impl<'a> Linker for MsvcLinker<'a> {
         let path = tmpdir.join("lib.def");
         let res = try {
             let mut f = File::create_buffered(&path)?;
-
-            // Start off with the standard module name header and then go
-            // straight to exports.
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
-            for (symbol, kind) in symbols {
-                let kind_marker = if *kind == SymbolExportKind::Data { " DATA" } else { "" };
-                debug!("  _{symbol}");
-                writeln!(f, "  {symbol}{kind_marker}")?;
-            }
         };
         if let Err(error) = res {
             self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
@@ -1313,19 +1281,14 @@ impl<'a> Linker for EmLinker<'a> {
         self.cc_arg("-nodefaultlibs");
     }
 
-    fn export_symbols(
-        &mut self,
-        _tmpdir: &Path,
-        _crate_type: CrateType,
-        symbols: &[(String, SymbolExportKind)],
-    ) {
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[SymbolExport]) {
         debug!("EXPORTED SYMBOLS:");
 
         self.cc_arg("-s");
 
         let mut arg = OsString::from("EXPORTED_FUNCTIONS=");
         let encoded = serde_json::to_string(
-            &symbols.iter().map(|(sym, _)| "_".to_owned() + sym).collect::<Vec<_>>(),
+            &symbols.iter().map(|sym| "_".to_owned() + &sym.name).collect::<Vec<_>>(),
         )
         .unwrap();
         debug!("{encoded}");
@@ -1453,14 +1416,9 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn no_default_libraries(&mut self) {}
 
-    fn export_symbols(
-        &mut self,
-        _tmpdir: &Path,
-        _crate_type: CrateType,
-        symbols: &[(String, SymbolExportKind)],
-    ) {
-        for (sym, _) in symbols {
-            self.link_args(&["--export", sym]);
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[SymbolExport]) {
+        for sym in symbols {
+            self.link_args(&["--export", &sym.name]);
         }
     }
 
@@ -1581,7 +1539,7 @@ impl<'a> Linker for L4Bender<'a> {
         self.cc_arg("-nostdlib");
     }
 
-    fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[(String, SymbolExportKind)]) {
+    fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[SymbolExport]) {
         // ToDo, not implemented, copy from GCC
         self.sess.dcx().emit_warn(errors::L4BenderExportingSymbolsUnimplemented);
     }
@@ -1735,19 +1693,14 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn no_default_libraries(&mut self) {}
 
-    fn export_symbols(
-        &mut self,
-        tmpdir: &Path,
-        _crate_type: CrateType,
-        symbols: &[(String, SymbolExportKind)],
-    ) {
+    fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[SymbolExport]) {
         let path = tmpdir.join("list.exp");
         let res = try {
             let mut f = File::create_buffered(&path)?;
             // FIXME: use llvm-nm to generate export list.
-            for (symbol, _) in symbols {
-                debug!("  _{symbol}");
-                writeln!(f, "  {symbol}")?;
+            for symbol in symbols {
+                debug!("  _{}", symbol.name);
+                writeln!(f, "  {}", symbol.name)?;
             }
         };
         if let Err(e) = res {
@@ -1792,15 +1745,36 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     }
 }
 
-pub(crate) fn exported_symbols(
+fn symbol_export_from_exported_symbol<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    symbol: ExportedSymbol<'tcx>,
+    kind: SymbolExportKind,
+    cnum: CrateNum,
+) -> SymbolExport {
+    let name = symbol_export::exporting_symbol_name_for_instance_in_crate(tcx, symbol, cnum);
+    let link_name =
+        symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, kind, cnum);
+    SymbolExport::with_link_name(name, kind, link_name)
+}
+
+fn symbol_export_from_raw_name(
     tcx: TyCtxt<'_>,
-    crate_type: CrateType,
-) -> Vec<(String, SymbolExportKind)> {
+    name: String,
+    kind: SymbolExportKind,
+) -> SymbolExport {
+    let symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &name));
+    let link_name =
+        symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, kind, LOCAL_CRATE);
+    SymbolExport::with_link_name(name, kind, link_name)
+}
+
+pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<SymbolExport> {
     if let Some(ref exports) = tcx.sess.target.override_export_symbols {
         return exports
             .iter()
             .map(|name| {
-                (
+                symbol_export_from_raw_name(
+                    tcx,
                     name.to_string(),
                     // FIXME use the correct export kind for this symbol. override_export_symbols
                     // can't directly specify the SymbolExportKind as it is defined in rustc_middle
@@ -1825,7 +1799,11 @@ pub(crate) fn exported_symbols(
         && !tcx.sess.target.is_like_wasm
     {
         let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
-        symbols.push((metadata_symbol_name, SymbolExportKind::Data));
+        symbols.push(symbol_export_from_raw_name(
+            tcx,
+            metadata_symbol_name,
+            SymbolExportKind::Data,
+        ));
     }
 
     symbols
@@ -1834,7 +1812,7 @@ pub(crate) fn exported_symbols(
 fn exported_symbols_for_non_proc_macro(
     tcx: TyCtxt<'_>,
     crate_type: CrateType,
-) -> Vec<(String, SymbolExportKind)> {
+) -> Vec<SymbolExport> {
     let mut symbols = Vec::new();
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
@@ -1842,10 +1820,7 @@ fn exported_symbols_for_non_proc_macro(
         // from any dylib. The latter doesn't work anyway as we use hidden visibility for
         // compiler-builtins. Most linkers silently ignore it, but ld64 gives a warning.
         if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum) {
-            symbols.push((
-                symbol_export::exporting_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
-                info.kind,
-            ));
+            symbols.push(symbol_export_from_exported_symbol(tcx, symbol, info.kind, cnum));
             symbol_export::extend_exported_symbols(&mut symbols, tcx, symbol, cnum);
         }
     });
@@ -1855,13 +1830,16 @@ fn exported_symbols_for_non_proc_macro(
         && needs_allocator_shim_for_linking(tcx.dependency_formats(()), crate_type)
         && let Some(kind) = tcx.allocator_kind(())
     {
-        symbols.extend(allocator_shim_symbols(tcx, kind));
+        symbols.extend(
+            allocator_shim_symbols(tcx, kind)
+                .map(|(name, kind)| symbol_export_from_raw_name(tcx, name, kind)),
+        );
     }
 
     symbols
 }
 
-fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<(String, SymbolExportKind)> {
+fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<SymbolExport> {
     // `exported_symbols` will be empty when !should_codegen.
     if !tcx.sess.opts.output_types.should_codegen() {
         return Vec::new();
@@ -1870,7 +1848,7 @@ fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<(String, Symbol
     let stable_crate_id = tcx.stable_crate_id(LOCAL_CRATE);
     let proc_macro_decls_name = rustc_session::generate_proc_macro_decls_symbol(stable_crate_id);
 
-    vec![(proc_macro_decls_name, SymbolExportKind::Data)]
+    vec![symbol_export_from_raw_name(tcx, proc_macro_decls_name, SymbolExportKind::Data)]
 }
 
 pub(crate) fn linked_symbols(
@@ -1984,16 +1962,11 @@ impl<'a> Linker for LlbcLinker<'a> {
 
     fn ehcont_guard(&mut self) {}
 
-    fn export_symbols(
-        &mut self,
-        _tmpdir: &Path,
-        _crate_type: CrateType,
-        symbols: &[(String, SymbolExportKind)],
-    ) {
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[SymbolExport]) {
         match _crate_type {
             CrateType::Cdylib => {
-                for (sym, _) in symbols {
-                    self.link_args(&["--export-symbol", sym]);
+                for sym in symbols {
+                    self.link_args(&["--export-symbol", &sym.name]);
                 }
             }
             _ => (),
@@ -2064,17 +2037,12 @@ impl<'a> Linker for BpfLinker<'a> {
 
     fn ehcont_guard(&mut self) {}
 
-    fn export_symbols(
-        &mut self,
-        tmpdir: &Path,
-        _crate_type: CrateType,
-        symbols: &[(String, SymbolExportKind)],
-    ) {
+    fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[SymbolExport]) {
         let path = tmpdir.join("symbols");
         let res = try {
             let mut f = File::create_buffered(&path)?;
-            for (sym, _) in symbols {
-                writeln!(f, "{sym}")?;
+            for sym in symbols {
+                writeln!(f, "{}", sym.name)?;
             }
         };
         if let Err(error) = res {
