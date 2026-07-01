@@ -299,7 +299,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 formal_input_tys,
                 provided_args,
                 expected_input_tys,
-                c_variadic,
                 tuple_arguments,
                 fn_def_id,
                 callee_generic_args,
@@ -573,10 +572,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         provided_args: &'tcx [hir::Expr<'tcx>],
         // The expected input types from the context of the call site
         mut expected_input_tys: Option<Vec<Ty<'tcx>>>,
-        // Whether the function is variadic (e.g. from C)
-        c_variadic: bool,
-        // Whether all the arguments have been bundled in a tuple (ex: closures).
-        // Splatting is handled separately.
+        // Whether all the arguments have been bundled in a tuple (ex: closures), or one has been splatted
         tuple_arguments: TupleArgumentsFlag,
         // The DefId for the function being called, for better error messages
         fn_def_id: Option<DefId>,
@@ -605,7 +601,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tupled_args_count = (1 + provided_args.len()).checked_sub(formal_input_tys.len());
         debug!(
             ?first_tupled_arg_index, ?is_self_splatted,
-            ?tupled_args_count, ?tuple_arguments, ?c_variadic,
+            ?tupled_args_count, ?tuple_arguments,
             provided_args_len = ?provided_args.len(), formal_input_tys_len = ?formal_input_tys.len()
         );
 
@@ -617,7 +613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "splatted argument index is out of bounds: {first_tupled_arg_index:?} >= {}, \
                 is_self_splatted = {is_self_splatted:?}, \
                 tupled_args_count = {tupled_args_count:?}, {tuple_arguments:?}, \
-                c_variadic = {c_variadic:?}, provided_args: {}",
+                provided_args: {}",
                 formal_input_tys.len(),
                 provided_args.len(),
             );
