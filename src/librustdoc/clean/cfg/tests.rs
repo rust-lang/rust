@@ -308,73 +308,81 @@ fn test_render_short_html() {
 
 #[test]
 fn test_render_long_html() {
+    trait Cfg {
+        fn to_long_html(&self) -> String;
+    }
+
+    impl Cfg for super::Cfg {
+        fn to_long_html(&self) -> String {
+            self.render_long_html().to_string()
+        }
+    }
+
     create_default_session_globals_then(|| {
-        assert_eq!(word_cfg("unix").render_long_html(), "Available on <strong>Unix</strong> only.");
+        assert_eq!(word_cfg("unix").to_long_html(), "Available on <strong>Unix</strong> only.");
         assert_eq!(
-            name_value_cfg("target_os", "macos").render_long_html(),
+            name_value_cfg("target_os", "macos").to_long_html(),
             "Available on <strong>macOS</strong> only."
         );
         assert_eq!(
-            name_value_cfg("target_os", "wasi").render_long_html(),
+            name_value_cfg("target_os", "wasi").to_long_html(),
             "Available on <strong>WASI</strong> only."
         );
         assert_eq!(
-            name_value_cfg("target_pointer_width", "16").render_long_html(),
+            name_value_cfg("target_pointer_width", "16").to_long_html(),
             "Available on <strong>16-bit</strong> only."
         );
         assert_eq!(
-            name_value_cfg("target_endian", "little").render_long_html(),
+            name_value_cfg("target_endian", "little").to_long_html(),
             "Available on <strong>little-endian</strong> only."
         );
         assert_eq!(
-            (!word_cfg("windows")).render_long_html(),
+            (!word_cfg("windows")).to_long_html(),
             "Available on <strong>non-Windows</strong> only."
         );
         assert_eq!(
-            (word_cfg("unix") & word_cfg("windows")).render_long_html(),
+            (word_cfg("unix") & word_cfg("windows")).to_long_html(),
             "Available on <strong>Unix and Windows</strong> only."
         );
         assert_eq!(
-            (word_cfg("unix") | word_cfg("windows")).render_long_html(),
+            (word_cfg("unix") | word_cfg("windows")).to_long_html(),
             "Available on <strong>Unix or Windows</strong> only."
         );
         assert_eq!(
-            (word_cfg("unix") & word_cfg("windows") & word_cfg("debug_assertions"))
-                .render_long_html(),
+            (word_cfg("unix") & word_cfg("windows") & word_cfg("debug_assertions")).to_long_html(),
             "Available on <strong>Unix and Windows and debug-assertions enabled</strong> only."
         );
         assert_eq!(
-            (word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions"))
-                .render_long_html(),
+            (word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions")).to_long_html(),
             "Available on <strong>Unix or Windows or debug-assertions enabled</strong> only."
         );
         assert_eq!(
             (!(word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions")))
-                .render_long_html(),
+                .to_long_html(),
             "Available on <strong>neither Unix nor Windows nor debug-assertions enabled</strong>."
         );
         assert_eq!(
             ((word_cfg("unix") & name_value_cfg("target_arch", "x86_64"))
                 | (word_cfg("windows") & name_value_cfg("target_pointer_width", "64")))
-            .render_long_html(),
+            .to_long_html(),
             "Available on <strong>Unix and x86-64, or Windows and 64-bit</strong> only."
         );
         assert_eq!(
-            (!(word_cfg("unix") & word_cfg("windows"))).render_long_html(),
+            (!(word_cfg("unix") & word_cfg("windows"))).to_long_html(),
             "Available on <strong>not (Unix and Windows)</strong>."
         );
         assert_eq!(
             ((word_cfg("debug_assertions") | word_cfg("windows")) & word_cfg("unix"))
-                .render_long_html(),
+                .to_long_html(),
             "Available on <strong>(debug-assertions enabled or Windows) and Unix</strong> only."
         );
         assert_eq!(
-            name_value_cfg("target_feature", "sse2").render_long_html(),
+            name_value_cfg("target_feature", "sse2").to_long_html(),
             "Available with <strong>target feature <code>sse2</code></strong> only."
         );
         assert_eq!(
             (name_value_cfg("target_arch", "x86_64") & name_value_cfg("target_feature", "sse2"))
-                .render_long_html(),
+                .to_long_html(),
             "Available on <strong>x86-64 and target feature <code>sse2</code></strong> only."
         );
     })

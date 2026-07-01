@@ -489,12 +489,16 @@ fn print_extra_info_tags(
     import_def_id: Option<DefId>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
-        fn tag_html(class: &str, title: &str, contents: &str) -> impl Display {
+        fn tag_html<'a>(
+            class: impl fmt::Display + 'a,
+            title: impl fmt::Display + 'a,
+            contents: impl fmt::Display + 'a,
+        ) -> impl Display + 'a {
             fmt::from_fn(move |f| {
                 write!(
                     f,
                     r#"<wbr><span class="stab {class}" title="{title}">{contents}</span>"#,
-                    title = Escape(title),
+                    title = Escape(&title),
                 )
             })
         }
