@@ -72,8 +72,7 @@ pub impl(self) trait TcpStreamExt {
     ///
     /// # Examples
     ///
-    /// ```no run
-    /// #![feature(tcp_deferaccept)]
+    /// ```no_run
     /// use std::net::TcpStream;
     /// use std::os::linux::net::TcpStreamExt;
     /// use std::time::Duration;
@@ -82,7 +81,7 @@ pub impl(self) trait TcpStreamExt {
     ///         .expect("Couldn't connect to the server...");
     /// stream.set_deferaccept(Duration::from_secs(1u64)).expect("set_deferaccept call failed");
     /// ```
-    #[unstable(feature = "tcp_deferaccept", issue = "119639")]
+    #[stable(feature = "tcp_deferaccept", since = "CURRENT_RUSTC_VERSION")]
     #[cfg(target_os = "linux")]
     fn set_deferaccept(&self, accept: Duration) -> io::Result<()>;
 
@@ -93,7 +92,6 @@ pub impl(self) trait TcpStreamExt {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(tcp_deferaccept)]
     /// use std::net::TcpStream;
     /// use std::os::linux::net::TcpStreamExt;
     /// use std::time::Duration;
@@ -103,7 +101,7 @@ pub impl(self) trait TcpStreamExt {
     /// stream.set_deferaccept(Duration::from_secs(1u64)).expect("set_deferaccept call failed");
     /// assert_eq!(stream.deferaccept().unwrap(), Duration::from_secs(1u64));
     /// ```
-    #[unstable(feature = "tcp_deferaccept", issue = "119639")]
+    #[stable(feature = "tcp_deferaccept", since = "CURRENT_RUSTC_VERSION")]
     #[cfg(target_os = "linux")]
     fn deferaccept(&self) -> io::Result<Duration>;
 }
