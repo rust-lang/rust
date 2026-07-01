@@ -2531,12 +2531,8 @@ impl ModCollector<'_, '_> {
         // Case 1: builtin macros
         let expander = if attrs.by_key(sym::rustc_builtin_macro).exists() {
             // `#[rustc_builtin_macro = "builtin_name"]` overrides the `macro_rules!` name.
-            let name;
             let name = match attrs.by_key(sym::rustc_builtin_macro).string_value_with_span() {
-                Some((it, span)) => {
-                    name = Name::new_symbol(Symbol::intern(it), span.ctx);
-                    &name
-                }
+                Some((it, span)) => &Name::new_symbol(Symbol::intern(it), span.ctx),
                 None => {
                     let explicit_name =
                         attrs.by_key(sym::rustc_builtin_macro).tt_values().next().and_then(|tt| {
@@ -2546,10 +2542,7 @@ impl ModCollector<'_, '_> {
                             }
                         });
                     match explicit_name {
-                        Some(ident) => {
-                            name = ident.as_name();
-                            &name
-                        }
+                        Some(ident) => &ident.as_name(),
                         None => &mac.name,
                     }
                 }
