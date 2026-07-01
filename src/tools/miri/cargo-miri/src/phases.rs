@@ -597,6 +597,8 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
         cmd.args(args);
     }
 
+    cmd.arg("-Zjit-mode");
+
     // Then pass binary arguments.
     cmd.arg("--");
     cmd.args(&binary_args);
