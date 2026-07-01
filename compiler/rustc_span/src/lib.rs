@@ -563,6 +563,14 @@ impl<'a> FileNameDisplay<'a> {
             _ => Cow::from(self.to_string()),
         }
     }
+
+    /// Returns whether the displayed file name starts with `prefix`.
+    ///
+    /// Avoids allocating in the common case of a valid-UTF-8 path, where
+    /// `to_string_lossy` borrows rather than allocates.
+    pub fn starts_with(&self, prefix: &str) -> bool {
+        self.to_string_lossy().starts_with(prefix)
+    }
 }
 
 impl FileName {

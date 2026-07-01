@@ -10,6 +10,7 @@ use std::fmt::Debug;
 use std::io;
 use std::io::Write;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use annotate_snippets::renderer::DEFAULT_TERM_WIDTH;
 use annotate_snippets::{AnnotationKind, Group, Origin, Padding, Patch, Renderer, Snippet};
@@ -47,6 +48,9 @@ pub struct AnnotateSnippetEmitter {
     track_diagnostics: bool,
     terminal_url: TerminalUrl,
     theme: OutputTheme,
+    /// Whether we've already suggested installing `rust-src`. Shown at most once per compile.
+    #[setters(skip)]
+    rust_src_hint_shown: AtomicBool,
 }
 
 impl Debug for AnnotateSnippetEmitter {
@@ -136,6 +140,7 @@ impl AnnotateSnippetEmitter {
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
             theme: OutputTheme::Ascii,
+            rust_src_hint_shown: AtomicBool::new(false),
         }
     }
 
@@ -220,6 +225,7 @@ impl AnnotateSnippetEmitter {
                         group,
                         &annotation_level,
                     );
+                    self.maybe_suggest_rust_src(&file.name, sm, &mut group);
                     // If this is the last annotation for a file, and
                     // this is the last file, and the first child is a
                     // "secondary" message, we need to add padding
@@ -288,6 +294,7 @@ impl AnnotateSnippetEmitter {
                         group,
                         &level,
                     );
+                    self.maybe_suggest_rust_src(&file.name, sm, &mut group);
                 }
             }
         }
@@ -569,6 +576,29 @@ impl AnnotateSnippetEmitter {
         } else {
             None
         }
+    }
+
+    /// If `file_name` is a remapped standard-library source (so its source isn't available
+    /// locally), append a one-time `help` telling the user to install `rust-src`. Shown at most
+    /// once per compile session (tracked via `self.rust_src_hint_shown`).
+    fn maybe_suggest_rust_src<'a>(
+        &self,
+        file_name: &FileName,
+        sm: &Arc<SourceMap>,
+        group: &mut Group<'a>,
+    ) {
+        if self.rust_src_hint_shown.load(Ordering::Relaxed)
+            || !sm.filename_for_diagnostics(file_name).starts_with("/rustc/")
+        {
+            return;
+        }
+        self.rust_src_hint_shown.store(true, Ordering::Relaxed);
+        // `Group::element` consumes `self`, so swap in a cheap placeholder to take ownership.
+        let owned = std::mem::replace(group, Group::with_level(annotate_snippets::Level::HELP));
+        *group = owned.element(annotate_snippets::Level::HELP.message(
+            "the source code for the standard library is not available; \
+             run `rustup component add rust-src` to make it available",
+        ));
     }
 
     fn unannotated_messages<'a>(
