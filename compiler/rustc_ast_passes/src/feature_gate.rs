@@ -8,7 +8,6 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_session::errors::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, Symbol, sym};
-use thin_vec::ThinVec;
 
 use crate::diagnostics;
 
@@ -188,21 +187,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::ForeignMod(_foreign_module) => {
                 // handled during lowering
             }
-            ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
-                for attr in attr::filter_by_name(&i.attrs, sym::repr) {
-                    for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
-                        if item.has_name(sym::simd) {
-                            gate!(
-                                self,
-                                repr_simd,
-                                attr.span,
-                                "SIMD types are experimental and possibly buggy"
-                            );
-                        }
-                    }
-                }
-            }
-
             ast::ItemKind::Impl(ast::Impl { of_trait: Some(of_trait), .. }) => {
                 if let ast::ImplPolarity::Negative(span) = of_trait.polarity {
                     gate!(
