@@ -269,6 +269,9 @@ impl Iterator for ReadDir {
             // d_name is guaranteed to be null-terminated.
             let name = unsafe { CStr::from_ptr((&raw const (*entry_ptr).d_name).cast()) };
             let name_bytes = name.to_bytes();
+            if name_bytes == b"." || name_bytes == b".." {
+                continue;
+            }
 
             return Some(Ok(DirEntry {
                 dir: Arc::clone(&self.inner),
