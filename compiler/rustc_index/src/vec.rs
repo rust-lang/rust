@@ -157,6 +157,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub fn len(&self) -> usize {
+        self.len.index()
+    }
+
+    #[inline]
     pub fn as_slice(&self) -> &IndexSlice<I, T> {
         IndexSlice::from_raw(unsafe {
             std::slice::from_raw_parts(self.data.as_ptr(), self.len.index())
