@@ -1642,6 +1642,12 @@ impl<T: PointeeSized> fmt::Pointer for NonNull<T> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: PointeeSized> Eq for NonNull<T> {}
 
+/// Pointers to [`Sized`] types are compared by their addresses, as produced by the
+/// [`NonNull::addr`] method.
+/// Pointers to [dynamically sized types] additionally have their metadata compared.
+/// See [`core::ptr::eq`] for more information about metadata comparisons.
+///
+/// [dynamically sized types]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: PointeeSized> PartialEq for NonNull<T> {
     #[inline]
@@ -1651,6 +1657,12 @@ impl<T: PointeeSized> PartialEq for NonNull<T> {
     }
 }
 
+/// Pointers to [`Sized`] types are compared by their addresses, as produced by the
+/// [`NonNull::addr`] method.
+/// Pointers to [dynamically sized types] additionally have their metadata compared.
+/// See [`core::ptr::eq`] for more information about metadata comparisons.
+///
+/// [dynamically sized types]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: PointeeSized> Ord for NonNull<T> {
     #[inline]
@@ -1660,6 +1672,12 @@ impl<T: PointeeSized> Ord for NonNull<T> {
     }
 }
 
+/// Pointers to [`Sized`] types are compared by their addresses, as produced by the
+/// [`NonNull::addr`] method.
+/// Pointers to [dynamically sized types] additionally have their metadata compared.
+/// See [`core::ptr::eq`] for more information about metadata comparisons.
+///
+/// [dynamically sized types]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: PointeeSized> PartialOrd for NonNull<T> {
     #[inline]
