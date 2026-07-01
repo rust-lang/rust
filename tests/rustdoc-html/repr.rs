@@ -1,5 +1,6 @@
 // Test the rendering of `#[repr]` on ADTs.
 #![feature(repr_simd)] // only used for the `ReprSimd` test case
+#![feature(rustc_attrs)] // only used for the `RustcPubTransparent` test case
 
 // Check the "local case" (HIR cleaning) //
 
@@ -145,6 +146,15 @@ pub enum ReprTransparentEnumHidden1ZstField {
         #[doc(hidden)]
         field: u64, // ...since the non-1-ZST field is public
     },
+}
+
+//@ has 'repr/struct.RustcPubTransparent.html'
+//@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
+#[rustc_pub_transparent]
+#[repr(transparent)]
+pub struct RustcPubTransparent {
+    // Private, but `rustc_pub_transparent` means we should document the repr
+    field: u64,
 }
 
 struct Marker; // 1-ZST
