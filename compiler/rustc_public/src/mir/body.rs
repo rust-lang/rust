@@ -499,9 +499,6 @@ pub enum Rvalue {
     /// This is needed because dataflow analysis needs to distinguish
     /// `dest = Foo { x: ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case that `Foo`
     /// has a destructor.
-    ///
-    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
-    /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(AggregateKind, Vec<Operand>),
 
     /// * `Offset` has the same semantics as `<*const T>::offset`, except that the second

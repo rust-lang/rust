@@ -1,0 +1,90 @@
+- // MIR for `mixed_aggregate_aliasing` before MoveElimination
++ // MIR for `mixed_aggregate_aliasing` after MoveElimination
+  
+  fn mixed_aggregate_aliasing(_1: bool, _2: u8) -> Triple {
+      debug flag => _1;
+      debug z => _2;
+      let mut _0: Triple;
+      let _3: Triple;
+      let mut _5: bool;
+      let mut _6: u8;
+      let mut _7: u8;
+      let mut _8: u8;
++     let mut _9: u8;
+      scope 1 {
+-         debug input => _3;
++         debug input => _0;
+          let _4: Triple;
+          scope 2 {
+-             debug out => _4;
++             debug out => _0;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_3);
+-         _3 = opaque_triple() -> [return: bb1, unwind unreachable];
++         nop;
++         _0 = opaque_triple() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         StorageLive(_4);
+-         StorageLive(_5);
+-         _5 = copy _1;
+-         switchInt(move _5) -> [0: bb3, otherwise: bb2];
++         nop;
++         nop;
++         nop;
++         switchInt(move _1) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+-         _4 = copy _3;
++         nop;
+          goto -> bb4;
+      }
+  
+      bb3: {
++         nop;
+          StorageLive(_6);
+-         _6 = copy (_3.1: u8);
+-         StorageLive(_7);
+-         _7 = copy (_3.0: u8);
+-         StorageLive(_8);
+-         _8 = copy _2;
+-         _4 = Triple(move _6, move _7, move _8);
+-         StorageDead(_8);
+-         StorageDead(_7);
++         _6 = copy (_0.1: u8);
++         nop;
++         nop;
++         nop;
++         nop;
++         StorageLive(_9);
++         _9 = no_retag move (_0.0: u8);
++         (_0.0: u8) = no_retag move _6;
++         (_0.1: u8) = no_retag move _9;
++         (_0.2: u8) = no_retag move _2;
++         nop;
++         StorageDead(_9);
+          StorageDead(_6);
++         nop;
++         nop;
++         nop;
+          goto -> bb4;
+      }
+  
+      bb4: {
+-         StorageDead(_5);
+-         _0 = copy _4;
+-         StorageDead(_4);
+-         StorageDead(_3);
++         nop;
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

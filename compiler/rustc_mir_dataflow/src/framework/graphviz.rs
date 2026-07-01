@@ -660,13 +660,13 @@ where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
 {
-    fn visit_block_start(&mut self, state: &A::Domain) {
+    fn visit_block_start(&mut self, state: &A::Domain, _block: BasicBlock) {
         if A::Direction::IS_FORWARD {
             self.prev_state.clone_from(state);
         }
     }
 
-    fn visit_block_end(&mut self, state: &A::Domain) {
+    fn visit_block_end(&mut self, state: &A::Domain, _block: BasicBlock) {
         if A::Direction::IS_BACKWARD {
             self.prev_state.clone_from(state);
         }

@@ -1,0 +1,77 @@
+- // MIR for `rust_call_tuple_not_projected` before MoveElimination
++ // MIR for `rust_call_tuple_not_projected` after MoveElimination
+  
+  fn rust_call_tuple_not_projected(_1: F) -> () {
+      debug f => _1;
+      let mut _0: ();
+      let _2: [u8; 8];
+      let _4: ();
+      let mut _5: F;
+      let mut _6: ([u8; 8], [u8; 8]);
+      let mut _7: [u8; 8];
+      let mut _8: [u8; 8];
+      scope 1 {
+-         debug a => _2;
++         debug a => _7;
+          let _3: [u8; 8];
+          scope 2 {
+-             debug b => _3;
++             debug b => _8;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = [const 1_u8; 8];
+-         StorageLive(_3);
+-         _3 = [const 2_u8; 8];
+-         StorageLive(_4);
+-         StorageLive(_5);
+-         _5 = move _1;
+-         StorageLive(_6);
++         nop;
+          StorageLive(_7);
+-         _7 = copy _2;
++         _7 = [const 1_u8; 8];
++         nop;
+          StorageLive(_8);
+-         _8 = copy _3;
++         _8 = [const 2_u8; 8];
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         StorageLive(_6);
+          _6 = (move _7, move _8);
+-         _4 = <F as FnOnce<([u8; 8], [u8; 8])>>::call_once(move _5, move _6) -> [return: bb1, unwind unreachable];
++         StorageLive(_4);
++         StorageDead(_7);
++         StorageDead(_8);
++         _4 = <F as FnOnce<([u8; 8], [u8; 8])>>::call_once(move _1, move _6) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         StorageDead(_8);
+-         StorageDead(_7);
+-         StorageDead(_6);
+-         StorageDead(_5);
+          StorageDead(_4);
++         StorageDead(_6);
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
+          _0 = const ();
+-         StorageDead(_3);
+-         StorageDead(_2);
++         nop;
++         nop;
+          return;
+      }
+  }
+  
