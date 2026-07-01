@@ -1358,7 +1358,7 @@ pub fn run() -> Result<(), String> {
         return Ok(());
     }
 
-    args.config_info.setup(&mut env, args.use_system_gcc)?;
+    args.config_info.setup(&mut env, args.use_system_gcc, true)?;
 
     if args.runners.is_empty() {
         run_all(&env, &args)?;
