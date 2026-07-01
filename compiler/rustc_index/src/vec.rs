@@ -220,7 +220,16 @@ impl<I: Idx, T> IndexVec<I, T> {
 
     #[inline(always)]
     pub fn mutate<U, F: FnOnce(&mut Vec<T>) -> U>(&mut self, f: F) -> U {
-        let mut vec = std::mem::take(self).into_vec();
+        let sentinel = IndexVec {
+            data: NonNull::dangling(),
+            len: I::new(0),
+            capacity: I::new(0),
+            _marker: PhantomData,
+            _marker2: PhantomData,
+        };
+        let mut vec = std::mem::replace(self, sentinel).into_vec();
+
+        // let mut vec = std::mem::take(self).into_vec();
         let v = f(&mut vec);
         let _ = std::mem::replace(self, IndexVec::from_raw(vec));
         v
