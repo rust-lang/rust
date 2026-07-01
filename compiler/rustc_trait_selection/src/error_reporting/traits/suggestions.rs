@@ -4882,12 +4882,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     })
                 } else if let Some(where_pred) = where_pred.as_projection_clause()
                     && let Some(failed_pred) = failed_pred.as_projection_clause()
-                    && let Some(found) = failed_pred.skip_binder().term.as_type()
+                    && let Some(found) =
+                        failed_pred.map_bound(|pred| pred.term.as_type()).transpose().map(|term| {
+                            self.instantiate_binder_with_fresh_vars(
+                                expr.span,
+                                BoundRegionConversionTime::FnCall,
+                                term,
+                            )
+                        })
                 {
                     type_diffs = vec![TypeError::Sorts(ty::error::ExpectedFound {
-                        expected: where_pred
-                            .skip_binder()
-                            .projection_term
+                        expected: self
+                            .instantiate_binder_with_fresh_vars(
+                                expr.span,
+                                BoundRegionConversionTime::FnCall,
+                                where_pred.map_bound(|pred| pred.projection_term),
+                            )
                             .expect_ty()
                             .to_ty(self.tcx, ty::IsRigid::No),
                         found,
