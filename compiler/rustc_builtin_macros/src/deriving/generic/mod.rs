@@ -422,13 +422,10 @@ fn find_type_parameters(
 
     impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
-            let stack_len = self.bound_generic_params_stack.len();
-            if let ast::TyKind::FnPtr(fn_ptr) = &ty.kind
-                && !fn_ptr.generic_params.is_empty()
-            {
-                // Given a field `x: for<'a> fn(T::SomeType<'a>)`, we wan't to account for `'a` so
-                // that we generate `where for<'a> T::SomeType<'a>: ::core::clone::Clone`. #122622
-                self.bound_generic_params_stack.extend(fn_ptr.generic_params.iter().cloned());
+            // Cloning a function pointer copies the pointer value and never clones values
+            // of the input or output types, so they should not contribute derived bounds.
+            if let ast::TyKind::FnPtr(_) = &ty.kind {
+                return;
             }
 
             if let ast::TyKind::Path(_, path) = &ty.kind
@@ -442,7 +439,6 @@ fn find_type_parameters(
             }
 
             visit::walk_ty(self, ty);
-            self.bound_generic_params_stack.truncate(stack_len);
         }
 
         // Place bound generic params on a stack, to extract them when a type is encountered.
