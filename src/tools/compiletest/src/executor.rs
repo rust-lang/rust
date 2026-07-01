@@ -23,7 +23,7 @@ mod json;
 
 pub(crate) fn run_tests(config: &Config, tests: Vec<CollectedTest>) -> bool {
     let tests_len = tests.len();
-    let filtered = filter_tests(config, tests);
+    let (filtered, ignored) = filter_tests(config, tests);
     // Iterator yielding tests that haven't been started yet.
     let mut fresh_tests = (0..).map(TestId).zip(&filtered);
 
@@ -40,6 +40,11 @@ pub(crate) fn run_tests(config: &Config, tests: Vec<CollectedTest>) -> bool {
 
     let num_filtered_out = tests_len - filtered.len();
     listener.suite_started(filtered.len(), num_filtered_out);
+
+    for (id, test) in (filtered.len()..).map(TestId).zip(ignored) {
+        let completion = TestCompletion { id, outcome: TestOutcome::FilteredOut, stdout: None };
+        listener.test_finished(&test, &completion);
+    }
 
     // Channel used by test threads to report the test outcome when done.
     let (completion_tx, completion_rx) = mpsc::channel::<TestCompletion>();
@@ -263,6 +268,7 @@ enum TestOutcome {
     Succeeded,
     Failed { message: Option<&'static str> },
     Ignored,
+    FilteredOut,
 }
 
 impl TestOutcome {
@@ -278,9 +284,10 @@ impl TestOutcome {
 /// FIXME(#139660): Now that libtest has been removed, redesign the whole filtering system to
 /// do a better job of understanding and filtering _paths_, instead of being tied to libtest's
 /// substring/exact matching behaviour.
-fn filter_tests(opts: &Config, tests: Vec<CollectedTest>) -> Vec<CollectedTest> {
-    let mut filtered = tests;
-
+fn filter_tests(
+    opts: &Config,
+    tests: Vec<CollectedTest>,
+) -> (Vec<CollectedTest>, Vec<CollectedTest>) {
     let matches_filter = |test: &CollectedTest, filter_str: &str| {
         if opts.filter_exact {
             // When `--exact` is used we must use `filterable_path` to get
@@ -293,17 +300,23 @@ fn filter_tests(opts: &Config, tests: Vec<CollectedTest>) -> Vec<CollectedTest> 
         }
     };
 
-    // Remove tests that don't match the test filter
-    if !opts.filters.is_empty() {
-        filtered.retain(|test| opts.filters.iter().any(|filter| matches_filter(test, filter)));
-    }
+    let should_run = |test: &CollectedTest| {
+        // Remove tests that don't match the test filter
+        if !opts.filters.is_empty()
+            && !opts.filters.iter().any(|filter| matches_filter(test, filter))
+        {
+            return false;
+        }
 
-    // Skip tests that match any of the skip filters
-    if !opts.skip.is_empty() {
-        filtered.retain(|test| !opts.skip.iter().any(|sf| matches_filter(test, sf)));
-    }
+        // Skip tests that match any of the skip filters
+        if opts.skip.iter().any(|sf| matches_filter(test, sf)) {
+            return false;
+        }
 
-    filtered
+        true
+    };
+
+    tests.into_iter().partition(should_run)
 }
 
 /// Determines the number of tests to run concurrently.

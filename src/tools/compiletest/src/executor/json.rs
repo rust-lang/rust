@@ -71,6 +71,10 @@ impl Listener {
                 maybe_message = test.desc.ignore_message.as_deref();
                 event = "ignored";
             }
+            TestOutcome::FilteredOut => {
+                maybe_message = test.desc.ignore_message.as_deref();
+                event = "filtered_out";
+            }
         };
 
         // This emits optional fields as `null`, instead of omitting them
