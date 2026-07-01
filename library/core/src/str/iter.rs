@@ -3,18 +3,18 @@
 use super::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use super::validations::{next_code_point, next_code_point_reverse};
 use super::{
-    BytesIsNotEmpty, CharEscapeDebugContinue, CharEscapeDefault, CharEscapeUnicode,
-    IsAsciiWhitespace, IsNotEmpty, IsWhitespace, LinesMap, UnsafeBytesToStr, from_utf8_unchecked,
+    BytesIsNotEmpty, CharEscapeDebug, CharEscapeDefault, CharEscapeUnicode, IsAsciiWhitespace,
+    IsNotEmpty, IsWhitespace, LinesMap, UnsafeBytesToStr, from_utf8_unchecked,
 };
+use crate::char as char_mod;
 use crate::fmt::{self, Write};
 use crate::iter::{
-    Chain, Copied, Filter, FlatMap, Flatten, FusedIterator, Map, TrustedLen, TrustedRandomAccess,
+    Copied, Filter, FlatMap, FusedIterator, Map, TrustedLen, TrustedRandomAccess,
     TrustedRandomAccessNoCoerce,
 };
 use crate::num::NonZero;
 use crate::ops::Try;
 use crate::slice::{self, Split as SliceSplit};
-use crate::{char as char_mod, option};
 
 /// An iterator over the [`char`]s of a string slice.
 ///
@@ -1542,10 +1542,7 @@ impl FusedIterator for EncodeUtf16<'_> {}
 #[stable(feature = "str_escape", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct EscapeDebug<'a> {
-    pub(super) inner: Chain<
-        Flatten<option::IntoIter<char_mod::EscapeDebug>>,
-        FlatMap<Chars<'a>, char_mod::EscapeDebug, CharEscapeDebugContinue>,
-    >,
+    pub(super) inner: FlatMap<Chars<'a>, char_mod::EscapeDebug, CharEscapeDebug>,
 }
 
 /// The return type of [`str::escape_default`].
