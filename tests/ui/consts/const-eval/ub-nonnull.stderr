@@ -1,5 +1,5 @@
 error[E0080]: constructing invalid value of type NonNull<u8>: at .pointer, encountered 0, but expected something greater or equal to 1
-  --> $DIR/ub-nonnull.rs:16:1
+  --> $DIR/ub-nonnull.rs:18:1
    |
 LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
@@ -9,14 +9,14 @@ LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 255 bytes, but got ALLOC2 which is only 1 byte from the end of the allocation
-  --> $DIR/ub-nonnull.rs:22:29
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 255 bytes, but got ALLOC$ID which is only 1 byte from the end of the allocation
+  --> $DIR/ub-nonnull.rs:24:29
    |
 LL |     let out_of_bounds_ptr = &ptr[255];
    |                             ^^^^^^^^^ evaluation of `OUT_OF_BOUNDS_PTR` failed here
 
 error[E0080]: constructing invalid value of type NonZero<u8>: at .0.0, encountered 0, but expected something greater or equal to 1
-  --> $DIR/ub-nonnull.rs:26:1
+  --> $DIR/ub-nonnull.rs:28:1
    |
 LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
@@ -27,7 +27,7 @@ LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
            }
 
 error[E0080]: constructing invalid value of type NonZero<usize>: at .0.0, encountered 0, but expected something greater or equal to 1
-  --> $DIR/ub-nonnull.rs:28:1
+  --> $DIR/ub-nonnull.rs:30:1
    |
 LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
@@ -37,8 +37,8 @@ LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: reading memory at ALLOC3[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
-  --> $DIR/ub-nonnull.rs:36:38
+error[E0080]: reading memory at ALLOC$ID[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
+  --> $DIR/ub-nonnull.rs:38:38
    |
 LL | const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINIT` failed here
@@ -48,25 +48,25 @@ LL | const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
            }
 
 error[E0080]: constructing invalid value of type NonNull<dyn Send>: at .pointer, encountered 0, but expected something greater or equal to 1
-  --> $DIR/ub-nonnull.rs:39:1
+  --> $DIR/ub-nonnull.rs:41:1
    |
 LL | const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               HEX_DUMP ╾ALLOC$ID╼ │ ╾─╼ │ ╾─╼
            }
 
 error[E0080]: constructing invalid value of type NonNull<()>: at .pointer, encountered a maybe-null pointer, but expected something that is definitely non-zero
-  --> $DIR/ub-nonnull.rs:47:1
+  --> $DIR/ub-nonnull.rs:49:1
    |
 LL | const MAYBE_NULL_PTR: NonNull<()> = unsafe { mem::transmute((&raw const S).wrapping_add(4)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ │ ╾─╼
            }
 
 error: aborting due to 7 previous errors

@@ -588,19 +588,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
             p.def_id.to_def_id(),
         );
 
+        self.create_resolved_path(res, p.name.ident(), p.span)
+    }
+
+    pub(super) fn create_resolved_path(
+        &mut self,
+        res: Res,
+        ident: Ident,
+        span: Span,
+    ) -> hir::QPath<'hir> {
         hir::QPath::Resolved(
             None,
             self.arena.alloc(hir::Path {
                 segments: self.arena.alloc_slice(&[hir::PathSegment {
                     args: None,
                     hir_id: self.next_id(),
-                    ident: p.name.ident(),
+                    ident,
                     infer_args: false,
                     res,
                     delegation_child_segment: false,
                 }]),
                 res,
-                span: p.span,
+                span,
             }),
         )
     }

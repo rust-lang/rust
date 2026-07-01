@@ -839,9 +839,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().associated_items(def_id);
             if of_trait {
                 let impl_trait_header = tcx.impl_trait_header(def_id);
-                res = res.and(tcx.ensure_result().coherent_trait(
-                    impl_trait_header.trait_ref.instantiate_identity().skip_norm_wip().def_id,
-                ));
+                res = res
+                    .and(tcx.ensure_result().coherent_trait(impl_trait_header.trait_ref.def_id()));
 
                 if res.is_ok() {
                     // Checking this only makes sense if the all trait impls satisfy basic
