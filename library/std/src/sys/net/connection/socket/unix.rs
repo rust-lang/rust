@@ -398,7 +398,9 @@ impl Socket {
                 };
                 let mut timeout = libc::timeval {
                     tv_sec: secs,
-                    tv_usec: dur.subsec_micros() as libc::suseconds_t,
+                    // If building 32 bit GNU platforms with 64 bit time, we need to call into here
+                    // since `tv_usec` will in that case be an i64 aliased to __suseconds64_t
+                    tv_usec: (dur.subsec_micros() as libc::suseconds_t).into(),
                 };
                 if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
                     timeout.tv_usec = 1;
