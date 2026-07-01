@@ -621,7 +621,6 @@ define_symbols! {
     specialization,
     min_specialization,
     arbitrary_self_types,
-    arbitrary_self_types_pointers,
     supertrait_item_shadowing,
     new_range,
     range,

@@ -317,7 +317,6 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
             if bad_ty.reached_raw_pointer
-                && !self.features.arbitrary_self_types_pointers
                 && self.edition.at_least_2018()
             {
                 // this case used to be allowed by the compiler,
@@ -408,8 +407,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                     .include_raw_pointers();
 
             let mut reached_raw_pointer = false;
-            let arbitrary_self_types_enabled =
-                self.features.arbitrary_self_types || self.features.arbitrary_self_types_pointers;
+            let arbitrary_self_types_enabled = self.features.arbitrary_self_types;
             let (mut steps, reached_recursion_limit) = if arbitrary_self_types_enabled {
                 let reachable_via_deref =
                     autoderef_via_deref.by_ref().map(|_| true).chain(std::iter::repeat(false));
@@ -1188,9 +1186,7 @@ impl<'a, 'db> ProbeContext<'a, 'db, ProbeForNameChoice<'db>> {
         // The errors emitted by this function are part of
         // the arbitrary self types work, and should not impact
         // other users.
-        if !self.ctx.features.arbitrary_self_types
-            && !self.ctx.features.arbitrary_self_types_pointers
-        {
+        if !self.ctx.features.arbitrary_self_types {
             return Ok(());
         }
 

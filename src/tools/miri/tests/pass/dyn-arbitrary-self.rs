@@ -1,7 +1,7 @@
 //@revisions: stack tree tree_implicit_writes
 //@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(arbitrary_self_types_pointers, unsize, coerce_unsized, dispatch_from_dyn)]
+#![feature(arbitrary_self_types, unsize, coerce_unsized, dispatch_from_dyn)]
 #![feature(rustc_attrs)]
 
 fn pin_box_dyn() {
@@ -124,35 +124,10 @@ fn pointers_and_wrappers() {
     assert_eq!(wpw.wrapper_ptr_wrapper(), 7);
 }
 
-fn raw_ptr_receiver() {
-    use std::ptr;
 
-    trait Foo {
-        fn foo(self: *const Self) -> &'static str;
-    }
-
-    impl Foo for i32 {
-        fn foo(self: *const Self) -> &'static str {
-            "I'm an i32!"
-        }
-    }
-
-    impl Foo for u32 {
-        fn foo(self: *const Self) -> &'static str {
-            "I'm a u32!"
-        }
-    }
-
-    let null_i32 = ptr::null::<i32>() as *const dyn Foo;
-    let null_u32 = ptr::null::<u32>() as *const dyn Foo;
-
-    assert_eq!("I'm an i32!", null_i32.foo());
-    assert_eq!("I'm a u32!", null_u32.foo());
-}
 
 fn main() {
     pin_box_dyn();
     stdlib_pointers();
     pointers_and_wrappers();
-    raw_ptr_receiver();
 }

@@ -2,17 +2,17 @@ struct Foo;
 
 impl Foo {
     fn foo(self: *const Self) {}
-    //~^ ERROR `*const Foo` cannot be used as the type of `self` without
+    //~^ ERROR invalid `self` parameter type: `*const Foo`
 }
 
 trait Bar {
     fn bar(self: *const Self);
-    //~^ ERROR `*const Self` cannot be used as the type of `self` without
+    //~^ ERROR invalid `self` parameter type: `*const Self`
 }
 
 impl Bar for () {
     fn bar(self: *const Self) {}
-    //~^ ERROR `*const ()` cannot be used as the type of `self` without
+    //~^ ERROR invalid `self` parameter type: `*const ()`
 }
 
 fn main() {}
