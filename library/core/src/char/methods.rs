@@ -492,9 +492,16 @@ impl char {
             _ if self.is_control()
                 || self.is_private_use()
                 || self.is_whitespace()
-                || args.escape_grapheme_extender && self.is_grapheme_extender()
+                || args.escape_grapheme_extender_and_maybe_not_nfc
+                    && self.is_grapheme_extender()
                 || self.is_default_ignorable()
                 || self.is_format_control()
+                || match self.nfc_quick_check() {
+                    QuickCheckResult::No => true,
+                    QuickCheckResult::Maybe => args.escape_grapheme_extender_and_maybe_not_nfc,
+                    QuickCheckResult::Yes => false,
+                }
+                || self.is_deprecated()
                 || !self.is_assigned() =>
             {
                 EscapeDebug::unicode(self)
@@ -1295,6 +1302,110 @@ impl char {
             matches!(self, '\'' | '.' | ':' | '^' | '`')
         } else {
             unicode::Case_Ignorable(self)
+        }
+    }
+
+    /// Returns `true` if this `char` has the `Full_Composition_Exclusion` property.
+    /// These characters can never appear in strings normalized according to any
+    /// Unicode [Normalization Form].
+    ///
+    /// [Normalization Form]: https://www.unicode.org/reports/tr15/#Norm_Forms
+    ///
+    /// `Full_Composition_Exclusion` is [described] in Chapter 3 (Conformance) of the Unicode Standard,
+    /// and [specified] in the Unicode Character Database [`DerivedNormalizationProps.txt`].
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G49605
+    /// [specified]: https://www.unicode.org/reports/tr44/#Full_Composition_Exclusion
+    /// [`DerivedNormalizationProps.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedNormalizationProps.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(unicode_discouraged)]
+    /// assert!('\u{0340}'.is_full_composition_exclusion()); // COMBINING GRAVE TONE MARK
+    /// assert!('\u{0344}'.is_full_composition_exclusion()); // COMBINING GREEK DIALYTIKA TONOS
+    /// assert!('\u{0387}'.is_full_composition_exclusion()); // GREEK ANO TELEIA
+    /// assert!('\u{2126}'.is_full_composition_exclusion()); // OHM SIGH
+    /// assert!('\u{2ADC}'.is_full_composition_exclusion()); // FORKING
+    /// assert!('\u{F900}'.is_full_composition_exclusion()); // CJK COMPATIBILITY IDEOGRAPH-F900
+    /// assert!(!'a'.is_full_composition_exclusion());
+    /// assert!(!'á'.is_full_composition_exclusion());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "unicode_discouraged", issue = "none")]
+    #[inline]
+    pub fn is_full_composition_exclusion(self) -> bool {
+        match self {
+            '\0'..='\u{033F}' => false,
+            _ => unicode::Full_Composition_Exclusion(self),
+        }
+    }
+
+    /// Returns `true` if this `char` has the `Deprecated` property.
+    /// Using these characters is strongly discouraged.
+    ///
+    /// `Deprecated` is [described] in Chapter 3 (Conformance) of the Unicode Standard,
+    /// and [specified] in the Unicode Character Database [`PropList.txt`].
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G48383
+    /// [specified]: https://www.unicode.org/reports/tr44/#Deprecated
+    /// [`PropList.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/PropList.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(unicode_discouraged)]
+    /// assert!('\u{0149}'.is_deprecated()); // LATIN SMALL LETTER N PRECEDED BY APOSTROPHE
+    /// assert!('\u{0673}'.is_deprecated()); // ARABIC LETTER ALEF WITH WAVY HAMZA BELOW
+    /// assert!('\u{0F77}'.is_deprecated()); // TIBETAN VOWEL SIGN VOCALIC RR
+    /// assert!('\u{17A3}'.is_deprecated()); // KHMER INDEPENDENT VOWEL QAQ
+    /// assert!('\u{206A}'.is_deprecated()); // INHIBIT SYMMETRIC SWAPPING
+    /// assert!('\u{2329}'.is_deprecated()); // LEFT-POINTING ANGLE BRACKET
+    /// assert!('\u{E0001}'.is_deprecated()); // LANGUAGE TAG
+    /// assert!(!'a'.is_deprecated());
+    /// assert!(!'á'.is_deprecated());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "unicode_discouraged", issue = "none")]
+    #[inline]
+    pub fn is_deprecated(self) -> bool {
+        !self.is_ascii() && unicode::Deprecated(self)
+    }
+
+    /// Returns the value of the `NFC_Quick_Check` property for this character.
+    ///
+    /// For a character `c`, this method returns:
+    ///
+    /// - [`QuickCheckResult::No`] if `c.is_full_composition_exclusion()`.
+    ///   These characters cannot ever occur in an NFC-[normalized] string.
+    /// - [`QuickCheckResult::Maybe`] for characters that may occur in an NFC-[normalized] string,
+    ///   but may also be removed from a string by NFC [normalization], depending on context.
+    /// - [`QuickCheckResult::Yes`] for all other characters.
+    ///
+    /// [normalized]: https://www.unicode.org/faq/normalization.html
+    /// [normalization]: https://www.unicode.org/faq/normalization.html
+    ///
+    /// `NFC_Quick_Check` is [described] in Annex #15 ("Unicode Normalization Forms") of the Unicode Standard,
+    /// and [specified] in the Unicode Character Database [`DerivedNormalizationProps.txt`].
+    ///
+    /// [described]: https://www.unicode.org/reports/tr15/#Detecting_Normalization_Forms
+    /// [specified]: https://www.unicode.org/reports/tr44/#NFC_Quick_Check
+    /// [`DerivedNormalizationProps.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedNormalizationProps.txt
+    #[must_use]
+    #[inline]
+    fn nfc_quick_check(self) -> QuickCheckResult {
+        if self.is_ascii() {
+            QuickCheckResult::Yes
+        } else if self.is_full_composition_exclusion() {
+            QuickCheckResult::No
+        } else if unicode::NFC_QC_Maybe(self) {
+            QuickCheckResult::Maybe
+        } else {
+            QuickCheckResult::Yes
         }
     }
 
@@ -2426,8 +2537,8 @@ impl char {
 }
 
 pub(crate) struct EscapeDebugExtArgs {
-    /// Escape Grapheme Extender codepoints?
-    pub(crate) escape_grapheme_extender: bool,
+    /// Escape codepoints with `Grapheme_Extend` or `NFC_Quick_Check=Maybe`?
+    pub(crate) escape_grapheme_extender_and_maybe_not_nfc: bool,
 
     /// Escape single quotes?
     pub(crate) escape_single_quote: bool,
@@ -2438,7 +2549,7 @@ pub(crate) struct EscapeDebugExtArgs {
 
 impl EscapeDebugExtArgs {
     pub(crate) const ESCAPE_ALL: Self = Self {
-        escape_grapheme_extender: true,
+        escape_grapheme_extender_and_maybe_not_nfc: true,
         escape_single_quote: true,
         escape_double_quote: true,
     };

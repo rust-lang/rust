@@ -93,12 +93,15 @@ static PROPERTIES: &[&str] = &[
     "Alphabetic",
     "Case_Ignorable",
     "Cf",
-    "Cn_Planes_0_3",
+    "Cn_Planes_0_3", // `Cn`, but only for characters up to U+3FFFF
     "Default_Ignorable_Code_Point",
+    "Deprecated",
+    "Full_Composition_Exclusion",
     "Grapheme_Extend",
     "Lowercase",
     "Lt",
     "N",
+    "NFC_QC", // We use this only to derive `NFC_QC=Maybe`
     "Uppercase",
     "White_Space",
     // tidy-alphabetical-end
@@ -142,6 +145,13 @@ fn load_data() -> UnicodeData {
         }
     }
     for row in ucd_parse::parse::<_, ucd_parse::Property>(&UNICODE_DIRECTORY).unwrap() {
+        if let Some(name) = PROPERTIES.iter().find(|prop| **prop == row.property.as_str()) {
+            properties.entry(*name).or_insert_with(Vec::new).push(row.codepoints);
+        }
+    }
+    for row in
+        ucd_parse::parse::<_, ucd_parse::DerivedNormalizationProperty>(&UNICODE_DIRECTORY).unwrap()
+    {
         if let Some(name) = PROPERTIES.iter().find(|prop| **prop == row.property.as_str()) {
             properties.entry(*name).or_insert_with(Vec::new).push(row.codepoints);
         }
@@ -207,6 +217,21 @@ fn load_data() -> UnicodeData {
             "{c:?}",
         );
     }
+
+    // Unfortunately, ucd-parse doens't allow getting the values
+    // of non-binary properties.
+    // So "NFC_QC" here corresponds to both NFC_QC=Maybe and NFC_QC=No
+    // (NFC_QC=Yes codepoints are omitted from DerivedNormalizationProps.txt).
+    // However, Full_Composition_Exclusion is guaranteed equivalent to
+    // NFC_QC=No (https://www.unicode.org/reports/tr15/#Exclusion_Data_File),
+    // so we can take the difference to get NFC_QC=Maybe.
+    let nfc_qc_no: BTreeSet<_> =
+        properties["Full_Composition_Exclusion"].iter().copied().flatten().collect();
+    let nfc_qc_no_maybe: BTreeSet<_> =
+        properties.remove("NFC_QC").unwrap().into_iter().flatten().collect();
+    let nfc_qc_maybe: Vec<_> =
+        nfc_qc_no_maybe.difference(&nfc_qc_no).copied().map(Codepoints::Single).collect();
+    properties.insert("NFC_QC_Maybe", nfc_qc_maybe);
 
     for row in ucd_parse::parse::<_, ucd_parse::SpecialCaseMapping>(&UNICODE_DIRECTORY).unwrap() {
         if !row.conditions.is_empty() {

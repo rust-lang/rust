@@ -82,6 +82,21 @@ fn default_ignorable_code_point() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
+fn deprecated() {
+    test_boolean_property(test_data::DEPRECATED, unicode_data::deprecated::lookup);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn full_composition_exclusion() {
+    test_boolean_property(
+        test_data::FULL_COMPOSITION_EXCLUSION,
+        unicode_data::full_composition_exclusion::lookup,
+    );
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn grapheme_extend() {
     test_boolean_property(test_data::GRAPHEME_EXTEND, unicode_data::grapheme_extend::lookup);
 }
@@ -105,6 +120,12 @@ fn lt() {
 fn n() {
     test_boolean_property(test_data::N, unicode_data::n::lookup);
     test_boolean_property(test_data::N, char::is_numeric);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn nfc_qc_maybe() {
+    test_boolean_property(test_data::NFC_QC_MAYBE, unicode_data::nfc_qc_maybe::lookup);
 }
 
 #[test]

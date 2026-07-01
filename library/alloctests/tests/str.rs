@@ -1143,6 +1143,11 @@ fn test_escape_debug() {
         "\u{301}a\u{301}bé\u{e000}".escape_debug().to_string(),
         "\\u{301}a\u{301}bé\\u{e000}"
     );
+    assert_eq!("α\u{387}".escape_debug().to_string(), "α\\u{387}");
+    assert_eq!("\u{149}".escape_debug().to_string(), "\\u{149}");
+    assert_eq!("\u{1161}".escape_debug().to_string(), "\\u{1161}");
+    assert_eq!("\u{11a8}".escape_debug().to_string(), "\\u{11a8}");
+    assert_eq!("\u{16d67}".escape_debug().to_string(), "\\u{16d67}");
 }
 
 #[test]
