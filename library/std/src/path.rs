@@ -615,7 +615,7 @@ impl AsRef<Path> for Component<'_> {
 /// ```
 ///
 /// [`components`]: Path::components
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
@@ -1122,7 +1122,12 @@ fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cm
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "path_ancestors", since = "1.28.0")]
 pub struct Ancestors<'a> {
-    next: Option<&'a Path>,
+    path: &'a [u8],
+    components: Components<'a>,
+    front_bytes: usize,
+    back_bytes: usize,
+    trailing_seps: usize,
+    is_relative: bool,
 }
 
 #[stable(feature = "path_ancestors", since = "1.28.0")]
@@ -1131,9 +1136,95 @@ impl<'a> Iterator for Ancestors<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        let next = self.next;
-        self.next = next.and_then(Path::parent);
-        next
+        let path_len = self.path.len();
+        // We reach here when we no longer have anymore paths
+        // to consume, we're dealing with relative paths and
+        // need to output ""
+        if self.front_bytes + self.back_bytes >= path_len - self.trailing_seps {
+            if self.is_relative {
+                self.is_relative = false;
+                return Some(Path::new(""));
+            }
+            return None;
+        }
+
+        // `Ancestors::next` presents the current path
+        let curr_back_bytes = self.back_bytes;
+        let curr_path_bytes = self.components.as_path().as_u8_slice();
+
+        // Consume back component
+        self.components.next_back();
+        let next_path_bytes = self.components.as_path().as_u8_slice();
+        self.back_bytes += curr_path_bytes.len() - next_path_bytes.len();
+
+        // `Ancestors::next` first path to present will always be the entire
+        // path untrimmed
+        if curr_back_bytes == 0 {
+            // SAFETY: This contains the whole original path
+            let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..path_len]) };
+            return Some(Path::new(sliced_path));
+        }
+
+        let back_ind = path_len - self.trailing_seps - curr_back_bytes;
+        // SAFETY: Traversing through component should stop at a valid separator byte
+        // so this should always be a valid u8 slice
+        let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..back_ind]) };
+        // we use `Path::components` here instead of `Path::trim_trailing_seps` because
+        // the latter method does not normalize curr dir components (i.e. "/foo////.////bar")
+        Some(Path::components(sliced_path).as_path())
+    }
+}
+
+#[stable(feature = "reverse_ancestors", since = "CURRENT_RUSTC_VERSION")]
+impl<'a> DoubleEndedIterator for Ancestors<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let path_len = self.path.len();
+        // We reach here when we no longer have anymore paths
+        // to consume, we're dealing with relative paths and
+        // need to output ""
+        if self.front_bytes + self.back_bytes >= path_len - self.trailing_seps {
+            // This is needed for mixing `Ancestors::next`/`Ancestors::next_back`
+            // on "." directory
+            if self.is_relative {
+                self.is_relative = false;
+                return Some(Path::new(""));
+            }
+            return None;
+        }
+
+        // If path is relative, the first path that `Ancestors::next_back`
+        // produce is an empty path
+        if self.is_relative {
+            self.is_relative = false;
+            return Some(Path::new(""));
+        }
+
+        // `Ancestors::next_back` presents the path given by the next consumed
+        // components
+        let curr_path_bytes = self.components.as_path().as_u8_slice();
+        // Consume front component
+        self.components.next();
+        let next_path_bytes = self.components.as_path().as_u8_slice();
+
+        // We add up how many bytes we have read between curr_path_bytes and
+        // next_path_bytes to check if our `Ancestors::next_back` is presenting
+        // the last path component (in which case we need to present the whole
+        // path untrimmed)
+        self.front_bytes += curr_path_bytes.len() - next_path_bytes.len();
+        if self.front_bytes == path_len - self.trailing_seps {
+            self.front_bytes += self.trailing_seps;
+            // SAFETY: This contains the whole original path
+            let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..path_len]) };
+            return Some(Path::new(sliced_path));
+        }
+
+        // SAFETY: Traversing through component should stop at a valid separator byte
+        // so this should always be a valid u8 slice
+        let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..self.front_bytes]) };
+        // we use `Path::components` here instead of `Path::trim_trailing_seps` because
+        // the latter method does not normalize curr dir components (i.e. "/foo////.////bar")
+        Some(Path::components(sliced_path).as_path())
     }
 }
 
@@ -2645,10 +2736,12 @@ impl Path {
 
     /// Produces an iterator over `Path` and its ancestors.
     ///
-    /// The iterator will yield the `Path` that is returned if the [`parent`] method is used zero
-    /// or more times. If the [`parent`] method returns [`None`], the iterator will do likewise.
     /// The iterator will always yield at least one value, namely `Some(&self)`. Next it will yield
     /// `&self.parent()`, `&self.parent().and_then(Path::parent)` and so on.
+    ///
+    /// The iterator also allows you to yield `Path`(s) in the forward direction using
+    /// `.next_back()` or `.rev().next()`. It will always be symmetrical with the `.next()`
+    /// direction.
     ///
     /// # Examples
     ///
@@ -2669,11 +2762,38 @@ impl Path {
     /// assert_eq!(ancestors.next(), None);
     /// ```
     ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// let mut ancestors = Path::new("/foo/bar").ancestors();
+    /// assert_eq!(ancestors.next_back(), Some(Path::new("/")));
+    /// assert_eq!(ancestors.next_back(), Some(Path::new("/foo")));
+    /// assert_eq!(ancestors.next_back(), Some(Path::new("/foo/bar")));
+    /// assert_eq!(ancestors.next_back(), None);
+    ///
+    /// let mut ancestors = Path::new("../foo/bar").ancestors();
+    /// assert_eq!(ancestors.next_back(), Some(Path::new("")));
+    /// assert_eq!(ancestors.next_back(), Some(Path::new("..")));
+    /// assert_eq!(ancestors.next_back(), Some(Path::new("../foo")));
+    /// assert_eq!(ancestors.next_back(), Some(Path::new("../foo/bar")));
+    /// assert_eq!(ancestors.next_back(), None);
+    /// ```
+    ///
     /// [`parent`]: Path::parent
     #[stable(feature = "path_ancestors", since = "1.28.0")]
     #[inline]
     pub fn ancestors(&self) -> Ancestors<'_> {
-        Ancestors { next: Some(&self) }
+        let path = self.as_os_str().as_encoded_bytes();
+        let trailing_seps = path.len() - self.components().as_path().as_u8_slice().len();
+        let is_relative = self.is_relative();
+        Ancestors {
+            path,
+            components: self.components(),
+            front_bytes: 0,
+            back_bytes: 0,
+            trailing_seps,
+            is_relative,
+        }
     }
 
     /// Returns the final component of the `Path`, if there is one.
