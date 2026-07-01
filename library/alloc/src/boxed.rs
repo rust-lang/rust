@@ -1347,16 +1347,12 @@ impl<T: ?Sized> Box<T> {
     /// Recreate a `Box` which was previously converted to a `NonNull`
     /// pointer using [`Box::into_non_null`]:
     /// ```
-    /// #![feature(box_vec_non_null)]
-    ///
     /// let x = Box::new(5);
     /// let non_null = Box::into_non_null(x);
     /// let x = unsafe { Box::from_non_null(non_null) };
     /// ```
     /// Manually create a `Box` from scratch by using the global allocator:
     /// ```
-    /// #![feature(box_vec_non_null)]
-    ///
     /// use std::alloc::{alloc, Layout};
     /// use std::ptr::NonNull;
     ///
@@ -1372,7 +1368,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// [memory layout]: self#memory-layout
     /// [considerations for unsafe code]: self#considerations-for-unsafe-code
-    #[unstable(feature = "box_vec_non_null", issue = "130364")]
+    #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
     pub unsafe fn from_non_null(ptr: NonNull<T>) -> Self {
@@ -1461,8 +1457,6 @@ impl<T: ?Sized> Box<T> {
     /// Converting the `NonNull` pointer back into a `Box` with [`Box::from_non_null`]
     /// for automatic cleanup:
     /// ```
-    /// #![feature(box_vec_non_null)]
-    ///
     /// let x = Box::new(String::from("Hello"));
     /// let non_null = Box::into_non_null(x);
     /// let x = unsafe { Box::from_non_null(non_null) };
@@ -1470,8 +1464,6 @@ impl<T: ?Sized> Box<T> {
     /// Manual cleanup by explicitly running the destructor and deallocating
     /// the memory:
     /// ```
-    /// #![feature(box_vec_non_null)]
-    ///
     /// use std::alloc::{dealloc, Layout};
     ///
     /// let x = Box::new(String::from("Hello"));
@@ -1483,8 +1475,6 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// Note: This is equivalent to the following:
     /// ```
-    /// #![feature(box_vec_non_null)]
-    ///
     /// let x = Box::new(String::from("Hello"));
     /// let non_null = Box::into_non_null(x);
     /// unsafe {
@@ -1494,7 +1484,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "box_vec_non_null", issue = "130364")]
+    #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn into_non_null(b: Self) -> NonNull<T> {
         // SAFETY: `Box` is guaranteed to be non-null.
@@ -1611,7 +1601,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [memory layout]: self#memory-layout
     /// [considerations for unsafe code]: self#considerations-for-unsafe-code
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     pub unsafe fn from_non_null_in(raw: NonNull<T>, alloc: A) -> Self {
         // SAFETY: guaranteed by the caller.
@@ -1726,7 +1715,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     pub fn into_non_null_with_allocator(b: Self) -> (NonNull<T>, A) {
         let (ptr, alloc) = Box::into_raw_with_allocator(b);
