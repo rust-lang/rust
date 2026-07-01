@@ -1345,10 +1345,6 @@ fn test_asm(env: &Env, args: &TestArg) -> Result<(), String> {
     println!("[TEST] cg_gcc assembly");
     let llvm_filecheck = get_llvm_filecheck(env)?;
 
-    let mut env: HashMap<String, String> = std::env::vars().collect();
-    let mut config = ConfigInfo::default();
-    config.setup(&mut env, false)?;
-
     let target_dir = std::env::current_dir().unwrap().join("build_system/asm-tester/target");
 
     // All this code is because `cargo` keeps recompiling this file, and we can't figure out why.
@@ -1373,7 +1369,7 @@ fn test_asm(env: &Env, args: &TestArg) -> Result<(), String> {
             &target_dir,
             &"--",
         ];
-        run_command_with_output_and_env_no_err(&build_asm_args, Some(Path::new(".")), Some(&env))?;
+        run_command_with_output_and_env_no_err(&build_asm_args, Some(Path::new(".")), Some(env))?;
     }
 
     let mut test_asm_args: Vec<&dyn AsRef<OsStr>> = vec![
@@ -1386,10 +1382,10 @@ fn test_asm(env: &Env, args: &TestArg) -> Result<(), String> {
         test_asm_args.push(test_arg);
     }
     test_asm_args.push(&"--");
-    for arg in config.rustc_command_vec().into_iter().skip(1) {
+    for arg in args.config_info.rustc_command_vec().into_iter().skip(1) {
         test_asm_args.push(arg);
     }
-    run_command_with_output_and_env_no_err(&test_asm_args, Some(Path::new(".")), Some(&env))
+    run_command_with_output_and_env_no_err(&test_asm_args, Some(Path::new(".")), Some(env))
 }
 
 fn run_all(env: &Env, args: &TestArg) -> Result<(), String> {
