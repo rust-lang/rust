@@ -20,7 +20,6 @@ fn multi_variant_enum() {
     //~| ERROR Min Capture analysis includes:
         if let Info::Point(_, _, str) = point {
             //~^ NOTE: Capturing point[] -> Immutable
-            //~| NOTE: Capturing point[] -> Immutable
             //~| NOTE: Capturing point[(2, 0)] -> ByValue
             //~| NOTE: Min Capture point[] -> ByValue
             println!("{}", str);
@@ -28,7 +27,6 @@ fn multi_variant_enum() {
 
         if let Info::Meta(_, v) = meta {
             //~^ NOTE: Capturing meta[] -> Immutable
-            //~| NOTE: Capturing meta[] -> Immutable
             //~| NOTE: Capturing meta[(1, 1)] -> ByValue
             //~| NOTE: Min Capture meta[] -> ByValue
             println!("{:?}", v);
