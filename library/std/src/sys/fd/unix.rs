@@ -76,6 +76,7 @@ const fn max_iov() -> usize {
     target_os = "emscripten",
     target_os = "linux",
     target_os = "nto",
+    target_os = "qnx",
 ))]
 const fn max_iov() -> usize {
     libc::UIO_MAXIOV as usize
@@ -91,6 +92,7 @@ const fn max_iov() -> usize {
     target_os = "netbsd",
     target_os = "nuttx",
     target_os = "nto",
+    target_os = "qnx",
     target_os = "openbsd",
     target_os = "horizon",
     target_os = "vita",
@@ -561,6 +563,7 @@ impl FileDesc {
         target_os = "redox",
         target_os = "vxworks",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "wasi",
     )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
@@ -585,6 +588,7 @@ impl FileDesc {
         target_os = "redox",
         target_os = "vxworks",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "wasi",
     ))]
     pub fn set_cloexec(&self) -> io::Result<()> {

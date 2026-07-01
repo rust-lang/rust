@@ -16,7 +16,7 @@ pub const TIMESPEC_MAX: libc::timespec = {
 
 // This additional constant is only used when calling
 // `libc::pthread_cond_timedwait`.
-#[cfg(target_os = "nto")]
+#[cfg(any(target_os = "nto", target_os = "qnx"))]
 pub(in crate::sys) const TIMESPEC_MAX_CAPPED: libc::timespec = libc::timespec {
     tv_sec: (u64::MAX / NSEC_PER_SEC) as i64,
     tv_nsec: (u64::MAX % NSEC_PER_SEC) as i64,
