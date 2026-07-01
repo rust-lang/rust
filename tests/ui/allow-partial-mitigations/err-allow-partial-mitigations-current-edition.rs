@@ -14,7 +14,6 @@
 
 //@ [control-flow-2024-explicit-deny] compile-flags: -C control-flow-guard=on -Z deny-partial-mitigations=control-flow-guard
 
-
 fn main() {}
 //~^ ERROR that is not compiled with
 //~| ERROR that is not compiled with
