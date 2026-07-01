@@ -312,7 +312,7 @@ fn explain_lint_level_source(
     }
     match src {
         LintLevelSource::Default => {
-            let level_str = level.as_str();
+            let level_str = level.to_str();
             match lint_group_name(lint) {
                 Some(group_name) => {
                     err.note_once(format!("`#[{level_str}({name})]` (part of `#[{level_str}({group_name})]`) on by default"));
@@ -354,7 +354,7 @@ fn explain_lint_level_source(
             }
             err.span_note_once(span, "the lint level is defined here");
             if lint_attr_name.as_str() != name {
-                let level_str = level.as_str();
+                let level_str = level.to_str();
                 err.note_once(format!(
                     "`#[{level_str}({name})]` implied by `#[{level_str}({lint_attr_name})]`"
                 ));

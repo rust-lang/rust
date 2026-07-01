@@ -99,7 +99,7 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
                     span: arm.pat.data().span,
                     lint_span: level_spec.src.span(),
                     suggest_lint_on_match: rcx.whole_match_span.map(|span| span.shrink_to_lo()),
-                    lint_level: level.as_str(),
+                    lint_level: level.to_str(),
                     lint_name: "non_exhaustive_omitted_patterns",
                 });
             }

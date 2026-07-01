@@ -644,7 +644,7 @@ impl LintMetadata {
             id: name,
             id_location: Some(lint.location),
             group: lint.category.name(),
-            level: lint.lint.default_level.as_str(),
+            level: lint.lint.default_level.to_str(),
             docs,
             version: lint.version,
             applicability,
