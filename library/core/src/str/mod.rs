@@ -2492,12 +2492,14 @@ impl str {
 
     /// Returns a string slice with the prefix and suffix removed.
     ///
-    /// If the string starts with the pattern `prefix` and ends with the pattern `suffix`, returns
+    /// If the string starts with the pattern `prefix` and ends with
+    /// the pattern `suffix`, and the prefix and suffix don't overlap, returns
     /// the substring after the prefix and before the suffix, wrapped in `Some`.
     /// Unlike [`trim_start_matches`] and [`trim_end_matches`], this method removes both the prefix
     /// and suffix exactly once.
     ///
-    /// If the string does not start with `prefix` or does not end with `suffix`, returns `None`.
+    /// If the string does not start with `prefix`, does not end with `suffix`,
+    /// or the prefix and suffix overlap in the string, returns `None`.
     ///
     /// Each [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
@@ -2513,6 +2515,7 @@ impl str {
     /// assert_eq!("bar:hello:foo".strip_circumfix("bar:", ":foo"), Some("hello"));
     /// assert_eq!("bar:foo".strip_circumfix("foo", "foo"), None);
     /// assert_eq!("foo:bar;".strip_circumfix("foo:", ';'), Some("bar"));
+    /// assert_eq!("foo:bar:baz".strip_circumfix("foo:bar:", ":bar:baz"), None);
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
