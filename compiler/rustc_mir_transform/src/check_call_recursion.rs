@@ -45,7 +45,7 @@ impl<'tcx> MirLint<'tcx> for CheckDropRecursion {
         if let DefKind::AssocFn = tcx.def_kind(def_id)
         && let Some(impl_id) = tcx.trait_impl_of_assoc(def_id.to_def_id())
         && let trait_ref = tcx.impl_trait_ref(impl_id)
-        && tcx.is_lang_item(trait_ref.instantiate_identity().skip_norm_wip().def_id, LangItem::Drop)
+        && tcx.is_lang_item(trait_ref.def_id(), LangItem::Drop)
         // avoid erroneous `Drop` impls from causing ICEs below
         && let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip()
         && sig.inputs().skip_binder().len() == 1

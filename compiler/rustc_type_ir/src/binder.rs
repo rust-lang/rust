@@ -448,6 +448,12 @@ impl<I: Interner, T> EarlyBinder<I, T> {
     }
 }
 
+impl<I: Interner> EarlyBinder<I, ty::TraitRef<I>> {
+    pub fn def_id(&self) -> I::TraitId {
+        self.value.def_id
+    }
+}
+
 impl<I: Interner, T> EarlyBinder<I, Option<T>> {
     pub fn transpose(self) -> Option<EarlyBinder<I, T>> {
         self.value.map(|value| EarlyBinder { value, _tcx: PhantomData })
