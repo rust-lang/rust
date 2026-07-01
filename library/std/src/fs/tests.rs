@@ -1,7 +1,7 @@
 use rand::RngCore;
 
 use super::Dir;
-use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
+use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError, exists};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
@@ -2536,6 +2536,7 @@ fn test_fs_set_times_nofollow() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)] // FIXME: Miri does not support directory handles
 fn test_dir_smoke_test() {
     let tmpdir = tmpdir();
     let dir = Dir::open(tmpdir.path());
@@ -2543,11 +2544,11 @@ fn test_dir_smoke_test() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)] // FIXME: Miri does not support directory handles
 fn test_dir_read_file() {
     let tmpdir = tmpdir();
     let mut f = check!(File::create(tmpdir.join("foo.txt")));
-    check!(f.write(b"bar"));
-    check!(f.flush());
+    check!(f.write_all(b"bar"));
     drop(f);
     let dir = check!(Dir::open(tmpdir.path()));
     let f = check!(dir.open_file("foo.txt"));
@@ -2564,4 +2565,47 @@ fn test_dir_metadata() {
     let dir = check!(Dir::open(tmpdir.path()));
     let metadata = check!(dir.metadata());
     assert!(metadata.is_dir());
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // FIXME: Miri does not support directory handles
+fn test_dir_write_file() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::open(tmpdir.path()));
+    let mut f = check!(dir.open_file_with("foo.txt", &OpenOptions::new().write(true).create(true)));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let mut f = check!(File::open(tmpdir.join("foo.txt")));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // FIXME: Miri does not support directory handles
+fn test_dir_remove_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::open(tmpdir.path()));
+    check!(dir.remove_file("foo.txt"));
+    assert!(!matches!(exists(tmpdir.join("foo.txt")), Ok(true)));
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // FIXME: Miri does not support directory handles
+fn test_dir_rename_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write_all(b"bar"));
+    drop(f);
+    let dir = check!(Dir::open(tmpdir.path()));
+    check!(dir.rename("foo.txt", &dir, "baz.txt"));
+    let mut f = check!(File::open(tmpdir.join("baz.txt")));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
 }
