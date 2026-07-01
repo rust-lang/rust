@@ -1,0 +1,13 @@
+error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable
+  --> $DIR/field-borrow-mut-self-issue-154275.rs:10:9
+   |
+LL |         let a = &self.a;
+   |                 ------- immutable borrow of `self.a` occurs here
+LL |         self.helper();
+   |         ^^^^^^^^^^^^^ mutable borrow occurs here
+LL |         a;
+   |         - immutable borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0502`.
