@@ -112,14 +112,14 @@ pub trait Error: Debug + Display {
         None
     }
 
-    /// Gets the `TypeId` of `self`.
     #[doc(hidden)]
     #[unstable(
-        feature = "error_type_id",
-        reason = "this is memory-unsafe to override in user code",
-        issue = "60784"
+        feature = "error_type_id_internals",
+        reason = "this is an perma-unstable implementation detail of `<dyn Error + 'static>::type_id()`, \
+                  and memory-unsafe to override in user code",
+        issue = "none"
     )]
-    fn type_id(&self, _: private::Internal) -> TypeId
+    fn __type_id(&self) -> TypeId
     where
         Self: 'static,
     {
@@ -260,19 +260,18 @@ pub trait Error: Debug + Display {
     fn provide<'a>(&'a self, request: &mut Request<'a>) {}
 }
 
-mod private {
-    // This is a hack to prevent `type_id` from being overridden by `Error`
-    // implementations, since that can enable unsound downcasting.
-    #[unstable(feature = "error_type_id", issue = "60784")]
-    #[derive(Debug)]
-    pub struct Internal;
-}
-
 #[unstable(feature = "never_type", issue = "35121")]
 impl Error for ! {}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {
+    /// Gets the [`TypeId`] of the concrete type underlying `self`.
+    #[unstable(feature = "error_type_id", issue = "60784")]
+    #[inline]
+    pub fn type_id(&self) -> TypeId {
+        self.__type_id()
+    }
+
     /// Returns `true` if the inner type is the same as `T`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
@@ -281,7 +280,7 @@ impl dyn Error + 'static {
         let t = TypeId::of::<T>();
 
         // Get `TypeId` of the type in the trait object (`self`).
-        let concrete = self.type_id(private::Internal);
+        let concrete = self.type_id();
 
         // Compare both `TypeId`s on equality.
         t == concrete
@@ -315,6 +314,13 @@ impl dyn Error + 'static {
 }
 
 impl dyn Error + 'static + Send {
+    /// Gets the [`TypeId`] of the concrete type underlying `self`.
+    #[unstable(feature = "error_type_id", issue = "60784")]
+    #[inline]
+    pub fn type_id(&self) -> TypeId {
+        <dyn Error + 'static>::type_id(self)
+    }
+
     /// Forwards to the method defined on the type `dyn Error`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
@@ -338,6 +344,13 @@ impl dyn Error + 'static + Send {
 }
 
 impl dyn Error + 'static + Send + Sync {
+    /// Gets the [`TypeId`] of the concrete type underlying `self`.
+    #[unstable(feature = "error_type_id", issue = "60784")]
+    #[inline]
+    pub fn type_id(&self) -> TypeId {
+        <dyn Error + 'static>::type_id(self)
+    }
+
     /// Forwards to the method defined on the type `dyn Error`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
