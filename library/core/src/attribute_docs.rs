@@ -349,7 +349,6 @@ mod deprecated_attribute {}
 /// }
 /// ```
 ///
-///
 /// Many lints, including `unused`, are already set to `warn` by default so this attribute is
 /// mainly useful for lints that are normally `allow` by default.
 ///
