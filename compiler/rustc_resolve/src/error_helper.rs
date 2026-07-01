@@ -2525,6 +2525,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             outermost_res,
             parent_scope,
             single_nested,
+            use_stmt_span,
             dedup_span,
             ref source,
         } = *privacy_error;
@@ -2738,6 +2739,146 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     diagnostics::ImportIdent::Directly { span: dedup_span, ident, path }
                 };
                 err.subdiagnostic(sugg);
+                break;
+            }
+        } else if single_nested
+            && let Some(stmt_span) = use_stmt_span
+            && !shown_candidates
+            && !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span)
+        {
+            sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0].name == sym::core, *reexport));
+            for (sugg, reexport) in sugg_paths {
+                if sugg.len() <= 1 {
+                    continue;
+                }
+                let path = join_path_idents(sugg);
+                let Ok(source_text) = self.tcx.sess.source_map().span_to_snippet(stmt_span) else {
+                    continue;
+                };
+
+                let lo_offset = (ident.span.lo() - stmt_span.lo()).0 as usize;
+                let hi_offset = (ident.span.hi() - stmt_span.lo()).0 as usize;
+
+                if lo_offset > source_text.len() || hi_offset > source_text.len() {
+                    continue;
+                }
+
+                let mut start = lo_offset;
+                let mut end = hi_offset;
+
+                let mut found_trailing_comma = false;
+                let mut temp_end = end;
+                while temp_end < source_text.len() {
+                    let ch = source_text[temp_end..].chars().next().unwrap();
+                    if ch.is_whitespace() {
+                        temp_end += ch.len_utf8();
+                    } else if ch == ',' {
+                        temp_end += ch.len_utf8();
+                        found_trailing_comma = true;
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+
+                if found_trailing_comma {
+                    while temp_end < source_text.len() {
+                        let ch = source_text[temp_end..].chars().next().unwrap();
+                        if ch.is_whitespace() {
+                            temp_end += ch.len_utf8();
+                        } else {
+                            break;
+                        }
+                    }
+                    end = temp_end;
+                } else {
+                    let mut temp_start = start;
+                    while temp_start > 0 {
+                        let ch = source_text[..temp_start].chars().next_back().unwrap();
+                        if ch.is_whitespace() {
+                            temp_start -= ch.len_utf8();
+                        } else if ch == ',' {
+                            temp_start -= ch.len_utf8();
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+                    start = temp_start;
+                }
+
+                let mut replacement = String::new();
+                replacement.push_str(&source_text[..start]);
+                replacement.push_str(&source_text[end..]);
+
+                // If removing the ident leaves an empty group, replace the path entirely
+                if replacement.contains("{}") {
+                    let msg = if reexport {
+                        format!("import `{ident}` through the re-export")
+                    } else {
+                        format!("import `{ident}` directly")
+                    };
+
+                    let line_span = self.tcx.sess.source_map().span_extend_to_line(stmt_span);
+                    let indentation = {
+                        if let Ok(line) = self.tcx.sess.source_map().span_to_snippet(line_span) {
+                            let indent_len = line.chars().take_while(|c| c.is_whitespace()).count();
+                            " ".repeat(indent_len)
+                        } else {
+                            let pos = self.tcx.sess.source_map().lookup_char_pos(stmt_span.lo());
+                            " ".repeat(pos.col.0.saturating_sub(4) as usize)
+                        }
+                    };
+
+                    let suggestion_text = format!("{}use {};", indentation, path);
+                    err.multipart_suggestion(
+                        msg,
+                        vec![(line_span, suggestion_text)],
+                        rustc_errors::Applicability::MachineApplicable,
+                    );
+                    break;
+                }
+
+                // If only one item remains in the group, remove the braces
+                if let Some(open) = replacement.find('{') {
+                    if let Some(close) = replacement.rfind('}') {
+                        let inner = replacement[open + 1..close].trim();
+                        if !inner.contains(',') && !inner.is_empty() {
+                            // Replace `{ident}` with just `ident`
+                            replacement = format!("{}{}", replacement[..open].trim_end(), inner);
+                        }
+                    }
+                }
+
+                let msg = if reexport {
+                    format!("import `{ident}` through the re-export")
+                } else {
+                    format!("import `{ident}` directly")
+                };
+
+                // Calculate the indentation of the original `use` statement to ensure the
+                // suggested import aligns with the existing code.
+                let indentation = {
+                    if let Ok(line) = self.tcx.sess.source_map().span_to_snippet(
+                        self.tcx.sess.source_map().span_extend_to_line(stmt_span.shrink_to_lo()),
+                    ) {
+                        let indent_len = line.chars().take_while(|c| c.is_whitespace()).count();
+                        " ".repeat(indent_len)
+                    } else {
+                        let pos = self.tcx.sess.source_map().lookup_char_pos(stmt_span.lo());
+                        " ".repeat(pos.col.0.saturating_sub(4) as usize)
+                    }
+                };
+
+                // Insert before the path to avoid duplicating `use`; stmt_span doesn't include the keyword.
+                err.multipart_suggestion(
+                    msg,
+                    vec![
+                        (stmt_span.shrink_to_lo(), format!("{path};\n{indentation}use ")),
+                        (stmt_span, replacement),
+                    ],
+                    rustc_errors::Applicability::MachineApplicable,
+                );
                 break;
             }
         }
