@@ -164,13 +164,9 @@ impl SnippetEdit {
             .into_iter()
             .zip(1..)
             .with_position()
-            .flat_map(|pos| {
-                let (snippet, index) = match pos {
-                    (itertools::Position::First, it) | (itertools::Position::Middle, it) => it,
-                    // last/only snippet gets index 0
-                    (itertools::Position::Last, (snippet, _))
-                    | (itertools::Position::Only, (snippet, _)) => (snippet, 0),
-                };
+            .flat_map(|(position, (snippet, index))| {
+                // The last/only snippet gets index 0.
+                let index = if position.is_last { 0 } else { index };
 
                 match snippet {
                     Snippet::Tabstop(pos) => vec![(index, TextRange::empty(pos))],

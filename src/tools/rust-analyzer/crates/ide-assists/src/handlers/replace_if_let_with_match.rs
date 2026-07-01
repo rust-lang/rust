@@ -241,9 +241,8 @@ pub(crate) fn replace_match_with_if_let(
         return None;
     }
 
-    let mut arms = match_arm_list.arms();
-    let (first_arm, second_arm) = (arms.next()?, arms.next()?);
-    if arms.next().is_some() || second_arm.guard().is_some() {
+    let [first_arm, second_arm] = match_arm_list.arms().collect_array()?;
+    if second_arm.guard().is_some() {
         return None;
     }
     if first_arm.guard().is_some() && ctx.edition() < Edition::Edition2024 {

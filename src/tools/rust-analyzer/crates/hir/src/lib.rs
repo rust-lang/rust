@@ -6849,8 +6849,8 @@ impl<'db> Layout<'db> {
                     .into_iter()
                     .flatten()
                     .chain(iter::once((0, self.0.size.bytes())))
-                    .tuple_windows()
-                    .filter_map(|((i, start), (_, end))| {
+                    .array_windows()
+                    .filter_map(|[(i, start), (_, end)]| {
                         let size = field_size(i)?;
                         end.checked_sub(start)?.checked_sub(size)
                     })
@@ -7381,9 +7381,9 @@ pub fn resolve_absolute_path<'a, I: Iterator<Item = Symbol> + Clone + 'a>(
                     let mut def_map = crate_def_map(db, krate);
                     let mut module = &def_map[def_map.root_module_id()];
                     let mut segments = segments.with_position().peekable();
-                    while let Some((_, segment)) = segments.next_if(|&(position, _)| {
-                        !matches!(position, itertools::Position::Last | itertools::Position::Only)
-                    }) {
+                    while let Some((_, segment)) =
+                        segments.next_if(|&(position, _)| !position.is_last)
+                    {
                         let res = module
                             .scope
                             .get(&Name::new_symbol_root(segment))
