@@ -594,6 +594,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // result in basically the exact same error being reported to
         // the user. Avoid that.
         let mut deduplicate_errors = FxIndexSet::default();
+        let mut failed_type_tests = Vec::new();
 
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
@@ -616,6 +617,28 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Type-test failed. Report the error.
             let erased_generic_kind = infcx.tcx.erase_and_anonymize_regions(type_test.generic_kind);
+            failed_type_tests.push((erased_generic_kind, type_test));
+        }
+
+        let static_scc = self.constraint_sccs.scc(self.universal_regions().fr_static);
+        let static_bound_errors: FxIndexSet<_> = failed_type_tests
+            .iter()
+            .filter_map(|&(erased_generic_kind, type_test)| {
+                if self.constraint_sccs.scc(type_test.lower_bound) == static_scc {
+                    Some((erased_generic_kind, type_test.span))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // If `G: 'static` failed at this span, then same-span `G: 'a` failures are weaker.
+        for (erased_generic_kind, type_test) in failed_type_tests {
+            if self.constraint_sccs.scc(type_test.lower_bound) != static_scc
+                && static_bound_errors.contains(&(erased_generic_kind, type_test.span))
+            {
+                continue;
+            }
 
             // Skip duplicate-ish errors.
             if deduplicate_errors.insert((
