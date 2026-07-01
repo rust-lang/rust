@@ -2387,11 +2387,13 @@ asm-fmts = vd, vj, ui8
 data-types = V2DI, V2DI, V2DI, USI
 
 /// lsx_vbsrl_v
+impl = portable
 name = lsx_vbsrl_v
 asm-fmts = vd, vj, ui5
 data-types = V16QI, V16QI, UQI
 
 /// lsx_vbsll_v
+impl = portable
 name = lsx_vbsll_v
 asm-fmts = vd, vj, ui5
 data-types = V16QI, V16QI, UQI

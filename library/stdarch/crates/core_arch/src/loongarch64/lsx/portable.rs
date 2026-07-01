@@ -213,6 +213,56 @@ const unsafe fn simd_ext_shuf4i_d<const I: u32, T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(a, b, [((I >> 0) & 3), ((I >> 2) & 3)])
 }
 
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_ext_bsll<const I: u32, T: Copy + const SimdExt>(a: T) -> T {
+    let z = simd_ext_splat(0);
+    match I & 0xf {
+        0 => simd_shuffle!(a, z, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle!(a, z, [16, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]),
+        2 => simd_shuffle!(a, z, [16, 16, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
+        3 => simd_shuffle!(a, z, [16, 16, 16, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
+        4 => simd_shuffle!(a, z, [16, 16, 16, 16, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+        6 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 16, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        7 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 16, 16, 0, 1, 2, 3, 4, 5, 6, 7, 8]),
+        8 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 16, 16, 16, 0, 1, 2, 3, 4, 5, 6, 7]),
+        9 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 1, 2, 3, 4, 5, 6]),
+        10 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 1, 2, 3, 4, 5]),
+        11 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 1, 2, 3, 4]),
+        12 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 1, 2, 3]),
+        13 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 1, 2]),
+        14 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 1]),
+        15 => simd_shuffle!(a, z, [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0]),
+        _ => unreachable!(),
+    }
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_ext_bsrl<const I: u32, T: Copy + const SimdExt>(a: T) -> T {
+    let z = simd_ext_splat(0);
+    match I & 0xf {
+        0 => simd_shuffle!(a, z, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle!(a, z, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        2 => simd_shuffle!(a, z, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16]),
+        3 => simd_shuffle!(a, z, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16]),
+        4 => simd_shuffle!(a, z, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16]),
+        5 => simd_shuffle!(a, z, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16]),
+        6 => simd_shuffle!(a, z, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16]),
+        7 => simd_shuffle!(a, z, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16]),
+        8 => simd_shuffle!(a, z, [8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16]),
+        9 => simd_shuffle!(a, z, [9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16]),
+        10 => simd_shuffle!(a, z, [10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]),
+        11 => simd_shuffle!(a, z, [11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]),
+        12 => simd_shuffle!(a, z, [12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]),
+        13 => simd_shuffle!(a, z, [13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]),
+        14 => simd_shuffle!(a, z, [14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]),
+        15 => simd_shuffle!(a, z, [15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]),
+        _ => unreachable!(),
+    }
+}
+
 impl_vv!("lsx", lsx_vpcnt_b, simd_ctpop, m128i, i8x16);
 impl_vv!("lsx", lsx_vpcnt_h, simd_ctpop, m128i, i16x8);
 impl_vv!("lsx", lsx_vpcnt_w, simd_ctpop, m128i, i32x4);
@@ -467,6 +517,8 @@ impl_vuv!("lsx", lsx_vreplvei_d, simd_ext_replvei_d, m128i, i64x2, 1, const);
 impl_vuv!("lsx", lsx_vshuf4i_b, simd_ext_shuf4i_b, m128i, i8x16, 8, const);
 impl_vuv!("lsx", lsx_vshuf4i_h, simd_ext_shuf4i_h, m128i, i16x8, 8, const);
 impl_vuv!("lsx", lsx_vshuf4i_w, simd_ext_shuf4i_w, m128i, i32x4, 8, const);
+impl_vuv!("lsx", lsx_vbsll_v, simd_ext_bsll, m128i, i8x16, 5, const);
+impl_vuv!("lsx", lsx_vbsrl_v, simd_ext_bsrl, m128i, i8x16, 5, const);
 
 impl_vug!("lsx", lsx_vpickve2gr_b, simd_extract, m128i, i8x16, i32, 4);
 impl_vug!("lsx", lsx_vpickve2gr_h, simd_extract, m128i, i16x8, i32, 3);
@@ -528,6 +580,7 @@ mod tests {
         core_arch::{loongarch64::*, simd::*},
         mem::transmute,
     };
+    use std::hint::black_box;
     use stdarch_test::simd_test;
 
     #[simd_test(enable = "lsx")]
@@ -612,5 +665,79 @@ mod tests {
         assert_eq!(r, transmute(lsx_vldi::<-1024>()));
         let r = i8x16::new(0, 0, 0, 0, 0, 0, 42, -64, 0, 0, 0, 0, 0, 0, 42, -64);
         assert_eq!(r, transmute(lsx_vldi::<-854>()));
+    }
+
+    #[simd_test(enable = "lsx")]
+    unsafe fn vbsll_v() {
+        let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        assert_eq!(r, transmute(lsx_vbsll_v::<0>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        assert_eq!(r, transmute(lsx_vbsll_v::<1>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14);
+        assert_eq!(r, transmute(lsx_vbsll_v::<2>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
+        assert_eq!(r, transmute(lsx_vbsll_v::<3>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+        assert_eq!(r, transmute(lsx_vbsll_v::<4>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+        assert_eq!(r, transmute(lsx_vbsll_v::<5>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        assert_eq!(r, transmute(lsx_vbsll_v::<6>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+        assert_eq!(r, transmute(lsx_vbsll_v::<7>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8);
+        assert_eq!(r, transmute(lsx_vbsll_v::<8>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7);
+        assert_eq!(r, transmute(lsx_vbsll_v::<9>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6);
+        assert_eq!(r, transmute(lsx_vbsll_v::<10>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5);
+        assert_eq!(r, transmute(lsx_vbsll_v::<11>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4);
+        assert_eq!(r, transmute(lsx_vbsll_v::<12>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3);
+        assert_eq!(r, transmute(lsx_vbsll_v::<13>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2);
+        assert_eq!(r, transmute(lsx_vbsll_v::<14>(black_box(transmute(a)))));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+        assert_eq!(r, transmute(lsx_vbsll_v::<15>(black_box(transmute(a)))));
+    }
+
+    #[simd_test(enable = "lsx")]
+    unsafe fn vbsrl_v() {
+        let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<0>(black_box(transmute(a)))));
+        let r = i8x16::new(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<1>(black_box(transmute(a)))));
+        let r = i8x16::new(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<2>(black_box(transmute(a)))));
+        let r = i8x16::new(4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<3>(black_box(transmute(a)))));
+        let r = i8x16::new(5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<4>(black_box(transmute(a)))));
+        let r = i8x16::new(6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<5>(black_box(transmute(a)))));
+        let r = i8x16::new(7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<6>(black_box(transmute(a)))));
+        let r = i8x16::new(8, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<7>(black_box(transmute(a)))));
+        let r = i8x16::new(9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<8>(black_box(transmute(a)))));
+        let r = i8x16::new(10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<9>(black_box(transmute(a)))));
+        let r = i8x16::new(11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<10>(black_box(transmute(a)))));
+        let r = i8x16::new(12, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<11>(black_box(transmute(a)))));
+        let r = i8x16::new(13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<12>(black_box(transmute(a)))));
+        let r = i8x16::new(14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<13>(black_box(transmute(a)))));
+        let r = i8x16::new(15, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<14>(black_box(transmute(a)))));
+        let r = i8x16::new(16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vbsrl_v::<15>(black_box(transmute(a)))));
     }
 }
