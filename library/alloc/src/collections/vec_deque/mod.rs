@@ -1430,6 +1430,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.truncate(1);
     /// assert_eq!(buf, [5]);
     /// ```
+    #[doc(alias = "retain_front")]
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
         /// Runs the destructor for all items in the slice when it gets dropped (normally or
@@ -1484,7 +1485,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(vec_deque_truncate_front)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1493,11 +1493,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.push_front(15);
     /// assert_eq!(buf, [15, 10, 5]);
     /// assert_eq!(buf.as_slices(), (&[15, 10, 5][..], &[][..]));
-    /// buf.truncate_front(1);
+    /// buf.retain_back(1);
     /// assert_eq!(buf.as_slices(), (&[5][..], &[][..]));
     /// ```
-    #[unstable(feature = "vec_deque_truncate_front", issue = "140667")]
-    pub fn truncate_front(&mut self, len: usize) {
+    #[doc(alias = "truncate_front")]
+    #[stable(feature = "vec_deque_truncate_front", since = "CURRENT_RUSTC_VERSION")]
+    pub fn retain_back(&mut self, len: usize) {
         /// Runs the destructor for all items in the slice when it gets dropped (normally or
         /// during unwinding).
         struct Dropper<'a, T>(&'a mut [T]);
