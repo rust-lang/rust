@@ -93,7 +93,16 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
         .map_err(|error| format!("failed to create args file: {error:?}"))?;
 
     // We now put the common arguments into the file we created.
-    let mut content = vec![];
+    let mut content = Vec::with_capacity(
+        options.cfgs.len()
+            + options.check_cfgs.len()
+            + options.lib_strs.len()
+            + options.extern_strs.len()
+            + 1
+            + options.codegen_options_strs.len()
+            + options.unstable_opts_strs.len()
+            + options.doctest_build_args.len(),
+    );
 
     for cfg in &options.cfgs {
         content.push(format!("--cfg={cfg}"));
