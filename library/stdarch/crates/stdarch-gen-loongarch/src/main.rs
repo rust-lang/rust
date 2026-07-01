@@ -858,10 +858,8 @@ union v4df
     out.push('\n');
     out.push_str("int main(int argc, char *argv[])\n");
     out.push_str("{\n");
-    out.push_str("    printf(\"// See crates/stdarch-gen-loongarch/README.md\\n\");\n");
-    out.push_str(
-        "    printf(\"// This code is automatically generated. DO NOT MODIFY.\\n\\n\");\n",
-    );
+    out.push_str("    printf(\"// Auto-generated tests. DO NOT MODIFY.\\n\");\n");
+    out.push_str("    printf(\"// See crates/stdarch-gen-loongarch/README.md\\n\\n\");\n");
     out.push_str("    printf(\"use crate::{\\n\");\n");
     out.push_str("    printf(\"    core_arch::{loongarch64::*, simd::*},\\n\");\n");
     out.push_str("    printf(\"    mem::transmute,\\n\");\n");

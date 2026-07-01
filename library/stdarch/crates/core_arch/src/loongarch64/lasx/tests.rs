@@ -1,5 +1,5 @@
+// Auto-generated tests. DO NOT MODIFY.
 // See crates/stdarch-gen-loongarch/README.md
-// This code is automatically generated. DO NOT MODIFY.
 
 use crate::{
     core_arch::{loongarch64::*, simd::*},
