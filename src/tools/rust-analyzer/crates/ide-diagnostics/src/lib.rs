@@ -101,6 +101,7 @@ mod handlers {
     pub(crate) mod unresolved_module;
     pub(crate) mod unused_must_use;
     pub(crate) mod unused_variables;
+    pub(crate) mod yield_outside_coroutine;
 
     // The handlers below are unusual, the implement the diagnostics as well.
     pub(crate) mod field_shorthand;
@@ -553,6 +554,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::UnimplementedTrait(d) => handlers::unimplemented_trait::unimplemented_trait(&ctx, &d),
             AnyDiagnostic::FruInDestructuringAssignment(d) => handlers::fru_in_destructuring_assignment::fru_in_destructuring_assignment(&ctx, &d),
             AnyDiagnostic::ExplicitDropMethodUse(d) => handlers::explicit_drop_method_use::explicit_drop_method_use(&ctx, &d),
+            AnyDiagnostic::YieldOutsideCoroutine(d) => handlers::yield_outside_coroutine::yield_outside_coroutine(&ctx, &d),
         };
         res.push(d)
     }

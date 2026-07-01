@@ -178,6 +178,7 @@ diagnostics![AnyDiagnostic<'db> ->
     TypeMustBeKnown<'db>,
     UnionExprMustHaveExactlyOneField,
     UnimplementedTrait<'db>,
+    YieldOutsideCoroutine,
 ];
 
 #[derive(Debug)]
@@ -671,6 +672,11 @@ pub struct MutableRefBinding {
     pub pat: InFile<ExprOrPatPtr>,
 }
 
+#[derive(Debug)]
+pub struct YieldOutsideCoroutine {
+    pub expr: InFile<ExprOrPatPtr>,
+}
+
 impl<'db> AnyDiagnostic<'db> {
     pub(crate) fn body_validation_diagnostic(
         db: &'db dyn HirDatabase,
@@ -1101,6 +1107,9 @@ impl<'db> AnyDiagnostic<'db> {
             InferenceDiagnostic::MutableRefBinding { pat } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);
                 MutableRefBinding { pat }.into()
+            }
+            &InferenceDiagnostic::YieldOutsideCoroutine { expr } => {
+                YieldOutsideCoroutine { expr: expr_syntax(expr)? }.into()
             }
         })
     }
