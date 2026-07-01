@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: type.tuple.restriction
 // Why one-tuples? Because macros.
 
 
