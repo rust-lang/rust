@@ -66,7 +66,6 @@ fn track_feature(feature: Symbol) {
                 .dep_graph
                 .encode_side_effect(tcx, QuerySideEffect::CheckFeature { symbol: feature });
             tcx.sess.used_features.lock().insert(feature, dep_node_index.as_u32());
-            tcx.dep_graph.read_index(dep_node_index);
         }
     })
 }
