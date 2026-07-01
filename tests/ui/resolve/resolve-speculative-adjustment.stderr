@@ -3,6 +3,11 @@ error[E0425]: cannot find value `field` in this scope
    |
 LL |             field;
    |             ^^^^^ not found in this scope
+   |
+help: consider importing this similarly named function
+   |
+LL + use std::intrinsics::mir::Field;
+   |
 
 error[E0425]: cannot find value `field` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:23:9
