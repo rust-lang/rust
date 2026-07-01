@@ -204,27 +204,23 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // `-Znext-solver=globally` is used for testing, even if the generated
         // synthetic impls are less precise.
         let tcx = self.tcx;
-        let trait_ref = ty::TraitRef::new(tcx, trait_did, [ty]);
-
-        let (infcx, orig_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-        let mut selcx = SelectionContext::new(&infcx);
-        for polarity in [ty::PredicatePolarity::Positive, ty::PredicatePolarity::Negative] {
-            let result = selcx.select(&Obligation::new(
-                tcx,
-                ObligationCause::dummy(),
-                orig_env,
-                ty::TraitPredicate { trait_ref, polarity },
-            ));
-            if let Ok(Some(ImplSource::UserDefined(_))) = result {
-                debug!("find_auto_trait_generics({trait_ref:?}): manual impl found, bailing out");
-                return AutoTraitResult::ExplicitImpl;
-            }
-        }
-
         let ty::Adt(adt_def, args) = *ty.kind() else {
             return AutoTraitResult::NoImpl;
         };
 
+        let mut disqualifying_impl = None;
+        tcx.for_each_relevant_impl(trait_did, ty, |impl_def_id| {
+            disqualifying_impl = Some(impl_def_id);
+        });
+        if let Some(impl_def_id) = disqualifying_impl {
+            debug!(
+                "find_auto_trait_generics({:?}): possible manual impl {impl_def_id:?} found, bailing",
+                ty::TraitRef::new(tcx, trait_did, [ty]),
+            );
+            return AutoTraitResult::ExplicitImpl;
+        }
+
+        let (infcx, orig_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
         let field_clauses = adt_def
             .all_fields()
             .map(|field| field.ty(tcx, args).skip_norm_wip())
