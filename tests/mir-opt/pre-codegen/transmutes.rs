@@ -24,8 +24,7 @@ pub fn prefix_to_cast(x: f32) -> i32 {
 pub fn prefix_of_array(x: [u32; 4]) -> [u32; 2] {
     // CHECK-LABEL: fn prefix_of_array
     // CHECK: _2 = copy _1 as {{.+}}::Transmute<[u32; 4], [u32; 2]> (Transmute);
-    // CHECK: _3 = move (_2.1: {{.+}}::ManuallyDrop<[u32; 2]>);
-    // CHECK: _0 = copy _3 as [u32; 2] (Transmute);
+    // CHECK: _0 = copy (_2.1: {{.+}}::ManuallyDrop<[u32; 2]>) as [u32; 2] (Transmute);
     unsafe { transmute_prefix(x) }
 }
 

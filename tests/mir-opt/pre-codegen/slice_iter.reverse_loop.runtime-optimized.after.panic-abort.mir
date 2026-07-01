@@ -8,14 +8,13 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     let mut _13: std::iter::Rev<std::slice::Iter<'_, T>>;
     let mut _14: std::iter::Rev<std::slice::Iter<'_, T>>;
     let mut _35: std::option::Option<&T>;
-    let mut _37: &impl Fn(&T);
-    let mut _38: (&T,);
-    let _39: ();
+    let mut _36: &impl Fn(&T);
+    let mut _37: (&T,);
+    let _38: ();
     scope 1 {
         debug iter => _14;
-        let _36: &T;
         scope 2 {
-            debug x => _36;
+            debug x => ((_35 as Some).0: &T);
         }
         scope 18 (inlined <Rev<std::slice::Iter<'_, T>> as Iterator>::next) {
             scope 19 (inlined <std::slice::Iter<'_, T> as DoubleEndedIterator>::next_back) {
@@ -181,7 +180,6 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb4: {
-        StorageLive(_35);
         StorageLive(_20);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb5, otherwise: bb6];
     }
@@ -285,25 +283,20 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_34);
         StorageDead(_20);
         StorageLive(_36);
-        _36 = copy ((_35 as Some).0: &T);
+        _36 = &_2;
         StorageLive(_37);
-        _37 = &_2;
-        StorageLive(_38);
-        _38 = (copy _36,);
-        _39 = <impl Fn(&T) as Fn<(&T,)>>::call(move _37, move _38) -> [return: bb14, unwind unreachable];
+        _37 = (copy ((_35 as Some).0: &T),);
+        _38 = <impl Fn(&T) as Fn<(&T,)>>::call(move _36, move _37) -> [return: bb14, unwind unreachable];
     }
 
     bb14: {
-        StorageDead(_38);
         StorageDead(_37);
         StorageDead(_36);
-        StorageDead(_35);
         goto -> bb4;
     }
 
     bb15: {
         StorageDead(_20);
-        StorageDead(_35);
         StorageDead(_14);
         drop(_2) -> [return: bb16, unwind unreachable];
     }

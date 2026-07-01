@@ -12,7 +12,7 @@ fn f(mut a: usize) -> usize {
     // CHECK: debug b => [[b:_.*]];
     // CHECK: [[b]] = copy [[a]];
     // CHECK: [[a]] = const 5_usize;
-    // CHECK: [[a]] = move [[b]];
+    // CHECK: [[a]] = copy [[b]];
     // CHECK: id::<usize>(move [[a]])
     let b = a;
     a = 5;

@@ -20,13 +20,12 @@ pub fn pair_i32_bool(pair: (i32, bool)) -> (i32, bool) {
     pair
 }
 
-// CHECK: define{{.*}}{ i1, i1 } @pair_and_or(i1 noundef zeroext %_1.0, i1 noundef zeroext %_1.1)
+// CHECK: define{{.*}}{ i1, i1 } @pair_and_or(i1 noundef zeroext %0, i1 noundef zeroext %1)
 #[no_mangle]
 pub fn pair_and_or((a, b): (bool, bool)) -> (bool, bool) {
     // Make sure it can operate directly on the unpacked args
-    // (but it might not be using simple and/or instructions)
-    // CHECK-DAG: %_1.0
-    // CHECK-DAG: %_1.1
+    // CHECK: or i1 %0, %1
+    // CHECK: and i1 %0, %1
     (a && b, a || b)
 }
 

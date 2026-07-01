@@ -5,11 +5,10 @@ fn two_unwrap_unchecked(_1: &Option<i32>) -> i32 {
     let mut _0: i32;
     let mut _2: std::option::Option<i32>;
     let mut _4: bool;
-    let _5: i32;
     scope 1 {
-        debug v1 => _5;
+        debug v1 => ((_2 as Some).0: i32);
         scope 2 {
-            debug v2 => _5;
+            debug v2 => ((_2 as Some).0: i32);
         }
         scope 8 (inlined #[track_caller] Option::<i32>::unwrap_unchecked) {
             scope 9 {
@@ -35,14 +34,11 @@ fn two_unwrap_unchecked(_1: &Option<i32>) -> i32 {
     }
 
     bb0: {
-        StorageLive(_5);
         _2 = copy (*_1);
         _3 = discriminant(_2);
         _4 = Eq(copy _3, const 1_isize);
         assume(move _4);
-        _5 = copy ((_2 as Some).0: i32);
-        _0 = Add(copy _5, copy _5);
-        StorageDead(_5);
+        _0 = Add(copy ((_2 as Some).0: i32), copy ((_2 as Some).0: i32));
         return;
     }
 }
