@@ -6,6 +6,7 @@
 //@ [amdgpu] needs-llvm-components: amdgpu
 //@ [nvptx] compile-flags: --crate-type=rlib --target=nvptx64-nvidia-cuda
 //@ [nvptx] needs-llvm-components: nvptx
+//@ ignore-backends: gcc
 #![feature(no_core, lang_items, abi_gpu_kernel)]
 #![no_core]
 
