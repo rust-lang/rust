@@ -1,4 +1,4 @@
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, SanitizerSet, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_gnullvm::opts();
@@ -9,6 +9,7 @@ pub(crate) fn target() -> Target {
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &["-m", "i386pep"]);
     base.max_atomic_width = Some(128);
     base.linker = Some("x86_64-w64-mingw32-clang".into());
+    base.supported_sanitizers = SanitizerSet::ADDRESS;
 
     Target {
         llvm_target: "x86_64-pc-windows-gnu".into(),
