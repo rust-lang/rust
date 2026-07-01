@@ -59,7 +59,7 @@ struct NotableTraitBadgeVars {
     /// Relative URL to the trait page, or `None` when not linkable.
     href: Option<String>,
     /// Index of the `.notable-trait-badge-{n}` color class.
-    color_index: u64,
+    color_index: u8,
 }
 
 #[derive(Template)]
@@ -132,8 +132,8 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
                 // This won't be stable between releases though.
                 let mut h = DefaultHasher::new();
                 info.full_path.hash(&mut h);
-                const BADGE_COLORS: u64 = 6;
-                let color_index = h.finish() % BADGE_COLORS;
+                const BADGE_COLORS: u8 = 6;
+                let color_index = (h.finish() as u8) % BADGE_COLORS;
                 NotableTraitBadgeVars {
                     name: info.name,
                     full_path: info.full_path,
