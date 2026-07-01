@@ -2,6 +2,9 @@
 //! time works intuitively, e.g. that `next` takes you to the next source line.
 //! Regression test for <https://github.com/rust-lang/rust/issues/33013>.
 
+// Flaky. See https://github.com/rust-lang/rust/pull/153877#issuecomment-4064897776.
+//@ ignore-aarch64-pc-windows-msvc
+
 //@ ignore-loongarch64: Doesn't work yet.
 //@ ignore-riscv64: Doesn't work yet.
 //@ ignore-backends: gcc
