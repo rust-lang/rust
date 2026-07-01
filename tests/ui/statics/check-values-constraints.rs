@@ -68,6 +68,10 @@ static STATIC9: SafeStruct = SafeStruct {
     }
 };
 
+fn non_const<T>(value: T) -> Vec<T> {
+    vec![value]
+}
+
 struct UnsafeStruct;
 
 impl Drop for UnsafeStruct {
@@ -78,9 +82,8 @@ static STATIC10: UnsafeStruct = UnsafeStruct;
 
 struct MyOwned;
 
-static STATIC11: Vec<MyOwned> = vec![MyOwned];
+static STATIC11: Vec<MyOwned> = non_const(MyOwned);
 //~^ ERROR cannot call non-const function
-//~| ERROR cannot call non-const
 
 static mut STATIC12: UnsafeStruct = UnsafeStruct;
 
@@ -93,29 +96,23 @@ static mut STATIC14: SafeStruct = SafeStruct {
 };
 
 static STATIC15: &'static [Vec<MyOwned>] = &[
-    vec![MyOwned], //~ ERROR cannot call non-const function
-    //~| ERROR cannot call non-const
-    vec![MyOwned], //~ ERROR cannot call non-const function
-                   //~| ERROR cannot call non-const
+    non_const(MyOwned), //~ ERROR cannot call non-const function
+    non_const(MyOwned), //~ ERROR cannot call non-const function
 ];
 
 static STATIC16: (&'static Vec<MyOwned>, &'static Vec<MyOwned>) = (
-    &vec![MyOwned], //~ ERROR cannot call non-const function
-    //~| ERROR cannot call non-const
-    &vec![MyOwned], //~ ERROR cannot call non-const function
-                    //~| ERROR cannot call non-const
+    &non_const(MyOwned), //~ ERROR cannot call non-const function
+    &non_const(MyOwned), //~ ERROR cannot call non-const function
 );
 
 static mut STATIC17: SafeEnum = SafeEnum::Variant1;
 
-static STATIC19: Vec<isize> = vec![3];
+static STATIC19: Vec<isize> = non_const(3);
 //~^ ERROR cannot call non-const function
-//~| ERROR cannot call non-const
 
 pub fn main() {
     let y = {
-        static x: Vec<isize> = vec![3]; //~ ERROR cannot call non-const function
-        //~| ERROR cannot call non-const
+        static x: Vec<isize> = non_const(3); //~ ERROR cannot call non-const function
         x
         //~^ ERROR cannot move out of static
     };
