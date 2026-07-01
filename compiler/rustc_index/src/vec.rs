@@ -110,7 +110,10 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn into_vec(self) -> Vec<T> {
         let me = ManuallyDrop::new(self);
         // fixme this is unsound because we rely on correct Idx trait impls
-        unsafe { Vec::from_raw_parts(me.data.as_ptr(), me.len.index(), me.capacity.index()) }
+        let len = me.len.index();
+        let cap = me.capacity.index();
+        unsafe { core::hint::assert_unchecked(len <= cap); }
+        unsafe { Vec::from_raw_parts(me.data.as_ptr(), len, cap) }
     }
 
     #[inline]
