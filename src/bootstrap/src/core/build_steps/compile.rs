@@ -701,6 +701,22 @@ pub fn std_cargo(
         cargo.rustflag("-Cforce-unwind-tables=yes");
     }
 
+    // Enable CET Indirect Branch Tracking (IBT) for x86_64 targets. This emits
+    // ENDBR64 instructions at indirect branch targets and adds the
+    // GNU_PROPERTY_X86_FEATURE_1_IBT ELF note to each object file. On CPUs that
+    // support CET (Intel Tiger Lake+, AMD Zen 4+), the kernel enforces that
+    // indirect calls/jumps land on ENDBR64, blocking ROP/JOP attacks. On older
+    // CPUs, ENDBR64 executes as a NOP with a minor cost (4 bytes, one decode
+    // slot per function entry).
+    //
+    // Without this, the prebuilt standard library objects lack the IBT property,
+    // and because the linker ANDs the property across all objects, any binary
+    // linking Rust code loses IBT protection -- even if all other code was
+    // compiled with -fcf-protection=branch.
+    if target.contains("x86_64") && builder.unstable_features() {
+        cargo.rustflag("-Zcf-protection=branch");
+    }
+
     let html_root =
         format!("-Zcrate-attr=doc(html_root_url=\"{}/\")", builder.doc_rust_lang_org_channel(),);
     cargo.rustflag(&html_root);
