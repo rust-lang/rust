@@ -258,6 +258,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             let erased_p_ty = self.tcx.erase_and_anonymize_regions(
                 ty::set_aliases_to_non_rigid(self.tcx, p_ty).skip_norm_wip(),
             );
+            let erased_ty = ty::set_aliases_to_non_rigid(self.tcx, erased_ty).skip_norm_wip();
             (erased_p_ty == erased_ty).then_some(ty::Binder::dummy(ty::OutlivesPredicate(p_ty, r)))
         }));
 
