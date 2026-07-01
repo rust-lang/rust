@@ -2424,6 +2424,19 @@ mod snapshot {
     }
 
     #[test]
+    fn test_library_tests_only_does_not_build_rustdoc() {
+        let ctx = TestCtx::new();
+        let host = TargetSelection::from_user(&host_target());
+        insta::assert_snapshot!(
+            ctx.config("test").args(&["--tests", "library/core"]).render_steps(),
+            @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustc 1 <host> -> std 1 <host>
+            ");
+    }
+
+    #[test]
     fn test_cargo_stage_1() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(

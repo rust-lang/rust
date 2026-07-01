@@ -1,4 +1,4 @@
-error[E0277]: expected a `Fn()` closure, found `()`
+error[E0277]: expected an `Fn()` closure, found `()`
   --> $DIR/raw-ptr-to-dyn-fn-raw-ptr.rs:6:16
    |
 LL |         &mut *(ptr as *mut dyn Fn())

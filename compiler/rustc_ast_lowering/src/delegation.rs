@@ -55,7 +55,9 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::kw;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 
-use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
+use crate::delegation::generics::{
+    GenericsGenerationResult, GenericsGenerationResults, GenericsPosition,
+};
 use crate::diagnostics::{
     CycleInDelegationSignatureResolution, DelegationAttemptedBlockWithDefsDeletion,
     DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
@@ -505,6 +507,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             res: Res::Local(param_id),
             args: None,
             infer_args: false,
+            delegation_child_segment: false,
         }));
 
         let path = self.arena.alloc(hir::Path { span, res: Res::Local(param_id), segments });
@@ -713,6 +716,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         result.args_segment_id = segment.hir_id;
         result.use_for_sig_inheritance = !result.generics.is_trait_impl();
+
+        segment.delegation_child_segment = result.generics.pos() == GenericsPosition::Child;
 
         segment
     }

@@ -16,7 +16,7 @@ tracing = "0.1"
 
 [dev-dependencies]
 # tidy-alphabetical-start
-itertools = "0.12"
+itertools = "0.15"
 # tidy-alphabetical-end
 
 [features]

@@ -195,7 +195,7 @@ mod break_keyword {}
 /// to be most things that would be reasonable to have in a constant (barring `const fn`s). For
 /// example, you can't have a [`File`] as a `const`.
 ///
-/// [`File`]: crate::fs::File
+/// [`File`]: ../std/fs/struct.File.html
 ///
 /// The only lifetime allowed in a constant is `'static`, which is the lifetime that encompasses
 /// all others in a Rust program. For example, if you wanted to define a constant string, it would
@@ -484,7 +484,7 @@ mod extern_keyword {}
 
 #[doc(keyword = "false")]
 //
-/// A value of type [`bool`] representing logical **false**.
+/// A value of type [`prim@bool`] representing logical **false**.
 ///
 /// `false` is the logical opposite of [`true`].
 ///
@@ -1060,7 +1060,8 @@ mod mod_keyword {}
 ///
 /// `move` is often used when [threads] are involved.
 ///
-/// ```rust
+#[cfg_attr(target_os = "wasi", doc = "```rust,ignore (thread::spawn not supported)")]
+#[cfg_attr(not(target_os = "wasi"), doc = "```rust")]
 /// let data = vec![1, 2, 3];
 ///
 /// std::thread::spawn(move || {
@@ -1235,31 +1236,18 @@ mod ref_keyword {}
 /// `return` returns from the function immediately (an "early return"):
 ///
 /// ```no_run
-/// use std::fs::File;
-/// use std::io::{Error, ErrorKind, Read, Result};
+/// fn main() -> Result<(), &'static str> {
+///    let contents = "Hello, world!";
 ///
-/// fn main() -> Result<()> {
-///     let mut file = match File::open("foo.txt") {
-///         Ok(f) => f,
-///         Err(e) => return Err(e),
-///     };
+///    if contents.contains("impossible!") {
+///        return Err("oh no!");
+///    }
 ///
-///     let mut contents = String::new();
-///     let size = match file.read_to_string(&mut contents) {
-///         Ok(s) => s,
-///         Err(e) => return Err(e),
-///     };
+///    if contents.len() > 9000 {
+///        return Err("over 9000!");
+///    }
 ///
-///     if contents.contains("impossible!") {
-///         return Err(Error::new(ErrorKind::Other, "oh no!"));
-///     }
-///
-///     if size > 9000 {
-///         return Err(Error::new(ErrorKind::Other, "over 9000!"));
-///     }
-///
-///     assert_eq!(contents, "Hello, world!");
-///     Ok(())
+///    Ok(())
 /// }
 /// ```
 ///
@@ -1306,7 +1294,8 @@ mod return_keyword {}
 /// manner to computed goto).
 ///
 /// Example of using `become` to implement functional-style `fold`:
-/// ```
+///
+/// ```ignore-wasm (tail-call target feature not enabled by default on wasm)
 /// #![feature(explicit_tail_calls)]
 /// #![expect(incomplete_features)]
 ///
@@ -1360,7 +1349,8 @@ mod return_keyword {}
 ///    (unless it's coerced to a function pointer)
 ///
 /// It is possible to tail-call a function pointer:
-/// ```
+///
+/// ```ignore-wasm (tail-call target feature not enabled by default on wasm)
 /// #![feature(explicit_tail_calls)]
 /// #![expect(incomplete_features)]
 ///
@@ -1631,8 +1621,8 @@ mod self_upper_keyword {}
 /// [`extern`]: keyword.extern.html
 /// [`mut`]: keyword.mut.html
 /// [`unsafe`]: keyword.unsafe.html
-/// [`Mutex`]: sync::Mutex
-/// [`OnceLock`]: sync::OnceLock
+/// [`Mutex`]: ../std/sync/struct.Mutex.html
+/// [`OnceLock`]: ../std/sync/struct.OnceLock.html
 /// [`RefCell`]: cell::RefCell
 /// [atomic]: sync::atomic
 /// [Reference]: ../reference/items/static-items.html
@@ -1959,7 +1949,7 @@ mod trait_keyword {}
 
 #[doc(keyword = "true")]
 //
-/// A value of type [`bool`] representing logical **true**.
+/// A value of type [`prim@bool`] representing logical **true**.
 ///
 /// Logically `true` is not equal to [`false`].
 ///
@@ -2312,6 +2302,7 @@ mod type_keyword {}
 /// [`static`]: keyword.static.html
 /// [`union`]: keyword.union.html
 /// [`impl`]: keyword.impl.html
+/// [`Vec::set_len`]: ../std/vec/struct.Vec.html#method.set_len
 /// [raw pointers]: ../reference/types/pointer.html
 /// [memory safety]: ../book/ch19-01-unsafe-rust.html
 /// [Rustonomicon]: ../nomicon/index.html
@@ -2502,7 +2493,7 @@ mod use_keyword {}
 /// ```
 ///
 /// `where` is available anywhere generic and lifetime parameters are available,
-/// as can be seen with the [`Cow`](crate::borrow::Cow) type from the standard
+/// as can be seen with the [`Cow`](../std/borrow/enum.Cow.html) type from the standard
 /// library:
 ///
 /// ```rust

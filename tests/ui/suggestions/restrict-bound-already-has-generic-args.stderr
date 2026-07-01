@@ -1,0 +1,24 @@
+error[E0271]: type mismatch resolving `<(A, <impl Pair<Left = A> as Pair>::Right) as Pair>::Right == B`
+  --> $DIR/restrict-bound-already-has-generic-args.rs:19:45
+   |
+LL | fn frob<A, B>(pair: impl Pair<Left = A>) -> impl Pair<Left = A, Right = B> {
+   |            - expected this type parameter   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<(A, <impl Pair<Left = A> as Pair>::Right) as Pair>::Right == B`
+...
+LL |     (left, right)
+   |     ------------- return type was inferred to be `(A, <impl Pair<Left = A> as Pair>::Right)` here
+   |
+note: expected this to be `B`
+  --> $DIR/restrict-bound-already-has-generic-args.rs:12:18
+   |
+LL |     type Right = B;
+   |                  ^
+   = note: expected type parameter `B`
+             found associated type `<impl Pair<Left = A> as Pair>::Right`
+help: consider further restricting this bound
+   |
+LL | fn frob<A, B>(pair: impl Pair<Left = A, Right = B>) -> impl Pair<Left = A, Right = B> {
+   |                                       +++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

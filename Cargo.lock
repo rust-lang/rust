@@ -687,7 +687,7 @@ dependencies = [
  "color-print",
  "declare_clippy_lint",
  "filetime",
- "itertools",
+ "itertools 0.12.1",
  "pulldown-cmark",
  "regex",
  "rustc_tools_util 0.4.2",
@@ -705,7 +705,7 @@ name = "clippy_config"
 version = "0.1.98"
 dependencies = [
  "clippy_utils",
- "itertools",
+ "itertools 0.12.1",
  "serde",
  "toml 0.7.8",
  "walkdir",
@@ -718,7 +718,7 @@ dependencies = [
  "chrono",
  "clap",
  "indoc",
- "itertools",
+ "itertools 0.12.1",
  "opener",
  "rustc-literal-escaper",
  "walkdir",
@@ -733,7 +733,7 @@ dependencies = [
  "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
- "itertools",
+ "itertools 0.12.1",
  "quine-mc_cluskey",
  "regex-syntax",
  "semver",
@@ -751,7 +751,7 @@ version = "0.0.1"
 dependencies = [
  "clippy_config",
  "clippy_utils",
- "itertools",
+ "itertools 0.12.1",
  "regex",
  "rustc-semver",
 ]
@@ -761,7 +761,7 @@ name = "clippy_utils"
 version = "0.1.98"
 dependencies = [
  "arrayvec",
- "itertools",
+ "itertools 0.12.1",
  "rustc_apfloat",
  "serde",
 ]
@@ -933,7 +933,7 @@ name = "coverage-dump"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "itertools",
+ "itertools 0.15.0",
  "leb128",
  "md-5",
  "miniz_oxide",
@@ -2125,6 +2125,15 @@ name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
 dependencies = [
  "either",
 ]
@@ -3686,7 +3695,7 @@ dependencies = [
 name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3706,7 +3715,7 @@ dependencies = [
 name = "rustc_ast_pretty"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_ast",
  "rustc_lexer",
  "rustc_span",
@@ -3750,7 +3759,7 @@ name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools",
+ "itertools 0.15.0",
  "polonius-engine",
  "rustc_abi",
  "rustc_data_structures",
@@ -3804,7 +3813,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "gimli 0.31.1",
- "itertools",
+ "itertools 0.15.0",
  "libc",
  "libloading 0.9.0",
  "measureme",
@@ -3840,7 +3849,7 @@ dependencies = [
  "bitflags",
  "bstr",
  "find-msvc-tools",
- "itertools",
+ "itertools 0.15.0",
  "libc",
  "object 0.37.3",
  "pathdiff",
@@ -4110,7 +4119,7 @@ dependencies = [
 name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
@@ -4157,7 +4166,7 @@ dependencies = [
 name = "rustc_hir_typeck"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
@@ -4383,7 +4392,6 @@ dependencies = [
  "rustc_fs_util",
  "rustc_hir",
  "rustc_hir_pretty",
- "rustc_incremental",
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
@@ -4436,7 +4444,7 @@ dependencies = [
 name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
@@ -4480,7 +4488,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
@@ -4685,7 +4693,7 @@ name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
  "indexmap",
- "itertools",
+ "itertools 0.15.0",
  "pulldown-cmark",
  "rustc_arena",
  "rustc_ast",
@@ -4847,7 +4855,7 @@ checksum = "a3b75158011a63889ba12084cf1224baad7bcad50f6ee7c842f772b74aa148ed"
 name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
@@ -4881,7 +4889,7 @@ dependencies = [
 name = "rustc_transmute"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_hir",
@@ -4895,7 +4903,7 @@ dependencies = [
 name = "rustc_ty_utils"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_errors",
@@ -4972,7 +4980,7 @@ dependencies = [
  "base64",
  "expect-test",
  "indexmap",
- "itertools",
+ "itertools 0.15.0",
  "minifier",
  "proc-macro2",
  "pulldown-cmark-escape",
@@ -5060,7 +5068,7 @@ dependencies = [
  "dirs",
  "getopts",
  "ignore",
- "itertools",
+ "itertools 0.12.1",
  "regex",
  "rustfmt-config_proc_macro",
  "semver",

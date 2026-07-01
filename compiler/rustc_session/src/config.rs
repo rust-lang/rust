@@ -3342,23 +3342,29 @@ impl DumpMonoStatsFormat {
 
 /// `-Z patchable-function-entry` representation - how many nops to put before and after function
 /// entry.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+#[derive(Clone, PartialEq, Hash, Debug, Default)]
 pub struct PatchableFunctionEntry {
     /// Nops before the entry
     prefix: u8,
     /// Nops after the entry
     entry: u8,
+    /// An optional section name to record the entry location
+    section: Option<String>,
 }
 
 impl PatchableFunctionEntry {
-    pub fn from_total_and_prefix_nops(
+    pub fn from_parts(
         total_nops: u8,
         prefix_nops: u8,
+        section: Option<String>,
     ) -> Option<PatchableFunctionEntry> {
         if total_nops < prefix_nops {
             None
+        // Section name cannot contain null characters.
+        } else if section.as_ref().map(|x| x.contains('\0') || x.is_empty()).unwrap_or(false) {
+            None
         } else {
-            Some(Self { prefix: prefix_nops, entry: total_nops - prefix_nops })
+            Some(Self { prefix: prefix_nops, entry: total_nops - prefix_nops, section })
         }
     }
     pub fn prefix(&self) -> u8 {
@@ -3366,6 +3372,9 @@ impl PatchableFunctionEntry {
     }
     pub fn entry(&self) -> u8 {
         self.entry
+    }
+    pub fn section(&self) -> Option<&str> {
+        self.section.as_ref().map(|x| x.as_str())
     }
 }
 

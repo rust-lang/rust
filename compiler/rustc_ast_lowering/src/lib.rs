@@ -1014,6 +1014,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 res,
                 args,
                 infer_args: args.is_none(),
+                delegation_child_segment: false,
             }]),
         })
     }
@@ -2791,7 +2792,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ExprKind::ConstBlock(anon_const) => {
                 let def_id = self.local_def_id(anon_const.id);
-                assert_eq!(DefKind::AnonConst, self.tcx.def_kind(def_id));
+                assert_eq!(DefKind::InlineConst, self.tcx.def_kind(def_id));
                 self.lower_anon_const_to_const_arg(anon_const, span)
             }
             _ => overly_complex_const(self),

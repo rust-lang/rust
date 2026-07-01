@@ -32,7 +32,7 @@ use crate::diagnostics::{
     ConsiderMarkingAsPubCrate,
 };
 use crate::error_helper::{OnUnknownData, Suggestion};
-use crate::ref_mut::CmCell;
+use crate::ref_mut::{CmCell, CmRefCell};
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
     IdentKey, ImportSuggestion, ImportSummary, LocalModule, ModuleOrUniformRoot, ParentScope,
@@ -292,6 +292,8 @@ pub(crate) struct NameResolution<'ra> {
     pub orig_ident_span: Span,
 }
 
+pub(crate) type NameResolutionRef<'ra> = Interned<'ra, CmRefCell<NameResolution<'ra>>>;
+
 impl<'ra> NameResolution<'ra> {
     pub(crate) fn new(orig_ident_span: Span) -> Self {
         NameResolution { single_imports: FxIndexSet::default(), orig_ident_span, .. }
@@ -317,6 +319,57 @@ impl<'ra> NameResolution<'ra> {
 
     pub(crate) fn best_decl(&self) -> Option<Decl<'ra>> {
         self.non_glob_decl.or(self.glob_decl)
+    }
+}
+
+// module to keep the TLS private and only accessible through the function `enter_cycle_detector`.
+pub(crate) mod cycle_detection {
+    use std::ptr;
+
+    use crate::CacheRefCell;
+    use crate::imports::NameResolutionRef;
+
+    thread_local!(
+        /// During import resolution, recursive imports can form cycles.
+        /// This set stores the active resolution stack for the current thread.
+        /// So it's essentially a recursion stack.
+        ///
+        /// The key is the interned address of a `RefCell<NameResolution<'ra>>` allocated
+        /// in the `Resolver Arenas` (lifetime `'ra`), it is thus stable and allows casting
+        /// to a `*const ()` for comparison. This is done because we can't use lifetimes
+        /// other than `'static` in thread local storage.
+        static ACTIVE_RESOLUTIONS: CacheRefCell<Vec<*const ()>> = Default::default();
+    );
+
+    pub(crate) struct ActiveResolutionGuard {
+        key: *const (),
+    }
+
+    impl Drop for ActiveResolutionGuard {
+        fn drop(&mut self) {
+            ACTIVE_RESOLUTIONS.with_borrow_mut(|ar| {
+                // Only this guard is allowed to remove this key.
+                assert!(
+                    Some(self.key) == ar.pop(),
+                    "This guard should be the only one removing this key"
+                );
+            });
+        }
+    }
+
+    /// Returns `Err(())` if a cycle is detected, otherwise this returns a
+    /// guard that will remove the resolution when dropped.
+    pub(crate) fn enter_cycle_detector<'ra>(
+        resolution: NameResolutionRef<'ra>,
+    ) -> Result<ActiveResolutionGuard, ()> {
+        let key = ptr::from_ref(resolution.0).cast::<()>();
+        ACTIVE_RESOLUTIONS.with_borrow_mut(|ar| {
+            if ar.contains(&key) {
+                return Err(());
+            }
+            ar.push(key);
+            Ok(ActiveResolutionGuard { key })
+        })
     }
 }
 
@@ -640,6 +693,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let (binding, t) = {
             let resolution = &mut *self
                 .resolution_or_default(module.to_module(), key, orig_ident_span)
+                .0
                 .borrow_mut(self);
             let old_decl = resolution.determined_decl();
             let old_vis = old_decl.map(|d| d.vis());
