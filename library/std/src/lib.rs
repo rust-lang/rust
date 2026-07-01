@@ -214,6 +214,7 @@
 //! [slice]: prim@slice
 
 #![cfg_attr(not(restricted_std), stable(feature = "rust1", since = "1.0.0"))]
+#![debugger_visualizer(natvis_file = "../std.natvis")]
 #![cfg_attr(
     restricted_std,
     unstable(

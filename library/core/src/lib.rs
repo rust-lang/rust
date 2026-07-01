@@ -44,6 +44,8 @@
 //!   called. The `lang` attribute is called `eh_personality`.
 
 #![stable(feature = "core", since = "1.6.0")]
+#![debugger_visualizer(natvis_file = "../core.natvis")]
+#![debugger_visualizer(natvis_file = "../intrinsic.natvis")]
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
