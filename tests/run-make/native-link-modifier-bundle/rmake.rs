@@ -68,7 +68,7 @@ fn main() {
             .crate_type("cdylib")
             .print("link-args")
             .run()
-            .assert_stdout_not_contains(r#"-l[" ]*native-staticlib"#);
+            .assert_stdout_not_contains("libnative-staticlib.a");
         llvm_nm()
             .input(dynamic_lib_name("cdylib_bundled"))
             .run()
@@ -81,7 +81,7 @@ fn main() {
             .crate_type("cdylib")
             .print("link-args")
             .run()
-            .assert_stdout_contains_regex(r#"-l[" ]*native-staticlib"#);
+            .assert_stdout_contains_regex(r"libnative-staticlib.a");
         llvm_nm()
             .input(dynamic_lib_name("cdylib_non_bundled"))
             .run()

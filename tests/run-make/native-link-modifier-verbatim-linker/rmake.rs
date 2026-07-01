@@ -4,9 +4,6 @@
 // See https://github.com/rust-lang/rust/issues/99425
 
 //@ ignore-cross-compile
-//@ ignore-apple
-//@ ignore-wasm
-// Reason: linking fails due to the unusual ".ext" staticlib name.
 
 use run_make_support::rustc;
 
