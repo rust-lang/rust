@@ -352,7 +352,7 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        Err(Error::from_raw_os_error(22))
+        unsupported()
     }
 
     pub fn datasync(&self) -> io::Result<()> {
@@ -380,7 +380,7 @@ impl File {
     }
 
     pub fn truncate(&self, _size: u64) -> io::Result<()> {
-        Err(Error::from_raw_os_error(22))
+        unsupported()
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -431,15 +431,15 @@ impl File {
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
-        Err(Error::from_raw_os_error(22))
+        unsupported()
     }
 
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
-        Err(Error::from_raw_os_error(22))
+        unsupported()
     }
 
     pub fn set_times(&self, _times: FileTimes) -> io::Result<()> {
-        Err(Error::from_raw_os_error(22))
+        unsupported()
     }
 }
 
@@ -563,15 +563,15 @@ pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
 }
 
 pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
-    Err(Error::from_raw_os_error(22))
+    unsupported()
 }
 
 pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
-    Err(Error::from_raw_os_error(22))
+    unsupported()
 }
 
 pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
-    Err(Error::from_raw_os_error(22))
+    unsupported()
 }
 
 pub fn rmdir(path: &Path) -> io::Result<()> {
