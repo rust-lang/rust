@@ -1,6 +1,6 @@
-use std::fmt;
 use std::ops::Deref;
 use std::sync::Arc;
+use std::{fmt, ptr};
 
 use crate::registry::{Registry, WorkerThread};
 
@@ -26,7 +26,7 @@ impl<T> WorkerLocal<T> {
     /// value this worker local should take for each thread in the thread pool.
     #[inline]
     pub fn new<F: FnMut(usize) -> T>(mut initial: F) -> WorkerLocal<T> {
-        let registry = Registry::current();
+        let registry = Registry::current_cloned();
         WorkerLocal {
             locals: (0..registry.num_threads()).map(|i| CacheAligned(initial(i))).collect(),
             registry,
@@ -40,15 +40,12 @@ impl<T> WorkerLocal<T> {
     }
 
     fn current(&self) -> &T {
-        unsafe {
-            let worker_thread = WorkerThread::current();
-            if worker_thread.is_null()
-                || !std::ptr::eq(&*(*worker_thread).registry, &*self.registry)
-            {
-                panic!("WorkerLocal can only be used on the thread pool it was created on")
+        WorkerThread::current(|worker_thread| match worker_thread {
+            Some(worker_thread) if ptr::eq(&*worker_thread.registry, &*self.registry) => {
+                &self.locals[worker_thread.index].0
             }
-            &self.locals[(*worker_thread).index].0
-        }
+            _ => panic!("WorkerLocal can only be used on the thread pool it was created on"),
+        })
     }
 }
 

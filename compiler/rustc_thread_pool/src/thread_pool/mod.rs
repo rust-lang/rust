@@ -235,8 +235,7 @@ impl ThreadPool {
     /// [snt]: struct.ThreadPoolBuilder.html#method.num_threads
     #[inline]
     pub fn current_thread_index(&self) -> Option<usize> {
-        let curr = self.registry.current_thread()?;
-        Some(curr.index())
+        self.registry.current_thread_with(|curr| curr.map(WorkerThread::index))
     }
 
     /// Returns true if the current worker thread currently has "local
@@ -262,8 +261,7 @@ impl ThreadPool {
     /// [deque]: https://en.wikipedia.org/wiki/Double-ended_queue
     #[inline]
     pub fn current_thread_has_pending_tasks(&self) -> Option<bool> {
-        let curr = self.registry.current_thread()?;
-        Some(!curr.local_deque_is_empty())
+        self.registry.current_thread_with(|curr| curr.map(|curr| !curr.local_deque_is_empty()))
     }
 
     /// Execute `oper_a` and `oper_b` in the thread-pool and return
@@ -384,8 +382,7 @@ impl ThreadPool {
     /// Returns `Some(Yield::Executed)` if anything was executed, `Some(Yield::Idle)` if
     /// nothing was available, or `None` if the current thread is not part this pool.
     pub fn yield_now(&self) -> Option<Yield> {
-        let curr = self.registry.current_thread()?;
-        Some(curr.yield_now())
+        self.registry.current_thread_with(|curr| curr.map(WorkerThread::yield_now))
     }
 
     /// Cooperatively yields execution to local Rayon work.
@@ -396,8 +393,7 @@ impl ThreadPool {
     /// Returns `Some(Yield::Executed)` if anything was executed, `Some(Yield::Idle)` if
     /// nothing was available, or `None` if the current thread is not part this pool.
     pub fn yield_local(&self) -> Option<Yield> {
-        let curr = self.registry.current_thread()?;
-        Some(curr.yield_local())
+        self.registry.current_thread_with(|curr| curr.map(WorkerThread::yield_local))
     }
 
     pub(crate) fn wait_until_stopped(self) {
@@ -447,10 +443,7 @@ impl fmt::Debug for ThreadPool {
 /// [snt]: struct.ThreadPoolBuilder.html#method.num_threads
 #[inline]
 pub fn current_thread_index() -> Option<usize> {
-    unsafe {
-        let curr = WorkerThread::current().as_ref()?;
-        Some(curr.index())
-    }
+    WorkerThread::current(|curr| curr.as_ref().map(WorkerThread::index))
 }
 
 /// If called from a Rayon worker thread, indicates whether that
@@ -461,10 +454,7 @@ pub fn current_thread_index() -> Option<usize> {
 /// [m]: struct.ThreadPool.html#method.current_thread_has_pending_tasks
 #[inline]
 pub fn current_thread_has_pending_tasks() -> Option<bool> {
-    unsafe {
-        let curr = WorkerThread::current().as_ref()?;
-        Some(!curr.local_deque_is_empty())
-    }
+    WorkerThread::current(|curr| curr.as_ref().map(|curr| !curr.local_deque_is_empty()))
 }
 
 /// Cooperatively yields execution to Rayon.
@@ -480,10 +470,7 @@ pub fn current_thread_has_pending_tasks() -> Option<bool> {
 /// Returns `Some(Yield::Executed)` if anything was executed, `Some(Yield::Idle)` if
 /// nothing was available, or `None` if this thread is not part of any pool at all.
 pub fn yield_now() -> Option<Yield> {
-    unsafe {
-        let thread = WorkerThread::current().as_ref()?;
-        Some(thread.yield_now())
-    }
+    WorkerThread::current(|curr| curr.as_ref().map(WorkerThread::yield_now))
 }
 
 /// Cooperatively yields execution to local Rayon work.
@@ -497,10 +484,7 @@ pub fn yield_now() -> Option<Yield> {
 /// Returns `Some(Yield::Executed)` if anything was executed, `Some(Yield::Idle)` if
 /// nothing was available, or `None` if this thread is not part of any pool at all.
 pub fn yield_local() -> Option<Yield> {
-    unsafe {
-        let thread = WorkerThread::current().as_ref()?;
-        Some(thread.yield_local())
-    }
+    WorkerThread::current(|curr| curr.as_ref().map(WorkerThread::yield_local))
 }
 
 /// Result of [`yield_now()`] or [`yield_local()`].
