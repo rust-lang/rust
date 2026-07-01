@@ -31,6 +31,7 @@ impl TestCx<'_> {
         let emit = match self.props.assembly_output.as_deref() {
             Some("emit-asm") => Emit::Asm,
             Some("bpf-linker") => Emit::LinkArgsAsm,
+            Some("linker-asm") => Emit::None,
             Some(other) => self.fatal(&format!("unknown 'assembly-output' directive: {other}")),
             None => self.fatal("missing 'assembly-output' directive"),
         };
