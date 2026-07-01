@@ -1,3 +1,6 @@
+// FIXME(fmease): Rename file name (e.g., `arg` -> `param`).
+// FIXME(fmease): Add description.
+
 macro_rules! m {
     ($pat: pat) => {
         trait Tr {
