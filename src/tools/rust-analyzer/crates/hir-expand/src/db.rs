@@ -600,8 +600,8 @@ fn macro_expand<'db>(
 
 fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
     let root = db.parse_or_expand(ast.file_id);
-    let ast_id_map = &db.ast_id_map(ast.file_id);
-    let span_map = &db.span_map(ast.file_id);
+    let ast_id_map = db.ast_id_map(ast.file_id);
+    let span_map = db.span_map(ast.file_id);
 
     let node = ast_id_map.get(ast.value).to_node(&root);
     let range = ast::HasName::name(&node)
