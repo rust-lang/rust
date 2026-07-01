@@ -525,6 +525,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 pure_wrt_drop: p.pure_wrt_drop,
                 source: hir::GenericParamSource::Generics,
                 span,
+                implicit_bounds_span: span,
             })
         }));
 

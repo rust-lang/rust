@@ -1133,6 +1133,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
         kind,
         colon_span: _,
         source: _,
+        implicit_bounds_span: _,
     } = param;
     try_visit!(visitor.visit_id(*hir_id));
     match *name {

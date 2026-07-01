@@ -59,6 +59,7 @@ fn associated_type_bounds<'tcx>(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
+                    &[],
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
                 );
@@ -66,6 +67,7 @@ fn associated_type_bounds<'tcx>(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
+                    &[],
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
                 );
@@ -386,6 +388,7 @@ fn opaque_type_bounds<'tcx>(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
+                    &[],
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
                 );
@@ -393,6 +396,7 @@ fn opaque_type_bounds<'tcx>(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
+                    &[],
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
                 );

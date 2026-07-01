@@ -85,11 +85,11 @@ hir-stats - Ptr                       48 (NN.N%)             1
 hir-stats - Ref                       48 (NN.N%)             1
 hir-stats - Path                     624 (NN.N%)            13
 hir-stats Generics                 560 (NN.N%)            10            56
+hir-stats GenericParam             440 (NN.N%)             5            88
 hir-stats Pat                      400 (NN.N%)             5            80
 hir-stats - Struct                    80 (NN.N%)             1
 hir-stats - Wild                      80 (NN.N%)             1
 hir-stats - Binding                  240 (NN.N%)             3
-hir-stats GenericParam             400 (NN.N%)             5            80
 hir-stats Block                    288 (NN.N%)             6            48
 hir-stats GenericBound             256 (NN.N%)             4            64
 hir-stats - Trait                    256 (NN.N%)             4
@@ -119,5 +119,5 @@ hir-stats TraitItemId                8 (NN.N%)             2             4
 hir-stats ImplItemId                 8 (NN.N%)             2             4
 hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_576                   172
+hir-stats Total                  8_616                   172
 hir-stats ================================================================

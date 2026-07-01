@@ -846,6 +846,7 @@ pub struct GenericParam<'hir> {
     #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
+    pub implicit_bounds_span: Span,
     pub name: ParamName,
     pub span: Span,
     pub pure_wrt_drop: bool,
