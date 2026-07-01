@@ -778,6 +778,10 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         assoc_items
     }
 
+    pub fn associated_item(&self, def_id: DefId) -> Option<AssocItem> {
+        self.tcx.opt_associated_item(def_id)
+    }
+
     /// Get all vtable entries of a trait.
     pub fn vtable_entries(&self, trait_ref: TraitRef<'tcx>) -> Vec<VtblEntry<'tcx>> {
         self.tcx.vtable_entries(trait_ref).to_vec()

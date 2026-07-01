@@ -17,11 +17,11 @@ use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::{BinOp, Body, Place, UnOp};
 use crate::target::{MachineInfo, MachineSize};
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, Asyncness, ClosureDef, ClosureKind, Constness, CoroutineDef,
-    Discr, FieldDef, FnDef, ForeignDef, ForeignItemKind, ForeignModule, ForeignModuleDef,
-    GenericArgs, GenericPredicates, Generics, ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst,
-    PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, TraitRef, Ty, TyConst, TyConstId, TyKind,
-    UintTy, VariantDef, VariantIdx, VtblEntry,
+    AdtDef, AdtKind, Allocation, AssocItem, Asyncness, ClosureDef, ClosureKind, Constness,
+    CoroutineDef, Discr, FieldDef, FnDef, ForeignDef, ForeignItemKind, ForeignModule,
+    ForeignModuleDef, GenericArgs, GenericPredicates, Generics, ImplDef, ImplTrait, IntrinsicDef,
+    LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, TraitRef, Ty, TyConst,
+    TyConstId, TyKind, UintTy, VariantDef, VariantIdx, VtblEntry,
 };
 use crate::unstable::{RustcInternal, Stable, new_item_kind};
 use crate::{
@@ -207,6 +207,13 @@ impl<'tcx> CompilerInterface<'tcx> {
         self.with_cx(|tables, cx| {
             let did = tables[def_id];
             cx.generics_of(did).stable(tables, cx)
+        })
+    }
+
+    pub(crate) fn inherent_impls(&self, adt: AdtDef) -> Vec<ImplDef> {
+        self.with_cx(|tables, cx| {
+            let def_id = tables[adt.0];
+            cx.tcx.inherent_impls(def_id).iter().map(|&did| tables.impl_def(did)).collect()
         })
     }
 
@@ -818,6 +825,14 @@ impl<'tcx> CompilerInterface<'tcx> {
             let un_op = un_op.internal(tables, cx.tcx);
             let arg = arg.internal(tables, cx.tcx);
             cx.unop_ty(un_op, arg).stable(tables, cx)
+        })
+    }
+
+    /// Get the associated item of a definition if it is one.
+    pub(crate) fn associated_item(&self, def_id: DefId) -> Option<AssocItem> {
+        self.with_cx(|tables, cx| {
+            let did = tables[def_id];
+            cx.associated_item(did).map(|assoc| assoc.stable(tables, cx))
         })
     }
 
