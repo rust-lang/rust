@@ -880,9 +880,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
                     self.fcx.instantiate_canonical(self.span, self_ty);
 
-                self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id(), receiver_steps);
                 self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps);
+                self.assemble_dyn_extension_candidates(generalized_self_ty);
             }
             ty::Adt(def, _) => {
                 let def_id = def.did();
@@ -971,7 +971,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn assemble_inherent_candidates_from_object(&mut self, self_ty: Ty<'tcx>) {
+    fn assemble_dyn_extension_candidates(&mut self, self_ty: Ty<'tcx>) {
         let principal = match self_ty.kind() {
             ty::Dynamic(data, ..) => Some(data),
             _ => None,
