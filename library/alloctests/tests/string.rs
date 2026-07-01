@@ -3,7 +3,7 @@ use std::cell::Cell;
 use std::collections::TryReserveErrorKind::*;
 use std::ops::Bound::*;
 use std::ops::{Bound, RangeBounds};
-use std::{assert_matches, panic, str};
+use std::{assert_matches, mem, panic, str};
 
 pub trait IntoCow<'a, B: ?Sized>
 where
@@ -955,4 +955,124 @@ fn test_str_concat() {
     let b: String = "world".to_string();
     let s: String = format!("{a}{b}");
     assert_eq!(s.as_bytes()[9], 'd' as u8);
+}
+
+#[test]
+fn extract_if_empty() {
+    let mut s = String::new();
+    {
+        let mut iter = s.extract_if(|_| true);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+    assert_eq!(s.len(), 0);
+    assert_eq!(s, "");
+}
+
+#[test]
+fn extract_if_false() {
+    let initial = "1234567890一二三四五六七八九十";
+    let mut s = initial.to_string();
+
+    let initial_len = s.len();
+    let mut count = 0;
+    {
+        let mut iter = s.extract_if(|_| false);
+        assert_eq!(iter.size_hint(), (0, Some(initial_len)));
+        for _ in iter.by_ref() {
+            count += 1;
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+
+    assert_eq!(count, 0);
+    assert_eq!(s.len(), initial_len);
+    assert_eq!(s, initial);
+}
+
+#[test]
+fn extract_if_true() {
+    let initial = "1234567890一二三四五六七八九十";
+
+    let mut s = initial.to_string();
+    let extracted: String = s.extract_if(|_| true).collect();
+    assert_eq!(extracted, initial);
+    assert_eq!(s, "");
+
+    let mut s = initial.to_string();
+    let initial_len = s.len();
+    let mut char_count = 0;
+    let mut byte_count = 0;
+    {
+        let mut iter = s.extract_if(|_| true);
+        assert_eq!(iter.size_hint(), (0, Some(initial_len)));
+        while let Some(c) = iter.next() {
+            char_count += 1;
+            byte_count += c.len_utf8();
+            assert_eq!(iter.size_hint(), (0, Some(initial_len - byte_count)));
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+
+    assert_eq!(char_count, initial.chars().count());
+    assert_eq!(byte_count, initial.len());
+    assert_eq!(s.len(), 0);
+    assert_eq!(s, "");
+}
+
+#[test]
+fn extract_if_unconsumed() {
+    let initial = "Hello, world!";
+    let mut s = initial.to_string();
+
+    let drain = s.extract_if(|_| true);
+    drop(drain);
+    assert_eq!(s, initial);
+
+    let mut i: usize = 0;
+    let mut drain = s.extract_if(|_| {
+        i += 1;
+        i % 2 == 0
+    });
+    for c in "el,w".chars() {
+        assert_eq!(drain.next(), Some(c))
+    }
+    drop(drain);
+    assert_eq!(s, "Hlo orld!");
+
+    let mut s = initial.to_string();
+    let mut i: usize = 0;
+    let mut drain = s.extract_if(|_| {
+        i += 1;
+        i % 2 == 0
+    });
+    for c in "el,w".chars() {
+        assert_eq!(drain.next(), Some(c))
+    }
+    mem::forget(drain);
+    assert_eq!(s, "Hlo ");
+}
+
+#[test]
+fn extract_if_debug() {
+    let mut s = "Hello! Привет!　你好！".to_string();
+    let mut drain = s.extract_if(|c| c.is_alphabetic());
+    assert_eq!(
+        format!("{drain:?}"),
+        r#"ExtractIf { retained: "", remainder: "Hello! Привет!\u{3000}你好！", .. }"#
+    );
+    for c in "HelloПривет".chars() {
+        assert_eq!(drain.next(), Some(c))
+    }
+    assert_eq!(
+        format!("{drain:?}"),
+        r#"ExtractIf { retained: "! ", remainder: "!\u{3000}你好！", .. }"#
+    );
 }
