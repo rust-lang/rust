@@ -631,6 +631,27 @@ fn test_partial_eq_array() {
 }
 
 #[test]
+fn test_partial_eq_vecdeque_reverse() {
+    let mut d = VecDeque::with_capacity(4);
+    d.push_back(1);
+    d.push_back(2);
+    d.push_back(3);
+    d.pop_front();
+    d.push_back(4);
+
+    let v = vec![2, 3, 4];
+    let a = [2, 3, 4];
+    let mut b = [2, 3, 4];
+
+    assert!(v == d);
+    assert!(&v[..] == d);
+    assert!(&mut b[..] == d);
+    assert!(a == d);
+    assert!(&a == d);
+    assert!(&mut b == d);
+}
+
+#[test]
 fn test_hash() {
     let mut x = VecDeque::new();
     let mut y = VecDeque::new();
