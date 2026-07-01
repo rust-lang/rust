@@ -5,6 +5,7 @@ use run_make_support::{Rustc, diff, regex, rustc};
 fn run_rustc() -> Rustc {
     let mut rustc = rustc();
     rustc
+        .edition("2015")
         .arg("main.rs")
         // NOTE: `link-self-contained` can vary depending on bootstrap.toml.
         // Make sure we use a consistent value.
@@ -23,9 +24,9 @@ fn run_rustc() -> Rustc {
 
 fn main() {
     // first, compile our linker and our dependencies
-    rustc().arg("fake-linker.rs").output("fake-linker").run();
-    rustc().arg("foo.rs").crate_type("rlib").run();
-    rustc().arg("bar.rs").crate_type("rlib").run();
+    rustc().edition("2015").arg("fake-linker.rs").output("fake-linker").run();
+    rustc().edition("2015").arg("foo.rs").crate_type("rlib").run();
+    rustc().edition("2015").arg("bar.rs").crate_type("rlib").run();
 
     // Run rustc with our fake linker, and make sure it shows warnings
     let warnings = run_rustc().link_arg("run_make_warn").run();
@@ -92,12 +93,14 @@ fn main() {
 
     // Make sure we show linker warnings even across `-Z no-link`
     rustc()
+        .edition("2015")
         .arg("-Zno-link")
         .input("-")
         .stdin_buf("#![deny(linker_messages)] \n fn main() {}")
         .run()
         .assert_stderr_equals("");
     rustc()
+        .edition("2015")
         .arg("-Zlink-only")
         .arg("rust_out.rlink")
         .linker("./fake-linker")
@@ -111,6 +114,7 @@ fn main() {
 
     // Same thing, but with json output.
     rustc()
+        .edition("2015")
         .error_format("json")
         .arg("-Zlink-only")
         .arg("rust_out.rlink")

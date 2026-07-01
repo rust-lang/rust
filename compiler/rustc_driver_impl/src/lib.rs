@@ -189,7 +189,9 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         HandledOptions::HelpOnly(matches) => (matches, true),
     };
 
-    let sopts = config::build_session_options(&mut default_early_dcx, &matches);
+    let input = make_input(&default_early_dcx, &matches.free);
+    let has_input = input.is_some();
+    let sopts = config::build_session_options(&mut default_early_dcx, &matches, has_input);
     // fully initialize ice path static once unstable options are available as context
     let ice_file = ice_path_with_config(Some(&sopts.unstable_opts)).clone();
 
@@ -198,8 +200,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         return;
     }
 
-    let input = make_input(&default_early_dcx, &matches.free);
-    let has_input = input.is_some();
     let (odir, ofile) = make_output(&matches);
 
     drop(default_early_dcx);

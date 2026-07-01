@@ -33,7 +33,10 @@ impl RustdocGuiTestProps {
 
         let props = TestProps::from_file(test_file_path, None, &config);
 
-        let TestProps { compile_flags, run_flags, .. } = props;
+        let TestProps { mut compile_flags, run_flags, .. } = props;
+        // We don't want to pass `--edition=2015` in, which is being set by default by
+        // `TestProps::from_file`.
+        compile_flags.remove(0);
         Self { compile_flags, run_flags }
     }
 }
