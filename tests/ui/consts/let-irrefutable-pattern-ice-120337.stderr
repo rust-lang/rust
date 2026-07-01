@@ -1,0 +1,9 @@
+error[E0080]: read discriminant of an uninhabited enum variant
+  --> $DIR/let-irrefutable-pattern-ice-120337.rs:13:9
+   |
+LL |     let E::A(ref a) = unsafe { &(&U { u: () }).e };
+   |         ^^^^^^^^^^^ evaluation of `C` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.
