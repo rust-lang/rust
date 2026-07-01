@@ -15,11 +15,14 @@ pub fn getenv(varname: &OsStr) -> Option<OsString> {
         return None;
     }
 
-    let nwords = (nbytes + WORD_SIZE - 1) / WORD_SIZE;
+    let nbytes_rounded =
+        nbytes.checked_next_multiple_of(WORD_SIZE).expect("environment variable length overflowed");
+    assert!(nbytes_rounded <= isize::MAX as usize, "environment variable length is too large");
+    let nwords = nbytes_rounded / WORD_SIZE;
     let words = unsafe { abi::sys_alloc_words(nwords) };
 
     let nbytes2 = unsafe { abi::sys_getenv(words, nwords, varname.as_ptr(), varname.len()) };
-    debug_assert_eq!(nbytes, nbytes2);
+    assert_eq!(nbytes, nbytes2);
 
     // Convert to OsString.
     //
