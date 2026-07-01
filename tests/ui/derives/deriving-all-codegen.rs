@@ -154,6 +154,59 @@ enum Fieldless {
     C,
 }
 
+// A C-like, fieldless enum with variants of varying name lengths.
+#[derive(Debug)]
+enum Fieldless0 {
+    A,
+    BBB,
+    CC,
+}
+
+
+// A C-like, fieldless enum with 39 variants.
+#[derive(Debug)]
+enum Fieldless39 {
+    AAAAA,
+    BBBB,
+    CC,
+    DDDDDDDD,
+    E,
+    FFFFFFFFFFFFF,
+    GGGGGG,
+    Hatsune,
+    IIIIIII,
+    JJJJJJJJJ,
+    KKK,
+    LLLLLL,
+    Miku,
+    N,
+    OO,
+    P,
+    Q,
+    R,
+    SSSSSS,
+    TTT,
+    U,
+    VV,
+    W,
+    X,
+    Y,
+    ZZZZZZZZZZZZZZZZZ,
+    IDONT,
+    KNOW,
+    WHAT,
+    TO,
+    SAY,
+    HERE,
+    SO,
+    JUST,
+    SOME,
+    RANDOM,
+    STUFF,
+    GUGUGAGA,
+    LOL,
+}
+
 // An enum with multiple fieldless and fielded variants.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 enum Mixed {
