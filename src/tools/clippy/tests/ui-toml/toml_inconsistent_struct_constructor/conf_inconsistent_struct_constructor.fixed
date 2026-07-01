@@ -44,6 +44,7 @@ mod field_attributes {
 // https://github.com/rust-lang/rust-clippy/pull/13737#discussion_r1874539800
 mod cfgs_between_fields {
     #[allow(clippy::non_minimal_cfg)]
+    #[allow(empty_cfg_predicate)]
     fn cfg_all() {
         struct S {
             a: i32,
@@ -62,6 +63,7 @@ mod cfgs_between_fields {
         };
     }
 
+    #[allow(empty_cfg_predicate)]
     fn cfg_any() {
         struct S {
             a: i32,

@@ -8,5 +8,5 @@
 //~^ WARN the feature `is_sorted` has been stable since 1.82.0 and no longer requires an attribute to enable
 
 // Enabled via cfg_attr, unused
-#![cfg_attr(all(), feature(slice_ptr_get))]
+#![cfg_attr(true, feature(slice_ptr_get))]
 //~^ ERROR feature `slice_ptr_get` is declared but not used

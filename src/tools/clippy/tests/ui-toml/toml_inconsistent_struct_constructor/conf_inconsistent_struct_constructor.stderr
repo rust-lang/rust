@@ -40,7 +40,7 @@ LL ~             expn_depth: if condition { 1 } else { 0 },
    |
 
 error: struct constructor field order is inconsistent with struct definition field order
-  --> tests/ui-toml/toml_inconsistent_struct_constructor/conf_inconsistent_struct_constructor.rs:56:13
+  --> tests/ui-toml/toml_inconsistent_struct_constructor/conf_inconsistent_struct_constructor.rs:57:13
    |
 LL | /             d: 0,
 LL | |
@@ -61,7 +61,7 @@ LL ~             d: 0,
    |
 
 error: struct constructor field order is inconsistent with struct definition field order
-  --> tests/ui-toml/toml_inconsistent_struct_constructor/conf_inconsistent_struct_constructor.rs:74:13
+  --> tests/ui-toml/toml_inconsistent_struct_constructor/conf_inconsistent_struct_constructor.rs:76:13
    |
 LL | /             d: 0,
 LL | |

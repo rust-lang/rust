@@ -1,11 +1,11 @@
 error[E0425]: cannot find value `Disabled` in this scope
-  --> $DIR/cfg-empty-any-all.rs:10:13
+  --> $DIR/cfg-empty-any-all.rs:11:13
    |
 LL |     let _ = Disabled;
    |             ^^^^^^^^ not found in this scope
    |
 note: found an item that was configured out
-  --> $DIR/cfg-empty-any-all.rs:4:8
+  --> $DIR/cfg-empty-any-all.rs:5:8
    |
 LL | #[cfg(any())]  // Equivalent to cfg(false)
    |          -- the item is gated here
