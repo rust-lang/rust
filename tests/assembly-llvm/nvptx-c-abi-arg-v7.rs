@@ -1,6 +1,6 @@
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type cdylib -C target-cpu=sm_86
-//@ only-nvptx64
+//@ compile-flags: --target nvptx64-nvidia-cuda --crate-type cdylib -C target-cpu=sm_86
+//@ needs-llvm-components: nvptx
 
 // The PTX ABI stability is tied to major versions of the PTX ISA
 // These tests assume major version 7

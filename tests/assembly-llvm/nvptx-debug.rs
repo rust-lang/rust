@@ -1,19 +1,17 @@
+//@ add-minicore
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type cdylib -C debuginfo=2
-//@ only-nvptx64
+//@ compile-flags: --target=nvptx64-nvidia-cuda --crate-type cdylib -C debuginfo=2
+//@ needs-llvm-components: nvptx
 
 // Tests related to debug symbols for nvptx
 
-#![feature(abi_ptx)]
-#![no_std]
+#![feature(no_core, abi_ptx)]
+#![no_core]
 
-//@ aux-build: breakpoint-panic-handler.rs
-extern crate breakpoint_panic_handler;
+extern crate minicore;
 
 #[no_mangle]
-pub extern "ptx-kernel" fn foo() {
-    panic!("bar");
-}
+pub extern "ptx-kernel" fn foo() {}
 
 // We make sure that all debug sections are available and visit them
 // CHECK: .section .debug_abbrev
