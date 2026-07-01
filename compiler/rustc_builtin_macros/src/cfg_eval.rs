@@ -107,41 +107,42 @@ impl CfgEval<'_> {
         // our attribute target will correctly configure the tokens as well.
         let mut parser = Parser::new(&self.0.sess.psess, orig_tokens, None);
         parser.capture_cfg = true;
-        let res: PResult<'_, Annotatable> = try {
-            match annotatable {
-                Annotatable::Item(_) => {
-                    let item =
-                        parser.parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?.unwrap();
-                    Annotatable::Item(self.flat_map_item(item).pop().unwrap())
-                }
+        let res: PResult<'_, Option<Annotatable>> = try {
+            match &annotatable {
+                Annotatable::Item(_) => parser
+                    .parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?
+                    .and_then(|item| self.flat_map_item(item).pop().map(Annotatable::Item)),
                 Annotatable::AssocItem(_, ctxt) => {
-                    let item = parser.parse_trait_item(ForceCollect::Yes)?.unwrap().unwrap();
-                    Annotatable::AssocItem(
-                        self.flat_map_assoc_item(item, ctxt).pop().unwrap(),
-                        ctxt,
-                    )
+                    parser.parse_trait_item(ForceCollect::Yes)?.flatten().and_then(|item| {
+                        self.flat_map_assoc_item(item, *ctxt)
+                            .pop()
+                            .map(|item| Annotatable::AssocItem(item, *ctxt))
+                    })
                 }
                 Annotatable::ForeignItem(_) => {
-                    let item = parser.parse_foreign_item(ForceCollect::Yes)?.unwrap().unwrap();
-                    Annotatable::ForeignItem(self.flat_map_foreign_item(item).pop().unwrap())
+                    parser.parse_foreign_item(ForceCollect::Yes)?.flatten().and_then(|item| {
+                        self.flat_map_foreign_item(item).pop().map(Annotatable::ForeignItem)
+                    })
                 }
-                Annotatable::Stmt(_) => {
-                    let stmt = parser
-                        .parse_stmt_without_recovery(false, ForceCollect::Yes, false)?
-                        .unwrap();
-                    Annotatable::Stmt(Box::new(self.flat_map_stmt(stmt).pop().unwrap()))
-                }
+                Annotatable::Stmt(_) => parser
+                    .parse_stmt_without_recovery(false, ForceCollect::Yes, false)?
+                    .and_then(|stmt| {
+                        self.flat_map_stmt(stmt).pop().map(|stmt| Annotatable::Stmt(Box::new(stmt)))
+                    }),
                 Annotatable::Expr(_) => {
                     let mut expr = parser.parse_expr_force_collect()?;
                     self.visit_expr(&mut expr);
-                    Annotatable::Expr(expr)
+                    Some(Annotatable::Expr(expr))
                 }
                 _ => unreachable!(),
             }
         };
 
         match res {
-            Ok(ann) => ann,
+            Ok(Some(ann)) => ann,
+            // Parser recovery may emit errors without reconstructing an annotatable.
+            // Keep the original node so cfg-eval stays best-effort instead of ICEing.
+            Ok(None) => annotatable,
             Err(err) => {
                 err.emit();
                 annotatable
