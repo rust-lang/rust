@@ -2251,22 +2251,22 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         unchecked_shr, unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
     };
 
-    /// Calculate multiplicative modular inverse of `x` modulo `m`.
-    ///
-    /// This implementation is tailored for `align_offset` and has following preconditions:
-    ///
-    /// * `m` is a power-of-two;
-    /// * `x < m`; (if `x ≥ m`, pass in `x % m` instead)
-    ///
-    /// Implementation of this function shall not panic. Ever.
+    // Calculate multiplicative modular inverse of `x` modulo `m`.
+    //
+    // This implementation is tailored for `align_offset` and has following preconditions:
+    //
+    // * `m` is a power-of-two;
+    // * `x < m`; (if `x ≥ m`, pass in `x % m` instead)
+    //
+    // Implementation of this function shall not panic. Ever.
     #[inline]
     const unsafe fn mod_inv(x: usize, m: usize) -> usize {
-        /// Multiplicative modular inverse table modulo 2⁴ = 16.
-        ///
-        /// Note, that this table does not contain values where inverse does not exist (i.e., for
-        /// `0⁻¹ mod 16`, `2⁻¹ mod 16`, etc.)
+        // Multiplicative modular inverse table modulo 2⁴ = 16.
+        //
+        // Note, that this table does not contain values where inverse does not exist (i.e., for
+        // `0⁻¹ mod 16`, `2⁻¹ mod 16`, etc.)
         const INV_TABLE_MOD_16: [u8; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
-        /// Modulo for which the `INV_TABLE_MOD_16` is intended.
+        // Modulo for which the `INV_TABLE_MOD_16` is intended.
         const INV_TABLE_MOD: usize = 16;
 
         // SAFETY: `m` is required to be a power-of-two, hence non-zero.

@@ -838,6 +838,32 @@ impl EarlyLintPass for UnusedDocComment {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         if let ast::ItemKind::ForeignMod(_) = item.kind {
             warn_if_doc(cx, item.span, "extern blocks", &item.attrs);
+        } else if self.in_fn != 0 {
+            warn_if_doc(cx, item.span, "items defined in functions", &item.attrs);
+            fn warn_on_fields(cx: &EarlyContext<'_>, var_data: &VariantData) {
+                for field in var_data.fields() {
+                    warn_if_doc(cx, field.span, "fields defined nested in functions", &field.attrs);
+                }
+            }
+            if let ast::ItemKind::Struct(_, _, var_data) = &item.kind {
+                warn_on_fields(cx, var_data);
+            } else if let ast::ItemKind::Union(_, _, var_data) = &item.kind {
+                warn_on_fields(cx, var_data);
+            } else if let ast::ItemKind::Enum(_, _, def) = &item.kind {
+                for var in &def.variants {
+                    warn_if_doc(cx, var.span, "variants defined nested in functions", &var.attrs);
+                    warn_on_fields(cx, &var.data);
+                }
+            }
+        }
+        if let ast::ItemKind::Fn(_) = item.kind {
+            self.in_fn += 1;
+        }
+    }
+
+    fn check_item_post(&mut self, _: &EarlyContext<'_>, item: &ast::Item) {
+        if let ast::ItemKind::Fn(_) = item.kind {
+            self.in_fn -= 1;
         }
     }
 }

@@ -381,7 +381,7 @@ impl InitMaskMaterialized {
             end: Size,
             is_init: bool,
         ) -> Option<Size> {
-            /// Search one block, returning the index of the first bit equal to `is_init`.
+            // Search one block, returning the index of the first bit equal to `is_init`.
             fn search_block(
                 bits: Block,
                 block: usize,

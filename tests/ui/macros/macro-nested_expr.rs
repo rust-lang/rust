@@ -3,6 +3,7 @@
 
 #![feature(decl_macro)]
 #![allow(dead_code)]
+#![allow(unused_doc_comments)]
 
 pub macro m($inner_str:expr) {
     #[doc = $inner_str]

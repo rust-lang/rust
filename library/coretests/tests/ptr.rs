@@ -775,7 +775,7 @@ fn nonnull_tagged_pointer_with_provenance() {
 
     unsafe { drop(Box::from_raw(p.pointer().as_ptr())) };
 
-    /// A non-null pointer type which carries several bits of metadata and maintains provenance.
+    // A non-null pointer type which carries several bits of metadata and maintains provenance.
     #[repr(transparent)]
     pub struct TaggedPointer<T>(NonNull<T>);
 

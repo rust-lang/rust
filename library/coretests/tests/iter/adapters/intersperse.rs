@@ -160,9 +160,9 @@ fn test_non_fused_iterator_intersperse() {
         counter: usize,
     }
 
-    /// Given a counter of 0, this produces:
-    /// `None` -> `Some(2)` -> `None` -> `Some(4)` -> `None` -> `Some(6)`
-    /// -> and then `None` endlessly
+    // Given a counter of 0, this produces:
+    // `None` -> `Some(2)` -> `None` -> `Some(4)` -> `None` -> `Some(6)`
+    // -> and then `None` endlessly
     impl Iterator for TestCounter {
         type Item = usize;
         fn next(&mut self) -> Option<Self::Item> {

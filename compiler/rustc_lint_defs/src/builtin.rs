@@ -7,7 +7,7 @@
 //! When removing a lint, make sure to also add a call to `register_removed` in
 //! compiler/rustc_lint/src/lib.rs.
 
-use crate::{declare_lint, declare_lint_pass, fcw};
+use crate::{declare_lint, fcw, impl_lint_pass};
 
 pub mod hardwired {
     use super::*;
@@ -3341,7 +3341,11 @@ declare_lint! {
     };
 }
 
-declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
+#[derive(Clone, Copy, Default)]
+pub struct UnusedDocComment {
+    pub in_fn: usize,
+}
+impl_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
 
 declare_lint! {
     /// The `missing_abi` lint detects cases where the ABI is omitted from

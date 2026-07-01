@@ -1,5 +1,6 @@
 // Ensure that rustdoc gives errors for trait impls inside function bodies that don't resolve.
 // See https://github.com/rust-lang/rust/pull/73566
+#![allow(unused_doc_comments)]
 pub struct ValidType;
 pub trait ValidTrait {}
 pub trait NeedsBody {

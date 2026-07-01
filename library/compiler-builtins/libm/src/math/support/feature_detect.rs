@@ -52,11 +52,11 @@ macro_rules! select_once {
 
         type Func = unsafe fn($($arg: $ArgTy),*) -> $RetTy;
 
-        /// Stores a pointer that is immediately jumped to. By default it is an init function
-        /// that sets FUNC to something else.
+        // Stores a pointer that is immediately jumped to. By default it is an init function
+        // that sets FUNC to something else.
         static FUNC: AtomicPtr<()> = AtomicPtr::new((initializer as Func) as *mut ());
 
-        /// Run once to set the function that will be used for all subsequent calls.
+        // Run once to set the function that will be used for all subsequent calls.
         fn initializer($($arg: $ArgTy),*) -> $RetTy {
             // Select an implementation, ensuring a 'static lifetime.
             let fn_ptr: Func = $init();
