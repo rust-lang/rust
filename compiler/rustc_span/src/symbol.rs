@@ -1134,6 +1134,7 @@ symbols! {
         internal_features,
         interrupt,
         into_async_iter_into_iter,
+        into_fn,
         into_future,
         into_iter,
         into_try_type,

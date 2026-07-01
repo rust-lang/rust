@@ -8,6 +8,7 @@ fn convert() {
     assert_eq!(FOO, 42);
 
     const fn into(x: Vec<String>) -> Vec<String> {
+        #[allow(self_type_conversion)]
         x.into()
     }
 
