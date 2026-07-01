@@ -6,6 +6,7 @@ LL |         () => drop(5 % 3), // No side effects
    |                    |
    |                    argument has type `i32`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
    = note: use `let _ = ...` to ignore the expression or result
    = note: `#[warn(dropping_copy_types)]` on by default
 

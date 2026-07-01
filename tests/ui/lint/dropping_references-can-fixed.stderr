@@ -6,6 +6,7 @@ LL |     drop(&SomeStruct);
    |          |
    |          argument has type `&SomeStruct`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
 note: the lint level is defined here
   --> $DIR/dropping_references-can-fixed.rs:4:9
    |
@@ -25,6 +26,7 @@ LL |     drop(&owned1);
    |          |
    |          argument has type `&SomeStruct`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
 help: use `let _ = ...` to ignore the expression or result
    |
 LL -     drop(&owned1);
@@ -39,6 +41,7 @@ LL |     drop(&&owned1);
    |          |
    |          argument has type `&&SomeStruct`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
 help: use `let _ = ...` to ignore the expression or result
    |
 LL -     drop(&&owned1);
@@ -53,6 +56,7 @@ LL |     drop(&mut owned1);
    |          |
    |          argument has type `&mut SomeStruct`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
 help: use `let _ = ...` to ignore the expression or result
    |
 LL -     drop(&mut owned1);
@@ -67,6 +71,7 @@ LL |     drop(reference1);
    |          |
    |          argument has type `&SomeStruct`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
 help: use `let _ = ...` to ignore the expression or result
    |
 LL -     drop(reference1);
@@ -81,6 +86,7 @@ LL |     drop(reference2);
    |          |
    |          argument has type `&mut SomeStruct`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
 help: use `let _ = ...` to ignore the expression or result
    |
 LL -     drop(reference2);
@@ -95,6 +101,7 @@ LL |     drop(reference3);
    |          |
    |          argument has type `&SomeStruct`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
 help: use `let _ = ...` to ignore the expression or result
    |
 LL -     drop(reference3);
@@ -109,6 +116,7 @@ LL |     drop(&val);
    |          |
    |          argument has type `&T`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
 help: use `let _ = ...` to ignore the expression or result
    |
 LL -     drop(&val);
