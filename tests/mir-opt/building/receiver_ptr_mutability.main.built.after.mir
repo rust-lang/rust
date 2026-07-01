@@ -29,7 +29,7 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);
-        _1 = null_mut::<Test>() -> [return: bb1, unwind: bb4];
+        _1 = null_mut::<Test>() -> [return: bb1, unwind: bb6];
     }
 
     bb1: {
@@ -41,7 +41,7 @@ fn main() -> () {
         _4 = copy _1;
         _3 = move _4 as *const Test (PointerCoercion(MutToConstPointer, Implicit));
         StorageDead(_4);
-        _2 = Test::x(move _3) -> [return: bb2, unwind: bb4];
+        _2 = Test::x(move _3) -> [return: bb2, unwind: bb5];
     }
 
     bb2: {
@@ -82,6 +82,23 @@ fn main() -> () {
     }
 
     bb4 (cleanup): {
+        BackwardIncompatibleDropHint(_11, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_10, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_9, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_8, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_7, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_5, UnwindStorageDead);
+        goto -> bb6;
+    }
+
+    bb5 (cleanup): {
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        goto -> bb6;
+    }
+
+    bb6 (cleanup): {
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
         resume;
     }
 }

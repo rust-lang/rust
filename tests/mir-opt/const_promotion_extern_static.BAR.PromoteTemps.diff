@@ -36,6 +36,9 @@
       }
   
       bb2 (cleanup): {
+          BackwardIncompatibleDropHint(_5, UnwindStorageDead);
+          BackwardIncompatibleDropHint(_3, UnwindStorageDead);
+          BackwardIncompatibleDropHint(_1, UnwindStorageDead);
           resume;
       }
   }

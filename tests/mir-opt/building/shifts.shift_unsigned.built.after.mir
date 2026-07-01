@@ -42,7 +42,7 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_9);
         _9 = copy _3;
         _10 = Lt(copy _9, const 8_u8);
-        assert(move _10, "attempt to shift right by `{}`, which would overflow", copy _9) -> [success: bb1, unwind: bb7];
+        assert(move _10, "attempt to shift right by `{}`, which would overflow", copy _9) -> [success: bb1, unwind: bb15];
     }
 
     bb1: {
@@ -55,7 +55,7 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_13);
         _13 = copy _4;
         _14 = Lt(copy _13, const 8_u32);
-        assert(move _14, "attempt to shift right by `{}`, which would overflow", copy _13) -> [success: bb2, unwind: bb7];
+        assert(move _14, "attempt to shift right by `{}`, which would overflow", copy _13) -> [success: bb2, unwind: bb13];
     }
 
     bb2: {
@@ -68,7 +68,7 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_17);
         _17 = copy _5;
         _18 = Lt(copy _17, const 8_u128);
-        assert(move _18, "attempt to shift right by `{}`, which would overflow", copy _17) -> [success: bb3, unwind: bb7];
+        assert(move _18, "attempt to shift right by `{}`, which would overflow", copy _17) -> [success: bb3, unwind: bb12];
     }
 
     bb3: {
@@ -86,7 +86,7 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_22);
         _22 = copy _3;
         _23 = Lt(copy _22, const 128_u8);
-        assert(move _23, "attempt to shift left by `{}`, which would overflow", copy _22) -> [success: bb4, unwind: bb7];
+        assert(move _23, "attempt to shift left by `{}`, which would overflow", copy _22) -> [success: bb4, unwind: bb10];
     }
 
     bb4: {
@@ -99,7 +99,7 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_26);
         _26 = copy _4;
         _27 = Lt(copy _26, const 128_u32);
-        assert(move _27, "attempt to shift left by `{}`, which would overflow", copy _26) -> [success: bb5, unwind: bb7];
+        assert(move _27, "attempt to shift left by `{}`, which would overflow", copy _26) -> [success: bb5, unwind: bb8];
     }
 
     bb5: {
@@ -130,6 +130,66 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
     }
 
     bb7 (cleanup): {
+        BackwardIncompatibleDropHint(_30, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_29, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_28, UnwindStorageDead);
+        goto -> bb9;
+    }
+
+    bb8 (cleanup): {
+        BackwardIncompatibleDropHint(_26, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_25, UnwindStorageDead);
+        goto -> bb9;
+    }
+
+    bb9 (cleanup): {
+        BackwardIncompatibleDropHint(_24, UnwindStorageDead);
+        goto -> bb11;
+    }
+
+    bb10 (cleanup): {
+        BackwardIncompatibleDropHint(_22, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_21, UnwindStorageDead);
+        goto -> bb11;
+    }
+
+    bb11 (cleanup): {
+        BackwardIncompatibleDropHint(_20, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_19, UnwindStorageDead);
+        goto -> bb17;
+    }
+
+    bb12 (cleanup): {
+        BackwardIncompatibleDropHint(_17, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_16, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_15, UnwindStorageDead);
+        goto -> bb14;
+    }
+
+    bb13 (cleanup): {
+        BackwardIncompatibleDropHint(_13, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_12, UnwindStorageDead);
+        goto -> bb14;
+    }
+
+    bb14 (cleanup): {
+        BackwardIncompatibleDropHint(_11, UnwindStorageDead);
+        goto -> bb16;
+    }
+
+    bb15 (cleanup): {
+        BackwardIncompatibleDropHint(_9, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_8, UnwindStorageDead);
+        goto -> bb16;
+    }
+
+    bb16 (cleanup): {
+        BackwardIncompatibleDropHint(_7, UnwindStorageDead);
+        goto -> bb17;
+    }
+
+    bb17 (cleanup): {
+        BackwardIncompatibleDropHint(_6, UnwindStorageDead);
         resume;
     }
 }

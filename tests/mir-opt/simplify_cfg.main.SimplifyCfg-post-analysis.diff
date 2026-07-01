@@ -41,6 +41,11 @@
       }
   
 -     bb6 (cleanup): {
+-         nop;
+-         goto -> bb7;
+-     }
+- 
+-     bb7 (cleanup): {
 +     bb5 (cleanup): {
           resume;
       }

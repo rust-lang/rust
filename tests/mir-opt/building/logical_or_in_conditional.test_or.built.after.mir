@@ -20,7 +20,7 @@ fn test_or() -> () {
     }
 
     bb1: {
-        drop(_3) -> [return: bb3, unwind: bb13];
+        drop(_3) -> [return: bb3, unwind: bb14];
     }
 
     bb2: {
@@ -34,7 +34,7 @@ fn test_or() -> () {
     }
 
     bb4: {
-        drop(_3) -> [return: bb5, unwind: bb13];
+        drop(_3) -> [return: bb5, unwind: bb14];
     }
 
     bb5: {
@@ -86,6 +86,20 @@ fn test_or() -> () {
     }
 
     bb13 (cleanup): {
+        BackwardIncompatibleDropHint(_6, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_5, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
+        goto -> bb15;
+    }
+
+    bb14 (cleanup): {
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        goto -> bb15;
+    }
+
+    bb15 (cleanup): {
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
         resume;
     }
 }

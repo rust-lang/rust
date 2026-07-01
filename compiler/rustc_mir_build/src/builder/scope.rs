@@ -157,7 +157,7 @@ struct DropData {
     /// local to drop
     local: Local,
 
-    /// Whether this is a value Drop or a StorageDead.
+    /// What kind of drop or drop-order marker this is.
     kind: DropKind,
 }
 
@@ -254,24 +254,6 @@ struct DropNodeKey {
 }
 
 impl Scope {
-    /// Whether there's anything to do for the cleanup path, that is,
-    /// when unwinding through this scope. This includes destructors,
-    /// but not StorageDead statements, which don't get emitted at all
-    /// for unwinding, for several reasons:
-    ///  * clang doesn't emit llvm.lifetime.end for C++ unwinding
-    ///  * LLVM's memory dependency analysis can't handle it atm
-    ///  * polluting the cleanup MIR with StorageDead creates
-    ///    landing pads even though there's no actual destructors
-    ///  * freeing up stack space has no effect during unwinding
-    /// Note that for coroutines we do emit StorageDeads, for the
-    /// use of optimizations in the MIR coroutine transform.
-    fn needs_cleanup(&self) -> bool {
-        self.drops.iter().any(|drop| match drop.kind {
-            DropKind::Value | DropKind::ForLint => true,
-            DropKind::Storage => false,
-        })
-    }
-
     fn invalidate_cache(&mut self) {
         self.cached_unwind_block = None;
         self.cached_coroutine_drop_block = None;
@@ -330,11 +312,12 @@ impl DropTree {
         &mut self,
         cfg: &mut CFG<'tcx>,
         root_node: Option<BasicBlock>,
+        storage_dead_on_cleanup: bool,
     ) -> IndexVec<DropIdx, Option<BasicBlock>> {
         debug!("DropTree::build_mir(drops = {:#?})", self);
 
         let mut blocks = self.assign_blocks::<T>(cfg, root_node);
-        self.link_blocks(cfg, &mut blocks);
+        self.link_blocks(cfg, &mut blocks, storage_dead_on_cleanup);
 
         blocks
     }
@@ -415,6 +398,7 @@ impl DropTree {
         &self,
         cfg: &mut CFG<'tcx>,
         blocks: &IndexSlice<DropIdx, Option<BasicBlock>>,
+        storage_dead_on_cleanup: bool,
     ) {
         for (drop_idx, drop_node) in self.drop_nodes.iter_enumerated().rev() {
             let Some(block) = blocks[drop_idx] else { continue };
@@ -454,10 +438,17 @@ impl DropTree {
                 // Root nodes don't correspond to a drop.
                 DropKind::Storage if drop_idx == ROOT_NODE => {}
                 DropKind::Storage => {
-                    let stmt = Statement::new(
-                        drop_node.data.source_info,
-                        StatementKind::StorageDead(drop_node.data.local),
-                    );
+                    let kind = if cfg.block_data(block).is_cleanup && !storage_dead_on_cleanup {
+                        // Future editions can switch this cleanup-path marker
+                        // to a real `StorageDead` here.
+                        StatementKind::BackwardIncompatibleDropHint {
+                            place: Box::new(drop_node.data.local.into()),
+                            reason: BackwardIncompatibleDropReason::UnwindStorageDead,
+                        }
+                    } else {
+                        StatementKind::StorageDead(drop_node.data.local)
+                    };
+                    let stmt = Statement::new(drop_node.data.source_info, kind);
                     cfg.push(block, stmt);
                     let target = blocks[drop_node.next].unwrap();
                     if target != block {
@@ -474,6 +465,14 @@ impl DropTree {
             }
         }
     }
+}
+
+fn advance_unwind_to(unwind_drops: &DropTree, unwind_to: &mut DropIdx, drop: DropData) {
+    debug_assert_ne!(*unwind_to, DropIdx::MAX);
+    let unwind_drop = unwind_drops.drop_nodes[*unwind_to].data;
+    debug_assert_eq!(unwind_drop.local, drop.local);
+    debug_assert_eq!(unwind_drop.kind, drop.kind);
+    *unwind_to = unwind_drops.drop_nodes[*unwind_to].next;
 }
 
 impl<'tcx> Scopes<'tcx> {
@@ -1121,6 +1120,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             DUMMY_SP,
         );
         let typing_env = self.typing_env();
+        let tail_call_source_info = SourceInfo {
+            span: args
+                .iter()
+                .map(|arg| arg.span)
+                .reduce(|span, arg_span| span.to(arg_span))
+                .map(|span| span.shrink_to_hi())
+                .unwrap_or(source_info.span),
+            ..source_info
+        };
         let unwind_drops = &mut self.scopes.unwind_drops;
 
         // the innermost scope contains only the destructors for the tail call arguments
@@ -1131,24 +1139,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let source_info = drop_data.source_info;
                 let local = drop_data.local;
 
-                if !self.local_decls[local].ty.needs_drop(self.tcx, typing_env) {
-                    continue;
-                }
-
                 match drop_data.kind {
                     DropKind::Value => {
+                        if !self.local_decls[local].ty.needs_drop(self.tcx, typing_env) {
+                            continue;
+                        }
+
                         // `unwind_to` should drop the value that we're about to
                         // schedule. If dropping this value panics, then we continue
                         // with the *next* value on the unwind path.
-                        debug_assert_eq!(
-                            unwind_drops.drop_nodes[unwind_to].data.local,
-                            drop_data.local
-                        );
-                        debug_assert_eq!(
-                            unwind_drops.drop_nodes[unwind_to].data.kind,
-                            drop_data.kind
-                        );
-                        unwind_to = unwind_drops.drop_nodes[unwind_to].next;
+                        advance_unwind_to(unwind_drops, &mut unwind_to, *drop_data);
 
                         let mut unwind_entry_point = unwind_to;
 
@@ -1174,6 +1174,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block = next;
                     }
                     DropKind::ForLint => {
+                        advance_unwind_to(unwind_drops, &mut unwind_to, *drop_data);
                         self.cfg.push(
                             block,
                             Statement::new(
@@ -1186,11 +1187,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         );
                     }
                     DropKind::Storage => {
+                        advance_unwind_to(unwind_drops, &mut unwind_to, *drop_data);
                         // Only temps and vars need their storage dead.
                         assert!(local.index() > self.arg_count);
                         self.cfg.push(
                             block,
-                            Statement::new(source_info, StatementKind::StorageDead(local)),
+                            Statement::new(
+                                tail_call_source_info,
+                                StatementKind::StorageDead(local),
+                            ),
                         );
                     }
                 }
@@ -1219,9 +1224,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
-        let needs_cleanup = self.scopes.scopes.last().is_some_and(|scope| scope.needs_cleanup());
         let is_coroutine = self.coroutine.is_some();
-        let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
+        let has_drops = self.scopes.scopes.last().is_some_and(|scope| !scope.drops.is_empty());
+        let unwind_to = if has_drops { self.diverge_cleanup() } else { DropIdx::MAX };
 
         let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
         let has_async_drops = is_coroutine
@@ -1237,7 +1242,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             unwind_to,
             dropline_to,
-            is_coroutine && needs_cleanup,
             self.arg_count,
             |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, typing_env, v),
         )
@@ -1411,12 +1415,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         local: Local,
         drop_kind: DropKind,
     ) {
-        let needs_drop = match drop_kind {
+        match drop_kind {
             DropKind::Value | DropKind::ForLint => {
                 if !self.local_decls[local].ty.needs_drop(self.tcx, self.typing_env()) {
                     return;
                 }
-                true
             }
             DropKind::Storage => {
                 if local.index() <= self.arg_count {
@@ -1427,7 +1430,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         local,
                     )
                 }
-                false
             }
         };
 
@@ -1473,15 +1475,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // caches gets invalidated. i.e., if a new drop is added into the middle scope, the
         // cache of outer scope stays intact.
         //
-        // Since we only cache drops for the unwind path and the coroutine drop
-        // path, we only need to invalidate the cache for drops that happen on
-        // the unwind or coroutine drop paths. This means that for
-        // non-coroutines we don't need to invalidate caches for `DropKind::Storage`.
-        let invalidate_caches = needs_drop || self.coroutine.is_some();
         for scope in self.scopes.scopes.iter_mut().rev() {
-            if invalidate_caches {
-                scope.invalidate_cache();
-            }
+            scope.invalidate_cache();
 
             if scope.region_scope == region_scope {
                 let region_scope_span = region_scope.span(self.tcx, self.region_scope_tree);
@@ -1625,12 +1620,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return cached_drop;
         }
 
-        let is_coroutine = self.coroutine.is_some();
         for scope in &mut self.scopes.scopes[uncached_scope..=target] {
             for drop in &scope.drops {
-                if is_coroutine || drop.kind == DropKind::Value {
-                    cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
-                }
+                cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
             }
             scope.cached_unwind_block = Some(cached_drop);
         }
@@ -1809,11 +1801,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 /// * `scope`, describes the drops that will occur on exiting the scope in regular execution
 /// * `block`, the block to branch to once drops are complete (assuming no unwind occurs)
 /// * `unwind_to`, describes the drops that would occur at this point in the code if a
-///   panic occurred (a subset of the drops in `scope`, since we sometimes elide StorageDead and other
-///   instructions on unwinding)
+///   panic occurred (a subset of the drops in `scope`)
 /// * `dropline_to`, describes the drops that would occur at this point in the code if a
 ///    coroutine drop occurred.
-/// * `storage_dead_on_unwind`, if true, then we should emit `StorageDead` even when unwinding
 /// * `arg_count`, number of MIR local variables corresponding to fn arguments (used to assert that we don't drop those)
 fn build_scope_drops<'tcx, F>(
     cfg: &mut CFG<'tcx>,
@@ -1823,7 +1813,6 @@ fn build_scope_drops<'tcx, F>(
     block: BasicBlock,
     unwind_to: DropIdx,
     dropline_to: Option<DropIdx>,
-    storage_dead_on_unwind: bool,
     arg_count: usize,
     is_async_drop: F,
 ) -> BlockAnd<()>
@@ -1846,10 +1835,10 @@ where
     // drops panic (panicking while unwinding will abort, so there's no need for
     // another set of arrows).
     //
-    // For coroutines, we unwind from a drop on a local to its StorageDead
-    // statement. For other functions we don't worry about StorageDead. The
-    // drops for the unwind path should have already been generated by
-    // `diverge_cleanup_gen`.
+    // Cleanup drop trees mirror the normal-path storage markers. When those trees
+    // are lowered, non-coroutine cleanup blocks turn `Storage` into
+    // `BackwardIncompatibleDropHint` so borrowck can issue future-compatibility
+    // lints without changing the accepted program set yet.
 
     // `unwind_to` indicates what needs to be dropped should unwinding occur.
     // This is a subset of what needs to be dropped when exiting the scope.
@@ -1878,9 +1867,8 @@ where
                 //
                 // We adjust this BEFORE we create the drop (e.g., `drops[n]`)
                 // because `drops[n]` should unwind to `drops[n-1]`.
-                debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.local, drop_data.local);
-                debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
-                unwind_to = unwind_drops.drop_nodes[unwind_to].next;
+                //
+                advance_unwind_to(unwind_drops, &mut unwind_to, *drop_data);
 
                 if let Some(idx) = dropline_to {
                     debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.local, drop_data.local);
@@ -1918,19 +1906,7 @@ where
                 block = next;
             }
             DropKind::ForLint => {
-                // As in the `DropKind::Storage` case below:
-                // normally lint-related drops are not emitted for unwind,
-                // so we can just leave `unwind_to` unmodified, but in some
-                // cases we emit things ALSO on the unwind path, so we need to adjust
-                // `unwind_to` in that case.
-                if storage_dead_on_unwind {
-                    debug_assert_eq!(
-                        unwind_drops.drop_nodes[unwind_to].data.local,
-                        drop_data.local
-                    );
-                    debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
-                    unwind_to = unwind_drops.drop_nodes[unwind_to].next;
-                }
+                advance_unwind_to(unwind_drops, &mut unwind_to, *drop_data);
 
                 // If the operand has been moved, and we are not on an unwind
                 // path, then don't generate the drop. (We only take this into
@@ -1952,19 +1928,7 @@ where
                 );
             }
             DropKind::Storage => {
-                // Ordinarily, storage-dead nodes are not emitted on unwind, so we don't
-                // need to adjust `unwind_to` on this path. However, in some specific cases
-                // we *do* emit storage-dead nodes on the unwind path, and in that case now that
-                // the storage-dead has completed, we need to adjust the `unwind_to` pointer
-                // so that any future drops we emit will not register storage-dead.
-                if storage_dead_on_unwind {
-                    debug_assert_eq!(
-                        unwind_drops.drop_nodes[unwind_to].data.local,
-                        drop_data.local
-                    );
-                    debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
-                    unwind_to = unwind_drops.drop_nodes[unwind_to].next;
-                }
+                advance_unwind_to(unwind_drops, &mut unwind_to, *drop_data);
                 if let Some(idx) = dropline_to {
                     debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.local, drop_data.local);
                     debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.kind, drop_data.kind);
@@ -1991,7 +1955,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         span: Span,
         continue_block: Option<BasicBlock>,
     ) -> Option<BlockAnd<()>> {
-        let blocks = drops.build_mir::<ExitScopes>(&mut self.cfg, continue_block);
+        let blocks = drops.build_mir::<ExitScopes>(&mut self.cfg, continue_block, true);
         let is_coroutine = self.coroutine.is_some();
 
         // Link the exit drop tree to unwind drop tree.
@@ -2000,17 +1964,6 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
             let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
             for (drop_idx, drop_node) in drops.drop_nodes.iter_enumerated().skip(1) {
                 match drop_node.data.kind {
-                    DropKind::Storage | DropKind::ForLint => {
-                        if is_coroutine {
-                            let unwind_drop = self
-                                .scopes
-                                .unwind_drops
-                                .add_drop(drop_node.data, unwind_indices[drop_node.next]);
-                            unwind_indices.push(unwind_drop);
-                        } else {
-                            unwind_indices.push(unwind_indices[drop_node.next]);
-                        }
-                    }
                     DropKind::Value => {
                         let unwind_drop = self
                             .scopes
@@ -2020,6 +1973,13 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                             blocks[drop_idx].unwrap(),
                             unwind_indices[drop_node.next],
                         );
+                        unwind_indices.push(unwind_drop);
+                    }
+                    DropKind::Storage | DropKind::ForLint => {
+                        let unwind_drop = self
+                            .scopes
+                            .unwind_drops
+                            .add_drop(drop_node.data, unwind_indices[drop_node.next]);
                         unwind_indices.push(unwind_drop);
                     }
                 }
@@ -2065,6 +2025,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 &mut self.scopes.unwind_drops,
                 self.fn_span,
                 &mut None,
+                false,
             );
         }
     }
@@ -2074,7 +2035,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         let drops = &mut self.scopes.coroutine_drops;
         let cfg = &mut self.cfg;
         let fn_span = self.fn_span;
-        let blocks = drops.build_mir::<CoroutineDrop>(cfg, None);
+        let blocks = drops.build_mir::<CoroutineDrop>(cfg, None, true);
         if let Some(root_block) = blocks[ROOT_NODE] {
             cfg.terminate(
                 root_block,
@@ -2086,7 +2047,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         // Build the drop tree for unwinding in the normal control flow paths.
         let resume_block = &mut None;
         let unwind_drops = &mut self.scopes.unwind_drops;
-        Self::build_unwind_tree(cfg, unwind_drops, fn_span, resume_block);
+        Self::build_unwind_tree(cfg, unwind_drops, fn_span, resume_block, true);
 
         // Build the drop tree for unwinding when dropping a suspended
         // coroutine.
@@ -2103,7 +2064,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 drops.entry_points.push((drop_node.next, bb));
             }
         }
-        Self::build_unwind_tree(cfg, drops, fn_span, resume_block);
+        Self::build_unwind_tree(cfg, drops, fn_span, resume_block, true);
     }
 
     fn build_unwind_tree(
@@ -2111,8 +2072,9 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         drops: &mut DropTree,
         fn_span: Span,
         resume_block: &mut Option<BasicBlock>,
+        storage_dead_on_cleanup: bool,
     ) {
-        let blocks = drops.build_mir::<Unwind>(cfg, *resume_block);
+        let blocks = drops.build_mir::<Unwind>(cfg, *resume_block, storage_dead_on_cleanup);
         if let (None, Some(resume)) = (*resume_block, blocks[ROOT_NODE]) {
             cfg.terminate(resume, SourceInfo::outermost(fn_span), TerminatorKind::UnwindResume);
 

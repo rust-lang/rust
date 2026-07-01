@@ -20,7 +20,7 @@
   
       bb1: {
 +         Coverage::VirtualCounter(bcb1);
-          falseUnwind -> [real: bb2, unwind: bb6];
+          falseUnwind -> [real: bb2, unwind: bb7];
       }
   
       bb2: {
@@ -47,6 +47,11 @@
       }
   
       bb6 (cleanup): {
+          BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+          goto -> bb7;
+      }
+  
+      bb7 (cleanup): {
           resume;
       }
   }
