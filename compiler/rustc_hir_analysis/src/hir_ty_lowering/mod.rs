@@ -482,16 +482,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
         let parent_def_id = self.item_def_id();
+        // In this path, `Some(context)` should be `ConstArgument`: enum
+        // discriminants are handled earlier by resolve. We still use the helper so
+        // nested inline consts are checked in the outer const-argument context.
         if let Res::Def(DefKind::ConstParam, _) = res
-            && matches!(tcx.def_kind(parent_def_id), DefKind::AnonConst | DefKind::InlineConst)
-            && let ty::AnonConstKind::MCG = tcx.anon_const_kind(parent_def_id)
+            && let Some(context) = self.anon_const_forbids_generic_params()
         {
             let folder = ForbidParamUsesFolder {
                 tcx,
                 anon_const_def_id: parent_def_id,
                 span,
                 is_self_alias: false,
-                context: ForbidParamContext::ConstArgument,
+                context,
             };
             return Err(folder.error());
         }
