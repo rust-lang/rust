@@ -123,6 +123,11 @@ impl Instant {
         // 126 bits.
         Some((nanos * u128::from(timebase.denom)).div_ceil(u128::from(timebase.numer)))
     }
+
+    #[cfg(target_os = "fuchsia")]
+    pub fn into_deadline(self) -> crate::sys::pal::fuchsia::zx_instant_mono_t {
+        self.t.tv_sec.saturating_mul(1_000_000_000).saturating_add(self.t.tv_nsec.as_inner().into())
+    }
 }
 
 impl AsInner<Timespec> for Instant {
