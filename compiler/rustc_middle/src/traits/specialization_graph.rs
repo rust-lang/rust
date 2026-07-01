@@ -144,6 +144,7 @@ impl Node {
 
 #[derive(Copy, Clone)]
 pub struct Ancestors<'tcx> {
+    tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     specialization_graph: &'tcx Graph,
     current_source: Option<Node>,
@@ -154,7 +155,14 @@ impl Iterator for Ancestors<'_> {
     fn next(&mut self) -> Option<Node> {
         let cur = self.current_source.take();
         if let Some(Node::Impl(cur_impl)) = cur {
-            let parent = self.specialization_graph.parent(cur_impl);
+            // Graph construction may skip foreign impls, so resolve a foreign impl's
+            // parent from crate metadata instead; recorded foreign impls use the same
+            // value (see `record_impl_from_cstore`).
+            let parent = if cur_impl.is_local() {
+                self.specialization_graph.parent(cur_impl)
+            } else {
+                self.tcx.impl_parent(cur_impl).unwrap_or(self.trait_def_id)
+            };
 
             self.current_source = if parent == self.trait_def_id {
                 Some(Node::Trait(parent))
@@ -254,6 +262,7 @@ pub fn ancestors(
         Err(reported)
     } else {
         Ok(Ancestors {
+            tcx,
             trait_def_id,
             specialization_graph,
             current_source: Some(Node::Impl(start_from_impl)),
