@@ -28,7 +28,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(64),
 
             // Unwinding on GPUs is not useful.
-            panic_strategy: PanicStrategy::Abort,
+            panic_strategy: PanicStrategy::ImmediateAbort,
 
             // amdgpu backend does not support libcalls.
             no_builtins: true,
