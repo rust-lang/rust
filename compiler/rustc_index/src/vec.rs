@@ -164,14 +164,14 @@ impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub fn as_slice(&self) -> &IndexSlice<I, T> {
         IndexSlice::from_raw(unsafe {
-            std::slice::from_raw_parts(self.data.as_ptr(), self.len.index())
+            &*std::ptr::slice_from_raw_parts(self.data.as_ptr(), self.len.index())
         })
     }
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut IndexSlice<I, T> {
         IndexSlice::from_raw_mut(unsafe {
-            std::slice::from_raw_parts_mut(self.data.as_ptr(), self.len.index())
+            &mut *ptr::slice_from_raw_parts_mut(self.data.as_ptr(), self.len.index())
         })
     }
 
