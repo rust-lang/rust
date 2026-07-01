@@ -395,7 +395,7 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
                     param_env,
                     cause,
                     depth + 1,
-                    projected_term,
+                    ty::Unnormalized::new_wip(projected_term),
                     &mut projected_obligations,
                 );
 
@@ -551,7 +551,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
             param_env,
             cause.clone(),
             depth + 1,
-            predicate.skip_norm_wip(),
+            predicate,
             obligations,
         );
 
@@ -593,8 +593,14 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
 
     let mut term = selcx.infcx.resolve_vars_if_possible(term);
     if term.has_aliases() {
-        term =
-            normalize_with_depth_to(selcx, param_env, cause.clone(), depth + 1, term, obligations);
+        term = normalize_with_depth_to(
+            selcx,
+            param_env,
+            cause.clone(),
+            depth + 1,
+            ty::Unnormalized::new_wip(term),
+            obligations,
+        );
     }
 
     term
@@ -622,7 +628,7 @@ pub fn compute_inherent_assoc_term_args<'a, 'b, 'tcx>(
             param_env,
             cause.clone(),
             depth + 1,
-            impl_ty,
+            ty::Unnormalized::new_wip(impl_ty),
             obligations,
         );
     }
@@ -636,7 +642,7 @@ pub fn compute_inherent_assoc_term_args<'a, 'b, 'tcx>(
             param_env,
             cause.clone(),
             depth + 1,
-            self_ty,
+            ty::Unnormalized::new_wip(self_ty),
             obligations,
         );
     }
@@ -1563,7 +1569,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
-                ty.skip_norm_wip(),
+                ty,
                 &mut obligations,
             )
         };
@@ -1977,7 +1983,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            obligation_projection,
+            ty::Unnormalized::new_wip(obligation_projection),
             &mut nested_obligations,
         )
     });
@@ -1988,7 +1994,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
-                cache_projection,
+                ty::Unnormalized::new_wip(cache_projection),
                 &mut nested_obligations,
             )
         })
@@ -2135,7 +2141,7 @@ fn assoc_term_own_obligations<'cx, 'tcx>(
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            predicate.skip_norm_wip(),
+            predicate,
             nested,
         );
 

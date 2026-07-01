@@ -104,7 +104,7 @@ fn match_candidate<'tcx>(
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth,
-            candidate,
+            Unnormalized::new_wip(candidate),
             &mut nested,
         );
     }
@@ -245,7 +245,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
                         obligation.param_env,
                         obligation.cause.clone(),
                         obligation.recursion_depth,
-                        trait_ref.skip_norm_wip(),
+                        trait_ref,
                         nested,
                     );
                     (trait_ref, span)
