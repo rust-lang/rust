@@ -320,7 +320,9 @@ fn generic_param_def_as_bound_arg<'tcx>(
 /// Whether this opaque always captures lifetimes in scope.
 /// Right now, this is all RPITIT and TAITs, and when the opaque
 /// is coming from a span corresponding to edition 2024.
-fn opaque_captures_all_in_scope_lifetimes<'tcx>(opaque: &'tcx hir::OpaqueTy<'tcx>) -> bool {
+pub(super) fn opaque_captures_all_in_scope_lifetimes<'tcx>(
+    opaque: &'tcx hir::OpaqueTy<'tcx>,
+) -> bool {
     match opaque.origin {
         // if the opaque has the `use<...>` syntax, the user is telling us that they only want
         // to account for those lifetimes, so do not try to be clever.
