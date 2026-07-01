@@ -702,19 +702,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 expected_input_tys = None;
             }
-            // If splatting, record this call in a side-table, so MIR lowering can tuple the caller's arguments
-            if tuple_arguments.is_splatted() {
-                // FIXME(const_trait_impl): does not enforce constness yet
-                self.write_splatted_call(
-                    call_expr.hir_id,
-                    call_span,
-                    fn_def_id,
-                    callee_generic_args,
-                    first_tupled_arg_index.try_into().unwrap(),
-                    tupled_args_count.unwrap().try_into().unwrap(),
-                );
-            }
-
             formal_input_tys.splice(
                 first_tupled_arg_index..=first_tupled_arg_index,
                 detup_formal_arg_tys.iter(),
@@ -803,6 +790,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 untupled_expected_input_tys: None,
             }
         } else {
+            // If splatting, record this call in a side-table, so MIR lowering can tuple the caller's arguments
+            if tuple_arguments.is_splatted() {
+                // FIXME(const_trait_impl): does not enforce constness yet
+                self.write_splatted_call(
+                    call_expr.hir_id,
+                    call_span,
+                    fn_def_id,
+                    callee_generic_args,
+                    first_tupled_arg_index.try_into().unwrap(),
+                    tupled_args_count.unwrap().try_into().unwrap(),
+                );
+            }
+
             TupledArgCheckOutcome {
                 new_err_code: err_code,
                 untupled_formal_input_tys: formal_input_tys,
