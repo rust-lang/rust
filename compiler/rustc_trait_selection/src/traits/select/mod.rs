@@ -771,10 +771,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     Ok(EvaluatedToOkModuloRegions)
                 }
 
-                ty::PredicateKind::DynCompatible(_) => {
-                    bug!(
-                        "Obligation {obligation:?} should have been handled by fulfillment already."
-                    )
+                ty::PredicateKind::DynCompatible(trait_def_id) => {
+                    if self.tcx().is_dyn_compatible(trait_def_id) {
+                        Ok(EvaluatedToOk)
+                    } else {
+                        Ok(EvaluatedToErr)
+                    }
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
