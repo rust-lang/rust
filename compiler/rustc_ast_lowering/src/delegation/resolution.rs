@@ -3,20 +3,61 @@ use std::ops::ControlFlow;
 use ast::visit::Visitor;
 use hir::def::DefKind;
 use rustc_ast as ast;
-use rustc_ast::node_id::NodeMap;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::span_bug;
-use rustc_middle::ty::PerOwnerResolverData;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::LoweringContext;
+use crate::delegation::generics::GenericsGenerationResults;
 use crate::diagnostics::{
     CycleInDelegationSignatureResolution, DelegationAttemptedBlockWithDefsDeletion,
     DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
 };
+
+pub(super) trait DelegationResolver<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx>;
+    fn owner_id(&self) -> LocalDefId;
+    fn is_definition(&self, id: NodeId) -> bool;
+    fn get_resolution_id(&self, id: NodeId) -> Option<DefId>;
+}
+
+impl<'tcx> DelegationResolver<'tcx> for LoweringContext<'_, 'tcx> {
+    #[inline]
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    #[inline]
+    fn owner_id(&self) -> LocalDefId {
+        self.owner.def_id
+    }
+
+    /// (from `tests\ui\delegation\target-expr-removal-defs-inside.rs`):
+    /// ```rust
+    /// reuse impl Trait for S1 {
+    ///     some::path::<{ fn foo() {} }>::xd();
+    ///     fn foo() {}
+    ///     self.0
+    /// }
+    /// ```
+    ///
+    /// Constant from unresolved path will be in `node_id_to_def_id`,
+    /// `fn foo() {}` will not be in `node_id_to_def_id` but will be in `owners`,
+    /// both have `LocalDefId`, so we check those two maps.
+    #[inline]
+    fn is_definition(&self, id: NodeId) -> bool {
+        self.resolver.owners.contains_key(&id) || self.owner.node_id_to_def_id.contains_key(&id)
+    }
+
+    #[inline]
+    fn get_resolution_id(&self, id: NodeId) -> Option<DefId> {
+        self.get_resolution_id(id)
+    }
+}
 
 /// Summary info about function parameters.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -31,20 +72,75 @@ pub(super) struct ParamInfo {
     pub splatted: Option<u8>,
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
-    pub(super) fn is_method(&self, def_id: DefId, span: Span) -> bool {
-        match self.tcx.def_kind(def_id) {
+pub(super) struct DelegationResolution<'tcx> {
+    pub(super) sig_id: DefId,
+    pub(super) is_method: bool,
+    pub(super) param_info: ParamInfo,
+    pub(super) span: Span,
+    pub(super) should_generate_block: bool,
+    pub(super) call_path_res: Option<DefId>,
+    pub(super) source: DelegationSource,
+    pub(super) output_self_mapping: Option<(LocalDefId, bool)>,
+    pub(super) generics: GenericsGenerationResults<'tcx>,
+}
+
+pub(super) struct DelegationResolverWrapper<'a, T>(pub(super) &'a T);
+
+impl<'tcx, T: DelegationResolver<'tcx>> DelegationResolverWrapper<'_, T> {
+    pub(super) fn resolve_delegation(
+        &self,
+        delegation: &Delegation,
+        span: Span,
+    ) -> Result<DelegationResolution<'tcx>, ErrorGuaranteed> {
+        let tcx = self.0.tcx();
+        let def_id = self.0.owner_id();
+
+        // Delegation can be missing from the `delegations_resolutions` table
+        // in illegal places such as function bodies in extern blocks (see #151356).
+        let sig_id = tcx
+            .resolutions(())
+            .delegation_infos
+            .get(&def_id)
+            .map(|info| {
+                info.resolution_id.and_then(|id| self.check_for_cycles(id, span).map(|_| id))
+            })
+            .unwrap_or_else(|| {
+                Err(tcx.dcx().span_delayed_bug(
+                    span,
+                    format!("delegation resolution record was not found for {:?}", def_id),
+                ))
+            })?;
+
+        let is_method = match tcx.def_kind(sig_id) {
             DefKind::Fn => false,
-            DefKind::AssocFn => self.tcx.associated_item(def_id).is_method(),
+            DefKind::AssocFn => tcx.associated_item(sig_id).is_method(),
             _ => span_bug!(span, "unexpected DefKind for delegation item"),
-        }
+        };
+
+        let sig = tcx.fn_sig(sig_id).skip_binder().skip_binder();
+        let param_count = sig.inputs().len() + usize::from(sig.c_variadic());
+
+        Ok(DelegationResolution {
+            is_method,
+            span,
+            sig_id,
+            // FIXME(splat): use `sig.splatted()` once FnSig has it
+            param_info: ParamInfo { param_count, c_variadic: sig.c_variadic(), splatted: None },
+            should_generate_block: self.check_block_soundness(
+                delegation,
+                sig_id,
+                is_method,
+                param_count,
+            )?,
+            source: delegation.source,
+            call_path_res: self.0.get_resolution_id(delegation.id),
+            output_self_mapping: self.should_map_return_value(delegation),
+            generics: self.resolve_generics(delegation, sig_id),
+        })
     }
 
-    pub(super) fn check_for_cycles(
-        &self,
-        mut def_id: DefId,
-        span: Span,
-    ) -> Result<(), ErrorGuaranteed> {
+    fn check_for_cycles(&self, mut def_id: DefId, span: Span) -> Result<(), ErrorGuaranteed> {
+        let tcx = self.0.tcx();
         let mut visited: FxHashSet<DefId> = Default::default();
 
         loop {
@@ -54,14 +150,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // it means that we refer to another delegation as a callee, so in order to obtain
             // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
             if let Some(local_id) = def_id.as_local()
-                && let Some(info) = self.tcx.resolutions(()).delegation_infos.get(&local_id)
+                && let Some(info) = tcx.resolutions(()).delegation_infos.get(&local_id)
                 && let Ok(id) = info.resolution_id
             {
                 def_id = id;
                 if visited.contains(&def_id) {
                     return Err(match visited.len() {
-                        1 => self.dcx().emit_err(UnresolvedDelegationCallee { span }),
-                        _ => self.dcx().emit_err(CycleInDelegationSignatureResolution { span }),
+                        1 => tcx.dcx().emit_err(UnresolvedDelegationCallee { span }),
+                        _ => tcx.dcx().emit_err(CycleInDelegationSignatureResolution { span }),
                     });
                 }
             } else {
@@ -70,108 +166,63 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn check_block_soundness(
+    fn check_block_soundness(
         &self,
         delegation: &Delegation,
         sig_id: DefId,
         is_method: bool,
         param_count: usize,
-    ) -> bool {
-        let Some(block) = delegation.body.as_ref() else { return true };
-        let should_generate_block = self.should_generate_block(delegation, sig_id, is_method);
+    ) -> Result<bool, ErrorGuaranteed> {
+        let tcx = self.0.tcx();
+        let should_generate_block = is_method
+            || matches!(tcx.def_kind(sig_id), DefKind::Fn)
+            || matches!(delegation.source, DelegationSource::Single);
+
+        let Some(block) = &delegation.body else { return Ok(should_generate_block) };
 
         // Report an error if user has explicitly specified delegation's target expression
         // in a single delegation when reused function has no params.
         if param_count == 0 && should_generate_block {
-            self.dcx().emit_err(DelegationBlockSpecifiedWhenNoParams { span: block.span });
-            return false;
+            let err = DelegationBlockSpecifiedWhenNoParams { span: block.span };
+            return Err(tcx.dcx().emit_err(err));
         }
 
-        struct DefinitionsFinder<'a> {
-            all_owners: &'a NodeMap<PerOwnerResolverData<'a>>,
-            // `self.owner.node_id_to_def_id`
-            nested_def_ids: &'a NodeMap<LocalDefId>,
+        struct DefinitionsFinder<'a, T> {
+            ctx: &'a T,
         }
 
-        impl<'a> ast::visit::Visitor<'a> for DefinitionsFinder<'a> {
+        impl<'a, 'hir, T: DelegationResolver<'hir>> Visitor<'a> for DefinitionsFinder<'a, T> {
             type Result = ControlFlow<()>;
 
             fn visit_id(&mut self, id: NodeId) -> Self::Result {
-                /*
-                    (from `tests\ui\delegation\target-expr-removal-defs-inside.rs`):
-                    ```rust
-                        reuse impl Trait for S1 {
-                            some::path::<{ fn foo() {} }>::xd();
-                            fn foo() {}
-                            self.0
-                        }
-                    ```
-
-                    Constant from unresolved path will be in `nested_owners`,
-                    `fn foo() {}` will not be in `nested_owners` but will be in `owners`,
-                    both have `LocalDefId`, so we check those two maps.
-                */
-                match self.all_owners.contains_key(&id) || self.nested_def_ids.contains_key(&id) {
+                match self.ctx.is_definition(id) {
                     true => ControlFlow::Break(()),
                     false => ControlFlow::Continue(()),
                 }
             }
         }
 
-        let mut collector = DefinitionsFinder {
-            all_owners: &self.resolver.owners,
-            nested_def_ids: &self.owner.node_id_to_def_id,
-        };
+        let mut collector = DefinitionsFinder { ctx: self.0 };
 
         let contains_defs = collector.visit_block(block).is_break();
 
-        // If there are definitions inside and we can't delete target expression, so report an error.
+        // If there are definitions inside and we can't delete target expression, then report an error.
         // FIXME(fn_delegation): support deletion of target expression with defs inside.
-        if !should_generate_block && contains_defs {
-            self.dcx().emit_err(DelegationAttemptedBlockWithDefsDeletion { span: block.span });
-            return false;
-        }
-
-        true
-    }
-
-    pub(super) fn should_generate_block(
-        &self,
-        delegation: &Delegation,
-        sig_id: DefId,
-        is_method: bool,
-    ) -> bool {
-        is_method
-            || matches!(self.tcx.def_kind(sig_id), DefKind::Fn)
-            || matches!(delegation.source, DelegationSource::Single)
-    }
-
-    pub(super) fn get_resolution_id(&self, node_id: NodeId) -> Option<DefId> {
-        self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
-    }
-
-    /// Returns function parameter info, including C variadic `...` and `#[splat]` if present.
-    pub(super) fn param_info(&self, def_id: DefId) -> ParamInfo {
-        let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
-
-        ParamInfo {
-            param_count: sig.inputs().len() + usize::from(sig.c_variadic()),
-            c_variadic: sig.c_variadic(),
-            splatted: sig.splatted(),
+        if should_generate_block || !contains_defs {
+            Ok(should_generate_block)
+        } else {
+            Err(tcx.dcx().emit_err(DelegationAttemptedBlockWithDefsDeletion { span: block.span }))
         }
     }
 
-    pub(super) fn should_wrap_return_value(
-        &self,
-        delegation: &Delegation,
-    ) -> Option<(LocalDefId, bool)> {
+    fn should_map_return_value(&self, delegation: &Delegation) -> Option<(LocalDefId, bool)> {
         // Heuristic: don't do wrapping if there is no target expression.
         if delegation.body.is_none() {
             return None;
         }
 
-        let tcx = self.tcx;
-        let parent = tcx.local_parent(self.owner.def_id);
+        let tcx = self.0.tcx();
+        let parent = tcx.local_parent(self.0.owner_id());
         let parent_kind = tcx.def_kind(parent);
 
         // Apply wrapping for delegations inside
@@ -192,7 +243,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Check that delegation path resolves to a trait AssocFn, not to a free method.
         Some((parent, is_trait_impl)).filter(|_| {
-            self.get_resolution_id(delegation.id).is_some_and(|id| {
+            self.0.get_resolution_id(delegation.id).is_some_and(|id| {
                 tcx.def_kind(id) == DefKind::AssocFn
                     // Check that the return type of the callee is `Self` param.
                     // After previous check we are sure that `sig_id` and `delegation.id`
