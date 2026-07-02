@@ -1848,6 +1848,8 @@ mod prim_ref {}
 ///   - Not `repr(C)`
 ///   - If `repr(transparent)`, all field types must have trivial ABI
 ///   - If an array, the element type must have trivial ABI
+///   - Note: additional conditions may be added in future versions of Rust,
+///     to exclude types newly introduced in those versions
 /// - A `repr(transparent)` type is ABI-compatible with its unique field that does not have trivial ABI
 ///   (as defined above). If there is no such field, the type has trivial ABI.
 /// - A `repr(transparent)` type `T` is ABI-compatible with its unique non-trivial field, i.e., the
