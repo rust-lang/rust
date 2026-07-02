@@ -1441,6 +1441,12 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.pclose();
             }
+            ast::TyKind::DirectConstArg(expr) => {
+                self.word_nbsp("core::direct_const_arg!");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose()
+            }
         }
         self.end(ib);
     }

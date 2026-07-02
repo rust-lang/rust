@@ -15,8 +15,8 @@ use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
     BlockCheckMode, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl,
-    FnRetTy, Guard, Label, MacCall, MetaItemLit, MgcaDisambiguation, Movability, Param,
-    RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
+    FnRetTy, Guard, Label, MacCall, MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty,
+    TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -83,15 +83,8 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub fn parse_expr_anon_const(
-        &mut self,
-        mgca_disambiguation: impl FnOnce(&Self, &Expr) -> MgcaDisambiguation,
-    ) -> PResult<'a, AnonConst> {
-        self.parse_expr().map(|value| AnonConst {
-            id: DUMMY_NODE_ID,
-            mgca_disambiguation: mgca_disambiguation(self, &value),
-            value,
-        })
+    pub fn parse_expr_anon_const(&mut self) -> PResult<'a, AnonConst> {
+        self.parse_expr().map(|value| AnonConst { id: DUMMY_NODE_ID, value })
     }
 
     fn parse_expr_catch_underscore(
@@ -1672,7 +1665,7 @@ impl<'a> Parser<'a> {
             let first_expr = self.parse_expr()?;
             if self.eat(exp!(Semi)) {
                 // Repeating array syntax: `[ 0; 512 ]`
-                let count = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?;
+                let count = self.parse_expr_anon_const()?;
                 self.expect(close)?;
                 ExprKind::Repeat(first_expr, count)
             } else if self.eat(exp!(Comma)) {
@@ -4508,6 +4501,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::IncludedBytes(_)
             | ExprKind::FormatArgs(_)
             | ExprKind::Err(_)
+            | ExprKind::DirectConstArg(_)
             | ExprKind::Dummy => {
                 // These would forbid any let expressions they contain already.
             }
