@@ -31,8 +31,8 @@ fn test_stable_mir() -> ControlFlow<()> {
     // Get all items and split generic vs monomorphic items.
     let (generic, mono): (Vec<_>, Vec<_>) =
         items.into_iter().partition(|item| item.requires_monomorphization());
-    assert_eq!(mono.len(), 3, "Expected 3 mono functions");
-    assert_eq!(generic.len(), 2, "Expected 2 generic functions");
+    assert_eq!(mono.len(), 3, "Expected 3 mono functions, but got {mono:?}");
+    assert_eq!(generic.len(), 3, "Expected 3 generic functions, but got {generic:?}");
 
     // For all monomorphic items, get the correspondent instances.
     let instances = mono
