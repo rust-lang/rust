@@ -8,10 +8,10 @@
 ///
 /// This is most common on types that represent an important state or outcome. For example,
 /// [`Result`] is marked `#[must_use]` because ignoring an error value can hide a failed operation.
-/// In the following example, the returned `Result` is the only sign that writing the message
+/// In the following example, the returned [`Result`] is the only sign that writing the message
 /// might have failed:
 ///
-/// ```rust
+/// ```
 /// # #![allow(unused_must_use)]
 /// fn write_message() -> std::io::Result<()> {
 ///     // Write the message...
@@ -21,7 +21,7 @@
 /// write_message();
 /// ```
 ///
-/// Ignoring that `Result` triggers this warning:
+/// Ignoring that [`Result`] triggers this warning:
 ///
 /// ```text
 /// warning: unused `Result` that must be used
@@ -36,7 +36,7 @@
 /// You can also place `#[must_use]` on a function, method, or trait declaration. On a function or
 /// method, the warning is tied to ignoring that call's return value:
 ///
-/// ```rust
+/// ```
 /// # #![allow(unused_must_use)]
 /// #[must_use]
 /// fn make_token() -> String {
@@ -53,7 +53,7 @@
 ///
 /// The attribute can include a message explaining what the caller should do with the value:
 ///
-/// ```rust
+/// ```
 /// # #![allow(dead_code)]
 /// #[must_use = "call `.finish()` to complete the operation"]
 /// fn start_operation() -> Operation {
@@ -65,7 +65,7 @@
 ///
 /// If intentionally ignoring the value is correct, bind it to `_` or call [`drop`]:
 ///
-/// ```rust
+/// ```
 /// # #[must_use]
 /// # fn make_token() -> String {
 /// #     String::from("token")
@@ -80,8 +80,6 @@
 ///
 /// For more information, see the Reference on [the `must_use` attribute].
 ///
-/// [`Result`]: result::Result
-/// [`Future`]: future::Future
 /// [`unused_must_use`]: ../rustc/lints/listing/warn-by-default.html#unused-must-use
 /// [the `must_use` attribute]: ../reference/attributes/diagnostics.html#the-must_use-attribute
 mod must_use_attribute {}
@@ -90,9 +88,9 @@ mod must_use_attribute {}
 //
 /// The `allow` attribute suppresses lint diagnostics that would otherwise produce
 /// warnings or errors. It can be used on any lint or lint group (except those
-/// set to `forbid`).
+/// set to [`forbid`]).
 ///
-/// ```rust
+/// ```
 /// #[allow(dead_code)]
 /// fn unused_function() {
 ///     // ...
@@ -119,7 +117,7 @@ mod must_use_attribute {}
 ///
 /// Multiple lints can be set to `allow` at once with commas:
 ///
-/// ```rust
+/// ```
 /// #[allow(unused_variables, unused_mut)]
 /// fn main() {
 ///     let mut x: u32 = 42;
@@ -128,12 +126,12 @@ mod must_use_attribute {}
 ///
 /// This is mostly used to prevent lint warnings or errors while still under development.
 ///
-/// It cannot override a lint that has been set to `forbid`.
+/// It cannot override a lint that has been set to [`forbid`].
 ///
 /// It's also important to consider that overusing `allow` could make code harder to maintain
 /// and possibly hide issues. To mitigate this issue, using the `expect` attribute is preferred.
 ///
-/// `allow` can be overridden by `warn`, `deny`, and `forbid`.
+/// `allow` can be overridden by [`warn`], [`deny`], and [`forbid`].
 ///
 /// The lint checks supported by rustc can be found via `rustc -W help`,
 /// along with their default settings and are documented in [the `rustc` book].
@@ -143,6 +141,9 @@ mod must_use_attribute {}
 /// For more information, see the Reference on [the `allow` attribute].
 ///
 /// [the `allow` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
+/// [`forbid`]: ./attribute.forbid.html
+/// [`warn`]: ./attribute.warn.html
+/// [`deny`]: ./attribute.deny.html
 mod allow_attribute {}
 
 #[doc(attribute = "cfg")]
@@ -152,7 +153,7 @@ mod allow_attribute {}
 /// The `cfg` attribute allows compiling an item under specific conditions, otherwise it
 /// will be ignored.
 ///
-/// ```rust
+/// ```
 /// // Only compiles this function for Linux.
 /// #[cfg(target_os = "linux")]
 /// fn platform_specific() {
@@ -169,19 +170,20 @@ mod allow_attribute {}
 /// Depending on the platform you're targeting, only one of these two functions will be considered
 /// during the compilation.
 ///
-/// Conditions can also be combined with `all(...)`, `any(...)`, and `not(...)`.
+/// Conditions can also be combined with `all(...)`, `any(...)`, and `not(...)`:
 ///
 /// * `all`: True if all given predicates are true.
 /// * `any`: True if at least one of the given predicates is true.
 /// * `not`: True if the predicate is false and false if the predicate is true.
 ///
-/// ```rust
+/// ```
 /// #[cfg(all(unix, target_pointer_width = "64"))]
 /// fn unix_64bit() {
+///     // ...
 /// }
 /// ```
 ///
-/// If you want to use this mechanism in an `if` condition in your code, you
+/// If you want to use this mechanism in an [`if`] condition in your code, you
 /// can use the [`cfg!`] macro. To conditionally apply an attribute,
 /// see [`cfg_attr`].
 ///
@@ -189,6 +191,7 @@ mod allow_attribute {}
 ///
 /// [`cfg_attr`]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
 /// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
+/// [`if`]: ./keyword.if.html
 mod cfg_attribute {}
 
 #[doc(attribute = "deny")]
@@ -196,16 +199,16 @@ mod cfg_attribute {}
 /// Emits an error, preventing the compilation from finishing, when a lint check has failed.
 /// This is useful for enforcing rules or preventing certain patterns:
 ///
-/// ```rust,compile_fail
+/// ```compile_fail
 /// #[deny(unused)]
 /// fn foo() {
 ///     let x = 42; // Emits an error because x is unused.
 /// }
 /// ```
 ///
-/// `deny` can be overridden by `allow`, `warn`, and `forbid`:
+/// `deny` can be overridden by [`allow`], [`warn`], and [`forbid`]:
 ///
-/// ```rust
+/// ```
 /// #![deny(unused)]
 ///
 /// #[allow(unused)] // We override the `deny` for this function.
@@ -216,7 +219,7 @@ mod cfg_attribute {}
 ///
 /// Multiple lints can also be set to `deny` at once:
 ///
-/// ```rust,compile_fail
+/// ```compile_fail
 /// #![deny(unused_imports, unused_variables)]
 /// use std::collections::*;
 ///
@@ -233,20 +236,24 @@ mod cfg_attribute {}
 /// For more information, see the Reference on [the `deny` attribute].
 ///
 /// [the `deny` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
+/// [`forbid`]: ./attribute.forbid.html
+/// [`allow`]: ./attribute.allow.html
+/// [`warn`]: ./attribute.warn.html
+/// [`deny`]: ./attribute.deny.html
 mod deny_attribute {}
 
 #[doc(attribute = "forbid")]
 //
 /// Emits an error, preventing the compilation from finishing, when a lint check has failed.
 ///
-/// A lint set to `forbid` cannot be overridden by `allow` or `warn`.
+/// A lint set to `forbid` cannot be overridden by [`allow`] or [`warn`].
 /// Attempting either will result in a compilation error. Writing `#[deny(...)]` on the same lint inside a
 /// `forbid` scope is permitted, but has no effect; the lint remains at the `forbid` level.
 ///
 /// This is useful for enforcing strict policies that should not be relaxed
 /// anywhere in the codebase. Example:
 ///
-/// ```rust
+/// ```
 /// #![forbid(unsafe_code)]
 ///
 /// // This would cause a compilation error if uncommented:
@@ -255,7 +262,7 @@ mod deny_attribute {}
 ///
 /// Multiple lints can be set to `forbid` at once:
 ///
-/// ```rust
+/// ```
 /// #![forbid(unsafe_code, unused)]
 /// ```
 ///
@@ -267,6 +274,8 @@ mod deny_attribute {}
 /// For more information, see the Reference on [the `forbid` attribute].
 ///
 /// [the `forbid` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
+/// [`allow`]: ./attribute.allow.html
+/// [`warn`]: ./attribute.warn.html
 mod forbid_attribute {}
 
 #[doc(attribute = "deprecated")]
@@ -279,15 +288,16 @@ mod forbid_attribute {}
 ///
 /// Example:
 ///
-/// ```rust
+/// ```
 /// #[deprecated(since = "1.0.0", note = "Use bar instead")]
 /// struct Foo;
 /// struct Bar;
 /// ```
 ///
-/// `deprecated` attribute helps developers transition away from old code by providing warnings when
-/// deprecated items are used. Note that during `Cargo` builds, warnings on dependencies get silenced
-/// by default, so you may not see a deprecation warning unless you build that dependency directly.
+/// The `deprecated` attribute helps developers transition away from old code by providing warnings
+/// when deprecated items are used. Note that during `Cargo` builds, warnings on dependencies get
+/// silenced by default, so you may not see a deprecation warning unless you build that dependency
+/// directly.
 ///
 /// For more information, see the Reference on [the `deprecated` attribute].
 ///
@@ -298,12 +308,13 @@ mod deprecated_attribute {}
 //
 /// Emits a warning during compilation when a lint check failed.
 ///
-/// Unlike `deny` or `forbid`, `warn` does not produce a hard error: the compilation continues, but
-/// the compiler emits a warning message. `warn` can be overridden by `allow`, `deny`, and `forbid`.
+/// Unlike [`deny`] or [`forbid`], `warn` does not produce a hard error: the compilation
+/// continues, but the compiler emits a warning message. `warn` can be overridden by [`allow`],
+/// [`deny`], and [`forbid`].
 ///
 /// Example:
 ///
-/// ```rust,compile_fail
+/// ```compile_fail
 /// #![allow(unused)]
 ///
 /// #[warn(unused)] // We override the allowed `unused` lint.
@@ -315,11 +326,11 @@ mod deprecated_attribute {}
 ///
 ///
 /// Many lints, including `unused`, are already set to `warn` by default so this attribute is
-/// mainly useful for lints that are normally `allow` by default.
+/// mainly useful for lints that are normally [`allow`] by default.
 ///
 /// Multiple lints can be set to `warn` at once:
 ///
-/// ```rust,compile_fail
+/// ```compile_fail
 /// #[warn(unused_mut, unused_variables)]
 /// fn main() {
 ///     let mut x = 42;
@@ -334,4 +345,7 @@ mod deprecated_attribute {}
 /// For more information, see the Reference on [the `warn` attribute].
 ///
 /// [the `warn` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
+/// [`allow`]: ./attribute.allow.html
+/// [`deny`]: ./attribute.deny.html
+/// [`forbid`]: ./attribute.forbid.html
 mod warn_attribute {}
