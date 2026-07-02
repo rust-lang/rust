@@ -1,0 +1,59 @@
+- // MIR for `read_unaligned` before ScalarReplacementOfAggregates
++ // MIR for `read_unaligned` after ScalarReplacementOfAggregates
+  
+  fn read_unaligned(_1: *const T) -> T {
+      debug ptr => _1;
+      let mut _0: T;
+      let _2: *const Packed<T>;
+      let mut _3: *const Packed<T>;
+      let mut _4: *const T;
+      let mut _6: *const Packed<T>;
+      let mut _7: Packed<T>;
++     let mut _8: T;
+      scope 1 {
+          debug packed_ptr => _2;
+          let _5: Packed<T>;
++         let _9: T;
+          scope 2 {
+-             debug packed_val => _5;
++             debug ((packed_val: Packed<T>).0: T) => _9;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+          _3 = move _4 as *const Packed<T> (PtrToPtr);
+          _2 = copy _3;
+          StorageDead(_4);
+          StorageDead(_3);
+-         StorageLive(_5);
++         StorageLive(_9);
++         nop;
+          StorageLive(_6);
+          _6 = copy _2;
+-         _5 = copy (*_6);
++         _9 = copy ((*_6).0: T);
++         nop;
+          StorageDead(_6);
+-         StorageLive(_7);
+-         _7 = move _5;
+-         _0 = move _7 as T (Transmute);
+-         StorageDead(_7);
+-         StorageDead(_5);
++         StorageLive(_8);
++         nop;
++         _8 = move _9;
++         nop;
++         _0 = move _8;
++         StorageDead(_8);
++         nop;
++         StorageDead(_9);
++         nop;
+          StorageDead(_2);
+          return;
+      }
+  }
+  
