@@ -2591,10 +2591,15 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // supertraits.
         let a_auto_traits: FxIndexSet<DefId> = a_data
             .auto_traits()
-            .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
-                elaborate::supertrait_def_ids(tcx, principal_def_id)
-                    .filter(|def_id| tcx.trait_is_auto(*def_id))
-            }))
+            .chain(
+                a_data
+                    .principal_def_id()
+                    .map(|principal_def_id| {
+                        elaborate::supertrait_def_ids(tcx, principal_def_id)
+                            .filter(|def_id| tcx.trait_is_auto(*def_id))
+                    })
+                    .into_flat_iter(),
+            )
             .collect();
 
         let upcast_principal = normalize_with_depth_to(

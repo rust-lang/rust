@@ -7,6 +7,7 @@
 #![feature(file_buffered)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]

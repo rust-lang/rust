@@ -248,9 +248,7 @@ impl<'tcx> Collector<'tcx> {
             return;
         }
 
-        for attr in
-            find_attr!(self.tcx, def_id, Link(links, _) => links).iter().map(|v| v.iter()).flatten()
-        {
+        for attr in find_attr!(self.tcx, def_id, Link(links, _) => links).into_flat_iter() {
             let dll_imports = match attr.kind {
                 NativeLibKind::RawDylib { .. } => foreign_items
                     .iter()
