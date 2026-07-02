@@ -116,7 +116,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let inputs = self.arena.alloc_from_iter((0..decl_param_count).map(|arg| hir::Ty {
             hir_id: self.next_id(),
             kind: hir::TyKind::InferDelegation(hir::InferDelegation::Sig(
-                res.sig_id,
+                sig_id,
                 hir::InferDelegationSig::Input(arg),
             )),
             span,
