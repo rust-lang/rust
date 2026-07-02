@@ -18,7 +18,7 @@ use rustc_span::Symbol;
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
 use crate::prelude::*;
-use crate::pretty_clif::CommentWriter;
+use crate::pretty_clif::{CommentWriter, format_clif_ir_header};
 use crate::{codegen_f16_f128, enable_verifier};
 
 pub(crate) struct CodegenedFunction {
@@ -168,23 +168,15 @@ pub(crate) fn compile_fn(
 
     #[cfg(false)]
     let _clif_guard = {
-        use std::fmt::Write;
-
+        let isa = module.isa();
+        let symbol_name = &codegened_func.symbol_name;
         let func_clone = context.func.clone();
         let clif_comments_clone = clif_comments.clone();
-        let mut clif = String::new();
-        for flag in module.isa().flags().iter() {
-            writeln!(clif, "set {}", flag).unwrap();
-        }
-        write!(clif, "target {}", module.isa().triple().architecture.to_string()).unwrap();
-        for isa_flag in module.isa().isa_flags().iter() {
-            write!(clif, " {}", isa_flag).unwrap();
-        }
-        writeln!(clif, "\n").unwrap();
-        writeln!(clif, "; symbol {}", codegened_func.symbol_name).unwrap();
+
+        let clif = crate::pretty_clif::format_clif_ir_header(isa, symbol_name);
         crate::PrintOnPanic(move || {
             let mut clif = clif.clone();
-            ::cranelift_codegen::write::decorate_function(
+            cranelift_codegen::write::decorate_function(
                 &mut &clif_comments_clone,
                 &mut clif,
                 &func_clone,
@@ -221,7 +213,18 @@ pub(crate) fn compile_fn(
                 early_dcx.early_fatal(format!("cranelift verify error:\n{}", pretty_error));
             }
             Err(err) => {
-                panic!("Error while defining {name}: {err:?}", name = codegened_func.symbol_name);
+                let mut clif = format_clif_ir_header(module.isa(), &codegened_func.symbol_name);
+                cranelift_codegen::write::decorate_function(
+                    &mut &clif_comments,
+                    &mut clif,
+                    &context.func,
+                )
+                .unwrap();
+
+                panic!(
+                    "Error while defining {name}: {err:?}\n\nPost-optimization Cranelift IR:\n{clif}",
+                    name = codegened_func.symbol_name
+                );
             }
         }
     });
