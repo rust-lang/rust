@@ -15,9 +15,8 @@ use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange};
 
 use crate::navigation_target::UpmappingResult;
 use crate::{
-    Analysis, Fold, HoverConfig, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
+    Analysis, Fold, HoverConfig, HoverResult, TryToNav,
     hover::{SubstTyLen, hover_for_definition},
-    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve, TypeHintsPlacement},
     moniker::{MonikerResult, SymbolInformationKind, def_to_kind, def_to_moniker},
     parent_module::crates_for,
 };
@@ -97,7 +96,6 @@ impl TokenStore {
 pub struct StaticIndexedFile {
     pub file_id: FileId,
     pub folds: Vec<Fold>,
-    pub inlay_hints: Vec<InlayHint>,
     pub tokens: Vec<(TextRange, TokenId)>,
 }
 
@@ -153,49 +151,6 @@ impl StaticIndex<'_> {
     fn add_file(&mut self, file_id: FileId) {
         let current_crate = crates_for(self.db, file_id).pop().map(Into::into);
         let folds = self.analysis.folding_ranges(file_id, true).unwrap();
-        let inlay_hints = self
-            .analysis
-            .inlay_hints(
-                &InlayHintsConfig {
-                    render_colons: true,
-                    discriminant_hints: crate::DiscriminantHints::Fieldless,
-                    type_hints: true,
-                    type_hints_placement: TypeHintsPlacement::Inline,
-                    sized_bound: false,
-                    parameter_hints: true,
-                    parameter_hints_for_missing_arguments: false,
-                    generic_parameter_hints: crate::GenericParameterHints {
-                        type_hints: false,
-                        lifetime_hints: false,
-                        const_hints: true,
-                    },
-                    chaining_hints: true,
-                    closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
-                    lifetime_elision_hints: crate::LifetimeElisionHints::Never,
-                    adjustment_hints: crate::AdjustmentHints::Never,
-                    adjustment_hints_disable_reborrows: true,
-                    adjustment_hints_mode: AdjustmentHintsMode::Prefix,
-                    adjustment_hints_hide_outside_unsafe: false,
-                    implicit_drop_hints: false,
-                    implied_dyn_trait_hints: false,
-                    hide_inferred_type_hints: false,
-                    hide_named_constructor_hints: false,
-                    hide_closure_initialization_hints: false,
-                    hide_closure_parameter_hints: false,
-                    closure_style: hir::ClosureStyle::ImplFn,
-                    param_names_for_lifetime_elision_hints: false,
-                    binding_mode_hints: false,
-                    max_length: Some(25),
-                    closure_capture_hints: false,
-                    closing_brace_hints_min_lines: Some(25),
-                    fields_to_resolve: InlayFieldsToResolve::empty(),
-                    range_exclusive_hints: false,
-                    ra_fixture: RaFixtureConfig::default(),
-                },
-                file_id,
-                None,
-            )
-            .unwrap();
         // hovers
         let sema = hir::Semantics::new(self.db);
         let root = sema.parse_guess_edition(file_id).syntax().clone();
@@ -221,7 +176,7 @@ impl StaticIndex<'_> {
             show_drop_glue: true,
             ra_fixture: RaFixtureConfig::default(),
         };
-        let mut result = StaticIndexedFile { file_id, inlay_hints, folds, tokens: vec![] };
+        let mut result = StaticIndexedFile { file_id, folds, tokens: vec![] };
 
         let mut add_token = |def: Definition, range: TextRange, scope_node: &SyntaxNode| {
             let id = if let Some(it) = self.def_map.get(&def) {
