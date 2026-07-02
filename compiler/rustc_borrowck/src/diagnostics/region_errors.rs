@@ -28,9 +28,9 @@ use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 
 use super::{LIMITATION_NOTE, OutlivesSuggestionBuilder, RegionName, RegionNameSource};
-use crate::consumers::RegionInferenceContext;
+use crate::consumers::{OutlivesConstraint, RegionInferenceContext};
 use crate::nll::ConstraintDescription;
-use crate::region_infer::{BlameConstraint, TypeTest};
+use crate::region_infer::TypeTest;
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
@@ -414,8 +414,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         };
 
         // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-        let cause =
-            self.regioncx.best_blame_constraint(longer_fr, origin_longer, error_vid).0.cause;
+        let best_blame = self.regioncx.best_blame_constraint(longer_fr, origin_longer, error_vid);
+        let cause = best_blame.to_obligation_cause();
 
         // FIXME these methods should have better names, and also probably not be this generic.
         // FIXME note that we *throw away* the error element here! We probably want to
@@ -446,19 +446,18 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (blame_constraint, path) =
-            self.regioncx.best_blame_constraint(fr, fr_origin, outlived_fr);
-        let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
+        let best_blame = self.regioncx.best_blame_constraint(fr, fr_origin, outlived_fr);
+        let OutlivesConstraint { category, span, variance_info, .. } = *best_blame.constraint();
+        let path = best_blame.path();
 
-        debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
+        debug!("report_region_error: category={:?} {:?} {:?}", category, span, variance_info);
 
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) =
             (self.regioncx.to_error_region(fr), self.regioncx.to_error_region(outlived_fr))
         {
             let infer_err = self.infcx.err_ctxt();
-            let nice =
-                NiceRegionError::new_from_span(&infer_err, self.mir_def_id(), cause.span, o, f);
+            let nice = NiceRegionError::new_from_span(&infer_err, self.mir_def_id(), span, o, f);
             if let Some(diag) = nice.try_report_from_nll() {
                 self.buffer_error(diag);
                 return;
@@ -475,7 +474,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             fr_is_local, outlived_fr_is_local, category
         );
 
-        let errci = ErrorConstraintInfo { fr, outlived_fr, category, span: cause.span };
+        let errci = ErrorConstraintInfo { fr, outlived_fr, category, span };
 
         let mut diag = match (category, fr_is_local, outlived_fr_is_local) {
             (ConstraintCategory::SolverRegionConstraint(span), _, _) => {
@@ -563,10 +562,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         }
 
-        self.add_placeholder_from_predicate_note(&mut diag, &path);
-        self.add_sized_or_copy_bound_info(&mut diag, category, &path);
+        self.add_placeholder_from_predicate_note(&mut diag, path);
+        self.add_sized_or_copy_bound_info(&mut diag, category, path);
 
-        for constraint in &path {
+        for constraint in path {
             if let ConstraintCategory::Cast { is_raw_ptr_dyn_type_cast: true, .. } =
                 constraint.category
             {
