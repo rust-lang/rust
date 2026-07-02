@@ -30,6 +30,7 @@ rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 tempfile = "3.7.1"
 tracing = "0.1"
+twox-hash = { version = "2", default-features = false, features = ["xxhash3_128", "std"] }
 # tidy-alphabetical-end
 
 [target.'cfg(target_os = "aix")'.dependencies]
