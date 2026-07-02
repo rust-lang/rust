@@ -41,7 +41,7 @@ impl<'db> SpanMap<'db> {
         match file_id {
             HirFileId::FileId(file_id) => SpanMap::RealSpanMap(db.real_span_map(file_id)),
             HirFileId::MacroFile(m) => {
-                SpanMap::ExpansionSpanMap(&db.parse_macro_expansion(m).value.1)
+                SpanMap::ExpansionSpanMap(&m.parse_macro_expansion(db).value.1)
             }
         }
     }
@@ -115,5 +115,5 @@ pub(crate) fn expansion_span_map(
     db: &dyn ExpandDatabase,
     file_id: MacroCallId,
 ) -> &ExpansionSpanMap {
-    &db.parse_macro_expansion(file_id).value.1
+    &file_id.parse_macro_expansion(db).value.1
 }

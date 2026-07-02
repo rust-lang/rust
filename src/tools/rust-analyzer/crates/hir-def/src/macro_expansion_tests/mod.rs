@@ -62,7 +62,7 @@ fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect)
         .modules()
         .flat_map(|module| module.1.scope.all_macro_calls())
         .filter_map(|macro_call| {
-            let errors = db.parse_macro_expansion_error(macro_call)?;
+            let errors = macro_call.parse_macro_expansion_error(&db)?;
             let errors = errors.err.as_ref()?.render_to_string(&db);
             let macro_loc = macro_call.loc(&db);
             let ast_id = match macro_loc.kind {
@@ -125,7 +125,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let ptr = InFile::new(source.file_id, AstPtr::new(&macro_call_node));
         let macro_call_id = resolve_macro_call_id(&db, def_map, ast_id, ptr)
             .unwrap_or_else(|| panic!("unable to find semantic macro call {macro_call_node}"));
-        let expansion_result = db.parse_macro_expansion(macro_call_id);
+        let expansion_result = macro_call_id.parse_macro_expansion(&db);
         expansions.push((macro_call_node.clone(), expansion_result));
     }
 

@@ -564,7 +564,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn expand(&self, file_id: MacroCallId) -> ExpandResult<SyntaxNode> {
-        let res = self.db.parse_macro_expansion(file_id).as_ref().map(|it| it.0.syntax_node());
+        let res = file_id.parse_macro_expansion(self.db).as_ref().map(|it| it.0.syntax_node());
         self.cache(res.value.clone(), file_id.into());
         res
     }
@@ -661,7 +661,7 @@ impl<'db> SemanticsImpl<'db> {
             .into_iter()
             .map(|call| {
                 let file_id = call?.left()?;
-                let ExpandResult { value, err } = self.db.parse_macro_expansion(file_id);
+                let ExpandResult { value, err } = file_id.parse_macro_expansion(self.db);
                 let root_node = value.0.syntax_node();
                 self.cache(root_node.clone(), file_id.into());
                 Some(ExpandResult { value: root_node, err: err.clone() })
@@ -1979,8 +1979,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_macro_call_arm(&self, macro_call: &ast::MacroCall) -> Option<u32> {
-        let file_id = self.to_def(macro_call)?;
-        self.db.parse_macro_expansion(file_id).value.1.matched_arm
+        self.to_def(macro_call)?.parse_macro_expansion(self.db).value.1.matched_arm
     }
 
     pub fn get_unsafe_ops(&self, def: ExpressionStoreOwner) -> FxHashSet<ExprOrPatSource> {

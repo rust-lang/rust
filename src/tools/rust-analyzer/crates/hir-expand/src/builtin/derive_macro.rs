@@ -391,7 +391,7 @@ fn to_adt_syntax(
     tt: &tt::TopSubtree,
     call_site: Span,
 ) -> Result<(ast::Adt, span::SpanMap), ExpandError> {
-    let (parsed, tm) = crate::db::token_tree_to_syntax_node(db, tt, crate::ExpandTo::Items);
+    let (parsed, tm) = crate::token_tree_to_syntax_node(db, tt, crate::ExpandTo::Items);
     let macro_items = ast::MacroItems::cast(parsed.syntax_node())
         .ok_or_else(|| ExpandError::other(call_site, "invalid item definition"))?;
     let item =

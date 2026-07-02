@@ -390,7 +390,7 @@ fn expand_doc_macro_call<'db>(
     .value?;
 
     expander.recursion_depth += 1;
-    let parse = expander.db.parse_macro_expansion(call_id).value.0.clone();
+    let parse = call_id.parse_macro_expansion(expander.db).value.0.clone();
     let expr = parse.cast::<ast::Expr>().map(|parse| parse.tree())?;
     expander.recursion_depth -= 1;
 
