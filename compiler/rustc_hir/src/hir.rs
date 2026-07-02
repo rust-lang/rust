@@ -511,7 +511,7 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
 #[derive(Clone, Copy, Debug, StableHash)]
 #[repr(u8, C)]
 pub enum ConstArgKind<'hir, Unambig = ()> {
-    Tup(&'hir [&'hir ConstArg<'hir, Unambig>]),
+    Tup(&'hir [&'hir ConstArg<'hir>]),
     /// **Note:** Currently this is only used for bare const params
     /// (`N` where `fn foo<const N: usize>(...)`),
     /// not paths to any const (`N` where `const N: usize = ...`).
