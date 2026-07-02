@@ -1,7 +1,6 @@
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::fs::File;
-use std::hash::Hasher;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -41,6 +40,7 @@ use rustc_span::{
     Symbol, SyntaxContext, sym,
 };
 use tracing::{debug, instrument, trace};
+use twox_hash::XxHash3_128;
 
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
@@ -48,7 +48,7 @@ use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: FileEncoder<'a>,
-    metadata_hasher: Arc<Mutex<StableHasher>>,
+    metadata_hasher: Arc<Mutex<XxHash3_128>>,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
     tables: TableBuilders,
@@ -792,7 +792,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // `crate_hash` query computes directly without consulting `local_crate_hash`.
         let hash = if tcx.sess.opts.unstable_opts.metadata_crate_hash {
             self.opaque.flush();
-            Svh::new(self.metadata_hasher.lock().unwrap().clone().finish())
+            Svh::new(Fingerprint::from_le_bytes(
+                self.metadata_hasher.lock().unwrap().finish_128().to_le_bytes(),
+            ))
         } else {
             tcx.crate_hash(LOCAL_CRATE)
         };
@@ -2563,22 +2565,30 @@ fn with_encode_metadata_header(
     // Under `-Z metadata-crate-hash=no` the SVH comes from the legacy `crate_hash` query instead and
     // this hasher is never consulted, so we skip seeding it and feeding metadata bytes into it.
     let metadata_crate_hash = tcx.sess.opts.unstable_opts.metadata_crate_hash;
-    let stable_hasher = Arc::new(Mutex::new(StableHasher::new()));
+    // The SVH is an XXH3-128 digest of the encoded metadata bytes. XXH3 is a fast, non-cryptographic
+    // hash; that is sufficient here because the SVH is only a change detector, is never keyed
+    // secretly (it must be reproducible), and compiling a crate already runs its build scripts and
+    // proc-macros, so the crate author is trusted regardless.
+    let metadata_hasher = Arc::new(Mutex::new(XxHash3_128::new()));
     if metadata_crate_hash {
+        // Fold in inputs that are not part of the encoded metadata bytes, reduced to a single
+        // fingerprint via the stable hasher and then mixed into the byte digest.
         let hir_body_hash = compute_hir_hash(tcx);
-        tcx.with_stable_hashing_context(|mut hcx| {
-            let mut hasher = stable_hasher.lock().unwrap();
+        let supplement: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
             // Add dep_tracking_hash to ensure the SVH changes when any tracked flag changes.
-            tcx.sess.opts.dep_tracking_hash(true).stable_hash(&mut hcx, &mut *hasher);
+            tcx.sess.opts.dep_tracking_hash(true).stable_hash(&mut hcx, &mut hasher);
             // Add HIR hash for untracked elements, e.g. DefKind::GlobalAsm.
-            hir_body_hash.stable_hash(&mut hcx, &mut *hasher);
+            hir_body_hash.stable_hash(&mut hcx, &mut hasher);
+            hasher.finish()
         });
+        metadata_hasher.lock().unwrap().write(&supplement.to_le_bytes());
     }
 
-    // Feed every flushed byte into `stable_hasher` so the SVH covers the entire encoded metadata.
+    // Feed every flushed byte into `metadata_hasher` so the SVH covers the entire encoded metadata.
     let mut flush_strategy = {
-        let stable_hasher = Arc::clone(&stable_hasher);
-        move |bytes: &[u8]| stable_hasher.lock().unwrap().write(bytes)
+        let metadata_hasher = Arc::clone(&metadata_hasher);
+        move |bytes: &[u8]| metadata_hasher.lock().unwrap().write(bytes)
     };
 
     let mut encoder = if metadata_crate_hash {
@@ -2607,7 +2617,7 @@ fn with_encode_metadata_header(
 
     let mut ecx = EncodeContext {
         opaque: encoder,
-        metadata_hasher: Arc::clone(&stable_hasher),
+        metadata_hasher: Arc::clone(&metadata_hasher),
         tcx,
         feat: tcx.features(),
         tables: Default::default(),
