@@ -60,11 +60,13 @@ pub fn errno() -> i32 {
 // needed for readdir and syscall!
 #[cfg(not(any(
     target_os = "dragonfly",
-    target_os = "vxworks",
+    target_os = "espidf",
+    target_os = "lynxos178",
+    target_os = "qurt",
     target_os = "rtems",
+    target_os = "vxworks",
     target_os = "wasi",
 )))]
-#[allow(dead_code)] // but not all target cfgs actually end up using it
 #[inline]
 pub fn set_errno(e: i32) {
     unsafe { *errno_location() = e as c_int }
@@ -92,14 +94,13 @@ pub fn errno() -> i32 {
 pub fn errno() -> i32 {
     unsafe extern "C" {
         #[thread_local]
-        static errno: c_int;
+        static mut errno: c_int;
     }
 
     unsafe { errno as i32 }
 }
 
 #[cfg(target_os = "dragonfly")]
-#[allow(dead_code)]
 #[inline]
 pub fn set_errno(e: i32) {
     unsafe extern "C" {
@@ -107,9 +108,7 @@ pub fn set_errno(e: i32) {
         static mut errno: c_int;
     }
 
-    unsafe {
-        errno = e;
-    }
+    unsafe { errno = e };
 }
 
 #[cfg(target_os = "wasi")]
