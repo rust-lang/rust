@@ -171,43 +171,7 @@ impl FileDescription for TcpSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
-
-        let socket = self;
-        let deadline = ecx.action_deadline(socket.is_non_block.get(), socket.write_timeout.get());
-
-        ecx.ensure_connected(
-            socket.clone(),
-            deadline.clone(),
-            "write",
-            callback!(
-                @capture<'tcx> {
-                    socket: FileDescriptionRef<TcpSocket>,
-                    deadline: Option<Deadline>,
-                    ptr: Pointer,
-                    len: usize,
-                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>
-                } |this, result: Result<(), ()>| {
-                    if result.is_err() {
-                        return finish.call(this, Err(LibcError("ENOTCONN")))
-                    }
-
-                    // Since `write` is the same as `send` with no flags, we just treat
-                    // the `write` as a `send` here.
-
-                    if socket.is_non_block.get() {
-                        // We have a non-blocking socket and thus don't want to block until
-                        // we can write.
-                        let result = this.try_non_block_send(&socket, ptr, len)?;
-                        return finish.call(this, result)
-                    } else {
-                        // The socket is in blocking mode and thus the write call should block
-                        // until we can write some bytes into the socket or the timeout exceeded.
-                        this.block_for_send(socket, deadline, ptr, len, finish)
-                    }
-                }
-            ),
-        )
+        self.send(communicate_allowed, ptr, len, /* is_non_block */ false, ecx, finish)
     }
 
     fn short_fd_operations(&self) -> bool {
