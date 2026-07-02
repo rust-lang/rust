@@ -522,7 +522,7 @@ fn index_ast<'tcx>(
         next_node_id: resolver.next_node_id,
     };
     indexer.visit_crate(&mut krate);
-    indexer.insert(CRATE_NODE_ID, AstOwner::Crate(Box::new(krate)));
+    indexer.insert(CRATE_NODE_ID, AstOwner::Crate(krate));
     resolver.next_node_id = indexer.next_node_id;
 
     let index = indexer.index;

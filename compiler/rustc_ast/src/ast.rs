@@ -4366,7 +4366,7 @@ pub enum AstOwner {
     /// This definition corresponds to a nested `use` tree.
     /// The `LocalDefId` points to its HIR owner.
     NestedUseTree(LocalDefId),
-    Crate(Box<Crate>), // njn: todo?
+    Crate(Crate),
     Item(Item),
     TraitItem(AssocItem),
     ImplItem(AssocItem),
