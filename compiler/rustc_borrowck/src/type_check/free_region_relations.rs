@@ -244,7 +244,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             }
             let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
                 .infcx
-                .fully_perform(DeeplyNormalize { value: ty }, span)
+                .fully_perform(DeeplyNormalize { value: ty::Unnormalized::new_wip(ty) }, span)
                 .unwrap_or_else(|guar| TypeOpOutput {
                     output: Ty::new_error(self.infcx.tcx, guar),
                     constraints: None,
@@ -298,8 +298,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst { .. })
         {
             for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
-                let result: Result<_, ErrorGuaranteed> =
-                    self.infcx.fully_perform(DeeplyNormalize { value: ty }, span);
+                let result: Result<_, ErrorGuaranteed> = self
+                    .infcx
+                    .fully_perform(DeeplyNormalize { value: ty::Unnormalized::new_wip(ty) }, span);
                 let Ok(TypeOpOutput { output: norm_ty, constraints: c, .. }) = result else {
                     continue;
                 };
@@ -352,7 +353,10 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 output: normalized_outlives,
                 constraints: constraints_normalize,
                 error_info: _,
-            }) = self.infcx.fully_perform(DeeplyNormalize { value: outlives }, span)
+            }) = self.infcx.fully_perform(
+                DeeplyNormalize { value: ty::Unnormalized::new_wip(outlives) },
+                span,
+            )
             else {
                 self.infcx.dcx().delayed_bug(format!("could not normalize {outlives:?}"));
                 return;

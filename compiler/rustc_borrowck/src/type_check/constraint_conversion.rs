@@ -287,7 +287,10 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             ConstraintCategory<'tcx>,
         )>,
     ) -> Ty<'tcx> {
-        match self.infcx.fully_perform(DeeplyNormalize { value: ty }, self.span) {
+        match self
+            .infcx
+            .fully_perform(DeeplyNormalize { value: ty::Unnormalized::new_wip(ty) }, self.span)
+        {
             Ok(TypeOpOutput { output: ty, constraints, .. }) => {
                 // FIXME(higher_ranked_auto): What should we do with the assumptions here?
                 if let Some(QueryRegionConstraints { constraints, assumptions: _ }) = constraints {

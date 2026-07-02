@@ -105,7 +105,14 @@ where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
     let mut obligations = PredicateObligations::new();
-    let value = normalize_with_depth_to(selcx, param_env, cause, depth, value, &mut obligations);
+    let value = normalize_with_depth_to(
+        selcx,
+        param_env,
+        cause,
+        depth,
+        Unnormalized::new_wip(value),
+        &mut obligations,
+    );
     Normalized { value, obligations }
 }
 
@@ -115,7 +122,7 @@ pub(crate) fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
-    value: T,
+    value: Unnormalized<'tcx, T>,
     obligations: &mut PredicateObligations<'tcx>,
 ) -> T
 where
@@ -123,7 +130,9 @@ where
 {
     debug!(obligations.len = obligations.len());
     let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
-    let result = ensure_sufficient_stack(|| AssocTypeNormalizer::fold(&mut normalizer, value));
+    let result = ensure_sufficient_stack(|| {
+        AssocTypeNormalizer::fold(&mut normalizer, value.skip_normalization())
+    });
     debug!(?result, obligations.len = normalizer.obligations.len());
     debug!(?normalizer.obligations,);
     result

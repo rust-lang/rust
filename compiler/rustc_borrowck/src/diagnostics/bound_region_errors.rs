@@ -300,7 +300,14 @@ where
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> Diag<'tcx> {
         tcx.dcx().create_err(HigherRankedLifetimeError {
             cause: Some(HigherRankedErrorCause::CouldNotNormalize {
-                value: self.canonical_query.canonical.value.value.value.to_string(),
+                value: self
+                    .canonical_query
+                    .canonical
+                    .value
+                    .value
+                    .value
+                    .skip_normalization()
+                    .to_string(),
             }),
             span,
         })
@@ -322,7 +329,7 @@ where
         let ocx = ObligationCtxt::new(&infcx);
 
         let ty::ParamEnvAnd { param_env, value } = key;
-        let _ = ocx.deeply_normalize(&cause, param_env, Unnormalized::new_wip(value.value));
+        let _ = ocx.deeply_normalize(&cause, param_env, value.value);
 
         let diag = try_extract_error_from_fulfill_cx(
             &ocx,
