@@ -1848,7 +1848,38 @@ fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<SymbolExport> {
     let stable_crate_id = tcx.stable_crate_id(LOCAL_CRATE);
     let proc_macro_decls_name = rustc_session::generate_proc_macro_decls_symbol(stable_crate_id);
 
-    vec![symbol_export_from_raw_name(tcx, proc_macro_decls_name, SymbolExportKind::Data)]
+    if tcx.sess.target.is_like_wasm {
+        vec![
+            symbol_export_from_raw_name(tcx, proc_macro_decls_name, SymbolExportKind::Data),
+            symbol_export_from_raw_name(
+                tcx,
+                "__rustc_proc_macro_alloc_buffer".to_owned(),
+                SymbolExportKind::Text,
+            ),
+            symbol_export_from_raw_name(
+                tcx,
+                "__rustc_proc_macro_buffer_replace".to_owned(),
+                SymbolExportKind::Text,
+            ),
+            symbol_export_from_raw_name(
+                tcx,
+                "__rustc_proc_macro_buffer_ptr".to_owned(),
+                SymbolExportKind::Text,
+            ),
+            symbol_export_from_raw_name(
+                tcx,
+                "__rustc_proc_macro_buffer_len".to_owned(),
+                SymbolExportKind::Text,
+            ),
+            symbol_export_from_raw_name(
+                tcx,
+                "__rustc_proc_macro_call_client".to_owned(),
+                SymbolExportKind::Text,
+            ),
+        ]
+    } else {
+        vec![symbol_export_from_raw_name(tcx, proc_macro_decls_name, SymbolExportKind::Data)]
+    }
 }
 
 pub(crate) fn linked_symbols(
