@@ -11,39 +11,31 @@
       let mut _14: u32;
       let mut _15: u32;
       scope 1 {
--         debug x => _1;
-+         debug x => const 1_u8;
+          debug x => _1;
           let _2: u8;
           scope 2 {
--             debug y => _2;
-+             debug y => const 2_u8;
+              debug y => _2;
               let _3: u8;
               scope 3 {
--                 debug z => _3;
-+                 debug z => const 3_u8;
+                  debug z => _3;
                   let _4: u8;
                   scope 4 {
--                     debug sum => _4;
-+                     debug sum => const 6_u8;
+                      debug sum => _4;
                       let _9: &str;
                       scope 5 {
--                         debug s => _9;
-+                         debug s => const "hello, world!";
+                          debug s => _9;
                           let _10: (bool, bool, u32);
                           scope 6 {
                               debug f => _10;
                               let _11: std::option::Option<u16>;
                               scope 7 {
--                                 debug o => _11;
-+                                 debug o => const Option::<u16>::Some(99_u16);
+                                  debug o => _11;
                                   let _12: Point;
                                   scope 8 {
--                                     debug p => _12;
-+                                     debug p => const Point {{ x: 32_u32, y: 32_u32 }};
+                                      debug p => _12;
                                       let _13: u32;
                                       scope 9 {
--                                         debug a => _13;
-+                                         debug a => const 64_u32;
+                                          debug a => _13;
                                       }
                                   }
                               }
@@ -57,12 +49,15 @@
       bb0: {
           StorageLive(_1);
 -         _1 = const 1_u8;
++         // DBG: _1 = const 1_u8;
 +         nop;
           StorageLive(_2);
 -         _2 = const 2_u8;
++         // DBG: _2 = const 2_u8;
 +         nop;
           StorageLive(_3);
 -         _3 = const 3_u8;
++         // DBG: _3 = const 3_u8;
 +         nop;
           StorageLive(_4);
           StorageLive(_5);
@@ -80,19 +75,23 @@
 -         _8 = const 3_u8;
 -         _4 = const 6_u8;
 +         nop;
++         // DBG: _4 = const 6_u8;
 +         nop;
           StorageDead(_8);
           StorageDead(_5);
           StorageLive(_9);
 -         _9 = const "hello, world!";
++         // DBG: _9 = const "hello, world!";
 +         nop;
           StorageLive(_10);
           _10 = (const true, const false, const 123_u32);
           StorageLive(_11);
 -         _11 = const Option::<u16>::Some(99_u16);
++         // DBG: _11 = const Option::<u16>::Some(99_u16);
 +         nop;
           StorageLive(_12);
 -         _12 = const Point {{ x: 32_u32, y: 32_u32 }};
++         // DBG: _12 = const Point {{ x: 32_u32, y: 32_u32 }};
 +         nop;
           StorageLive(_13);
           StorageLive(_14);
@@ -102,6 +101,7 @@
 -         _15 = const 32_u32;
 -         _13 = const 64_u32;
 +         nop;
++         // DBG: _13 = const 64_u32;
 +         nop;
           StorageDead(_15);
           StorageDead(_14);

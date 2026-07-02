@@ -1,5 +1,4 @@
 use std::collections::hash_map::Entry;
-use std::marker::PhantomData;
 use std::ops::Range;
 
 use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, Size, VariantIdx};
@@ -47,17 +46,6 @@ pub struct PerLocalVarDebugInfo<'tcx, D> {
 
     /// `.place.projection` from `mir::VarDebugInfo`.
     pub projection: &'tcx ty::List<mir::PlaceElem<'tcx>>,
-}
-
-/// Information needed to emit a constant.
-pub struct ConstDebugInfo<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
-    pub name: String,
-    pub source_info: mir::SourceInfo,
-    pub operand: OperandRef<'tcx, Bx::Value>,
-    pub dbg_var: Bx::DIVariable,
-    pub dbg_loc: Bx::DILocation,
-    pub fragment: Option<Range<Size>>,
-    pub _phantom: PhantomData<&'a ()>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -258,14 +246,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         spill_slot
     }
 
-    // Indicates that local is set to a new value. The `layout` and `projection` are used to
-    // calculate the offset.
-    pub(crate) fn debug_new_val_to_local(
+    /// Indicates that local is set to a new value.
+    fn debug_new_val_to_local(
         &self,
         bx: &mut Bx,
         local: mir::Local,
-        base: PlaceRef<'tcx, Bx::Value>,
-        projection: &[mir::PlaceElem<'tcx>],
+        llval: Bx::Value,
+        direct_offset: Size,
+        indirect_offsets: &[Size],
     ) {
         let full_debug_info = bx.sess().opts.debuginfo == DebugInfo::Full;
         if !full_debug_info {
@@ -277,8 +265,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             None => return,
         };
 
-        let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
-            calculate_debuginfo_offset(bx, projection, base.layout);
         for var in vars.iter() {
             let Some(dbg_var) = var.dbg_var else {
                 continue;
@@ -289,20 +275,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.dbg_var_value(
                 dbg_var,
                 dbg_loc,
-                base.val.llval,
+                llval,
                 direct_offset,
-                &indirect_offsets,
+                indirect_offsets,
                 &var.fragment,
             );
         }
     }
 
-    pub(crate) fn debug_poison_to_local(&self, bx: &mut Bx, local: mir::Local) {
+    fn debug_poison_to_local(&self, bx: &mut Bx, local: mir::Local) {
         let ty = self.monomorphize(self.mir.local_decls[local].ty);
         let layout = bx.cx().layout_of(ty);
         let to_backend_ty = bx.cx().immediate_backend_type(layout);
-        let place_ref = PlaceRef::new_sized(bx.cx().const_poison(to_backend_ty), layout);
-        self.debug_new_val_to_local(bx, local, place_ref, &[]);
+        let llval = bx.cx().const_poison(to_backend_ty);
+        self.debug_new_val_to_local(bx, local, llval, Size::ZERO, &[]);
     }
 
     /// Apply debuginfo and/or name, after creating the `alloca` for a local,
@@ -540,24 +526,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub(crate) fn debug_introduce_locals(
-        &self,
-        bx: &mut Bx,
-        consts: Vec<ConstDebugInfo<'a, 'tcx, Bx>>,
-    ) {
+    pub(crate) fn debug_introduce_locals(&self, bx: &mut Bx) {
         if bx.sess().opts.debuginfo == DebugInfo::Full || !bx.sess().fewer_names() {
             for local in self.locals.indices() {
                 self.debug_introduce_local(bx, local);
-            }
-
-            for ConstDebugInfo { name, source_info, operand, dbg_var, dbg_loc, fragment, .. } in
-                consts.into_iter()
-            {
-                self.set_debug_loc(bx, source_info);
-                let base = FunctionCx::spill_operand_to_stack(operand, Some(name), bx);
-                bx.clear_dbg_loc();
-
-                bx.dbg_var_addr(dbg_var, dbg_loc, base.val.llval, Size::ZERO, &[], &fragment);
             }
         }
     }
@@ -566,10 +538,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(crate) fn compute_per_local_var_debug_info(
         &self,
         bx: &mut Bx,
-    ) -> Option<(
-        PerLocalVarDebugInfoIndexVec<'tcx, Bx::DIVariable>,
-        Vec<ConstDebugInfo<'a, 'tcx, Bx>>,
-    )> {
+    ) -> Option<PerLocalVarDebugInfoIndexVec<'tcx, Bx::DIVariable>> {
         let full_debug_info = self.cx.sess().opts.debuginfo == DebugInfo::Full;
 
         let target_is_msvc = self.cx.sess().target.is_like_msvc;
@@ -579,7 +548,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let mut per_local = IndexVec::from_elem(vec![], &self.mir.local_decls);
-        let mut constants = vec![];
         let mut params_seen: FxHashMap<_, Bx::DIVariable> = Default::default();
         for var in &self.mir.var_debug_info {
             let dbg_scope_and_span = if full_debug_info {
@@ -591,19 +559,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let var_ty = if let Some(ref fragment) = var.composite {
                 self.monomorphize(fragment.ty)
             } else {
-                match var.value {
-                    mir::VarDebugInfoContents::Place(place) => {
-                        self.monomorphized_place_ty(place.as_ref())
-                    }
-                    mir::VarDebugInfoContents::Const(c) => self.monomorphize(c.ty()),
-                }
+                self.monomorphized_place_ty(var.place.as_ref())
             };
 
             let dbg_var = dbg_scope_and_span.map(|(dbg_scope, _, span)| {
                 let var_kind = if let Some(arg_index) = var.argument_index
                     && var.composite.is_none()
-                    && let mir::VarDebugInfoContents::Place(place) = var.value
-                    && place.projection.is_empty()
+                    && var.place.projection.is_empty()
                 {
                     let arg_index = arg_index as usize;
                     if target_is_msvc {
@@ -659,35 +621,91 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 None
             };
 
-            match var.value {
-                mir::VarDebugInfoContents::Place(place) => {
-                    per_local[place.local].push(PerLocalVarDebugInfo {
-                        name: var.name,
-                        source_info: var.source_info,
-                        dbg_var,
-                        fragment,
-                        projection: place.projection,
-                    });
-                }
-                mir::VarDebugInfoContents::Const(c) => {
-                    if let Some(dbg_var) = dbg_var {
-                        let Some(dbg_loc) = self.dbg_loc(bx, var.source_info) else { continue };
+            per_local[var.place.local].push(PerLocalVarDebugInfo {
+                name: var.name,
+                source_info: var.source_info,
+                dbg_var,
+                fragment,
+                projection: var.place.projection,
+            });
+        }
+        Some(per_local)
+    }
 
-                        let operand = self.eval_mir_constant_to_operand(bx, &c);
-                        constants.push(ConstDebugInfo {
-                            name: var.name.to_string(),
-                            source_info: var.source_info,
-                            operand,
-                            dbg_var,
-                            dbg_loc,
-                            fragment,
-                            _phantom: PhantomData,
-                        });
+    pub(crate) fn codegen_stmt_debuginfo(
+        &mut self,
+        bx: &mut Bx,
+        debuginfo: &mir::StmtDebugInfo<'tcx>,
+    ) {
+        match debuginfo {
+            mir::StmtDebugInfo::AssignConst(dest, cnst) => {
+                let operand = self.eval_mir_constant_to_operand(bx, &cnst);
+                let (llval, indirect_offsets) = match operand.val {
+                    OperandValue::Ref(place) => (place.llval, true),
+                    OperandValue::Immediate(value) => (value, false),
+                    OperandValue::Pair(..) => {
+                        let place = FunctionCx::spill_operand_to_stack(operand, None, bx);
+                        (place.val.llval, true)
                     }
+                    OperandValue::ZeroSized => {
+                        let to_backend_ty = bx.cx().immediate_backend_type(operand.layout);
+                        let llval = bx.cx().const_poison(to_backend_ty);
+                        (llval, false)
+                    }
+                };
+                let indirect_offsets: &[Size] = if indirect_offsets { &[Size::ZERO] } else { &[] };
+                self.debug_new_val_to_local(bx, *dest, llval, Size::ZERO, indirect_offsets);
+            }
+            mir::StmtDebugInfo::AssignRef(dest, place) => {
+                let local_ref = match self.locals[place.local] {
+                    // For an rvalue like `&(_1.1)`, when `BackendRepr` is `BackendRepr::Memory`, we allocate a block of memory to this place.
+                    // The place is an indirect pointer, we can refer to it directly.
+                    LocalRef::Place(place_ref) => Some((place_ref, place.projection.as_slice())),
+                    // For an rvalue like `&((*_1).1)`, we are calculating the address of `_1.1`.
+                    // The deref projection is no-op here.
+                    LocalRef::Operand(operand_ref) if place.is_indirect_first_projection() => {
+                        Some((operand_ref.deref(bx.cx()), &place.projection[1..]))
+                    }
+                    // For an rvalue like `&1`, when `BackendRepr` is `BackendRepr::Scalar`,
+                    // we cannot get the address.
+                    // N.B. `non_ssa_locals` returns that this is an SSA local.
+                    LocalRef::Operand(_) => None,
+                    LocalRef::UnsizedPlace(_) | LocalRef::PendingOperand => None,
+                }
+                .filter(|(_, projection)| {
+                    // Drop unsupported projections.
+                    projection.iter().all(|p| p.can_use_in_debuginfo())
+                });
+                if let Some((base, projection)) = local_ref {
+                    let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
+                        calculate_debuginfo_offset(bx, projection, base.layout);
+                    self.debug_new_val_to_local(
+                        bx,
+                        *dest,
+                        base.val.llval,
+                        direct_offset,
+                        &indirect_offsets,
+                    );
+                } else {
+                    // If the address cannot be calculated, use poison to indicate that the value has been optimized out.
+                    self.debug_poison_to_local(bx, *dest);
                 }
             }
+            mir::StmtDebugInfo::InvalidAssign(local) => {
+                self.debug_poison_to_local(bx, *local);
+            }
+            mir::StmtDebugInfo::Nop => {}
         }
-        Some((per_local, constants))
+    }
+
+    pub(crate) fn codegen_stmt_debuginfos(
+        &mut self,
+        bx: &mut Bx,
+        debuginfos: &[mir::StmtDebugInfo<'tcx>],
+    ) {
+        for debuginfo in debuginfos {
+            self.codegen_stmt_debuginfo(bx, debuginfo);
+        }
     }
 
     /// Creates the function-specific debug context.

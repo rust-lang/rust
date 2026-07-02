@@ -431,8 +431,7 @@ pub(super) fn compute_layout<'tcx>(
     debug!(?storage_conflicts);
 
     for var in &body.var_debug_info {
-        let VarDebugInfoContents::Place(place) = &var.value else { continue };
-        let Some(local) = place.as_local() else { continue };
+        let Some(local) = var.place.as_local() else { continue };
         let Some(&Some((_, variant, field))) = remap.get(local) else {
             continue;
         };

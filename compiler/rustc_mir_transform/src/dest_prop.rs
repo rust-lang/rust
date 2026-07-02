@@ -276,7 +276,7 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
             StatementKind::StorageDead(local) | StatementKind::StorageLive(local)
                 if self.merged_locals.contains(*local) =>
             {
-                statement.make_nop(true);
+                statement.kind = StatementKind::Nop;
             }
             _ => (),
         };
@@ -289,7 +289,7 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
                         // (this includes the original statement we wanted to eliminate).
                         if dest == place {
                             debug!("{:?} turned into self-assignment, deleting", location);
-                            statement.make_nop(true);
+                            statement.kind = StatementKind::Nop;
                         }
                     }
                     _ => {}

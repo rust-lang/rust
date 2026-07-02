@@ -145,7 +145,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = stmt.kind
             && self.storage_to_remove.contains(l)
         {
-            stmt.make_nop(true);
+            stmt.kind = StatementKind::Nop;
         }
 
         self.super_statement(stmt, loc);
@@ -155,7 +155,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             && let Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs), _) = *rhs
             && lhs == rhs
         {
-            stmt.make_nop(true);
+            stmt.kind = StatementKind::Nop;
         }
     }
 }

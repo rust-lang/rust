@@ -28,7 +28,7 @@ fn match_const<T: MyTrait>() -> &'static str {
 // EMIT_MIR single_use_consts.if_const_debug.SingleUseConsts.diff
 fn if_const_debug<T: MyTrait>() -> i32 {
     // CHECK-LABEL: fn if_const_debug(
-    // CHECK: my_bool => const <T as MyTrait>::ASSOC_BOOL;
+    // CHECK: my_bool => [[my_bool:_.*]];
     // FIXME: `if` forces a temporary (unlike `match`), so the const isn't direct
     // CHECK: _3 = const <T as MyTrait>::ASSOC_BOOL;
     // CHECK: switchInt(move _3)
@@ -40,7 +40,8 @@ fn if_const_debug<T: MyTrait>() -> i32 {
 // EMIT_MIR single_use_consts.match_const_debug.SingleUseConsts.diff
 fn match_const_debug<T: MyTrait>() -> &'static str {
     // CHECK-LABEL: fn match_const_debug(
-    // CHECK: my_int => const <T as MyTrait>::ASSOC_INT;
+    // CHECK: my_int => [[my_int:_.*]];
+    // CHECK: // DBG: [[my_int]] = const <T as MyTrait>::ASSOC_INT;
     // CHECK: switchInt(const <T as MyTrait>::ASSOC_INT)
     let my_int = T::ASSOC_INT;
     do_whatever();
@@ -55,7 +56,9 @@ fn match_const_debug<T: MyTrait>() -> &'static str {
 #[allow(unused_variables)]
 fn never_used_debug<T: MyTrait>() {
     // CHECK-LABEL: fn never_used_debug(
-    // CHECK: my_int => const <T as MyTrait>::ASSOC_INT;
+    // CHECK: my_int => [[my_int:_.*]];
+    // CHECK-NOT: ASSOC_INT
+    // CHECK: // DBG: [[my_int]] = const <T as MyTrait>::ASSOC_INT;
     // CHECK-NOT: ASSOC_INT
     // CHECK: nop
     // CHECK-NOT: ASSOC_INT

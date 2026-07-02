@@ -8,12 +8,10 @@
       let mut _3: T;
       let mut _5: T;
       scope 1 {
--         debug a => _2;
-+         debug a => const ZeroSized: [T; 0];
+          debug a => _2;
           let _4: [T; 0];
           scope 2 {
--             debug b => _4;
-+             debug b => const ZeroSized: [T; 0];
+              debug b => _4;
           }
       }
   
@@ -23,6 +21,7 @@
           StorageLive(_3);
           _3 = copy _1;
 -         _2 = [];
++         // DBG: _2 = const ZeroSized: [T; 0];
 +         nop;
           StorageDead(_3);
 -         StorageLive(_4);
@@ -30,11 +29,13 @@
           StorageLive(_5);
           _5 = copy _1;
 -         _4 = [];
++         // DBG: _4 = const ZeroSized: [T; 0];
 +         nop;
           StorageDead(_5);
 -         _0 = const ();
 -         StorageDead(_4);
 -         StorageDead(_2);
++         // DBG: _0 = const ();
 +         nop;
 +         nop;
 +         nop;

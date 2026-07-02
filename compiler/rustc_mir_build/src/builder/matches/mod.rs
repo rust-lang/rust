@@ -2831,7 +2831,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.var_debug_info.push(VarDebugInfo {
                 name,
                 source_info: debug_source_info,
-                value: VarDebugInfoContents::Place(for_arm_body.into()),
+                place: for_arm_body.into(),
                 composite: None,
                 argument_index: None,
             });
@@ -2852,7 +2852,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.var_debug_info.push(VarDebugInfo {
                     name,
                     source_info: debug_source_info,
-                    value: VarDebugInfoContents::Place(ref_for_guard.into()),
+                    place: ref_for_guard.into(),
                     composite: None,
                     argument_index: None,
                 });

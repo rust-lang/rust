@@ -133,7 +133,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
         }
 
         for (idx, bb_idx) in storage_deads_to_remove {
-            body.basic_blocks_mut()[bb_idx].statements[idx].make_nop(true);
+            body.basic_blocks_mut()[bb_idx].statements[idx].kind = StatementKind::Nop;
         }
 
         for (idx, stmt) in storage_deads_to_insert {

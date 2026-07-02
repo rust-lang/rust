@@ -54,6 +54,7 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     }
 
     bb2: {
+        // DBG: _7 = const Option::<u32>::None;
         StorageDead(_5);
         StorageDead(_7);
         drop(_3) -> [return: bb3, unwind unreachable];
@@ -86,4 +87,8 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
         StorageDead(_7);
         goto -> bb1;
     }
+}
+
+ALLOC0 (size: 8, align: 4) {
+    00 00 00 00 __ __ __ __                         │ ....░░░░
 }

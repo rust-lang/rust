@@ -271,8 +271,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     fx.fill_function_debug_context(&mut start_bx);
 
-    let (per_local_var_debug_info, consts_debug_info) =
-        fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
+    let per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut start_bx);
     fx.per_local_var_debug_info = per_local_var_debug_info;
 
     let traversal_order = traversal::mono_reachable_reverse_postorder(mir, tcx, instance);
@@ -325,7 +324,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx.initialize_locals(local_values);
 
     // Apply debuginfo to the newly allocated locals.
-    fx.debug_introduce_locals(&mut start_bx, consts_debug_info.unwrap_or_default());
+    fx.debug_introduce_locals(&mut start_bx);
 
     // The builders will be created separately for each basic block at `codegen_block`.
     // So drop the builder of `start_llbb` to avoid having two at the same time.

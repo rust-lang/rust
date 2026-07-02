@@ -615,6 +615,10 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
     // definitions referencing the local might remain). For correctness it is crucial that this
     // computation reaches a fixed point.
 
+    let debuginfo_locals = debuginfo_locals(body);
+    let should_keep_dbg_stmt =
+        |dbg: &StmtDebugInfo<'_>| dbg.lhs().is_some_and(|local| debuginfo_locals.contains(local));
+
     let mut modified = true;
     while modified {
         modified = false;
@@ -639,8 +643,12 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                 trace!("removing statement {:?}", statement);
                 modified = true;
                 used_locals.statement_removed(statement);
-                statement.make_nop(true);
+                statement.make_nop();
+
+                statement.debuginfos.retain(should_keep_dbg_stmt);
             }
+
+            data.after_last_stmt_debuginfos.retain(should_keep_dbg_stmt);
             data.strip_nops();
         }
     }
@@ -667,7 +675,14 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
                     *stmt_debuginfo = StmtDebugInfo::InvalidAssign(*local);
                 }
             }
-            StmtDebugInfo::InvalidAssign(_) => {}
+            StmtDebugInfo::AssignConst(_, _)
+            | StmtDebugInfo::InvalidAssign(_)
+            | StmtDebugInfo::Nop => {}
+        }
+        if let Some(lhs) = stmt_debuginfo.lhs()
+            && self.map[lhs].is_none()
+        {
+            *stmt_debuginfo = StmtDebugInfo::Nop;
         }
         self.super_statement_debuginfo(stmt_debuginfo, location);
     }
@@ -701,7 +716,7 @@ impl UsedInStmtLocals {
                 if keep_statement {
                     continue;
                 }
-                statement.make_nop(true);
+                statement.make_nop();
             }
         }
     }

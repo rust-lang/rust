@@ -393,10 +393,8 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &mut VarDebugInfo<'tcx>) {
-        if let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
-            && place.projection.is_empty()
-        {
-            let mut new_local = place.local;
+        if debuginfo.place.projection.is_empty() {
+            let mut new_local = debuginfo.place.local;
 
             // If the debuginfo is a pointer to another place
             // and it's a reborrow: see through it
@@ -405,9 +403,9 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             {
                 new_local = target.local;
             }
-            if place.local != new_local {
-                self.remap_var_debug_infos[place.local] = Some(new_local);
-                place.local = new_local;
+            if debuginfo.place.local != new_local {
+                self.remap_var_debug_infos[debuginfo.place.local] = Some(new_local);
+                debuginfo.place.local = new_local;
 
                 self.any_replacement = true;
             }
@@ -422,13 +420,17 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
         stmt_debuginfo: &mut StmtDebugInfo<'tcx>,
         location: Location,
     ) {
-        let local = match stmt_debuginfo {
-            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => local,
+        match stmt_debuginfo {
+            StmtDebugInfo::AssignConst(local, _)
+            | StmtDebugInfo::AssignRef(local, _)
+            | StmtDebugInfo::InvalidAssign(local) => {
+                if let Some(target) = self.remap_var_debug_infos[*local] {
+                    *local = target;
+                    self.any_replacement = true;
+                }
+            }
+            StmtDebugInfo::Nop => {}
         };
-        if let Some(target) = self.remap_var_debug_infos[*local] {
-            *local = target;
-            self.any_replacement = true;
-        }
         self.super_statement_debuginfo(stmt_debuginfo, location);
     }
 
@@ -460,7 +462,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
                 if self.storage_to_remove.contains(l) =>
             {
-                stmt.make_nop(true);
+                stmt.kind = StatementKind::Nop;
             }
             _ => {}
         }

@@ -8,6 +8,7 @@ fn main() {
     // CHECK-NEXT: debug f
     // CHECK-NEXT: scope 2 (inlined main::{closure#0}) {
     // CHECK-NEXT: debug x
+    // CHECK-NEXT: let {{_.*}}
     // CHECK-NEXT: scope 3 {
     // CHECK-NEXT: debug y
     // CHECK-NEXT: }

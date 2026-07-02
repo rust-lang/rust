@@ -718,7 +718,7 @@ pub struct VarDebugInfo {
     pub composite: Option<VarDebugInfoFragment>,
 
     /// Where the data for this user variable is to be found.
-    pub value: VarDebugInfoContents,
+    pub place: Place,
 
     /// When present, indicates what argument number this variable is in the function that it
     /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
@@ -729,18 +729,10 @@ pub struct VarDebugInfo {
 impl VarDebugInfo {
     /// Return a local variable if this info is related to one.
     pub fn local(&self) -> Option<Local> {
-        match &self.value {
-            VarDebugInfoContents::Place(place) if place.projection.is_empty() => Some(place.local),
-            VarDebugInfoContents::Place(_) | VarDebugInfoContents::Const(_) => None,
+        if self.place.projection.is_empty() {
+            return Some(self.place.local);
         }
-    }
-
-    /// Return a constant if this info is related to one.
-    pub fn constant(&self) -> Option<&ConstOperand> {
-        match &self.value {
-            VarDebugInfoContents::Place(_) => None,
-            VarDebugInfoContents::Const(const_op) => Some(const_op),
-        }
+        None
     }
 }
 
@@ -756,12 +748,6 @@ pub struct SourceInfo {
 pub struct VarDebugInfoFragment {
     pub ty: Ty,
     pub projection: Vec<ProjectionElem>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub enum VarDebugInfoContents {
-    Place(Place),
-    Const(ConstOperand),
 }
 
 // In MIR ProjectionElem is parameterized on the second Field argument and the Index argument. This

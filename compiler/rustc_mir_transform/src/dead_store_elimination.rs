@@ -92,15 +92,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
                 let loc = Location { block: bb, statement_index };
                 live.seek_before_primary_effect(loc);
                 if !live.get().contains(destination.local) {
-                    let drop_debuginfo = !debuginfo_locals.contains(destination.local);
-                    // When eliminating a dead statement, we need to address
-                    // the debug information for that statement.
-                    assert!(
-                        drop_debuginfo || statement.kind.as_debuginfo().is_some(),
-                        "don't know how to retain the debug information for {:?}",
-                        statement.kind
-                    );
-                    patch.push((loc, drop_debuginfo));
+                    patch.push(loc);
                 }
             }
         }
@@ -112,8 +104,8 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let eliminated = !patch.is_empty();
 
     let bbs = body.basic_blocks.as_mut_preserves_cfg();
-    for (Location { block, statement_index }, drop_debuginfo) in patch {
-        bbs[block].statements[statement_index].make_nop(drop_debuginfo);
+    for Location { block, statement_index } in patch {
+        bbs[block].statements[statement_index].make_nop();
     }
     for (block, argument_index) in call_operands_to_move {
         let TerminatorKind::Call { ref mut args, .. } = bbs[block].terminator_mut().kind else {

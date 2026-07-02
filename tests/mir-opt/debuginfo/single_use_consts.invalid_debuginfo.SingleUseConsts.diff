@@ -11,18 +11,15 @@
           let _5: isize;
           let mut _6: &isize;
           scope 2 (inlined bar) {
--             debug x => _4;
-+             debug x => const foo::promoted[0];
+              debug x => _4;
               let _7: isize;
               let mut _9: &isize;
               let _10: &isize;
               scope 3 {
--                 debug a => _7;
-+                 debug a => const 1_isize;
+                  debug a => _7;
                   let mut _8: &isize;
                   scope 4 {
--                     debug z => _4;
-+                     debug z => const foo::promoted[0];
+                      debug z => _4;
                   }
               }
           }
@@ -32,11 +29,13 @@
           StorageLive(_1);
           StorageLive(_4);
 -         _4 = const foo::promoted[0];
++         // DBG: _4 = const foo::promoted[0];
 +         nop;
           StorageLive(_7);
 -         _7 = const 1_isize;
--         // DBG: _4 = &_7;
++         // DBG: _7 = const 1_isize;
 +         nop;
+          // DBG: _4 = &_7;
           StorageDead(_7);
 -         _1 = const ();
 +         nop;

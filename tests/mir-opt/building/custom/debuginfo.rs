@@ -76,24 +76,10 @@ fn variant_deref(opt: Option<&i32>) {
     }
 }
 
-// EMIT_MIR debuginfo.constant.built.after.mir
-#[custom_mir(dialect = "built")]
-fn constant() {
-    // CHECK-LABEL: fn constant(
-    // CHECK: debug scalar => const 5_usize;
-    mir!(
-        debug scalar => 5_usize;
-        {
-            Return()
-        }
-    )
-}
-
 fn main() {
     numbered((5, 6));
     structured(S { x: 5. });
     variant(Some(5));
     variant_deref(Some(&5));
     pointee(&mut Some(5));
-    constant();
 }

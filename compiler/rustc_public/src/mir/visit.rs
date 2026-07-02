@@ -333,21 +333,14 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_var_debug_info(&mut self, var_debug_info: &$($mutability)? VarDebugInfo) {
-                let VarDebugInfo { source_info, composite, value, name: _, argument_index: _ } =
+                let VarDebugInfo { source_info, composite, place, name: _, argument_index: _ } =
                     var_debug_info;
                 self.visit_span(&$($mutability)? source_info.span);
                 let location = Location(source_info.span);
                 if let Some(composite) = composite {
                     self.visit_ty(&$($mutability)? composite.ty, location);
                 }
-                match value {
-                    VarDebugInfoContents::Place(place) => {
-                        self.visit_place(place, PlaceContext::NON_USE, location);
-                    }
-                    VarDebugInfoContents::Const(constant) => {
-                        self.visit_mir_const(&$($mutability)? constant.const_, location);
-                    }
-                }
+                self.visit_place(place, PlaceContext::NON_USE, location);
             }
 
             fn super_assert_msg(&mut self, msg: &$($mutability)? AssertMessage, location: Location) {

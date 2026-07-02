@@ -549,7 +549,7 @@ impl Debug for VarDebugInfo<'_> {
             write!(fmt, "{}", self.name)?;
         }
 
-        write!(fmt, " => {:?}", self.value)
+        write!(fmt, " => {:?}", self.place)
     }
 }
 
@@ -896,11 +896,17 @@ impl Debug for Statement<'_> {
 impl Debug for StmtDebugInfo<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            StmtDebugInfo::AssignConst(local, cnst) => {
+                write!(fmt, "{local:?} = {cnst:?}")
+            }
             StmtDebugInfo::AssignRef(local, place) => {
                 write!(fmt, "{local:?} = &{place:?}")
             }
             StmtDebugInfo::InvalidAssign(local) => {
                 write!(fmt, "{local:?} = &?")
+            }
+            StmtDebugInfo::Nop => {
+                write!(fmt, "nop")
             }
         }
     }

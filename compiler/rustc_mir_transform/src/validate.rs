@@ -18,7 +18,6 @@ use rustc_middle::ty::{
     Upcast, Variance,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::util::{self, most_packed_projection};
@@ -79,11 +78,6 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
 
         // Also run the TypeChecker.
         for (location, msg) in validate_types(tcx, typing_env, body, body) {
-            cfg_checker.fail(location, msg);
-        }
-
-        // Ensure that debuginfo records are not emitted for locals that are not in debuginfo.
-        for (location, msg) in validate_debuginfos(body) {
             cfg_checker.fail(location, msg);
         }
 
@@ -923,16 +917,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 );
             }
         }
-        match debuginfo.value {
-            VarDebugInfoContents::Const(_) => {}
-            VarDebugInfoContents::Place(place) => {
-                if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
-                    self.fail(
-                        START_BLOCK.start_location(),
-                        format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
-                    );
-                }
-            }
+        if debuginfo.place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
+            self.fail(
+                START_BLOCK.start_location(),
+                format!(
+                    "illegal place {:?} in debuginfo for {:?}",
+                    debuginfo.place, debuginfo.name
+                ),
+            );
         }
         self.super_var_debug_info(debuginfo);
     }
@@ -1658,32 +1650,5 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         self.super_local_decl(local, local_decl);
-    }
-}
-
-pub(super) fn validate_debuginfos<'tcx>(body: &Body<'tcx>) -> Vec<(Location, String)> {
-    let mut debuginfo_checker =
-        DebuginfoChecker { debuginfo_locals: debuginfo_locals(body), failures: Vec::new() };
-    debuginfo_checker.visit_body(body);
-    debuginfo_checker.failures
-}
-
-struct DebuginfoChecker {
-    debuginfo_locals: DenseBitSet<Local>,
-    failures: Vec<(Location, String)>,
-}
-
-impl<'tcx> Visitor<'tcx> for DebuginfoChecker {
-    fn visit_statement_debuginfo(
-        &mut self,
-        stmt_debuginfo: &StmtDebugInfo<'tcx>,
-        location: Location,
-    ) {
-        let local = match stmt_debuginfo {
-            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => *local,
-        };
-        if !self.debuginfo_locals.contains(local) {
-            self.failures.push((location, format!("{local:?} is not in debuginfo")));
-        }
     }
 }

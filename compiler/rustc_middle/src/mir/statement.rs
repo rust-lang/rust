@@ -24,15 +24,12 @@ pub struct Statement<'tcx> {
 impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
-    pub fn make_nop(&mut self, drop_debuginfo: bool) {
+    pub fn make_nop(&mut self) {
         if self.kind == StatementKind::Nop {
             return;
         }
         let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);
-        if !drop_debuginfo {
-            let Some(debuginfo) = replaced_stmt.as_debuginfo() else {
-                bug!("debuginfo is not yet supported.")
-            };
+        if let Some(debuginfo) = replaced_stmt.as_debuginfo() {
             self.debuginfos.push(debuginfo);
         }
     }
@@ -77,6 +74,11 @@ impl<'tcx> StatementKind<'tcx> {
 
     pub fn as_debuginfo(&self) -> Option<StmtDebugInfo<'tcx>> {
         match self {
+            StatementKind::Assign((place, Rvalue::Use(Operand::Constant(c), _)))
+                if let Some(local) = place.as_local() =>
+            {
+                Some(StmtDebugInfo::AssignConst(local, c.clone()))
+            }
             StatementKind::Assign((place, Rvalue::Ref(_, _, ref_place)))
                 if let Some(local) = place.as_local() =>
             {
@@ -1074,9 +1076,10 @@ impl<'tcx> StmtDebugInfos<'tcx> {
 
     pub fn retain_locals(&mut self, locals: &DenseBitSet<Local>) {
         self.retain(|debuginfo| match debuginfo {
-            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
-                locals.contains(*local)
-            }
+            StmtDebugInfo::AssignConst(local, _)
+            | StmtDebugInfo::AssignRef(local, _)
+            | StmtDebugInfo::InvalidAssign(local) => locals.contains(*local),
+            StmtDebugInfo::Nop => false,
         });
     }
 }
@@ -1099,6 +1102,19 @@ impl<'tcx> ops::DerefMut for StmtDebugInfos<'tcx> {
 
 #[derive(Clone, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub enum StmtDebugInfo<'tcx> {
+    AssignConst(Local, Box<ConstOperand<'tcx>>),
     AssignRef(Local, Place<'tcx>),
     InvalidAssign(Local),
+    Nop,
+}
+
+impl StmtDebugInfo<'_> {
+    pub fn lhs(&self) -> Option<Local> {
+        match *self {
+            StmtDebugInfo::AssignConst(local, _)
+            | StmtDebugInfo::AssignRef(local, _)
+            | StmtDebugInfo::InvalidAssign(local) => Some(local),
+            StmtDebugInfo::Nop => None,
+        }
+    }
 }

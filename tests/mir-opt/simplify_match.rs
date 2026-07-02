@@ -6,9 +6,12 @@ fn noop() {}
 
 // EMIT_MIR simplify_match.main.GVN.diff
 // CHECK-LABEL: fn main(
-// CHECK: debug x => const false;
+// CHECK: debug x => [[x:_.*]];
 // CHECK-NOT: switchInt
 // CHECK: bb0: {
+// CHECK-NEXT: StorageLive([[x]]);
+// CHECK-NEXT: [[x]] = const false;
+// CHECK-NEXT: StorageDead([[x]]);
 // CHECK-NEXT: return;
 fn main() {
     match {

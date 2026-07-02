@@ -556,8 +556,7 @@ impl<'tcx> PlaceSet<'tcx> {
             name == sym::empty || name == kw::SelfLower || name.as_str().starts_with('_')
         };
         for var_debug_info in var_debug_info {
-            if let VarDebugInfoContents::Place(place) = var_debug_info.value
-                && let Some(index) = self.locals[place.local]
+            if let Some(index) = self.locals[var_debug_info.place.local]
                 && !ignore_name(var_debug_info.name)
             {
                 self.names.get_or_insert_with(index, || {

@@ -2,14 +2,22 @@
 
 fn main() -> () {
     let mut _0: ();
+    let _1: (u32) is 1..;
     scope 1 {
-        debug x => const 2_u32 is 1..;
+        debug x => _1;
+        let _2: (u32) is 1..;
         scope 2 {
-            debug y => const {transmute(0x00000000): (u32) is 1..};
+            debug y => _2;
         }
     }
 
     bb0: {
+        StorageLive(_1);
+        // DBG: _1 = const 2_u32 is 1..;
+        StorageLive(_2);
+        // DBG: _2 = const {transmute(0x00000000): (u32) is 1..};
+        StorageDead(_2);
+        StorageDead(_1);
         return;
     }
 }

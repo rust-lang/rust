@@ -13,11 +13,13 @@ fn issue_77355_opt(_1: Foo) -> u64 {
     }
 
     bb1: {
+        // DBG: nop;
         _0 = const 23_u64;
         return;
     }
 
     bb2: {
+        // DBG: nop;
         _0 = const 42_u64;
         return;
     }

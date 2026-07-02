@@ -6,9 +6,7 @@ use std::{fmt, io, iter};
 use fmt::{Display, Formatter};
 
 use super::{AggregateKind, AssertMessage, BinOp, BorrowKind, FakeBorrowKind, TerminatorKind};
-use crate::mir::{
-    Operand, Place, RawPtrKind, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents,
-};
+use crate::mir::{Operand, Place, RawPtrKind, Rvalue, StatementKind, UnwindAction};
 use crate::ty::{AdtKind, AssocKind, MirConst, Ty, TyConst};
 use crate::{Body, CrateDef, IndexedVal, Mutability, with};
 
@@ -55,15 +53,9 @@ pub(crate) fn function_body<W: Write>(writer: &mut W, body: &Body, name: &str) -
         }
     })?;
 
-    body.var_debug_info.iter().try_for_each(|info| {
-        let content = match &info.value {
-            VarDebugInfoContents::Place(place) => {
-                format!("{place:?}")
-            }
-            VarDebugInfoContents::Const(constant) => pretty_mir_const(&constant.const_),
-        };
-        writeln!(writer, "    debug {} => {};", info.name, content)
-    })?;
+    body.var_debug_info
+        .iter()
+        .try_for_each(|info| writeln!(writer, "    debug {} => {:?};", info.name, info.place))?;
 
     body.blocks
         .iter()
