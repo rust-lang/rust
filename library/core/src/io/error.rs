@@ -79,8 +79,8 @@ pub type Result<T> = result::Result<T, Error>;
 ///
 // FIXME(#74481): Hard-links required to link from `core` to `std`
 /// [Read]: ../../std/io/trait.Read.html
-/// [Write]: ../../std/io/trait.Write.html
-/// [Seek]: ../../std/io/trait.Seek.html
+/// [Write]: crate::io::Write
+/// [Seek]: crate::io::Seek
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_has_incoherent_inherent_impls]
 pub struct Error {
@@ -853,7 +853,7 @@ pub enum ErrorKind {
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
     ///
-    /// [write]: ../../std/io/trait.Write.html#tymethod.write
+    /// [write]: crate::io::Write::write
     /// [`Ok(0)`]: Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
