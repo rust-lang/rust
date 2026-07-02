@@ -372,4 +372,46 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ),
         )
     }
+
+    fn connect(
+        &mut self,
+        socket: &OpTy<'tcx>,
+        address: &OpTy<'tcx>,
+        address_len: &OpTy<'tcx>,
+        // Location where the output scalar is written to.
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let address = match this.read_socket_address(address, address_len, "connect")? {
+            Ok(address) => address,
+            Err(e) => return this.set_errno_and_return_neg1(e, dest),
+        };
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        };
+
+        let socket = fd.as_unix(this).as_socket(this);
+
+        let dest = dest.clone();
+
+        socket.connect(
+            this.machine.communicate(),
+            address,
+            this,
+            callback!(
+                @capture<'tcx> {
+                    dest: MPlaceTy<'tcx>
+                 } |this, result: Result<(), IoError>| {
+                     match result {
+                         Ok(_) => this.write_null(&dest),
+                         Err(e) => this.set_errno_and_return_neg1(e, &dest)
+                     }
+                 }
+            ),
+        )
+    }
 }

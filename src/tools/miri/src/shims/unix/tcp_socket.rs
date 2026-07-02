@@ -442,51 +442,28 @@ impl UnixSocketFileDescription for TcpSocket {
             ecx.block_for_accept(self, is_client_sock_non_block, finish)
         }
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn connect(
-        &mut self,
-        socket: &OpTy<'tcx>,
-        address: &OpTy<'tcx>,
-        address_len: &OpTy<'tcx>,
-        // Location where the output scalar is written to.
-        dest: &MPlaceTy<'tcx>,
+    fn connect<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        address: SocketAddr,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<(), IoError>>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
+        ecx.ensure_not_failed(&self, "connect")?;
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let address = match this.read_socket_address(address, address_len, "connect")? {
-            Ok(address) => address,
-            Err(e) => return this.set_errno_and_return_neg1(e, dest),
-        };
-
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket
-            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
-        };
-
-        assert!(this.machine.communicate(), "cannot have `TcpSocket` with isolation enabled!");
-        this.ensure_not_failed(&socket, "connect")?;
-
-        match &*socket.state.borrow() {
+        match &*self.state.borrow() {
             SocketState::Initial => { /* fall-through to below */ }
             // The socket is already in a connecting state.
-            SocketState::Connecting(_) =>
-                return this.set_errno_and_return_neg1(LibcError("EALREADY"), dest),
+            SocketState::Connecting(_) => return finish.call(ecx, Err(LibcError("EALREADY"))),
             // We don't return EISCONN for already connected sockets, for which we're
             // sure that the connection is established, since TCP sockets are usually
             // allowed to be connected multiple times.
             _ =>
                 throw_unsup_format!(
-                    "connect: connecting is only supported for sockets which are neither \
-                    bound, listening nor already connected"
+                    "connect: connecting is only supported for tcp sockets which are neither \
+                   bound, listening nor already connected"
                 ),
         }
 
@@ -494,27 +471,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We deal with that below.
         match TcpStream::connect(address) {
             Ok(stream) => {
-                *socket.state.borrow_mut() = SocketState::Connecting(stream);
+                *self.state.borrow_mut() = SocketState::Connecting(stream);
                 // Register the socket to the blocking I/O manager because
                 // we now have an associated host socket.
-                this.machine.blocking_io.register(socket.clone());
+                ecx.machine.blocking_io.register(self.clone());
             }
-            Err(e) => return this.set_errno_and_return_neg1(e, dest),
+            Err(e) => return finish.call(ecx, Err(IoError::HostError(e))),
         };
 
-        if socket.is_non_block.get() {
+        if self.is_non_block.get() {
             // We have a non-blocking socket and thus don't want to block until
             // the connection is established.
 
             // Since the [`TcpStream::connect`] function of mio hides the EINPROGRESS
             // we just always return EINPROGRESS and check whether the connection succeeded
             // once we want to use the connected socket.
-            this.set_errno_and_return_neg1(LibcError("EINPROGRESS"), dest)
+            finish.call(ecx, Err(LibcError("EINPROGRESS")))
         } else {
             // The socket is in blocking mode and thus the connect call should block
             // until the connection with the server is established.
 
-            if socket.write_timeout.get().is_some() {
+            if self.write_timeout.get().is_some() {
                 // Some Unixes like Linux also apply the SO_SNDTIMEO socket option
                 // to `connect` calls:
                 // <https://github.com/torvalds/linux/blob/HEAD/net/ipv4/af_inet.c#L701-L710>
@@ -524,31 +501,34 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )
             }
 
-            let dest = dest.clone();
-            this.ensure_connected(
+            let socket = self;
+            ecx.ensure_connected(
                 socket.clone(),
                 /* deadline */ None,
                 "connect",
                 callback!(
                     @capture<'tcx> {
                         socket: FileDescriptionRef<TcpSocket>,
-                        dest: MPlaceTy<'tcx>
+                        finish: DynMachineCallback<'tcx, Result<(), IoError>>,
                     } |this, result: Result<(), ()>| {
                         if result.is_err() {
                             // An error occurred whilst connecting. We know
                             // that it has been consumed by `ensure_connected`
                             // and is now stored in `socket.error`.
                             let err = socket.error.take().unwrap();
-                            this.set_errno_and_return_neg1(err, &dest)
+                            finish.call(this, Err(IoError::HostError(err)))
                         } else {
-                            this.write_scalar(Scalar::from_i32(0), &dest)
+                            finish.call(this, Ok(()))
                         }
                     }
                 ),
             )
         }
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn send(
         &mut self,
         socket: &OpTy<'tcx>,
