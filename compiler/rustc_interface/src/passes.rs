@@ -1153,6 +1153,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             if not_typeck_child {
                 tcx.ensure_ok().mir_borrowck(def_id);
                 tcx.ensure_ok().check_transmutes(def_id);
+                tcx.ensure_ok().check_offloads(def_id);
             }
             tcx.ensure_ok().has_ffi_unwind_calls(def_id);
             tcx.ensure_ok().check_liveness(def_id);

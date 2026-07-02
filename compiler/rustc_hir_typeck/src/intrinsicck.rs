@@ -254,6 +254,18 @@ pub(crate) fn check_transmutes(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<(),
     for &(from, to, hir_id) in &typeck_results.transmutes_to_check {
         result = result.and(check_transmute(tcx, typing_env, from, to, hir_id));
     }
+    result
+}
+
+pub(crate) fn check_offloads(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<(), ErrorGuaranteed> {
+    assert!(!tcx.is_typeck_child(owner.to_def_id()));
+    let typeck_results = tcx.typeck(owner);
+    if let Some(e) = typeck_results.tainted_by_errors {
+        return Err(e);
+    };
+
+    let typing_env = ty::TypingEnv::codegen(tcx, owner);
+    let mut result = Ok(());
     for &(kernel_ty, args_ty, ret_ty, hir_id) in &typeck_results.offloads_to_check {
         result = result.and(check_offload(tcx, typing_env, kernel_ty, args_ty, ret_ty, hir_id));
     }
