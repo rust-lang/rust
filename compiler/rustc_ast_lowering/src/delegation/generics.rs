@@ -369,11 +369,8 @@ impl<'hir> DelegationResolverWrapper<'_, 'hir> {
 
             let parent = GenericsGenerationResult::new(parent);
 
-            let child = DelegationGenerics::generate_all(
-                res.sig_child_params,
-                GenericsPosition::Child,
-                true,
-            );
+            let child =
+                DelegationGenerics::generate_all(sig_child_params, GenericsPosition::Child, true);
 
             let child = GenericsGenerationResult::new(child);
 
