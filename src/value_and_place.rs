@@ -56,7 +56,7 @@ fn codegen_field<'tcx>(
 }
 
 fn scalar_pair_calculate_b_offset(tcx: TyCtxt<'_>, a_scalar: Scalar, b_scalar: Scalar) -> Offset32 {
-    let b_offset = a_scalar.size(&tcx).align_to(b_scalar.align(&tcx).abi);
+    let b_offset = a_scalar.size(&tcx).align_to(b_scalar.default_align(&tcx).abi);
     Offset32::new(b_offset.bytes().try_into().unwrap())
 }
 
