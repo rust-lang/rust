@@ -478,13 +478,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if socket.is_non_block.get() {
             // We have a non-blocking socket and thus don't want to block until
             // we can accept an incoming connection.
-            match this.try_non_block_accept(
-                &socket,
-                address_ptr,
-                address_len_ptr,
-                is_client_sock_nonblock,
-            )? {
-                Ok(sockfd) => {
+            match this.try_non_block_accept(&socket, is_client_sock_nonblock)? {
+                Ok((sockfd, address)) => {
+                    if address_ptr != Pointer::null() {
+                        // We only attempt a write if the address pointer is not a null pointer.
+                        // If the address pointer is a null pointer the user isn't interested in the
+                        // address and we don't need to write anything.
+                        this.write_socket_address(
+                            &address,
+                            address_ptr,
+                            address_len_ptr,
+                            "accept4",
+                        )?;
+                    }
+
                     // We need to create the scalar using the destination size since
                     // `syscall(SYS_accept4, ...)` returns a long which doesn't match
                     // the int returned from the `accept`/`accept4` syscalls.
@@ -507,12 +514,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )
             }
 
+            let dest = dest.clone();
             this.block_for_accept(
                 socket,
-                address_ptr,
-                address_len_ptr,
                 is_client_sock_nonblock,
-                dest.clone(),
+                callback!(
+                    @capture<'tcx> {
+                        address_ptr: Pointer,
+                        address_len_ptr: Pointer,
+                        dest: MPlaceTy<'tcx>
+                    } |this, result: Result<(i32, SocketAddr), IoError>| {
+                        let (client_sockfd, address) = match result {
+                            Ok((sockfd, address)) => (sockfd, address),
+                            Err(e) => return this.set_errno_and_return_neg1(e, &dest),
+                        };
+
+                        if address_ptr != Pointer::null() {
+                            // We only attempt a write if the address pointer is not a null pointer.
+                            // If the address pointer is a null pointer the user isn't interested in the
+                            // address and we don't need to write anything.
+                            this.write_socket_address(&address, address_ptr, address_len_ptr, "accept4")?;
+                        }
+
+                        // We need to create the scalar using the destination size since
+                        // `syscall(SYS_accept4, ...)` returns a long which doesn't match
+                        // the int returned from the `accept`/`accept4` syscalls.
+                        // See <https://man7.org/linux/man-pages/man2/syscall.2.html>.
+                        this.write_scalar(Scalar::from_int(client_sockfd, dest.layout.size), &dest)
+                    }
+                )
             )
         }
     }
@@ -1443,10 +1473,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn block_for_accept(
         &mut self,
         socket: FileDescriptionRef<TcpSocket>,
-        address_ptr: Pointer,
-        address_len_ptr: Pointer,
         is_client_sock_nonblock: bool,
-        dest: MPlaceTy<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<(i32, SocketAddr), IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.block_thread_for_io(
@@ -1455,10 +1483,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             /* deadline */ None,
             callback!(@capture<'tcx> {
                 socket: FileDescriptionRef<TcpSocket>,
-                address_ptr: Pointer,
-                address_len_ptr: Pointer,
                 is_client_sock_nonblock: bool,
-                dest: MPlaceTy<'tcx>,
+                finish: DynMachineCallback<'tcx, Result<(i32, SocketAddr), IoError>>,
             } |this, kind: UnblockKind| {
                 // Remove the blocking I/O interest for unblocking this thread.
                 this.machine.blocking_io.remove_blocked_thread(socket.id(), this.machine.threads.active_thread());
@@ -1466,22 +1492,16 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 match kind {
                     UnblockKind::Ready => { /* fall-through to below */ },
                     // When the read timeout is exceeded EAGAIN/EWOULDBLOCK is returned.
-                    UnblockKind::TimedOut => return this.set_errno_and_return_neg1(LibcError("EWOULDBLOCK"), &dest)
+                    UnblockKind::TimedOut => return finish.call(this, Err(LibcError("EWOULDBLOCK")))
                 }
 
-                match this.try_non_block_accept(&socket, address_ptr, address_len_ptr, is_client_sock_nonblock)? {
-                    Ok(sockfd) => {
-                        // We need to create the scalar using the destination size since
-                        // `syscall(SYS_accept4, ...)` returns a long which doesn't match
-                        // the int returned from the `accept`/`accept4` syscalls.
-                        // See <https://man7.org/linux/man-pages/man2/syscall.2.html>.
-                        this.write_scalar(Scalar::from_int(sockfd, dest.layout.size), &dest)
-                    },
+                match this.try_non_block_accept(&socket, is_client_sock_nonblock)? {
+                    Ok((sockfd, addr)) => finish.call(this, Ok((sockfd, addr))),
                     Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::WouldBlock => {
                         // We need to block the thread again as it would still block.
-                        this.block_for_accept(socket, address_ptr, address_len_ptr, is_client_sock_nonblock, dest)
+                        this.block_for_accept(socket, is_client_sock_nonblock, finish)
                     }
-                    Err(e) => this.set_errno_and_return_neg1(e, &dest),
+                    Err(e) => finish.call(this, Err(e)),
                 }
             }),
         )
@@ -1495,10 +1515,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn try_non_block_accept(
         &mut self,
         socket: &FileDescriptionRef<TcpSocket>,
-        address_ptr: Pointer,
-        address_len_ptr: Pointer,
         is_client_sock_nonblock: bool,
-    ) -> InterpResult<'tcx, Result<i32, IoError>> {
+    ) -> InterpResult<'tcx, Result<(i32, SocketAddr), IoError>> {
         let this = self.eval_context_mut();
 
         let state = socket.state.borrow();
@@ -1525,13 +1543,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             SocketAddr::V6(_) => SocketFamily::IPv6,
         };
 
-        if address_ptr != Pointer::null() {
-            // We only attempt a write if the address pointer is not a null pointer.
-            // If the address pointer is a null pointer the user isn't interested in the
-            // address and we don't need to write anything.
-            this.write_socket_address(&addr, address_ptr, address_len_ptr, "accept4")?;
-        }
-
         let fd = this.machine.fds.new_ref(TcpSocket {
             family,
             state: RefCell::new(SocketState::Connected(stream)),
@@ -1545,7 +1556,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // there is an associated host socket.
         this.machine.blocking_io.register(fd.clone());
         let sockfd = this.machine.fds.insert(fd);
-        interp_ok(Ok(sockfd))
+        interp_ok(Ok((sockfd, addr)))
     }
 
     /// Block the thread until we can send bytes into the connected socket
