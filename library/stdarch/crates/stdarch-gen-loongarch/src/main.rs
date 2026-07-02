@@ -1604,10 +1604,11 @@ static void {current_name}(void)
 /// no args or a bare ext name.
 pub fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
-    let harness_exts: Option<&[&str]> = match args.len() {
-        1 => Some(&["lsx", "lasx"]),
-        2 if args[1] == "lsx" => Some(&["lsx"]),
-        2 if args[1] == "lasx" => Some(&["lasx"]),
+    let arg_strs: Vec<&str> = args.iter().map(String::as_str).collect();
+    let harness_exts: Option<&[&str]> = match arg_strs.as_slice() {
+        [_] => Some(&["lsx", "lasx"]),
+        [_, "lsx"] => Some(&["lsx"]),
+        [_, "lasx"] => Some(&["lasx"]),
         _ => None,
     };
     if let Some(exts) = harness_exts {
@@ -1640,7 +1641,7 @@ pub fn main() -> Result<(), String> {
     if in_file_name.ends_with(".h") {
         return gen_spec(in_file, ext_name).map_err(|e| e.to_string());
     }
-    if args.get(2).is_some() {
+    if let [_, _lsx_or_lasx, "test"] = arg_strs.as_slice() {
         return gen_test(in_file, ext_name).map_err(|e| e.to_string());
     }
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap_or("crates/core_arch".to_string()))
