@@ -1083,9 +1083,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if !matches!(
             &this.tcx.sess.target.os,
-            Os::Linux | Os::Android | Os::Solaris | Os::Illumos | Os::FreeBsd
+            Os::Linux | Os::Android | Os::Solaris | Os::Illumos | Os::FreeBsd | Os::MacOs
         ) {
-            panic!("`readdir` should not be called on {}", this.tcx.sess.target.os);
+            throw_unsup_format!("`readdir` is not yet supported on {}", this.tcx.sess.target.os);
         }
 
         let dirp = this.read_target_usize(dirp_op)?;
@@ -1136,6 +1136,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 //     pub d_namlen: uint8_t,
                 //     pub d_name: [c_char; 256],
                 // }
+                //
+                // On macOS:
+                // pub struct dirent {
+                //     pub d_ino: u64,
+                //     pub d_seekoff: u64,
+                //     pub d_reclen: u16,
+                //     pub d_namlen: u16,
+                //     pub d_type: u8,
+                //     pub d_name: [c_char; 1024],
+                // }
 
                 // We just use the pointee type here since determining the right pointee type
                 // independently is highly non-trivial: it depends on which exact alias of the
@@ -1178,6 +1188,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Write "optional" fields.
                 if let Some(d_off) = this.try_project_field_named(&entry, "d_off")? {
                     this.write_null(&d_off)?;
+                }
+                if let Some(d_seekoff) = this.try_project_field_named(&entry, "d_seekoff")? {
+                    this.write_null(&d_seekoff)?;
                 }
                 if let Some(d_namlen) = this.try_project_field_named(&entry, "d_namlen")? {
                     this.write_int(name_len.strict_sub(1), &d_namlen)?;
