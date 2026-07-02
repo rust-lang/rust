@@ -981,6 +981,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Block the thread until there's an incoming connection or an error occurred.
+    /// After a successful accept, `finish` is called with a tuple containing the
+    /// file descriptor of the peer socket and it's address.
     ///
     /// This recursively calls itself should the operation still block for some reason.
     ///
@@ -990,7 +992,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         socket: FileDescriptionRef<TcpSocket>,
         is_client_sock_nonblock: bool,
-        finish: DynMachineCallback<'tcx, Result<(i32, SocketAddr), IoError>>,
+        finish: DynMachineCallback<'tcx, Result<(FdNum, SocketAddr), IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.block_thread_for_io(
@@ -1000,7 +1002,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(@capture<'tcx> {
                 socket: FileDescriptionRef<TcpSocket>,
                 is_client_sock_nonblock: bool,
-                finish: DynMachineCallback<'tcx, Result<(i32, SocketAddr), IoError>>,
+                finish: DynMachineCallback<'tcx, Result<(FdNum, SocketAddr), IoError>>,
             } |this, kind: UnblockKind| {
                 // Remove the blocking I/O interest for unblocking this thread.
                 this.machine.blocking_io.remove_blocked_thread(socket.id(), this.machine.threads.active_thread());
@@ -1024,7 +1026,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Attempt to accept an incoming connection on the listening socket in a
-    /// non-blocking manner.
+    /// non-blocking manner. After a successful accept, a tuple containing the
+    /// file descriptor of the peer socket and it's address is returned.
     ///
     /// **Note**: This function is only safe to call when having previously ensured
     /// that the socket is in [`SocketState::Listening`].
@@ -1032,7 +1035,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         socket: &FileDescriptionRef<TcpSocket>,
         is_client_sock_nonblock: bool,
-    ) -> InterpResult<'tcx, Result<(i32, SocketAddr), IoError>> {
+    ) -> InterpResult<'tcx, Result<(FdNum, SocketAddr), IoError>> {
         let this = self.eval_context_mut();
 
         let state = socket.state.borrow();
