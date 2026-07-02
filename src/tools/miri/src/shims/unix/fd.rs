@@ -8,8 +8,10 @@ use rand::RngExt;
 use rustc_abi::{Align, Size};
 use rustc_target::spec::Os;
 
+use crate::shims::FileDescriptionRef;
 use crate::shims::files::{DynFileDescriptionRef, FileDescription};
 use crate::shims::sig::check_min_vararg_count;
+use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -73,6 +75,13 @@ pub trait UnixFileDescription: FileDescription {
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         throw_unsup_format!("cannot use ioctl on {}", self.name());
+    }
+
+    fn as_socket<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &MiriInterpCx<'tcx>,
+    ) -> FileDescriptionRef<dyn UnixSocketFileDescription> {
+        panic!("Not a unix socket file descriptor: {}", self.name());
     }
 }
 

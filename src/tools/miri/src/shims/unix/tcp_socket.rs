@@ -14,8 +14,8 @@ use rustc_target::spec::Os;
 
 use crate::shims::files::{EvalContextExt as _, FdId, FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
+use crate::shims::unix::socket::{SocketFamily, UnixSocketFileDescription};
 use crate::shims::unix::socket_address::EvalContextExt as _;
-use crate::shims::unix::socket::SocketFamily;
 use crate::*;
 
 #[derive(Debug)]
@@ -204,7 +204,10 @@ impl FileDescription for TcpSocket {
         false
     }
 
-    fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
+    fn as_unix<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &MiriInterpCx<'tcx>,
+    ) -> FileDescriptionRef<dyn UnixFileDescription> {
         self
     }
 
@@ -283,7 +286,16 @@ impl UnixFileDescription for TcpSocket {
 
         throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
     }
+
+    fn as_socket<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &MiriInterpCx<'tcx>,
+    ) -> FileDescriptionRef<dyn UnixSocketFileDescription> {
+        self
+    }
 }
+
+impl UnixSocketFileDescription for TcpSocket {}
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {

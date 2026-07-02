@@ -232,7 +232,10 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         false
     }
 
-    fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
+    fn as_unix<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &MiriInterpCx<'tcx>,
+    ) -> FileDescriptionRef<dyn UnixFileDescription> {
         panic!("Not a unix file descriptor: {}", self.name());
     }
 
@@ -470,7 +473,10 @@ impl FileDescription for FileHandle {
         true
     }
 
-    fn as_unix<'tcx>(&self, ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
+    fn as_unix<'tcx>(
+        self: FileDescriptionRef<Self>,
+        ecx: &MiriInterpCx<'tcx>,
+    ) -> FileDescriptionRef<dyn UnixFileDescription> {
         assert!(
             ecx.target_os_is_unix(),
             "unix file operations are only available for unix targets"
