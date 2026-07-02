@@ -79,6 +79,7 @@ mod traits;
 mod transmute;
 mod types;
 mod unit_bindings;
+mod unnecessary_refs;
 mod unqualified_local_imports;
 pub mod unused;
 mod utils;
@@ -130,6 +131,7 @@ use traits::*;
 use transmute::CheckTransmutes;
 use types::*;
 use unit_bindings::*;
+use unnecessary_refs::*;
 use unqualified_local_imports::*;
 use unused::must_use::*;
 use unused::*;
@@ -272,6 +274,7 @@ late_lint_methods!(
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
             ImplicitProvenanceCasts: ImplicitProvenanceCasts,
             CVoidReturns: CVoidReturns,
+            UnnecessaryRefs: UnnecessaryRefs,
         ]
     ]
 );

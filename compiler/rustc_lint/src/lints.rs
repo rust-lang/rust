@@ -3039,3 +3039,25 @@ pub(crate) enum Ptr2IntSuggestion<'tcx> {
         cast_span: Span,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag(
+    "creating an intermediate reference implies aliasing requirements even when immediately casting to raw pointers"
+)]
+pub(crate) struct UnnecessaryRef<'a> {
+    #[subdiagnostic]
+    pub suggestion: UnnecessaryRefSuggestion<'a>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "consider using `&raw {$mutbl}` for a safer and more explicit raw pointer",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct UnnecessaryRefSuggestion<'a> {
+    #[suggestion_part(code = "&raw {mutbl} ")]
+    pub left: Span,
+    #[suggestion_part(code = "")]
+    pub right: Span,
+    pub mutbl: &'a str,
+}
