@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::numeric_literal::NumericLiteral;
-use clippy_utils::source::snippet;
+use clippy_utils::source::SpanExt;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lexer::is_whitespace;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -32,16 +32,23 @@ declare_lint_pass!(ConfusingXorAndPow => [SUSPICIOUS_XOR_USED_AS_POW]);
 
 impl LateLintPass<'_> for ConfusingXorAndPow {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if !expr.span.in_external_macro(cx.sess().source_map())
-            && let ExprKind::Binary(op, left, right) = &expr.kind
+        if let ExprKind::Binary(op, left, right) = &expr.kind
             && op.node == BinOpKind::BitXor
-            && left.span.eq_ctxt(right.span)
             && let ExprKind::Lit(lit_left) = &left.kind
             && let ExprKind::Lit(lit_right) = &right.kind
-            && matches!(lit_right.node, LitKind::Int(..) | LitKind::Float(..))
-            && matches!(lit_left.node, LitKind::Int(..) | LitKind::Float(..))
-            && NumericLiteral::from_lit_kind(&snippet(cx, lit_right.span, ".."), &lit_right.node)
-                .is_some_and(|x| x.is_decimal())
+            && matches!(lit_right.node, LitKind::Int(..))
+            && matches!(lit_left.node, LitKind::Int(..))
+            && let ctxt = expr.span.ctxt()
+            && ctxt == left.span.ctxt()
+            && ctxt == right.span.ctxt()
+            && ctxt == op.span.ctxt()
+            && !expr.span.in_external_macro(cx.tcx.sess.source_map())
+            && let Some(lit_right_src) = lit_right.span.get_text(cx)
+            && lit_right_src
+                .trim_start_matches(|c| is_whitespace(c) || c == '(')
+                .strip_prefix('0')
+                .and_then(|src| src.as_bytes().first().copied())
+                .is_none_or(|c| !matches!(c, b'x' | b'X' | b'o' | b'O' | b'b' | b'B'))
         {
             span_lint_and_then(
                 cx,
