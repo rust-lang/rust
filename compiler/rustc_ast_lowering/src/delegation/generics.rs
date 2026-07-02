@@ -258,7 +258,7 @@ enum ParentSegmentArgs<'a> {
     Invalid,
 }
 
-struct GenericsResolutionDto<'a, 'tcx> {
+struct GenericsResolution<'a, 'tcx> {
     trait_impl: bool,
 
     parent_args: ParentSegmentArgs<'a>,
@@ -281,7 +281,7 @@ impl<'hir> DelegationResolverWrapper<'_, 'hir> {
         &self,
         delegation: &'a Delegation,
         sig_id: DefId,
-    ) -> GenericsResolutionDto<'a, 'hir> {
+    ) -> GenericsResolution<'a, 'hir> {
         let tcx = self.tcx();
         let delegation_parent_kind = tcx.def_kind(tcx.local_parent(self.owner_id()));
 
@@ -314,7 +314,7 @@ impl<'hir> DelegationResolverWrapper<'_, 'hir> {
             ParentSegmentArgs::Invalid
         };
 
-        GenericsResolutionDto {
+        GenericsResolution {
             parent_args,
             sig_parent_params,
             qself_is_none,
@@ -351,7 +351,7 @@ impl<'hir> DelegationResolverWrapper<'_, 'hir> {
         delegation: &Delegation,
         sig_id: DefId,
     ) -> GenericsGenerationResults<'hir> {
-        let dto @ GenericsResolutionDto {
+        let dto @ GenericsResolution {
             trait_impl,
             generate_self,
             sig_child_params,
