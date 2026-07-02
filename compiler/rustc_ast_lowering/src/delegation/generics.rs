@@ -351,7 +351,7 @@ impl<'hir> DelegationResolverWrapper<'_, 'hir> {
         delegation: &Delegation,
         sig_id: DefId,
     ) -> GenericsGenerationResults<'hir> {
-        let dto @ GenericsResolution {
+        let res @ GenericsResolution {
             trait_impl,
             generate_self,
             sig_child_params,
@@ -370,7 +370,7 @@ impl<'hir> DelegationResolverWrapper<'_, 'hir> {
             let parent = GenericsGenerationResult::new(parent);
 
             let child = DelegationGenerics::generate_all(
-                dto.sig_child_params,
+                res.sig_child_params,
                 GenericsPosition::Child,
                 true,
             );
@@ -381,7 +381,7 @@ impl<'hir> DelegationResolverWrapper<'_, 'hir> {
         }
 
         let tcx = self.tcx();
-        let parent_generics = match dto.parent_args {
+        let parent_generics = match res.parent_args {
             ParentSegmentArgs::Specified(args) => DelegationGenerics {
                 data: Self::create_slots_from_args(
                     tcx,
@@ -402,7 +402,7 @@ impl<'hir> DelegationResolverWrapper<'_, 'hir> {
             }
         };
 
-        let child_generics = if let Some(args) = dto.child_args {
+        let child_generics = if let Some(args) = res.child_args {
             let synth_params_index = sig_child_params
                 .iter()
                 .position(|p| p.kind.is_synthetic())
@@ -427,10 +427,10 @@ impl<'hir> DelegationResolverWrapper<'_, 'hir> {
         GenericsGenerationResults {
             parent: GenericsGenerationResult::new(parent_generics),
             child: GenericsGenerationResult::new(child_generics),
-            self_ty_propagation_kind: match dto.free_to_trait_delegation {
-                true => Some(match dto.qself_is_none {
+            self_ty_propagation_kind: match res.free_to_trait_delegation {
+                true => Some(match res.qself_is_none {
                     true => hir::DelegationSelfTyPropagationKind::SelfParam,
-                    false => match dto.qself_is_infer {
+                    false => match res.qself_is_infer {
                         true => hir::DelegationSelfTyPropagationKind::SelfParam,
                         // HirId is filled during generic args propagation.
                         false => hir::DelegationSelfTyPropagationKind::SelfTy(HirId::INVALID),
