@@ -277,7 +277,7 @@ struct GenericsResolution<'a, 'tcx> {
 }
 
 impl<'hir> DelegationResolverWrapper<'_, 'hir> {
-    fn create_resolution_dto<'a>(
+    fn create_generics_resolution<'a>(
         &self,
         delegation: &'a Delegation,
         sig_id: DefId,
@@ -357,7 +357,7 @@ impl<'hir> DelegationResolverWrapper<'_, 'hir> {
             sig_child_params,
             sig_parent_params,
             ..
-        } = self.create_resolution_dto(delegation, sig_id);
+        } = self.create_generics_resolution(delegation, sig_id);
 
         // If we are in trait impl always generate function whose generics matches
         // those that are defined in trait.
