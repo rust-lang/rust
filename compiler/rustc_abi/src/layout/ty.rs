@@ -291,29 +291,42 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// This is the "guaranteed" padding. There may be more bytes that are padding for some
     /// but not all variants of this type; those are not included.
     /// (E.g. `Option<i8>` has no guaranteed padding so the empty range set is returned, but its `None` value still has padding).
-    pub fn padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
+    pub fn variant_independent_padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
         let mut data = RangeSet::new();
         self.add_data_ranges(cx, Size::ZERO, &mut data);
 
-        // Find gaps between the data ranges.
-        let mut uninit_ranges = Vec::new();
-        let mut covered_until = Size::ZERO;
-        for &(offset, size) in data.0.iter() {
-            if offset > covered_until {
-                uninit_ranges.push(covered_until..offset);
-            }
-            covered_until = Ord::max(covered_until, offset + size);
-        }
+        let mut full = RangeSet::new();
+        full.add_range(Size::ZERO, self.size);
 
-        // Add trailing padding.
-        if self.size > covered_until {
-            uninit_ranges.push(covered_until..self.size);
-        }
+        full.difference(&data).0.into_iter().map(|(a, b)| a..b).collect()
+    }
 
-        uninit_ranges
+    /// The ranges of bytes that are padding for *some, but not all*, valid values of this type.
+    ///
+    /// These bytes contain data for at least one valid value, but are padding for at least one
+    /// other valid value. In other words, whether such a byte is initialized depends on the
+    /// concrete value, hence "value-dependent". This is exactly the padding that is *not*
+    /// already returned by [`Self::variant_independent_padding_ranges`].
+    ///
+    /// For example, `Option<i8>` has no guaranteed padding, but the byte holding the payload is
+    /// value-dependent padding: it is data for `Some(_)` and padding for `None`.
+    pub fn variant_dependent_padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        // Bytes that carry data for *at least one* valid value.
+        let mut maybe_data = RangeSet::new();
+        self.add_data_ranges(cx, Size::ZERO, &mut maybe_data);
+
+        // Bytes that carry data for *every* valid value.
+        let always_data = self.always_data_ranges(cx, Size::ZERO);
+
+        // A byte is value-dependent padding iff it is data for some value but padding for some
+        // other value.
+        maybe_data.difference(&always_data).0.into_iter().map(|(a, b)| a..b).collect()
     }
 
     /// Extend `out` with all ranges of bytes that *may* carry relevant data for values of this type.
@@ -361,11 +374,111 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }
             },
             Variants::Multiple { variants, .. } => {
+                // The variants do not contain e.g. the discriminant or coroutine upvars.
+                let FieldsShape::Arbitrary { offsets, in_memory_order: _ } = &self.fields else {
+                    unreachable!("a multi-variant layout should have `Arbitrary` fields")
+                };
+
+                for (field, &offset) in offsets.iter_enumerated() {
+                    let field = self.field(cx, field.as_usize());
+                    field.add_data_ranges(cx, base_offset + offset, out);
+                }
+
                 for variant in variants.indices() {
                     let variant = self.for_variant(cx, variant);
                     variant.add_data_ranges(cx, base_offset, out);
                 }
             }
         }
+    }
+
+    /// The ranges of bytes that contain data for *every* valid value of this type.
+    ///
+    /// This is the dual of [`Self::add_data_ranges`], which returns the bytes that contain data
+    /// for *some* valid value.
+    ///
+    /// The difference is in how enums and unions are handled: there a byte may be data for one
+    /// variant/field, but padding for another.
+    fn always_data_ranges<C>(self, cx: &C, base_offset: Size) -> RangeSet<Size>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let mut out = RangeSet::new();
+
+        if self.is_zst() {
+            return out;
+        }
+
+        match &self.variants {
+            Variants::Empty => { /* done */ }
+            Variants::Single { index: _ } => match &self.fields {
+                FieldsShape::Primitive => {
+                    out.add_range(base_offset, self.size);
+                }
+                &FieldsShape::Union(field_count) => {
+                    // A byte is data for every value only when it is data for every field.
+                    out = (0..field_count.get())
+                        .map(|field| self.field(cx, field).always_data_ranges(cx, base_offset))
+                        .reduce(|acc, f| acc.intersection(&f))
+                        .unwrap_or(out);
+                }
+                &FieldsShape::Array { stride, count } => {
+                    let elem = self.field(cx, 0);
+
+                    // For scalars we know there is no padding between the elements,
+                    // so the entire array is a single big data range.
+                    if elem.backend_repr.is_scalar() {
+                        out.add_range(base_offset, elem.size * count);
+                    } else {
+                        // FIXME: this is really inefficient for large arrays.
+                        for idx in 0..count {
+                            let elem = elem.always_data_ranges(cx, base_offset + idx * stride);
+                            for &(offset, size) in elem.0.iter() {
+                                out.add_range(offset, size);
+                            }
+                        }
+                    }
+                }
+                FieldsShape::Arbitrary { offsets, in_memory_order: _ } => {
+                    // A byte that is always data for any field is always data for the struct.
+                    for (field, &offset) in offsets.iter_enumerated() {
+                        let field = self.field(cx, field.as_usize());
+                        let field = field.always_data_ranges(cx, base_offset + offset);
+                        for &(offset, size) in field.0.iter() {
+                            out.add_range(offset, size);
+                        }
+                    }
+                }
+            },
+            Variants::Multiple { variants, .. } => {
+                // The variants do not contain e.g. the discriminant or coroutine upvars.
+                let FieldsShape::Arbitrary { offsets, in_memory_order: _ } = &self.fields else {
+                    unreachable!("a multi-variant layout should have `Arbitrary` fields")
+                };
+
+                // The fields are variant-independent and always data.
+                for (field, &offset) in offsets.iter_enumerated() {
+                    let field = self.field(cx, field.as_usize());
+                    let field = field.always_data_ranges(cx, base_offset + offset);
+                    for &(offset, size) in field.0.iter() {
+                        out.add_range(offset, size);
+                    }
+                }
+
+                // Otherwise a byte is data for every value only when it is data for every variant.
+                if let Some(common) = variants
+                    .indices()
+                    .map(|variant| self.for_variant(cx, variant))
+                    .map(|variant| variant.always_data_ranges(cx, base_offset))
+                    .reduce(|acc, f| acc.intersection(&f))
+                {
+                    for &(offset, size) in common.0.iter() {
+                        out.add_range(offset, size);
+                    }
+                }
+            }
+        }
+
+        out
     }
 }

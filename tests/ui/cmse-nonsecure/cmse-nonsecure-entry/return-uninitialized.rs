@@ -1,0 +1,143 @@
+//@ add-minicore
+//@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
+//@ needs-llvm-components: arm
+//@ check-pass
+//@ ignore-backends: gcc
+
+#![feature(cmse_nonsecure_entry, no_core, lang_items)]
+#![no_core]
+
+extern crate minicore;
+use minicore::*;
+
+#[repr(Rust)]
+union ReprRustUnionU32 {
+    _unused: u32,
+}
+
+#[no_mangle]
+#[allow(improper_ctypes_definitions)]
+extern "cmse-nonsecure-entry" fn union_rust() -> ReprRustUnionU32 {
+    ReprRustUnionU32 { _unused: 1 }
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+}
+
+#[repr(Rust)]
+union ReprRustUnionPartiallyUninit {
+    _unused1: u32,
+    _unused2: u16,
+}
+
+#[no_mangle]
+#[allow(improper_ctypes_definitions)]
+extern "cmse-nonsecure-entry" fn union_rust_partially_uninit() -> ReprRustUnionPartiallyUninit {
+    ReprRustUnionPartiallyUninit { _unused1: 1 }
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn maybe_uninit_32bit() -> MaybeUninit<u32> {
+    MaybeUninit::uninit()
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn maybe_uninit_64bit() -> MaybeUninit<f64> {
+    if true {
+        return MaybeUninit::new(6.28);
+        //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+    }
+    MaybeUninit::new(3.14)
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+}
+
+#[repr(transparent)]
+struct Wrapper(MaybeUninit<u64>);
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn repr_transparent_union() -> Wrapper {
+    match 0 {
+        //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+        0 => Wrapper(MaybeUninit::new(0)),
+        _ => Wrapper(MaybeUninit::new(1)),
+    }
+}
+
+// This is an aggregate that cannot be unwrapped, and has 1 (uninitialized) padding byte.
+#[repr(C, align(4))]
+struct PaddedStruct {
+    a: u8,
+    b: u16,
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn padded_struct() -> PaddedStruct {
+    // This struct only has no value-dependent padding, the guaranteed padding is zeroed.
+    PaddedStruct { a: 0, b: 1 }
+}
+
+#[repr(C)]
+enum VariantsSameSize {
+    A(u16),
+    B(u16),
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_same_size() -> VariantsSameSize {
+    // This enum only has no value-dependent padding, the guaranteed padding is zeroed.
+    VariantsSameSize::A(0)
+}
+
+#[repr(C)]
+enum VariantsDifferentSize {
+    A(u8),
+    B(u16),
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_different_size() -> VariantsDifferentSize {
+    VariantsDifferentSize::A(0)
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+}
+
+enum Void {}
+
+#[repr(C)]
+enum UninhabitedVariant {
+    A(Void),
+    B(u16),
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn uninhabited_variant() -> UninhabitedVariant {
+    UninhabitedVariant::B(0)
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_same_size_array() -> [VariantsSameSize; 1] {
+    //~^ WARN improper_ctypes_definitions
+    // This enum only has no value-dependent padding, the guaranteed padding is zeroed.
+    [VariantsSameSize::A(0)]
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_different_size_array() -> [VariantsDifferentSize; 1] {
+    //~^ WARN improper_ctypes_definitions
+    [VariantsDifferentSize::A(0)]
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_same_size_tuple() -> (VariantsSameSize,) {
+    //~^ WARN improper_ctypes_definitions
+    // This enum only has no value-dependent padding, the guaranteed padding is zeroed.
+    (VariantsSameSize::A(0),)
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_different_size_tuple() -> (VariantsDifferentSize,) {
+    //~^ WARN improper_ctypes_definitions
+    (VariantsDifferentSize::A(0),)
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+}

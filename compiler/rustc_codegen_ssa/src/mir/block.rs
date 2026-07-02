@@ -610,7 +610,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     //
                     // Returning a value with value-dependent padding will instead trigger a lint.
                     let ret_layout = self.fn_abi.ret.layout;
-                    let uninit_ranges = ret_layout.padding_ranges(bx.cx());
+                    let uninit_ranges = ret_layout.variant_independent_padding_ranges(bx.cx());
                     self.zero_byte_ranges(bx, llslot, ret_layout.size, &uninit_ranges);
                 }
 
@@ -1878,7 +1878,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx,
                         llscratch,
                         Size::from_bytes(copy_bytes),
-                        &arg.layout.padding_ranges(bx.cx()),
+                        &arg.layout.variant_independent_padding_ranges(bx.cx()),
                     );
                 }
 
