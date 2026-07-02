@@ -15,15 +15,8 @@ use rustc_target::spec::Os;
 use crate::shims::files::{EvalContextExt as _, FdId, FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket_address::EvalContextExt as _;
+use crate::shims::unix::socket::SocketFamily;
 use crate::*;
-
-#[derive(Debug, PartialEq)]
-enum SocketFamily {
-    // IPv4 internet protocols
-    IPv4,
-    // IPv6 internet protocols
-    IPv6,
-}
 
 #[derive(Debug)]
 enum SocketState {

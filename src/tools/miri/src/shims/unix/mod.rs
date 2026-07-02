@@ -4,6 +4,7 @@ mod env;
 mod fd;
 mod fs;
 mod mem;
+mod socket;
 mod socket_address;
 mod sync;
 mod tcp_socket;
