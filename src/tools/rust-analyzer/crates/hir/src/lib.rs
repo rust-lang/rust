@@ -1188,21 +1188,18 @@ fn emit_macro_def_diagnostics<'db>(
     m: Macro,
 ) {
     let id = db.macro_def(m.id);
-    if let hir_expand::db::TokenExpander::DeclarativeMacro(expander) = db.macro_expander(id)
+    let krate = id.krate;
+    if let hir_expand::MacroDefKind::Declarative(ast, _) = id.kind
+        && let expander = db.decl_macro_expander(krate, ast)
         && let Some(e) = expander.mac.err()
     {
-        let Some(ast) = id.ast_id().left() else {
-            never!("declarative expander for non decl-macro: {:?}", e);
-            return;
-        };
-        let krate = HasModule::krate(&m.id, db);
         let edition = krate.data(db).edition;
         emit_def_diagnostic_(
             db,
             acc,
             &DefDiagnosticKind::MacroDefError { ast, message: e.to_string() },
             edition,
-            m.krate(db).id,
+            krate,
         );
     }
 }
