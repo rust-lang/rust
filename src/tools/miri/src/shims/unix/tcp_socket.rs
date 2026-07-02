@@ -910,49 +910,24 @@ impl UnixSocketFileDescription for TcpSocket {
             ),
         )
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn shutdown(&mut self, socket: &OpTy<'tcx>, how: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn shutdown<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        how: Shutdown,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
+        ecx.ensure_not_failed(&self, "shutdown")?;
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let how = this.read_scalar(how)?.to_i32()?;
-
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
-        };
-
-        assert!(this.machine.communicate(), "cannot have `TcpSocket` with isolation enabled!");
-        this.ensure_not_failed(&socket, "shutdown")?;
-
-        let state = socket.state.borrow();
+        let state = self.state.borrow();
 
         let (SocketState::Connecting(stream) | SocketState::Connected(stream)) = &*state else {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTCONN"));
-        };
-
-        let is_read_shutdown = how == this.eval_libc_i32("SHUT_RD");
-        let is_write_shutdown = how == this.eval_libc_i32("SHUT_WR");
-        let is_read_write_shutdown = how == this.eval_libc_i32("SHUT_RDWR");
-
-        let how = match () {
-            _ if is_read_shutdown => Shutdown::Read,
-            _ if is_write_shutdown => Shutdown::Write,
-            _ if is_read_write_shutdown => Shutdown::Both,
-            // An invalid value was passed to `how`.
-            _ => return this.set_errno_and_return_neg1_i32(LibcError("EINVAL")),
+            return interp_ok(Err(LibcError("ENOTCONN")));
         };
 
         if let Err(e) = stream.shutdown(how) {
-            return this.set_errno_and_return_neg1_i32(e);
+            return interp_ok(Err(IoError::HostError(e)));
         };
 
         drop(state);
@@ -962,22 +937,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // the readiness after a `shutdown` manually to achieve a more consistent
         // readiness. Otherwise we do not generate enough readiness events
         // on partial shutdowns on Windows hosts.
-        let mut readiness = socket.io_readiness.borrow_mut();
+        let mut readiness = self.io_readiness.borrow_mut();
         // Closing the read end of a socket causes an (E)POLLRDHUP event.
-        readiness.read_closed |= is_read_shutdown || is_read_write_shutdown;
+        readiness.read_closed |= matches!(how, Shutdown::Read | Shutdown::Both);
         // Only shutting down the write end doesn't cause an (E)POLLHUP event
         // and thus we won't set the `write_closed` readiness for it here.
-        readiness.write_closed |= is_read_write_shutdown;
+        readiness.write_closed |= matches!(how, Shutdown::Both);
         // The Linux kernel also sets EPOLLIN when the read end of a socket is closed:
         // <https://github.com/torvalds/linux/blob/HEAD/net/ipv4/tcp.c#L584-L588>
-        readiness.readable |= is_read_shutdown || is_read_write_shutdown;
+        readiness.readable |= matches!(how, Shutdown::Read | Shutdown::Both);
 
         drop(readiness);
 
         // Update the readiness for the socket.
-        this.update_fd_readiness(socket, /* force_edge */ false)?;
+        ecx.update_fd_readiness(self, /* force_edge */ false)?;
 
-        interp_ok(Scalar::from_i32(0))
+        interp_ok(Ok(()))
     }
 }
 

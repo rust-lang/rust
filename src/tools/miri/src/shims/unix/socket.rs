@@ -763,4 +763,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ),
         )
     }
+
+    fn shutdown(&mut self, socket: &OpTy<'tcx>, how: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let how = this.read_scalar(how)?.to_i32()?;
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+
+        let socket = fd.as_unix(this).as_socket(this);
+
+        let is_read_shutdown = how == this.eval_libc_i32("SHUT_RD");
+        let is_write_shutdown = how == this.eval_libc_i32("SHUT_WR");
+        let is_read_write_shutdown = how == this.eval_libc_i32("SHUT_RDWR");
+
+        let how = match () {
+            _ if is_read_shutdown => Shutdown::Read,
+            _ if is_write_shutdown => Shutdown::Write,
+            _ if is_read_write_shutdown => Shutdown::Both,
+            // An invalid value was passed to `how`.
+            _ => return this.set_errno_and_return_neg1_i32(LibcError("EINVAL")),
+        };
+
+        match socket.shutdown(this.machine.communicate(), how, this)? {
+            Ok(_) => interp_ok(Scalar::from_i32(0)),
+            Err(e) => this.set_errno_and_return_neg1_i32(e),
+        }
+    }
 }
