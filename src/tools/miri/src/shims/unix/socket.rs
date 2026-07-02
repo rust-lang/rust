@@ -1,5 +1,6 @@
 use std::net::{Shutdown, SocketAddr};
 
+use rustc_abi::Size;
 use rustc_target::spec::Os;
 
 use crate::shims::FileDescriptionRef;
@@ -611,5 +612,80 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(_) => interp_ok(Scalar::from_i32(0)),
             Err(e) => this.set_errno_and_return_neg1_i32(e),
         }
+    }
+
+    fn getsockopt(
+        &mut self,
+        socket: &OpTy<'tcx>,
+        level: &OpTy<'tcx>,
+        option_name: &OpTy<'tcx>,
+        option_value: &OpTy<'tcx>,
+        option_len: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let level = this.read_scalar(level)?.to_i32()?;
+        let option_name = this.read_scalar(option_name)?.to_i32()?;
+        // These two pointers are used to return the value: `len_ptr` initially stores how much space
+        // is available. If the actual value fits into that space, it is written to
+        // `value_ptr` and `len_ptr` is updated to represent how many bytes
+        // were actually written. If the value does not fit, it is silently truncated.
+        // Also see <https://pubs.opengroup.org/onlinepubs/9799919799/functions/getsockopt.html>.
+        let option_value_ptr = this.read_pointer(option_value)?;
+        let option_len_ptr = this.read_pointer(option_len)?;
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+
+        let socket = fd.as_unix(this).as_socket(this);
+
+        if option_value_ptr == Pointer::null() || option_len_ptr == Pointer::null() {
+            // This socket option returns a value and thus we need to return EFAULT
+            // when either the value or the length pointers are null pointers.
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        }
+
+        let socklen_layout = this.libc_ty_layout("socklen_t");
+        let option_len_ptr_mplace = this.ptr_to_mplace(option_len_ptr, socklen_layout);
+        let option_len: usize = this
+            .read_scalar(&option_len_ptr_mplace)?
+            .to_int(socklen_layout.size)?
+            .try_into()
+            .unwrap();
+
+        // `socket.getsockopt` returns a temporary buffer as `option_value_ptr` might not point
+        // to a large enough buffer, in which case we have to truncate.
+        let value_mplace = match socket.getsockopt(level, option_name, this)? {
+            Ok(value_mplace) => value_mplace,
+            Err(e) => return this.set_errno_and_return_neg1_i32(e),
+        };
+
+        // Truncated size of the output value.
+        let output_value_len = value_mplace.layout.size.min(Size::from_bytes(option_len));
+        // Copy the truncated value into the buffer pointed to by `option_value_ptr`.
+        this.mem_copy(
+            value_mplace.ptr(),
+            option_value_ptr,
+            // Truncate the value to fit the provided buffer.
+            output_value_len,
+            // The buffers are guaranteed to not overlap since the `value_mplace`
+            // was just newly allocated on the stack.
+            true,
+        )?;
+        // Deallocate the value buffer as it was only needed to store the value and
+        // copy it into the buffer pointed to by `option_value_ptr`.
+        this.deallocate_ptr(value_mplace.ptr(), None, MemoryKind::Stack)?;
+
+        // On output, the length pointer contains the amount of bytes written -- not the size
+        // of the value before truncation.
+        this.write_scalar(
+            Scalar::from_uint(output_value_len.bytes(), socklen_layout.size),
+            &option_len_ptr_mplace,
+        )?;
+
+        interp_ok(Scalar::from_i32(0))
     }
 }

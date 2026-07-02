@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use mio::event::Source;
 use mio::net::{TcpListener, TcpStream};
-use rustc_abi::Size;
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
 use rustc_middle::throw_unsup_format;
 use rustc_target::spec::Os;
@@ -692,121 +691,77 @@ impl UnixSocketFileDescription for TcpSocket {
            and IPPROTO_TCP are allowed"
         );
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn getsockopt(
-        &mut self,
-        socket: &OpTy<'tcx>,
-        level: &OpTy<'tcx>,
-        option_name: &OpTy<'tcx>,
-        option_value: &OpTy<'tcx>,
-        option_len: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn getsockopt<'tcx>(
+        self: FileDescriptionRef<Self>,
+        level: i32,
+        option: i32,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
+        if level == ecx.eval_libc_i32("SOL_SOCKET") {
+            let opt_so_error = ecx.eval_libc_i32("SO_ERROR");
+            let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
+            let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let level = this.read_scalar(level)?.to_i32()?;
-        let option_name = this.read_scalar(option_name)?.to_i32()?;
-        // These two pointers are used to return the value: `len_ptr` initially stores how much space
-        // is available. If the actual value fits into that space, it is written to
-        // `value_ptr` and `len_ptr` is updated to represent how many bytes
-        // were actually written. If the value does not fit, it is silently truncated.
-        // Also see <https://pubs.opengroup.org/onlinepubs/9799919799/functions/getsockopt.html>.
-        let option_value_ptr = this.read_pointer(option_value)?;
-        let option_len_ptr = this.read_pointer(option_len)?;
-
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
-        };
-
-        if option_value_ptr == Pointer::null() || option_len_ptr == Pointer::null() {
-            // This socket option returns a value and thus we need to return EFAULT
-            // when either the value or the length pointers are null pointers.
-            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
-        }
-
-        let socklen_layout = this.libc_ty_layout("socklen_t");
-        let option_len_ptr_mplace = this.ptr_to_mplace(option_len_ptr, socklen_layout);
-        let option_len: usize = this
-            .read_scalar(&option_len_ptr_mplace)?
-            .to_int(socklen_layout.size)?
-            .try_into()
-            .unwrap();
-
-        // We need a temporary buffer as `option_value_ptr` might not point to a large enough
-        // buffer, in which case we have to truncate.
-        let value_buffer = if level == this.eval_libc_i32("SOL_SOCKET") {
-            let opt_so_error = this.eval_libc_i32("SO_ERROR");
-            let opt_so_rcvtimeo = this.eval_libc_i32("SO_RCVTIMEO");
-            let opt_so_sndtimeo = this.eval_libc_i32("SO_SNDTIMEO");
-
-            if option_name == opt_so_error {
+            if option == opt_so_error {
                 // Reading SO_ERROR should always return the latest async error. Because our stored
                 // `socket.error` could be outdated, we attempt to update it here.
-                this.update_last_error(&socket);
+                ecx.update_last_error(&self);
 
-                let return_value = match socket.error.take() {
-                    Some(err) => this.io_error_to_errnum(err)?.to_i32()?,
+                let return_value = match self.error.take() {
+                    Some(err) => ecx.io_error_to_errnum(err)?.to_i32()?,
                     // If there is no error, we return 0 as the option value.
                     None => 0,
                 };
 
                 // Clear our own stored error -- it was either `take`n above or it is outdated.
-                socket.error.replace(None);
+                self.error.replace(None);
 
                 // We know there is no longer an async error and thus we need to update the
                 // I/O and fd readiness of the socket.
-                socket.io_readiness.borrow_mut().error = false;
-                this.update_fd_readiness(socket, /* force_edge */ false)?;
+                self.io_readiness.borrow_mut().error = false;
+                ecx.update_fd_readiness(self, /* force_edge */ false)?;
 
                 // Allocate new buffer on the stack with the `i32` layout.
-                let value_buffer = this.allocate(this.machine.layouts.i32, MemoryKind::Stack)?;
-                this.write_int(return_value, &value_buffer)?;
-                value_buffer
-            } else if option_name == opt_so_rcvtimeo || option_name == opt_so_sndtimeo {
-                let timeout = if option_name == opt_so_rcvtimeo {
-                    socket.read_timeout.get()
+                let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+                ecx.write_int(return_value, &value_buffer)?;
+                interp_ok(Ok(value_buffer))
+            } else if option == opt_so_rcvtimeo || option == opt_so_sndtimeo {
+                let timeout = if option == opt_so_rcvtimeo {
+                    self.read_timeout.get()
                 } else {
-                    socket.write_timeout.get()
+                    self.write_timeout.get()
                 }
                 .unwrap_or_default();
 
                 let secs = timeout.as_secs();
                 let usecs = timeout.subsec_micros();
 
-                let timeval_layout = this.libc_ty_layout("timeval");
+                let timeval_layout = ecx.libc_ty_layout("timeval");
                 // Allocate new buffer on the stack with the `timeval` layout.
-                let timeval_buffer = this.allocate(timeval_layout, MemoryKind::Stack)?;
+                let timeval_buffer = ecx.allocate(timeval_layout, MemoryKind::Stack)?;
 
-                let sec_field = this.project_field_named(&timeval_buffer, "tv_sec")?;
-                this.write_int(secs, &sec_field)?;
+                let sec_field = ecx.project_field_named(&timeval_buffer, "tv_sec")?;
+                ecx.write_int(secs, &sec_field)?;
 
-                let usec_field = this.project_field_named(&timeval_buffer, "tv_usec")?;
-                this.write_int(usecs, &usec_field)?;
+                let usec_field = ecx.project_field_named(&timeval_buffer, "tv_usec")?;
+                ecx.write_int(usecs, &usec_field)?;
 
-                timeval_buffer
+                interp_ok(Ok(timeval_buffer))
             } else {
                 throw_unsup_format!(
-                    "getsockopt: option {option_name:#x} is unsupported for level SOL_SOCKET",
+                    "getsockopt: option {option:#x} is unsupported for level SOL_SOCKET",
                 );
             }
-        } else if level == this.eval_libc_i32("IPPROTO_IP") {
-            let opt_ip_ttl = this.eval_libc_i32("IP_TTL");
+        } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
+            let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
 
-            if option_name == opt_ip_ttl {
-                let ttl = match &*socket.state.borrow() {
+            if option == opt_ip_ttl {
+                let ttl = match &*self.state.borrow() {
                     SocketState::Initial | SocketState::Bound(_) =>
                         throw_unsup_format!(
                             "getsockopt: reading option IP_TTL on level IPPROTO_IP is only supported \
-                            on connected and listening sockets"
+                            on connected and listening tcp sockets"
                         ),
                     SocketState::Listening(listener) => listener.ttl(),
                     SocketState::Connecting(stream) | SocketState::Connected(stream) =>
@@ -816,27 +771,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let ttl = match ttl {
                     Ok(ttl) => ttl,
-                    Err(e) => return this.set_errno_and_return_neg1_i32(e),
+                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
                 };
 
                 // Allocate new buffer on the stack with the `u32` layout.
-                let value_buffer = this.allocate(this.machine.layouts.u32, MemoryKind::Stack)?;
-                this.write_int(ttl, &value_buffer)?;
-                value_buffer
+                let value_buffer = ecx.allocate(ecx.machine.layouts.u32, MemoryKind::Stack)?;
+                ecx.write_int(ttl, &value_buffer)?;
+                interp_ok(Ok(value_buffer))
             } else {
                 throw_unsup_format!(
-                    "getsockopt: option {option_name:#x} is unsupported for level IPPROTO_IP",
+                    "getsockopt: option {option:#x} is unsupported for level IPPROTO_IP",
                 );
             }
-        } else if level == this.eval_libc_i32("IPPROTO_TCP") {
-            let opt_tcp_nodelay = this.eval_libc_i32("TCP_NODELAY");
+        } else if level == ecx.eval_libc_i32("IPPROTO_TCP") {
+            let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
 
-            if option_name == opt_tcp_nodelay {
-                let nodelay = match &*socket.state.borrow() {
+            if option == opt_tcp_nodelay {
+                let nodelay = match &*self.state.borrow() {
                     SocketState::Initial | SocketState::Bound(_) | SocketState::Listening(_) =>
                         throw_unsup_format!(
                             "getsockopt: reading option TCP_NODELAY on level IPPROTO_TCP is only supported \
-                            on connected sockets"
+                            on connected tcp sockets"
                         ),
                     SocketState::Connecting(stream) | SocketState::Connected(stream) =>
                         stream.nodelay(),
@@ -845,51 +800,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let nodelay = match nodelay {
                     Ok(nodelay) => nodelay,
-                    Err(e) => return this.set_errno_and_return_neg1_i32(e),
+                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
                 };
 
                 // Allocate new buffer on the stack with the `i32` layout.
-                let value_buffer = this.allocate(this.machine.layouts.i32, MemoryKind::Stack)?;
-                this.write_int(i32::from(nodelay), &value_buffer)?;
-                value_buffer
+                let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+                ecx.write_int(i32::from(nodelay), &value_buffer)?;
+                interp_ok(Ok(value_buffer))
             } else {
                 throw_unsup_format!(
-                    "getsockopt: option {option_name:#x} is unsupported for level IPPROTO_TCP"
+                    "getsockopt: option {option:#x} is unsupported for level IPPROTO_TCP"
                 );
             }
         } else {
             throw_unsup_format!(
                 "getsockopt: level {level:#x} is unsupported, only SOL_SOCKET, IPPROTO_IP \
-                and IPPROTO_TCP are allowed"
+               and IPPROTO_TCP are allowed"
             )
-        };
-
-        // Truncated size of the output value.
-        let output_value_len = value_buffer.layout.size.min(Size::from_bytes(option_len));
-        // Copy the truncated value into the buffer pointed to by `option_value_ptr`.
-        this.mem_copy(
-            value_buffer.ptr(),
-            option_value_ptr,
-            // Truncate the value to fit the provided buffer.
-            output_value_len,
-            // The buffers are guaranteed to not overlap since the `value_buffer`
-            // was just newly allocated on the stack.
-            true,
-        )?;
-        // Deallocate the value buffer as it was only needed to store the value and
-        // copy it into the buffer pointed to by `option_value_ptr`.
-        this.deallocate_ptr(value_buffer.ptr(), None, MemoryKind::Stack)?;
-
-        // On output, the length pointer contains the amount of bytes written -- not the size
-        // of the value before truncation.
-        this.write_scalar(
-            Scalar::from_uint(output_value_len.bytes(), socklen_layout.size),
-            &option_len_ptr_mplace,
-        )?;
-
-        interp_ok(Scalar::from_i32(0))
+        }
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn getsockname(
         &mut self,
         socket: &OpTy<'tcx>,
