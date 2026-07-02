@@ -772,6 +772,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::DynCompatible(trait_def_id) => {
+                    // `DynCompatible` obligations are only emitted as
+                    // nested obligations of `WellFormed` goals. It is quite
+                    // rare, but possible, that we encounter them during
+                    // evaluation. See #158665 for more details here.
                     if self.tcx().is_dyn_compatible(trait_def_id) {
                         Ok(EvaluatedToOk)
                     } else {
