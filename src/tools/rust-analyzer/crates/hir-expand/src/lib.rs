@@ -39,7 +39,8 @@ use base_db::Crate;
 use either::Either;
 use mbe::MatchedArmIndex;
 use span::{
-    Edition, ErasedFileAstId, FileAstId, NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER, Span, SyntaxContext,
+    AstIdMap, Edition, ErasedFileAstId, FileAstId, NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER, Span,
+    SyntaxContext,
 };
 use syntax::{
     Parse, SyntaxError, SyntaxNode, SyntaxToken, T, TextRange, TextSize,
@@ -486,7 +487,7 @@ impl MacroCallId {
 
 #[salsa::tracked]
 impl MacroCallId {
-    /// Implementation of [`crate::db::parse_or_expand`] for the macro case.
+    /// Implementation of [`HirFileId::parse_or_expand`] for the macro case.
     // FIXME: We should verify that the parsed node is one of the many macro node variants we expect
     // instead of having it be untyped
     #[salsa::tracked(returns(ref), lru = 512)]
@@ -550,7 +551,7 @@ impl MacroCallId {
             return (eager.arg.clone(), SyntaxFixupUndoInfo::NONE, eager.span);
         }
 
-        let (parse, map) = crate::db::parse_with_map(db, loc.kind.file_id());
+        let (parse, map) = loc.kind.file_id().parse_with_map(db);
         let root = parse.syntax_node();
 
         let (is_derive, censor_item_tree_attr_ids, item_node, span) = match &loc.kind {
@@ -790,8 +791,8 @@ fn expand_unimplemented_builtin_macro(span: Span) -> ExpandResult<tt::TopSubtree
 fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
     #[salsa::tracked]
     fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>, _: ()) -> Span {
-        let root = db.parse_or_expand(ast.file_id);
-        let ast_id_map = db.ast_id_map(ast.file_id);
+        let root = ast.file_id.parse_or_expand(db);
+        let ast_id_map = ast.file_id.ast_id_map(db);
         let span_map = db.span_map(ast.file_id);
 
         let node = ast_id_map.get(ast.value).to_node(&root);
@@ -854,10 +855,10 @@ impl MacroDefId {
             | MacroDefKind::BuiltInDerive(id, _)
             | MacroDefKind::BuiltInEager(id, _)
             | MacroDefKind::UnimplementedBuiltIn(id) => {
-                id.with_value(db.ast_id_map(id.file_id).get(id.value).text_range())
+                id.with_value(id.file_id.ast_id_map(db).get(id.value).text_range())
             }
             MacroDefKind::ProcMacro(id, _, _) => {
-                id.with_value(db.ast_id_map(id.file_id).get(id.value).text_range())
+                id.with_value(id.file_id.ast_id_map(db).get(id.value).text_range())
             }
         }
     }
@@ -1512,5 +1513,39 @@ impl HirFileId {
             _ => return None,
         };
         Some(attr.with_value(ast::Attr::cast(attr.value.clone())?))
+    }
+
+    /// Main public API -- parses a hir file, not caring whether it's a real
+    /// file or a macro expansion.
+    pub fn parse_or_expand(self, db: &dyn ExpandDatabase) -> SyntaxNode {
+        match self {
+            HirFileId::FileId(file_id) => file_id.parse(db).syntax_node(),
+            HirFileId::MacroFile(macro_file) => {
+                macro_file.parse_macro_expansion(db).value.0.syntax_node()
+            }
+        }
+    }
+
+    pub(crate) fn parse_with_map(
+        self,
+        db: &dyn ExpandDatabase,
+    ) -> (Parse<SyntaxNode>, SpanMap<'_>) {
+        match self {
+            HirFileId::FileId(file_id) => {
+                (file_id.parse(db).to_syntax(), SpanMap::RealSpanMap(db.real_span_map(file_id)))
+            }
+            HirFileId::MacroFile(macro_file) => {
+                let (parse, map) = &macro_file.parse_macro_expansion(db).value;
+                (parse.clone(), SpanMap::ExpansionSpanMap(map))
+            }
+        }
+    }
+}
+
+#[salsa::tracked]
+impl HirFileId {
+    #[salsa::tracked(lru = 1024, returns(ref))]
+    pub fn ast_id_map(self, db: &dyn ExpandDatabase) -> AstIdMap {
+        AstIdMap::from_source(&self.parse_or_expand(db))
     }
 }

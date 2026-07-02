@@ -51,7 +51,7 @@ impl TraitItems {
         tr: TraitId,
     ) -> (TraitItems, DefDiagnostics) {
         let ItemLoc { container: module_id, id: ast_id } = *tr.lookup(db);
-        let ast_id_map = db.ast_id_map(ast_id.file_id);
+        let ast_id_map = ast_id.file_id.ast_id_map(db);
         let source = ast_id.with_value(ast_id_map.get(ast_id.value)).to_node(db);
         if source.eq_token().is_some() {
             // FIXME(trait-alias) probably needs special handling here
@@ -162,7 +162,7 @@ impl<'db> AssocItemCollector<'db> {
             module_id,
             def_map,
             local_def_map,
-            ast_id_map: db.ast_id_map(file_id),
+            ast_id_map: file_id.ast_id_map(db),
             span_map: db.span_map(file_id),
             cfg_options: module_id.krate(db).cfg_options(db),
             file_id,
@@ -358,7 +358,7 @@ impl<'db> AssocItemCollector<'db> {
 
         let (syntax, span_map) = &macro_call_id.parse_macro_expansion(self.db).value;
         let old_file_id = mem::replace(&mut self.file_id, macro_call_id.into());
-        let old_ast_id_map = mem::replace(&mut self.ast_id_map, self.db.ast_id_map(self.file_id));
+        let old_ast_id_map = mem::replace(&mut self.ast_id_map, self.file_id.ast_id_map(self.db));
         let old_span_map = mem::replace(&mut self.span_map, SpanMap::ExpansionSpanMap(span_map));
         self.depth += 1;
 

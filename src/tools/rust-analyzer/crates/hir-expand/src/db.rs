@@ -1,8 +1,8 @@
 //! Defines database & queries for macro expansion.
 
 use base_db::{Crate, SourceDatabase};
-use span::{AstIdMap, Span};
-use syntax::{AstNode, Parse, SyntaxNode, SyntaxToken, ast};
+use span::Span;
+use syntax::{AstNode, SyntaxNode, SyntaxToken, ast};
 use syntax_bridge::{DocCommentDesugarMode, syntax_node_to_token_tree};
 
 use crate::{
@@ -37,15 +37,8 @@ pub enum TokenExpander<'db> {
 
 #[query_group::query_group]
 pub trait ExpandDatabase: SourceDatabase {
-    #[salsa::invoke(ast_id_map)]
-    #[salsa::transparent]
-    fn ast_id_map(&self, file_id: HirFileId) -> &AstIdMap;
-
     #[salsa::transparent]
     fn resolve_span(&self, span: Span) -> FileRange;
-
-    #[salsa::transparent]
-    fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode;
 
     #[salsa::transparent]
     #[salsa::invoke(SpanMap::new)]
@@ -54,6 +47,7 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::transparent]
     #[salsa::invoke(crate::span_map::expansion_span_map)]
     fn expansion_span_map(&self, file_id: MacroCallId) -> &ExpansionSpanMap;
+
     #[salsa::invoke(crate::span_map::real_span_map)]
     #[salsa::transparent]
     fn real_span_map(&self, file_id: EditionedFileId) -> &RealSpanMap;
@@ -76,7 +70,7 @@ pub trait ExpandDatabase: SourceDatabase {
 fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
     let file_id = EditionedFileId::from_span_file_id(db, anchor.file_id);
     let anchor_offset =
-        db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
+        HirFileId::from(file_id).ast_id_map(db).get_erased(anchor.ast_id).text_range().start();
     FileRange { file_id, range: range + anchor_offset }
 }
 
@@ -253,37 +247,6 @@ pub fn expand_speculative(
         })
         .collect();
     Some((node.syntax_node(), token))
-}
-
-#[salsa::tracked(lru = 1024, returns(ref))]
-fn ast_id_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> AstIdMap {
-    AstIdMap::from_source(&db.parse_or_expand(file_id))
-}
-
-/// Main public API -- parses a hir file, not caring whether it's a real
-/// file or a macro expansion.
-fn parse_or_expand(db: &dyn ExpandDatabase, file_id: HirFileId) -> SyntaxNode {
-    match file_id {
-        HirFileId::FileId(file_id) => file_id.parse(db).syntax_node(),
-        HirFileId::MacroFile(macro_file) => {
-            macro_file.parse_macro_expansion(db).value.0.syntax_node()
-        }
-    }
-}
-
-pub(crate) fn parse_with_map(
-    db: &dyn ExpandDatabase,
-    file_id: HirFileId,
-) -> (Parse<SyntaxNode>, SpanMap<'_>) {
-    match file_id {
-        HirFileId::FileId(file_id) => {
-            (file_id.parse(db).to_syntax(), SpanMap::RealSpanMap(db.real_span_map(file_id)))
-        }
-        HirFileId::MacroFile(macro_file) => {
-            let (parse, map) = &macro_file.parse_macro_expansion(db).value;
-            (parse.clone(), SpanMap::ExpansionSpanMap(map))
-        }
-    }
 }
 
 impl<'db> TokenExpander<'db> {

@@ -146,7 +146,7 @@ fn file_item_tree_query(
     let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
 
     let ctx = lower::Ctx::new(db, file_id, krate);
-    let syntax = db.parse_or_expand(file_id);
+    let syntax = file_id.parse_or_expand(db);
     let mut item_tree = match_ast! {
         match syntax {
             ast::SourceFile(file) => {

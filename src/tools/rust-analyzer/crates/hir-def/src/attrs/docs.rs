@@ -401,7 +401,7 @@ fn expand_doc_macro_call<'db>(
     let new_source_ctx = DocExprSourceCtx {
         resolver: source_ctx.resolver.clone(),
         file_id: expansion_file_id,
-        ast_id_map: expander.db.ast_id_map(expansion_file_id),
+        ast_id_map: expansion_file_id.ast_id_map(expander.db),
         span_map: expander.db.span_map(expansion_file_id),
     };
     Some((expr, new_source_ctx))
@@ -456,7 +456,7 @@ fn extend_with_attrs<'a, 'db>(
                                         DocExprSourceCtx {
                                             resolver,
                                             file_id,
-                                            ast_id_map: db.ast_id_map(file_id),
+                                            ast_id_map: file_id.ast_id_map(db),
                                             span_map: db.span_map(file_id),
                                         },
                                     )

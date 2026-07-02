@@ -206,7 +206,7 @@ fn eager_macro_recur(
                 continue;
             }
         };
-        let ast_id = db.ast_id_map(curr.file_id).ast_id(&call);
+        let ast_id = curr.file_id.ast_id_map(db).ast_id(&call);
         let ExpandResult { value, err } = match def.kind {
             MacroDefKind::BuiltInEager(..) => {
                 let ExpandResult { value, err } = expand_eager_macro_input(

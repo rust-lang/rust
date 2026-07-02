@@ -54,7 +54,7 @@ pub(crate) fn real_span_map(
 ) -> RealSpanMap {
     use syntax::ast::HasModuleItem;
     let mut pairs = vec![(syntax::TextSize::new(0), span::ROOT_ERASED_FILE_AST_ID)];
-    let ast_id_map = db.ast_id_map(editioned_file_id.into());
+    let ast_id_map = HirFileId::from(editioned_file_id).ast_id_map(db);
 
     let tree = editioned_file_id.parse(db).tree();
     // This is an incrementality layer. Basically we can't use absolute ranges for our spans as that

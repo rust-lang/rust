@@ -14,7 +14,7 @@ pub trait HasSource {
     type Value: AstNode;
     fn source(&self, db: &dyn DefDatabase) -> InFile<Self::Value> {
         let InFile { file_id, value } = self.ast_ptr(db);
-        InFile::new(file_id, value.to_node(&db.parse_or_expand(file_id)))
+        InFile::new(file_id, value.to_node(&file_id.parse_or_expand(db)))
     }
     fn ast_ptr(&self, db: &dyn DefDatabase) -> InFile<AstPtr<Self::Value>>;
 }
@@ -26,7 +26,7 @@ where
     type Value = T::Ast;
     fn ast_ptr(&self, db: &dyn DefDatabase) -> InFile<AstPtr<Self::Value>> {
         let id = self.ast_id();
-        let ast_id_map = db.ast_id_map(id.file_id);
+        let ast_id_map = id.file_id.ast_id_map(db);
         InFile::new(id.file_id, ast_id_map.get(id.value))
     }
 }

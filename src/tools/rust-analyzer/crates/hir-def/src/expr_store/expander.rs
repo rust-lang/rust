@@ -47,7 +47,7 @@ impl<'db> Expander<'db> {
             recursion_depth: 0,
             recursion_limit,
             span_map: db.span_map(current_file_id),
-            ast_id_map: db.ast_id_map(current_file_id),
+            ast_id_map: current_file_id.ast_id_map(db),
         }
     }
 
@@ -201,7 +201,7 @@ impl<'db> Expander<'db> {
                 let old_span_map =
                     std::mem::replace(&mut self.span_map, SpanMap::ExpansionSpanMap(&res.value.1));
                 let prev_ast_id_map =
-                    mem::replace(&mut self.ast_id_map, db.ast_id_map(self.current_file_id));
+                    mem::replace(&mut self.ast_id_map, self.current_file_id.ast_id_map(db));
                 let mark = Mark {
                     file_id: old_file_id,
                     span_map: old_span_map,

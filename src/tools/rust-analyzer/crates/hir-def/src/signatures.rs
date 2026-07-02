@@ -1068,7 +1068,7 @@ impl EnumVariants {
     ) -> (EnumVariants, ThinVec<InactiveEnumVariantCode>) {
         let loc = e.lookup(db);
         let source = loc.source(db);
-        let ast_id_map = db.ast_id_map(source.file_id);
+        let ast_id_map = source.file_id.ast_id_map(db);
 
         let mut diagnostics = ThinVec::new();
         let cfg_options = loc.container.krate(db).cfg_options(db);

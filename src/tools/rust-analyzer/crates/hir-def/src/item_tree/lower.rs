@@ -40,7 +40,7 @@ impl<'db> Ctx<'db> {
         Self {
             db,
             tree: ItemTree::default(),
-            source_ast_id_map: db.ast_id_map(file),
+            source_ast_id_map: file.ast_id_map(db),
             file,
             cfg_options: OnceCell::new(),
             span_map: OnceCell::new(),
