@@ -15,8 +15,9 @@
 //!
 //! 1. An asynchronous, infinitely buffered channel. The [`channel`] function
 //!    will return a `(Sender, Receiver)` tuple where all sends will be
-//!    **asynchronous** (they never block). The channel conceptually has an
-//!    infinite buffer.
+//!    **asynchronous** (they never block for space to become available; see
+//!    [`std::sync`] for precise guarantees on blocking.) The channel
+//!    conceptually has an infinite buffer.
 //!
 //! 2. A synchronous, bounded channel. The [`sync_channel`] function will
 //!    return a `(SyncSender, Receiver)` tuple where the storage for pending
@@ -26,6 +27,7 @@
 //!    channel where each sender atomically hands off a message to a receiver.
 //!
 //! [`send`]: Sender::send
+//! [`std::sync`]: ../index.html#blocking-guarantees
 //!
 //! ## Disconnection
 //!
@@ -228,9 +230,11 @@ pub struct Iter<'a, T: 'a> {
 /// if the corresponding channel has hung up.
 ///
 /// This iterator will never block the caller in order to wait for data to
-/// become available. Instead, it will return [`None`].
+/// become available. Instead, it will return [`None`]. (See [`std::sync`] for
+/// precise guarantees on blocking.)
 ///
 /// [`try_iter`]: Receiver::try_iter
+/// [`std::sync`]: ../index.html#blocking-guarantees
 ///
 /// # Examples
 ///
@@ -590,7 +594,10 @@ impl<T> Sender<T> {
     /// will be received. It is possible for the corresponding receiver to
     /// hang up immediately after this function returns [`Ok`].
     ///
-    /// This method will never block the current thread.
+    /// This method will never block the caller in order to wait for space to
+    /// become available. (See [`std::sync`] for precise guarantees on blocking.)
+    ///
+    /// [`std::sync`]: ../index.html#blocking-guarantees
     ///
     /// # Examples
     ///
@@ -798,7 +805,8 @@ impl<T> Receiver<T> {
     ///
     /// This method will never block the caller in order to wait for data to
     /// become available. Instead, this will always return immediately with a
-    /// possible option of pending data on the channel.
+    /// possible option of pending data on the channel. (See [`std::sync`] for
+    /// precise guarantees on blocking.)
     ///
     /// This is useful for a flavor of "optimistic check" before deciding to
     /// block on a receiver.
@@ -807,6 +815,7 @@ impl<T> Receiver<T> {
     /// (one for disconnection, one for an empty buffer).
     ///
     /// [`recv`]: Self::recv
+    /// [`std::sync`]: ../index.html#blocking-guarantees
     ///
     /// # Examples
     ///
