@@ -10,8 +10,7 @@ use rustc_span::symbol::kw;
 use rustc_span::{Ident, Span, sym};
 
 use crate::LoweringContext;
-use crate::delegation::DelegationResolverWrapper;
-use crate::delegation::resolution::DelegationResolver;
+use crate::delegation::resolution::wrapper::DelegationResolverWrapper;
 use crate::diagnostics::DelegationInfersMismatch;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -277,14 +276,14 @@ struct GenericsResolutionDto<'a, 'tcx> {
     generate_self: bool,
 }
 
-impl<'hir, T: DelegationResolver<'hir>> DelegationResolverWrapper<'_, T> {
+impl<'hir> DelegationResolverWrapper<'_, 'hir> {
     fn create_resolution_dto<'a>(
         &self,
         delegation: &'a Delegation,
         sig_id: DefId,
     ) -> GenericsResolutionDto<'a, 'hir> {
-        let tcx = self.0.tcx();
-        let delegation_parent_kind = tcx.def_kind(tcx.local_parent(self.0.owner_id()));
+        let tcx = self.tcx();
+        let delegation_parent_kind = tcx.def_kind(tcx.local_parent(self.owner_id()));
 
         let delegation_in_free_ctx =
             !matches!(delegation_parent_kind, DefKind::Trait | DefKind::Impl { .. });
@@ -301,7 +300,7 @@ impl<'hir, T: DelegationResolver<'hir>> DelegationResolverWrapper<'_, T> {
         let qself_is_none = delegation.qself.is_none();
 
         let parent_args = if let [.., parent_segment, _] = &delegation.path.segments[..] {
-            if let Some(res) = self.0.get_resolution_id(parent_segment.id)
+            if let Some(res) = self.get_resolution_id(parent_segment.id)
                 && matches!(tcx.def_kind(res), DefKind::Trait | DefKind::TraitAlias)
             {
                 sig_parent_params = &tcx.generics_of(sig_parent).own_params;
@@ -333,7 +332,7 @@ impl<'hir, T: DelegationResolver<'hir>> DelegationResolverWrapper<'_, T> {
     fn get_user_args<'a>(&self, segment: &'a PathSegment) -> Option<&'a AngleBracketedArgs> {
         let Some(args) = &segment.args else { return None };
         let GenericArgs::AngleBracketed(args) = args else {
-            self.0.tcx().dcx().span_delayed_bug(
+            self.tcx().dcx().span_delayed_bug(
                 segment.span(),
                 "expected angle-bracketed generic args in delegation segment",
             );
@@ -381,7 +380,7 @@ impl<'hir, T: DelegationResolver<'hir>> DelegationResolverWrapper<'_, T> {
             return GenericsGenerationResults { parent, child, self_ty_propagation_kind: None };
         }
 
-        let tcx = self.0.tcx();
+        let tcx = self.tcx();
         let parent_generics = match dto.parent_args {
             ParentSegmentArgs::Specified(args) => DelegationGenerics {
                 data: Self::create_slots_from_args(

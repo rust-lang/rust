@@ -52,7 +52,8 @@ use rustc_span::symbol::kw;
 use rustc_span::{Ident, Span, Symbol, sym};
 
 use crate::delegation::generics::GenericsPosition;
-use crate::delegation::resolution::{DelegationResolution, DelegationResolverWrapper, ParamInfo};
+use crate::delegation::resolution::wrapper::DelegationResolverWrapper;
+use crate::delegation::resolution::{DelegationResolution, ParamInfo};
 use crate::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
 };
@@ -72,7 +73,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_delegation(&mut self, delegation: &Delegation) -> DelegationResults<'hir> {
         let span = self.lower_span(delegation.last_segment_span());
 
-        let resolver = DelegationResolverWrapper(self);
+        let resolver = DelegationResolverWrapper::new(self);
         let Ok(mut res) = resolver.resolve_delegation(delegation, span) else {
             return self.generate_delegation_error(span, delegation);
         };
@@ -97,10 +98,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         DelegationResults { body_id, sig, ident, generics }
-    }
-
-    fn get_resolution_id(&self, node_id: NodeId) -> Option<DefId> {
-        self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
     }
 
     fn lower_delegation_decl(

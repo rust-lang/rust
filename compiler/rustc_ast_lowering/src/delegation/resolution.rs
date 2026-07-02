@@ -7,57 +7,14 @@ use rustc_ast::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::span_bug;
-use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
 
-use crate::LoweringContext;
 use crate::delegation::generics::GenericsGenerationResults;
 use crate::diagnostics::{
     CycleInDelegationSignatureResolution, DelegationAttemptedBlockWithDefsDeletion,
     DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
 };
-
-pub(super) trait DelegationResolver<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx>;
-    fn owner_id(&self) -> LocalDefId;
-    fn is_definition(&self, id: NodeId) -> bool;
-    fn get_resolution_id(&self, id: NodeId) -> Option<DefId>;
-}
-
-impl<'tcx> DelegationResolver<'tcx> for LoweringContext<'_, 'tcx> {
-    #[inline]
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    #[inline]
-    fn owner_id(&self) -> LocalDefId {
-        self.owner.def_id
-    }
-
-    /// (from `tests\ui\delegation\target-expr-removal-defs-inside.rs`):
-    /// ```rust
-    /// reuse impl Trait for S1 {
-    ///     some::path::<{ fn foo() {} }>::xd();
-    ///     fn foo() {}
-    ///     self.0
-    /// }
-    /// ```
-    ///
-    /// Constant from unresolved path will be in `node_id_to_def_id`,
-    /// `fn foo() {}` will not be in `node_id_to_def_id` but will be in `owners`,
-    /// both have `LocalDefId`, so we check those two maps.
-    #[inline]
-    fn is_definition(&self, id: NodeId) -> bool {
-        self.resolver.owners.contains_key(&id) || self.owner.node_id_to_def_id.contains_key(&id)
-    }
-
-    #[inline]
-    fn get_resolution_id(&self, id: NodeId) -> Option<DefId> {
-        self.get_resolution_id(id)
-    }
-}
 
 /// Summary info about function parameters.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -84,16 +41,63 @@ pub(super) struct DelegationResolution<'tcx> {
     pub(super) generics: GenericsGenerationResults<'tcx>,
 }
 
-pub(super) struct DelegationResolverWrapper<'a, T>(pub(super) &'a T);
+pub(super) mod wrapper {
+    use rustc_ast::NodeId;
+    use rustc_hir::def_id::{DefId, LocalDefId};
+    use rustc_middle::ty::TyCtxt;
 
-impl<'tcx, T: DelegationResolver<'tcx>> DelegationResolverWrapper<'_, T> {
+    use crate::LoweringContext;
+
+    pub(crate) struct DelegationResolverWrapper<'a, 'hir>(&'a LoweringContext<'a, 'hir>);
+
+    impl<'a, 'tcx> DelegationResolverWrapper<'a, 'tcx> {
+        pub(crate) fn new(ctx: &'a LoweringContext<'a, 'tcx>) -> Self {
+            DelegationResolverWrapper(ctx)
+        }
+
+        #[inline]
+        pub(crate) fn tcx(&self) -> TyCtxt<'tcx> {
+            self.0.tcx
+        }
+
+        #[inline]
+        pub(crate) fn owner_id(&self) -> LocalDefId {
+            self.0.owner.def_id
+        }
+
+        /// (from `tests\ui\delegation\target-expr-removal-defs-inside.rs`):
+        /// ```rust
+        /// reuse impl Trait for S1 {
+        ///     some::path::<{ fn foo() {} }>::xd();
+        ///     fn foo() {}
+        ///     self.0
+        /// }
+        /// ```
+        ///
+        /// Constant from unresolved path will be in `node_id_to_def_id`,
+        /// `fn foo() {}` will not be in `node_id_to_def_id` but will be in `owners`,
+        /// both have `LocalDefId`, so we check those two maps.
+        #[inline]
+        pub(crate) fn is_definition(&self, id: NodeId) -> bool {
+            self.0.resolver.owners.contains_key(&id)
+                || self.0.owner.node_id_to_def_id.contains_key(&id)
+        }
+
+        #[inline]
+        pub(crate) fn get_resolution_id(&self, id: NodeId) -> Option<DefId> {
+            self.0.get_partial_res(id).and_then(|r| r.expect_full_res().opt_def_id())
+        }
+    }
+}
+
+impl<'tcx> wrapper::DelegationResolverWrapper<'_, 'tcx> {
     pub(super) fn resolve_delegation(
         &self,
         delegation: &Delegation,
         span: Span,
     ) -> Result<DelegationResolution<'tcx>, ErrorGuaranteed> {
-        let tcx = self.0.tcx();
-        let def_id = self.0.owner_id();
+        let tcx = self.tcx();
+        let def_id = self.owner_id();
 
         // Delegation can be missing from the `delegations_resolutions` table
         // in illegal places such as function bodies in extern blocks (see #151356).
@@ -133,14 +137,14 @@ impl<'tcx, T: DelegationResolver<'tcx>> DelegationResolverWrapper<'_, T> {
                 param_count,
             )?,
             source: delegation.source,
-            call_path_res: self.0.get_resolution_id(delegation.id),
+            call_path_res: self.get_resolution_id(delegation.id),
             output_self_mapping: self.should_map_return_value(delegation),
             generics: self.resolve_generics(delegation, sig_id),
         })
     }
 
     fn check_for_cycles(&self, mut def_id: DefId, span: Span) -> Result<(), ErrorGuaranteed> {
-        let tcx = self.0.tcx();
+        let tcx = self.tcx();
         let mut visited: FxHashSet<DefId> = Default::default();
 
         loop {
@@ -173,7 +177,7 @@ impl<'tcx, T: DelegationResolver<'tcx>> DelegationResolverWrapper<'_, T> {
         is_method: bool,
         param_count: usize,
     ) -> Result<bool, ErrorGuaranteed> {
-        let tcx = self.0.tcx();
+        let tcx = self.tcx();
         let should_generate_block = is_method
             || matches!(tcx.def_kind(sig_id), DefKind::Fn)
             || matches!(delegation.source, DelegationSource::Single);
@@ -187,11 +191,11 @@ impl<'tcx, T: DelegationResolver<'tcx>> DelegationResolverWrapper<'_, T> {
             return Err(tcx.dcx().emit_err(err));
         }
 
-        struct DefinitionsFinder<'a, T> {
-            ctx: &'a T,
+        struct DefinitionsFinder<'a, 'hir> {
+            ctx: &'a wrapper::DelegationResolverWrapper<'a, 'hir>,
         }
 
-        impl<'a, 'hir, T: DelegationResolver<'hir>> Visitor<'a> for DefinitionsFinder<'a, T> {
+        impl<'a> Visitor<'a> for DefinitionsFinder<'a, '_> {
             type Result = ControlFlow<()>;
 
             fn visit_id(&mut self, id: NodeId) -> Self::Result {
@@ -202,7 +206,7 @@ impl<'tcx, T: DelegationResolver<'tcx>> DelegationResolverWrapper<'_, T> {
             }
         }
 
-        let mut collector = DefinitionsFinder { ctx: self.0 };
+        let mut collector = DefinitionsFinder { ctx: self };
 
         let contains_defs = collector.visit_block(block).is_break();
 
@@ -221,8 +225,8 @@ impl<'tcx, T: DelegationResolver<'tcx>> DelegationResolverWrapper<'_, T> {
             return None;
         }
 
-        let tcx = self.0.tcx();
-        let parent = tcx.local_parent(self.0.owner_id());
+        let tcx = self.tcx();
+        let parent = tcx.local_parent(self.owner_id());
         let parent_kind = tcx.def_kind(parent);
 
         // Apply wrapping for delegations inside
@@ -243,7 +247,7 @@ impl<'tcx, T: DelegationResolver<'tcx>> DelegationResolverWrapper<'_, T> {
 
         // Check that delegation path resolves to a trait AssocFn, not to a free method.
         Some((parent, is_trait_impl)).filter(|_| {
-            self.0.get_resolution_id(delegation.id).is_some_and(|id| {
+            self.get_resolution_id(delegation.id).is_some_and(|id| {
                 tcx.def_kind(id) == DefKind::AssocFn
                     // Check that the return type of the callee is `Self` param.
                     // After previous check we are sure that `sig_id` and `delegation.id`
