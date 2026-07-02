@@ -706,7 +706,9 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
-        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg)
+        | InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::vreg)
+        | InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::xreg) => "f",
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) => "a",
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => "d",
@@ -815,6 +817,12 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         }
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::vreg) => {
+            cx.type_vector(cx.type_i32(), 4)
+        }
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::xreg) => {
+            cx.type_vector(cx.type_i32(), 8)
+        }
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => cx.type_i16(),
@@ -1013,7 +1021,22 @@ fn modifier_to_gcc(
             }
         }
         InlineAsmRegClass::Hexagon(_) => None,
-        InlineAsmRegClass::LoongArch(_) => None,
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => None,
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) => modifier,
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::vreg) => {
+            if modifier.is_none() {
+                Some('w')
+            } else {
+                modifier
+            }
+        }
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::xreg) => {
+            if modifier.is_none() {
+                Some('u')
+            } else {
+                modifier
+            }
+        }
         InlineAsmRegClass::Mips(_) => None,
         InlineAsmRegClass::Nvptx(_) => None,
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::vsreg) => {

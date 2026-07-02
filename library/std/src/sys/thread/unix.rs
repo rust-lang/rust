@@ -12,7 +12,12 @@ use crate::mem::{self, DropGuard, ManuallyDrop};
 use crate::num::NonZero;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
-#[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
+#[cfg(any(
+    target_os = "solaris",
+    target_os = "illumos",
+    target_os = "nto",
+    target_os = "qnx",
+))]
 use crate::sys::weak::weak;
 use crate::thread::ThreadInit;
 use crate::time::Duration;

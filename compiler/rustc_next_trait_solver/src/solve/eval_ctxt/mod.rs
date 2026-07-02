@@ -8,7 +8,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
-use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
+use rustc_type_ir::search_graph::{CandidateHeadUsages, IncreaseDepthForNested, PathKind};
 use rustc_type_ir::solve::{
     AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
@@ -484,7 +484,7 @@ where
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
         let (normalization_nested_goals, goal_evaluation) =
-            self.evaluate_goal_raw(source, goal, stalled_on)?;
+            self.evaluate_goal_raw(source, goal, stalled_on, IncreaseDepthForNested::Yes)?;
         assert!(normalization_nested_goals.is_empty());
         Ok(goal_evaluation)
     }
@@ -576,6 +576,7 @@ where
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
+        increase_depth_for_nested: IncreaseDepthForNested,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
         if let RerunStalled::WontMakeProgress(stalled_certainty) =
             self.rerunning_stalled_goal_may_make_progress(stalled_on.as_ref())
@@ -591,7 +592,7 @@ where
             ));
         }
 
-        self.evaluate_goal_cold(source, goal)
+        self.evaluate_goal_cold(source, goal, increase_depth_for_nested)
     }
 
     #[cold]
@@ -600,6 +601,7 @@ where
         &mut self,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
+        increase_depth_for_nested: IncreaseDepthForNested,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
@@ -663,6 +665,7 @@ where
                     self.cx(),
                     canonical_goal,
                     step_kind,
+                    increase_depth_for_nested,
                     &mut inspect::ProofTreeBuilder::new_noop(),
                 );
 
@@ -702,6 +705,7 @@ where
                 self.cx(),
                 canonical_goal,
                 step_kind,
+                increase_depth_for_nested,
                 &mut inspect::ProofTreeBuilder::new_noop(),
             );
             assert!(

@@ -2137,18 +2137,17 @@ impl<'tcx> TyCtxt<'tcx> {
         ident
     }
 
-    // FIXME(vincenzopalazzo): move the HirId to a LocalDefId
     pub fn adjust_ident_and_get_scope(
         self,
         mut ident: Ident,
         scope: DefId,
-        block: hir::HirId,
+        item_id: LocalDefId,
     ) -> (Ident, DefId) {
         let scope = ident
             .span
             .normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope))
             .and_then(|actual_expansion| actual_expansion.expn_data().parent_module)
-            .unwrap_or_else(|| self.parent_module(block).to_def_id());
+            .unwrap_or_else(|| self.parent_module_from_def_id(item_id).to_def_id());
         (ident, scope)
     }
 

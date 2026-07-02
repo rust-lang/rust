@@ -1199,7 +1199,7 @@ pub trait LintStoreExpand {
 
 type LintStoreExpandDyn<'a> = Option<&'a (dyn LintStoreExpand + 'a)>;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct ModuleData {
     /// Path to the module starting from the crate name, like `my_crate::foo::bar`.
     pub mod_path: Vec<Ident>,

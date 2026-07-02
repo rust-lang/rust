@@ -2764,9 +2764,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return Ty::new_error(self.tcx(), guar);
                     }
 
-                    let fn_body_hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
                     let (ident, def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), fn_body_hir_id);
+                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.body_id);
 
                     if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
                         self.write_field_index(expr.hir_id, idx);
@@ -3768,9 +3767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             match container.kind() {
                 ty::Adt(container_def, args) if container_def.is_enum() => {
-                    let block = self.tcx.local_def_id_to_hir_id(self.body_id);
-                    let (ident, _def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
+                    let ident = self.tcx.adjust_ident(field, container_def.did());
 
                     if !self.tcx.features().offset_of_enum() {
                         rustc_session::errors::feature_err(
@@ -3806,7 +3803,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         break;
                     };
                     let (subident, sub_def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, block);
+                        self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, self.body_id);
 
                     let Some((subindex, field)) = variant
                         .fields
@@ -3854,9 +3851,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
                 ty::Adt(container_def, args) => {
-                    let block = self.tcx.local_def_id_to_hir_id(self.body_id);
-                    let (ident, def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
+                    let (ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
+                        field,
+                        container_def.did(),
+                        self.body_id,
+                    );
 
                     let fields = &container_def.non_enum_variant().fields;
                     if let Some((index, field)) = fields

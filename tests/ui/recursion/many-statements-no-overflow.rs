@@ -1,7 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29466>.
+//! This used to overflow stack.
 // ignore-tidy-filelength
-//
 //@ run-pass
-
 // FIXME(#61117): Respect debuginfo-level-tests, do not force debuginfo-level=0
 //@ compile-flags: -Cdebuginfo=0
 
