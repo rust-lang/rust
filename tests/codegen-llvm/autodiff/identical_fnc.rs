@@ -1,4 +1,4 @@
-//@ compile-flags: -Zautodiff=Enable -C opt-level=3  -Clto=fat
+//@ compile-flags: -Zautodiff=Enable -Zautodiff_post_passes=mergefunc,function(mem2reg,instsimplify,simplifycfg) -C opt-level=3  -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 //
@@ -32,9 +32,9 @@ fn square2(x: &f64) -> f64 {
 // CHECK-NOT:br
 // CHECK-NOT:ret
 // CHECK:; call identical_fnc::d_square
-// CHECK-NEXT:call fastcc void @[[HASH:.+]](double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx1)
+// CHECK-NEXT:call fastcc void @[[HASH:.+]](ptr {{.*}}, ptr {{.*}})
 // CHECK:; call identical_fnc::d_square
-// CHECK-NEXT:call fastcc void @[[HASH]](double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx2)
+// CHECK-NEXT:call fastcc void @[[HASH]](ptr {{.*}}, ptr {{.*}})
 
 fn main() {
     let x = std::hint::black_box(3.0);
