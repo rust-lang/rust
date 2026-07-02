@@ -47,6 +47,9 @@ pub(super) mod wrapper {
 
     use crate::LoweringContext;
 
+    /// Abstracts operations that are needed for delegation's resolution, so resolution
+    /// is independent of `LoweringContext`. Placed in a separate module so `LoweringContext`
+    /// can not be accessed directly.
     pub(crate) struct DelegationResolverWrapper<'a, 'hir>(&'a LoweringContext<'a, 'hir>);
 
     impl<'a, 'tcx> DelegationResolverWrapper<'a, 'tcx> {
