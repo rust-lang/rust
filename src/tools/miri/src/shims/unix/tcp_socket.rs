@@ -12,7 +12,7 @@ use rustc_const_eval::interpret::{InterpResult, interp_ok};
 use rustc_middle::throw_unsup_format;
 use rustc_target::spec::Os;
 
-use crate::shims::files::{EvalContextExt as _, FdId, FileDescription, FileDescriptionRef};
+use crate::shims::files::{EvalContextExt as _, FdId, FdNum, FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::{SocketFamily, UnixSocketFileDescription};
 use crate::shims::unix::socket_address::EvalContextExt as _;
@@ -404,149 +404,48 @@ impl UnixSocketFileDescription for TcpSocket {
 
         interp_ok(Ok(()))
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// For more information on the arguments see the accept manpage:
-    /// <https://linux.die.net/man/2/accept4>
-    fn accept4(
-        &mut self,
-        socket: &OpTy<'tcx>,
-        address: &OpTy<'tcx>,
-        address_len: &OpTy<'tcx>,
-        flags: Option<&OpTy<'tcx>>,
-        // Location where the output scalar is written to.
-        dest: &MPlaceTy<'tcx>,
+    fn accept<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        is_client_sock_non_block: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<(FdNum, SocketAddr), IoError>>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let address_ptr = this.read_pointer(address)?;
-        let address_len_ptr = this.read_pointer(address_len)?;
-        let mut flags =
-            if let Some(flags) = flags { this.read_scalar(flags)?.to_i32()? } else { 0 };
-
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
-        };
-
-        assert!(this.machine.communicate(), "cannot have `TcpSocket` with isolation enabled!");
-        this.ensure_not_failed(&socket, "accept4")?;
-
-        if !matches!(*socket.state.borrow(), SocketState::Listening(_)) {
+        if !matches!(*self.state.borrow(), SocketState::Listening(_)) {
             throw_unsup_format!(
-                "accept4: accepting incoming connections is only allowed when socket is listening"
+                "accept: accepting incoming connections is only allowed when tcp socket is listening"
             )
         };
 
-        let mut is_client_sock_nonblock = false;
-
-        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
-        // if there is anything left at the end, that's an unsupported flag.
-        if matches!(
-            this.tcx.sess.target.os,
-            Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
-        ) {
-            // SOCK_NONBLOCK and SOCK_CLOEXEC only exist on Linux, Android, FreeBSD,
-            // Solaris, and Illumos targets.
-            let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
-            let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
-            if flags & sock_nonblock == sock_nonblock {
-                is_client_sock_nonblock = true;
-                flags &= !sock_nonblock;
-            }
-            if flags & sock_cloexec == sock_cloexec {
-                // We don't support `exec` so we can ignore this.
-                flags &= !sock_cloexec;
-            }
-        }
-
-        if flags != 0 {
-            throw_unsup_format!(
-                "accept4: flag {flags:#x} is unsupported, only SOCK_CLOEXEC \
-                and SOCK_NONBLOCK are allowed",
-            );
-        }
-
-        if socket.is_non_block.get() {
+        if self.is_non_block.get() {
             // We have a non-blocking socket and thus don't want to block until
             // we can accept an incoming connection.
-            match this.try_non_block_accept(&socket, is_client_sock_nonblock)? {
-                Ok((sockfd, address)) => {
-                    if address_ptr != Pointer::null() {
-                        // We only attempt a write if the address pointer is not a null pointer.
-                        // If the address pointer is a null pointer the user isn't interested in the
-                        // address and we don't need to write anything.
-                        this.write_socket_address(
-                            &address,
-                            address_ptr,
-                            address_len_ptr,
-                            "accept4",
-                        )?;
-                    }
-
-                    // We need to create the scalar using the destination size since
-                    // `syscall(SYS_accept4, ...)` returns a long which doesn't match
-                    // the int returned from the `accept`/`accept4` syscalls.
-                    // See <https://man7.org/linux/man-pages/man2/syscall.2.html>.
-                    this.write_scalar(Scalar::from_int(sockfd, dest.layout.size), dest)
-                }
-                Err(e) => this.set_errno_and_return_neg1(e, dest),
-            }
+            let result = ecx.try_non_block_accept(&self, is_client_sock_non_block)?;
+            finish.call(ecx, result)
         } else {
             // The socket is in blocking mode and thus the accept call should block
             // until an incoming connection is ready.
 
-            if socket.read_timeout.get().is_some() {
+            if self.read_timeout.get().is_some() {
                 // Some Unixes like Linux also apply the SO_RCVTIMEO socket option
                 // to `accept` calls:
                 // <https://github.com/torvalds/linux/blob/HEAD/net/ipv4/inet_connection_sock.c#L668-L675>
                 // This is currently not supported by Miri.
                 throw_unsup_format!(
-                    "accept4: blocking accept is not supported when SO_RCVTIMEO is non-zero"
+                    "accept: blocking tcp accept is not supported when SO_RCVTIMEO is non-zero"
                 )
             }
 
-            let dest = dest.clone();
-            this.block_for_accept(
-                socket,
-                is_client_sock_nonblock,
-                callback!(
-                    @capture<'tcx> {
-                        address_ptr: Pointer,
-                        address_len_ptr: Pointer,
-                        dest: MPlaceTy<'tcx>
-                    } |this, result: Result<(i32, SocketAddr), IoError>| {
-                        let (client_sockfd, address) = match result {
-                            Ok((sockfd, address)) => (sockfd, address),
-                            Err(e) => return this.set_errno_and_return_neg1(e, &dest),
-                        };
-
-                        if address_ptr != Pointer::null() {
-                            // We only attempt a write if the address pointer is not a null pointer.
-                            // If the address pointer is a null pointer the user isn't interested in the
-                            // address and we don't need to write anything.
-                            this.write_socket_address(&address, address_ptr, address_len_ptr, "accept4")?;
-                        }
-
-                        // We need to create the scalar using the destination size since
-                        // `syscall(SYS_accept4, ...)` returns a long which doesn't match
-                        // the int returned from the `accept`/`accept4` syscalls.
-                        // See <https://man7.org/linux/man-pages/man2/syscall.2.html>.
-                        this.write_scalar(Scalar::from_int(client_sockfd, dest.layout.size), &dest)
-                    }
-                )
-            )
+            ecx.block_for_accept(self, is_client_sock_non_block, finish)
         }
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn connect(
         &mut self,
         socket: &OpTy<'tcx>,

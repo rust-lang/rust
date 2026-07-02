@@ -284,4 +284,92 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(e) => this.set_errno_and_return_neg1_i32(e),
         }
     }
+
+    /// For more information on the arguments see the accept manpage:
+    /// <https://linux.die.net/man/2/accept4>
+    fn accept4(
+        &mut self,
+        socket: &OpTy<'tcx>,
+        address: &OpTy<'tcx>,
+        address_len: &OpTy<'tcx>,
+        flags: Option<&OpTy<'tcx>>,
+        // Location where the output scalar is written to.
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let address_ptr = this.read_pointer(address)?;
+        let address_len_ptr = this.read_pointer(address_len)?;
+        let mut flags =
+            if let Some(flags) = flags { this.read_scalar(flags)?.to_i32()? } else { 0 };
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        };
+
+        let socket = fd.as_unix(this).as_socket(this);
+
+        let mut is_client_sock_nonblock = false;
+
+        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
+        // if there is anything left at the end, that's an unsupported flag.
+        if matches!(
+            this.tcx.sess.target.os,
+            Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
+        ) {
+            // SOCK_NONBLOCK and SOCK_CLOEXEC only exist on Linux, Android, FreeBSD,
+            // Solaris, and Illumos targets.
+            let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
+            let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
+            if flags & sock_nonblock == sock_nonblock {
+                is_client_sock_nonblock = true;
+                flags &= !sock_nonblock;
+            }
+            if flags & sock_cloexec == sock_cloexec {
+                // We don't support `exec` so we can ignore this.
+                flags &= !sock_cloexec;
+            }
+        }
+
+        if flags != 0 {
+            throw_unsup_format!(
+                "accept4: flag {flags:#x} is unsupported, only SOCK_CLOEXEC \
+                and SOCK_NONBLOCK are allowed",
+            );
+        }
+
+        let dest = dest.clone();
+        socket.accept(
+            this.machine.communicate(),
+            is_client_sock_nonblock,
+            this,
+            callback!(
+                @capture<'tcx> {
+                    address_ptr: Pointer,
+                    address_len_ptr: Pointer,
+                    dest: MPlaceTy<'tcx>
+                } |this, result: Result<(i32, SocketAddr), IoError>| {
+                    let (client_sockfd, address) = match result {
+                        Ok((sockfd, address)) => (sockfd, address),
+                        Err(e) => return this.set_errno_and_return_neg1(e, &dest),
+                    };
+
+                    if address_ptr != Pointer::null() {
+                        // We only attempt a write if the address pointer is not a null pointer.
+                        // If the address pointer is a null pointer the user isn't interested in the
+                        // address and we don't need to write anything.
+                        this.write_socket_address(&address, address_ptr, address_len_ptr, "accept4")?;
+                    }
+
+                    // We need to create the scalar using the destination size since
+                    // `syscall(SYS_accept4, ...)` returns a long which doesn't match
+                    // the int returned from the `accept`/`accept4` syscalls.
+                    // See <https://man7.org/linux/man-pages/man2/syscall.2.html>.
+                    this.write_scalar(Scalar::from_int(client_sockfd, dest.layout.size), &dest)
+                }
+            ),
+        )
+    }
 }
