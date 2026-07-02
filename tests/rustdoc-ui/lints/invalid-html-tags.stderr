@@ -28,6 +28,12 @@ error: unclosed HTML tag `script`
 LL | /// <script>
    |     ^^^^^^^^
 
+error: unopened HTML tag `hello`
+  --> $DIR/invalid-html-tags.rs:24:5
+   |
+LL | /// </hello>
+   |     ^^^^^^^^
+
 error: unclosed HTML tag `h2`
   --> $DIR/invalid-html-tags.rs:19:7
    |
@@ -39,12 +45,6 @@ error: unclosed HTML tag `h3`
    |
 LL | ///     <h3>
    |         ^^^^
-
-error: unopened HTML tag `hello`
-  --> $DIR/invalid-html-tags.rs:24:5
-   |
-LL | /// </hello>
-   |     ^^^^^^^^
 
 error: unclosed HTML tag `p`
   --> $DIR/invalid-html-tags.rs:29:14
