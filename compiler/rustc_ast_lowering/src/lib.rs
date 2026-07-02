@@ -100,6 +100,48 @@ pub fn provide(providers: &mut Providers) {
     providers.lower_to_hir = lower_to_hir;
 }
 
+pub(crate) mod re_lowering {
+    use rustc_ast::NodeId;
+    use rustc_ast::node_id::NodeMap;
+    use rustc_hir::{self as hir};
+
+    use crate::LoweringContext;
+
+    #[derive(Debug, Default)]
+    pub(crate) struct ReloweringChecker {
+        node_id_to_local_id: NodeMap<hir::ItemLocalId>,
+        relowering_permissions_count: usize,
+    }
+
+    impl ReloweringChecker {
+        pub(crate) fn check(&mut self, ast_node_id: NodeId, local_id: hir::ItemLocalId) {
+            if self.relowering_permissions_count == 0 {
+                let old = self.node_id_to_local_id.insert(ast_node_id, local_id);
+                assert_eq!(old, None);
+            }
+        }
+
+        pub(crate) fn allow_relowering<'a, 'hir, TRes>(
+            ctx: &mut LoweringContext<'a, 'hir>,
+            op: impl FnOnce(&mut LoweringContext<'a, 'hir>) -> TRes,
+        ) -> TRes {
+            #[cfg(debug_assertions)]
+            {
+                ctx.relowering_checker.relowering_permissions_count += 1;
+            }
+
+            let res = op(ctx);
+
+            #[cfg(debug_assertions)]
+            {
+                ctx.relowering_checker.relowering_permissions_count -= 1;
+            }
+
+            res
+        }
+    }
+}
+
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
     resolver: &'a ResolverAstLowering<'hir>,
@@ -146,7 +188,7 @@ struct LoweringContext<'a, 'hir> {
     ident_and_label_to_local_id: NodeMap<hir::ItemLocalId>,
     /// NodeIds that are lowered inside the current HIR owner. Only used for duplicate lowering check.
     #[cfg(debug_assertions)]
-    node_id_to_local_id: NodeMap<hir::ItemLocalId>,
+    relowering_checker: re_lowering::ReloweringChecker,
     /// The `NodeId` space is split in two.
     /// `0..resolver.next_node_id` are created by the resolver on the AST.
     /// The higher part `resolver.next_node_id..next_node_id` are created during lowering.
@@ -205,8 +247,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // and we never call `lower_node_id(owner)`.
             item_local_id_counter: hir::ItemLocalId::new(1),
             ident_and_label_to_local_id: Default::default(),
+
             #[cfg(debug_assertions)]
-            node_id_to_local_id: Default::default(),
+            relowering_checker: Default::default(),
+
             trait_map: Default::default(),
             next_node_id: resolver.next_node_id,
             node_id_to_def_id: NodeMap::default(),
@@ -808,7 +852,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let current_ident_and_label_to_local_id = mem::take(&mut self.ident_and_label_to_local_id);
 
         #[cfg(debug_assertions)]
-        let current_node_id_to_local_id = mem::take(&mut self.node_id_to_local_id);
+        let current_relowering_checker = mem::take(&mut self.relowering_checker);
         let current_trait_map = mem::take(&mut self.trait_map);
         let current_owner = mem::replace(&mut self.current_hir_id_owner, owner_id);
         let current_local_counter =
@@ -824,10 +868,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Always allocate the first `HirId` for the owner itself.
         #[cfg(debug_assertions)]
-        {
-            let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::ZERO);
-            debug_assert_eq!(_old, None);
-        }
+        self.relowering_checker.check(owner, hir::ItemLocalId::ZERO);
 
         let item = f(self);
         assert_eq!(owner_id, item.def_id());
@@ -845,7 +886,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         #[cfg(debug_assertions)]
         {
-            self.node_id_to_local_id = current_node_id_to_local_id;
+            self.relowering_checker = current_relowering_checker;
         }
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
@@ -936,10 +977,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Check whether the same `NodeId` is lowered more than once.
         #[cfg(debug_assertions)]
-        {
-            let old = self.node_id_to_local_id.insert(ast_node_id, local_id);
-            assert_eq!(old, None);
-        }
+        self.relowering_checker.check(ast_node_id, local_id);
 
         hir_id
     }
