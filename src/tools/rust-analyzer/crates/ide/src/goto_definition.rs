@@ -999,6 +999,21 @@ impl Trait for T {
 }"#,
         );
     }
+
+    #[test]
+    fn goto_def_array_length_prefers_value_namespace() {
+        check(
+            r#"
+struct N;
+
+trait Trait {}
+
+impl<const N: usize> Trait for [N; N$0] {}
+         //^
+"#,
+        );
+    }
+
     #[test]
     fn goto_def_in_mac_call_in_attr_invoc() {
         check(

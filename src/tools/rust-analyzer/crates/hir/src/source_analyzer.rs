@@ -1155,7 +1155,7 @@ impl<'db> SourceAnalyzer<'db> {
         let parent = path.syntax().parent();
         let parent = || parent.clone();
 
-        let mut prefer_value_ns = false;
+        let mut prefer_value_ns = parent().and_then(ast::PathExpr::cast).is_some();
         let resolved = (|| {
             let infer = self.infer()?;
             if let Some(path_expr) = parent().and_then(ast::PathExpr::cast) {
