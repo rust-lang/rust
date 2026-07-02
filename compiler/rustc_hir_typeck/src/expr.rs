@@ -635,6 +635,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let f = args.type_at(0);
                 let t = args.type_at(1);
                 let r = args.type_at(2);
+                // Defer offload checks to check generics later once types are fully inferred.
                 self.deferred_offload_checks.borrow_mut().push((f, t, r, expr.hir_id));
             }
             if !tcx.features().unsized_fn_params() {
