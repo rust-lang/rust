@@ -37,36 +37,30 @@
 //! also be emitted during HIR ty lowering.
 
 use std::iter;
-use std::ops::ControlFlow;
 
 use ast::visit::Visitor;
-use hir::def::{DefKind, Res};
-use hir::{BodyId, HirId};
+use generics::GenericsGenerationResult;
+use hir::HirId;
+use hir::def::Res;
 use rustc_abi::ExternAbi;
 use rustc_ast as ast;
-use rustc_ast::node_id::NodeMap;
 use rustc_ast::*;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::{self as hir, FnDeclFlags};
-use rustc_middle::span_bug;
-use rustc_middle::ty::{Asyncness, PerOwnerResolverData};
-use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_middle::ty::Asyncness;
+use rustc_span::def_id::DefId;
 use rustc_span::symbol::kw;
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 
-use crate::delegation::generics::{
-    GenericsGenerationResult, GenericsGenerationResults, GenericsPosition,
-};
-use crate::diagnostics::{
-    CycleInDelegationSignatureResolution, DelegationAttemptedBlockWithDefsDeletion,
-    DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
-};
+use crate::delegation::generics::{GenericsGenerationResults, GenericsPosition};
+use crate::delegation::resolution::wrapper::DelegationResolverWrapper;
+use crate::delegation::resolution::{DelegationResolution, ParamInfo};
 use crate::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
 };
 
+mod attributes;
 mod generics;
+mod resolution;
 
 pub(crate) struct DelegationResults<'hir> {
     pub body_id: hir::BodyId,
@@ -75,149 +69,24 @@ pub(crate) struct DelegationResults<'hir> {
     pub generics: &'hir hir::Generics<'hir>,
 }
 
-struct AttrAdditionInfo {
-    pub equals: fn(&hir::Attribute) -> bool,
-    pub kind: AttrAdditionKind,
-}
-
-enum AttrAdditionKind {
-    Default { factory: fn(Span) -> hir::Attribute },
-    Inherit { factory: fn(Span, &hir::Attribute) -> hir::Attribute },
-}
-
-/// Summary info about function parameters.
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-struct ParamInfo {
-    /// The number of function parameters, including any C variadic `...` parameter.
-    pub param_count: usize,
-
-    /// Whether the function arguments end in a C variadic `...` parameter.
-    pub c_variadic: bool,
-
-    /// The index of the splatted parameter, if any.
-    pub splatted: Option<u8>,
-}
-
-const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
-
-static ATTRS_ADDITIONS: &[AttrAdditionInfo] = &[
-    AttrAdditionInfo {
-        equals: |a| matches!(a, hir::Attribute::Parsed(AttributeKind::MustUse { .. })),
-        kind: AttrAdditionKind::Inherit {
-            factory: |span, original_attr| {
-                let reason = match original_attr {
-                    hir::Attribute::Parsed(AttributeKind::MustUse { reason, .. }) => *reason,
-                    _ => None,
-                };
-
-                hir::Attribute::Parsed(AttributeKind::MustUse { span, reason })
-            },
-        },
-    },
-    AttrAdditionInfo {
-        equals: |a| matches!(a, hir::Attribute::Parsed(AttributeKind::Inline(..))),
-        kind: AttrAdditionKind::Default {
-            factory: |span| hir::Attribute::Parsed(AttributeKind::Inline(InlineAttr::Hint, span)),
-        },
-    },
-];
-
 impl<'hir> LoweringContext<'_, 'hir> {
-    fn is_method(&self, def_id: DefId, span: Span) -> bool {
-        match self.tcx.def_kind(def_id) {
-            DefKind::Fn => false,
-            DefKind::AssocFn => self.tcx.associated_item(def_id).is_method(),
-            _ => span_bug!(span, "unexpected DefKind for delegation item"),
-        }
-    }
-
-    fn check_for_cycles(&self, mut def_id: DefId, span: Span) -> Result<(), ErrorGuaranteed> {
-        let mut visited: FxHashSet<DefId> = Default::default();
-
-        loop {
-            visited.insert(def_id);
-
-            // If def_id is in local crate and it corresponds to another delegation
-            // it means that we refer to another delegation as a callee, so in order to obtain
-            // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
-            if let Some(local_id) = def_id.as_local()
-                && let Some(info) = self.tcx.resolutions(()).delegation_infos.get(&local_id)
-                && let Ok(id) = info.resolution_id
-            {
-                def_id = id;
-                if visited.contains(&def_id) {
-                    return Err(match visited.len() {
-                        1 => self.dcx().emit_err(UnresolvedDelegationCallee { span }),
-                        _ => self.dcx().emit_err(CycleInDelegationSignatureResolution { span }),
-                    });
-                }
-            } else {
-                return Ok(());
-            }
-        }
-    }
-
-    pub(crate) fn lower_delegation(
-        &mut self,
-        delegation: &Delegation,
-        item_id: NodeId,
-    ) -> DelegationResults<'hir> {
+    pub(crate) fn lower_delegation(&mut self, delegation: &Delegation) -> DelegationResults<'hir> {
         let span = self.lower_span(delegation.last_segment_span());
 
-        let Some(info) = self.tcx.resolutions(()).delegation_infos.get(&self.owner.def_id) else {
-            self.dcx().span_delayed_bug(
-                span,
-                format!("delegation resolution record was not found for {:?}", self.owner.def_id),
-            );
-
+        let resolver = DelegationResolverWrapper::new(self);
+        let Ok((res, mut generics)) = resolver.resolve_delegation(delegation, span) else {
             return self.generate_delegation_error(span, delegation);
         };
 
-        let sig_id = info.resolution_id.and_then(|id| self.check_for_cycles(id, span).map(|_| id));
+        self.add_attrs_if_needed(&res);
 
-        // Delegation can be missing from the `delegations_resolutions` table
-        // in illegal places such as function bodies in extern blocks (see #151356).
-        let Ok(sig_id) = sig_id else {
-            self.dcx().span_delayed_bug(
-                span,
-                format!("LoweringContext: the delegation {:?} is unresolved", item_id),
-            );
+        let (body_id, call_expr_id, unused_target_expr) =
+            self.lower_delegation_body(delegation, &res, &mut generics);
 
-            return self.generate_delegation_error(span, delegation);
-        };
+        let decl = self.lower_delegation_decl(&res, &generics, call_expr_id, unused_target_expr);
 
-        self.add_attrs_if_needed(span, sig_id);
+        let sig = self.lower_delegation_sig(res.sig_id, decl, span);
 
-        let is_method = self.is_method(sig_id, span);
-
-        let param_info = self.param_info(sig_id);
-
-        if !self.check_block_soundness(delegation, sig_id, is_method, param_info.param_count) {
-            return self.generate_delegation_error(span, delegation);
-        }
-
-        let mut generics = self.uplift_delegation_generics(delegation, sig_id);
-
-        let (body_id, call_expr_id, unused_target_expr) = self.lower_delegation_body(
-            delegation,
-            sig_id,
-            param_info.param_count,
-            &mut generics,
-            span,
-        );
-
-        let decl = self.lower_delegation_decl(
-            delegation.source,
-            sig_id,
-            param_info,
-            span,
-            &generics,
-            delegation.id,
-            call_expr_id,
-            unused_target_expr,
-        );
-
-        let sig = self.lower_delegation_sig(sig_id, decl, span);
         let ident = self.lower_ident(delegation.ident);
 
         let generics = self.arena.alloc(hir::Generics {
@@ -231,160 +100,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         DelegationResults { body_id, sig, ident, generics }
     }
 
-    fn check_block_soundness(
-        &self,
-        delegation: &Delegation,
-        sig_id: DefId,
-        is_method: bool,
-        param_count: usize,
-    ) -> bool {
-        let Some(block) = delegation.body.as_ref() else { return true };
-        let should_generate_block = self.should_generate_block(delegation, sig_id, is_method);
-
-        // Report an error if user has explicitly specified delegation's target expression
-        // in a single delegation when reused function has no params.
-        if param_count == 0 && should_generate_block {
-            self.dcx().emit_err(DelegationBlockSpecifiedWhenNoParams { span: block.span });
-            return false;
-        }
-
-        struct DefinitionsFinder<'a> {
-            all_owners: &'a NodeMap<PerOwnerResolverData<'a>>,
-            // `self.owner.node_id_to_def_id`
-            nested_def_ids: &'a NodeMap<LocalDefId>,
-        }
-
-        impl<'a> ast::visit::Visitor<'a> for DefinitionsFinder<'a> {
-            type Result = ControlFlow<()>;
-
-            fn visit_id(&mut self, id: NodeId) -> Self::Result {
-                /*
-                    (from `tests\ui\delegation\target-expr-removal-defs-inside.rs`):
-                    ```rust
-                        reuse impl Trait for S1 {
-                            some::path::<{ fn foo() {} }>::xd();
-                            fn foo() {}
-                            self.0
-                        }
-                    ```
-
-                    Constant from unresolved path will be in `nested_owners`,
-                    `fn foo() {}` will not be in `nested_owners` but will be in `owners`,
-                    both have `LocalDefId`, so we check those two maps.
-                */
-                match self.all_owners.contains_key(&id) || self.nested_def_ids.contains_key(&id) {
-                    true => ControlFlow::Break(()),
-                    false => ControlFlow::Continue(()),
-                }
-            }
-        }
-
-        let mut collector = DefinitionsFinder {
-            all_owners: &self.resolver.owners,
-            nested_def_ids: &self.owner.node_id_to_def_id,
-        };
-
-        let contains_defs = collector.visit_block(block).is_break();
-
-        // If there are definitions inside and we can't delete target expression, so report an error.
-        // FIXME(fn_delegation): support deletion of target expression with defs inside.
-        if !should_generate_block && contains_defs {
-            self.dcx().emit_err(DelegationAttemptedBlockWithDefsDeletion { span: block.span });
-            return false;
-        }
-
-        true
-    }
-
-    fn should_generate_block(
-        &self,
-        delegation: &Delegation,
-        sig_id: DefId,
-        is_method: bool,
-    ) -> bool {
-        is_method
-            || matches!(self.tcx.def_kind(sig_id), DefKind::Fn)
-            || matches!(delegation.source, DelegationSource::Single)
-    }
-
-    fn add_attrs_if_needed(&mut self, span: Span, sig_id: DefId) {
-        let new_attrs =
-            self.create_new_attrs(ATTRS_ADDITIONS, span, sig_id, self.attrs.get(&PARENT_ID));
-
-        if new_attrs.is_empty() {
-            return;
-        }
-
-        let new_arena_allocated_attrs = match self.attrs.get(&PARENT_ID) {
-            Some(existing_attrs) => self.arena.alloc_from_iter(
-                existing_attrs.iter().map(|a| a.clone()).chain(new_attrs.into_iter()),
-            ),
-            None => self.arena.alloc_from_iter(new_attrs.into_iter()),
-        };
-
-        self.attrs.insert(PARENT_ID, new_arena_allocated_attrs);
-    }
-
-    fn create_new_attrs(
-        &self,
-        candidate_additions: &[AttrAdditionInfo],
-        span: Span,
-        sig_id: DefId,
-        existing_attrs: Option<&&[hir::Attribute]>,
-    ) -> Vec<hir::Attribute> {
-        candidate_additions
-            .iter()
-            .filter_map(|addition_info| {
-                if let Some(existing_attrs) = existing_attrs
-                    && existing_attrs
-                        .iter()
-                        .any(|existing_attr| (addition_info.equals)(existing_attr))
-                {
-                    return None;
-                }
-
-                match addition_info.kind {
-                    AttrAdditionKind::Default { factory } => Some(factory(span)),
-                    AttrAdditionKind::Inherit { factory, .. } =>
-                    {
-                        #[allow(deprecated)]
-                        self.tcx
-                            .get_all_attrs(sig_id)
-                            .iter()
-                            .find_map(|a| (addition_info.equals)(a).then(|| factory(span, a)))
-                    }
-                }
-            })
-            .collect::<Vec<_>>()
-    }
-
-    fn get_resolution_id(&self, node_id: NodeId) -> Option<DefId> {
-        self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
-    }
-
-    /// Returns function parameter info, including C variadic `...` and `#[splat]` if present.
-    fn param_info(&self, def_id: DefId) -> ParamInfo {
-        let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
-
-        ParamInfo {
-            param_count: sig.inputs().len() + usize::from(sig.c_variadic()),
-            c_variadic: sig.c_variadic(),
-            splatted: sig.splatted(),
-        }
-    }
-
     fn lower_delegation_decl(
         &mut self,
-        source: DelegationSource,
-        sig_id: DefId,
-        param_info: ParamInfo,
-        span: Span,
+        res: &DelegationResolution,
         generics: &GenericsGenerationResults<'hir>,
-        call_path_node_id: NodeId,
         call_expr_id: HirId,
         unused_target_expr: bool,
     ) -> &'hir hir::FnDecl<'hir> {
-        let ParamInfo { param_count, c_variadic, splatted } = param_info;
+        let &DelegationResolution { source, call_path_res, span, sig_id, .. } = res;
+        let ParamInfo { param_count, c_variadic, splatted } = res.param_info;
 
         // The last parameter in C variadic functions is skipped in the signature,
         // like during regular lowering.
@@ -404,7 +128,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 sig_id,
                 hir::InferDelegationSig::Output(self.arena.alloc(hir::DelegationInfo {
                     call_expr_id,
-                    call_path_res: self.get_resolution_id(call_path_node_id),
+                    call_path_res,
                     child_seg_id: generics.child.args_segment_id,
                     child_seg_id_for_sig: generics.child.segment_id_for_sig(),
                     parent_seg_id_for_sig: generics.parent.segment_id_for_sig(),
@@ -517,22 +241,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_delegation_body(
         &mut self,
         delegation: &Delegation,
-        sig_id: DefId,
-        param_count: usize,
+        res: &DelegationResolution,
         generics: &mut GenericsGenerationResults<'hir>,
-        span: Span,
-    ) -> (BodyId, HirId, bool) {
+    ) -> (hir::BodyId, HirId, bool) {
         let block = delegation.body.as_deref();
         let mut call_expr_id = HirId::INVALID;
         let mut unused_target_expr = false;
 
         let block_id = self.lower_body(|this| {
+            let &DelegationResolution {
+                param_info, span, should_generate_block, is_method, ..
+            } = res;
+
+            let ParamInfo { param_count, .. } = param_info;
+
             let mut parameters: Vec<hir::Param<'_>> = Vec::with_capacity(param_count);
             let mut args: Vec<hir::Expr<'_>> = Vec::with_capacity(param_count);
             let mut stmts: &[hir::Stmt<'hir>] = &[];
-
-            let is_method = this.is_method(sig_id, span);
-            let should_generate_block = this.should_generate_block(delegation, sig_id, is_method);
 
             // Consider non-specified target expression as generated,
             // as we do not want to emit error when target expression is
@@ -580,7 +305,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
 
             let (final_expr, hir_id) =
-                this.finalize_body_lowering(delegation, stmts, args, generics, span);
+                this.finalize_body_lowering(delegation, stmts, args, res, generics, span);
 
             call_expr_id = hir_id;
 
@@ -597,6 +322,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         delegation: &Delegation,
         stmts: &'hir [hir::Stmt<'hir>],
         args: Vec<hir::Expr<'hir>>,
+        res: &DelegationResolution,
         generics: &mut GenericsGenerationResults<'hir>,
         span: Span,
     ) -> (hir::Expr<'hir>, HirId) {
@@ -666,7 +392,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let args = self.arena.alloc_from_iter(args);
         let call = self.mk_expr(hir::ExprKind::Call(callee_path, args), span);
 
-        let expr = if let Some((parent, of_trait)) = self.should_wrap_return_value(delegation) {
+        let expr = if let Some((parent, of_trait)) = res.output_self_mapping {
             let res = Res::SelfTyAlias { alias_to: parent.to_def_id(), is_trait_impl: of_trait };
             let ident = Ident::new(kw::SelfUpper, span);
             let path = self.create_resolved_path(res, ident, span);
@@ -699,45 +425,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         (self.mk_expr(hir::ExprKind::Block(block, None), span), call.hir_id)
-    }
-
-    fn should_wrap_return_value(&self, delegation: &Delegation) -> Option<(LocalDefId, bool)> {
-        // Heuristic: don't do wrapping if there is no target expression.
-        if delegation.body.is_none() {
-            return None;
-        }
-
-        let tcx = self.tcx;
-        let parent = tcx.local_parent(self.owner.def_id);
-        let parent_kind = tcx.def_kind(parent);
-
-        // Apply wrapping for delegations inside
-        // 1) Trait impls, as the return type of both signature function
-        //    and generated delegation has `Self` generic param returned
-        //    (checked below).
-        //    FIXME(fn_delegation): think of enabling wrapping in more scenarios:
-        //      trait-(impl)-to-free
-        //      trait-(impl)-to-inherent
-        //      inherent-to-free
-        // 2) Inherent methods when delegating to trait, as we change the type of
-        //    `Self` to type of struct or enum we delegate from.
-        if !matches!(tcx.def_kind(parent), DefKind::Impl { .. }) {
-            return None;
-        }
-
-        let is_trait_impl = parent_kind == DefKind::Impl { of_trait: true };
-
-        // Check that delegation path resolves to a trait AssocFn, not to a free method.
-        Some((parent, is_trait_impl)).filter(|_| {
-            self.get_resolution_id(delegation.id).is_some_and(|id| {
-                tcx.def_kind(id) == DefKind::AssocFn
-                    // Check that the return type of the callee is `Self` param.
-                    // After previous check we are sure that `sig_id` and `delegation.id`
-                    // point to the same function.
-                    && tcx.def_kind(tcx.parent(id)) == DefKind::Trait
-                    && tcx.fn_sig(id).skip_binder().output().skip_binder().is_param(0)
-            })
-        })
     }
 
     fn process_segment(
@@ -808,7 +495,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             );
 
             let callee_path = this.arena.alloc(this.mk_expr(hir::ExprKind::Path(path), span));
-            let args = if let Some(block) = delegation.body.as_ref() {
+            let args = if let Some(block) = &delegation.body {
                 this.arena.alloc_slice(&[this.lower_block_expr(block)])
             } else {
                 &mut []
