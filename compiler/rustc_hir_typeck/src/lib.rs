@@ -665,9 +665,9 @@ impl TupleArgumentsFlag {
 
     /// Returns the tupled argument index, and whether the `self` argument is splatted.
     /// Returns `None` if the arguments are not tupled, or if the `self` argument is splatted.
-    fn tupled_arg_index(self) -> (Option<usize>, bool /* is_self_splatted */) {
+    fn tupled_arg_index(self) -> (Option<u16>, bool /* is_self_splatted */) {
         match self {
-            Self::TupleSplattedArg(index) => (Some(usize::from(index)), false),
+            Self::TupleSplattedArg(index) => (Some(u16::from(index)), false),
             Self::TupleAllCallArgs => (Some(0), false),
             Self::TupleSplattedSelfArg => (None, true),
             Self::DontTupleArguments => (None, false),
