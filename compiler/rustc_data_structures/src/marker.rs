@@ -95,6 +95,7 @@ impl_dyn_send!(
     [indexmap::IndexSet<V, S> where V: DynSend, S: DynSend]
     [indexmap::IndexMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]
     [thin_vec::ThinVec<T> where T: DynSend]
+    [rustc_index::IndexVec<I, T> where I: rustc_index::Idx, T: DynSend]
     [smallvec::SmallVec<A> where A: smallvec::Array + DynSend]
 );
 
@@ -182,6 +183,7 @@ impl_dyn_sync!(
     [indexmap::IndexMap<K, V, S> where K: DynSync, V: DynSync, S: DynSync]
     [smallvec::SmallVec<A> where A: smallvec::Array + DynSync]
     [thin_vec::ThinVec<T> where T: DynSync]
+    [rustc_index::IndexVec<I, T> where I: rustc_index::Idx, T: DynSync]
 );
 
 pub fn assert_dyn_sync<T: ?Sized + PointeeSized + DynSync>() {}

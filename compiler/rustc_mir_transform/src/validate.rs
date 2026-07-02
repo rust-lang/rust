@@ -1035,7 +1035,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.typing_env,
                         adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
                     );
-                    if let [field] = fields.raw.as_slice() {
+                    if let [field] = &fields.as_slice().raw {
                         let src_ty = field.ty(self.body, self.tcx);
                         if !self.mir_assign_valid_types(src_ty, dest_ty) {
                             self.fail(location, "union field has the wrong type");
@@ -1108,7 +1108,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.fail(location, "RawPtr should be in runtime MIR only");
                     }
 
-                    if let [data_ptr, metadata] = fields.raw.as_slice() {
+                    if let [data_ptr, metadata] = &fields.as_slice().raw {
                         let data_ptr_ty = data_ptr.ty(self.body, self.tcx);
                         let metadata_ty = metadata.ty(self.body, self.tcx);
                         if let ty::RawPtr(in_pointee, in_mut) = data_ptr_ty.kind() {

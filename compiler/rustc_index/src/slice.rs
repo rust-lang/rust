@@ -254,7 +254,10 @@ impl<I: Idx, T: Clone> ToOwned for IndexSlice<I, T> {
     }
 
     fn clone_into(&self, target: &mut IndexVec<I, T>) {
-        self.raw.clone_into(&mut target.raw)
+        target.mutate(|v| {
+            // todo this coerces to a slice now, is that correct?
+            self.raw.clone_into(v)
+        });
     }
 }
 

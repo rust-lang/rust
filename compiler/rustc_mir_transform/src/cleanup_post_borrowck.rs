@@ -78,7 +78,7 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
             body.basic_blocks.invalidate_cfg_cache();
         }
 
-        body.user_type_annotations.raw.clear();
+        body.user_type_annotations.mutate(|raw| raw.clear());
 
         for decl in &mut body.local_decls {
             decl.user_ty = None;

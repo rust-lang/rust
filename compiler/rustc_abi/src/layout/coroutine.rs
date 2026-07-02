@@ -186,7 +186,8 @@ pub(super) fn layout<
             // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
             // "outer" and "promoted" fields respectively.
             let b_start = tag_index.plus(1);
-            let offsets_b = IndexVec::from_raw(offsets.raw.split_off(b_start.index()));
+            let offsets_b =
+                IndexVec::from_raw(offsets.mutate(|raw| raw.split_off(b_start.index())));
             let offsets_a = offsets;
 
             // Disentangle the "a" and "b" components of `in_memory_order`
@@ -271,7 +272,7 @@ pub(super) fn layout<
 
             // Remove the unused slots to obtain the combined `in_memory_order`
             // (also see previous comment).
-            combined_in_memory_order.raw.retain(|&i| i.index() != invalid_field_idx);
+            combined_in_memory_order.mutate(|raw| raw.retain(|&i| i.index() != invalid_field_idx));
 
             variant.fields = FieldsShape::Arbitrary {
                 offsets: combined_offsets,
