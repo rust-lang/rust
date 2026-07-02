@@ -48,7 +48,7 @@ enum SocketState {
 }
 
 #[derive(Debug)]
-struct TcpSocket {
+pub(super) struct TcpSocket {
     /// Family of the socket, used to ensure socket only binds/connects to address of
     /// same family.
     family: SocketFamily,
@@ -72,6 +72,20 @@ struct TcpSocket {
     /// for relative timeouts).
     /// This is ignored when the socket is non-blocking.
     write_timeout: Cell<Option<Duration>>,
+}
+
+impl TcpSocket {
+    pub fn new(family: SocketFamily, is_non_block: bool) -> Self {
+        TcpSocket {
+            family,
+            state: RefCell::new(SocketState::Initial),
+            is_non_block: Cell::new(is_non_block),
+            io_readiness: RefCell::new(Readiness::EMPTY),
+            error: RefCell::new(None),
+            read_timeout: Cell::new(None),
+            write_timeout: Cell::new(None),
+        }
+    }
 }
 
 impl FileDescription for TcpSocket {
@@ -299,88 +313,6 @@ impl UnixSocketFileDescription for TcpSocket {}
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// For more information on the arguments see the socket manpage:
-    /// <https://linux.die.net/man/2/socket>
-    fn socket(
-        &mut self,
-        domain: &OpTy<'tcx>,
-        type_: &OpTy<'tcx>,
-        protocol: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-
-        let domain = this.read_scalar(domain)?.to_i32()?;
-        let mut flags = this.read_scalar(type_)?.to_i32()?;
-        let protocol = this.read_scalar(protocol)?.to_i32()?;
-
-        // Reject if isolation is enabled
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`socket`", reject_with)?;
-            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
-        }
-
-        let mut is_sock_nonblock = false;
-
-        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
-        // if there is anything left at the end, that's an unsupported flag.
-        if matches!(
-            this.tcx.sess.target.os,
-            Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
-        ) {
-            // SOCK_NONBLOCK and SOCK_CLOEXEC only exist on Linux, Android, FreeBSD,
-            // Solaris, and Illumos targets.
-            let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
-            let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
-            if flags & sock_nonblock == sock_nonblock {
-                is_sock_nonblock = true;
-                flags &= !sock_nonblock;
-            }
-            if flags & sock_cloexec == sock_cloexec {
-                // We don't support `exec` so we can ignore this.
-                flags &= !sock_cloexec;
-            }
-        }
-
-        let family = if domain == this.eval_libc_i32("AF_INET") {
-            SocketFamily::IPv4
-        } else if domain == this.eval_libc_i32("AF_INET6") {
-            SocketFamily::IPv6
-        } else {
-            throw_unsup_format!(
-                "socket: domain {:#x} is unsupported, only AF_INET and \
-                AF_INET6 are allowed.",
-                domain
-            );
-        };
-
-        if flags != this.eval_libc_i32("SOCK_STREAM") {
-            throw_unsup_format!(
-                "socket: type {:#x} is unsupported, only SOCK_STREAM, \
-                SOCK_CLOEXEC and SOCK_NONBLOCK are allowed",
-                flags
-            );
-        }
-        if protocol != 0 && protocol != this.eval_libc_i32("IPPROTO_TCP") {
-            throw_unsup_format!(
-                "socket: socket protocol {protocol} is unsupported, \
-                only IPPROTO_TCP and 0 are allowed"
-            );
-        }
-
-        let fds = &mut this.machine.fds;
-        let fd = fds.new_ref(TcpSocket {
-            family,
-            state: RefCell::new(SocketState::Initial),
-            is_non_block: Cell::new(is_sock_nonblock),
-            io_readiness: RefCell::new(Readiness::EMPTY),
-            error: RefCell::new(None),
-            read_timeout: Cell::new(None),
-            write_timeout: Cell::new(None),
-        });
-
-        interp_ok(Scalar::from_i32(fds.insert(fd)))
-    }
-
     fn bind(
         &mut self,
         socket: &OpTy<'tcx>,
