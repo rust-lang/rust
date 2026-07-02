@@ -2054,13 +2054,8 @@ fn codegen_offload_preload<'ll, 'tcx>(
     };
     dbg!("asdf");
     let target_symbol = cx.generate_local_symbol_name("");
-    let offload_data = gen_define_handling(
-        &cx,
-        metadata,
-        target_symbol,
-        offload_globals,
-        TransferType::NowaitBegin,
-    );
+    let offload_data =
+        gen_define_handling(&cx, metadata, target_symbol, offload_globals, TransferType::Begin);
     let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
     let (ty, ty2, a1, a2, a4) = crate::builder::gpu_helper::preper_datatransfers(
         bx,
@@ -2080,12 +2075,13 @@ fn codegen_offload_preload<'ll, 'tcx>(
         offload_globals.nowait_mapper_fn_ty,
         1,
         offload_globals.ident_t_global,
-        TransferType::NowaitBegin,
+        TransferType::Begin,
     );
 }
 
 pub(crate) enum TransferType {
     NowaitBegin,
+    Begin,
     Kernel,
     End,
 }
