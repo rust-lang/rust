@@ -26,7 +26,7 @@ use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::callconv::{FnAbi, PassMode};
-use rustc_target::spec::{Arch, HasTargetSpec, LlvmAbi, SanitizerSet, Target};
+use rustc_target::spec::{Arch, HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -1545,6 +1545,30 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
         attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
     }
+
+    fn ptrauth_resign(
+        &mut self,
+        value: &'ll Value,
+        old_key: u32,
+        old_discriminator: u64,
+        new_key: u32,
+        new_discriminator: u64,
+    ) -> &'ll Value {
+        let ptr_as_int = self.ptrtoint(value, self.type_i64());
+        let resigned_int = self.call_intrinsic(
+            "llvm.ptrauth.resign",
+            &[],
+            &[
+                ptr_as_int,
+                self.const_i32(old_key as i32),
+                self.const_i64(old_discriminator as i64),
+                self.const_i32(new_key as i32),
+                self.const_i64(new_discriminator as i64),
+            ],
+        );
+
+        self.inttoptr(resigned_int, self.val_ty(value))
+    }
 }
 
 impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
@@ -2042,7 +2066,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
     ) -> Option<llvm::OperandBundleBox<'ll>> {
-        if self.sess().target.llvm_abiname != LlvmAbi::Pauthtest {
+        if !self.sess().pointer_authentication_functions() {
             return None;
         }
         // Pointer authentication support is currently limited to extern "C" calls; filter out other
@@ -2062,8 +2086,14 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         // bundles.
         // Once this is resolved, we should analyze each call and skip direct calls. See the
         // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
-        let key: u32 = 0;
-        let discriminator: u64 = 0;
+
+        let key: u32 = self.sess().pointer_authentication_fn_ptr_key().unwrap() as u32;
+        let discriminator = if self.sess().pointer_authentication_fn_ptr_type_discrimination() {
+            fn_abi?.ptrauth_type_discriminator
+        } else {
+            0
+        };
+
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
             &[self.const_u32(key), self.const_u64(discriminator)],

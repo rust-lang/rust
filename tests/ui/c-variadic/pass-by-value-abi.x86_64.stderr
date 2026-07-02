@@ -70,6 +70,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
            fixed_count: 1,
            conv: C,
            can_unwind: false,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/pass-by-value-abi.rs:27:1
    |
@@ -150,6 +151,7 @@ error: fn_abi_of(take_va_list_sysv64) = FnAbi {
                SysV64,
            ),
            can_unwind: false,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/pass-by-value-abi.rs:37:1
    |
@@ -230,6 +232,7 @@ error: fn_abi_of(take_va_list_win64) = FnAbi {
                Win64,
            ),
            can_unwind: false,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/pass-by-value-abi.rs:44:1
    |

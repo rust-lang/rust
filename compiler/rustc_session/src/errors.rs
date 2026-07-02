@@ -383,6 +383,14 @@ pub(crate) struct StackProtectorNotSupportedForTarget<'a> {
 
 #[derive(Diagnostic)]
 #[diag(
+    "`-Z pointer-authentication` is not supported for target {$target_triple} and will be ignored"
+)]
+pub(crate) struct PointerAuthenticationNotSupportedForTarget<'a> {
+    pub(crate) target_triple: &'a TargetTuple,
+}
+
+#[derive(Diagnostic)]
+#[diag(
     "`-Z small-data-threshold` is not supported for target {$target_triple} and will be ignored"
 )]
 pub(crate) struct SmallDataThresholdNotSupportedForTarget<'a> {

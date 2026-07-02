@@ -59,6 +59,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
            fixed_count: 1,
            conv: C,
            can_unwind: false,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/c-zst.rs:65:1
    |

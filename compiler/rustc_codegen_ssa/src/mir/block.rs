@@ -686,7 +686,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => (
                 false,
-                bx.get_fn_addr(drop_fn, Some(PacMetadata::default())),
+                bx.get_fn_addr(
+                    drop_fn,
+                    bx.sess()
+                        .pointer_auth_config
+                        .as_ref()
+                        .and_then(|cfg| cfg.function_pointers.clone()),
+                ),
                 bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
                 drop_fn,
             ),
@@ -1097,7 +1103,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         )
                         .unwrap();
 
-                        (None, Some(bx.get_fn_addr(instance, Some(PacMetadata::default()))))
+                        (
+                            None,
+                            Some(
+                                bx.get_fn_addr(
+                                    instance,
+                                    bx.sess()
+                                        .pointer_auth_config
+                                        .as_ref()
+                                        .and_then(|cfg| cfg.function_pointers.clone()),
+                                ),
+                            ),
+                        )
                     }
                     _ => (Some(instance), None),
                 }
@@ -1410,7 +1427,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let fn_ptr = match (instance, llfn) {
-            (Some(instance), None) => bx.get_fn_addr(instance, Some(PacMetadata::default())),
+            (Some(instance), None) => bx.get_fn_addr(
+                instance,
+                bx.sess()
+                    .pointer_auth_config
+                    .as_ref()
+                    .and_then(|cfg| cfg.function_pointers.clone()),
+            ),
             (_, Some(llfn)) => llfn,
             _ => span_bug!(fn_span, "no instance or llfn for call"),
         };
