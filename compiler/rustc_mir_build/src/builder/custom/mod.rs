@@ -116,19 +116,26 @@ fn parse_attribute(dialect: Option<attrs::MirDialect>, phase: Option<attrs::MirP
         }
         attrs::MirDialect::Analysis => match phase {
             None | Some(attrs::MirPhase::Initial) => MirPhase::Analysis(AnalysisPhase::Initial),
-
             Some(attrs::MirPhase::PostCleanup) => MirPhase::Analysis(AnalysisPhase::PostCleanup),
-
+            // Caught during attribute checking.
             Some(attrs::MirPhase::Optimized) => {
-                // Caught during attribute checking.
                 bug!("`optimized` dialect is not compatible with the `analysis` dialect")
             }
         },
-
         attrs::MirDialect::Runtime => match phase {
             None | Some(attrs::MirPhase::Initial) => MirPhase::Runtime(RuntimePhase::Initial),
             Some(attrs::MirPhase::PostCleanup) => MirPhase::Runtime(RuntimePhase::PostCleanup),
             Some(attrs::MirPhase::Optimized) => MirPhase::Runtime(RuntimePhase::Optimized),
+        },
+        attrs::MirDialect::Mono => match phase {
+            None | Some(attrs::MirPhase::Initial) => {
+                MirPhase::Monomorphic(MonomorphicPhase::Initial)
+            }
+            // Caught during attribute checking.
+            Some(attrs::MirPhase::PostCleanup) => {
+                bug!("`post-cleanup` dialect is not compatible with the `mono` dialect")
+            }
+            Some(attrs::MirPhase::Optimized) => MirPhase::Monomorphic(MonomorphicPhase::Codegen),
         },
     }
 }

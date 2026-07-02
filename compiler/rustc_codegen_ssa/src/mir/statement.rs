@@ -6,7 +6,7 @@ use super::{FunctionCx, LocalRef};
 use crate::mir::retag;
 use crate::traits::*;
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'_, 'a, 'tcx, Bx> {
     #[instrument(level = "debug", skip(self, bx))]
     pub(crate) fn codegen_statement(&mut self, bx: &mut Bx, statement: &mir::Statement<'tcx>) {
         self.codegen_stmt_debuginfos(bx, &statement.debuginfos);

@@ -1355,6 +1355,7 @@ symbols! {
         modifiers,
         module,
         module_path,
+        mono,
         more_maybe_bounds,
         more_qualified_paths,
         more_struct_aliases,

@@ -132,8 +132,7 @@ pub fn vec_iterator_cast_unwrap_drop(vec: Vec<Wrapper<String>>) -> Vec<String> {
     // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
     // CHECK-NOT: %{{.*}} = mul
     // CHECK-NOT: %{{.*}} = udiv
-    // CHECK: call
-    // CHECK-SAME: void @llvm.assume(i1 %{{.+}})
+    // CHECK: call void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
     // CHECK-NOT: call
     // CHECK-NOT: %{{.*}} = mul
@@ -149,8 +148,7 @@ pub fn vec_iterator_cast_wrap_drop(vec: Vec<String>) -> Vec<Wrapper<String>> {
     // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
     // CHECK-NOT: %{{.*}} = mul
     // CHECK-NOT: %{{.*}} = udiv
-    // CHECK: call
-    // CHECK-SAME: void @llvm.assume(i1 %{{.+}})
+    // CHECK: void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
     // CHECK-NOT: call
     // CHECK-NOT: %{{.*}} = mul

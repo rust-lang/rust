@@ -13,10 +13,14 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_middle::middle::deduced_param_attrs::{DeducedParamAttrs, UsageSummary};
-use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{
+    MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
+};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
+
+use crate::MirPass;
 
 /// A visitor that determines how a return place and arguments are used inside MIR body.
 /// To determine whether a local is mutated we can't use the mutability field on LocalDecl
@@ -165,6 +169,12 @@ fn type_will_always_be_passed_directly(ty: Ty<'_>) -> bool {
     )
 }
 
+fn is_enabled(sess: &rustc_session::Session) -> bool {
+    // This computation is unfortunately rather expensive, so don't do it unless we're optimizing.
+    // Also skip it in incremental mode.
+    sess.opts.optimize != OptLevel::No && sess.opts.incremental.is_none()
+}
+
 /// Returns the deduced parameter attributes for a function.
 ///
 /// Deduced parameter attributes are those that can only be soundly determined by examining the
@@ -176,9 +186,7 @@ pub(super) fn deduced_param_attrs<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> &'tcx [DeducedParamAttrs] {
-    // This computation is unfortunately rather expensive, so don't do it unless we're optimizing.
-    // Also skip it in incremental mode.
-    if tcx.sess.opts.optimize == OptLevel::No || tcx.sess.opts.incremental.is_some() {
+    if !is_enabled(tcx.sess) {
         return &[];
     }
 
@@ -237,4 +245,134 @@ pub(super) fn deduced_param_attrs<'tcx>(
     }
 
     deduced_param_attrs
+}
+
+/// `deduced_param_attrs` works on polymorphic optimized MIR. However, codegen works on
+/// monomorphic MIR that may have modified in between. This pass makes sure that deduced and actual
+/// param attrs match.
+pub(crate) struct RecoverDeducedParamAttrs;
+
+impl<'tcx> MirPass<'tcx> for RecoverDeducedParamAttrs {
+    fn is_required(&self) -> bool {
+        true
+    }
+
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        is_enabled(sess)
+    }
+
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // Only run this for MIR that has `optimized_mir`.
+        let ty::InstanceKind::Item(..) = body.source.instance else { return };
+        let Some(def_id) = body.source.def_id().as_local() else { return };
+        match tcx.hir_body_const_context(def_id) {
+            Some(hir::ConstContext::ConstFn) | None => {}
+            Some(_) => return,
+        };
+
+        // If we deduced nothing, there is no fixup to perform.
+        let deduced_param_attrs = tcx.deduced_param_attrs(def_id);
+        if deduced_param_attrs.is_empty() {
+            return;
+        }
+
+        // Reuse the computation from `deduced_param_attrs`.
+        let mut actual_read_only = DeduceParamAttrs::new(body);
+        actual_read_only.visit_body(body);
+
+        let typing_env = body.typing_env(tcx);
+
+        let wrong_mutated_args = body
+            .args_iter()
+            .filter(|&local| {
+                let Some(deduced) = deduced_param_attrs.get(local.as_usize()) else { return false };
+                let actual = DeducedParamAttrs { usage: actual_read_only.usage[local] };
+                let ty = body.local_decls[local].ty;
+
+                // If we deduced `read_only` and the actual MIR is mutable, we must do something.
+                (deduced.read_only(tcx, typing_env, ty) && !actual.read_only(tcx, typing_env, ty))
+                    || (deduced.captures_none(tcx, typing_env, ty)
+                        && !actual.captures_none(tcx, typing_env, ty))
+            })
+            .collect::<Vec<_>>();
+
+        let wrong_captures_return = {
+            let deduced = deduced_param_attrs[0];
+            let actual = DeducedParamAttrs { usage: actual_read_only.usage[RETURN_PLACE] };
+            let ty = body.local_decls[RETURN_PLACE].ty;
+
+            deduced.captures_none(tcx, typing_env, ty) && !actual.captures_none(tcx, typing_env, ty)
+        };
+
+        if wrong_mutated_args.is_empty() && !wrong_captures_return {
+            // All arguments match, we have nothing to do.
+            return;
+        }
+
+        // For each flagged local, insert a move at the beginning of MIR. This ensures that the
+        // original argument's value is not mutated, and that all mutation happens on the newly
+        // introduced local.
+        let mut renamed_args = IndexVec::from_fn_n(|l| l, body.arg_count + 1);
+        if wrong_captures_return {
+            let decl = &body.local_decls[RETURN_PLACE];
+            let new_local = body.local_decls.push(decl.clone());
+            renamed_args[RETURN_PLACE] = new_local;
+        }
+
+        let mut new_statements = Vec::with_capacity(wrong_mutated_args.len());
+        for local in wrong_mutated_args {
+            let decl = &body.local_decls[local];
+            let source_info = decl.source_info;
+            let new_local = body.local_decls.push(decl.clone());
+            renamed_args[local] = new_local;
+
+            // `new_local = move local`
+            let stmt = StatementKind::Assign(Box::new((
+                new_local.into(),
+                Rvalue::Use(Operand::Move(local.into()), WithRetag::Yes),
+            )));
+            new_statements.push(Statement::new(source_info, stmt));
+        }
+
+        RenameLocals { tcx, renamed_args: &renamed_args }.visit_body_preserves_cfg(body);
+
+        body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK]
+            .statements
+            .splice(0..0, new_statements);
+        if wrong_captures_return {
+            let new_local = renamed_args[RETURN_PLACE];
+            for bbdata in body.basic_blocks.as_mut_preserves_cfg().iter_mut() {
+                let term = bbdata.terminator();
+                if let TerminatorKind::Return = term.kind {
+                    let stmt = StatementKind::Assign(Box::new((
+                        RETURN_PLACE.into(),
+                        Rvalue::Use(Operand::Move(new_local.into()), WithRetag::Yes),
+                    )));
+                    bbdata.statements.push(Statement::new(term.source_info, stmt));
+                }
+            }
+        }
+
+        struct RenameLocals<'tcx, 'a> {
+            tcx: TyCtxt<'tcx>,
+            renamed_args: &'a IndexVec<Local, Local>,
+        }
+        impl<'tcx> MutVisitor<'tcx> for RenameLocals<'tcx, '_> {
+            fn tcx(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+            fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
+                if let Some(&new_local) = self.renamed_args.get(*local) {
+                    *local = new_local;
+                }
+            }
+            fn visit_terminator(&mut self, term: &mut Terminator<'tcx>, loc: Location) {
+                // Do not visit the implicit `_0` in `return`, as we create an assignment for it.
+                if let TerminatorKind::Return = term.kind {
+                    return;
+                }
+                self.super_terminator(term, loc)
+            }
+        }
+    }
 }
