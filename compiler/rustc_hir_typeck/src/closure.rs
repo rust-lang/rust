@@ -956,12 +956,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Future<Output = T>`, so we do this by searching through the
     /// obligations to extract the `T`.
     #[instrument(skip(self), level = "debug", ret)]
-    fn deduce_future_output_from_obligations(&self, body_def_id: LocalDefId) -> Option<Ty<'tcx>> {
+    fn deduce_future_output_from_obligations(&self, item_id: LocalDefId) -> Option<Ty<'tcx>> {
         let ret_coercion = self.ret_coercion.as_ref().unwrap_or_else(|| {
-            span_bug!(self.tcx.def_span(body_def_id), "async fn coroutine outside of a fn")
+            span_bug!(self.tcx.def_span(item_id), "async fn coroutine outside of a fn")
         });
 
-        let closure_span = self.tcx.def_span(body_def_id);
+        let closure_span = self.tcx.def_span(item_id);
         let ret_ty = ret_coercion.borrow().expected_ty();
         let ret_ty = self.resolve_vars_with_obligations(ret_ty);
 
@@ -1017,7 +1017,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let InferOk { value: output_ty, obligations } = self
             .replace_opaque_types_with_inference_vars(
                 output_ty,
-                body_def_id,
+                item_id,
                 closure_span,
                 self.param_env,
             );

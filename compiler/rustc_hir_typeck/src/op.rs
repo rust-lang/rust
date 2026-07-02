@@ -517,7 +517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 &mut err,
                                 trait_pred,
                                 output_associated_item,
-                                self.body_id,
+                                self.item_id,
                             );
                         }
                     }
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 &mut err,
                                 pred,
                                 None,
-                                self.body_id,
+                                self.item_id,
                             );
                         }
                     }

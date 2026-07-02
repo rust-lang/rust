@@ -217,7 +217,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
-        self.body_id
+        self.item_id
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -287,8 +287,8 @@ pub struct ExprUseVisitor<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>
 }
 
 impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'tcx, (&'a LateContext<'tcx>, LocalDefId), D> {
-    pub fn for_clippy(cx: &'a LateContext<'tcx>, body_def_id: LocalDefId, delegate: D) -> Self {
-        Self::new((cx, body_def_id), delegate)
+    pub fn for_clippy(cx: &'a LateContext<'tcx>, item_id: LocalDefId, delegate: D) -> Self {
+        Self::new((cx, item_id), delegate)
     }
 }
 

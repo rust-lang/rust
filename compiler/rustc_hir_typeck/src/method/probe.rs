@@ -511,7 +511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && !self.tcx.features().arbitrary_self_types();
 
                         let mut err = self.err_ctxt().emit_inference_failure_err(
-                            self.body_id,
+                            self.item_id,
                             err_span,
                             ty.into(),
                             TypeAnnotationNeeded::E0282,
@@ -811,7 +811,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
             let container_id = item.container_id(self.tcx);
-            let def_scope = self.tcx.adjust_ident_and_get_scope(name, container_id, self.body_id).1;
+            let def_scope = self.tcx.adjust_ident_and_get_scope(name, container_id, self.item_id).1;
             item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
         } else {
             true

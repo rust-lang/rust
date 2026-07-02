@@ -14,16 +14,16 @@ use crate::traits::outlives_bounds::InferCtxtExt;
 impl<'tcx> OutlivesEnvironment<'tcx> {
     fn new(
         infcx: &InferCtxt<'tcx>,
-        body_id: LocalDefId,
+        item_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
     ) -> Self {
-        Self::new_with_implied_bounds_compat(infcx, body_id, param_env, assumed_wf_tys, false)
+        Self::new_with_implied_bounds_compat(infcx, item_id, param_env, assumed_wf_tys, false)
     }
 
     fn new_with_implied_bounds_compat(
         infcx: &InferCtxt<'tcx>,
-        body_id: LocalDefId,
+        item_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
         disable_implied_bounds_hack: bool,
@@ -60,7 +60,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
             param_env,
             bounds,
             infcx.implied_bounds_tys(
-                body_id,
+                item_id,
                 param_env,
                 assumed_wf_tys,
                 disable_implied_bounds_hack,
@@ -82,13 +82,13 @@ impl<'tcx> InferCtxt<'tcx> {
     /// This function assumes that all infer variables are already constrained.
     fn resolve_regions(
         &self,
-        body_id: LocalDefId,
+        item_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
     ) -> Vec<RegionResolutionError<'tcx>> {
         self.resolve_regions_with_outlives_env(
-            &OutlivesEnvironment::new(self, body_id, param_env, assumed_wf_tys),
-            self.tcx.def_span(body_id),
+            &OutlivesEnvironment::new(self, item_id, param_env, assumed_wf_tys),
+            self.tcx.def_span(item_id),
         )
     }
 

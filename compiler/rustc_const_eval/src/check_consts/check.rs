@@ -392,7 +392,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(self.body.typing_env(tcx));
         let ocx = ObligationCtxt::new(&infcx);
 
-        let body_id = self.body.source.def_id().expect_local();
+        let item_id = self.body.source.def_id().expect_local();
         let host_polarity = match self.const_kind() {
             hir::ConstContext::ConstFn => ty::BoundConstness::Maybe,
             hir::ConstContext::Static(_) | hir::ConstContext::Const { .. } => {
@@ -400,14 +400,14 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             }
         };
         let const_conditions = const_conditions.into_iter().map(|(c, s)| {
-            (ocx.normalize(&ObligationCause::misc(call_span, body_id), param_env, c), s)
+            (ocx.normalize(&ObligationCause::misc(call_span, item_id), param_env, c), s)
         });
         ocx.register_obligations(const_conditions.into_iter().map(|(trait_ref, span)| {
             Obligation::new(
                 tcx,
                 ObligationCause::new(
                     call_span,
-                    body_id,
+                    item_id,
                     ObligationCauseCode::WhereClause(callee, span),
                 ),
                 param_env,

@@ -151,8 +151,8 @@ fn maybe_normalize_erasing_regions<'tcx>(
     // past hir typeck. If we were to attempt to reveal more opaque types, dropping the
     // `InferCtxt` would ICE (see #156352).
     let typing_env = if let Some(body_id) = cx.enclosing_body {
-        let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
-        ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
+        let item_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
+        ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, item_id))
     } else {
         cx.typing_env()
     };

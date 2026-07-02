@@ -34,7 +34,7 @@ pub struct Autoderef<'a, 'tcx> {
     // Meta infos:
     infcx: &'a InferCtxt<'tcx>,
     span: Span,
-    body_id: LocalDefId,
+    item_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 
     // Current state:
@@ -112,14 +112,14 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     pub fn new(
         infcx: &'a InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body_def_id: LocalDefId,
+        item_id: LocalDefId,
         span: Span,
         base_ty: Ty<'tcx>,
     ) -> Self {
         Autoderef {
             infcx,
             span,
-            body_id: body_def_id,
+            item_id,
             param_env,
             state: AutoderefSnapshot {
                 steps: vec![],
@@ -149,7 +149,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             (tcx.lang_items().deref_trait()?, tcx.lang_items().deref_target()?)
         };
         let trait_ref = ty::TraitRef::new(tcx, trait_def_id, [ty]);
-        let cause = traits::ObligationCause::misc(self.span, self.body_id);
+        let cause = traits::ObligationCause::misc(self.span, self.item_id);
         let obligation = traits::Obligation::new(
             tcx,
             cause.clone(),
@@ -181,7 +181,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     ) -> Option<(Ty<'tcx>, PredicateObligations<'tcx>)> {
         let ocx = ObligationCtxt::new(self.infcx);
         let normalized_ty = ocx.normalize(
-            &traits::ObligationCause::misc(self.span, self.body_id),
+            &traits::ObligationCause::misc(self.span, self.item_id),
             self.param_env,
             ty,
         );

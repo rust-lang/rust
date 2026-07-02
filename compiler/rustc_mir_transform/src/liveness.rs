@@ -171,7 +171,7 @@ fn is_capture(place: PlaceRef<'_>) -> bool {
 /// Give a diagnostic when an unused variable may be a typo of a unit variant or a struct.
 fn maybe_suggest_unit_pattern_typo<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body_def_id: DefId,
+    item_id: DefId,
     name: Symbol,
     span: Span,
     ty: Ty<'tcx>,
@@ -205,7 +205,7 @@ fn maybe_suggest_unit_pattern_typo<'tcx>(
         .filter(|&def_id| {
             matches!(tcx.def_kind(def_id), DefKind::Const { .. })
                 && tcx.type_of(def_id).instantiate_identity().skip_norm_wip() == ty
-                && tcx.visibility(def_id).is_accessible_from(body_def_id, tcx)
+                && tcx.visibility(def_id).is_accessible_from(item_id, tcx)
         })
         .collect::<Vec<_>>();
     let names = constants.iter().map(|&def_id| tcx.item_name(def_id)).collect::<Vec<_>>();
@@ -277,7 +277,7 @@ fn maybe_drop_guard<'tcx>(
 fn annotate_mut_binding_to_immutable_binding<'tcx>(
     tcx: TyCtxt<'tcx>,
     place: PlaceRef<'tcx>,
-    body_def_id: LocalDefId,
+    item_id: LocalDefId,
     assignment_span: Span,
     body: &Body<'tcx>,
 ) -> Option<diagnostics::UnusedAssignSuggestion> {
@@ -291,13 +291,13 @@ fn annotate_mut_binding_to_immutable_binding<'tcx>(
 
     // ... with reference type...
     let hir_param_index =
-        local.as_usize() - if tcx.is_closure_like(body_def_id.to_def_id()) { 2 } else { 1 };
-    let fn_decl = tcx.hir_node_by_def_id(body_def_id).fn_decl()?;
+        local.as_usize() - if tcx.is_closure_like(item_id.to_def_id()) { 2 } else { 1 };
+    let fn_decl = tcx.hir_node_by_def_id(item_id).fn_decl()?;
     let ty = fn_decl.inputs[hir_param_index];
     let hir::TyKind::Ref(lt, mut_ty) = ty.kind else { return None };
 
     // ... as a binding pattern.
-    let hir_body = tcx.hir_maybe_body_owned_by(body_def_id)?;
+    let hir_body = tcx.hir_maybe_body_owned_by(item_id)?;
     let param = hir_body.params[hir_param_index];
     let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = param.pat.kind else {
         return None;

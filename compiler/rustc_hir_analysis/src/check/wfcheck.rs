@@ -49,7 +49,7 @@ use crate::diagnostics::InvalidReceiverTyHint;
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
-    body_def_id: LocalDefId,
+    item_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 }
 impl<'a, 'tcx> Deref for WfCheckingCtxt<'a, 'tcx> {
@@ -76,7 +76,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.ocx.normalize(
-            &ObligationCause::new(span, self.body_def_id, ObligationCauseCode::WellFormed(loc)),
+            &ObligationCause::new(span, self.item_id, ObligationCauseCode::WellFormed(loc)),
             self.param_env,
             value,
         )
@@ -102,7 +102,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     {
         if self.infcx.next_trait_solver() {
             match self.ocx.deeply_normalize(
-                &ObligationCause::new(span, self.body_def_id, ObligationCauseCode::WellFormed(loc)),
+                &ObligationCause::new(span, self.item_id, ObligationCauseCode::WellFormed(loc)),
                 self.param_env,
                 value.clone(),
             ) {
@@ -123,11 +123,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         loc: Option<WellFormedLoc>,
         term: ty::Term<'tcx>,
     ) {
-        let cause = traits::ObligationCause::new(
-            span,
-            self.body_def_id,
-            ObligationCauseCode::WellFormed(loc),
-        );
+        let cause =
+            traits::ObligationCause::new(span, self.item_id, ObligationCauseCode::WellFormed(loc));
         self.ocx.register_obligation(Obligation::new(
             self.tcx(),
             cause,
@@ -146,29 +143,29 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             self.param_env,
             ty.into(),
             span,
-            self.body_def_id,
+            self.item_id,
         )
     }
 }
 
 pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     tcx: TyCtxt<'tcx>,
-    body_def_id: LocalDefId,
+    item_id: LocalDefId,
     f: F,
 ) -> Result<(), ErrorGuaranteed>
 where
     F: for<'a> FnOnce(&WfCheckingCtxt<'a, 'tcx>) -> Result<(), ErrorGuaranteed>,
 {
-    let param_env = tcx.param_env(body_def_id);
+    let param_env = tcx.param_env(item_id);
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
-    let mut wfcx = WfCheckingCtxt { ocx, body_def_id, param_env };
+    let mut wfcx = WfCheckingCtxt { ocx, item_id, param_env };
 
     // As of now, bounds are only checked on lazy type aliases, they're ignored for most type
     // aliases. So, only check for false global bounds if we're not ignoring bounds altogether.
     let ignore_bounds =
-        tcx.def_kind(body_def_id) == DefKind::TyAlias && !tcx.type_alias_is_lazy(body_def_id);
+        tcx.def_kind(item_id) == DefKind::TyAlias && !tcx.type_alias_is_lazy(item_id);
 
     if !ignore_bounds && !tcx.features().trivial_bounds() {
         wfcx.check_false_global_bounds()
@@ -180,7 +177,7 @@ where
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
-    let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
+    let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, item_id)?;
     debug!(?assumed_wf_types);
 
     let infcx_compat = infcx.fork();
@@ -189,22 +186,22 @@ where
     // so we can detect when failures are due to bevy's implied bounds.
     let outlives_env = OutlivesEnvironment::new_with_implied_bounds_compat(
         &infcx,
-        body_def_id,
+        item_id,
         param_env,
         assumed_wf_types.iter().copied(),
         true,
     );
 
-    lint_redundant_lifetimes(tcx, body_def_id, &outlives_env);
+    lint_redundant_lifetimes(tcx, item_id, &outlives_env);
 
-    let errors = infcx.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(body_def_id));
+    let errors = infcx.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(item_id));
     if errors.is_empty() {
         return Ok(());
     }
 
     let outlives_env = OutlivesEnvironment::new_with_implied_bounds_compat(
         &infcx_compat,
-        body_def_id,
+        item_id,
         param_env,
         assumed_wf_types,
         // Don't *disable* the implied bounds hack; though this will only apply
@@ -212,13 +209,13 @@ where
         false,
     );
     let errors_compat =
-        infcx_compat.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(body_def_id));
+        infcx_compat.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(item_id));
     if errors_compat.is_empty() {
         // FIXME: Once we fix bevy, this would be the place to insert a warning
         // to upgrade bevy.
         Ok(())
     } else {
-        Err(infcx_compat.err_ctxt().report_region_errors(body_def_id, &errors_compat))
+        Err(infcx_compat.err_ctxt().report_region_errors(item_id, &errors_compat))
     }
 }
 
@@ -1116,7 +1113,7 @@ pub(crate) fn check_type_defn<'tcx>(
                 wfcx.register_bound(
                     traits::ObligationCause::new(
                         span,
-                        wfcx.body_def_id,
+                        wfcx.item_id,
                         ObligationCauseCode::FieldSized {
                             adt_kind: adt_def.adt_kind(),
                             span,
@@ -1189,7 +1186,7 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
             traits::wf::clause_obligations(
                 wfcx.infcx,
                 wfcx.param_env,
-                wfcx.body_def_id,
+                wfcx.item_id,
                 bound,
                 bound_span,
             )
@@ -1302,7 +1299,7 @@ pub(crate) fn check_static_item<'tcx>(
             wfcx.register_bound(
                 traits::ObligationCause::new(
                     span,
-                    wfcx.body_def_id,
+                    wfcx.item_id,
                     ObligationCauseCode::SizedConstOrStatic,
                 ),
                 wfcx.param_env,
@@ -1319,11 +1316,7 @@ pub(crate) fn check_static_item<'tcx>(
 
         if should_check_for_sync {
             wfcx.register_bound(
-                traits::ObligationCause::new(
-                    span,
-                    wfcx.body_def_id,
-                    ObligationCauseCode::SharedStatic,
-                ),
+                traits::ObligationCause::new(span, wfcx.item_id, ObligationCauseCode::SharedStatic),
                 wfcx.param_env,
                 item_ty,
                 tcx.require_lang_item(LangItem::Sync, span),
@@ -1394,7 +1387,7 @@ fn check_impl<'tcx>(
                 let mut obligations = traits::wf::trait_obligations(
                     wfcx.infcx,
                     wfcx.param_env,
-                    wfcx.body_def_id,
+                    wfcx.item_id,
                     trait_pred,
                     trait_span,
                     item,
@@ -1430,7 +1423,7 @@ fn check_impl<'tcx>(
                             tcx,
                             ObligationCause::new(
                                 impl_.self_ty.span,
-                                wfcx.body_def_id,
+                                wfcx.item_id,
                                 ObligationCauseCode::WellFormed(None),
                             ),
                             wfcx.param_env,
@@ -1521,7 +1514,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                 if !ct_ty.has_param() && !param_ty.has_param() {
                     let cause = traits::ObligationCause::new(
                         tcx.def_span(param.def_id),
-                        wfcx.body_def_id,
+                        wfcx.item_id,
                         ObligationCauseCode::WellFormed(None),
                     );
                     wfcx.register_obligation(Obligation::new(
@@ -1619,7 +1612,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
             let pred = wfcx.normalize(sp, None, pred);
             let cause = traits::ObligationCause::new(
                 sp,
-                wfcx.body_def_id,
+                wfcx.item_id,
                 ObligationCauseCode::WhereClause(def_id.to_def_id(), sp),
             );
             Obligation::new(tcx, cause, wfcx.param_env, pred)
@@ -1647,7 +1640,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
             pred_binder.map(|pred_binder| {
                 let cause = traits::ObligationCause::new(
                     sp,
-                    wfcx.body_def_id,
+                    wfcx.item_id,
                     ObligationCauseCode::WhereClause(def_id.to_def_id(), sp),
                 );
                 Obligation::new(tcx, cause, wfcx.param_env, pred_binder)
@@ -1657,13 +1650,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
 
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
-        traits::wf::clause_obligations(
-            infcx,
-            wfcx.param_env,
-            wfcx.body_def_id,
-            p.skip_norm_wip(),
-            sp,
-        )
+        traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.item_id, p.skip_norm_wip(), sp)
     });
     let obligations: Vec<_> =
         wf_obligations.chain(default_obligations).chain(assoc_const_obligations).collect();
@@ -1729,13 +1716,13 @@ fn check_fn_or_method<'tcx>(
         // Check that the argument is a tuple and is sized
         if let Some(ty) = inputs.next() {
             wfcx.register_bound(
-                ObligationCause::new(span, wfcx.body_def_id, ObligationCauseCode::RustCall),
+                ObligationCause::new(span, wfcx.item_id, ObligationCauseCode::RustCall),
                 wfcx.param_env,
                 *ty,
                 tcx.require_lang_item(hir::LangItem::Tuple, span),
             );
             wfcx.register_bound(
-                ObligationCause::new(span, wfcx.body_def_id, ObligationCauseCode::RustCall),
+                ObligationCause::new(span, wfcx.item_id, ObligationCauseCode::RustCall),
                 wfcx.param_env,
                 *ty,
                 tcx.require_lang_item(hir::LangItem::Sized, span),
@@ -1955,7 +1942,7 @@ fn receiver_is_valid<'tcx>(
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
     let cause =
-        ObligationCause::new(span, wfcx.body_def_id, traits::ObligationCauseCode::MethodReceiver);
+        ObligationCause::new(span, wfcx.item_id, traits::ObligationCauseCode::MethodReceiver);
 
     // Special case `receiver == self_ty`, which doesn't necessarily require the `Receiver` lang item.
     if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
@@ -1972,7 +1959,7 @@ fn receiver_is_valid<'tcx>(
 
     confirm_type_is_not_a_method_generic_param(receiver_ty, method_generics)?;
 
-    let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_def_id, span, receiver_ty);
+    let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.item_id, span, receiver_ty);
 
     // The `arbitrary_self_types` feature allows custom smart pointer
     // types to be method receivers, as identified by following the Receiver<Target=T>
@@ -2357,10 +2344,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn check_false_global_bounds(&mut self) {
         let tcx = self.ocx.infcx.tcx;
-        let mut span = tcx.def_span(self.body_def_id);
+        let mut span = tcx.def_span(self.item_id);
         let empty_env = ty::ParamEnv::empty();
 
-        let predicates_with_span = tcx.predicates_of(self.body_def_id).predicates.iter().copied();
+        let predicates_with_span = tcx.predicates_of(self.item_id).predicates.iter().copied();
         // Check elaborated bounds.
         let implied_obligations = traits::elaborate(tcx, predicates_with_span);
 
@@ -2380,7 +2367,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 let pred = self.normalize(span, None, Unnormalized::new_wip(pred));
 
                 // only use the span of the predicate clause (#90869)
-                let hir_node = tcx.hir_node_by_def_id(self.body_def_id);
+                let hir_node = tcx.hir_node_by_def_id(self.item_id);
                 if let Some(hir::Generics { predicates, .. }) = hir_node.generics() {
                     span = predicates
                         .iter()
@@ -2394,7 +2381,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                     tcx,
                     traits::ObligationCause::new(
                         span,
-                        self.body_def_id,
+                        self.item_id,
                         ObligationCauseCode::TrivialBound,
                     ),
                     empty_env,

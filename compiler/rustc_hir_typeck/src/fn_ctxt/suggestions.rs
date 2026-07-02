@@ -40,11 +40,11 @@ use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
+    pub(crate) fn fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
         self.typeck_results
             .borrow()
             .liberated_fn_sigs()
-            .get(self.tcx.local_def_id_to_hir_id(self.body_id))
+            .get(self.tcx.local_def_id_to_hir_id(self.item_id))
             .copied()
     }
 
@@ -170,7 +170,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
-        self.err_ctxt().extract_callable_info(self.body_id, self.param_env, ty)
+        self.err_ctxt().extract_callable_info(self.item_id, self.param_env, ty)
     }
 
     pub(crate) fn suggest_two_fn_call(
@@ -2292,7 +2292,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
         let ret_ty_matches = |diagnostic_item| {
-            let Some(sig) = self.body_fn_sig() else {
+            let Some(sig) = self.fn_sig() else {
                 return false;
             };
             let ty::Adt(kind, _) = sig.output().kind() else {
@@ -2428,8 +2428,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             *expr
         } else {
-            let body_def_id = tcx.hir_enclosing_body_owner(expr.hir_id);
-            let body = tcx.hir_body_owned_by(body_def_id);
+            let item_id = tcx.hir_enclosing_body_owner(expr.hir_id);
+            let body = tcx.hir_body_owned_by(item_id);
 
             // Get tail expr of the body
             match body.value.kind {

@@ -285,7 +285,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         if !cause.span.is_dummy()
-            && let Some(body) = self.tcx.hir_maybe_body_owned_by(cause.body_id)
+            && let Some(body) = self.tcx.hir_maybe_body_owned_by(cause.item_id)
         {
             let mut expr_finder = FindExprBySpan::new(cause.span, self.tcx);
             expr_finder.visit_body(body);
@@ -467,7 +467,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         associated_ty: Option<(&'static str, Ty<'tcx>)>,
-        mut body_id: LocalDefId,
+        mut item_id: LocalDefId,
     ) {
         if trait_pred.skip_binder().polarity != ty::PredicatePolarity::Positive {
             return;
@@ -494,7 +494,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
         //        don't suggest `T: Sized + ?Sized`.
         loop {
-            let node = self.tcx.hir_node_by_def_id(body_id);
+            let node = self.tcx.hir_node_by_def_id(item_id);
             match node {
                 hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Trait { ident, generics, bounds, .. },
@@ -504,7 +504,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // Restricting `Self` for a single method.
                     suggest_restriction(
                         self.tcx,
-                        body_id,
+                        item_id,
                         generics,
                         "`Self`",
                         err,
@@ -524,7 +524,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     assert!(param_ty);
                     // Restricting `Self` for a single method.
                     suggest_restriction(
-                        self.tcx, body_id, generics, "`Self`", err, None, projection, trait_pred,
+                        self.tcx, item_id, generics, "`Self`", err, None, projection, trait_pred,
                         None,
                     );
                     return;
@@ -547,7 +547,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // Missing restriction on associated type of type parameter (unmet projection).
                     suggest_restriction(
                         self.tcx,
-                        body_id,
+                        item_id,
                         generics,
                         "the associated type",
                         err,
@@ -567,7 +567,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // Missing restriction on associated type of type parameter (unmet projection).
                     suggest_restriction(
                         self.tcx,
-                        body_id,
+                        item_id,
                         generics,
                         "the associated type",
                         err,
@@ -687,7 +687,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 _ => {}
             }
-            body_id = self.tcx.local_parent(body_id);
+            item_id = self.tcx.local_parent(item_id);
         }
     }
 
@@ -1024,7 +1024,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
 
         let Some((def_id_or_name, output, inputs)) =
-            self.extract_callable_info(obligation.cause.body_id, obligation.param_env, self_ty)
+            self.extract_callable_info(obligation.cause.item_id, obligation.param_env, self_ty)
         else {
             return false;
         };
@@ -1232,7 +1232,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // Wrap method receivers and `&`-references in parens.
         let suggestion = if self.tcx.sess.source_map().span_followed_by(span, ".").is_some() {
             parenthesized_cast(span)
-        } else if let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) {
+        } else if let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.item_id) {
             let mut expr_finder = FindExprBySpan::new(span, self.tcx);
             expr_finder.visit_expr(body.value);
             if let Some(expr) = expr_finder.result
@@ -1271,7 +1271,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             span.remove_mark();
         }
         let mut expr_finder = FindExprBySpan::new(span, self.tcx);
-        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) else {
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.item_id) else {
             return;
         };
         expr_finder.visit_expr(body.value);
@@ -1350,7 +1350,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> bool {
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
         self.enter_forall(self_ty, |ty: Ty<'_>| {
-            let Some(generics) = self.tcx.hir_get_generics(obligation.cause.body_id) else {
+            let Some(generics) = self.tcx.hir_get_generics(obligation.cause.item_id) else {
                 return false;
             };
             let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
@@ -1444,7 +1444,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// because the callable type must also be well-formed to be called.
     pub fn extract_callable_info(
         &self,
-        body_id: LocalDefId,
+        item_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         found: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
@@ -1526,7 +1526,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }),
                 ty::Param(param) => {
-                    let generics = self.tcx.generics_of(body_id);
+                    let generics = self.tcx.generics_of(item_id);
                     let name = if generics.count() > param.index as usize
                         && let def = generics.param_at(param.index as usize, self.tcx)
                         && matches!(def.kind, ty::GenericParamDefKind::Type { .. })
@@ -1597,7 +1597,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
         let (Some(typeck_results), Some(body)) = (
             self.typeck_results.as_ref(),
-            self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id),
+            self.tcx.hir_maybe_body_owned_by(obligation.cause.item_id),
         ) else {
             return true;
         };
@@ -1859,7 +1859,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Issue #104961, we need to add parentheses properly for compound expressions
             // for example, `x.starts_with("hi".to_string() + "you")`
             // should be `x.starts_with(&("hi".to_string() + "you"))`
-            let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) else {
+            let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.item_id) else {
                 return false;
             };
             let mut expr_finder = FindExprBySpan::new(span, self.tcx);
@@ -2085,7 +2085,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             span.remove_mark();
         }
         let mut expr_finder = super::FindExprBySpan::new(span, self.tcx);
-        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) else {
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.item_id) else {
             return false;
         };
         expr_finder.visit_expr(body.value);
@@ -2413,7 +2413,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         span: Span,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
-        let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
+        let node = self.tcx.hir_node_by_def_id(obligation.cause.item_id);
         if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn {sig, body: body_id, .. }, .. }) = node
             && let hir::ExprKind::Block(blk, _) = &self.tcx.hir_body(*body_id).value.kind
             && sig.decl.output.span().overlaps(span)
@@ -2449,7 +2449,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub(super) fn suggest_borrow_for_unsized_closure_return<G: EmissionGuarantee>(
         &self,
-        body_id: LocalDefId,
+        item_id: LocalDefId,
         err: &mut Diag<'_, G>,
         predicate: ty::Predicate<'tcx>,
     ) {
@@ -2463,10 +2463,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(span) = err.span.primary_span() else {
             return;
         };
-        let Some(node_body_id) = self.tcx.hir_node_by_def_id(body_id).body_id() else {
+        let Some(body_id) = self.tcx.hir_node_by_def_id(item_id).body_id() else {
             return;
         };
-        let body = self.tcx.hir_body(node_body_id);
+        let body = self.tcx.hir_body(body_id);
         let mut expr_finder = FindExprBySpan::new(span, self.tcx);
         expr_finder.visit_expr(body.value);
         let Some(expr) = expr_finder.result else {
@@ -2503,7 +2503,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub(super) fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span> {
         let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig, .. }, .. }) =
-            self.tcx.hir_node_by_def_id(obligation.cause.body_id)
+            self.tcx.hir_node_by_def_id(obligation.cause.item_id)
         else {
             return None;
         };
@@ -2529,7 +2529,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. })
         | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(fn_sig, _), .. })
         | Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(fn_sig, _), .. }) =
-            self.tcx.hir_node_by_def_id(obligation.cause.body_id)
+            self.tcx.hir_node_by_def_id(obligation.cause.item_id)
             && let hir::FnRetTy::Return(ty) = fn_sig.decl.output
             && let hir::TyKind::Path(qpath) = ty.kind
             && let hir::QPath::Resolved(None, path) = qpath
@@ -2559,8 +2559,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut span = obligation.cause.span;
         let mut is_async_fn_return = false;
-        if let DefKind::Closure = self.tcx.def_kind(obligation.cause.body_id)
-            && let parent = self.tcx.local_parent(obligation.cause.body_id)
+        if let DefKind::Closure = self.tcx.def_kind(obligation.cause.item_id)
+            && let parent = self.tcx.local_parent(obligation.cause.item_id)
             && let DefKind::Fn | DefKind::AssocFn = self.tcx.def_kind(parent)
             && self.tcx.asyncness(parent).is_async()
             && let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. })
@@ -2577,11 +2577,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             is_async_fn_return = true;
             err.span(span);
         }
-        let body = self.tcx.hir_body_owned_by(obligation.cause.body_id);
+        let body = self.tcx.hir_body_owned_by(obligation.cause.item_id);
 
         if !is_async_fn_return
             && let Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
-                self.tcx.hir_node_by_def_id(obligation.cause.body_id)
+                self.tcx.hir_node_by_def_id(obligation.cause.item_id)
             && matches!(closure.fn_decl.output, hir::FnRetTy::DefaultReturn(_))
         {
             return true;
@@ -3447,7 +3447,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // bound that introduced the obligation (e.g. `T: Send`).
         debug!(?next_code);
         self.note_obligation_cause_code(
-            obligation.cause.body_id,
+            obligation.cause.item_id,
             err,
             obligation.predicate,
             obligation.param_env,
@@ -3459,7 +3459,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub(super) fn note_obligation_cause_code<G: EmissionGuarantee, T>(
         &self,
-        body_id: LocalDefId,
+        item_id: LocalDefId,
         err: &mut Diag<'_, G>,
         predicate: T,
         param_env: ty::ParamEnv<'tcx>,
@@ -4125,7 +4125,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // #74711: avoid a stack overflow
                     ensure_sufficient_stack(|| {
                         self.note_obligation_cause_code(
-                            body_id,
+                            item_id,
                             err,
                             parent_predicate,
                             param_env,
@@ -4137,7 +4137,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } else {
                     ensure_sufficient_stack(|| {
                         self.note_obligation_cause_code(
-                            body_id,
+                            item_id,
                             err,
                             parent_predicate,
                             param_env,
@@ -4167,7 +4167,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // Skip PinDerefMutHelper in suggestions, but still show downstream suggestions.
                     ensure_sufficient_stack(|| {
                         self.note_obligation_cause_code(
-                            body_id,
+                            item_id,
                             err,
                             parent_predicate,
                             param_env,
@@ -4321,7 +4321,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
-                        body_id,
+                        item_id,
                         err,
                         parent_predicate,
                         param_env,
@@ -4364,7 +4364,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
-                        body_id,
+                        item_id,
                         err,
                         data.derived.parent_host_pred,
                         param_env,
@@ -4377,7 +4377,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::BuiltinDerivedHost(ref data) => {
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
-                        body_id,
+                        item_id,
                         err,
                         data.parent_host_pred,
                         param_env,
@@ -4393,7 +4393,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
-                        body_id,
+                        item_id,
                         err,
                         parent_predicate,
                         param_env,
@@ -4407,7 +4407,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
-                        body_id,
+                        item_id,
                         err,
                         predicate,
                         param_env,
@@ -4427,7 +4427,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 arg_hir_id, call_hir_id, ref parent_code, ..
             } => {
                 self.note_function_argument_obligation(
-                    body_id,
+                    item_id,
                     err,
                     arg_hir_id,
                     parent_code,
@@ -4437,7 +4437,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
-                        body_id,
+                        item_id,
                         err,
                         predicate,
                         param_env,
@@ -4482,7 +4482,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let expr_ty = tcx.short_string(expr_ty, err.long_ty_path());
                     let expr = tcx.hir_expect_expr(hir_id);
                     (expr_ty, expr)
-                } else if let Some(body_id) = tcx.hir_node_by_def_id(body_id).body_id()
+                } else if let Some(body_id) = tcx.hir_node_by_def_id(item_id).body_id()
                     && let body = tcx.hir_body(body_id)
                     && let hir::ExprKind::Block(block, _) = body.value.kind
                     && let Some(expr) = block.expr
@@ -4568,7 +4568,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
             && snippet.ends_with('?')
         {
-            match self.tcx.coroutine_kind(obligation.cause.body_id) {
+            match self.tcx.coroutine_kind(obligation.cause.item_id) {
                 Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
                     err.span_suggestion_verbose(
                         span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
@@ -4580,7 +4580,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 _ => {
                     let mut span: MultiSpan = span.with_lo(span.hi() - BytePos(1)).into();
                     span.push_span_label(
-                        self.tcx.def_span(obligation.cause.body_id),
+                        self.tcx.def_span(obligation.cause.item_id),
                         "this is not `async`",
                     );
                     err.span_note(
@@ -4721,7 +4721,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn note_function_argument_obligation<G: EmissionGuarantee>(
         &self,
-        body_id: LocalDefId,
+        item_id: LocalDefId,
         err: &mut Diag<'_, G>,
         arg_hir_id: HirId,
         parent_code: &ObligationCauseCode<'tcx>,
@@ -4738,7 +4738,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && let Some(failed_pred) = failed_pred.as_trait_clause()
                 && let pred = failed_pred.map_bound(|pred| pred.with_replaced_self_ty(tcx, ty))
                 && self.predicate_must_hold_modulo_regions(&Obligation::misc(
-                    tcx, expr.span, body_id, param_env, pred,
+                    tcx, expr.span, item_id, param_env, pred,
                 ))
                 && expr.span.hi() != rcvr.span.hi()
             {
@@ -4871,7 +4871,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         for (expected, actual) in zipped {
                             self.probe(|_| {
                                 match self
-                                    .at(&ObligationCause::misc(expr.span, body_id), param_env)
+                                    .at(&ObligationCause::misc(expr.span, item_id), param_env)
                                     // Doesn't actually matter if we define opaque types here, this is just used for
                                     // diagnostics, and the result is never kept around.
                                     .eq(DefineOpaqueTypes::Yes, expected, actual)
@@ -5379,14 +5379,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     term: ty.into(),
                 }),
             ));
-            let body_def_id = self.tcx.hir_enclosing_body_owner(body_id);
+            let item_id = self.tcx.hir_enclosing_body_owner(body_id);
             // Add `<ExprTy as Iterator>::Item = _` obligation.
             ocx.register_obligation(Obligation::misc(
-                self.tcx,
-                span,
-                body_def_id,
-                param_env,
-                projection,
+                self.tcx, span, item_id, param_env, projection,
             ));
             if ocx.try_evaluate_obligations().is_empty()
                 && let ty = self.resolve_vars_if_possible(ty)
@@ -5859,7 +5855,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
+        let node = self.tcx.hir_node_by_def_id(obligation.cause.item_id);
         if let Some((fn_decl, body_id)) = choose_suggest_items(self.tcx, node)
             && let hir::FnRetTy::DefaultReturn(ret_span) = fn_decl.output
             && self.tcx.is_diagnostic_item(sym::FromResidual, trait_pred.def_id())

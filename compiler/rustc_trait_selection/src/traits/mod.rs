@@ -297,7 +297,7 @@ fn do_normalize_predicates<'tcx>(
     // FIXME: It's very weird that we ignore region obligations but apparently
     // still need to use `resolve_regions` as we need the resolved regions in
     // the normalized predicates.
-    let errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
+    let errors = infcx.resolve_regions(cause.item_id, elaborated_env, []);
     if !errors.is_empty() {
         tcx.dcx().span_delayed_bug(
             span,
@@ -528,7 +528,7 @@ pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
     // FIXME(-Zhigher-ranked-assumptions): We're ignoring region errors for now.
     // There're placeholder constraints `leaking` out.
     // See the fixme in the enclosing function's docs for more.
-    let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
+    let _errors = infcx.resolve_regions(cause.item_id, elaborated_env, []);
 
     let predicates = match infcx.fully_resolve(predicates) {
         Ok(predicates) => predicates,

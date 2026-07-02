@@ -261,9 +261,9 @@ impl<'tcx> BestObligation<'tcx> {
     ) -> ControlFlow<PredicateObligation<'tcx>> {
         let infcx = candidate.goal().infcx();
         let param_env = candidate.goal().goal().param_env;
-        let body_id = self.obligation.cause.body_id;
+        let item_id = self.obligation.cause.item_id;
 
-        for obligation in wf::unnormalized_obligations(infcx, param_env, term, self.span(), body_id)
+        for obligation in wf::unnormalized_obligations(infcx, param_env, term, self.span(), item_id)
             .into_iter()
             .flatten()
         {

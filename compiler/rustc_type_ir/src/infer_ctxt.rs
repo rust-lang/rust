@@ -275,10 +275,10 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
         TypingMode::Typeck { defining_opaque_types_and_generators: Default::default() }
     }
 
-    pub fn typeck_for_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
+    pub fn typeck_for_body(cx: I, item_id: I::LocalDefId) -> TypingMode<I> {
         TypingMode::Typeck {
             defining_opaque_types_and_generators: cx
-                .opaque_types_and_coroutines_defined_by(body_def_id),
+                .opaque_types_and_coroutines_defined_by(item_id),
         }
     }
 
@@ -287,14 +287,14 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
     ///
     /// FIXME: This will be removed because it's generally not correct to define
     /// opaques outside of HIR typeck.
-    pub fn analysis_in_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
+    pub fn analysis_in_body(cx: I, item_id: I::LocalDefId) -> TypingMode<I> {
         TypingMode::Typeck {
-            defining_opaque_types_and_generators: cx.opaque_types_defined_by(body_def_id),
+            defining_opaque_types_and_generators: cx.opaque_types_defined_by(item_id),
         }
     }
 
-    pub fn borrowck(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
-        let defining_opaque_types = cx.opaque_types_defined_by(body_def_id);
+    pub fn borrowck(cx: I, item_id: I::LocalDefId) -> TypingMode<I> {
+        let defining_opaque_types = cx.opaque_types_defined_by(item_id);
         if defining_opaque_types.is_empty() {
             TypingMode::non_body_analysis()
         } else {
@@ -302,8 +302,8 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
         }
     }
 
-    pub fn post_borrowck_analysis(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
-        let defined_opaque_types = cx.opaque_types_defined_by(body_def_id);
+    pub fn post_borrowck_analysis(cx: I, item_id: I::LocalDefId) -> TypingMode<I> {
+        let defined_opaque_types = cx.opaque_types_defined_by(item_id);
         if defined_opaque_types.is_empty() {
             TypingMode::non_body_analysis()
         } else {
