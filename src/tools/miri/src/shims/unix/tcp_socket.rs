@@ -525,73 +525,23 @@ impl UnixSocketFileDescription for TcpSocket {
             )
         }
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn send(
-        &mut self,
-        socket: &OpTy<'tcx>,
-        buffer: &OpTy<'tcx>,
-        length: &OpTy<'tcx>,
-        flags: &OpTy<'tcx>,
-        // Location where the output scalar is written to.
-        dest: &MPlaceTy<'tcx>,
+    fn send<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ptr: Pointer,
+        len: usize,
+        is_non_block: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let buffer_ptr = this.read_pointer(buffer)?;
-        let size_layout = this.libc_ty_layout("size_t");
-        let length: usize =
-            this.read_scalar(length)?.to_uint(size_layout.size)?.try_into().unwrap();
-        let mut flags = this.read_scalar(flags)?.to_i32()?;
+        let is_non_block = is_non_block || self.is_non_block.get();
+        let deadline = ecx.action_deadline(is_non_block, self.write_timeout.get());
 
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket
-            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
-        };
-
-        let mut is_op_non_block = false;
-
-        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
-        // if there is anything left at the end, that's an unsupported flag.
-        if matches!(
-            this.tcx.sess.target.os,
-            Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
-        ) {
-            // MSG_NOSIGNAL and MSG_DONTWAIT only exist on Linux, Android, FreeBSD,
-            // Solaris, and Illumos targets.
-            let msg_nosignal = this.eval_libc_i32("MSG_NOSIGNAL");
-            let msg_dontwait = this.eval_libc_i32("MSG_DONTWAIT");
-            if flags & msg_nosignal == msg_nosignal {
-                // This is only needed to ensure that no EPIPE signal is sent when
-                // trying to send into a stream which is no longer connected.
-                // Since we don't support signals, we can ignore this.
-                flags &= !msg_nosignal;
-            }
-            if flags & msg_dontwait == msg_dontwait {
-                flags &= !msg_dontwait;
-                is_op_non_block = true;
-            }
-        }
-
-        if flags != 0 {
-            throw_unsup_format!(
-                "send: flag {flags:#x} is unsupported, only MSG_NOSIGNAL and MSG_DONTWAIT are allowed",
-            );
-        }
-
-        let is_non_block = is_op_non_block || socket.is_non_block.get();
-        let deadline = this.action_deadline(is_non_block, socket.write_timeout.get());
-        let dest = dest.clone();
-
-        this.ensure_connected(
+        let socket = self;
+        ecx.ensure_connected(
             socket.clone(),
             deadline.clone(),
             "send",
@@ -599,46 +549,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @capture<'tcx> {
                     socket: FileDescriptionRef<TcpSocket>,
                     deadline: Option<Deadline>,
-                    flags: i32,
-                    buffer_ptr: Pointer,
-                    length: usize,
+                    ptr: Pointer,
+                    len: usize,
                     is_non_block: bool,
-                    dest: MPlaceTy<'tcx>,
+                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                 } |this, result: Result<(), ()>| {
                     if result.is_err() {
-                        return this.set_errno_and_return_neg1(LibcError("ENOTCONN"), &dest)
+                        return finish.call(this, Err(LibcError("ENOTCONN")))
                     }
 
                     if is_non_block {
                         // We have a non-blocking operation or a non-blocking socket and
                         // thus don't want to block until we can send.
-                        match this.try_non_block_send(&socket, buffer_ptr, length)? {
-                            Ok(size) => this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest),
-                            Err(e) => this.set_errno_and_return_neg1(e, &dest),
-                        }
+                        let result = this.try_non_block_send(&socket, ptr, len)?;
+                        finish.call(this, result)
                     } else {
                         // The socket is in blocking mode and thus the send call should block
                         // until we can send some bytes into the socket or the timeout exceeded.
-                        this.block_for_send(
-                            socket,
-                            deadline,
-                            buffer_ptr,
-                            length,
-                            callback!(@capture<'tcx> {
-                                dest: MPlaceTy<'tcx>
-                            } |this, result: Result<usize, IoError>| {
-                                match result {
-                                    Ok(size) => this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest),
-                                    Err(e) => this.set_errno_and_return_neg1(e, &dest)
-                                }
-                            }),
-                        )
+                        this.block_for_send(socket, deadline, ptr, len, finish)
                     }
                 }
             ),
         )
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn recv(
         &mut self,
         socket: &OpTy<'tcx>,
