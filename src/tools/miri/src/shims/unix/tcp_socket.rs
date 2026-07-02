@@ -309,38 +309,17 @@ impl UnixFileDescription for TcpSocket {
     }
 }
 
-impl UnixSocketFileDescription for TcpSocket {}
+impl UnixSocketFileDescription for TcpSocket {
+    fn bind<'tcx>(
+        self: FileDescriptionRef<TcpSocket>,
+        communicate_allowed: bool,
+        address: SocketAddr,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
+        ecx.ensure_not_failed(&self, "bind")?;
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn bind(
-        &mut self,
-        socket: &OpTy<'tcx>,
-        address: &OpTy<'tcx>,
-        address_len: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let address = match this.read_socket_address(address, address_len, "bind")? {
-            Ok(addr) => addr,
-            Err(e) => return this.set_errno_and_return_neg1_i32(e),
-        };
-
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
-        };
-
-        assert!(this.machine.communicate(), "cannot have `TcpSocket` with isolation enabled!");
-        this.ensure_not_failed(&socket, "bind")?;
-
-        let mut state = socket.state.borrow_mut();
+        let mut state = self.state.borrow_mut();
 
         match *state {
             SocketState::Initial => {
@@ -349,10 +328,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     SocketAddr::V6(_) => SocketFamily::IPv6,
                 };
 
-                if socket.family != address_family {
+                if self.family != address_family {
                     // Attempted to bind an address from a family that doesn't match
                     // the family of the socket.
-                    let err = if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android) {
+                    let err = if matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android) {
                         // Linux man page states that `EINVAL` is used when there is an address family mismatch.
                         // See <https://man7.org/linux/man-pages/man2/bind.2.html>
                         LibcError("EINVAL")
@@ -362,27 +341,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // See <https://man7.org/linux/man-pages/man3/bind.3p.html>
                         LibcError("EAFNOSUPPORT")
                     };
-                    return this.set_errno_and_return_neg1_i32(err);
+                    return interp_ok(Err(err));
                 }
 
                 *state = SocketState::Bound(address);
             }
             SocketState::Connecting(_) | SocketState::Connected(_) =>
                 throw_unsup_format!(
-                    "bind: socket is already connected and binding a
-                    connected socket is unsupported"
+                    "bind: tcp socket is already connected and binding a
+                   connected socket is unsupported"
                 ),
             SocketState::Bound(_) | SocketState::Listening(_) =>
                 throw_unsup_format!(
-                    "bind: socket is already bound and binding a socket \
-                    multiple times is unsupported"
+                    "bind: tcp socket is already bound and binding a socket \
+                   multiple times is unsupported"
                 ),
             SocketState::ConnectionFailed(_) => unreachable!(),
         }
 
-        interp_ok(Scalar::from_i32(0))
+        interp_ok(Ok(()))
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn listen(&mut self, socket: &OpTy<'tcx>, backlog: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
