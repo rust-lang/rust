@@ -43,7 +43,7 @@ use crate::stats::MacroStat;
 // to use `assign_id!`
 #[derive(Debug, Clone)]
 pub enum Annotatable {
-    Item(Box<ast::Item>),
+    Item(ast::Item),
     AssocItem(ast::AssocItem, AssocCtxt),
     ForeignItem(ast::ForeignItem),
     Stmt(Box<ast::Stmt>),
@@ -139,7 +139,7 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_item(self) -> Box<ast::Item> {
+    pub fn expect_item(self) -> ast::Item {
         match self {
             Annotatable::Item(i) => i,
             _ => panic!("expected Item"),
@@ -425,7 +425,7 @@ pub trait MacResult {
     }
 
     /// Creates zero or more items.
-    fn make_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
+    fn make_items(self: Box<Self>) -> Option<SmallVec<[ast::Item; 1]>> {
         None
     }
 
@@ -509,7 +509,7 @@ pub trait MacResult {
 #[derive(Default)]
 pub struct MacEager {
     pub expr: Option<Box<ast::Expr>>,
-    pub items: Option<SmallVec<[Box<ast::Item>; 1]>>,
+    pub items: Option<SmallVec<[ast::Item; 1]>>,
     pub ty: Option<Box<ast::Ty>>,
 }
 
@@ -518,7 +518,7 @@ impl MacEager {
         Box::new(MacEager { expr: Some(v), ..Default::default() })
     }
 
-    pub fn items(v: SmallVec<[Box<ast::Item>; 1]>) -> Box<dyn MacResult> {
+    pub fn items(v: SmallVec<[ast::Item; 1]>) -> Box<dyn MacResult> {
         Box::new(MacEager { items: Some(v), ..Default::default() })
     }
 
@@ -532,7 +532,7 @@ impl MacResult for MacEager {
         self.expr
     }
 
-    fn make_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
+    fn make_items(self: Box<Self>) -> Option<SmallVec<[ast::Item; 1]>> {
         self.items
     }
 
@@ -601,7 +601,7 @@ impl MacResult for DummyResult {
         Some(Box::new(ast::Pat { id: ast::DUMMY_NODE_ID, kind: PatKind::Wild, span: self.span }))
     }
 
-    fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
+    fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::Item; 1]>> {
         Some(SmallVec::new())
     }
 
@@ -1147,7 +1147,7 @@ pub trait LintStoreExpand {
         registered_tools: &RegisteredTools,
         node_id: NodeId,
         attrs: &[Attribute],
-        items: &[Box<Item>],
+        items: &[Item],
         name: Symbol,
     );
 }

@@ -106,7 +106,7 @@ impl<'a> Parser<'a> {
         psess: &'a ParseSess,
         path: &Path,
         span: Span,
-    ) -> Result<(ast::AttrVec, ThinVec<Box<ast::Item>>, Span), ParserError> {
+    ) -> Result<(ast::AttrVec, ThinVec<ast::Item>, Span), ParserError> {
         let result = catch_unwind(AssertUnwindSafe(|| {
             let mut parser = unwrap_or_emit_fatal(new_parser_from_file(
                 psess.inner(),

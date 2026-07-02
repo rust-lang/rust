@@ -118,7 +118,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         registered_tools: &RegisteredTools,
         node_id: ast::NodeId,
         attrs: &[ast::Attribute],
-        items: &[Box<ast::Item>],
+        items: &[ast::Item],
         name: Symbol,
     ) {
         let check_node = EarlyCheckNode::LoadedMod(node_id, attrs, items);

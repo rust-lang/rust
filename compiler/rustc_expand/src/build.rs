@@ -272,8 +272,8 @@ impl<'a> ExtCtxt<'a> {
         ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Let(local), span }
     }
 
-    pub fn stmt_item(&self, sp: Span, item: Box<ast::Item>) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Item(item), span: sp }
+    pub fn stmt_item(&self, sp: Span, item: ast::Item) -> ast::Stmt {
+        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Item(Box::new(item)), span: sp }
     }
 
     pub fn block_expr(&self, expr: Box<ast::Expr>) -> Box<ast::Block> {
@@ -674,8 +674,8 @@ impl<'a> ExtCtxt<'a> {
         Box::new(ast::FnDecl { inputs, output })
     }
 
-    pub fn item(&self, span: Span, attrs: ast::AttrVec, kind: ast::ItemKind) -> Box<ast::Item> {
-        Box::new(ast::Item {
+    pub fn item(&self, span: Span, attrs: ast::AttrVec, kind: ast::ItemKind) -> ast::Item {
+        ast::Item {
             attrs,
             id: ast::DUMMY_NODE_ID,
             kind,
@@ -685,7 +685,7 @@ impl<'a> ExtCtxt<'a> {
             },
             span,
             tokens: None,
-        })
+        }
     }
 
     pub fn item_static(
@@ -695,7 +695,7 @@ impl<'a> ExtCtxt<'a> {
         ty: Box<ast::Ty>,
         mutability: ast::Mutability,
         expr: Box<ast::Expr>,
-    ) -> Box<ast::Item> {
+    ) -> ast::Item {
         self.item(
             span,
             AttrVec::new(),
@@ -720,7 +720,7 @@ impl<'a> ExtCtxt<'a> {
         ident: Ident,
         ty: Box<ast::Ty>,
         rhs_kind: ast::ConstItemRhsKind,
-    ) -> Box<ast::Item> {
+    ) -> ast::Item {
         let defaultness = ast::Defaultness::Implicit;
         self.item(
             span,

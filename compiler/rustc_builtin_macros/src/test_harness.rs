@@ -288,7 +288,7 @@ fn generate_test_harness(
 /// [`TestCtxt::reexport_test_harness_main`] provides a different name for the `main`
 /// function and [`TestCtxt::test_runner`] provides a path that replaces
 /// `test::test_main_static`.
-fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
+fn mk_main(cx: &mut TestCtxt<'_>) -> ast::Item {
     let sp = cx.def_site;
     let ecx = &cx.ext_cx;
     let test_ident = Ident::new(sym::test, sp);
@@ -351,14 +351,14 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         eii_impls: ThinVec::new(),
     }));
 
-    let main = Box::new(ast::Item {
+    let main = ast::Item {
         attrs: thin_vec![main_attr, coverage_attr, doc_hidden_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
         vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public },
         span: sp,
         tokens: None,
-    });
+    };
 
     // Integrate the new item into existing module structures.
     let main = AstFragment::Items(smallvec![main]);

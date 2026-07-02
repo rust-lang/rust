@@ -52,7 +52,7 @@ fn parse_cfg_match_inner<'a>(
             let item = match parser
                 .parse_item(ForceCollect::No, AllowConstBlockItems::DoesNotMatter)
             {
-                Ok(Some(item_ptr)) => *item_ptr,
+                Ok(Some(item_ptr)) => item_ptr,
                 Ok(None) => continue,
                 Err(err) => {
                     err.cancel();

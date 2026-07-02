@@ -73,7 +73,7 @@ mod llvm_enzyme {
     }
 
     // Get information about the function the macro is applied to
-    fn extract_item_info(iitem: &Box<ast::Item>) -> Option<(Visibility, FnSig, Ident, Generics)> {
+    fn extract_item_info(iitem: &ast::Item) -> Option<(Visibility, FnSig, Ident, Generics)> {
         match &iitem.kind {
             ItemKind::Fn(ast::Fn { sig, ident, generics, .. }) => {
                 Some((iitem.vis.clone(), sig.clone(), ident.clone(), generics.clone()))
@@ -466,7 +466,7 @@ mod llvm_enzyme {
 
                 Annotatable::Stmt(Box::new(ast::Stmt {
                     id: ast::DUMMY_NODE_ID,
-                    kind: ast::StmtKind::Item(d_fn),
+                    kind: ast::StmtKind::Item(Box::new(d_fn)),
                     span,
                 }))
             }

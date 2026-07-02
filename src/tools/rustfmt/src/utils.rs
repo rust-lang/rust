@@ -196,9 +196,9 @@ pub(crate) fn format_extern(ext: ast::Extern, explicit_abi: bool) -> Cow<'static
 }
 
 #[inline]
-// Transform `Vec<Box<T>>` into `Vec<&T>`
-pub(crate) fn ptr_vec_to_ref_vec<T>(vec: &[Box<T>]) -> Vec<&T> {
-    vec.iter().map(|x| &**x).collect::<Vec<_>>()
+// Transform `Vec<T>` into `Vec<&T>`
+pub(crate) fn ptr_vec_to_ref_vec<T>(vec: &[T]) -> Vec<&T> {
+    vec.iter().map(|x| &*x).collect::<Vec<_>>()
 }
 
 #[inline]

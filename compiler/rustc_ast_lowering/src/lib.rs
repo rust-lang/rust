@@ -548,12 +548,12 @@ fn index_ast<'tcx>(
             id: NodeId,
             span: Span,
             dummy: impl FnOnce(Box<MacCall>) -> K,
-        ) -> Box<Item<K>> {
+        ) -> Item<K> {
             use rustc_ast::token::Delimiter;
             use rustc_ast::tokenstream::{DelimSpan, TokenStream};
             use thin_vec::thin_vec;
 
-            Box::new(Item {
+            Item {
                 attrs: AttrVec::default(),
                 id,
                 span,
@@ -569,17 +569,17 @@ fn index_ast<'tcx>(
                     }),
                 })),
                 tokens: None,
-            })
+            }
         }
 
         fn replace_with_dummy<K>(
             &mut self,
             item: &mut ast::Item<K>,
-            dummy: impl FnOnce(Box<MacCall>) -> K,
+            dummy: impl FnOnce(Box<MacCall>) -> K, // njn: Box<MacCall>?
             node: impl FnOnce(Item<K>) -> AstOwner,
         ) {
             let dummy = self.make_dummy(item.id, item.span, dummy);
-            let item = mem::replace(item, *dummy);
+            let item = mem::replace(item, dummy);
             self.insert(item.id, node(item));
         }
 
@@ -588,7 +588,7 @@ fn index_ast<'tcx>(
             &mut self,
             tree: &UseTree,
             parent: LocalDefId,
-            items: &mut SmallVec<[Box<Item>; 1]>,
+            items: &mut SmallVec<[Item; 1]>,
         ) {
             match tree.kind {
                 UseTreeKind::Glob(_) | UseTreeKind::Simple(_) => {}
@@ -611,9 +611,9 @@ fn index_ast<'tcx>(
             // as they are not accessible to the rest of the HIR.
         }
 
-        fn flat_map_item(&mut self, mut item: Box<Item>) -> SmallVec<[Box<Item>; 1]> {
+        fn flat_map_item(&mut self, mut item: Item) -> SmallVec<[Item; 1]> {
             let def_id = self.owners[&item.id].def_id;
-            mut_visit::walk_item(self, &mut *item);
+            mut_visit::walk_item(self, &mut item);
             let dummy = self.make_dummy(item.id, item.span, ItemKind::MacCall);
             let mut items = smallvec![dummy];
             if let ItemKind::Use(ref use_tree) = item.kind {

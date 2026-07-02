@@ -182,7 +182,7 @@ impl MutVisitor for CfgEval<'_> {
         mut_visit::walk_flat_map_stmt(self, stmt)
     }
 
-    fn flat_map_item(&mut self, item: Box<ast::Item>) -> SmallVec<[Box<ast::Item>; 1]> {
+    fn flat_map_item(&mut self, item: ast::Item) -> SmallVec<[ast::Item; 1]> {
         let item = configure!(self, item);
         mut_visit::walk_flat_map_item(self, item)
     }

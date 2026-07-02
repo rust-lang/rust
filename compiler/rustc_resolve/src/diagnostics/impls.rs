@@ -4183,7 +4183,7 @@ impl<'tcx> Visitor<'tcx> for BindingVisitor {
     }
 }
 
-fn search_for_any_use_in_items(items: &[Box<ast::Item>]) -> Option<Span> {
+fn search_for_any_use_in_items(items: &[ast::Item]) -> Option<Span> {
     for item in items {
         if let ItemKind::Use(..) = item.kind
             && is_span_suitable_for_use_injection(item.span)

@@ -32,7 +32,7 @@ pub(crate) fn expand(
         && let StmtKind::Item(item) = &stmt.kind
         && let ItemKind::Static(ast::StaticItem { ident, ty, .. }) = &item.kind
     {
-        (item, *ident, true, ecx.with_def_site_ctxt(ty.span))
+        (&**item, *ident, true, ecx.with_def_site_ctxt(ty.span))
     } else {
         ecx.dcx().emit_err(diagnostics::AllocMustStatics { span: item.span() });
         return vec![orig_item];

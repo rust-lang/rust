@@ -159,7 +159,7 @@ pub(crate) fn expand_include<'cx>(
             Some(expr)
         }
 
-        fn make_items(self: Box<ExpandInclude<'a>>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
+        fn make_items(self: Box<ExpandInclude<'a>>) -> Option<SmallVec<[ast::Item; 1]>> {
             let mut p = unwrap_or_emit_fatal(new_parser_from_file(
                 self.psess,
                 &self.path,

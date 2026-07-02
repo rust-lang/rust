@@ -194,7 +194,7 @@ ast_fragments! {
         many fn flat_map_stmt; fn visit_stmt();
         fn make_stmts;
     }
-    Items(SmallVec<[Box<ast::Item>; 1]>) { // njn: todo
+    Items(SmallVec<[ast::Item; 1]>) {
         "item";
         many fn flat_map_item; fn visit_item();
         fn make_items;
@@ -995,9 +995,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     DelegationSource::Glob,
                 );
                 // `-Zmacro-stats` ignores these because they don't seem important.
-                fragment_kind.expect_from_annotatables(single_delegations.map(|item| {
-                    Annotatable::AssocItem(item, AssocCtxt::Impl { of_trait })
-                }))
+                fragment_kind.expect_from_annotatables(
+                    single_delegations
+                        .map(|item| Annotatable::AssocItem(item, AssocCtxt::Impl { of_trait })),
+                )
             }
         })
     }
@@ -1280,7 +1281,7 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     fn as_target(&self) -> Target;
 }
 
-impl InvocationCollectorNode for Box<ast::Item> {
+impl InvocationCollectorNode for ast::Item {
     const KIND: AstFragmentKind = AstFragmentKind::Items;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Item(self)
@@ -1310,7 +1311,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
         ItemKind::Delegation(deleg)
     }
     fn from_item(item: ast::Item<Self::ItemKind>) -> Self {
-        Box::new(item)
+        item
     }
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
@@ -2445,7 +2446,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 }
 
 impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
-    fn flat_map_item(&mut self, node: Box<ast::Item>) -> SmallVec<[Box<ast::Item>; 1]> {
+    fn flat_map_item(&mut self, node: ast::Item) -> SmallVec<[ast::Item; 1]> {
         self.flat_map_node(node)
     }
 

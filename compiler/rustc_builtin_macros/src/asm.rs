@@ -650,7 +650,7 @@ pub(super) fn expand_global_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             match mac {
-                Ok(inline_asm) => MacEager::items(smallvec![Box::new(ast::Item {
+                Ok(inline_asm) => MacEager::items(smallvec![ast::Item {
                     attrs: ast::AttrVec::new(),
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
@@ -660,7 +660,7 @@ pub(super) fn expand_global_asm<'cx>(
                     },
                     span: sp,
                     tokens: None,
-                })]),
+                }]),
                 Err(guar) => DummyResult::any(sp, guar),
             }
         }

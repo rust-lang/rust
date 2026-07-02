@@ -82,7 +82,7 @@ fn eii_(
         return vec![orig_item];
     };
 
-    let ast::Item { attrs, id: _, span: _, vis, kind, tokens: _ } = item.as_ref();
+    let ast::Item { attrs, id: _, span: _, vis, kind, tokens: _ } = &item;
     let (item_span, foreign_item_name) = match kind {
         ItemKind::Fn(func) => (func.sig.span, func.ident),
         ItemKind::Static(stat) => {
@@ -283,7 +283,7 @@ fn generate_default_impl(
     item_span: Span,
     foreign_item_name: Ident,
     attrs: ThinVec<Attribute>,
-) -> Option<Box<ast::Item>> {
+) -> Option<ast::Item> {
     match item_kind {
         ItemKind::Fn(func) => {
             if func.body.is_none() {
@@ -363,7 +363,7 @@ fn generate_foreign_item(
     item_kind: &ItemKind,
     vis: Visibility,
     attrs_from_decl: ThinVec<Attribute>,
-) -> Box<ast::Item> {
+) -> ast::Item {
     let mut foreign_item_attrs = attrs_from_decl;
 
     // Add the rustc_eii_foreign_item on the foreign item. Usually, foreign items are mangled.
@@ -456,7 +456,7 @@ fn generate_attribute_macro_to_implement(
     foreign_item_name: Ident,
     impl_unsafe: bool,
     attrs_from_decl: ThinVec<Attribute>,
-) -> Box<ast::Item> {
+) -> ast::Item {
     let mut macro_attrs = attrs_from_decl;
 
     // Avoid "missing stability attribute" errors for eiis in std. See #146993.
@@ -466,7 +466,7 @@ fn generate_attribute_macro_to_implement(
     macro_attrs.push(ecx.attr_nested_word(sym::rustc_builtin_macro, sym::eii_shared_macro, span));
 
     // cant use ecx methods here to construct item since we need it to be public
-    Box::new(ast::Item {
+    ast::Item {
         attrs: macro_attrs,
         id: ast::DUMMY_NODE_ID,
         span,
@@ -505,7 +505,7 @@ fn generate_attribute_macro_to_implement(
             },
         ),
         tokens: None,
-    })
+    }
 }
 
 pub(crate) fn eii_declaration(

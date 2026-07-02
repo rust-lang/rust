@@ -68,7 +68,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
         Item,
         NonterminalKind::Item,
         |parser: &mut Parser<'b>| parser.parse_item(ForceCollect::No, AllowConstBlockItems::Yes),
-        |x: Option<Box<ast::Item>>| x
+        |x: Option<ast::Item>| x.map(Box::new)
     );
 
     None

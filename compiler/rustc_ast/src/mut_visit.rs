@@ -291,7 +291,7 @@ macro_rules! generate_flat_map_visitor_fns {
 }
 
 generate_flat_map_visitor_fns! {
-    visit_items, Box<Item>, flat_map_item;
+    visit_items, Item, flat_map_item;
     visit_foreign_items, ForeignItem, flat_map_foreign_item;
     visit_generic_params, GenericParam, flat_map_generic_param;
     visit_stmts, Stmt, flat_map_stmt;
@@ -331,7 +331,7 @@ generate_walk_flat_map_fns! {
     walk_flat_map_where_predicate(WherePredicate) => visit_where_predicate;
     walk_flat_map_field_def(FieldDef) => visit_field_def;
     walk_flat_map_expr_field(ExprField) => visit_expr_field;
-    walk_flat_map_item(Box<Item>) => visit_item;
+    walk_flat_map_item(Item) => visit_item;
     walk_flat_map_foreign_item(ForeignItem) => visit_foreign_item;
     walk_flat_map_assoc_item(AssocItem, ctxt: AssocCtxt) => visit_assoc_item;
 }
@@ -370,7 +370,11 @@ pub fn walk_flat_map_stmt_kind<T: MutVisitor>(
             vis.visit_local(&mut local);
             local
         })],
-        StmtKind::Item(item) => vis.flat_map_item(item).into_iter().map(StmtKind::Item).collect(),
+        StmtKind::Item(item) => vis
+            .flat_map_item(*item)
+            .into_iter()
+            .map(|item| StmtKind::Item(Box::new(item)))
+            .collect(),
         StmtKind::Expr(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Expr).collect(),
         StmtKind::Semi(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Semi).collect(),
         StmtKind::Empty => smallvec![StmtKind::Empty],

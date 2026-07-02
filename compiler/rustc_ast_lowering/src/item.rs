@@ -97,11 +97,7 @@ impl<'hir> ItemLowerer<'_, 'hir> {
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    pub(super) fn lower_mod(
-        &mut self,
-        items: &[Box<Item>],
-        spans: &ModSpans,
-    ) -> &'hir hir::Mod<'hir> {
+    pub(super) fn lower_mod(&mut self, items: &[Item], spans: &ModSpans) -> &'hir hir::Mod<'hir> {
         self.arena.alloc(hir::Mod {
             spans: hir::ModSpans {
                 inner_span: self.lower_span(spans.inner_span),

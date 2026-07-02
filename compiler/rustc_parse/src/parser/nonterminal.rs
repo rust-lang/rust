@@ -129,7 +129,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Item => match self
                 .parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?
             {
-                Some(item) => Ok(ParseNtResult::Item(item)),
+                Some(item) => Ok(ParseNtResult::Item(Box::new(item))),
                 None => Err(self.dcx().create_err(UnexpectedNonterminal::Item(self.token.span))),
             },
             NonterminalKind::Block => {

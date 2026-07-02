@@ -49,7 +49,7 @@ macro_rules! forward_to_parser_any_macro {
 impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
     forward_to_parser_any_macro!(make_expr, Box<Expr>);
     forward_to_parser_any_macro!(make_stmts, SmallVec<[ast::Stmt; 1]>);
-    forward_to_parser_any_macro!(make_items, SmallVec<[Box<ast::Item>; 1]>);
+    forward_to_parser_any_macro!(make_items, SmallVec<[ast::Item; 1]>);
 
     forward_to_parser_any_macro!(make_impl_items, SmallVec<[ast::AssocItem; 1]>);
     forward_to_parser_any_macro!(make_trait_impl_items, SmallVec<[ast::AssocItem; 1]>);

@@ -549,7 +549,7 @@ impl<'a> TraitDef<'a> {
                         })
                         .cloned(),
                 );
-                push(Annotatable::Item(Box::new(ast::Item { attrs, ..(*newitem).clone() })))
+                push(Annotatable::Item(ast::Item { attrs, ..newitem }))
             }
             _ => unreachable!(),
         }
@@ -598,12 +598,12 @@ impl<'a> TraitDef<'a> {
         field_tys: Vec<&ast::Ty>,
         methods: Vec<ast::AssocItem>,
         is_packed: bool,
-    ) -> Box<ast::Item> {
+    ) -> ast::Item {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
         // Transform associated types from `deriving::ty::Ty` into `ast::AssocItem`
-        let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
-            ast::AssocItem {
+        let associated_types =
+            self.associated_types.iter().map(|&(ident, ref type_def)| ast::AssocItem {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 vis: ast::Visibility {
@@ -620,8 +620,7 @@ impl<'a> TraitDef<'a> {
                     ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 })),
                 tokens: None,
-            }
-        });
+            });
 
         let mut where_clause = ast::WhereClause::default();
         where_clause.span = generics.where_clause.span;
@@ -866,7 +865,7 @@ impl<'a> TraitDef<'a> {
         generics: &Generics,
         from_scratch: bool,
         is_packed: bool,
-    ) -> Box<ast::Item> {
+    ) -> ast::Item {
         let field_tys = Vec::from_iter(struct_def.fields().iter().map(|field| &*field.ty));
 
         let methods = self
@@ -918,7 +917,7 @@ impl<'a> TraitDef<'a> {
         type_ident: Ident,
         generics: &Generics,
         from_scratch: bool,
-    ) -> Box<ast::Item> {
+    ) -> ast::Item {
         let field_tys = Vec::from_iter(
             enum_def
                 .variants

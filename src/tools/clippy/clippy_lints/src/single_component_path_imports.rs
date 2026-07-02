@@ -123,7 +123,7 @@ impl Visitor<'_> for ImportUsageVisitor {
 }
 
 impl SingleComponentPathImports {
-    fn check_mod(&mut self, items: &[Box<Item>]) {
+    fn check_mod(&mut self, items: &[Item]) {
         // keep track of imports reused with `self` keyword, such as `self::crypto_hash` in the example
         // below. Removing the `use crypto_hash;` would make this a compile error
         // ```

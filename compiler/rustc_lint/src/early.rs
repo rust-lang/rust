@@ -278,7 +278,7 @@ crate::early_lint_methods!(impl_early_lint_pass, []);
 /// This trait generalizes over those nodes.
 pub enum EarlyCheckNode<'a> {
     CrateRoot(&'a ast::Crate, &'a [ast::Attribute]),
-    LoadedMod(ast::NodeId, &'a [ast::Attribute], &'a [Box<ast::Item>]),
+    LoadedMod(ast::NodeId, &'a [ast::Attribute], &'a [ast::Item]),
 }
 
 impl<'a> EarlyCheckNode<'a> {

@@ -1828,6 +1828,7 @@ pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
+    // njn: why the boxes?
     Item(Box<ast::Item>),
     Block(WithTokens<Box<ast::Block>>),
     Stmt(Box<ast::Stmt>),

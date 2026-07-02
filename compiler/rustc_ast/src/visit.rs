@@ -692,7 +692,7 @@ macro_rules! common_visitor_and_walkers {
                     walk_flat_map_foreign_item(self, ni)
                 }
 
-                fn flat_map_item(&mut self, i: Box<Item>) -> SmallVec<[Box<Item>; 1]> {
+                fn flat_map_item(&mut self, i: Item) -> SmallVec<[Item; 1]> {
                     walk_flat_map_item(self, i)
                 }
 
@@ -1174,7 +1174,7 @@ macro_rules! generate_list_visit_fns {
 }
 
 generate_list_visit_fns! {
-    visit_items, Box<Item>, visit_item;
+    visit_items, Item, visit_item;
     visit_foreign_items, ForeignItem, visit_foreign_item;
     visit_generic_params, GenericParam, visit_generic_param;
     visit_stmts, Stmt, visit_stmt;

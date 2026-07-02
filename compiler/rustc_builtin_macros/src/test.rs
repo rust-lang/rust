@@ -41,7 +41,7 @@ pub(crate) fn expand_test_case(
         Annotatable::Item(item) => (item, false),
         Annotatable::Stmt(stmt) if let ast::StmtKind::Item(_) = stmt.kind => {
             if let ast::StmtKind::Item(i) = stmt.kind {
-                (i, true)
+                (*i, true)
             } else {
                 unreachable!()
             }
@@ -113,7 +113,7 @@ pub(crate) fn expand_test_or_bench(
 ) -> Vec<Annotatable> {
     let (item, is_stmt) = match item {
         Annotatable::Item(i) => (i, false),
-        Annotatable::Stmt(ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (i, true),
+        Annotatable::Stmt(ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (*i, true),
         other => {
             not_testable_error(cx, is_bench, attr_sp, None);
             return vec![other];

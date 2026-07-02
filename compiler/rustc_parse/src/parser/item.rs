@@ -59,17 +59,17 @@ impl<'a> Parser<'a> {
     pub fn parse_mod(
         &mut self,
         term: ExpTokenPair,
-    ) -> PResult<'a, (AttrVec, ThinVec<Box<Item>>, ModSpans)> {
+    ) -> PResult<'a, (AttrVec, ThinVec<Item>, ModSpans)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
 
         let post_attr_lo = self.token.span;
-        let mut items: ThinVec<Box<_>> = ThinVec::new();
+        let mut items: ThinVec<_> = ThinVec::new();
 
         // There shouldn't be any stray semicolons before or after items.
         // `parse_item` consumes the appropriate semicolons so any leftover is an error.
         loop {
-            while self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {} // Eat all bad semicolons
+            while self.maybe_consume_incorrect_semicolon(items.last()) {} // Eat all bad semicolons
             let Some(item) = self.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)? else {
                 break;
             };
@@ -78,7 +78,7 @@ impl<'a> Parser<'a> {
 
         if !self.eat(term) {
             let token_str = super::token_descr(&self.token);
-            if !self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {
+            if !self.maybe_consume_incorrect_semicolon(items.last()) {
                 let is_let = self.token.is_keyword(kw::Let);
                 let is_let_mut = is_let && self.look_ahead(1, |t| t.is_keyword(kw::Mut));
                 let let_has_ident = is_let && !is_let_mut && self.is_kw_followed_by_ident(kw::Let);
@@ -128,11 +128,10 @@ impl<'a> Parser<'a> {
         &mut self,
         force_collect: ForceCollect,
         allow_const_block_items: AllowConstBlockItems,
-    ) -> PResult<'a, Option<Box<Item>>> {
+    ) -> PResult<'a, Option<Item>> {
         let fn_parse_mode =
             FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true };
         self.parse_item_(fn_parse_mode, force_collect, allow_const_block_items)
-            .map(|i| i.map(Box::new))
     }
 
     fn parse_item_(
@@ -168,7 +167,7 @@ impl<'a> Parser<'a> {
         }) {
             let mut item = item.expect("an actual item");
             attrs.prepend_to_nt_inner(&mut item.attrs);
-            return Ok(Some(*item));
+            return Ok(Some(item));
         }
 
         self.collect_tokens(None, attrs, force_collect, |this, mut attrs| {

@@ -29,7 +29,7 @@ pub(crate) fn expand(
         && let StmtKind::Item(item) = &stmt.kind
         && let ItemKind::Fn(fn_kind) = &item.kind
     {
-        (item, fn_kind.ident, true, ecx.with_def_site_ctxt(fn_kind.sig.span))
+        (&**item, fn_kind.ident, true, ecx.with_def_site_ctxt(fn_kind.sig.span))
     } else {
         ecx.dcx().emit_err(diagnostics::AllocErrorMustBeFn { span: item.span() });
         return vec![orig_item];

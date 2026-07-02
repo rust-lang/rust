@@ -552,7 +552,7 @@ pub struct Crate {
     /// expansion placeholders or an unassigned value (`DUMMY_NODE_ID`) before that.
     pub id: NodeId,
     pub attrs: AttrVec,
-    pub items: ThinVec<Box<Item>>,
+    pub items: ThinVec<Item>,
     pub spans: ModSpans,
     pub is_placeholder: bool,
 }
@@ -3274,7 +3274,7 @@ pub enum ModKind {
     /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
     /// The inner span is from the first token past `{` to the last token until `}`,
     /// or from the first to the last token in the loaded file.
-    Loaded(ThinVec<Box<Item>>, Inline, ModSpans),
+    Loaded(ThinVec<Item>, Inline, ModSpans),
     /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
     Unloaded,
 }
@@ -4367,7 +4367,7 @@ pub enum AstOwner {
     /// The `LocalDefId` points to its HIR owner.
     NestedUseTree(LocalDefId),
     Crate(Box<Crate>), // njn: todo?
-    Item(Box<Item>), // njn: todo
+    Item(Item),
     TraitItem(AssocItem),
     ImplItem(AssocItem),
     ForeignItem(ForeignItem),

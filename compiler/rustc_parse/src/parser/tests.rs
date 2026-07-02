@@ -2225,6 +2225,7 @@ fn parse_item_from_source_str(
     source: String,
     psess: &ParseSess,
 ) -> PResult<'_, Option<Box<ast::Item>>> {
+    // njn: ?
     unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source, StripTokens::Nothing))
         .parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
 }
@@ -2241,6 +2242,7 @@ fn string_to_expr(source_str: String) -> Box<ast::Expr> {
 
 /// Parses a string, returns an item.
 fn string_to_item(source_str: String) -> Option<Box<ast::Item>> {
+    // njn: ?
     with_error_checking_parse(source_str, &ParseSess::new(), |p| {
         p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
     })
