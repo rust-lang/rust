@@ -1,13 +1,14 @@
 use std::fmt;
 
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{Diag, IntoDiagArg};
+use rustc_errors::{Applicability, Diag, IntoDiagArg};
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::bug;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
-use rustc_middle::ty::{self, GenericArgsRef, RePlaceholder, Region, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, IsSuggestable, RePlaceholder, Region, TyCtxt};
 use tracing::{debug, instrument};
 
 use crate::diagnostics::{
@@ -376,6 +377,50 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                     c_span,
                     format!("this {descr} captures a value whose type is not `{trait_name}`"),
                 );
+            }
+        }
+
+        // When the mismatched trait is an Fn-trait and the self type is a closure with
+        // unannotated parameters, suggest adding explicit type annotations. This turns
+        // the confusing lifetime-generality error into an actionable hint, e.g.:
+        //   |buf|  →  |buf: &mut [u8]|
+        if self.tcx().is_fn_trait(trait_def_id) {
+            let actual_self_ty = self.cx.resolve_vars_if_possible(
+                ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, actual_args).self_ty(),
+            );
+            if let ty::Closure(closure_def_id, _) = *actual_self_ty.kind()
+                && let Some(local_def_id) = closure_def_id.as_local()
+                && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
+                    self.tcx().hir_node_by_def_id(local_def_id)
+            {
+                let body = self.tcx().hir_body(closure.body);
+                // For Fn traits, args[1] is the tupled input types (e.g. `(&mut [u8],)`).
+                let expected_input_tys = expected_args.type_at(1);
+                if let ty::Tuple(input_tys) = *expected_input_tys.kind() {
+                    let suggestions: Vec<_> = body
+                        .params
+                        .iter()
+                        .zip(input_tys.iter())
+                        .filter_map(|(param, ty)| {
+                            // ty_span == pat.span means no explicit type annotation was written.
+                            if param.ty_span == param.pat.span
+                                && ty.is_suggestable(self.tcx(), false)
+                            {
+                                Some((param.pat.span.shrink_to_hi(), format!(": {ty}")))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    if !suggestions.is_empty() {
+                        err.multipart_suggestion(
+                            "consider adding an explicit type annotation to the closure \
+                             parameter to resolve the lifetime ambiguity",
+                            suggestions,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
             }
         }
 
