@@ -793,7 +793,7 @@ fn get_nullable_type<'tcx>(
             return get_nullable_type(tcx, typing_env, inner_field_ty);
         }
         ty::Pat(base, ..) => return get_nullable_type(tcx, typing_env, base),
-        ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => ty,
+        ty::Int(_) | ty::Uint(_) | ty::Char | ty::RawPtr(..) => ty,
         // As these types are always non-null, the nullable equivalent of
         // `Option<T>` of these types are their raw pointer counterparts.
         ty::Ref(_region, ty, mutbl) => Ty::new_ptr(tcx, ty, mutbl),
@@ -895,10 +895,14 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
                     WrappingRange { start: 0, end }
                         if end == field_ty_scalar.size(&tcx).unsigned_int_max() - 1 =>
                     {
-                        return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
+                        return Some(get_nullable_type(tcx, typing_env, field_ty).expect(
+                            "known non-null scalar type should have a nullable representation",
+                        ));
                     }
                     WrappingRange { start: 1, .. } => {
-                        return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
+                        return Some(get_nullable_type(tcx, typing_env, field_ty).expect(
+                            "known non-null scalar type should have a nullable representation",
+                        ));
                     }
                     WrappingRange { start, end } => {
                         unreachable!("Unhandled start and end range: ({}, {})", start, end)
