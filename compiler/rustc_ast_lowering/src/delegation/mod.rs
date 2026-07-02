@@ -51,7 +51,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::symbol::kw;
 use rustc_span::{Ident, Span, Symbol, sym};
 
-use crate::delegation::generics::GenericsPosition;
+use crate::delegation::generics::{GenericsGenerationResults, GenericsPosition};
 use crate::delegation::resolution::wrapper::DelegationResolverWrapper;
 use crate::delegation::resolution::{DelegationResolution, ParamInfo};
 use crate::{
@@ -74,16 +74,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let span = self.lower_span(delegation.last_segment_span());
 
         let resolver = DelegationResolverWrapper::new(self);
-        let Ok(mut res) = resolver.resolve_delegation(delegation, span) else {
+        let Ok((res, mut generics)) = resolver.resolve_delegation(delegation, span) else {
             return self.generate_delegation_error(span, delegation);
         };
 
         self.add_attrs_if_needed(&res);
 
         let (body_id, call_expr_id, unused_target_expr) =
-            self.lower_delegation_body(delegation, &mut res);
+            self.lower_delegation_body(delegation, &res, &mut generics);
 
-        let decl = self.lower_delegation_decl(&res, call_expr_id, unused_target_expr);
+        let decl = self.lower_delegation_decl(&res, &generics, call_expr_id, unused_target_expr);
 
         let sig = self.lower_delegation_sig(res.sig_id, decl, span);
 
@@ -91,8 +91,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let generics = self.arena.alloc(hir::Generics {
             has_where_clause_predicates: false,
-            params: self.arena.alloc_from_iter(res.generics.all_params()),
-            predicates: self.arena.alloc_from_iter(res.generics.all_predicates()),
+            params: self.arena.alloc_from_iter(generics.all_params()),
+            predicates: self.arena.alloc_from_iter(generics.all_predicates()),
             span,
             where_clause_span: span,
         });
@@ -102,7 +102,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_delegation_decl(
         &mut self,
-        res: &DelegationResolution<'hir>,
+        res: &DelegationResolution,
+        generics: &GenericsGenerationResults<'hir>,
         call_expr_id: HirId,
         unused_target_expr: bool,
     ) -> &'hir hir::FnDecl<'hir> {
@@ -128,10 +129,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::InferDelegationSig::Output(self.arena.alloc(hir::DelegationInfo {
                     call_expr_id,
                     call_path_res,
-                    child_seg_id: res.generics.child.args_segment_id,
-                    child_seg_id_for_sig: res.generics.child.segment_id_for_sig(),
-                    parent_seg_id_for_sig: res.generics.parent.segment_id_for_sig(),
-                    self_ty_propagation_kind: res.generics.self_ty_propagation_kind,
+                    child_seg_id: generics.child.args_segment_id,
+                    child_seg_id_for_sig: generics.child.segment_id_for_sig(),
+                    parent_seg_id_for_sig: generics.parent.segment_id_for_sig(),
+                    self_ty_propagation_kind: generics.self_ty_propagation_kind,
                     group_id: {
                         let id = match source {
                             DelegationSource::Single => None,
@@ -240,19 +241,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_delegation_body(
         &mut self,
         delegation: &Delegation,
-        res: &mut DelegationResolution<'hir>,
+        res: &DelegationResolution,
+        generics: &mut GenericsGenerationResults<'hir>,
     ) -> (hir::BodyId, HirId, bool) {
         let block = delegation.body.as_deref();
         let mut call_expr_id = HirId::INVALID;
         let mut unused_target_expr = false;
 
         let block_id = self.lower_body(|this| {
-            let &mut DelegationResolution {
-                param_info,
-                span,
-                should_generate_block,
-                is_method,
-                ..
+            let &DelegationResolution {
+                param_info, span, should_generate_block, is_method, ..
             } = res;
 
             let ParamInfo { param_count, .. } = param_info;
@@ -307,7 +305,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
 
             let (final_expr, hir_id) =
-                this.finalize_body_lowering(delegation, stmts, args, res, span);
+                this.finalize_body_lowering(delegation, stmts, args, res, generics, span);
 
             call_expr_id = hir_id;
 
@@ -324,7 +322,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         delegation: &Delegation,
         stmts: &'hir [hir::Stmt<'hir>],
         args: Vec<hir::Expr<'hir>>,
-        res: &mut DelegationResolution<'hir>,
+        res: &DelegationResolution,
+        generics: &mut GenericsGenerationResults<'hir>,
         span: Span,
     ) -> (hir::Expr<'hir>, HirId) {
         let path = self.lower_qpath(
@@ -345,9 +344,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 new_path.segments = self.arena.alloc_from_iter(
                     new_path.segments.iter().enumerate().map(|(idx, segment)| {
                         if idx + 2 == len {
-                            self.process_segment(span, segment, &mut res.generics.parent)
+                            self.process_segment(span, segment, &mut generics.parent)
                         } else if idx + 1 == len {
-                            self.process_segment(span, segment, &mut res.generics.child)
+                            self.process_segment(span, segment, &mut generics.child)
                         } else {
                             segment.clone()
                         }
@@ -356,9 +355,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 // Explicitly create `Self` self-type in case of infers or static
                 // free-to-trait reuses.
-                let ty = match res.generics.self_ty_propagation_kind {
+                let ty = match generics.self_ty_propagation_kind {
                     Some(hir::DelegationSelfTyPropagationKind::SelfParam) => {
-                        let self_param = res.generics.parent.generics.find_self_param();
+                        let self_param = generics.parent.generics.find_self_param();
                         let path = self.create_generic_arg_path(self_param);
                         let kind = hir::TyKind::Path(path);
 
@@ -378,7 +377,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         if let Some(hir::DelegationSelfTyPropagationKind::SelfTy(id)) =
-            res.generics.self_ty_propagation_kind.as_mut()
+            generics.self_ty_propagation_kind.as_mut()
         {
             *id = match new_path {
                 hir::QPath::Resolved(ty, _) => {

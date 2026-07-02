@@ -39,7 +39,7 @@ static ADDITIONS: &[AdditionInfo] = &[
 ];
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    pub(super) fn add_attrs_if_needed(&mut self, resolution: &DelegationResolution<'hir>) {
+    pub(super) fn add_attrs_if_needed(&mut self, resolution: &DelegationResolution) {
         let &DelegationResolution { span, sig_id, .. } = resolution;
 
         const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;

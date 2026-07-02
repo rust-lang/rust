@@ -29,7 +29,7 @@ pub(super) struct ParamInfo {
     pub splatted: Option<u8>,
 }
 
-pub(super) struct DelegationResolution<'tcx> {
+pub(super) struct DelegationResolution {
     pub sig_id: DefId,
     pub is_method: bool,
     pub param_info: ParamInfo,
@@ -38,7 +38,6 @@ pub(super) struct DelegationResolution<'tcx> {
     pub call_path_res: Option<DefId>,
     pub source: DelegationSource,
     pub output_self_mapping: Option<(LocalDefId, bool)>,
-    pub generics: GenericsGenerationResults<'tcx>,
 }
 
 pub(super) mod wrapper {
@@ -95,7 +94,7 @@ impl<'tcx> wrapper::DelegationResolverWrapper<'_, 'tcx> {
         &self,
         delegation: &Delegation,
         span: Span,
-    ) -> Result<DelegationResolution<'tcx>, ErrorGuaranteed> {
+    ) -> Result<(DelegationResolution, GenericsGenerationResults<'tcx>), ErrorGuaranteed> {
         let tcx = self.tcx();
         let def_id = self.owner_id();
 
@@ -124,7 +123,7 @@ impl<'tcx> wrapper::DelegationResolverWrapper<'_, 'tcx> {
         let sig = tcx.fn_sig(sig_id).skip_binder().skip_binder();
         let param_count = sig.inputs().len() + usize::from(sig.c_variadic());
 
-        Ok(DelegationResolution {
+        let res = DelegationResolution {
             is_method,
             span,
             sig_id,
@@ -139,8 +138,9 @@ impl<'tcx> wrapper::DelegationResolverWrapper<'_, 'tcx> {
             source: delegation.source,
             call_path_res: self.get_resolution_id(delegation.id),
             output_self_mapping: self.should_map_return_value(delegation),
-            generics: self.resolve_generics(delegation, sig_id),
-        })
+        };
+
+        Ok((res, self.resolve_generics(delegation, sig_id)))
     }
 
     fn check_for_cycles(&self, mut def_id: DefId, span: Span) -> Result<(), ErrorGuaranteed> {
