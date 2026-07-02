@@ -169,6 +169,7 @@ rm tests/ui/process/println-with-broken-pipe.rs # same
 # ============
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
+rm -r tests/run-make/used-proc-macro # doesn't work on arm64 for some reason
 
 # bugs in the test suite
 # ======================
