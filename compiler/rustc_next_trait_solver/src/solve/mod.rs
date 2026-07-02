@@ -11,7 +11,6 @@
 //! For a high-level overview of how this solver works, check out the relevant
 //! section of the rustc-dev-guide.
 
-mod alias_relate;
 mod assembly;
 mod effect_goals;
 mod eval_ctxt;

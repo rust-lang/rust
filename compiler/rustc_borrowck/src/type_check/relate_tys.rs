@@ -597,27 +597,7 @@ impl<'b, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating<'_
         );
     }
 
-    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
-        self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
-            ty::Covariant => ty::PredicateKind::AliasRelate(
-                a.into(),
-                b.into(),
-                ty::AliasRelationDirection::Subtype,
-            ),
-            // a :> b is b <: a
-            ty::Contravariant => ty::PredicateKind::AliasRelate(
-                b.into(),
-                a.into(),
-                ty::AliasRelationDirection::Subtype,
-            ),
-            ty::Invariant => ty::PredicateKind::AliasRelate(
-                a.into(),
-                b.into(),
-                ty::AliasRelationDirection::Equate,
-            ),
-            ty::Bivariant => {
-                unreachable!("cannot defer an alias-relate goal with Bivariant variance (yet?)")
-            }
-        })]);
+    fn ambient_variance(&self) -> ty::Variance {
+        self.ambient_variance
     }
 }

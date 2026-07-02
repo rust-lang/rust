@@ -749,13 +749,6 @@ impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
             }
             PredicateKind::Ambiguous => crate::ty::PredicateKind::Ambiguous,
             PredicateKind::NormalizesTo(_pred) => unimplemented!(),
-            PredicateKind::AliasRelate(a, b, alias_relation_direction) => {
-                crate::ty::PredicateKind::AliasRelate(
-                    a.kind().stable(tables, cx),
-                    b.kind().stable(tables, cx),
-                    alias_relation_direction.stable(tables, cx),
-                )
-            }
         }
     }
 }
@@ -842,18 +835,6 @@ impl<'tcx> Stable<'tcx> for ty::CoercePredicate<'tcx> {
     ) -> Self::T {
         let ty::CoercePredicate { a, b } = self;
         crate::ty::CoercePredicate { a: a.stable(tables, cx), b: b.stable(tables, cx) }
-    }
-}
-
-impl<'tcx> Stable<'tcx> for ty::AliasRelationDirection {
-    type T = crate::ty::AliasRelationDirection;
-
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        use rustc_middle::ty::AliasRelationDirection::*;
-        match self {
-            Equate => crate::ty::AliasRelationDirection::Equate,
-            Subtype => crate::ty::AliasRelationDirection::Subtype,
-        }
     }
 }
 

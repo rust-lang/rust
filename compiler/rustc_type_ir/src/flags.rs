@@ -443,10 +443,6 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_alias_term(alias);
                 self.add_term(term);
             }
-            ty::PredicateKind::AliasRelate(t1, t2, _) => {
-                self.add_term(t1);
-                self.add_term(t2);
-            }
             ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_sym)) => {}
             ty::PredicateKind::Ambiguous => {}
         }
