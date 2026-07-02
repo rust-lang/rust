@@ -566,6 +566,14 @@ pub(crate) unsafe fn llvm_optimize(
     let print_before_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModBefore);
     let print_after_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModAfter);
     let print_passes = config.autodiff.contains(&config::AutoDiff::PrintPasses);
+    let passes_after_enzyme = if autodiff_stage == AutodiffStage::PostAD {
+        config.autodiff_post_passes.as_deref()
+    } else {
+        None
+    };
+    let passes_after_enzyme_ptr =
+        passes_after_enzyme.map_or(std::ptr::null(), |s| s.as_c_char_ptr());
+    let passes_after_enzyme_len = passes_after_enzyme.map_or(0, |s| s.len());
     let merge_functions;
     let unroll_loops;
     let vectorize_slp;
@@ -795,6 +803,8 @@ pub(crate) unsafe fn llvm_optimize(
             llvm_selfprofiler,
             selfprofile_before_pass_callback,
             selfprofile_after_pass_callback,
+            passes_after_enzyme_ptr,
+            passes_after_enzyme_len,
             extra_passes.as_c_char_ptr(),
             extra_passes.len(),
             llvm_plugins.as_c_char_ptr(),
