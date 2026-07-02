@@ -3,6 +3,7 @@
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 #![feature(option_reference_flattening)]
 #![feature(trim_prefix_suffix)]
 // tidy-alphabetical-end

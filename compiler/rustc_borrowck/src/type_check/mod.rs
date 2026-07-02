@@ -928,7 +928,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_local_decl(local, local_decl);
 
         for user_ty in
-            local_decl.user_ty.as_deref().into_iter().flat_map(UserTypeProjections::projections)
+            local_decl.user_ty.as_deref().map(UserTypeProjections::projections).into_flat_iter()
         {
             let span = self.user_type_annotations[user_ty.base].span;
 

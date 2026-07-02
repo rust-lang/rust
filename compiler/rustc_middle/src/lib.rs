@@ -46,6 +46,7 @@
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 #![feature(ptr_alignment_type)]
 #![feature(range_bounds_is_empty)]
 #![feature(rustc_attrs)]

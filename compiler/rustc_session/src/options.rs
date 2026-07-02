@@ -1621,7 +1621,7 @@ pub mod parse {
         let mut seen_instruction_threshold = false;
         let mut seen_skip_entry = false;
         let mut seen_skip_exit = false;
-        for option in v.into_iter().flat_map(|v| v.split(',')) {
+        for option in v.map(|v| v.split(',')).into_flat_iter() {
             match option {
                 "always" if !seen_always && !seen_never => {
                     options.always = true;
