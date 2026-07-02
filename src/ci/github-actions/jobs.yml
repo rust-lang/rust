@@ -151,6 +151,8 @@ pr:
     <<: *job-linux-4c
   - name: x86_64-gnu-miri
     <<: *job-linux-4c
+  - name: x86_64-gnu-autodiff
+    <<: *job-linux-4c
   - name: x86_64-gnu-gcc
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
     env:
