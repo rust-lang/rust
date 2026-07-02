@@ -536,85 +536,24 @@ impl UnixSocketFileDescription for TcpSocket {
             ),
         )
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn recv(
-        &mut self,
-        socket: &OpTy<'tcx>,
-        buffer: &OpTy<'tcx>,
-        length: &OpTy<'tcx>,
-        flags: &OpTy<'tcx>,
-        // Location where the output scalar is written to.
-        dest: &MPlaceTy<'tcx>,
+    fn recv<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ptr: Pointer,
+        len: usize,
+        is_peek: bool,
+        is_non_block: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let buffer_ptr = this.read_pointer(buffer)?;
-        let size_layout = this.libc_ty_layout("size_t");
-        let length: usize =
-            this.read_scalar(length)?.to_uint(size_layout.size)?.try_into().unwrap();
-        let mut flags = this.read_scalar(flags)?.to_i32()?;
+        let is_non_block = is_non_block || self.is_non_block.get();
+        let deadline = ecx.action_deadline(is_non_block, self.read_timeout.get());
 
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket
-            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
-        };
-
-        let mut should_peek = false;
-        let mut is_op_non_block = false;
-
-        // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
-        // if there is anything left at the end, that's an unsupported flag.
-
-        let msg_peek = this.eval_libc_i32("MSG_PEEK");
-        if flags & msg_peek == msg_peek {
-            should_peek = true;
-            flags &= !msg_peek;
-        }
-
-        if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android | Os::FreeBsd | Os::Illumos) {
-            // MSG_CMSG_CLOEXEC only exists on Linux, Android, FreeBSD,
-            // and Illumos targets.
-            let msg_cmsg_cloexec = this.eval_libc_i32("MSG_CMSG_CLOEXEC");
-            if flags & msg_cmsg_cloexec == msg_cmsg_cloexec {
-                // We don't support `exec` so we can ignore this.
-                flags &= !msg_cmsg_cloexec;
-            }
-        }
-
-        if matches!(
-            this.tcx.sess.target.os,
-            Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
-        ) {
-            // MSG_DONTWAIT only exists on Linux, Android, FreeBSD,
-            // Solaris, and Illumos targets.
-            let msg_dontwait = this.eval_libc_i32("MSG_DONTWAIT");
-            if flags & msg_dontwait == msg_dontwait {
-                flags &= !msg_dontwait;
-                is_op_non_block = true;
-            }
-        }
-
-        if flags != 0 {
-            throw_unsup_format!(
-                "recv: flag {flags:#x} is unsupported, only MSG_PEEK, MSG_DONTWAIT \
-                and MSG_CMSG_CLOEXEC are allowed",
-            );
-        }
-
-        let is_non_block = is_op_non_block || socket.is_non_block.get();
-        let deadline = this.action_deadline(is_non_block, socket.read_timeout.get());
-        let dest = dest.clone();
-
-        this.ensure_connected(
+        let socket = self;
+        ecx.ensure_connected(
             socket.clone(),
             deadline.clone(),
             "recv",
@@ -622,47 +561,34 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @capture<'tcx> {
                     socket: FileDescriptionRef<TcpSocket>,
                     deadline: Option<Deadline>,
-                    buffer_ptr: Pointer,
-                    length: usize,
-                    should_peek: bool,
+                    ptr: Pointer,
+                    len: usize,
+                    is_peek: bool,
                     is_non_block: bool,
-                    dest: MPlaceTy<'tcx>,
+                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                 } |this, result: Result<(), ()>| {
                     if result.is_err() {
-                        return this.set_errno_and_return_neg1(LibcError("ENOTCONN"), &dest)
+                        return finish.call(this, Err(LibcError("ENOTCONN")))
                     }
 
                     if is_non_block {
                         // We have a non-blocking operation or a non-blocking socket and
                         // thus don't want to block until we can receive.
-                        match this.try_non_block_recv(&socket, buffer_ptr, length, should_peek)? {
-                            Ok(size) => this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest),
-                            Err(e) => this.set_errno_and_return_neg1(e, &dest),
-                        }
+                        let result = this.try_non_block_recv(&socket, ptr, len, is_peek)?;
+                        finish.call(this, result)
                     } else {
                         // The socket is in blocking mode and thus the receive call should block
                         // until we can receive some bytes from the socket or the timeout exceeded.
-                        this.block_for_recv(
-                            socket,
-                            deadline,
-                            buffer_ptr,
-                            length,
-                            should_peek,
-                            callback!(@capture<'tcx> {
-                                dest: MPlaceTy<'tcx>
-                            } |this, result: Result<usize, IoError>| {
-                                match result {
-                                    Ok(size) => this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest),
-                                    Err(e) => this.set_errno_and_return_neg1(e, &dest)
-                                }
-                            }),
-                        )
+                        this.block_for_recv(socket, deadline, ptr, len, is_peek, finish)
                     }
                 }
             ),
         )
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn setsockopt(
         &mut self,
         socket: &OpTy<'tcx>,
