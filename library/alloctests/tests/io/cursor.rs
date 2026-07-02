@@ -1,5 +1,6 @@
-use crate::io::prelude::*;
-use crate::io::{Cursor, IoSlice, IoSliceMut, SeekFrom};
+use alloc::io::{Cursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+
+extern crate test;
 
 #[test]
 fn test_vec_writer() {

@@ -1,7 +1,15 @@
-use super::{BorrowedBuf, Cursor, SeekFrom, repeat};
-use crate::cmp::{self, min};
-use crate::io::{self, BufRead, BufReader, DEFAULT_BUF_SIZE, IoSlice, Read, Seek, Write};
-use crate::mem::MaybeUninit;
+mod buffered;
+mod cursor;
+mod util;
+
+use alloc::io::{
+    self, BorrowedBuf, BufRead, BufReader, Cursor, DEFAULT_BUF_SIZE, IoSlice, Read, Seek, SeekFrom,
+    Write, repeat,
+};
+use core::cmp::{self, min};
+use core::mem::MaybeUninit;
+
+extern crate test;
 
 #[test]
 fn read_until() {
@@ -270,7 +278,7 @@ fn chain_bufread() {
 #[test]
 fn chain_splitted_char() {
     let chain = b"\xc3".chain(b"\xa9".as_slice());
-    assert_eq!(crate::io::read_to_string(chain).unwrap(), "é");
+    assert_eq!(alloc::io::read_to_string(chain).unwrap(), "é");
 
     let mut chain = b"\xc3".chain(b"\xa9\n".as_slice());
     let mut buf = String::new();
@@ -360,7 +368,7 @@ fn bench_read_to_end(b: &mut test::Bencher) {
     b.iter(|| {
         let mut lr = repeat(1).take(10000000);
         let mut vec = Vec::with_capacity(1024);
-        super::default_read_to_end(&mut lr, &mut vec, None)
+        alloc::io::default_read_to_end(&mut lr, &mut vec, None)
     });
 }
 
