@@ -508,6 +508,9 @@
 //@ revisions: riscv32imc_unknown_none_elf
 //@ [riscv32imc_unknown_none_elf] compile-flags: --target riscv32imc-unknown-none-elf
 //@ [riscv32imc_unknown_none_elf] needs-llvm-components: riscv
+//@ revisions: riscv32imfc_unknown_none_elf
+//@ [riscv32imfc_unknown_none_elf] compile-flags: --target riscv32imfc-unknown-none-elf
+//@ [riscv32imfc_unknown_none_elf] needs-llvm-components: riscv
 //@ revisions: riscv64_linux_android
 //@ [riscv64_linux_android] compile-flags: --target riscv64-linux-android
 //@ [riscv64_linux_android] needs-llvm-components: riscv
