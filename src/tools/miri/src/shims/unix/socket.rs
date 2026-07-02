@@ -266,4 +266,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(e) => this.set_errno_and_return_neg1_i32(e),
         }
     }
+
+    fn listen(&mut self, socket: &OpTy<'tcx>, backlog: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let backlog = this.read_scalar(backlog)?.to_i32()?;
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+
+        let socket = fd.as_unix(this).as_socket(this);
+        match socket.listen(this.machine.communicate(), backlog, this)? {
+            Ok(_) => interp_ok(Scalar::from_i32(0)),
+            Err(e) => this.set_errno_and_return_neg1_i32(e),
+        }
+    }
 }

@@ -361,31 +361,18 @@ impl UnixSocketFileDescription for TcpSocket {
 
         interp_ok(Ok(()))
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn listen(&mut self, socket: &OpTy<'tcx>, backlog: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-
-        let socket = this.read_scalar(socket)?.to_i32()?;
+    fn listen<'tcx>(
+        self: FileDescriptionRef<TcpSocket>,
+        communicate_allowed: bool,
         // Since the backlog value is just a performance hint we can ignore it.
-        let _backlog = this.read_scalar(backlog)?.to_i32()?;
+        _backlog: i32,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
+        ecx.ensure_not_failed(&self, "listen")?;
 
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
-        };
-
-        assert!(this.machine.communicate(), "cannot have `TcpSocket` with isolation enabled!");
-        this.ensure_not_failed(&socket, "listen")?;
-
-        let mut state = socket.state.borrow_mut();
+        let mut state = self.state.borrow_mut();
 
         match *state {
             SocketState::Bound(socket_addr) =>
@@ -395,27 +382,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         drop(state);
                         // Register the socket to the blocking I/O manager because
                         // we now have an associated host socket.
-                        this.machine.blocking_io.register(socket);
+                        ecx.machine.blocking_io.register(self);
                     }
-                    Err(e) => return this.set_errno_and_return_neg1_i32(e),
+                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
                 },
             SocketState::Initial => {
                 throw_unsup_format!(
-                    "listen: listening on a socket which isn't bound is unsupported"
+                    "listen: listening on a tcp socket which isn't bound is unsupported"
                 )
             }
             SocketState::Listening(_) => {
-                throw_unsup_format!("listen: listening on a socket multiple times is unsupported")
+                throw_unsup_format!(
+                    "listen: listening on a tcp socket multiple times is unsupported"
+                )
             }
             SocketState::Connecting(_) | SocketState::Connected(_) => {
-                throw_unsup_format!("listen: listening on a connected socket is unsupported")
+                throw_unsup_format!("listen: listening on a connected tcp socket is unsupported")
             }
             SocketState::ConnectionFailed(_) => unreachable!(),
         }
 
-        interp_ok(Scalar::from_i32(0))
+        interp_ok(Ok(()))
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// For more information on the arguments see the accept manpage:
     /// <https://linux.die.net/man/2/accept4>
     fn accept4(
