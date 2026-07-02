@@ -125,11 +125,17 @@ pub(crate) mod re_lowering {
             ctx: &mut LoweringContext<'a, 'hir>,
             op: impl FnOnce(&mut LoweringContext<'a, 'hir>) -> TRes,
         ) -> TRes {
-            ctx.relowering_checker.relowering_permissions_count += 1;
+            #[cfg(debug_assertions)]
+            {
+                ctx.relowering_checker.relowering_permissions_count += 1;
+            }
 
             let res = op(ctx);
 
-            ctx.relowering_checker.relowering_permissions_count -= 1;
+            #[cfg(debug_assertions)]
+            {
+                ctx.relowering_checker.relowering_permissions_count -= 1;
+            }
 
             res
         }
