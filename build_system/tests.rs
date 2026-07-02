@@ -2,12 +2,13 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Command;
 
+use crate::build_sysroot::SysrootConfig;
 use crate::path::{Dirs, RelPath};
 use crate::prepare::{GitRepo, apply_patches};
 use crate::rustc_info::get_default_sysroot;
 use crate::shared_utils::rustflags_from_env;
 use crate::utils::{CargoProject, Compiler, LogGroup, ensure_empty_dir, spawn_and_wait};
-use crate::{CodegenBackend, SysrootKind, build_sysroot, config};
+use crate::{CodegenBackend, build_sysroot, config};
 
 static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::build("example");
 
@@ -266,10 +267,8 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
 pub(crate) fn run_tests(
     dirs: &Dirs,
-    sysroot_kind: SysrootKind,
+    sysroot_config: &SysrootConfig,
     use_unstable_features: bool,
-    panic_unwind_support: bool,
-    keep_sysroot: bool,
     skip_tests: &[&str],
     cg_clif_dylib: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
@@ -283,20 +282,18 @@ pub(crate) fn run_tests(
     if config::get_bool("testsuite.no_sysroot") && !skip_tests.contains(&"testsuite.no_sysroot") {
         let target_compiler = build_sysroot::build_sysroot(
             dirs,
-            SysrootKind::None,
+            sysroot_config,
             cg_clif_dylib,
             bootstrap_host_compiler,
             rustup_toolchain_name,
             target_triple.clone(),
-            panic_unwind_support,
-            keep_sysroot,
         );
 
         let runner = TestRunner::new(
             dirs.clone(),
             target_compiler,
             use_unstable_features,
-            panic_unwind_support,
+            sysroot_config.panic_unwind_support,
             skip_tests,
             bootstrap_host_compiler.triple == target_triple,
             stdlib_source.clone(),
@@ -318,20 +315,18 @@ pub(crate) fn run_tests(
     if run_base_sysroot || run_extended_sysroot {
         let target_compiler = build_sysroot::build_sysroot(
             dirs,
-            sysroot_kind,
+            sysroot_config,
             cg_clif_dylib,
             bootstrap_host_compiler,
             rustup_toolchain_name,
             target_triple.clone(),
-            panic_unwind_support,
-            keep_sysroot,
         );
 
         let mut runner = TestRunner::new(
             dirs.clone(),
             target_compiler,
             use_unstable_features,
-            panic_unwind_support,
+            sysroot_config.panic_unwind_support,
             skip_tests,
             bootstrap_host_compiler.triple == target_triple,
             stdlib_source,

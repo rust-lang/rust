@@ -2,27 +2,38 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
 
+use crate::CodegenBackend;
 use crate::path::{Dirs, RelPath};
 use crate::prepare::apply_patches;
 use crate::rustc_info::{get_default_sysroot, get_file_name};
 use crate::utils::{
     CargoProject, Compiler, LogGroup, ensure_empty_dir, spawn_and_wait, try_hard_link,
 };
-use crate::{CodegenBackend, SysrootKind};
+
+pub(crate) struct SysrootConfig {
+    pub(crate) sysroot_kind: SysrootKind,
+    pub(crate) panic_unwind_support: bool,
+    pub(crate) keep_sysroot: bool,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum SysrootKind {
+    None,
+    Clif,
+    Llvm,
+}
 
 pub(crate) fn build_sysroot(
     dirs: &Dirs,
-    sysroot_kind: SysrootKind,
+    config: &SysrootConfig,
     cg_clif_dylib_src: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
     rustup_toolchain_name: Option<&str>,
     target_triple: String,
-    panic_unwind_support: bool,
-    keep_sysroot: bool,
 ) -> Compiler {
     let _guard = LogGroup::guard("Build sysroot");
 
-    eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
+    eprintln!("[BUILD] sysroot {:?}", config.sysroot_kind);
 
     let dist_dir = &dirs.dist_dir;
 
@@ -55,7 +66,7 @@ pub(crate) fn build_sysroot(
             .arg(&wrapper_path)
             .arg("-Cstrip=debuginfo")
             .arg("--check-cfg=cfg(support_panic_unwind)");
-        if panic_unwind_support {
+        if config.panic_unwind_support {
             build_cargo_wrapper_cmd.arg("--cfg").arg("support_panic_unwind");
         }
         if let Some(rustup_toolchain_name) = &rustup_toolchain_name {
@@ -82,9 +93,7 @@ pub(crate) fn build_sysroot(
         dirs,
         bootstrap_host_compiler.clone(),
         &cg_clif_dylib_path,
-        sysroot_kind,
-        panic_unwind_support,
-        keep_sysroot,
+        config,
     );
     host.install_into_sysroot(dist_dir);
 
@@ -98,9 +107,7 @@ pub(crate) fn build_sysroot(
                 bootstrap_target_compiler
             },
             &cg_clif_dylib_path,
-            sysroot_kind,
-            panic_unwind_support,
-            keep_sysroot,
+            config,
         )
         .install_into_sysroot(dist_dir);
     }
@@ -149,20 +156,14 @@ fn build_sysroot_for_triple(
     dirs: &Dirs,
     compiler: Compiler,
     cg_clif_dylib_path: &CodegenBackend,
-    sysroot_kind: SysrootKind,
-    panic_unwind_support: bool,
-    keep_sysroot: bool,
+    config: &SysrootConfig,
 ) -> SysrootTarget {
-    match sysroot_kind {
+    match config.sysroot_kind {
         SysrootKind::None => SysrootTarget { triple: compiler.triple, libs: vec![] },
         SysrootKind::Llvm => build_llvm_sysroot_for_triple(compiler),
-        SysrootKind::Clif => build_clif_sysroot_for_triple(
-            dirs,
-            compiler,
-            cg_clif_dylib_path,
-            panic_unwind_support,
-            keep_sysroot,
-        ),
+        SysrootKind::Clif => {
+            build_clif_sysroot_for_triple(dirs, compiler, cg_clif_dylib_path, config)
+        }
     }
 }
 
@@ -202,14 +203,13 @@ fn build_clif_sysroot_for_triple(
     dirs: &Dirs,
     mut compiler: Compiler,
     cg_clif_dylib_path: &CodegenBackend,
-    panic_unwind_support: bool,
-    keep_sysroot: bool,
+    config: &SysrootConfig,
 ) -> SysrootTarget {
     let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
 
     let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.triple).join("release");
 
-    if !keep_sysroot {
+    if !config.keep_sysroot {
         let sysroot_src_orig = get_default_sysroot(&compiler.rustc).join("lib/rustlib/src/rust");
         assert!(sysroot_src_orig.exists());
 
@@ -222,7 +222,7 @@ fn build_clif_sysroot_for_triple(
 
     // Build sysroot
     let mut rustflags = vec!["-Zforce-unstable-if-unmarked".to_owned()];
-    if !panic_unwind_support {
+    if !config.panic_unwind_support {
         rustflags.push("-Cpanic=abort".to_owned());
     }
     match cg_clif_dylib_path {
