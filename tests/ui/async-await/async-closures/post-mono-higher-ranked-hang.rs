@@ -43,9 +43,9 @@ impl<'env, 'db> ToChain<'env, 'db> {
         Box::pin(async move {
             match perm {
                 SymPerm::Dummy(_) => yield_chain(perm).await,
+                //~^ ERROR reached the recursion limit while instantiating
                 SymPerm::Apply(l, r) => {
                     self.perm_pairs(l, &mut async move |left_pair| {
-                        //~^ ERROR reached the recursion limit while instantiating
                         self.perm_pairs(r, yield_chain).await
                     })
                     .await

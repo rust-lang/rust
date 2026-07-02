@@ -768,15 +768,18 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 );
 
                 let inputs = closure_sig.skip_binder().tupled_inputs_ty.tuple_fields();
-                let output = closure_sig.skip_binder().to_coroutine_given_kind_and_upvars(
+                let coroutine_def_id = tcx.coroutine_for_closure(def_id);
+                let coroutine = closure_sig.skip_binder().to_coroutine_given_kind_and_upvars(
                     tcx,
                     args.as_coroutine_closure().parent_args(),
-                    tcx.coroutine_for_closure(def_id),
+                    coroutine_def_id,
                     closure_kind,
                     env_region,
                     args.as_coroutine_closure().tupled_upvars_ty(),
                     args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
                 );
+
+                let output = tcx.coroutine_desugared_type(coroutine);
 
                 ty::Binder::bind_with_vars(
                     tcx.mk_type_list_from_iter(

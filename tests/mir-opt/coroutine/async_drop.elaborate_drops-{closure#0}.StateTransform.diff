@@ -1,12 +1,10 @@
 - // MIR for `elaborate_drops::{closure#0}` before StateTransform
 + // MIR for `elaborate_drops::{closure#0}` after StateTransform
   
-- fn elaborate_drops::{closure#0}(_1: {async fn body of elaborate_drops()}, _2: std::future::ResumeTy) -> ()
+- fn elaborate_drops::{closure#0}(_1: {static coroutine body of elaborate_drops()}, _2: std::future::ResumeTy) -> ()
 - yields ()
 -  {
--     debug _task_context => _2;
--     let mut _0: ();
-+ fn elaborate_drops::{closure#0}(_1: Pin<&mut {async fn body of elaborate_drops()}>, _2: &mut Context<'_>) -> Poll<()> {
++ fn elaborate_drops::{closure#0}(_1: Pin<&mut {static coroutine body of elaborate_drops()}>, _2: std::future::ResumeTy) -> CoroutineState<(), ()> {
 +     coroutine layout {
 +         field _s0: ();
 +         field _s1: SyncInt;
@@ -53,9 +51,10 @@
 +         }
 +         storage_conflicts = BitMatrix(20x20) {(_s0, _s0), (_s0, _s1), (_s0, _s2), (_s0, _s3), (_s0, _s4), (_s0, _s5), (_s0, _s6), (_s0, _s7), (_s0, _s8), (_s0, _s9), (_s0, _s10), (_s0, _s11), (_s0, _s12), (_s0, _s13), (_s0, _s14), (_s0, _s15), (_s0, _s16), (_s0, _s17), (_s0, _s18), (_s0, _s19), (_s1, _s0), (_s1, _s1), (_s1, _s2), (_s1, _s3), (_s1, _s4), (_s1, _s5), (_s1, _s6), (_s1, _s7), (_s1, _s8), (_s1, _s9), (_s1, _s10), (_s1, _s11), (_s1, _s12), (_s1, _s13), (_s1, _s14), (_s1, _s15), (_s1, _s16), (_s1, _s17), (_s1, _s18), (_s1, _s19), (_s2, _s0), (_s2, _s1), (_s2, _s2), (_s2, _s3), (_s2, _s4), (_s2, _s5), (_s2, _s6), (_s2, _s7), (_s2, _s8), (_s2, _s9), (_s2, _s10), (_s2, _s11), (_s2, _s12), (_s2, _s13), (_s2, _s14), (_s2, _s15), (_s2, _s16), (_s2, _s17), (_s2, _s18), (_s2, _s19), (_s3, _s0), (_s3, _s1), (_s3, _s2), (_s3, _s3), (_s3, _s4), (_s3, _s5), (_s3, _s6), (_s3, _s7), (_s3, _s8), (_s3, _s9), (_s3, _s10), (_s3, _s11), (_s3, _s12), (_s3, _s13), (_s3, _s14), (_s3, _s15), (_s3, _s16), (_s3, _s17), (_s3, _s18), (_s4, _s0), (_s4, _s1), (_s4, _s2), (_s4, _s3), (_s4, _s4), (_s4, _s5), (_s4, _s6), (_s4, _s7), (_s4, _s8), (_s4, _s9), (_s4, _s10), (_s4, _s11), (_s4, _s12), (_s4, _s13), (_s4, _s14), (_s4, _s15), (_s4, _s16), (_s4, _s17), (_s5, _s0), (_s5, _s1), (_s5, _s2), (_s5, _s3), (_s5, _s4), (_s5, _s5), (_s5, _s6), (_s5, _s7), (_s5, _s8), (_s5, _s9), (_s5, _s10), (_s5, _s11), (_s5, _s12), (_s5, _s13), (_s5, _s14), (_s5, _s15), (_s5, _s16), (_s6, _s0), (_s6, _s1), (_s6, _s2), (_s6, _s3), (_s6, _s4), (_s6, _s5), (_s6, _s6), (_s6, _s7), (_s6, _s8), (_s6, _s9), (_s6, _s10), (_s6, _s11), (_s6, _s12), (_s6, _s13), (_s6, _s14), (_s6, _s15), (_s7, _s0), (_s7, _s1), (_s7, _s2), (_s7, _s3), (_s7, _s4), (_s7, _s5), (_s7, _s6), (_s7, _s7), (_s7, _s8), (_s7, _s9), (_s7, _s10), (_s7, _s11), (_s7, _s12), (_s7, _s13), (_s7, _s14), (_s8, _s0), (_s8, _s1), (_s8, _s2), (_s8, _s3), (_s8, _s4), (_s8, _s5), (_s8, _s6), (_s8, _s7), (_s8, _s8), (_s8, _s9), (_s8, _s10), (_s8, _s11), (_s8, _s12), (_s8, _s13), (_s9, _s0), (_s9, _s1), (_s9, _s2), (_s9, _s3), (_s9, _s4), (_s9, _s5), (_s9, _s6), (_s9, _s7), (_s9, _s8), (_s9, _s9), (_s9, _s10), (_s9, _s11), (_s9, _s12), (_s10, _s0), (_s10, _s1), (_s10, _s2), (_s10, _s3), (_s10, _s4), (_s10, _s5), (_s10, _s6), (_s10, _s7), (_s10, _s8), (_s10, _s9), (_s10, _s10), (_s10, _s11), (_s11, _s0), (_s11, _s1), (_s11, _s2), (_s11, _s3), (_s11, _s4), (_s11, _s5), (_s11, _s6), (_s11, _s7), (_s11, _s8), (_s11, _s9), (_s11, _s10), (_s11, _s11), (_s12, _s0), (_s12, _s1), (_s12, _s2), (_s12, _s3), (_s12, _s4), (_s12, _s5), (_s12, _s6), (_s12, _s7), (_s12, _s8), (_s12, _s9), (_s12, _s12), (_s13, _s0), (_s13, _s1), (_s13, _s2), (_s13, _s3), (_s13, _s4), (_s13, _s5), (_s13, _s6), (_s13, _s7), (_s13, _s8), (_s13, _s13), (_s14, _s0), (_s14, _s1), (_s14, _s2), (_s14, _s3), (_s14, _s4), (_s14, _s5), (_s14, _s6), (_s14, _s7), (_s14, _s14), (_s15, _s0), (_s15, _s1), (_s15, _s2), (_s15, _s3), (_s15, _s4), (_s15, _s5), (_s15, _s6), (_s15, _s15), (_s16, _s0), (_s16, _s1), (_s16, _s2), (_s16, _s3), (_s16, _s4), (_s16, _s5), (_s16, _s16), (_s17, _s0), (_s17, _s1), (_s17, _s2), (_s17, _s3), (_s17, _s4), (_s17, _s17), (_s18, _s0), (_s18, _s1), (_s18, _s2), (_s18, _s3), (_s18, _s18), (_s19, _s0), (_s19, _s1), (_s19, _s2), (_s19, _s19)}
 +     }
-+     debug _task_context => _183;
+      debug _task_context => _2;
+-     let mut _0: ();
 +     coroutine debug sync_int => _s1;
-+     let mut _0: std::task::Poll<()>;
++     let mut _0: std::ops::CoroutineState<(), ()>;
       let _3: SyncInt;
       let mut _6: AsyncInt;
       let mut _7: AsyncInt;
@@ -223,9 +222,7 @@
       let mut _179: &mut AsyncInt;
 +     let mut _180: ();
 +     let mut _181: u32;
-+     let mut _182: &mut {async fn body of elaborate_drops()};
-+     let mut _183: std::future::ResumeTy;
-+     let mut _184: std::ptr::NonNull<std::task::Context<'_>>;
++     let mut _182: &mut {static coroutine body of elaborate_drops()};
       scope 1 {
 -         debug sync_int => _3;
 +         debug sync_int => (((*_182) as variant#20).1: SyncInt);
@@ -309,9 +306,7 @@
 -         _7 = AsyncInt(const 2_i32);
 -         _5 = [move _6, move _7];
 -         goto -> bb1;
-+         _184 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-+         _183 = std::future::ResumeTy(move _184);
-+         _182 = copy (_1.0: &mut {async fn body of elaborate_drops()});
++         _182 = copy (_1.0: &mut {static coroutine body of elaborate_drops()});
 +         _181 = discriminant((*_182));
 +         switchInt(move _181) -> [0: bb170, 1: bb169, 2: bb168, 3: bb150, 4: bb151, 5: bb152, 6: bb153, 7: bb154, 8: bb155, 9: bb156, 10: bb157, 11: bb158, 12: bb159, 13: bb160, 14: bb161, 15: bb162, 16: bb163, 17: bb164, 18: bb165, 19: bb166, 20: bb167, otherwise: bb43];
       }
@@ -501,7 +496,7 @@
       }
   
       bb22: {
-+         _0 = Poll::<()>::Ready(move (((*_182) as variant#20).0: ()));
++         _0 = CoroutineState::<(), ()>::Complete(move (((*_182) as variant#20).0: ()));
 +         discriminant((*_182)) = 1;
           return;
       }
@@ -648,7 +643,7 @@
 -     bb42 (cleanup): {
 -         goto -> bb43;
 +     bb42: {
-+         _183 = move _28;
++         _2 = move _28;
 +         StorageDead(_28);
 +         goto -> bb41;
       }
@@ -664,7 +659,7 @@
 -         StorageDead(_17);
 -         drop(_15) -> [return: bb45, unwind terminate(cleanup)];
 +     bb44: {
-+         _183 = move _35;
++         _2 = move _35;
 +         StorageDead(_35);
 +         goto -> bb49;
       }
@@ -674,7 +669,7 @@
 -         drop(_11) -> [return: bb46, unwind terminate(cleanup)];
 +     bb45: {
 +         StorageLive(_35);
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(const ());
 +         StorageDead(_17);
 +         StorageDead(_23);
 +         StorageDead(_25);
@@ -702,7 +697,7 @@
 -         StorageDead(_5);
 -         drop(_4) -> [return: bb49, unwind terminate(cleanup)];
 +     bb48: {
-+         _40 = move _183;
++         _40 = move _2;
 +         _39 = copy (_40.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb47;
       }
@@ -754,7 +749,7 @@
   
       bb55: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb55, unwind: bb54];
-+         _183 = move _45;
++         _2 = move _45;
 +         StorageDead(_45);
 +         goto -> bb54;
       }
@@ -763,7 +758,7 @@
 -         _2 = move _28;
 -         StorageDead(_28);
 -         goto -> bb55;
-+         _183 = move _52;
++         _2 = move _52;
 +         StorageDead(_52);
 +         goto -> bb61;
       }
@@ -773,7 +768,7 @@
 -         StorageDead(_28);
 -         goto -> bb63;
 +         StorageLive(_52);
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(const ());
 +         StorageDead(_17);
 +         StorageDead(_23);
 +         StorageDead(_52);
@@ -796,7 +791,7 @@
       bb60: {
 -         _30 = discriminant(_29);
 -         switchInt(move _30) -> [0: bb53, 1: bb58, otherwise: bb59];
-+         _57 = move _183;
++         _57 = move _2;
 +         _56 = copy (_57.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb59;
       }
@@ -847,14 +842,14 @@
       bb67: {
 -         _37 = discriminant(_36);
 -         switchInt(move _37) -> [0: bb52, 1: bb66, otherwise: bb59];
-+         _183 = move _62;
++         _2 = move _62;
 +         StorageDead(_62);
 +         goto -> bb66;
       }
   
       bb68: {
 -         _36 = <impl Future<Output = ()> as Future>::poll(move _38, move _39) -> [return: bb67, unwind: bb54];
-+         _183 = move _69;
++         _2 = move _69;
 +         StorageDead(_69);
 +         goto -> bb73;
       }
@@ -863,7 +858,7 @@
 -         _40 = move _2;
 -         _39 = std::future::get_context::<'_, '_>(move _40) -> [return: bb68, unwind: bb54];
 +         StorageLive(_69);
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(const ());
 +         StorageDead(_17);
 +         StorageDead(_69);
 +         discriminant((*_182)) = 8;
@@ -886,7 +881,7 @@
       bb72: {
 -         _43 = &mut _26;
 -         _42 = Pin::<&mut {async closure@$DIR/async_drop.rs:78:27: 78:35}>::new_unchecked(move _43) -> [return: bb71, unwind: bb36];
-+         _74 = move _183;
++         _74 = move _2;
 +         _73 = copy (_74.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb71;
       }
@@ -938,7 +933,7 @@
       bb79: {
 -         StorageLive(_45);
 -         _45 = yield(const ()) -> [resume: bb77, drop: bb78];
-+         _183 = move _79;
++         _2 = move _79;
 +         StorageDead(_79);
 +         goto -> bb78;
       }
@@ -946,7 +941,7 @@
       bb80: {
 -         _47 = discriminant(_46);
 -         switchInt(move _47) -> [0: bb74, 1: bb79, otherwise: bb59];
-+         _183 = move _86;
++         _2 = move _86;
 +         StorageDead(_86);
 +         goto -> bb85;
       }
@@ -954,7 +949,7 @@
       bb81: {
 -         _46 = <impl Future<Output = ()> as Future>::poll(move _48, move _49) -> [return: bb80, unwind: bb75];
 +         StorageLive(_86);
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(const ());
 +         StorageDead(_17);
 +         StorageDead(_86);
 +         discriminant((*_182)) = 10;
@@ -978,7 +973,7 @@
 -         _2 = move _52;
 -         StorageDead(_52);
 -         goto -> bb90;
-+         _91 = move _183;
++         _91 = move _2;
 +         _90 = copy (_91.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb83;
       }
@@ -1028,7 +1023,7 @@
       bb91: {
 -         StorageLive(_44);
 -         _44 = async_drop_in_place::<{closure@$DIR/async_drop.rs:70:25: 70:27}>(copy (_59.0: &mut {closure@$DIR/async_drop.rs:70:25: 70:27})) -> [return: bb90, unwind: bb75];
-+         _183 = move _96;
++         _2 = move _96;
 +         StorageDead(_96);
 +         goto -> bb90;
       }
@@ -1036,7 +1031,7 @@
       bb92: {
 -         _60 = &mut _24;
 -         _59 = Pin::<&mut {closure@$DIR/async_drop.rs:70:25: 70:27}>::new_unchecked(move _60) -> [return: bb91, unwind: bb38];
-+         _183 = move _103;
++         _2 = move _103;
 +         StorageDead(_103);
 +         goto -> bb97;
       }
@@ -1045,7 +1040,7 @@
 -         StorageDead(_61);
 -         goto -> bb14;
 +         StorageLive(_103);
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(const ());
 +         StorageDead(_103);
 +         discriminant((*_182)) = 12;
 +         return;
@@ -1067,7 +1062,7 @@
   
       bb96: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb96, unwind: bb95];
-+         _108 = move _183;
++         _108 = move _2;
 +         _107 = copy (_108.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb95;
       }
@@ -1118,7 +1113,7 @@
       bb103: {
 -         _68 = &mut _61;
 -         _65 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _68) -> [return: bb102, unwind: bb95];
-+         _183 = move _113;
++         _2 = move _113;
 +         StorageDead(_113);
 +         goto -> bb102;
       }
@@ -1127,7 +1122,7 @@
 -         _2 = move _69;
 -         StorageDead(_69);
 -         goto -> bb110;
-+         _183 = move _120;
++         _2 = move _120;
 +         StorageDead(_120);
 +         goto -> bb109;
       }
@@ -1137,7 +1132,7 @@
 -         StorageDead(_69);
 -         goto -> bb103;
 +         StorageLive(_120);
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(const ());
 +         StorageDead(_120);
 +         discriminant((*_182)) = 14;
 +         return;
@@ -1158,7 +1153,7 @@
   
       bb108: {
 -         _70 = <impl Future<Output = ()> as Future>::poll(move _72, move _73) -> [return: bb107, unwind: bb95];
-+         _125 = move _183;
++         _125 = move _2;
 +         _124 = copy (_125.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb107;
       }
@@ -1209,14 +1204,14 @@
 -         StorageDead(_78);
 -         goto -> bb41;
 +     bb115: {
-+         _183 = move _130;
++         _2 = move _130;
 +         StorageDead(_130);
 +         goto -> bb114;
       }
   
       bb116: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb116, unwind: bb115];
-+         _183 = move _137;
++         _2 = move _137;
 +         StorageDead(_137);
 +         goto -> bb121;
       }
@@ -1226,7 +1221,7 @@
 -         StorageDead(_79);
 -         goto -> bb116;
 +         StorageLive(_137);
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(const ());
 +         StorageDead(_137);
 +         discriminant((*_182)) = 16;
 +         return;
@@ -1249,7 +1244,7 @@
       bb120: {
 -         _81 = discriminant(_80);
 -         switchInt(move _81) -> [0: bb114, 1: bb119, otherwise: bb59];
-+         _142 = move _183;
++         _142 = move _2;
 +         _141 = copy (_142.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb119;
       }
@@ -1300,14 +1295,14 @@
       bb127: {
 -         _88 = discriminant(_87);
 -         switchInt(move _88) -> [0: bb113, 1: bb126, otherwise: bb59];
-+         _183 = move _147;
++         _2 = move _147;
 +         StorageDead(_147);
 +         goto -> bb126;
       }
   
       bb128: {
 -         _87 = <impl Future<Output = ()> as Future>::poll(move _89, move _90) -> [return: bb127, unwind: bb115];
-+         _183 = move _154;
++         _2 = move _154;
 +         StorageDead(_154);
 +         goto -> bb133;
       }
@@ -1316,7 +1311,7 @@
 -         _91 = move _2;
 -         _90 = std::future::get_context::<'_, '_>(move _91) -> [return: bb128, unwind: bb115];
 +         StorageLive(_154);
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(const ());
 +         StorageDead(_154);
 +         discriminant((*_182)) = 18;
 +         return;
@@ -1338,7 +1333,7 @@
       bb132: {
 -         _94 = &mut _19;
 -         _93 = Pin::<&mut AsyncInt>::new_unchecked(move _94) -> [return: bb131, unwind: bb41];
-+         _159 = move _183;
++         _159 = move _2;
 +         _158 = copy (_159.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb131;
       }
@@ -1390,7 +1385,7 @@
       bb139: {
 -         StorageLive(_96);
 -         _96 = yield(const ()) -> [resume: bb137, drop: bb138];
-+         _183 = move _164;
++         _2 = move _164;
 +         StorageDead(_164);
 +         goto -> bb138;
       }
@@ -1398,7 +1393,7 @@
       bb140: {
 -         _98 = discriminant(_97);
 -         switchInt(move _98) -> [0: bb134, 1: bb139, otherwise: bb59];
-+         _183 = move _171;
++         _2 = move _171;
 +         StorageDead(_171);
 +         goto -> bb145;
       }
@@ -1406,7 +1401,7 @@
       bb141: {
 -         _97 = <impl Future<Output = ()> as Future>::poll(move _99, move _100) -> [return: bb140, unwind: bb135];
 +         StorageLive(_171);
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(const ());
 +         StorageDead(_171);
 +         discriminant((*_182)) = 20;
 +         return;
@@ -1429,7 +1424,7 @@
 -         _2 = move _103;
 -         StorageDead(_103);
 -         goto -> bb150;
-+         _176 = move _183;
++         _176 = move _2;
 +         _175 = copy (_176.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb143;
       }
@@ -1476,7 +1471,7 @@
 +         StorageLive(_23);
 +         StorageLive(_25);
 +         StorageLive(_28);
-+         _28 = move _183;
++         _28 = move _2;
 +         goto -> bb42;
       }
   
@@ -1487,7 +1482,7 @@
 +         StorageLive(_23);
 +         StorageLive(_25);
 +         StorageLive(_35);
-+         _35 = move _183;
++         _35 = move _2;
 +         goto -> bb44;
       }
   
@@ -1497,7 +1492,7 @@
 +         StorageLive(_17);
 +         StorageLive(_23);
 +         StorageLive(_45);
-+         _45 = move _183;
++         _45 = move _2;
 +         goto -> bb55;
       }
   
@@ -1507,7 +1502,7 @@
 +         StorageLive(_17);
 +         StorageLive(_23);
 +         StorageLive(_52);
-+         _52 = move _183;
++         _52 = move _2;
 +         goto -> bb56;
       }
   
@@ -1516,7 +1511,7 @@
 -         goto -> bb30;
 +         StorageLive(_17);
 +         StorageLive(_62);
-+         _62 = move _183;
++         _62 = move _2;
 +         goto -> bb67;
       }
   
@@ -1526,7 +1521,7 @@
 +     bb155: {
 +         StorageLive(_17);
 +         StorageLive(_69);
-+         _69 = move _183;
++         _69 = move _2;
 +         goto -> bb68;
       }
   
@@ -1534,7 +1529,7 @@
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb156, unwind: bb155];
 +         StorageLive(_17);
 +         StorageLive(_79);
-+         _79 = move _183;
++         _79 = move _2;
 +         goto -> bb79;
       }
   
@@ -1544,7 +1539,7 @@
 -         goto -> bb156;
 +         StorageLive(_17);
 +         StorageLive(_86);
-+         _86 = move _183;
++         _86 = move _2;
 +         goto -> bb80;
       }
   
@@ -1553,7 +1548,7 @@
 -         StorageDead(_113);
 -         goto -> bb163;
 +         StorageLive(_96);
-+         _96 = move _183;
++         _96 = move _2;
 +         goto -> bb91;
       }
   
@@ -1561,7 +1556,7 @@
 -         StorageLive(_113);
 -         _113 = yield(const ()) -> [resume: bb157, drop: bb158];
 +         StorageLive(_103);
-+         _103 = move _183;
++         _103 = move _2;
 +         goto -> bb92;
       }
   
@@ -1569,14 +1564,14 @@
 -         _115 = discriminant(_114);
 -         switchInt(move _115) -> [0: bb154, 1: bb159, otherwise: bb59];
 +         StorageLive(_113);
-+         _113 = move _183;
++         _113 = move _2;
 +         goto -> bb103;
       }
   
       bb161: {
 -         _114 = <impl Future<Output = ()> as Future>::poll(move _116, move _117) -> [return: bb160, unwind: bb155];
 +         StorageLive(_120);
-+         _120 = move _183;
++         _120 = move _2;
 +         goto -> bb104;
       }
   
@@ -1584,7 +1579,7 @@
 -         _118 = move _2;
 -         _117 = std::future::get_context::<'_, '_>(move _118) -> [return: bb161, unwind: bb155];
 +         StorageLive(_130);
-+         _130 = move _183;
++         _130 = move _2;
 +         goto -> bb115;
       }
   
@@ -1592,7 +1587,7 @@
 -         _119 = &mut _112;
 -         _116 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _119) -> [return: bb162, unwind: bb155];
 +         StorageLive(_137);
-+         _137 = move _183;
++         _137 = move _2;
 +         goto -> bb116;
       }
   
@@ -1601,7 +1596,7 @@
 -         StorageDead(_120);
 -         goto -> bb170;
 +         StorageLive(_147);
-+         _147 = move _183;
++         _147 = move _2;
 +         goto -> bb127;
       }
   
@@ -1610,7 +1605,7 @@
 -         StorageDead(_120);
 -         goto -> bb163;
 +         StorageLive(_154);
-+         _154 = move _183;
++         _154 = move _2;
 +         goto -> bb128;
       }
   
@@ -1618,7 +1613,7 @@
 -         StorageLive(_120);
 -         _120 = yield(const ()) -> [resume: bb164, drop: bb165];
 +         StorageLive(_164);
-+         _164 = move _183;
++         _164 = move _2;
 +         goto -> bb139;
       }
   
@@ -1626,7 +1621,7 @@
 -         _122 = discriminant(_121);
 -         switchInt(move _122) -> [0: bb153, 1: bb166, otherwise: bb59];
 +         StorageLive(_171);
-+         _171 = move _183;
++         _171 = move _2;
 +         goto -> bb140;
       }
   

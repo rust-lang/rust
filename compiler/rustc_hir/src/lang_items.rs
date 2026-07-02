@@ -373,7 +373,6 @@ language_item_table! {
 
     AsyncGenReady,           sym::AsyncGenReady,       async_gen_ready,            Target::Method(MethodKind::Inherent), GenericRequirement::Exact(1);
     AsyncGenPending,         sym::AsyncGenPending,     async_gen_pending,          Target::AssocConst,     GenericRequirement::Exact(1);
-    AsyncGenFinished,        sym::AsyncGenFinished,    async_gen_finished,         Target::AssocConst,     GenericRequirement::Exact(1);
 
     // FIXME(swatinem): the following lang items are used for async lowering and
     // should become obsolete eventually.
@@ -385,6 +384,13 @@ language_item_table! {
 
     AsyncIteratorPollNext,   sym::async_iterator_poll_next, async_iterator_poll_next, Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(0);
     IntoAsyncIterIntoIter,   sym::into_async_iter_into_iter, into_async_iter_into_iter, Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(0);
+
+    CoroutineIterator,       sym::CoroutineIterator,   coroutine_iterator,         Target::Struct,         GenericRequirement::Exact(1);
+    IterFromCoroutine,       sym::iter_from_coroutine, iter_from_coroutine,        Target::Fn,             GenericRequirement::Exact(1);
+    CoroutineFuture,         sym::CoroutineFuture,     coroutine_future,           Target::Struct,         GenericRequirement::Exact(1);
+    FutureFromCoroutine,     sym::future_from_coroutine, future_from_coroutine,    Target::Fn,             GenericRequirement::Exact(1);
+    CoroutineAsyncIterator,  sym::CoroutineAsyncIterator, coroutine_async_iterator, Target::Struct,         GenericRequirement::Exact(1);
+    AsyncIteratorFromCoroutine, sym::async_iterator_from_coroutine, async_iterator_from_coroutine, Target::Fn, GenericRequirement::Exact(2);
 
     Option,                  sym::Option,              option_type,                Target::Enum,           GenericRequirement::None;
     OptionSome,              sym::Some,                option_some_variant,        Target::Variant,        GenericRequirement::None;

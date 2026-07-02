@@ -11,18 +11,18 @@
 // EMIT_MIR async_await.a-{closure#0}.StateTransform.diff
 async fn a() {
     // CHECK-LABEL: fn a::{closure#0}(
-    // CHECK-SAME: _1: Pin<&mut {async fn body of a()}>
-    // CHECK-SAME: _2: &mut Context<'_>
-    // CHECK-SAME: -> Poll<()>
+    // CHECK-SAME: _1: Pin<&mut {static coroutine body of a()}>
+    // CHECK-SAME: _2: std::future::ResumeTy
+    // CHECK-SAME: -> CoroutineState<(), ()>
     // CHECK-NOT: get_context
 }
 
 // EMIT_MIR async_await.b-{closure#0}.StateTransform.diff
 pub async fn b() {
     // CHECK-LABEL: fn b::{closure#0}(
-    // CHECK-SAME: _1: Pin<&mut {async fn body of b()}>
-    // CHECK-SAME: _2: &mut Context<'_>
-    // CHECK-SAME: -> Poll<()>
+    // CHECK-SAME: _1: Pin<&mut {static coroutine body of b()}>
+    // CHECK-SAME: _2: std::future::ResumeTy
+    // CHECK-SAME: -> CoroutineState<(), ()>
     // CHECK-NOT: get_context
     a().await;
     a().await

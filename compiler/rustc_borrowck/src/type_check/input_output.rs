@@ -7,10 +7,7 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use std::assert_matches;
-
 use itertools::Itertools;
-use rustc_hir as hir;
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
@@ -58,14 +55,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // transformation here, since we do the same thing in HIR typeck.
         // Maybe we could just fix up the canonicalized signature during HIR typeck?
         if let DefiningTy::CoroutineClosure(_, args) = self.universal_regions.defining_ty {
-            assert_matches!(
-                self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(mir_def_id)),
-                Some(hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::Gen,
-                    hir::CoroutineSource::Closure
-                )),
-                "this needs to be modified if we're lowering non-async closures"
-            );
             // Make sure to use the args from `DefiningTy` so the right NLL region vids are
             // prepopulated into the type.
             let args = args.as_coroutine_closure();
@@ -81,7 +70,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
 
             let next_ty_var = || self.infcx.next_ty_var(self.body.span);
-            let output_ty = Ty::new_coroutine(
+            let coroutine_ty = Ty::new_coroutine(
                 self.tcx(),
                 self.tcx().coroutine_for_closure(mir_def_id),
                 ty::CoroutineArgs::new(
@@ -99,6 +88,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 )
                 .args,
             );
+            let output_ty = self.tcx().coroutine_desugared_type(coroutine_ty);
 
             user_provided_sig = self.tcx().mk_fn_sig(
                 user_provided_sig.inputs().iter().copied(),
