@@ -673,7 +673,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut coercion = self.unify_and(
             coerce_target,
             target,
-            reborrow.into_iter().flat_map(|(deref, autoref)| [deref, autoref]),
+            reborrow.map(|(deref, autoref)| [deref, autoref]).into_flat_iter(),
             Adjust::Pointer(PointerCoercion::Unsize),
             ForceLeakCheck::No,
         )?;
