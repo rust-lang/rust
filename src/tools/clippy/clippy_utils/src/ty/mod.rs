@@ -525,7 +525,7 @@ fn is_uninit_value_valid_for_layout<'tcx>(cx: &LateContext<'tcx>, layout: TyAndL
 
     match layout.layout.backend_repr {
         BackendRepr::Scalar(s) => s.is_uninit_valid(),
-        BackendRepr::ScalarPair(a, b) => a.is_uninit_valid() && b.is_uninit_valid(),
+        BackendRepr::ScalarPair { a, b, b_offset: _ } => a.is_uninit_valid() && b.is_uninit_valid(),
         BackendRepr::SimdVector { element, count } => count == 0 || element.is_uninit_valid(),
         BackendRepr::SimdScalableVector { element, .. } => element.is_uninit_valid(),
         // Here validity is determined by the structural fields instead.

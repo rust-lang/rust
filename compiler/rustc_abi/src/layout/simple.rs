@@ -110,7 +110,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
                 offsets: [Size::ZERO, b_offset].into(),
                 in_memory_order: [FieldIdx::new(0), FieldIdx::new(1)].into(),
             },
-            backend_repr: BackendRepr::ScalarPair(a, b),
+            backend_repr: BackendRepr::ScalarPair { a, b, b_offset },
             largest_niche,
             uninhabited: false,
             align: AbiAlign::new(align),

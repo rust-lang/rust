@@ -574,7 +574,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let tp_ty = fn_args.type_at(0);
                 let layout = self.layout_of(tp_ty).layout;
                 let use_integer_compare = match layout.backend_repr() {
-                    Scalar(_) | ScalarPair(_, _) => true,
+                    Scalar(_) | ScalarPair { a: _, b: _, b_offset: _ } => true,
                     SimdVector { .. } => false,
                     SimdScalableVector { .. } => {
                         let err = tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
