@@ -1,0 +1,30 @@
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:31
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:45
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:55
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:66
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:20
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:76
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:31
+(priroda) Name: <none>, Id: _0, Ty: ()
+Name: <none>, Id: _1, Ty: (u32, i32)
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:45
+(priroda) Name: <none>, Id: _0, Ty: ()
+Name: <none>, Id: _1, Ty: S
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:55
+(priroda) Name: <none>, Id: _0, Ty: ()
+Name: <none>, Id: _1, Ty: std::option::Option<i32>
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:66
+(priroda) Name: <none>, Id: _0, Ty: ()
+Name: <none>, Id: _1, Ty: std::option::Option<&i32>
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:20
+(priroda) Name: <none>, Id: _0, Ty: ()
+Name: <none>, Id: _1, Ty: &mut std::option::Option<i32>
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:76
+(priroda) Name: <none>, Id: _0, Ty: ()
+(priroda) quitting
