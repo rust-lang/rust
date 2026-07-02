@@ -78,7 +78,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             return self.generate_delegation_error(span, delegation);
         };
 
-        self.add_attributes_if_needed(&res);
+        self.add_attrs_if_needed(&res);
 
         let (body_id, call_expr_id, unused_target_expr) =
             self.lower_delegation_body(delegation, &mut res);

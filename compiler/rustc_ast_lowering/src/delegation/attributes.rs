@@ -39,11 +39,11 @@ static ADDITIONS: &[AdditionInfo] = &[
 ];
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    pub(super) fn add_attributes_if_needed(&mut self, resolution: &DelegationResolution<'hir>) {
+    pub(super) fn add_attrs_if_needed(&mut self, resolution: &DelegationResolution<'hir>) {
         let &DelegationResolution { span, sig_id, .. } = resolution;
 
         const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
-        let new_attrs = self.create_new_attributes(span, sig_id, self.attrs.get(&PARENT_ID));
+        let new_attrs = self.create_new_attrs(span, sig_id, self.attrs.get(&PARENT_ID));
 
         if !new_attrs.is_empty() {
             let new_attrs = match self.attrs.get(&PARENT_ID) {
@@ -57,7 +57,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn create_new_attributes(
+    fn create_new_attrs(
         &self,
         span: Span,
         sig_id: DefId,
