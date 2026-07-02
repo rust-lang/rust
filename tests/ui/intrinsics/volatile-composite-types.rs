@@ -1,5 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29663>.
+//! `write_volatile` caused an LLVM assert with composite types.
 //@ run-pass
-// write_volatile causes an LLVM assert with composite types
 
 use std::ptr::{read_volatile, write_volatile};
 

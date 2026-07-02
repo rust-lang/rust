@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29147>.
+//! This used to compile for over 30 seconds.
+
 #![recursion_limit="1024"]
 #![allow(dead_code)]
 
