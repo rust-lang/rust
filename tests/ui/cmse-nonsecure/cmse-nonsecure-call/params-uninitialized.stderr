@@ -1,11 +1,19 @@
 warning: this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+  --> $DIR/params-uninitialized.rs:77:8
+   |
+LL |     f1(ReprRustUnionU64 { _unused: 1 });
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: enum and union values can have variant-dependent padding that may contain stale secure data
+   = note: `#[warn(cmse_uninitialized_leak)]` on by default
+
+warning: this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
   --> $DIR/params-uninitialized.rs:80:8
    |
 LL |     f2(ReprCUnionU64 { _unused: 1 });
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: enum and union values can have variant-dependent padding that may contain stale secure data
-   = note: `#[warn(cmse_uninitialized_leak)]` on by default
 
 warning: this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
   --> $DIR/params-uninitialized.rs:83:8
@@ -63,5 +71,5 @@ LL |     f11(UninhabitedVariant::B(0));
    |
    = note: enum and union values can have variant-dependent padding that may contain stale secure data
 
-warning: 8 warnings emitted
+warning: 9 warnings emitted
 

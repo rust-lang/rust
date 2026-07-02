@@ -18,8 +18,8 @@ union ReprRustUnionU32 {
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 extern "cmse-nonsecure-entry" fn union_rust() -> ReprRustUnionU32 {
-    // With `repr(Rust)` value is always fully initialized.
     ReprRustUnionU32 { _unused: 1 }
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 }
 
 #[repr(Rust)]
@@ -111,5 +111,33 @@ enum UninhabitedVariant {
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn uninhabited_variant() -> UninhabitedVariant {
     UninhabitedVariant::B(0)
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_same_size_array() -> [VariantsSameSize; 1] {
+    //~^ WARN improper_ctypes_definitions
+    // This enum only has no value-dependent padding, the guaranteed padding is zeroed.
+    [VariantsSameSize::A(0)]
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_different_size_array() -> [VariantsDifferentSize; 1] {
+    //~^ WARN improper_ctypes_definitions
+    [VariantsDifferentSize::A(0)]
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_same_size_tuple() -> (VariantsSameSize,) {
+    //~^ WARN improper_ctypes_definitions
+    // This enum only has no value-dependent padding, the guaranteed padding is zeroed.
+    (VariantsSameSize::A(0),)
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_different_size_tuple() -> (VariantsDifferentSize,) {
+    //~^ WARN improper_ctypes_definitions
+    (VariantsDifferentSize::A(0),)
     //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 }

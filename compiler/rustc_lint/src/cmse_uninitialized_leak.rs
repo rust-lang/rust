@@ -1,6 +1,6 @@
 use rustc_abi::ExternAbi;
 use rustc_hir::{self as hir, Expr, ExprKind};
-use rustc_middle::ty::{self, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_session::{declare_lint, declare_lint_pass};
 
 use crate::{LateContext, LateLintPass, LintContext, lints};
@@ -75,7 +75,6 @@ fn check_cmse_call_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
     };
 
     let fn_sig = cx.tcx.erase_and_anonymize_regions(sig);
-    let typing_env = ty::TypingEnv::fully_monomorphized();
 
     for (arg, ty) in arguments.iter().zip(fn_sig.inputs()) {
         // `impl Trait` is not allowed in the argument types.
@@ -83,11 +82,7 @@ fn check_cmse_call_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             continue;
         }
 
-        let Ok(layout) = cx.tcx.layout_of(typing_env.as_query_input(*ty)) else {
-            continue;
-        };
-
-        if !layout.variant_dependent_padding_ranges(cx).is_empty() {
+        if contains_unstable_or_variant_dependent_padding(cx, *ty) {
             // Some part of the source type may be uninitialized.
             cx.emit_span_lint(
                 CMSE_UNINITIALIZED_LEAK,
@@ -127,13 +122,7 @@ fn check_cmse_entry_return<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
         return;
     }
 
-    let typing_env = ty::TypingEnv::fully_monomorphized();
-
-    let Ok(ret_layout) = cx.tcx.layout_of(typing_env.as_query_input(return_type)) else {
-        return;
-    };
-
-    if !ret_layout.variant_dependent_padding_ranges(cx).is_empty() {
+    if contains_unstable_or_variant_dependent_padding(cx, return_type) {
         let return_expr_span = if is_implicit_return {
             match expr.kind {
                 ExprKind::Block(block, _) => match block.expr {
@@ -152,5 +141,76 @@ fn check_cmse_entry_return<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
             return_expr_span,
             lints::CmseUninitializedMayLeakInformation,
         );
+    }
+}
+
+/// Traverse `T` for any `union` or `enum`, and check whether it contains any padding that is
+/// variant-dependent or unstable.
+fn contains_unstable_or_variant_dependent_padding<'tcx>(
+    cx: &LateContext<'tcx>,
+    ty: Ty<'tcx>,
+) -> bool {
+    let tcx = cx.tcx;
+
+    // Types cross the secure boundary fully monomorphized.
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+
+    match ty.kind() {
+        ty::Adt(adt_def, args) => {
+            if adt_def.is_union() {
+                // It is still unclear whether a union value where all fields are equally
+                // large and allow the same bit patterns can be considered initialized
+                // (see rust-lang/unsafe-code-guidelines#438), so for now we just warn on
+                // any union.
+                return true;
+            }
+
+            if adt_def.is_enum() {
+                let repr = adt_def.repr();
+
+                // A `repr(C)` enum has a stable layout, and we can check whether
+                // whether it contains variant-dependent padding.
+                if repr.c() {
+                    let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) else {
+                        // Just be conservative if the layout cannot be computed.
+                        return true;
+                    };
+                    return !layout.variant_dependent_padding_ranges(cx).is_empty();
+                }
+            }
+
+            // For structs we recurse into the fields.
+            // A non-repr(C) struct already triggers `improper_ctypes`.
+            adt_def.all_fields().any(|field| {
+                let field_ty = tcx.normalize_erasing_regions(typing_env, field.ty(tcx, args));
+                contains_unstable_or_variant_dependent_padding(cx, field_ty)
+            })
+        }
+
+        ty::Tuple(elems) => {
+            // Element types might contain unions or enums.
+            //
+            // Passing a tuple already triggers `improper_ctypes`.
+            elems.iter().any(|elem| contains_unstable_or_variant_dependent_padding(cx, elem))
+        }
+        ty::Array(elem, _) => {
+            // The element type might contain unions or enums.
+            //
+            // Passing an array already triggers `improper_ctypes`.
+            contains_unstable_or_variant_dependent_padding(cx, *elem)
+        }
+
+        _ => {
+            // Other types are either scalar (hence no padding), or behind some kind of indirection.
+            //
+            // Note that the system traps when dereferencing a pointer to secure memory while in
+            // non-secure mode, so passing a value with indirection is useless in practice.
+            debug_assert!({
+                let layout = tcx.layout_of(typing_env.as_query_input(ty)).unwrap();
+                !layout.variant_dependent_padding_ranges(cx).is_empty()
+            });
+
+            false
+        }
     }
 }

@@ -74,8 +74,8 @@ fn test_uninitialized(
     f10: extern "cmse-nonsecure-call" fn(VariantsDifferentSize),
     f11: extern "cmse-nonsecure-call" fn(UninhabitedVariant),
 ) {
-    // With `repr(Rust)` this union is always initialized.
     f1(ReprRustUnionU64 { _unused: 1 });
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 
     f2(ReprCUnionU64 { _unused: 1 });
     //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
