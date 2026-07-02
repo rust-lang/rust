@@ -503,34 +503,27 @@ pub trait MacResult {
     }
 }
 
-macro_rules! make_MacEager {
-    ( $( $fld:ident: $t:ty, )* ) => {
-        /// `MacResult` implementation for the common case where you've already
-        /// built each form of AST that you might return.
-        #[derive(Default)]
-        pub struct MacEager {
-            $(
-                pub $fld: Option<$t>,
-            )*
-        }
-
-        impl MacEager {
-            $(
-                pub fn $fld(v: $t) -> Box<dyn MacResult> {
-                    Box::new(MacEager {
-                        $fld: Some(v),
-                        ..Default::default()
-                    })
-                }
-            )*
-        }
-    }
+/// `MacResult` implementation for the common case where you've already
+/// built each form of AST that you might return.
+#[derive(Default)]
+pub struct MacEager {
+    pub expr: Option<Box<ast::Expr>>,
+    pub items: Option<SmallVec<[Box<ast::Item>; 1]>>,
+    pub ty: Option<Box<ast::Ty>>,
 }
 
-make_MacEager! {
-    expr: Box<ast::Expr>,
-    items: SmallVec<[Box<ast::Item>; 1]>,
-    ty: Box<ast::Ty>,
+impl MacEager {
+    pub fn expr(v: Box<ast::Expr>) -> Box<dyn MacResult> {
+        Box::new(MacEager { expr: Some(v), ..Default::default() })
+    }
+
+    pub fn items(v: SmallVec<[Box<ast::Item>; 1]>) -> Box<dyn MacResult> {
+        Box::new(MacEager { items: Some(v), ..Default::default() })
+    }
+
+    pub fn ty(v: Box<ast::Ty>) -> Box<dyn MacResult> {
+        Box::new(MacEager { ty: Some(v), ..Default::default() })
+    }
 }
 
 impl MacResult for MacEager {
