@@ -112,7 +112,9 @@ impl<I: Idx, T> IndexVec<I, T> {
         // fixme this is unsound because we rely on correct Idx trait impls
         let len = me.len.index();
         let cap = me.capacity.index();
-        unsafe { core::hint::assert_unchecked(len <= cap); }
+        unsafe {
+            core::hint::assert_unchecked(len <= cap);
+        }
         unsafe { Vec::from_raw_parts(me.data.as_ptr(), len, cap) }
     }
 
