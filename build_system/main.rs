@@ -79,6 +79,7 @@ fn main() {
     let mut out_dir = std::env::current_dir().unwrap();
     let mut download_dir = None;
     let mut sysroot_kind = SysrootKind::Clif;
+    let mut keep_sysroot = false;
     let mut use_unstable_features = true;
     let mut panic_unwind_support = false;
     let mut frozen = false;
@@ -105,6 +106,7 @@ fn main() {
                     None => arg_error!("--sysroot requires argument"),
                 }
             }
+            "--keep-sysroot" => keep_sysroot = true,
             "--no-unstable-features" => use_unstable_features = false,
             "--panic-unwind-support" => panic_unwind_support = true,
             "--frozen" => frozen = true,
@@ -217,6 +219,7 @@ fn main() {
                 sysroot_kind,
                 use_unstable_features,
                 panic_unwind_support,
+                keep_sysroot,
                 &skip_tests.iter().map(|test| &**test).collect::<Vec<_>>(),
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
@@ -236,6 +239,7 @@ fn main() {
                 rustup_toolchain_name.as_deref(),
                 &bootstrap_host_compiler,
                 panic_unwind_support,
+                keep_sysroot,
             );
         }
         Command::Build => {
@@ -247,6 +251,7 @@ fn main() {
                 rustup_toolchain_name.as_deref(),
                 target_triple,
                 panic_unwind_support,
+                keep_sysroot,
             );
         }
         Command::Bench => {
@@ -258,6 +263,7 @@ fn main() {
                 rustup_toolchain_name.as_deref(),
                 target_triple,
                 panic_unwind_support,
+                keep_sysroot,
             );
             bench::benchmark(&dirs, &compiler);
         }

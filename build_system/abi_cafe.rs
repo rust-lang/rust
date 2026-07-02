@@ -21,6 +21,7 @@ pub(crate) fn run(
     rustup_toolchain_name: Option<&str>,
     bootstrap_host_compiler: &Compiler,
     panic_unwind_support: bool,
+    keep_sysroot: bool,
 ) {
     std::fs::create_dir_all(&dirs.download_dir).unwrap();
     ABI_CAFE_REPO.fetch(dirs);
@@ -35,6 +36,7 @@ pub(crate) fn run(
         rustup_toolchain_name,
         bootstrap_host_compiler.triple.clone(),
         panic_unwind_support,
+        keep_sysroot,
     );
 
     eprintln!("Running abi-cafe");

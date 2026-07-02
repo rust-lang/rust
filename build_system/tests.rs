@@ -269,6 +269,7 @@ pub(crate) fn run_tests(
     sysroot_kind: SysrootKind,
     use_unstable_features: bool,
     panic_unwind_support: bool,
+    keep_sysroot: bool,
     skip_tests: &[&str],
     cg_clif_dylib: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
@@ -288,6 +289,7 @@ pub(crate) fn run_tests(
             rustup_toolchain_name,
             target_triple.clone(),
             panic_unwind_support,
+            keep_sysroot,
         );
 
         let runner = TestRunner::new(
@@ -322,6 +324,7 @@ pub(crate) fn run_tests(
             rustup_toolchain_name,
             target_triple.clone(),
             panic_unwind_support,
+            keep_sysroot,
         );
 
         let mut runner = TestRunner::new(

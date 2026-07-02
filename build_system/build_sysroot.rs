@@ -8,7 +8,7 @@ use crate::rustc_info::{get_default_sysroot, get_file_name};
 use crate::utils::{
     CargoProject, Compiler, LogGroup, ensure_empty_dir, spawn_and_wait, try_hard_link,
 };
-use crate::{CodegenBackend, SysrootKind, config};
+use crate::{CodegenBackend, SysrootKind};
 
 pub(crate) fn build_sysroot(
     dirs: &Dirs,
@@ -18,6 +18,7 @@ pub(crate) fn build_sysroot(
     rustup_toolchain_name: Option<&str>,
     target_triple: String,
     panic_unwind_support: bool,
+    keep_sysroot: bool,
 ) -> Compiler {
     let _guard = LogGroup::guard("Build sysroot");
 
@@ -83,6 +84,7 @@ pub(crate) fn build_sysroot(
         &cg_clif_dylib_path,
         sysroot_kind,
         panic_unwind_support,
+        keep_sysroot,
     );
     host.install_into_sysroot(dist_dir);
 
@@ -98,6 +100,7 @@ pub(crate) fn build_sysroot(
             &cg_clif_dylib_path,
             sysroot_kind,
             panic_unwind_support,
+            keep_sysroot,
         )
         .install_into_sysroot(dist_dir);
     }
@@ -148,13 +151,18 @@ fn build_sysroot_for_triple(
     cg_clif_dylib_path: &CodegenBackend,
     sysroot_kind: SysrootKind,
     panic_unwind_support: bool,
+    keep_sysroot: bool,
 ) -> SysrootTarget {
     match sysroot_kind {
         SysrootKind::None => SysrootTarget { triple: compiler.triple, libs: vec![] },
         SysrootKind::Llvm => build_llvm_sysroot_for_triple(compiler),
-        SysrootKind::Clif => {
-            build_clif_sysroot_for_triple(dirs, compiler, cg_clif_dylib_path, panic_unwind_support)
-        }
+        SysrootKind::Clif => build_clif_sysroot_for_triple(
+            dirs,
+            compiler,
+            cg_clif_dylib_path,
+            panic_unwind_support,
+            keep_sysroot,
+        ),
     }
 }
 
@@ -195,12 +203,13 @@ fn build_clif_sysroot_for_triple(
     mut compiler: Compiler,
     cg_clif_dylib_path: &CodegenBackend,
     panic_unwind_support: bool,
+    keep_sysroot: bool,
 ) -> SysrootTarget {
     let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
 
     let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.triple).join("release");
 
-    if !config::get_bool("keep_sysroot") {
+    if !keep_sysroot {
         let sysroot_src_orig = get_default_sysroot(&compiler.rustc).join("lib/rustlib/src/rust");
         assert!(sysroot_src_orig.exists());
 
