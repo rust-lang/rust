@@ -688,4 +688,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         interp_ok(Scalar::from_i32(0))
     }
+
+    fn getsockname(
+        &mut self,
+        socket: &OpTy<'tcx>,
+        address: &OpTy<'tcx>,
+        address_len: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let address_ptr = this.read_pointer(address)?;
+        let address_len_ptr = this.read_pointer(address_len)?;
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+
+        let socket = fd.as_unix(this).as_socket(this);
+        let address = match socket.getsockname(this.machine.communicate(), this)? {
+            Ok(address) => address,
+            Err(e) => return this.set_errno_and_return_neg1_i32(e),
+        };
+
+        this.write_socket_address(&address, address_ptr, address_len_ptr, "getsockname")
+            .map(|_| Scalar::from_i32(0))
+    }
 }

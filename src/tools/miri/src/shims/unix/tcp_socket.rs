@@ -819,36 +819,16 @@ impl UnixSocketFileDescription for TcpSocket {
             )
         }
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn getsockname(
-        &mut self,
-        socket: &OpTy<'tcx>,
-        address: &OpTy<'tcx>,
-        address_len: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn getsockname<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<SocketAddr, IoError>> {
+        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
+        ecx.ensure_not_failed(&self, "getsockname")?;
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let address_ptr = this.read_pointer(address)?;
-        let address_len_ptr = this.read_pointer(address_len)?;
-
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
-        };
-
-        assert!(this.machine.communicate(), "cannot have `TcpSocket` with isolation enabled!");
-        this.ensure_not_failed(&socket, "getsockname")?;
-
-        let state = socket.state.borrow();
+        let state = self.state.borrow();
 
         let address = match &*state {
             SocketState::Bound(address) => {
@@ -857,7 +837,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // port. Since we don't yet have an underlying socket, we don't know what this
                     // random port will be and thus this is unsupported.
                     throw_unsup_format!(
-                        "getsockname: when the port is 0, getting the socket address before \
+                        "getsockname: when the port is 0, getting the tcp socket address before \
                         calling `listen` or `connect` is unsupported"
                     )
                 }
@@ -867,7 +847,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             SocketState::Listening(listener) =>
                 match listener.local_addr() {
                     Ok(address) => address,
-                    Err(e) => return this.set_errno_and_return_neg1_i32(e),
+                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
                 },
             SocketState::Connecting(stream) | SocketState::Connected(stream) => {
                 if cfg!(windows) && matches!(&*state, SocketState::Connecting(_)) {
@@ -879,12 +859,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     static DEDUP: AtomicBool = AtomicBool::new(false);
                     if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
-                        this.emit_diagnostic(NonHaltingDiagnostic::ConnectingSocketGetsockname);
+                        ecx.emit_diagnostic(NonHaltingDiagnostic::ConnectingSocketGetsockname);
                     }
                 }
                 match stream.local_addr() {
                     Ok(address) => address,
-                    Err(e) => return this.set_errno_and_return_neg1_i32(e),
+                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
                 }
             }
             // For non-bound sockets the POSIX manual says the returned address is unspecified.
@@ -893,10 +873,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             SocketState::ConnectionFailed(_) => unreachable!(),
         };
 
-        this.write_socket_address(&address, address_ptr, address_len_ptr, "getsockname")
-            .map(|_| Scalar::from_i32(0))
+        interp_ok(Ok(address))
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn getpeername(
         &mut self,
         socket: &OpTy<'tcx>,
