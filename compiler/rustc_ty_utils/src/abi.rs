@@ -638,7 +638,8 @@ fn fn_abi_new_uncached<'tcx>(
             determined_fn_def_id,
             sig.abi(),
         ),
-        type_discriminator: if tcx.sess.pointer_authentication_fn_ptr_type_discrimination() {
+        ptrauth_type_discriminator: if tcx.sess.pointer_authentication_fn_ptr_type_discrimination()
+        {
             compute_fn_ptr_type_discriminator(tcx, &FnPtrTypeDiscriminatorInput::from_sig(sig))
         } else {
             0

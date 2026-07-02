@@ -621,14 +621,21 @@ pub struct FnAbi<'a, Ty> {
     /// Indicates if an unwind may happen across a call to this function.
     pub can_unwind: bool,
     /// Computed type discriminator for pointer authentication purpose.
-    pub type_discriminator: u64,
+    pub ptrauth_type_discriminator: u64,
 }
 
 // Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
 impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let FnAbi { args, ret, c_variadic, fixed_count, conv, can_unwind, type_discriminator } =
-            self;
+        let FnAbi {
+            args,
+            ret,
+            c_variadic,
+            fixed_count,
+            conv,
+            can_unwind,
+            ptrauth_type_discriminator,
+        } = self;
         f.debug_struct("FnAbi")
             .field("args", args)
             .field("ret", ret)
@@ -636,7 +643,7 @@ impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
             .field("fixed_count", fixed_count)
             .field("conv", conv)
             .field("can_unwind", can_unwind)
-            .field("type_discriminator", type_discriminator)
+            .field("ptrauth_type_discriminator", ptrauth_type_discriminator)
             .finish()
     }
 }

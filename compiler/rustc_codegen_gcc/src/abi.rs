@@ -104,7 +104,6 @@ pub struct FnAbiGcc<'gcc> {
     pub on_stack_param_indices: FxHashSet<usize>,
     #[cfg(feature = "master")]
     pub fn_attributes: Vec<FnAttribute<'gcc>>,
-    pub type_discriminator: u64,
 }
 
 pub trait FnAbiGccExt<'gcc, 'tcx> {
@@ -220,7 +219,6 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             on_stack_param_indices,
             #[cfg(feature = "master")]
             fn_attributes: fn_attrs,
-            type_discriminator: self.type_discriminator,
         }
     }
 
