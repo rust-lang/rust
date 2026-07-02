@@ -2038,10 +2038,12 @@ impl CrateMetadata {
         krate: CrateNum,
     ) -> impl Iterator<Item = DefId> {
         gen move {
-            for def_id in self.root.proc_macro_data.as_ref().into_iter().flat_map(move |data| {
-                data.macros.decode((self, tcx)).map(move |(index, _)| DefId { index, krate })
-            }) {
-                yield def_id;
+            if let Some(data) = &self.root.proc_macro_data {
+                for def_id in
+                    data.macros.decode((self, tcx)).map(move |(index, _)| DefId { index, krate })
+                {
+                    yield def_id;
+                }
             }
         }
     }

@@ -90,8 +90,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
     fn check_attrs(&mut self, attrs: &[hir::Attribute]) {
         for &(span, cgu_fields) in find_attr!(attrs,
             RustcCguTestAttr(e) => e)
-        .into_iter()
-        .flatten()
+        .into_flat_iter()
         {
             let (expected_reuse, comp_kind) = match cgu_fields {
                 CguFields::PartitionReused { .. } => (CguReuse::PreLto, ComparisonKind::AtLeast),

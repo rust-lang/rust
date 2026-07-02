@@ -25,7 +25,7 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
 
     // iterate over all items in the current crate
     for id in tcx.hir_crate_items(()).eiis() {
-        for i in find_attr!(tcx, id, EiiImpls(e) => e).into_iter().flatten() {
+        for i in find_attr!(tcx, id, EiiImpls(e) => e).into_flat_iter() {
             let decl = match i.resolution {
                 EiiImplResolution::Macro(macro_defid) => {
                     // find the decl for this one if it wasn't in yet (maybe it's from the local crate? not very useful but not illegal)
