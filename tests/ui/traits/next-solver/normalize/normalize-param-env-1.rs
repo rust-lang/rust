@@ -1,6 +1,6 @@
-//@ check-pass
 //@ compile-flags: -Znext-solver
 // Issue 108933
+// This was fixed by lazy norm of param env.
 
 trait Add<Rhs> {
     type Sum;
@@ -24,6 +24,7 @@ where
 }
 
 fn g<T>()
+//~^ ERROR: the trait bound `T: Trait<()>` is not satisfied
 where
     T: Trait<Unit>,
     <T as Trait<()>>::Output: Sized,

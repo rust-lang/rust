@@ -30,7 +30,6 @@ use rustc_errors::ErrorGuaranteed;
 pub use rustc_infer::traits::*;
 use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
-use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, Clause, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
@@ -250,6 +249,72 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
     }
 }
 
+fn set_projection_term_to_non_rigid<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    tcx: TyCtxt<'tcx>,
+    value: T,
+) -> T {
+    value.fold_with(&mut ProjectionTermToNonRigid { tcx })
+}
+
+struct ProjectionTermToNonRigid<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ProjectionTermToNonRigid<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
+            && let ty::ClauseKind::Projection(projection_pred) = clause
+        {
+            p.kind()
+                .rebind(ty::ProjectionPredicate {
+                    projection_term: projection_pred.projection_term,
+                    term: ty::set_aliases_to_non_rigid(self.tcx, projection_pred.term)
+                        .skip_norm_wip(),
+                })
+                .upcast(self.tcx)
+        } else {
+            p
+        }
+    }
+}
+
+struct OpaqueToNonRigid<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueToNonRigid<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if !(t.has_rigid_aliases() && t.has_opaque_types()) {
+            return t;
+        }
+
+        if let ty::Alias(ty::IsRigid::Yes, alias_ty @ ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
+            t.kind()
+        {
+            let alias_ty = alias_ty.fold_with(self);
+            Ty::new_alias(self.tcx, ty::IsRigid::No, alias_ty)
+        } else {
+            t.super_fold_with(self)
+        }
+    }
+
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if c.has_rigid_aliases() && c.has_opaque_types() { c.super_fold_with(self) } else { c }
+    }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if p.has_rigid_aliases() && p.has_opaque_types() { p.super_fold_with(self) } else { p }
+    }
+}
+
 #[instrument(level = "debug", skip(tcx, elaborated_env))]
 fn do_normalize_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -257,12 +322,6 @@ fn do_normalize_predicates<'tcx>(
     elaborated_env: ty::ParamEnv<'tcx>,
     predicates: Vec<ty::Clause<'tcx>>,
 ) -> Result<Vec<ty::Clause<'tcx>>, ErrorGuaranteed> {
-    // Even if we move back to eager normalization elsewhere,
-    // param env normalization remains lazy in the next solver.
-    if tcx.next_trait_solver_globally() {
-        return Ok(predicates);
-    }
-
     // FIXME. We should really... do something with these region
     // obligations. But this call just continues the older
     // behavior (i.e., doesn't cause any new bugs), and it would
@@ -279,10 +338,30 @@ fn do_normalize_predicates<'tcx>(
     let span = cause.span;
     let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    // FIXME: The `elaborated_env` is not really rigid. We do this to be
+    // consistent with the old solver. It fixes several issues with
+    // lazy norm of param env but unfix others.
+    let elaborated_env = if tcx.next_trait_solver_globally() && !tcx.disable_param_env_hack() {
+        // FIXME: combine them into one if the perf is bad.
+        let elaborated_env = ty::set_aliases_to_rigid(tcx, elaborated_env);
+        set_projection_term_to_non_rigid(tcx, elaborated_env)
+    } else {
+        elaborated_env
+    };
     let predicates = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(predicates));
-    // FIXME: opaque types in param env might be in defining scope but we're
-    // using non body analysis for here. So the rigidness marker is wrong.
-    let predicates = ty::set_aliases_to_non_rigid(tcx, predicates).skip_norm_wip();
+    let predicates = if tcx.next_trait_solver_globally() {
+        if !tcx.disable_param_env_hack() {
+            let predicates = set_projection_term_to_non_rigid(tcx, predicates);
+            // FIXME(type_alias_impl_trait): opaque types in param env might be
+            // in defining scope but we're using non body analysis here.
+            // So the rigidness marker is wrong.
+            predicates.fold_with(&mut OpaqueToNonRigid { tcx })
+        } else {
+            ty::set_aliases_to_non_rigid(tcx, predicates).skip_norm_wip()
+        }
+    } else {
+        predicates
+    };
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
@@ -294,17 +373,20 @@ fn do_normalize_predicates<'tcx>(
 
     // We can use the `elaborated_env` here; the region code only
     // cares about declarations like `'a: 'b`.
+    //
     // FIXME: It's very weird that we ignore region obligations but apparently
     // still need to use `resolve_regions` as we need the resolved regions in
     // the normalized predicates.
-    let errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
-    if !errors.is_empty() {
-        tcx.dcx().span_delayed_bug(
-            span,
-            format!("failed region resolution while normalizing {elaborated_env:?}: {errors:?}"),
-        );
-    }
-
+    //
+    // FIXME(-Zhigher-ranked-assumptions): We're ignoring region errors for now.
+    // There're placeholder constraints `leaking` out. This is a hack to work around
+    // the fact that we don't support placeholder assumptions right now and is necessary
+    // for `compare_method_predicate_entailment`. We should remove this once we
+    // have proper support for implied bounds on binders.
+    //
+    // This is required by trait-system-refactor-initiative#166. The new solver encounters
+    // this more frequently as we entirely ignore outlives predicates with the old solver.
+    let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
     match infcx.fully_resolve(predicates) {
         Ok(predicates) => Ok(predicates),
         Err(fixup_err) => {
@@ -477,69 +559,6 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
-    debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
-}
-
-/// Deeply normalize the param env using the next solver ignoring
-/// region errors.
-///
-/// FIXME(-Zhigher-ranked-assumptions): this is a hack to work around
-/// the fact that we don't support placeholder assumptions right now
-/// and is necessary for `compare_method_predicate_entailment`, see the
-/// use of this function for more info. We should remove this once we
-/// have proper support for implied bounds on binders.
-#[instrument(level = "debug", skip(tcx))]
-pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    unnormalized_env: ty::ParamEnv<'tcx>,
-    cause: ObligationCause<'tcx>,
-) -> ty::ParamEnv<'tcx> {
-    let predicates: Vec<_> =
-        util::elaborate(tcx, unnormalized_env.caller_bounds().into_iter()).collect();
-
-    debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
-
-    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
-    if !elaborated_env.has_aliases() {
-        return elaborated_env;
-    }
-
-    let span = cause.span;
-    let infcx = tcx
-        .infer_ctxt()
-        .with_next_trait_solver(true)
-        .ignoring_regions()
-        .build(TypingMode::non_body_analysis());
-    let predicates = match crate::solve::deeply_normalize::<_, FulfillmentError<'tcx>>(
-        infcx.at(&cause, elaborated_env),
-        Unnormalized::new_wip(predicates),
-    ) {
-        Ok(predicates) => predicates,
-        Err(errors) => {
-            infcx.err_ctxt().report_fulfillment_errors(errors);
-            // An unnormalized env is better than nothing.
-            debug!("normalize_param_env_or_error: errored resolving predicates");
-            return elaborated_env;
-        }
-    };
-
-    debug!("do_normalize_predicates: normalized predicates = {:?}", predicates);
-    // FIXME(-Zhigher-ranked-assumptions): We're ignoring region errors for now.
-    // There're placeholder constraints `leaking` out.
-    // See the fixme in the enclosing function's docs for more.
-    let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
-
-    let predicates = match infcx.fully_resolve(predicates) {
-        Ok(predicates) => predicates,
-        Err(fixup_err) => {
-            span_bug!(
-                span,
-                "inference variables in normalized parameter environment: {}",
-                fixup_err
-            )
-        }
-    };
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
     ty::ParamEnv::new(tcx.mk_clauses(&predicates))
 }
