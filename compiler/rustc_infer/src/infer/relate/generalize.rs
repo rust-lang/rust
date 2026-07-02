@@ -6,8 +6,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, InferConst, Term, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument, warn};
@@ -168,25 +168,61 @@ impl<'tcx> InferCtxt<'tcx> {
             // cyclic type. We instead delay the unification in case
             // the alias can be normalized to something which does not
             // mention `?0`.
+            let Some(source_alias) = source_term.to_alias_term() else {
+                bug!("generalized `{source_term:?} to infer, not an alias");
+            };
             if self.next_trait_solver() {
-                let (lhs, rhs, direction) = match instantiation_variance {
-                    ty::Invariant => {
-                        (generalized_term, source_term, AliasRelationDirection::Equate)
+                if let Some(generalized_ty) = generalized_term.as_type() {
+                    match instantiation_variance {
+                        ty::Invariant => relation.register_predicates([ty::ProjectionPredicate {
+                            projection_term: source_alias.into(),
+                            term: generalized_ty.into(),
+                        }]),
+                        ty::Covariant => {
+                            // Generate a new var, then do:
+                            // `source_alias == ?A && ?A <: generalized_ty`
+                            let new_var = self.next_ty_var(relation.span());
+                            relation.register_predicates([
+                                ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                                    a_is_expected: !target_is_expected,
+                                    a: new_var,
+                                    b: generalized_ty,
+                                }),
+                                ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                                    ty::ProjectionPredicate {
+                                        projection_term: source_alias.into(),
+                                        term: new_var.into(),
+                                    },
+                                )),
+                            ]);
+                        }
+                        ty::Contravariant => {
+                            // a :> b is b <: a
+                            let new_var = self.next_ty_var(relation.span());
+                            relation.register_predicates([
+                                ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                                    a_is_expected: target_is_expected,
+                                    a: generalized_ty,
+                                    b: new_var,
+                                }),
+                                ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                                    ty::ProjectionPredicate {
+                                        projection_term: source_alias.into(),
+                                        term: new_var.into(),
+                                    },
+                                )),
+                            ]);
+                        }
+                        ty::Bivariant => unreachable!("bivariant generalization"),
                     }
-                    ty::Covariant => {
-                        (generalized_term, source_term, AliasRelationDirection::Subtype)
-                    }
-                    ty::Contravariant => {
-                        (source_term, generalized_term, AliasRelationDirection::Subtype)
-                    }
-                    ty::Bivariant => unreachable!("bivariant generalization"),
-                };
-
-                relation.register_predicates([ty::PredicateKind::AliasRelate(lhs, rhs, direction)]);
+                } else {
+                    debug_assert_eq!(instantiation_variance, ty::Variance::Invariant);
+                    relation.register_predicates([ty::ProjectionPredicate {
+                        projection_term: source_alias,
+                        term: generalized_term,
+                    }]);
+                }
             } else {
-                let Some(source_alias) = source_term.to_alias_term() else {
-                    bug!("generalized `{source_term:?} to infer, not an alias");
-                };
                 match source_alias.kind {
                     ty::AliasTermKind::ProjectionTy { .. }
                     | ty::AliasTermKind::ProjectionConst { .. } => {
