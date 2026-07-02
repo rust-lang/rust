@@ -124,42 +124,14 @@ impl FileDescription for TcpSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
-
-        let socket = self;
-        let deadline = ecx.action_deadline(socket.is_non_block.get(), socket.read_timeout.get());
-
-        ecx.ensure_connected(
-            socket.clone(),
-            deadline.clone(),
-            "read",
-            callback!(
-                @capture<'tcx> {
-                    socket: FileDescriptionRef<TcpSocket>,
-                    deadline: Option<Deadline>,
-                    ptr: Pointer,
-                    len: usize,
-                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-                } |this, result: Result<(), ()>| {
-                    if result.is_err() {
-                        return finish.call(this, Err(LibcError("ENOTCONN")))
-                    }
-
-                    // Since `read` is the same as `recv` with no flags, we just treat
-                    // the `read` as a `recv` here.
-
-                    if socket.is_non_block.get() {
-                        // We have a non-blocking socket and thus don't want to block until
-                        // we can read.
-                        let result = this.try_non_block_recv(&socket, ptr, len, /* should_peek */ false)?;
-                        finish.call(this, result)
-                    } else {
-                        // The socket is in blocking mode and thus the read call should block
-                        // until we can read some bytes from the socket or the timeout exceeded.
-                        this.block_for_recv(socket, deadline, ptr, len, /* should_peek */ false, finish)
-                    }
-                }
-            ),
+        self.recv(
+            communicate_allowed,
+            ptr,
+            len,
+            /* is_peek */ false,
+            /* is_non_block */ false,
+            ecx,
+            finish,
         )
     }
 
