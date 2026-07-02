@@ -910,10 +910,9 @@ where
             BackendRepr::ScalarPair { a: left, b: right, b_offset: _ } => {
                 let left_size = left.size(self);
                 let right_size = right.size(self);
-                // We have padding if the sizes don't add up to the total.
-                // (No need to check the offset because it's only possible for the scalar sizes
-                // to add up to the total size if the b_offset equals the `left_size`, but that's
-                // not a sufficient check because there needs to be no padding after right either.)
+
+                // We have padding if the sizes don't add up to the total
+                // without respect to b_offset, which indicates padding only if the total is higher.
                 left_size + right_size != src.layout().size
             }
             // Everything else can only exist in memory anyway, so it doesn't matter.
