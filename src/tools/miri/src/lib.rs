@@ -18,6 +18,7 @@
 #![feature(try_blocks)]
 #![feature(io_error_more)]
 #![feature(io_error_inprogress)]
+#![cfg_attr(not(bootstrap), feature(io_error_too_many_open_files))]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(pointer_is_aligned_to)]
