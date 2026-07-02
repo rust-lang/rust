@@ -262,8 +262,16 @@ impl CandidateHeadUsages {
     }
 }
 
+/// Whether evaluating a given goal should be done with a lower available depth from
+/// its parent goal.
+///
+/// Normally, it should be `Yes`, but among rustc's predicate goals, `normalizes-to`
+/// goals are exceptions. They act like functions that used for normalizing associated
+/// terms while evaluating projection goals with fully unconstrained expected term.
+/// We don't want to lower the available depths for those function-like goals, otherwise
+/// we will encounter recursion limit overflows more often.
 #[derive(Debug, Clone, Copy)]
-pub enum IncreaseDepthForNested {
+pub enum LowerAvailableDepth {
     Yes,
     No,
 }
@@ -280,11 +288,12 @@ impl AvailableDepth {
     fn allowed_depth_for_nested<D: Delegate>(
         root_depth: AvailableDepth,
         stack: &Stack<D::Cx>,
+        lower_available_depth: LowerAvailableDepth,
     ) -> Option<AvailableDepth> {
         if let Some(last) = stack.last() {
-            match last.increase_depth_for_nested {
-                IncreaseDepthForNested::Yes => {}
-                IncreaseDepthForNested::No => {
+            match lower_available_depth {
+                LowerAvailableDepth::Yes => {}
+                LowerAvailableDepth::No => {
                     return Some(last.available_depth);
                 }
             }
@@ -754,7 +763,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             available_depth,
             min_reached_available_depth: available_depth,
             provisional_result: None,
-            increase_depth_for_nested: IncreaseDepthForNested::Yes,
             heads: Default::default(),
             encountered_overflow: false,
             usages: None,
@@ -775,12 +783,14 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         cx: X,
         input: X::Input,
         step_kind_from_parent: PathKind,
-        increase_depth_for_nested: IncreaseDepthForNested,
+        lower_available_depth: LowerAvailableDepth,
         inspect: &mut D::ProofTreeBuilder,
     ) -> X::Result {
-        let Some(available_depth) =
-            AvailableDepth::allowed_depth_for_nested::<D>(self.root_depth, &self.stack)
-        else {
+        let Some(available_depth) = AvailableDepth::allowed_depth_for_nested::<D>(
+            self.root_depth,
+            &self.stack,
+            lower_available_depth,
+        ) else {
             return self.handle_overflow(cx, input);
         };
 
@@ -832,7 +842,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             available_depth,
             provisional_result: None,
             min_reached_available_depth: available_depth,
-            increase_depth_for_nested,
             heads: Default::default(),
             encountered_overflow: false,
             usages: None,
@@ -1430,7 +1439,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 // We can keep these goals from previous iterations as they are only
                 // ever read after finalizing this evaluation.
                 min_reached_available_depth: stack_entry.min_reached_available_depth,
-                increase_depth_for_nested: stack_entry.increase_depth_for_nested,
                 heads: stack_entry.heads,
                 nested_goals: stack_entry.nested_goals,
                 // We reset these two fields when rerunning this goal. We could
