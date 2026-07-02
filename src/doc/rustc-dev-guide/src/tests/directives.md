@@ -45,9 +45,13 @@ Directives can generally be found by browsing the
 
 <!-- date-check: Oct 2024 -->
 
-| Directive         | Explanation                   | Supported test suites | Possible values                        |
-|-------------------|-------------------------------|-----------------------|----------------------------------------|
-| `assembly-output` | Assembly output kind to check | `assembly`            | `emit-asm`, `bpf-linker`, `ptx-linker` |
+| Directive         | Explanation                   | Supported test suites | Possible values                             |
+|-------------------|-------------------------------|-----------------------|---------------------------------------------|
+| `assembly-output` | Assembly output kind to check | `assembly`            | `emit-asm`, `bpf-linker`, `linker-asm`[^la] |
+
+[^la]: For targets where the linker produces the final assembly artifact, either 
+by default or when explicitly instructed to do so. This allows assembly tests to 
+inspect linked code, rather than only rustc's pre-link assembly output.
 
 ### Auxiliary builds
 
