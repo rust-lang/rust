@@ -8,22 +8,29 @@
 {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:31
 (priroda) Name: <none>, Id: _0, Ty: ()
 Name: <none>, Id: _1, Ty: (u32, i32)
+Name: first, Id: _1.0, Ty: u32
+Name: second, Id: _1.1, Ty: i32
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:45
 (priroda) Name: <none>, Id: _0, Ty: ()
 Name: <none>, Id: _1, Ty: S
+Name: x, Id: _1.0, Ty: f32
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:55
 (priroda) Name: <none>, Id: _0, Ty: ()
 Name: <none>, Id: _1, Ty: std::option::Option<i32>
+Name: inner, Id: _1 as variant#1.0, Ty: i32
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:66
 (priroda) Name: <none>, Id: _0, Ty: ()
 Name: <none>, Id: _1, Ty: std::option::Option<&i32>
+Name: pointer, Id: _1 as variant#1.0, Ty: &i32
+Name: deref, Id: _1 as variant#1.0.*, Ty: i32
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:20
 (priroda) Name: <none>, Id: _0, Ty: ()
 Name: <none>, Id: _1, Ty: &mut std::option::Option<i32>
+Name: foo, Id: _1.* as variant#1.0, Ty: i32
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:76
 (priroda) Name: <none>, Id: _0, Ty: ()
