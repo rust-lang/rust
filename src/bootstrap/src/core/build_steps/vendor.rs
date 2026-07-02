@@ -59,7 +59,7 @@ pub(crate) struct Vendor {
 }
 
 impl Step for Vendor {
-    type Output = VendorOutput;
+    type Output = ();
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -84,7 +84,7 @@ impl Step for Vendor {
     ///
     /// This function runs `cargo vendor` and ensures all required submodules
     /// are initialized before vendoring begins.
-    fn run(self, builder: &Builder<'_>) -> Self::Output {
+    fn run(self, builder: &Builder<'_>) {
         let _guard = builder.group(&format!("Vendoring sources to {:?}", self.root_dir));
 
         let config = if self.only_library_workspace {
@@ -163,13 +163,15 @@ impl Step for Vendor {
 
         let config_library = cmd.run_capture_stdout(builder).stdout();
 
-        VendorOutput { config, config_library }
-    }
-}
+        // Write .cargo/config.toml
+        let cargo_config_dir = self.output_dir.as_ref().unwrap_or(&self.root_dir).join(".cargo");
+        builder.create_dir(&cargo_config_dir);
+        builder.create(&cargo_config_dir.join("config.toml"), &config);
 
-/// Stores the result of the vendoring step.
-#[derive(Debug, Clone)]
-pub(crate) struct VendorOutput {
-    pub(crate) config: String,
-    pub(crate) config_library: String,
+        // Write library/.cargo/config.toml
+        let library_cargo_config_dir =
+            self.output_dir.unwrap_or(self.root_dir).join("library").join(".cargo");
+        builder.create_dir(&library_cargo_config_dir);
+        builder.create(&library_cargo_config_dir.join("config.toml"), &config_library);
+    }
 }
