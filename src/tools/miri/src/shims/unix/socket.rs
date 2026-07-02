@@ -715,4 +715,52 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_socket_address(&address, address_ptr, address_len_ptr, "getsockname")
             .map(|_| Scalar::from_i32(0))
     }
+
+    fn getpeername(
+        &mut self,
+        socket: &OpTy<'tcx>,
+        address: &OpTy<'tcx>,
+        address_len: &OpTy<'tcx>,
+        // Location where the output scalar is written to.
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let address_ptr = this.read_pointer(address)?;
+        let address_len_ptr = this.read_pointer(address_len)?;
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        };
+
+        let socket = fd.as_unix(this).as_socket(this);
+        let dest = dest.clone();
+
+        socket.getpeername(
+            this.machine.communicate(),
+            this,
+            callback!(
+                @capture<'tcx> {
+                    address_ptr: Pointer,
+                    address_len_ptr: Pointer,
+                    dest: MPlaceTy<'tcx>,
+                } |this, result: Result<SocketAddr, IoError>| {
+                    let address = match result {
+                        Ok(address) => address,
+                        Err(e) => return this.set_errno_and_return_neg1(e, &dest)
+                    };
+
+                    this.write_socket_address(
+                        &address,
+                        address_ptr,
+                        address_len_ptr,
+                        "getpeername",
+                    )?;
+                   this.write_scalar(Scalar::from_i32(0), &dest)
+                }
+            ),
+        )
+    }
 }

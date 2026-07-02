@@ -14,7 +14,6 @@ use rustc_target::spec::Os;
 use crate::shims::files::{EvalContextExt as _, FdId, FdNum, FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::{SocketFamily, UnixSocketFileDescription};
-use crate::shims::unix::socket_address::EvalContextExt as _;
 use crate::*;
 
 #[derive(Debug)]
@@ -875,77 +874,46 @@ impl UnixSocketFileDescription for TcpSocket {
 
         interp_ok(Ok(address))
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn getpeername(
-        &mut self,
-        socket: &OpTy<'tcx>,
-        address: &OpTy<'tcx>,
-        address_len: &OpTy<'tcx>,
-        // Location where the output scalar is written to.
-        dest: &MPlaceTy<'tcx>,
+    fn getpeername<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<SocketAddr, IoError>>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let address_ptr = this.read_pointer(address)?;
-        let address_len_ptr = this.read_pointer(address_len)?;
-
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
-        };
-
-        assert!(this.machine.communicate(), "cannot have `TcpSocket` with isolation enabled!");
-
-        let dest = dest.clone();
-
+        let socket = self;
         // It's only safe to call [`TcpStream::peer_addr`] after the socket is connected since
         // UNIX targets should return ENOTCONN when the connection is not yet established.
-        this.ensure_connected(
+        ecx.ensure_connected(
             socket.clone(),
             // Check whether the socket is connected without blocking.
-            Some(this.machine.monotonic_clock.now().into()),
+            Some(ecx.machine.monotonic_clock.now().into()),
             "getpeername",
             callback!(
                 @capture<'tcx> {
                     socket: FileDescriptionRef<TcpSocket>,
-                    address_ptr: Pointer,
-                    address_len_ptr: Pointer,
-                    dest: MPlaceTy<'tcx>,
+                    finish: DynMachineCallback<'tcx, Result<SocketAddr, IoError>>,
                 } |this, result: Result<(), ()>| {
                     if result.is_err() {
-                        return this.set_errno_and_return_neg1(LibcError("ENOTCONN"), &dest)
+                        return finish.call(this, Err(LibcError("ENOTCONN")))
                     };
 
                     let SocketState::Connected(stream) = &*socket.state.borrow() else {
                         unreachable!()
                     };
 
-                    let address = match stream.peer_addr() {
-                        Ok(address) => address,
-                        Err(e) => return this.set_errno_and_return_neg1(e, &dest),
-                    };
-
-                    this.write_socket_address(
-                        &address,
-                        address_ptr,
-                        address_len_ptr,
-                        "getpeername",
-                    )?;
-                   this.write_scalar(Scalar::from_i32(0), &dest)
+                    let result = stream.peer_addr().map_err(IoError::HostError);
+                    finish.call(this, result)
                 }
             ),
         )
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn shutdown(&mut self, socket: &OpTy<'tcx>, how: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
