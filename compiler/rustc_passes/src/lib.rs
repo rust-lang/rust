@@ -4,6 +4,10 @@
 //!
 //! This API is completely unstable and subject to change.
 
+// tidy-alphabetical-start
+#![feature(option_into_flat_iter)]
+// tidy-alphabetical-end
+
 use rustc_middle::query::Providers;
 
 pub mod abi_test;
