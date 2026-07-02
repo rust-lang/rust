@@ -245,7 +245,7 @@ enum ParentSegmentArgs<'a> {
     /// Parent segment is valid and args are not specified:
     /// `reuse Trait::foo;`.
     NotSpecified,
-    /// Parent segment doest not exist (`reuse foo`) or we can not
+    /// Parent segment does not exist (`reuse foo`) or we can not
     /// add generics to it:
     /// ```rust
     /// mod to_reuse {
