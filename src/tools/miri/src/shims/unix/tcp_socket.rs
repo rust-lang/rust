@@ -557,110 +557,87 @@ impl UnixSocketFileDescription for TcpSocket {
             ),
         )
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn setsockopt(
-        &mut self,
-        socket: &OpTy<'tcx>,
-        level: &OpTy<'tcx>,
-        option_name: &OpTy<'tcx>,
-        option_value: &OpTy<'tcx>,
-        option_len: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn setsockopt<'tcx>(
+        self: FileDescriptionRef<Self>,
+        level: i32,
+        option: i32,
+        value_ptr: Pointer,
+        value_len: u64,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        if level == ecx.eval_libc_i32("SOL_SOCKET") {
+            let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
+            let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
+            let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let level = this.read_scalar(level)?.to_i32()?;
-        let option_name = this.read_scalar(option_name)?.to_i32()?;
-        let option_value_ptr = this.read_pointer(option_value)?;
-        let socklen_layout = this.libc_ty_layout("socklen_t");
-        let option_len = this.read_scalar(option_len)?.to_int(socklen_layout.size)?;
-
-        // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        };
-
-        let Some(socket) = fd.downcast::<TcpSocket>() else {
-            // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
-        };
-
-        if level == this.eval_libc_i32("SOL_SOCKET") {
-            let opt_so_rcvtimeo = this.eval_libc_i32("SO_RCVTIMEO");
-            let opt_so_sndtimeo = this.eval_libc_i32("SO_SNDTIMEO");
-            let opt_so_reuseaddr = this.eval_libc_i32("SO_REUSEADDR");
-
-            if matches!(this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::NetBsd) {
+            if matches!(ecx.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::NetBsd) {
                 // SO_NOSIGPIPE only exists on MacOS, FreeBSD, and NetBSD.
-                let opt_so_nosigpipe = this.eval_libc_i32("SO_NOSIGPIPE");
+                let opt_so_nosigpipe = ecx.eval_libc_i32("SO_NOSIGPIPE");
 
-                if option_name == opt_so_nosigpipe {
-                    if option_len != 4 {
+                if option == opt_so_nosigpipe {
+                    if value_len != 4 {
                         // Option value should be C-int which is usually 4 bytes.
-                        return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+                        return interp_ok(Err(LibcError("EINVAL")));
                     }
-                    let option_value =
-                        this.ptr_to_mplace(option_value_ptr, this.machine.layouts.i32);
-                    let _val = this.read_scalar(&option_value)?.to_i32()?;
+                    let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+                    let _val = ecx.read_scalar(&option_value)?.to_i32()?;
                     // We entirely ignore this value since we do not support signals anyway.
 
-                    return interp_ok(Scalar::from_i32(0));
+                    return interp_ok(Ok(()));
                 }
             }
 
-            if option_name == opt_so_rcvtimeo || option_name == opt_so_sndtimeo {
-                let timeval_layout = this.libc_ty_layout("timeval");
-                let option_value = this.ptr_to_mplace(option_value_ptr, timeval_layout);
+            if option == opt_so_rcvtimeo || option == opt_so_sndtimeo {
+                let timeval_layout = ecx.libc_ty_layout("timeval");
+                let option_value = ecx.ptr_to_mplace(value_ptr, timeval_layout);
 
-                let timeout = match this.read_timeval(&option_value)? {
-                    None => return this.set_errno_and_return_neg1_i32(LibcError("EINVAL")),
+                let timeout = match ecx.read_timeval(&option_value)? {
+                    None => return interp_ok(Err(LibcError("EINVAL"))),
                     Some(Duration::ZERO) => None,
                     Some(duration) => Some(duration),
                 };
 
-                if option_name == opt_so_rcvtimeo {
-                    socket.read_timeout.set(timeout);
+                if option == opt_so_rcvtimeo {
+                    self.read_timeout.set(timeout);
                 } else {
-                    socket.write_timeout.set(timeout);
+                    self.write_timeout.set(timeout);
                 }
 
-                return interp_ok(Scalar::from_i32(0));
+                return interp_ok(Ok(()));
             }
 
-            if option_name == opt_so_reuseaddr {
-                if option_len != 4 {
+            if option == opt_so_reuseaddr {
+                if value_len != 4 {
                     // Option value should be C-int which is usually 4 bytes.
-                    return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+                    return interp_ok(Err(LibcError("EINVAL")));
                 }
-                let option_value = this.ptr_to_mplace(option_value_ptr, this.machine.layouts.i32);
-                let _val = this.read_scalar(&option_value)?.to_i32()?;
+                let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+                let _val = ecx.read_scalar(&option_value)?.to_i32()?;
                 // We entirely ignore this: std always sets REUSEADDR for us, and in the end it's more of a
                 // hint to bypass some arbitrary timeout anyway.
-                return interp_ok(Scalar::from_i32(0));
+                return interp_ok(Ok(()));
             } else {
                 throw_unsup_format!(
-                    "setsockopt: option {option_name:#x} is unsupported for level SOL_SOCKET",
+                    "setsockopt: option {option:#x} is unsupported for level SOL_SOCKET",
                 );
             }
-        } else if level == this.eval_libc_i32("IPPROTO_IP") {
-            let opt_ip_ttl = this.eval_libc_i32("IP_TTL");
+        } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
+            let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
 
-            if option_name == opt_ip_ttl {
-                if option_len != 4 {
+            if option == opt_ip_ttl {
+                if value_len != 4 {
                     // Option value should be C-uint which is usually 4 bytes.
-                    return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+                    return interp_ok(Err(LibcError("EINVAL")));
                 }
-                let option_value = this.ptr_to_mplace(option_value_ptr, this.machine.layouts.u32);
-                let ttl = this.read_scalar(&option_value)?.to_u32()?;
+                let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.u32);
+                let ttl = ecx.read_scalar(&option_value)?.to_u32()?;
 
-                let result = match &*socket.state.borrow() {
+                let result = match &*self.state.borrow() {
                     SocketState::Initial | SocketState::Bound(_) =>
                         throw_unsup_format!(
                             "setsockopt: setting option IP_TTL on level IPPROTO_IP is only supported \
-                            on connected and listening sockets"
+                           on connected and listening tcp sockets"
                         ),
                     SocketState::Listening(listener) => listener.set_ttl(ttl),
                     SocketState::Connecting(stream) | SocketState::Connected(stream) =>
@@ -669,30 +646,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 return match result {
-                    Ok(_) => interp_ok(Scalar::from_i32(0)),
-                    Err(e) => this.set_errno_and_return_neg1_i32(e),
+                    Ok(_) => interp_ok(Ok(())),
+                    Err(e) => interp_ok(Err(IoError::HostError(e))),
                 };
             } else {
                 throw_unsup_format!(
-                    "setsockopt: option {option_name:#x} is unsupported for level IPPROTO_IP",
+                    "setsockopt: option {option:#x} is unsupported for level IPPROTO_IP",
                 );
             }
-        } else if level == this.eval_libc_i32("IPPROTO_TCP") {
-            let opt_tcp_nodelay = this.eval_libc_i32("TCP_NODELAY");
+        } else if level == ecx.eval_libc_i32("IPPROTO_TCP") {
+            let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
 
-            if option_name == opt_tcp_nodelay {
-                if option_len != 4 {
+            if option == opt_tcp_nodelay {
+                if value_len != 4 {
                     // Option value should be C-int which is usually 4 bytes.
-                    return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+                    return interp_ok(Err(LibcError("EINVAL")));
                 }
-                let option_value = this.ptr_to_mplace(option_value_ptr, this.machine.layouts.i32);
-                let nodelay = this.read_scalar(&option_value)?.to_i32()? != 0;
+                let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+                let nodelay = ecx.read_scalar(&option_value)?.to_i32()? != 0;
 
-                let result = match &*socket.state.borrow() {
+                let result = match &*self.state.borrow() {
                     SocketState::Initial | SocketState::Bound(_) | SocketState::Listening(_) =>
                         throw_unsup_format!(
                             "setsockopt: setting option TCP_NODELAY on level IPPROTO_TCP is only supported \
-                            on connected sockets"
+                           on connected tcp sockets"
                         ),
                     SocketState::Connecting(stream) | SocketState::Connected(stream) =>
                         stream.set_nodelay(nodelay),
@@ -700,22 +677,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 return match result {
-                    Ok(_) => interp_ok(Scalar::from_i32(0)),
-                    Err(e) => this.set_errno_and_return_neg1_i32(e),
+                    Ok(_) => interp_ok(Ok(())),
+                    Err(e) => interp_ok(Err(IoError::HostError(e))),
                 };
             } else {
                 throw_unsup_format!(
-                    "setsockopt: option {option_name:#x} is unsupported for level IPPROTO_TCP"
+                    "setsockopt: option {option:#x} is unsupported for level IPPROTO_TCP"
                 );
             }
         }
 
         throw_unsup_format!(
             "setsockopt: level {level:#x} is unsupported, only SOL_SOCKET, IPPROTO_IP \
-            and IPPROTO_TCP are allowed"
+           and IPPROTO_TCP are allowed"
         );
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn getsockopt(
         &mut self,
         socket: &OpTy<'tcx>,

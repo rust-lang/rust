@@ -581,4 +581,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ),
         )
     }
+
+    fn setsockopt(
+        &mut self,
+        socket: &OpTy<'tcx>,
+        level: &OpTy<'tcx>,
+        option_name: &OpTy<'tcx>,
+        option_value: &OpTy<'tcx>,
+        option_len: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let level = this.read_scalar(level)?.to_i32()?;
+        let option_name = this.read_scalar(option_name)?.to_i32()?;
+        let option_value_ptr = this.read_pointer(option_value)?;
+        let socklen_layout = this.libc_ty_layout("socklen_t");
+        let option_len: u64 =
+            this.read_scalar(option_len)?.to_int(socklen_layout.size)?.try_into().unwrap();
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+
+        let socket = fd.as_unix(this).as_socket(this);
+        let result = socket.setsockopt(level, option_name, option_value_ptr, option_len, this)?;
+        match result {
+            Ok(_) => interp_ok(Scalar::from_i32(0)),
+            Err(e) => this.set_errno_and_return_neg1_i32(e),
+        }
+    }
 }
