@@ -28,6 +28,7 @@ use libc::fstatat64;
     target_os = "fuchsia",
     target_os = "illumos",
     target_os = "nto",
+    target_os = "qnx",
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
@@ -45,6 +46,7 @@ use libc::readdir as readdir64;
     target_os = "l4re",
     target_os = "linux",
     target_os = "nto",
+    target_os = "qnx",
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
@@ -282,6 +284,7 @@ cfg_select! {
         target_os = "horizon",
         target_os = "vita",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "vxworks",
     ) => {
         pub use crate::sys::fs::common::Dir;
@@ -410,6 +413,7 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
     target_os = "illumos",
     target_os = "linux",
     target_os = "nto",
+    target_os = "qnx",
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
@@ -436,6 +440,7 @@ pub struct DirEntry {
     target_os = "illumos",
     target_os = "linux",
     target_os = "nto",
+    target_os = "qnx",
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
@@ -448,6 +453,7 @@ struct dirent64_min {
         target_os = "illumos",
         target_os = "aix",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "vita",
     )))]
     d_type: u8,
@@ -462,6 +468,7 @@ struct dirent64_min {
     target_os = "illumos",
     target_os = "linux",
     target_os = "nto",
+    target_os = "qnx",
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
@@ -611,7 +618,13 @@ impl FileAttr {
     }
 }
 
-#[cfg(not(any(target_os = "netbsd", target_os = "nto", target_os = "aix", target_os = "wasi")))]
+#[cfg(not(any(
+    target_os = "netbsd",
+    target_os = "nto",
+    target_os = "qnx",
+    target_os = "aix",
+    target_os = "wasi"
+)))]
 impl FileAttr {
     #[cfg(not(any(
         target_os = "vxworks",
@@ -736,7 +749,7 @@ impl FileAttr {
     }
 }
 
-#[cfg(any(target_os = "nto", target_os = "wasi"))]
+#[cfg(any(target_os = "nto", target_os = "qnx", target_os = "wasi"))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtim.tv_sec, self.stat.st_mtim.tv_nsec.into())
@@ -854,6 +867,7 @@ impl Iterator for ReadDir {
         target_os = "illumos",
         target_os = "linux",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "redox",
         target_os = "solaris",
         target_os = "vita",
@@ -927,6 +941,7 @@ impl Iterator for ReadDir {
                         target_os = "illumos",
                         target_os = "aix",
                         target_os = "nto",
+                        target_os = "qnx",
                     )))]
                     d_type: (*entry_ptr).d_type as u8,
                 };
@@ -952,6 +967,7 @@ impl Iterator for ReadDir {
         target_os = "illumos",
         target_os = "linux",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "redox",
         target_os = "solaris",
         target_os = "vita",
@@ -1015,6 +1031,7 @@ impl Drop for DirStream {
             miri,
             target_os = "redox",
             target_os = "nto",
+            target_os = "qnx",
             target_os = "vita",
             target_os = "hurd",
             target_os = "espidf",
@@ -1103,6 +1120,7 @@ impl DirEntry {
         target_os = "vxworks",
         target_os = "aix",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "vita",
     ))]
     pub fn file_type(&self) -> io::Result<FileType> {
@@ -1116,6 +1134,7 @@ impl DirEntry {
         target_os = "vxworks",
         target_os = "aix",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "vita",
     )))]
     pub fn file_type(&self) -> io::Result<FileType> {
@@ -1146,6 +1165,7 @@ impl DirEntry {
         target_os = "l4re",
         target_os = "linux",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "redox",
         target_os = "rtems",
         target_os = "solaris",
@@ -1205,6 +1225,7 @@ impl DirEntry {
         target_os = "redox",
         target_os = "aix",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "vita",
         target_os = "hurd",
         target_os = "wasi",
@@ -1222,6 +1243,7 @@ impl DirEntry {
         target_os = "redox",
         target_os = "aix",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "vita",
         target_os = "hurd",
         target_os = "wasi",
@@ -1419,6 +1441,7 @@ impl File {
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "nto",
+            target_os = "qnx",
             target_os = "hurd",
         ))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
@@ -1433,6 +1456,7 @@ impl File {
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "nto",
+            target_os = "qnx",
             target_os = "hurd",
             target_vendor = "apple",
         )))]
@@ -2405,6 +2429,7 @@ pub use remove_dir_impl::remove_dir_all;
     target_os = "horizon",
     target_os = "vita",
     target_os = "nto",
+    target_os = "qnx",
     target_os = "vxworks",
     miri
 ))]
@@ -2419,6 +2444,7 @@ mod remove_dir_impl {
     target_os = "horizon",
     target_os = "vita",
     target_os = "nto",
+    target_os = "qnx",
     target_os = "vxworks",
     miri
 )))]

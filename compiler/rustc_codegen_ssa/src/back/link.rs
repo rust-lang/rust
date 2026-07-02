@@ -26,7 +26,7 @@ use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::Diagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_metadata::{
-    EncodedMetadata, NativeLibSearchFallback, find_native_static_library,
+    EncodedMetadata, NativeLibSearchFallback, find_bundled_library, find_native_static_library,
     walk_native_lib_search_dirs,
 };
 use rustc_middle::bug;
@@ -63,7 +63,10 @@ use super::rmeta_link::RmetaLinkCache;
 use super::rpath::{self, RPathConfig};
 use super::{apple, rmeta_link, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
-use crate::{CodegenLintLevelSpecs, CompiledModule, CompiledModules, CrateInfo, NativeLib, errors};
+use crate::{
+    CodegenLintLevelSpecs, CompiledModule, CompiledModules, CrateInfo, NativeLib, SymbolExport,
+    errors,
+};
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -326,8 +329,25 @@ fn link_rlib<'a>(
         .map(|obj| obj.file_name().unwrap().to_str().unwrap().to_string())
         .collect();
 
+    let native_lib_filenames: Vec<Option<Symbol>> = crate_info
+        .used_libraries
+        .iter()
+        .map(|lib| {
+            find_bundled_library(
+                lib.name,
+                Some(lib.verbatim),
+                lib.kind,
+                lib.cfg.is_some(),
+                sess,
+                &crate_info.crate_types,
+            )
+        })
+        .collect();
+
     let metadata_link_file = if matches!(flavor, RlibFlavor::Normal) {
-        let metadata_link = rmeta_link::RmetaLink { rust_object_files };
+        let native_lib_filenames: Vec<Option<String>> =
+            native_lib_filenames.iter().map(|f| f.map(|s| s.to_string())).collect();
+        let metadata_link = rmeta_link::RmetaLink { rust_object_files, native_lib_filenames };
         let metadata_link_data = metadata_link.encode();
         let (wrapper, _) =
             create_wrapper_file(sess, rmeta_link::SECTION.to_string(), &metadata_link_data);
@@ -410,12 +430,12 @@ fn link_rlib<'a>(
     // feature then we'll need to figure out how to record what objects were
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
-    for lib in crate_info.used_libraries.iter() {
+    for (i, lib) in crate_info.used_libraries.iter().enumerate() {
         let NativeLibKind::Static { bundle: None | Some(true), .. } = lib.kind else {
             continue;
         };
         if flavor == RlibFlavor::Normal
-            && let Some(filename) = lib.filename
+            && let Some(filename) = native_lib_filenames[i]
         {
             let path = find_native_static_library(filename.as_str(), true, sess);
             let src = read(path)
@@ -529,11 +549,21 @@ fn link_staticlib(
         let lto = are_upstream_rust_objects_already_included(sess)
             && !ignored_for_lto(sess, crate_info, cnum);
 
-        let native_libs = crate_info.native_libraries[&cnum].iter();
-        let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
-        let relevant_libs: FxIndexSet<_> = relevant.filter_map(|lib| lib.filename).collect();
+        let native_libs = &crate_info.native_libraries[&cnum];
+        let bundled_filenames =
+            rmeta_link_cache.native_lib_filenames(&sess.target, path, native_libs);
+        let relevant_libs: FxIndexSet<_> = native_libs
+            .iter()
+            .enumerate()
+            .filter(|(_, lib)| relevant_lib(sess, lib))
+            .filter_map(|(i, _)| bundled_filenames.get(i).copied().flatten())
+            .collect();
 
-        let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
+        let bundled_libs: FxIndexSet<_> = native_libs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, _)| bundled_filenames.get(i).copied().flatten())
+            .collect();
         ab.add_archive(
             path,
             AddArchiveKind::Rlib(rmeta_link_cache, &|fname: &str, entry_kind| {
@@ -593,7 +623,7 @@ fn link_staticlib(
             crate_info
                 .exported_symbols
                 .get(&CrateType::StaticLib)
-                .map(|symbols| symbols.iter().map(|(s, _)| s.clone()).collect())
+                .map(|symbols| symbols.iter().map(|symbol| symbol.name.clone()).collect())
         }
     } else {
         None
@@ -2196,9 +2226,15 @@ fn add_linked_symbol_object(
     cmd: &mut dyn Linker,
     sess: &Session,
     tmpdir: &Path,
-    symbols: &[(String, SymbolExportKind)],
+    crate_type: CrateType,
+    linked_symbols: &[(String, SymbolExportKind)],
+    exported_symbols: &[SymbolExport],
 ) {
-    if symbols.is_empty() {
+    let should_export_symbols = sess.target.is_like_msvc
+        && !exported_symbols.is_empty()
+        && (crate_type != CrateType::Executable
+            || sess.opts.unstable_opts.export_executable_symbols);
+    if linked_symbols.is_empty() && !should_export_symbols {
         return;
     }
 
@@ -2235,7 +2271,7 @@ fn add_linked_symbol_object(
         None
     };
 
-    for (sym, kind) in symbols.iter() {
+    for (sym, kind) in linked_symbols.iter() {
         let symbol = file.add_symbol(object::write::Symbol {
             name: sym.clone().into(),
             value: 0,
@@ -2291,6 +2327,37 @@ fn add_linked_symbol_object(
             apple::add_data_and_relocation(&mut file, section, symbol, &sess.target, *kind)
                 .expect("failed adding relocation");
         }
+    }
+
+    if should_export_symbols {
+        // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
+        // export symbols from a dynamic library. When building a dynamic library,
+        // however, we're going to want some symbols exported, so this adds a
+        // `.drectve` section which lists all the symbols using /EXPORT arguments.
+        //
+        // The linker will read these arguments from the `.drectve` section and
+        // export all the symbols from the dynamic library. Note that this is not
+        // as simple as just exporting all the symbols in the current crate (as
+        // specified by `codegen.reachable`) but rather we also need to possibly
+        // export the symbols of upstream crates. Upstream rlibs may be linked
+        // statically to this dynamic library, in which case they may continue to
+        // transitively be used and hence need their symbols exported.
+        fn msvc_drectve_export(symbol: &SymbolExport) -> String {
+            let data = if symbol.kind == SymbolExportKind::Data { ",DATA" } else { "" };
+
+            if let Some(link_name) = symbol.link_name.as_deref() {
+                // The first name is the decorated symbol used by the import library, while
+                // EXPORTAS gives the public name written to the DLL export table.
+                format!(" /EXPORT:\"{link_name}\"{data},EXPORTAS,\"{}\"", symbol.name)
+            } else {
+                format!(" /EXPORT:\"{}\"{data}", symbol.name)
+            }
+        }
+
+        let drectve = exported_symbols.iter().map(msvc_drectve_export).collect::<String>();
+
+        let section = file.add_section(vec![], b".drectve".to_vec(), object::SectionKind::Linker);
+        file.append_section_data(section, drectve.as_bytes(), 1);
     }
 
     let path = tmpdir.join("symbols.o");
@@ -2486,7 +2553,7 @@ fn undecorate_c_symbol<'a>(
 fn add_c_staticlib_symbols(
     sess: &Session,
     lib: &NativeLib,
-    out: &mut Vec<(String, SymbolExportKind)>,
+    out: &mut Vec<SymbolExport>,
 ) -> io::Result<()> {
     let file_path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
 
@@ -2549,7 +2616,11 @@ fn add_c_staticlib_symbols(
             let Some(undecorated) = undecorate_c_symbol(name, sess, export_kind) else {
                 continue;
             };
-            out.push((undecorated.to_string(), export_kind));
+            out.push(SymbolExport::with_link_name(
+                undecorated.to_string(),
+                export_kind,
+                name.to_string(),
+            ));
         }
     }
 
@@ -2629,7 +2700,14 @@ fn linker_with_args(
     // Pre-link CRT objects.
     add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained_crt_objects);
 
-    add_linked_symbol_object(cmd, sess, tmpdir, &crate_info.linked_symbols[&crate_type]);
+    add_linked_symbol_object(
+        cmd,
+        sess,
+        tmpdir,
+        crate_type,
+        &crate_info.linked_symbols[&crate_type],
+        &export_symbols,
+    );
 
     // Sanitizer libraries.
     add_sanitizer_libraries(sess, flavor, crate_type, cmd);
@@ -2688,6 +2766,7 @@ fn linker_with_args(
         cmd,
         sess,
         archive_builder_builder,
+        rmeta_link_cache,
         crate_info,
         tmpdir,
         link_output_kind,
@@ -2710,6 +2789,7 @@ fn linker_with_args(
         cmd,
         sess,
         archive_builder_builder,
+        rmeta_link_cache,
         crate_info,
         tmpdir,
         link_output_kind,
@@ -3009,6 +3089,7 @@ fn add_native_libs_from_crate(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     crate_info: &CrateInfo,
     tmpdir: &Path,
     bundled_libs: &FxIndexSet<Symbol>,
@@ -3032,13 +3113,38 @@ fn add_native_libs_from_crate(
             .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
     }
 
-    let native_libs = match cnum {
-        LOCAL_CRATE => &crate_info.used_libraries,
-        _ => &crate_info.native_libraries[&cnum],
+    let (native_libs, bundled_filenames): (&Vec<NativeLib>, Vec<Option<Symbol>>) = match cnum {
+        LOCAL_CRATE => {
+            let libs = &crate_info.used_libraries;
+            let filenames = libs
+                .iter()
+                .map(|lib| {
+                    find_bundled_library(
+                        lib.name,
+                        Some(lib.verbatim),
+                        lib.kind,
+                        lib.cfg.is_some(),
+                        sess,
+                        &crate_info.crate_types,
+                    )
+                })
+                .collect();
+            (libs, filenames)
+        }
+        _ => {
+            let native_libs = &crate_info.native_libraries[&cnum];
+            let filenames =
+                if let Some(rlib_path) = crate_info.used_crate_source[&cnum].rlib.as_ref() {
+                    rmeta_link_cache.native_lib_filenames(&sess.target, rlib_path, native_libs)
+                } else {
+                    Vec::new()
+                };
+            (native_libs, filenames)
+        }
     };
 
     let mut last = (None, NativeLibKind::Unspecified, false);
-    for lib in native_libs {
+    for (i, lib) in native_libs.iter().enumerate() {
         if !relevant_lib(sess, lib) {
             continue;
         }
@@ -3058,7 +3164,7 @@ fn add_native_libs_from_crate(
                     let bundle = bundle.unwrap_or(true);
                     let whole_archive = whole_archive == Some(true);
                     if bundle && cnum != LOCAL_CRATE {
-                        if let Some(filename) = lib.filename {
+                        if let Some(filename) = bundled_filenames.get(i).copied().flatten() {
                             // If rlib contains native libs as archives, they are unpacked to tmpdir.
                             let path = tmpdir.join(filename.as_str());
                             cmd.link_staticlib_by_path(&path, whole_archive);
@@ -3110,6 +3216,7 @@ fn add_local_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     crate_info: &CrateInfo,
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
@@ -3121,6 +3228,7 @@ fn add_local_native_libraries(
         cmd,
         sess,
         archive_builder_builder,
+        rmeta_link_cache,
         crate_info,
         tmpdir,
         &Default::default(),
@@ -3180,10 +3288,17 @@ fn add_upstream_rust_crates(
         match linkage {
             Linkage::Static | Linkage::IncludedFromDylib | Linkage::NotLinked => {
                 if link_static_crate {
-                    bundled_libs = crate_info.native_libraries[&cnum]
-                        .iter()
-                        .filter_map(|lib| lib.filename)
-                        .collect();
+                    if let Some(rlib_path) = crate_info.used_crate_source[&cnum].rlib.as_ref() {
+                        bundled_libs = rmeta_link_cache
+                            .native_lib_filenames(
+                                &sess.target,
+                                rlib_path,
+                                &crate_info.native_libraries[&cnum],
+                            )
+                            .into_iter()
+                            .flatten()
+                            .collect();
+                    }
                     add_static_crate(
                         cmd,
                         sess,
@@ -3217,6 +3332,7 @@ fn add_upstream_rust_crates(
             cmd,
             sess,
             archive_builder_builder,
+            rmeta_link_cache,
             crate_info,
             tmpdir,
             &bundled_libs,
@@ -3232,6 +3348,7 @@ fn add_upstream_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     crate_info: &CrateInfo,
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
@@ -3255,6 +3372,7 @@ fn add_upstream_native_libraries(
             cmd,
             sess,
             archive_builder_builder,
+            rmeta_link_cache,
             crate_info,
             tmpdir,
             &Default::default(),

@@ -214,7 +214,6 @@ bitflags::bitflags! {
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Symbol,
-    pub filename: Option<Symbol>,
     pub cfg: Option<CfgEntry>,
     pub verbatim: bool,
     pub dll_imports: Vec<cstore::DllImport>,
@@ -224,12 +223,33 @@ impl From<&cstore::NativeLib> for NativeLib {
     fn from(lib: &cstore::NativeLib) -> Self {
         NativeLib {
             kind: lib.kind,
-            filename: lib.filename,
             name: lib.name,
             cfg: lib.cfg.clone(),
             verbatim: lib.verbatim.unwrap_or(false),
             dll_imports: lib.dll_imports.clone(),
         }
+    }
+}
+
+/// A symbol to make visible from a linked artifact.
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct SymbolExport {
+    /// Name to make visible from the linked artifact.
+    pub name: String,
+    /// Kind of symbol, used for target-specific export directives and name decoration.
+    pub kind: SymbolExportKind,
+    /// Name of the symbol as seen by the linker, when it differs from `name`.
+    pub link_name: Option<String>,
+}
+
+impl SymbolExport {
+    pub fn new(name: String, kind: SymbolExportKind) -> SymbolExport {
+        SymbolExport { name, kind, link_name: None }
+    }
+
+    pub fn with_link_name(name: String, kind: SymbolExportKind, link_name: String) -> SymbolExport {
+        let link_name = if link_name == name { None } else { Some(link_name) };
+        SymbolExport { name, kind, link_name }
     }
 }
 
@@ -247,7 +267,7 @@ pub struct CrateInfo {
     pub target_cpu: String,
     pub target_features: Vec<String>,
     pub crate_types: Vec<CrateType>,
-    pub exported_symbols: UnordMap<CrateType, Vec<(String, SymbolExportKind)>>,
+    pub exported_symbols: UnordMap<CrateType, Vec<SymbolExport>>,
     pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,

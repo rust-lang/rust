@@ -27,6 +27,7 @@ unsafe extern "C" {
     )]
     #[cfg_attr(any(target_os = "solaris", target_os = "illumos"), link_name = "___errno")]
     #[cfg_attr(target_os = "nto", link_name = "__get_errno_ptr")]
+    #[cfg_attr(target_os = "qnx", link_name = "__get_errno_ptr")]
     #[cfg_attr(any(target_os = "freebsd", target_vendor = "apple"), link_name = "__error")]
     #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
     #[cfg_attr(target_os = "aix", link_name = "_Errno")]

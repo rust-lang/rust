@@ -69,7 +69,7 @@ mod platform {
     pub use crate::os::linux::*;
     #[cfg(target_os = "netbsd")]
     pub use crate::os::netbsd::*;
-    #[cfg(target_os = "nto")]
+    #[cfg(any(target_os = "nto", target_os = "qnx"))]
     pub use crate::os::nto::*;
     #[cfg(target_os = "nuttx")]
     pub use crate::os::nuttx::*;

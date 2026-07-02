@@ -1,5 +1,5 @@
 //@ build-fail
-//@ ignore-parallel-frontend different alloc ids
+
 #![feature(c_variadic)]
 #![feature(const_c_variadic)]
 #![feature(const_trait_impl)]
@@ -138,7 +138,7 @@ fn use_after_free() {
             let ap = helper(1, 2, 3);
             let mut ap = std::mem::transmute::<_, VaList>(ap);
             ap.next_arg::<i32>();
-            //~^ ERROR memory access failed: ALLOC0 has been freed, so this pointer is dangling [E0080]
+            //~^ ERROR memory access failed: ALLOC$ID has been freed, so this pointer is dangling [E0080]
         }
     };
 }
@@ -160,7 +160,7 @@ fn manual_copy_drop() {
     }
 
     const { unsafe { helper(1, 2, 3) } };
-    //~^ ERROR using ALLOC0 as variable argument list pointer but it does not point to a variable argument list [E0080]
+    //~^ ERROR using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list [E0080]
 }
 
 fn manual_copy_forget() {
@@ -176,7 +176,7 @@ fn manual_copy_forget() {
     }
 
     const { unsafe { helper(1, 2, 3) } };
-    //~^ ERROR using ALLOC0 as variable argument list pointer but it does not point to a variable argument list [E0080]
+    //~^ ERROR using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list [E0080]
 }
 
 fn manual_copy_read() {
@@ -189,7 +189,7 @@ fn manual_copy_read() {
     }
 
     const { unsafe { helper(1, 2, 3) } };
-    //~^ ERROR using ALLOC0 as variable argument list pointer but it does not point to a variable argument list [E0080]
+    //~^ ERROR using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list [E0080]
 }
 
 fn drop_of_invalid() {

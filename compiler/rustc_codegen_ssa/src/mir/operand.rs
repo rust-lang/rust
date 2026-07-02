@@ -227,7 +227,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 b @ abi::Scalar::Initialized { .. },
             ) => {
                 let (a_size, b_size) = (a.size(bx), b.size(bx));
-                let b_offset = (offset + a_size).align_to(b.align(bx).abi);
+                let b_offset = (offset + a_size).align_to(b.default_align(bx).abi);
                 assert!(b_offset.bytes() > 0);
                 let a_val = read_scalar(
                     offset,
@@ -388,7 +388,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                         assert_eq!(field.size, a.size(bx.cx()));
                         (Some(a), a_llval)
                     } else {
-                        assert_eq!(offset, a.size(bx.cx()).align_to(b.align(bx.cx()).abi));
+                        assert_eq!(offset, a.size(bx.cx()).align_to(b.default_align(bx.cx()).abi));
                         assert_eq!(field.size, b.size(bx.cx()));
                         (Some(b), b_llval)
                     }
@@ -962,7 +962,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 let BackendRepr::ScalarPair(a_scalar, b_scalar) = dest.layout.backend_repr else {
                     bug!("store_with_flags: invalid ScalarPair layout: {:#?}", dest.layout);
                 };
-                let b_offset = a_scalar.size(bx).align_to(b_scalar.align(bx).abi);
+                let b_offset = a_scalar.size(bx).align_to(b_scalar.default_align(bx).abi);
 
                 let val = bx.from_immediate(a);
                 let align = dest.val.align;

@@ -193,7 +193,7 @@ unsafe extern "C" {}
 #[link(name = "unwind")]
 unsafe extern "C" {}
 
-#[cfg(target_os = "nto")]
+#[cfg(any(target_os = "nto", target_os = "qnx"))]
 cfg_select! {
     target_env = "nto70" => {
         #[link(name = "gcc")]

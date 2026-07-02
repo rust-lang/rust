@@ -1,9 +1,10 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/30530>.
+//!
+//! alloca's created for storing intermediate scratch values during
+//! brace-less match arms need to be initialized with their drop-flag
+//! set to "dropped" (or else we end up running the destructors on garbage
+//! data at the end of the function).
 //@ run-pass
-// Regression test for Issue #30530: alloca's created for storing
-// intermediate scratch values during brace-less match arms need to be
-// initialized with their drop-flag set to "dropped" (or else we end
-// up running the destructors on garbage data at the end of the
-// function).
 
 pub enum Handler {
     Default,

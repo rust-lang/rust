@@ -269,7 +269,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(target_os = "nto")]
+#[cfg(any(target_os = "nto", target_os = "qnx"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     let mut e = crate::fs::read("/proc/self/exefile")?;
     // Current versions of QNX Neutrino provide a null-terminated path.

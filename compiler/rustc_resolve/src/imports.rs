@@ -69,7 +69,6 @@ impl<'ra> PendingDecl<'ra> {
 }
 
 /// Contains data for specific kinds of imports.
-#[derive(Clone)]
 pub(crate) enum ImportKind<'ra> {
     Single {
         /// `source` in `use prefix::source as target`.
@@ -157,7 +156,7 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
 }
 
 /// One import.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct ImportData<'ra> {
     pub kind: ImportKind<'ra>,
 
@@ -280,7 +279,7 @@ impl<'ra> ImportData<'ra> {
 }
 
 /// Records information about the resolution of a name in a namespace of a module.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct NameResolution<'ra> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
@@ -326,23 +325,23 @@ impl<'ra> NameResolution<'ra> {
 pub(crate) mod cycle_detection {
     use std::ptr;
 
-    use crate::CacheRefCell;
-    use crate::imports::NameResolutionRef;
+    use crate::{BindingKey, CacheRefCell, LocalModule};
 
     thread_local!(
         /// During import resolution, recursive imports can form cycles.
         /// This set stores the active resolution stack for the current thread.
-        /// So it's essentially a recursion stack.
+        /// By keeping track of the module and `BindingKey` pair that identifies
+        /// the specific resolution.
         ///
-        /// The key is the interned address of a `RefCell<NameResolution<'ra>>` allocated
+        /// The pointer is the interned address of a `Interned<'ra, ModuleData>` allocated
         /// in the `Resolver Arenas` (lifetime `'ra`), it is thus stable and allows casting
         /// to a `*const ()` for comparison. This is done because we can't use lifetimes
         /// other than `'static` in thread local storage.
-        static ACTIVE_RESOLUTIONS: CacheRefCell<Vec<*const ()>> = Default::default();
+        static ACTIVE_RESOLUTIONS: CacheRefCell<Vec<(*const (), BindingKey)>> = Default::default();
     );
 
     pub(crate) struct ActiveResolutionGuard {
-        key: *const (),
+        key: (*const (), BindingKey),
     }
 
     impl Drop for ActiveResolutionGuard {
@@ -360,9 +359,11 @@ pub(crate) mod cycle_detection {
     /// Returns `Err(())` if a cycle is detected, otherwise this returns a
     /// guard that will remove the resolution when dropped.
     pub(crate) fn enter_cycle_detector<'ra>(
-        resolution: NameResolutionRef<'ra>,
+        module: LocalModule<'ra>,
+        binding_key: BindingKey,
     ) -> Result<ActiveResolutionGuard, ()> {
-        let key = ptr::from_ref(resolution.0).cast::<()>();
+        let module_key = ptr::from_ref(module.0.0).cast();
+        let key = (module_key, binding_key);
         ACTIVE_RESOLUTIONS.with_borrow_mut(|ar| {
             if ar.contains(&key) {
                 return Err(());
@@ -375,7 +376,7 @@ pub(crate) mod cycle_detection {
 
 /// An error that may be transformed into a diagnostic later. Used to combine multiple unresolved
 /// import errors within the same use tree into a single diagnostic.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct UnresolvedImportError {
     pub(crate) span: Span,
     pub(crate) label: Option<String>,
@@ -394,7 +395,7 @@ fn pub_use_of_private_extern_crate_hack(
     import: ImportSummary,
     decl: Decl<'_>,
 ) -> Option<LocalDefId> {
-    match (import.is_single, decl.kind) {
+    match (import.is_single, &decl.kind) {
         (true, DeclKind::Import { import: decl_import, .. })
             if let ImportKind::ExternCrate { def_id, .. } = decl_import.kind
                 && import.vis.is_public() =>

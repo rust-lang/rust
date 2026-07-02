@@ -1,7 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29092>.
+//! Drop glue for match expression `*t.clone()` ran when arm was never taken,
+//! causing segfault.
 //@ run-pass
-// Regression test for Issue #29092.
-//
-// (Possibly redundant with regression test run-pass/issue-30530.rs)
 
 use self::Term::*;
 
@@ -12,7 +12,6 @@ pub enum Term {
     B(Box<Term>),
 }
 
-// a small-step evaluator
 pub fn small_eval(v: Term) -> Term {
     match v {
         A(t) => *t.clone(),

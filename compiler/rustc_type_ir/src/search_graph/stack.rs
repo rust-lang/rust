@@ -4,7 +4,8 @@ use derive_where::derive_where;
 use rustc_index::IndexVec;
 
 use crate::search_graph::{
-    AvailableDepth, CandidateHeadUsages, Cx, CycleHeads, HeadUsages, NestedGoals, PathKind,
+    AvailableDepth, CandidateHeadUsages, Cx, CycleHeads, HeadUsages, IncreaseDepthForNested,
+    NestedGoals, PathKind,
 };
 
 rustc_index::newtype_index! {
@@ -28,8 +29,20 @@ pub(super) struct StackEntry<X: Cx> {
     /// The available depth of a given goal, immutable.
     pub available_depth: AvailableDepth,
 
-    /// The maximum depth required while evaluating this goal.
-    pub required_depth: usize,
+    /// The minimum available depth encountered while evaluating this goal's nested goals.
+    /// If there's no nested goal, this is equal to the `available_depth`.
+    pub min_reached_available_depth: AvailableDepth,
+
+    /// Whether evaluating nested goals of a given goal should increase the depth.
+    ///
+    /// Normally, it should be `Yes`, but among rustc's predicate goals, `normalizes-to`
+    /// goals are exceptions. They act like functions that used for normalizing associated
+    /// terms while evaluating projection goals and since their expected terms are always fully
+    /// unconstrained intentionally, they often return ambiguous nested goals to the caller's
+    /// context. As these nested goals are evaluated again in the caller's context, we don't
+    /// want to increase depths when they are evaluated as nested goals for `normalizes-to`
+    /// goals, otherwise we will encounter recursion limit overflows more often.
+    pub increase_depth_for_nested: IncreaseDepthForNested,
 
     /// Starts out as `None` and gets set when rerunning this
     /// goal in case we encounter a cycle.
@@ -55,6 +68,12 @@ pub(super) struct StackEntry<X: Cx> {
 
     /// The nested goals of this goal, see the doc comment of the type.
     pub nested_goals: NestedGoals<X>,
+}
+
+impl<X: Cx> StackEntry<X> {
+    pub(super) fn required_depth(&self) -> usize {
+        self.available_depth.0 - self.min_reached_available_depth.0
+    }
 }
 
 /// The stack of goals currently being computed.
