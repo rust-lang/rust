@@ -1,8 +1,5 @@
-use rustc_abi::CanonAbi;
 use rustc_middle::mir::BinOp;
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 
 use crate::shims::math::compute_crc32;
 use crate::*;
@@ -12,7 +9,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_aarch64_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -25,8 +21,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `left` input, the second half of the output from the `right` input.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_u8
             "neon.umaxp.v16i8" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -68,8 +63,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // Used by `vpadd_{s8, u8, s16, u16, s32, u32}`.
             name if name.starts_with("neon.addp.") => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -113,7 +107,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // Used by `vpaddl_{u8, u16, u32}` and `vpaddlq_{u8, u16, u32}`.
             name if name.starts_with("neon.uaddlp.") => {
-                let [src] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [src] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let (src, src_len) = this.project_to_simd(src)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
@@ -156,8 +150,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // https://developer.arm.com/architectures/instruction-sets/intrinsics#f:@navigationhierarchiessimdisa=[Neon]&q=vqdmulh
             name if name.starts_with("neon.sqdmulh.") => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -191,8 +184,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // so we need to implement this ourselves.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl1_u8
             "neon.tbl1.v16i8" => {
-                let [table, indices] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [table, indices] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let (table, table_len) = this.project_to_simd(table)?;
                 let (indices, idx_len) = this.project_to_simd(indices)?;
@@ -235,7 +227,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                let [crc, data] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [crc, data] = this.check_shim_sig_unadjusted(link_name, args)?;
                 let crc = this.read_scalar(crc)?;
                 let data = this.read_scalar(data)?;
 
@@ -263,8 +255,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Also see <https://gcc.gnu.org/pipermail/gcc-patches/2023-February/612088.html>.
                 this.expect_target_feature_for_intrinsic(link_name, "aes")?;
 
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
                 let left = this.read_scalar(left)?.to_u64()?;
                 let right = this.read_scalar(right)?.to_u64()?;
 

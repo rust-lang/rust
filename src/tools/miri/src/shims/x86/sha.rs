@@ -4,10 +4,7 @@
 //!
 //! [RustCrypto's sha256 module]: https://github.com/RustCrypto/hashes/blob/6be8466247e936c415d8aafb848697f39894a386/sha2/src/sha256/soft.rs
 
-use rustc_abi::CanonAbi;
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -16,7 +13,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_sha_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -53,7 +49,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match unprefixed_name {
             // Used to implement the _mm_sha256rnds2_epu32 function.
             "256rnds2" => {
-                let [a, b, k] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [a, b, k] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let (a_reg, a_len) = this.project_to_simd(a)?;
                 let (b_reg, b_len) = this.project_to_simd(b)?;
@@ -74,7 +70,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Used to implement the _mm_sha256msg1_epu32 function.
             "256msg1" => {
-                let [a, b] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let (a_reg, a_len) = this.project_to_simd(a)?;
                 let (b_reg, b_len) = this.project_to_simd(b)?;
@@ -92,7 +88,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Used to implement the _mm_sha256msg2_epu32 function.
             "256msg2" => {
-                let [a, b] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let (a_reg, a_len) = this.project_to_simd(a)?;
                 let (b_reg, b_len) = this.project_to_simd(b)?;
