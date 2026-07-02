@@ -79,6 +79,7 @@ use rustc_span::def_id::DefId;
 use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;
+use crate::patch::MirPatch;
 use crate::{abort_unwinding_calls, pass_manager as pm, simplify};
 
 pub(super) struct StateTransform;
@@ -395,11 +396,79 @@ impl<'tcx> TransformVisitor<'tcx> {
             visitor.visit_place(&mut suspension.resume_arg, ctxt, location);
         }
     }
+
+    fn fix_index_projections(&self, body: &mut Body<'tcx>) {
+        struct IndexCollector<'a, 'tcx, F> {
+            body: &'a Body<'tcx>,
+            remap: &'a IndexVec<Local, Option<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
+            make_field: F,
+            patch: MirPatch<'tcx>,
+        }
+        impl<'tcx, F> Visitor<'tcx> for IndexCollector<'_, 'tcx, F>
+        where
+            F: Fn(VariantIdx, FieldIdx, Ty<'tcx>) -> Place<'tcx>,
+        {
+            fn visit_projection_elem(
+                &mut self,
+                _place_ref: PlaceRef<'tcx>,
+                elem: PlaceElem<'tcx>,
+                _context: PlaceContext,
+                location: Location,
+            ) {
+                if let PlaceElem::Index(local) = elem
+                    && let Some(&Some((ty, variant, idx))) = self.remap.get(local)
+                {
+                    let field = (self.make_field)(variant, idx, ty);
+                    self.patch.add_statement(location, StatementKind::StorageLive(local));
+                    self.patch.add_statement(
+                        location,
+                        StatementKind::Assign(Box::new((
+                            Place::from(local),
+                            Rvalue::Use(Operand::Copy(field), WithRetag::No),
+                        ))),
+                    );
+
+                    let stmts_len = self.body.basic_blocks[location.block].statements.len();
+                    if location.statement_index < stmts_len {
+                        self.patch.add_statement(
+                            Location {
+                                block: location.block,
+                                statement_index: location.statement_index + 1,
+                            },
+                            StatementKind::StorageDead(local),
+                        );
+                    } else {
+                        let terminator = self.body.basic_blocks[location.block].terminator();
+                        for succ in terminator.successors() {
+                            self.patch.add_statement(
+                                Location { block: succ, statement_index: 0 },
+                                StatementKind::StorageDead(local),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut collector = IndexCollector {
+            body,
+            remap: &self.remap,
+            make_field: |v, idx, ty| self.make_field(v, idx, ty),
+            patch: MirPatch::new(body),
+        };
+        collector.visit_body(body);
+        collector.patch.apply(body);
+    }
 }
 
 impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn visit_body(&mut self, body: &mut Body<'tcx>) {
+        self.super_body(body);
+        self.fix_index_projections(body);
     }
 
     #[tracing::instrument(level = "trace", skip(self), ret)]
