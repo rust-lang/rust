@@ -30,15 +30,15 @@ pub(super) struct ParamInfo {
 }
 
 pub(super) struct DelegationResolution<'tcx> {
-    pub(super) sig_id: DefId,
-    pub(super) is_method: bool,
-    pub(super) param_info: ParamInfo,
-    pub(super) span: Span,
-    pub(super) should_generate_block: bool,
-    pub(super) call_path_res: Option<DefId>,
-    pub(super) source: DelegationSource,
-    pub(super) output_self_mapping: Option<(LocalDefId, bool)>,
-    pub(super) generics: GenericsGenerationResults<'tcx>,
+    pub sig_id: DefId,
+    pub is_method: bool,
+    pub param_info: ParamInfo,
+    pub span: Span,
+    pub should_generate_block: bool,
+    pub call_path_res: Option<DefId>,
+    pub source: DelegationSource,
+    pub output_self_mapping: Option<(LocalDefId, bool)>,
+    pub generics: GenericsGenerationResults<'tcx>,
 }
 
 pub(super) mod wrapper {
