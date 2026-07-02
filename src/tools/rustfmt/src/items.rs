@@ -718,7 +718,7 @@ impl<'a> FmtVisitor<'a> {
             .ok()
     }
 
-    fn visit_impl_items(&mut self, items: &[Box<ast::AssocItem>]) {
+    fn visit_impl_items(&mut self, items: &[ast::AssocItem]) {
         if self.get_context().config.reorder_impl_items() {
             type TyOpt = Option<Box<ast::Ty>>;
             use crate::ast::AssocItemKind::*;
@@ -925,7 +925,7 @@ pub(crate) fn format_impl(
 
 fn is_impl_single_line(
     context: &RewriteContext<'_>,
-    items: &[Box<ast::AssocItem>],
+    items: &[ast::AssocItem],
     result: &str,
     where_clause_str: &str,
     item: &ast::Item,

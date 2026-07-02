@@ -876,7 +876,7 @@ impl<'a> Parser<'a> {
         let body = self.parse_delegation_body()?;
         let whole_reuse_span = span.to(self.prev_token.span);
 
-        items.push(Box::new(AssocItem {
+        items.push(AssocItem {
             id: DUMMY_NODE_ID,
             attrs: Default::default(),
             span: whole_reuse_span,
@@ -888,7 +888,7 @@ impl<'a> Parser<'a> {
                 suffixes: DelegationSuffixes::Glob(whole_reuse_span),
                 body,
             })),
-        }));
+        });
 
         Ok(impl_item)
     }
@@ -1212,7 +1212,7 @@ impl<'a> Parser<'a> {
     pub fn parse_impl_item(
         &mut self,
         force_collect: ForceCollect,
-    ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
+    ) -> PResult<'a, Option<Option<AssocItem>>> {
         let fn_parse_mode =
             FnParseMode { req_name: |_, _| true, context: FnContext::Impl, req_body: true };
         self.parse_assoc_item(fn_parse_mode, force_collect)
@@ -1221,7 +1221,7 @@ impl<'a> Parser<'a> {
     pub fn parse_trait_item(
         &mut self,
         force_collect: ForceCollect,
-    ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
+    ) -> PResult<'a, Option<Option<AssocItem>>> {
         let fn_parse_mode = FnParseMode {
             req_name: |edition, _| edition >= Edition::Edition2018,
             context: FnContext::Trait,
@@ -1235,7 +1235,7 @@ impl<'a> Parser<'a> {
         &mut self,
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
-    ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
+    ) -> PResult<'a, Option<Option<AssocItem>>> {
         Ok(self
             .parse_item_(
                 fn_parse_mode,
@@ -1269,7 +1269,7 @@ impl<'a> Parser<'a> {
                         _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
                     },
                 };
-                Some(Box::new(Item { attrs, id, span, vis, kind, tokens }))
+                Some(Item { attrs, id, span, vis, kind, tokens })
             }))
     }
 
@@ -1488,7 +1488,7 @@ impl<'a> Parser<'a> {
     pub fn parse_foreign_item(
         &mut self,
         force_collect: ForceCollect,
-    ) -> PResult<'a, Option<Option<Box<ForeignItem>>>> {
+    ) -> PResult<'a, Option<Option<ForeignItem>>> {
         let fn_parse_mode = FnParseMode {
             req_name: |_, is_dot_dot_dot| is_dot_dot_dot == IsDotDotDot::No,
             context: FnContext::Free,
@@ -1530,7 +1530,7 @@ impl<'a> Parser<'a> {
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
                     },
                 };
-                Some(Box::new(Item { attrs, id, span, vis, kind, tokens }))
+                Some(Item { attrs, id, span, vis, kind, tokens })
             }))
     }
 

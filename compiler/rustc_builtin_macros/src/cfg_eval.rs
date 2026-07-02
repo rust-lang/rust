@@ -189,17 +189,17 @@ impl MutVisitor for CfgEval<'_> {
 
     fn flat_map_assoc_item(
         &mut self,
-        item: Box<ast::AssocItem>,
+        item: ast::AssocItem,
         ctxt: AssocCtxt,
-    ) -> SmallVec<[Box<ast::AssocItem>; 1]> {
+    ) -> SmallVec<[ast::AssocItem; 1]> {
         let item = configure!(self, item);
         mut_visit::walk_flat_map_assoc_item(self, item, ctxt)
     }
 
     fn flat_map_foreign_item(
         &mut self,
-        foreign_item: Box<ast::ForeignItem>,
-    ) -> SmallVec<[Box<ast::ForeignItem>; 1]> {
+        foreign_item: ast::ForeignItem,
+    ) -> SmallVec<[ast::ForeignItem; 1]> {
         let foreign_item = configure!(self, foreign_item);
         mut_visit::walk_flat_map_foreign_item(self, foreign_item)
     }

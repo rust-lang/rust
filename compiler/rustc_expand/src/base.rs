@@ -44,8 +44,8 @@ use crate::stats::MacroStat;
 #[derive(Debug, Clone)]
 pub enum Annotatable {
     Item(Box<ast::Item>),
-    AssocItem(Box<ast::AssocItem>, AssocCtxt),
-    ForeignItem(Box<ast::ForeignItem>),
+    AssocItem(ast::AssocItem, AssocCtxt),
+    ForeignItem(ast::ForeignItem),
     Stmt(Box<ast::Stmt>),
     Expr(Box<ast::Expr>),
     Arm(ast::Arm),
@@ -146,21 +146,21 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_trait_item(self) -> Box<ast::AssocItem> {
+    pub fn expect_trait_item(self) -> ast::AssocItem {
         match self {
             Annotatable::AssocItem(i, AssocCtxt::Trait) => i,
             _ => panic!("expected trait item"),
         }
     }
 
-    pub fn expect_impl_item(self) -> Box<ast::AssocItem> {
+    pub fn expect_impl_item(self) -> ast::AssocItem {
         match self {
             Annotatable::AssocItem(i, AssocCtxt::Impl { .. }) => i,
             _ => panic!("expected impl item"),
         }
     }
 
-    pub fn expect_foreign_item(self) -> Box<ast::ForeignItem> {
+    pub fn expect_foreign_item(self) -> ast::ForeignItem {
         match self {
             Annotatable::ForeignItem(i) => i,
             _ => panic!("expected foreign item"),
@@ -419,6 +419,7 @@ fn make_stmts_default(expr: Option<Box<ast::Expr>>) -> Option<SmallVec<[ast::Stm
 /// methods are spliced into the AST at the callsite of the macro.
 pub trait MacResult {
     /// Creates an expression.
+    // njn: Box<Self> is weird
     fn make_expr(self: Box<Self>) -> Option<Box<ast::Expr>> {
         None
     }
@@ -429,22 +430,22 @@ pub trait MacResult {
     }
 
     /// Creates zero or more impl items.
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
+    fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[ast::AssocItem; 1]>> {
         None
     }
 
     /// Creates zero or more impl items.
-    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
+    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[ast::AssocItem; 1]>> {
         None
     }
 
     /// Creates zero or more trait items.
-    fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
+    fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[ast::AssocItem; 1]>> {
         None
     }
 
     /// Creates zero or more items in an `extern {}` block
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::ForeignItem>; 1]>> {
+    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[ast::ForeignItem; 1]>> {
         None
     }
 
@@ -604,19 +605,19 @@ impl MacResult for DummyResult {
         Some(SmallVec::new())
     }
 
-    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
+    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::AssocItem; 1]>> {
         Some(SmallVec::new())
     }
 
-    fn make_trait_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
+    fn make_trait_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::AssocItem; 1]>> {
         Some(SmallVec::new())
     }
 
-    fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
+    fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::AssocItem; 1]>> {
         Some(SmallVec::new())
     }
 
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::ForeignItem>; 1]>> {
+    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[ast::ForeignItem; 1]>> {
         Some(SmallVec::new())
     }
 

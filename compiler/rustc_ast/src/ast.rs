@@ -3298,7 +3298,7 @@ pub struct ForeignMod {
     /// semantically by Rust.
     pub safety: Safety,
     pub abi: Option<StrLit>,
-    pub items: ThinVec<Box<ForeignItem>>,
+    pub items: ThinVec<ForeignItem>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3816,7 +3816,7 @@ pub struct Trait {
     #[visitable(extra = BoundKind::SuperTraits)]
     pub bounds: GenericBounds,
     #[visitable(extra = AssocCtxt::Trait)]
-    pub items: ThinVec<Box<AssocItem>>,
+    pub items: ThinVec<AssocItem>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3850,7 +3850,7 @@ pub struct Impl {
     pub constness: Const,
     pub of_trait: Option<Box<TraitImplHeader>>,
     pub self_ty: Box<Ty>,
-    pub items: ThinVec<Box<AssocItem>>,
+    pub items: ThinVec<AssocItem>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -4366,11 +4366,11 @@ pub enum AstOwner {
     /// This definition corresponds to a nested `use` tree.
     /// The `LocalDefId` points to its HIR owner.
     NestedUseTree(LocalDefId),
-    Crate(Box<Crate>),
-    Item(Box<Item>),
-    TraitItem(Box<AssocItem>),
-    ImplItem(Box<AssocItem>),
-    ForeignItem(Box<ForeignItem>),
+    Crate(Box<Crate>), // njn: todo?
+    Item(Box<Item>), // njn: todo
+    TraitItem(AssocItem),
+    ImplItem(AssocItem),
+    ForeignItem(ForeignItem),
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.

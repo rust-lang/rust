@@ -392,14 +392,14 @@ fn generate_foreign_item(
             extern_span: eii_attr_span,
             safety: ast::Safety::Unsafe(eii_attr_span),
             abi,
-            items: From::from([Box::new(ast::ForeignItem {
+            items: From::from([ast::ForeignItem {
                 attrs: foreign_item_attrs,
                 id: ast::DUMMY_NODE_ID,
                 span: item_span,
                 vis,
                 kind: foreign_kind,
                 tokens: None,
-            })]),
+            }]),
         }),
     )
 }

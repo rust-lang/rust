@@ -743,7 +743,7 @@ pub(crate) struct UnnecessaryQualification<'ra> {
 #[derive(Default, Debug)]
 pub(crate) struct DiagMetadata<'ast> {
     /// The current trait's associated items' ident, used for diagnostic suggestions.
-    current_trait_assoc_items: Option<&'ast [Box<AssocItem>]>,
+    current_trait_assoc_items: Option<&'ast [AssocItem]>,
 
     /// The current self type if inside an impl (used for better errors).
     pub(crate) current_self_type: Option<&'ast Ty>,
@@ -796,7 +796,7 @@ pub(crate) struct DiagMetadata<'ast> {
     current_type_path: Option<&'ast Ty>,
 
     /// The current impl items (used to suggest).
-    current_impl_items: Option<&'ast [Box<AssocItem>]>,
+    current_impl_items: Option<&'ast [AssocItem]>,
 
     /// The current impl items (used to suggest).
     current_impl_item: Option<&'ast AssocItem>,
@@ -3347,7 +3347,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     /// When evaluating a `trait` use its associated types' idents for suggestions in E0425.
-    fn resolve_trait_items(&mut self, trait_items: &'ast [Box<AssocItem>]) {
+    fn resolve_trait_items(&mut self, trait_items: &'ast [AssocItem]) {
         let trait_assoc_items =
             replace(&mut self.diag_metadata.current_trait_assoc_items, Some(trait_items));
 
@@ -3500,7 +3500,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         of_trait: Option<&'ast ast::TraitImplHeader>,
         self_type: &'ast Ty,
         item_id: NodeId,
-        impl_items: &'ast [Box<AssocItem>],
+        impl_items: &'ast [AssocItem],
     ) {
         debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
@@ -3559,7 +3559,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                                 let mut seen_trait_items = Default::default();
                                                 for item in impl_items {
                                                     with_owner(this, item.id, |this| {
-                                                        this.resolve_impl_item(&**item, &mut seen_trait_items, trait_id, of_trait.is_some());
+                                                        this.resolve_impl_item(&*item, &mut seen_trait_items, trait_id, of_trait.is_some());
                                                     })
                                                 }
                                             });

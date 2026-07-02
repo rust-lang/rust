@@ -174,17 +174,17 @@ macro_rules! ast_fragments {
 }
 
 ast_fragments! {
-    Expr(Box<ast::Expr>) {
+    Expr(Box<ast::Expr>) { // njn: Box?
         "expression";
         one fn visit_expr;
         fn make_expr;
     }
-    Pat(Box<ast::Pat>) {
+    Pat(Box<ast::Pat>) { // njn: Box?
         "pattern";
         one fn visit_pat;
         fn make_pat;
     }
-    Ty(Box<ast::Ty>) {
+    Ty(Box<ast::Ty>) { // njn: Box?
         "type";
         one fn visit_ty;
         fn make_ty;
@@ -194,27 +194,27 @@ ast_fragments! {
         many fn flat_map_stmt; fn visit_stmt();
         fn make_stmts;
     }
-    Items(SmallVec<[Box<ast::Item>; 1]>) {
+    Items(SmallVec<[Box<ast::Item>; 1]>) { // njn: todo
         "item";
         many fn flat_map_item; fn visit_item();
         fn make_items;
     }
-    TraitItems(SmallVec<[Box<ast::AssocItem>; 1]>) {
+    TraitItems(SmallVec<[ast::AssocItem; 1]>) {
         "trait item";
         many fn flat_map_assoc_item; fn visit_assoc_item(AssocCtxt::Trait);
         fn make_trait_items;
     }
-    ImplItems(SmallVec<[Box<ast::AssocItem>; 1]>) {
+    ImplItems(SmallVec<[ast::AssocItem; 1]>) {
         "impl item";
         many fn flat_map_assoc_item; fn visit_assoc_item(AssocCtxt::Impl { of_trait: false });
         fn make_impl_items;
     }
-    TraitImplItems(SmallVec<[Box<ast::AssocItem>; 1]>) {
+    TraitImplItems(SmallVec<[ast::AssocItem; 1]>) {
         "impl item";
         many fn flat_map_assoc_item; fn visit_assoc_item(AssocCtxt::Impl { of_trait: true });
         fn make_trait_impl_items;
     }
-    ForeignItems(SmallVec<[Box<ast::ForeignItem>; 1]>) {
+    ForeignItems(SmallVec<[ast::ForeignItem; 1]>) {
         "foreign item";
         many fn flat_map_foreign_item; fn visit_foreign_item();
         fn make_foreign_items;
@@ -393,7 +393,7 @@ pub enum InvocationKind {
         item: Annotatable,
     },
     GlobDelegation {
-        item: Box<ast::AssocItem>,
+        item: ast::AssocItem,
         /// Whether this is a trait impl or an inherent impl
         of_trait: bool,
     },
@@ -985,7 +985,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     _ => unreachable!(),
                 };
 
-                type Node = AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag>;
+                type Node = AstNodeWrapper<ast::AssocItem, ImplItemTag>;
                 let single_delegations = build_single_delegations::<Node>(
                     self.cx,
                     deleg,
@@ -996,7 +996,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 );
                 // `-Zmacro-stats` ignores these because they don't seem important.
                 fragment_kind.expect_from_annotatables(single_delegations.map(|item| {
-                    Annotatable::AssocItem(Box::new(item), AssocCtxt::Impl { of_trait })
+                    Annotatable::AssocItem(item, AssocCtxt::Impl { of_trait })
                 }))
             }
         })
@@ -1436,8 +1436,8 @@ impl InvocationCollectorNode for Box<ast::Item> {
 }
 
 struct TraitItemTag;
-impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTag> {
-    type OutputTy = SmallVec<[Box<ast::AssocItem>; 1]>;
+impl InvocationCollectorNode for AstNodeWrapper<ast::AssocItem, TraitItemTag> {
+    type OutputTy = SmallVec<[ast::AssocItem; 1]>;
     type ItemKind = AssocItemKind;
     const KIND: AstFragmentKind = AstFragmentKind::TraitItems;
     fn to_annotatable(self) -> Annotatable {
@@ -1469,7 +1469,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTa
         AssocItemKind::Delegation(deleg)
     }
     fn from_item(item: ast::Item<Self::ItemKind>) -> Self {
-        AstNodeWrapper::new(Box::new(item), TraitItemTag)
+        AstNodeWrapper::new(item, TraitItemTag)
     }
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
@@ -1480,8 +1480,8 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTa
 }
 
 struct ImplItemTag;
-impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag> {
-    type OutputTy = SmallVec<[Box<ast::AssocItem>; 1]>;
+impl InvocationCollectorNode for AstNodeWrapper<ast::AssocItem, ImplItemTag> {
+    type OutputTy = SmallVec<[ast::AssocItem; 1]>;
     type ItemKind = AssocItemKind;
     const KIND: AstFragmentKind = AstFragmentKind::ImplItems;
     fn to_annotatable(self) -> Annotatable {
@@ -1513,7 +1513,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag
         AssocItemKind::Delegation(deleg)
     }
     fn from_item(item: ast::Item<Self::ItemKind>) -> Self {
-        AstNodeWrapper::new(Box::new(item), ImplItemTag)
+        AstNodeWrapper::new(item, ImplItemTag)
     }
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
@@ -1524,8 +1524,8 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag
 }
 
 struct TraitImplItemTag;
-impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitImplItemTag> {
-    type OutputTy = SmallVec<[Box<ast::AssocItem>; 1]>;
+impl InvocationCollectorNode for AstNodeWrapper<ast::AssocItem, TraitImplItemTag> {
+    type OutputTy = SmallVec<[ast::AssocItem; 1]>;
     type ItemKind = AssocItemKind;
     const KIND: AstFragmentKind = AstFragmentKind::TraitImplItems;
     fn to_annotatable(self) -> Annotatable {
@@ -1557,7 +1557,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitImplIt
         AssocItemKind::Delegation(deleg)
     }
     fn from_item(item: ast::Item<Self::ItemKind>) -> Self {
-        AstNodeWrapper::new(Box::new(item), TraitImplItemTag)
+        AstNodeWrapper::new(item, TraitImplItemTag)
     }
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
@@ -1567,7 +1567,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitImplIt
     }
 }
 
-impl InvocationCollectorNode for Box<ast::ForeignItem> {
+impl InvocationCollectorNode for ast::ForeignItem {
     const KIND: AstFragmentKind = AstFragmentKind::ForeignItems;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::ForeignItem(self)
@@ -2144,7 +2144,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn collect_glob_delegation(
         &mut self,
-        item: Box<ast::AssocItem>,
+        item: ast::AssocItem,
         of_trait: bool,
         kind: AstFragmentKind,
     ) -> AstFragment {
@@ -2451,9 +2451,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
     fn flat_map_assoc_item(
         &mut self,
-        node: Box<ast::AssocItem>,
+        node: ast::AssocItem,
         ctxt: AssocCtxt,
-    ) -> SmallVec<[Box<ast::AssocItem>; 1]> {
+    ) -> SmallVec<[ast::AssocItem; 1]> {
         match ctxt {
             AssocCtxt::Trait => self.flat_map_node(AstNodeWrapper::new(node, TraitItemTag)),
             AssocCtxt::Impl { of_trait: false, .. } => {
@@ -2465,10 +2465,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
     }
 
-    fn flat_map_foreign_item(
-        &mut self,
-        node: Box<ast::ForeignItem>,
-    ) -> SmallVec<[Box<ast::ForeignItem>; 1]> {
+    fn flat_map_foreign_item(&mut self, node: ast::ForeignItem) -> SmallVec<[ast::ForeignItem; 1]> {
         self.flat_map_node(node)
     }
 

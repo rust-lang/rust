@@ -62,43 +62,41 @@ pub(crate) fn placeholder(
             tokens: None,
         })]),
         AstFragmentKind::TraitItems => {
-            AstFragment::TraitItems(smallvec![Box::new(ast::AssocItem {
+            AstFragment::TraitItems(smallvec![ast::AssocItem {
                 id,
                 span,
                 vis,
                 attrs,
                 kind: ast::AssocItemKind::MacCall(mac_placeholder()),
                 tokens: None,
-            })])
+            }])
         }
-        AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![Box::new(ast::AssocItem {
+        AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![ast::AssocItem {
             id,
             span,
             vis,
             attrs,
             kind: ast::AssocItemKind::MacCall(mac_placeholder()),
             tokens: None,
-        })]),
+        }]),
         AstFragmentKind::TraitImplItems => {
-            AstFragment::TraitImplItems(smallvec![Box::new(ast::AssocItem {
+            AstFragment::TraitImplItems(smallvec![ast::AssocItem {
                 id,
                 span,
                 vis,
                 attrs,
                 kind: ast::AssocItemKind::MacCall(mac_placeholder()),
                 tokens: None,
-            })])
+            }])
         }
-        AstFragmentKind::ForeignItems => {
-            AstFragment::ForeignItems(smallvec![Box::new(ast::ForeignItem {
-                id,
-                span,
-                vis,
-                attrs,
-                kind: ast::ForeignItemKind::MacCall(mac_placeholder()),
-                tokens: None,
-            })])
-        }
+        AstFragmentKind::ForeignItems => AstFragment::ForeignItems(smallvec![ast::ForeignItem {
+            id,
+            span,
+            vis,
+            attrs,
+            kind: ast::ForeignItemKind::MacCall(mac_placeholder()),
+            tokens: None,
+        }]),
         AstFragmentKind::Pat => AstFragment::Pat(Box::new(ast::Pat {
             id,
             span,
@@ -309,9 +307,9 @@ impl MutVisitor for PlaceholderExpander {
 
     fn flat_map_assoc_item(
         &mut self,
-        item: Box<ast::AssocItem>,
+        item: ast::AssocItem,
         ctxt: AssocCtxt,
-    ) -> SmallVec<[Box<ast::AssocItem>; 1]> {
+    ) -> SmallVec<[ast::AssocItem; 1]> {
         match item.kind {
             ast::AssocItemKind::MacCall(_) => {
                 let it = self.remove(item.id);
@@ -325,10 +323,7 @@ impl MutVisitor for PlaceholderExpander {
         }
     }
 
-    fn flat_map_foreign_item(
-        &mut self,
-        item: Box<ast::ForeignItem>,
-    ) -> SmallVec<[Box<ast::ForeignItem>; 1]> {
+    fn flat_map_foreign_item(&mut self, item: ast::ForeignItem) -> SmallVec<[ast::ForeignItem; 1]> {
         match item.kind {
             ast::ForeignItemKind::MacCall(_) => self.remove(item.id).make_foreign_items(),
             _ => walk_flat_map_foreign_item(self, item),

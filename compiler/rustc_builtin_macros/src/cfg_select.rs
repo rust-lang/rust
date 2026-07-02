@@ -51,10 +51,10 @@ impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
     forward_to_parser_any_macro!(make_stmts, SmallVec<[ast::Stmt; 1]>);
     forward_to_parser_any_macro!(make_items, SmallVec<[Box<ast::Item>; 1]>);
 
-    forward_to_parser_any_macro!(make_impl_items, SmallVec<[Box<ast::AssocItem>; 1]>);
-    forward_to_parser_any_macro!(make_trait_impl_items, SmallVec<[Box<ast::AssocItem>; 1]>);
-    forward_to_parser_any_macro!(make_trait_items, SmallVec<[Box<ast::AssocItem>; 1]>);
-    forward_to_parser_any_macro!(make_foreign_items, SmallVec<[Box<ast::ForeignItem>; 1]>);
+    forward_to_parser_any_macro!(make_impl_items, SmallVec<[ast::AssocItem; 1]>);
+    forward_to_parser_any_macro!(make_trait_impl_items, SmallVec<[ast::AssocItem; 1]>);
+    forward_to_parser_any_macro!(make_trait_items, SmallVec<[ast::AssocItem; 1]>);
+    forward_to_parser_any_macro!(make_foreign_items, SmallVec<[ast::ForeignItem; 1]>);
 
     forward_to_parser_any_macro!(make_ty, Box<ast::Ty>);
     forward_to_parser_any_macro!(make_pat, Box<ast::Pat>);

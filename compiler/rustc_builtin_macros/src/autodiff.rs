@@ -444,14 +444,14 @@ mod llvm_enzyme {
         let d_annotatable = match &item {
             Annotatable::AssocItem(_, ctxt) => {
                 let assoc_item: AssocItemKind = ast::AssocItemKind::Fn(d_fn);
-                let d_fn = Box::new(ast::AssocItem {
+                let d_fn = ast::AssocItem {
                     attrs: d_attrs,
                     id: ast::DUMMY_NODE_ID,
                     span,
                     vis,
                     kind: assoc_item,
                     tokens: None,
-                });
+                };
                 Annotatable::AssocItem(d_fn, *ctxt)
             }
             Annotatable::Item(_) => {

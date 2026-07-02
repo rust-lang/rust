@@ -688,7 +688,7 @@ macro_rules! common_visitor_and_walkers {
                     // Do nothing.
                 }
 
-                fn flat_map_foreign_item(&mut self, ni: Box<ForeignItem>) -> SmallVec<[Box<ForeignItem>; 1]> {
+                fn flat_map_foreign_item(&mut self, ni: ForeignItem) -> SmallVec<[ForeignItem; 1]> {
                     walk_flat_map_foreign_item(self, ni)
                 }
 
@@ -702,9 +702,9 @@ macro_rules! common_visitor_and_walkers {
 
                 fn flat_map_assoc_item(
                     &mut self,
-                    i: Box<AssocItem>,
+                    i: AssocItem,
                     ctxt: AssocCtxt,
-                ) -> SmallVec<[Box<AssocItem>; 1]> {
+                ) -> SmallVec<[AssocItem; 1]> {
                     walk_flat_map_assoc_item(self, i, ctxt)
                 }
 
@@ -1175,14 +1175,14 @@ macro_rules! generate_list_visit_fns {
 
 generate_list_visit_fns! {
     visit_items, Box<Item>, visit_item;
-    visit_foreign_items, Box<ForeignItem>, visit_foreign_item;
+    visit_foreign_items, ForeignItem, visit_foreign_item;
     visit_generic_params, GenericParam, visit_generic_param;
     visit_stmts, Stmt, visit_stmt;
     visit_exprs, Box<Expr>, visit_expr;
     visit_expr_fields, ExprField, visit_expr_field;
     visit_pat_fields, PatField, visit_pat_field;
     visit_variants, Variant, visit_variant;
-    visit_assoc_items, Box<AssocItem>, visit_assoc_item, ctxt: AssocCtxt;
+    visit_assoc_items, AssocItem, visit_assoc_item, ctxt: AssocCtxt;
     visit_where_predicates, WherePredicate, visit_where_predicate;
     visit_params, Param, visit_param;
     visit_field_defs, FieldDef, visit_field_def;

@@ -596,14 +596,14 @@ impl<'a> TraitDef<'a> {
         type_ident: Ident,
         generics: &Generics,
         field_tys: Vec<&ast::Ty>,
-        methods: Vec<Box<ast::AssocItem>>,
+        methods: Vec<ast::AssocItem>,
         is_packed: bool,
     ) -> Box<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
         // Transform associated types from `deriving::ty::Ty` into `ast::AssocItem`
         let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
-            Box::new(ast::AssocItem {
+            ast::AssocItem {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 vis: ast::Visibility {
@@ -620,7 +620,7 @@ impl<'a> TraitDef<'a> {
                     ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 })),
                 tokens: None,
-            })
+            }
         });
 
         let mut where_clause = ast::WhereClause::default();
@@ -1043,7 +1043,7 @@ impl<'a> MethodDef<'a> {
         explicit_self: Option<ast::ExplicitSelf>,
         nonself_arg_tys: Vec<(Ident, Box<ast::Ty>)>,
         body: BlockOrExpr,
-    ) -> Box<ast::AssocItem> {
+    ) -> ast::AssocItem {
         let span = trait_.span;
         // Create the generics that aren't for `Self`.
         let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
@@ -1074,7 +1074,7 @@ impl<'a> MethodDef<'a> {
         let defaultness = ast::Defaultness::Implicit;
 
         // Create the method.
-        Box::new(ast::AssocItem {
+        ast::AssocItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
             span,
@@ -1090,7 +1090,7 @@ impl<'a> MethodDef<'a> {
                 eii_impls: ThinVec::new(),
             })),
             tokens: None,
-        })
+        }
     }
 
     /// The normal case uses field access.

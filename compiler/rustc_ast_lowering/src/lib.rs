@@ -576,11 +576,11 @@ fn index_ast<'tcx>(
             &mut self,
             item: &mut ast::Item<K>,
             dummy: impl FnOnce(Box<MacCall>) -> K,
-            node: impl FnOnce(Box<Item<K>>) -> AstOwner,
+            node: impl FnOnce(Item<K>) -> AstOwner,
         ) {
             let dummy = self.make_dummy(item.id, item.span, dummy);
             let item = mem::replace(item, *dummy);
-            self.insert(item.id, node(Box::new(item)));
+            self.insert(item.id, node(item));
         }
 
         #[tracing::instrument(level = "trace", skip(self))]
