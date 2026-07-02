@@ -1,3 +1,12 @@
+Version 1.96.1 (2026-06-30)
+===========================
+
+<a id="1.96.1"></a>
+
+- [Cargo: fix timeout/retry behavior](https://github.com/rust-lang/cargo/pull/17131)
+- [Cargo: apply patches for CVE-2025-15661, CVE-2026-55199, and CVE-2026-55200 to libssh2](https://github.com/rust-lang/cargo/pull/17140)
+- [rustc: fix miscompilation in MIR optimization](https://github.com/rust-lang/rust/pull/158214)
+
 Version 1.96.0 (2026-05-28)
 ==========================
 
