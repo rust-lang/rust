@@ -379,6 +379,15 @@ pub(super) trait Tracker<'matcher> {
     ) {
     }
 
+    fn ambiguity(
+        &mut self,
+        parser: &TtParser,
+        matcher: &'matcher [MatcherLoc],
+        token_span: Span,
+    ) -> NamedParseResult<Self::Failure> {
+        parser.ambiguity_error(matcher, token_span)
+    }
+
     /// For tracing.
     fn description() -> &'static str;
 

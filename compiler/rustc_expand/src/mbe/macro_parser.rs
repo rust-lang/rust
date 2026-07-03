@@ -696,7 +696,7 @@ impl TtParser {
 
                 (_, _) => {
                     // Too many possibilities!
-                    return self.ambiguity_error(matcher, parser.token.span);
+                    return track.ambiguity(self, matcher, parser.token.span);
                 }
             }
 
@@ -704,7 +704,7 @@ impl TtParser {
         }
     }
 
-    fn ambiguity_error<F>(
+    pub(super) fn ambiguity_error<F>(
         &self,
         matcher: &[MatcherLoc],
         token_span: rustc_span::Span,
