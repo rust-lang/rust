@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::visitors::is_const_evaluatable;
+use clippy_utils::visitors::is_const_param_evaluatable;
 use clippy_utils::{get_expr_use_site, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath};
@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if is_const_evaluatable(cx.tcx, cx.typeck_results(), arg) {
+    if is_const_param_evaluatable(cx.tcx, cx.typeck_results(), arg) {
         let use_ctxt = get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr);
 
         if use_ctxt.is_ty_unified || !msrv.meets(cx, msrvs::AS_CHUNKS) {
