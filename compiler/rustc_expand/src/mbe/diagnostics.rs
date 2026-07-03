@@ -5,6 +5,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
+use rustc_middle::bug;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
@@ -220,10 +221,10 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     })
                 }
             }
-            Ambiguity(err_sp, msg) => {
-                let span = err_sp.substitute_dummy(self.root_span);
-                let guar = self.dcx.span_err(span, msg.clone());
-                self.result = Some((span, guar));
+            Ambiguity => {
+                if self.result.is_none() {
+                    bug!("`Error(..)` is only constructed through `Self::ambiguity()`");
+                }
             }
             ErrorReported(guar) => self.result = Some((self.root_span, *guar)),
         }
@@ -235,11 +236,13 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<Self::Failure> {
+        let span = parser.token.span.substitute_dummy(self.root_span);
+
         if parser.token == token::Eof {
-            return Ambiguity(
-                parser.token.span,
-                "ambiguity: multiple successful parses".to_string(),
-            );
+            let msg = "ambiguity: multiple successful parses".to_string();
+            let guar = self.dcx.span_err(span, msg);
+            self.result = Some((span, guar));
+            return Ambiguity;
         }
 
         let nts = bb_locs
@@ -253,17 +256,18 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             .collect::<Vec<String>>()
             .join(" or ");
 
-        Ambiguity(
-            parser.token.span,
-            format!(
-                "local ambiguity when calling macro `{}`: multiple parsing options: {}",
-                self.macro_name,
-                match next_locs.into_iter().count() {
-                    0 => format!("built-in NTs {nts}."),
-                    n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
-                }
-            ),
-        )
+        let msg = format!(
+            "local ambiguity when calling macro `{}`: multiple parsing options: {}",
+            self.macro_name,
+            match next_locs.into_iter().count() {
+                0 => format!("built-in NTs {nts}."),
+                n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
+            }
+        );
+
+        let guar = self.dcx.span_err(span, msg);
+        self.result = Some((span, guar));
+        Ambiguity
     }
 
     fn description() -> &'static str {

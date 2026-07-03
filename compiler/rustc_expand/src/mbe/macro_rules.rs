@@ -405,11 +405,11 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
     fn ambiguity(
         &mut self,
-        parser: &Parser<'_>,
+        _parser: &Parser<'_>,
         _bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         _next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<Self::Failure> {
-        Ambiguity(parser.token.span, "ignored".into())
+        Ambiguity
     }
 
     fn description() -> &'static str {
@@ -647,7 +647,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
                 trace!("Failed to match arm, trying the next one");
                 // Try the next arm.
             }
-            Ambiguity(_, _) => {
+            Ambiguity => {
                 debug!("Fatal error occurred during matching");
                 // We haven't emitted an error yet, so we can retry.
                 return Err(CanRetry::Yes);
@@ -697,7 +697,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut());
                 continue;
             }
-            Ambiguity(_, _) => return Err(CanRetry::Yes),
+            Ambiguity => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         };
 
@@ -714,7 +714,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
             Failure(_) => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
             }
-            Ambiguity(_, _) => return Err(CanRetry::Yes),
+            Ambiguity => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         }
     }
@@ -752,7 +752,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
             Failure(_) => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
             }
-            Ambiguity(_, _) => return Err(CanRetry::Yes),
+            Ambiguity => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         }
     }

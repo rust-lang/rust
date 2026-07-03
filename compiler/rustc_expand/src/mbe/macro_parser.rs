@@ -302,7 +302,7 @@ pub(crate) enum ParseResult<T, F> {
     /// The usize is the approximate position of the token in the input token stream.
     Failure(F),
     /// The input could be parsed in multiple distinct ways.
-    Ambiguity(rustc_span::Span, String),
+    Ambiguity,
     ErrorReported(ErrorGuaranteed),
 }
 
