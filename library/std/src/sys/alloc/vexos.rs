@@ -1,5 +1,4 @@
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#![allow(static_mut_refs)]
+use core::cell::SyncUnsafeCell;
 
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ptr;
@@ -11,7 +10,11 @@ unsafe extern "C" {
     static mut __heap_end: u8;
 }
 
-static mut DLMALLOC: dlmalloc::Dlmalloc<Vexos> = dlmalloc::Dlmalloc::new_with_allocator(Vexos);
+struct SyncDlmalloc(dlmalloc::Dlmalloc<Vexos>);
+unsafe impl Sync for SyncDlmalloc {}
+
+static DLMALLOC: SyncUnsafeCell<SyncDlmalloc> =
+    SyncUnsafeCell::new(SyncDlmalloc(dlmalloc::Dlmalloc::new_with_allocator(Vexos)));
 
 struct Vexos;
 
@@ -67,7 +70,7 @@ unsafe impl GlobalAlloc for System {
         // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
         // guarantees unique and non-reentrant access to the allocator. As such, no allocator lock is used.
         // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
-        unsafe { DLMALLOC.malloc(layout.size(), layout.align()) }
+        unsafe { (*DLMALLOC.get()).0.malloc(layout.size(), layout.align()) }
     }
 
     #[inline]
@@ -75,7 +78,7 @@ unsafe impl GlobalAlloc for System {
         // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
         // guarantees unique and non-reentrant access to the allocator. As such, no allocator lock is used.
         // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
-        unsafe { DLMALLOC.calloc(layout.size(), layout.align()) }
+        unsafe { (*DLMALLOC.get()).0.calloc(layout.size(), layout.align()) }
     }
 
     #[inline]
@@ -83,7 +86,7 @@ unsafe impl GlobalAlloc for System {
         // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
         // guarantees unique and non-reentrant access to the allocator. As such, no allocator lock is used.
         // Calling free() is safe because preconditions on this function match the trait method preconditions.
-        unsafe { DLMALLOC.free(ptr, layout.size(), layout.align()) }
+        unsafe { (*DLMALLOC.get()).0.free(ptr, layout.size(), layout.align()) }
     }
 
     #[inline]
@@ -91,6 +94,6 @@ unsafe impl GlobalAlloc for System {
         // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
         // guarantees unique and non-reentrant access to the allocator. As such, no allocator lock is used.
         // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
-        unsafe { DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size) }
+        unsafe { (*DLMALLOC.get()).0.realloc(ptr, layout.size(), layout.align(), new_size) }
     }
 }

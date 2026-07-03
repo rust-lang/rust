@@ -9,21 +9,22 @@
 //! Consider the following code, operating on some global static variables:
 //!
 //! ```rust
-//! // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-//! #![allow(static_mut_refs)]
+//! #![feature(sync_unsafe_cell)]
 //!
-//! static mut A: u32 = 0;
-//! static mut B: u32 = 0;
-//! static mut C: u32 = 0;
+//! use std::cell::SyncUnsafeCell;
+//!
+//! static A: SyncUnsafeCell<u32> = SyncUnsafeCell::new(0);
+//! static B: SyncUnsafeCell<u32> = SyncUnsafeCell::new(0);
+//! static C: SyncUnsafeCell<u32> = SyncUnsafeCell::new(0);
 //!
 //! fn main() {
 //!     unsafe {
-//!         A = 3;
-//!         B = 4;
-//!         A = A + B;
-//!         C = B;
-//!         println!("{A} {B} {C}");
-//!         C = A;
+//!         *A.get() = 3;
+//!         *B.get() = 4;
+//!         *A.get() = *A.get() + *B.get();
+//!         *C.get() = *B.get();
+//!         println!("{} {} {}", *A.get(), *B.get(), *C.get());
+//!         *C.get() = *A.get();
 //!     }
 //! }
 //! ```
