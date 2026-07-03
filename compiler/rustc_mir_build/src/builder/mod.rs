@@ -42,7 +42,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol};
 
 use crate::builder::expr::as_place::PlaceBuilder;
-use crate::builder::scope::{DropKind, LintLevel};
+use crate::builder::scope::LintLevel;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -955,11 +955,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let place = Place::from(local);
 
             // Make sure we drop (parts of) the argument even when not matched on.
-            self.schedule_drop(
+            self.schedule_drop_value(
                 param.pat.as_ref().map_or(expr_span, |pat| pat.span),
                 argument_scope,
                 local,
-                DropKind::Value,
             );
 
             let Some(ref pat) = param.pat else {
