@@ -208,7 +208,7 @@ early_lint_methods!(
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
-        BuiltinCombinedLateLintModPass,
+        BuiltinCombinedLateLintModPass<'tcx>,
         [
             ForLoopsOverFallibles: ForLoopsOverFallibles,
             DefaultCouldBeDerived: DefaultCouldBeDerived,
@@ -273,6 +273,7 @@ late_lint_methods!(
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
             ImplicitProvenanceCasts: ImplicitProvenanceCasts,
             CVoidReturns: CVoidReturns,
+            SelfTypeConversion<'tcx>: SelfTypeConversion { ignored_types: Default::default() },
         ]
     ]
 );
@@ -321,11 +322,6 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&BuiltinCombinedLateLintModPass::lint_vec());
     store.register_lints(&foreign_modules::lint_vec());
     store.register_lints(&hardwired::lint_vec());
-
-    store.register_lints(&SelfTypeConversion::lint_vec());
-    store.register_late_pass(Box::new(|_| {
-        Box::new(SelfTypeConversion::new()) as Box<dyn LateLintPass<'_>>
-    }));
 
     add_lint_group!(
         "nonstandard_style",
