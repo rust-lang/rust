@@ -165,7 +165,7 @@ pub(crate) fn expand_kernel(
     });
 
     for param in host_fn.sig.decl.inputs.iter_mut() {
-        param.pat = Box::new(ecx.pat_wild(param.pat.span));
+        param.pat = ecx.pat_wild(param.pat.span);
     }
 
     // inline(never) attr

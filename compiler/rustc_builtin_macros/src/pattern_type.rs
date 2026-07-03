@@ -57,7 +57,7 @@ fn ty_pat(kind: TyPatKind, span: Span) -> TyPat {
     TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None }
 }
 
-fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> TyPat {
+fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: Box<ast::Pat>) -> TyPat {
     let kind = match pat.kind {
         ast::PatKind::Range(start, end, include_end) => TyPatKind::Range(
             start.map(|value| {
@@ -80,7 +80,7 @@ fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> TyPat {
             TyPatKind::Or(variants.into_iter().map(|pat| pat_to_ty_pat(cx, pat)).collect())
         }
         ast::PatKind::Err(guar) => TyPatKind::Err(guar),
-        ast::PatKind::Paren(p) => pat_to_ty_pat(cx, *p).kind,
+        ast::PatKind::Paren(p) => pat_to_ty_pat(cx, p).kind,
         _ => TyPatKind::Err(cx.dcx().span_err(pat.span, "pattern not supported in pattern types")),
     };
     ty_pat(kind, pat.span)

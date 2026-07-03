@@ -3455,7 +3455,7 @@ impl<'a> Parser<'a> {
                 match ty {
                     Ok(ty) => {
                         let pat = this.mk_pat(ty.span, PatKind::Missing);
-                        (Box::new(pat), ty)
+                        (pat, ty)
                     }
                     // If this is a C-variadic argument and we hit an error, return the error.
                     Err(err) if this.token == token::DotDotDot => return Err(err),

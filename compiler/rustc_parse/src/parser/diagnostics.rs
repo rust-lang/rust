@@ -2756,9 +2756,9 @@ impl<'a> Parser<'a> {
     #[cold]
     pub(crate) fn recover_colon_colon_in_pat_typo(
         &mut self,
-        mut first_pat: Pat,
+        mut first_pat: Box<Pat>,
         expected: Option<Expected>,
-    ) -> Pat {
+    ) -> Box<Pat> {
         if token::Colon != self.token.kind {
             return first_pat;
         }

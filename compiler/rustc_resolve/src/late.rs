@@ -4103,7 +4103,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// pattern as a whole counts as a never pattern (since it's definitionallly unreachable).
     fn compute_and_check_or_pat_binding_map(
         &mut self,
-        pats: &[Pat],
+        pats: &[Box<Pat>],
     ) -> Result<FxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
         let mut missing_vars = FxIndexMap::default();
         let mut inconsistent_vars = FxIndexMap::default();

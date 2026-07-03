@@ -533,7 +533,7 @@ mod llvm_enzyme {
                 ast::Param {
                     attrs: ast::AttrVec::new(),
                     ty,
-                    pat: Box::new(ecx.pat_wild(span)),
+                    pat: ecx.pat_wild(span),
                     id: ast::DUMMY_NODE_ID,
                     span,
                     is_placeholder: false,

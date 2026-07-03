@@ -1515,7 +1515,7 @@ impl<'a> TraitDef<'a> {
         struct_def: &'a VariantData,
         prefixes: &[String],
         by_ref: ByRef,
-    ) -> ThinVec<ast::Pat> {
+    ) -> ThinVec<Box<ast::Pat>> {
         prefixes
             .iter()
             .map(|prefix| {
@@ -1551,7 +1551,7 @@ impl<'a> TraitDef<'a> {
                                     attrs: ast::AttrVec::new(),
                                     id: ast::DUMMY_NODE_ID,
                                     span: pat.span.with_ctxt(self.span.ctxt()),
-                                    pat: Box::new(pat),
+                                    pat,
                                     is_placeholder: false,
                                 }
                             })

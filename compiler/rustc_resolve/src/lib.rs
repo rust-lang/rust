@@ -229,8 +229,8 @@ enum Used {
 #[derive(Debug)]
 struct BindingError {
     name: Ident,
-    origin: Vec<(Span, ast::Pat)>,
-    target: Vec<ast::Pat>,
+    origin: Vec<(Span, Box<ast::Pat>)>,
+    target: Vec<Box<ast::Pat>>,
     could_be_path: bool,
 }
 

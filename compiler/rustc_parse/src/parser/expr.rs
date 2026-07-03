@@ -2651,7 +2651,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
-            let pat = Box::new(this.parse_pat_no_top_alt(Some(Expected::ParameterName), None)?);
+            let pat = this.parse_pat_no_top_alt(Some(Expected::ParameterName), None)?;
             let ty = if this.eat(exp!(Colon)) {
                 this.parse_ty()?
             } else {
@@ -2849,7 +2849,7 @@ impl<'a> Parser<'a> {
         let (expr, _) =
             self.parse_expr_assoc_with(Bound::Excluded(prec_let_scrutinee_needs_par()), attrs)?;
         let span = lo.to(expr.span);
-        Ok(self.mk_expr(span, ExprKind::Let(Box::new(pat), expr, span, recovered)))
+        Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, recovered)))
     }
 
     /// Parses an `else { ... }` expression (`else` token already eaten).
@@ -2965,7 +2965,7 @@ impl<'a> Parser<'a> {
     }
 
     // Public to use it for custom `for` expressions in rustfmt forks like https://github.com/tucant/rustfmt
-    pub fn parse_for_head(&mut self) -> PResult<'a, (Pat, Box<Expr>)> {
+    pub fn parse_for_head(&mut self) -> PResult<'a, (Box<Pat>, Box<Expr>)> {
         let begin_paren = if self.token == token::OpenParen {
             // Record whether we are about to parse `for (`.
             // This is used below for recovery in case of `for ( $stuff ) $block`
@@ -3042,7 +3042,6 @@ impl<'a> Parser<'a> {
         let kind = if is_await { ForLoopKind::ForAwait } else { ForLoopKind::For };
 
         let (pat, expr) = self.parse_for_head()?;
-        let pat = Box::new(pat);
         // Recover from missing expression in `for` loop
         if matches!(expr.kind, ExprKind::Block(..))
             && self.token.kind != token::OpenBrace
@@ -3234,7 +3233,7 @@ impl<'a> Parser<'a> {
                     // Always push at least one arm to make the match non-empty
                     arms.push(Arm {
                         attrs: Default::default(),
-                        pat: Box::new(self.mk_pat(span, ast::PatKind::Err(guar))),
+                        pat: self.mk_pat(span, ast::PatKind::Err(guar)),
                         guard: None,
                         body: Some(self.mk_expr_err(span, guar)),
                         span,
@@ -3339,7 +3338,6 @@ impl<'a> Parser<'a> {
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let (pat, guard) = this.parse_match_arm_pat_and_guard()?;
-            let pat = Box::new(pat);
 
             let span_before_body = this.prev_token.span;
             let arm_body;
@@ -3576,7 +3574,7 @@ impl<'a> Parser<'a> {
         Ok(Box::new(guard))
     }
 
-    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Guard>>)> {
+    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Box<Pat>, Option<Box<Guard>>)> {
         if self.token == token::OpenParen {
             let left = self.token.span;
             let pat = self.parse_pat_no_top_guard(

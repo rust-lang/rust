@@ -151,8 +151,7 @@ impl<'a> Parser<'a> {
                         RecoverColon::No,
                         CommaRecoveryMode::EitherTupleOrPipe,
                     ),
-                })
-                .map(Box::new)?,
+                })?,
                 pat_kind,
             )),
             NonterminalKind::Expr(expr_kind) => {

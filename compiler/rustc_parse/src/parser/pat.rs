@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
         rc: RecoverComma,
         ra: RecoverColon,
         rt: CommaRecoveryMode,
-    ) -> PResult<'a, Pat> {
+    ) -> PResult<'a, Box<Pat>> {
         let pat = self.parse_pat_no_top_guard(expected, rc, ra, rt)?;
 
         if self.eat_keyword(exp!(If)) {
@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
             // Feature-gate guard patterns
             self.psess.gated_spans.gate(sym::guard_patterns, guard.span());
             let span = pat.span.to(guard.span());
-            Ok(self.mk_pat(span, PatKind::Guard(Box::new(pat), guard)))
+            Ok(self.mk_pat(span, PatKind::Guard(pat, guard)))
         } else {
             Ok(pat)
         }
@@ -138,7 +138,7 @@ impl<'a> Parser<'a> {
         &mut self,
         expected: Option<Expected>,
         syntax_loc: Option<PatternLocation>,
-    ) -> PResult<'a, Pat> {
+    ) -> PResult<'a, Box<Pat>> {
         self.parse_pat_with_range_pat(true, expected, syntax_loc)
     }
 
@@ -157,12 +157,13 @@ impl<'a> Parser<'a> {
         rc: RecoverComma,
         ra: RecoverColon,
         rt: CommaRecoveryMode,
-    ) -> PResult<'a, Pat> {
+    ) -> PResult<'a, Box<Pat>> {
         self.parse_pat_no_top_guard_inner(expected, rc, ra, rt, None).map(|(pat, _)| pat)
     }
 
     /// Returns the pattern and a bool indicating whether we recovered from a trailing vert (true =
     /// recovered).
+    // njn: return Box<Pat>?
     fn parse_pat_no_top_guard_inner(
         &mut self,
         expected: Option<Expected>,
@@ -170,7 +171,7 @@ impl<'a> Parser<'a> {
         ra: RecoverColon,
         rt: CommaRecoveryMode,
         syntax_loc: Option<PatternLocation>,
-    ) -> PResult<'a, (Pat, bool)> {
+    ) -> PResult<'a, (Box<Pat>, bool)> {
         // Keep track of whether we recovered from a trailing vert so that we can avoid duplicated
         // suggestions (which bothers rustfix).
         //
@@ -182,6 +183,7 @@ impl<'a> Parser<'a> {
         };
 
         // Parse the first pattern (`p_0`).
+        // njn: return Box<Pat> here?
         let mut first_pat = match self.parse_pat_no_top_alt(expected, syntax_loc) {
             Ok(pat) => pat,
             Err(err)
@@ -271,7 +273,6 @@ impl<'a> Parser<'a> {
             CommaRecoveryMode::LikelyTuple,
             Some(syntax_loc),
         )?;
-        let pat = Box::new(pat);
         let colon = self.eat(exp!(Colon));
 
         if let PatKind::Or(pats) = &pat.kind {
@@ -694,7 +695,7 @@ impl<'a> Parser<'a> {
         PatVisitor { parser: self, stmt, arm: None, field: None }.visit_stmt(stmt);
     }
 
-    fn eat_metavar_pat(&mut self) -> Option<Pat> {
+    fn eat_metavar_pat(&mut self) -> Option<Box<Pat>> {
         // Must try both kinds of pattern nonterminals.
         if let Some(pat) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Pat(PatParam { .. })),
@@ -722,7 +723,7 @@ impl<'a> Parser<'a> {
         allow_range_pat: bool,
         expected: Option<Expected>,
         syntax_loc: Option<PatternLocation>,
-    ) -> PResult<'a, Pat> {
+    ) -> PResult<'a, Box<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
 
         if let Some(pat) = self.eat_metavar_pat() {
@@ -936,7 +937,7 @@ impl<'a> Parser<'a> {
     ///
     /// [and]: https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/pattern-matching
     #[cold]
-    fn recover_intersection_pat(&mut self, lhs: Pat) -> PResult<'a, Pat> {
+    fn recover_intersection_pat(&mut self, lhs: Box<Pat>) -> PResult<'a, Box<Pat>> {
         let mut rhs = self.parse_pat_no_top_alt(None, None)?;
         let whole_span = lhs.span.to(rhs.span);
 
@@ -945,7 +946,7 @@ impl<'a> Parser<'a> {
             let lhs_span = lhs.span;
             // Move the LHS into the RHS as a subpattern.
             // The RHS is now the full pattern.
-            *sub = Some(Box::new(lhs));
+            *sub = Some(lhs);
 
             self.dcx().emit_err(PatternOnWrongSideOfAt {
                 whole_span,
@@ -1002,7 +1003,7 @@ impl<'a> Parser<'a> {
 
         let (pinned, mutbl) = self.parse_pin_and_mut();
         let subpat = self.parse_pat_with_range_pat(false, expected, None)?;
-        Ok(PatKind::Ref(Box::new(subpat), pinned, mutbl))
+        Ok(PatKind::Ref(subpat, pinned, mutbl))
     }
 
     /// Parse a tuple or parenthesis pattern.
@@ -1060,7 +1061,7 @@ impl<'a> Parser<'a> {
                 }
 
                 // (pat) with optional parentheses
-                _ => PatKind::Paren(Box::new(pat)),
+                _ => PatKind::Paren(pat),
             }
         } else {
             PatKind::Tuple(fields)
@@ -1167,7 +1168,7 @@ impl<'a> Parser<'a> {
         &mut self,
         err: Diag<'a>,
         expected: Option<Expected>,
-    ) -> PResult<'a, Pat> {
+    ) -> PResult<'a, Box<Pat>> {
         err.cancel();
 
         let expected = Expected::to_string_or_fallback(expected);
@@ -1366,7 +1367,7 @@ impl<'a> Parser<'a> {
         }
 
         let sub = if self.eat(exp!(At)) {
-            Some(Box::new(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?))
+            Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?)
         } else {
             None
         };
@@ -1455,14 +1456,12 @@ impl<'a> Parser<'a> {
         self.parse_builtin(|self_, _lo, ident| {
             Ok(match ident.name {
                 // builtin#deref(PAT)
-                sym::deref => {
-                    Some(ast::PatKind::Deref(Box::new(self_.parse_pat_allow_top_guard(
-                        None,
-                        RecoverComma::Yes,
-                        RecoverColon::Yes,
-                        CommaRecoveryMode::LikelyTuple,
-                    )?)))
-                }
+                sym::deref => Some(ast::PatKind::Deref(self_.parse_pat_allow_top_guard(
+                    None,
+                    RecoverComma::Yes,
+                    RecoverColon::Yes,
+                    CommaRecoveryMode::LikelyTuple,
+                )?)),
                 _ => None,
             })
         })
@@ -1484,14 +1483,14 @@ impl<'a> Parser<'a> {
             // We cannot use `parse_pat_ident()` since it will complain `box`
             // is not an identifier.
             let sub = if self.eat(exp!(At)) {
-                Some(Box::new(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?))
+                Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?)
             } else {
                 None
             };
 
             Ok(PatKind::Ident(BindingMode::NONE, Ident::new(kw::Box, box_span), sub))
         } else {
-            let pat = Box::new(self.parse_pat_with_range_pat(false, None, None)?);
+            let pat = self.parse_pat_with_range_pat(false, None, None)?;
             self.psess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
             Ok(PatKind::Box(pat))
         }
@@ -1761,17 +1760,14 @@ impl<'a> Parser<'a> {
             ) {
                 self.psess.gated_spans.gate(sym::mut_ref, fieldpat.span);
             }
-            let subpat = if is_box {
-                self.mk_pat(lo.to(hi), PatKind::Box(Box::new(fieldpat)))
-            } else {
-                fieldpat
-            };
+            let subpat =
+                if is_box { self.mk_pat(lo.to(hi), PatKind::Box(fieldpat)) } else { fieldpat };
             (subpat, fieldname, true)
         };
 
         Ok(PatField {
             ident: fieldname,
-            pat: Box::new(subpat),
+            pat: subpat,
             is_shorthand,
             attrs,
             id: ast::DUMMY_NODE_ID,
@@ -1780,11 +1776,11 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn mk_pat_ident(&self, span: Span, ann: BindingMode, ident: Ident) -> Pat {
+    pub(super) fn mk_pat_ident(&self, span: Span, ann: BindingMode, ident: Ident) -> Box<Pat> {
         self.mk_pat(span, PatKind::Ident(ann, ident, None))
     }
 
-    pub(super) fn mk_pat(&self, span: Span, kind: PatKind) -> Pat {
-        Pat { kind, span, id: ast::DUMMY_NODE_ID, tokens: None }
+    pub(super) fn mk_pat(&self, span: Span, kind: PatKind) -> Box<Pat> {
+        Box::new(Pat { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 }
