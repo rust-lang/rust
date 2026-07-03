@@ -1192,12 +1192,12 @@ impl Session {
         self.pointer_auth_config.is_some()
     }
 
-    pub fn pointer_authentication_functions(&self) -> bool {
-        self.pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.as_ref()).is_some()
+    pub fn pointer_authentication_functions(&self) -> Option<&PointerAuthSchema> {
+        self.pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.as_ref())
     }
 
-    pub fn pointer_authentication_init_fini(&self) -> bool {
-        self.pointer_auth_config.as_ref().and_then(|cfg| cfg.init_fini.as_ref()).is_some()
+    pub fn pointer_authentication_init_fini(&self) -> Option<&PointerAuthSchema> {
+        self.pointer_auth_config.as_ref().and_then(|cfg| cfg.init_fini.as_ref())
     }
 }
 

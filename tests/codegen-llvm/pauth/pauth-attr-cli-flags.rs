@@ -2,6 +2,14 @@
 //@ only-pauthtest
 //@ revisions: DEFAULT ALL DISABLE_JUMP DISABLE_AUTH_TRAPS DISABLE_CALLS DISABLE_INDIRCT_GOTOS DISABLE_RETURNS DISABLE_INTRINSICS DISABLE_TYPEINFO DISABLE_VT_PTR_ADDR DISABLE_VT_PTR_TYPE NONE
 
+//@ add-minicore
+#![crate_type = "lib"]
+#![no_std]
+#![no_core]
+#![feature(no_core)]
+
+extern crate minicore;
+
 //@[DEFAULT] needs-llvm-components: aarch64
 //@[DEFAULT] compile-flags: --target=aarch64-unknown-linux-pauthtest
 //@[ALL] needs-llvm-components: aarch64
@@ -27,8 +35,9 @@
 //@[NONE] needs-llvm-components: aarch64
 //@[NONE] compile-flags: --target=aarch64-unknown-linux-pauthtest  -Zpointer-authentication=-aarch64-jump-table-hardening,-auth-traps,-calls,-indirect-gotos,-return-addresses,-init-fini,-init-fini-address-discrimination,-intrinsics,-typeinfo-vt-ptr-discrimination,-vt-ptr-addr-discrimination,-vt-ptr-type-discrimination
 
-// CHECK: define {{.*}} @main{{.*}} [[ATTR_MAIN:#[0-9]+]]
-fn main() {}
+// CHECK: define {{.*}} @{{.*}}main{{.*}} [[ATTR_MAIN:#[0-9]+]]
+#[inline(never)]
+pub fn main() {}
 // DEFAULT: attributes [[ATTR_MAIN]] = { {{.*}}"aarch64-jump-table-hardening"
 // DEFAULT-SAME: "ptrauth-auth-traps"
 // DEFAULT-SAME: "ptrauth-calls"

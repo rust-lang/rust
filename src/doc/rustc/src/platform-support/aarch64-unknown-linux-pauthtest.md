@@ -403,6 +403,35 @@ other toolchain components. The ABI version value is computed from the enabled
 pointer authentication features according to the AArch64 ELF PAuth ABI
 specification. The bit layout matches LLVM/Clang definitions.
 
+### Option semantics and compatibility
+
+The `-Zpointer-authentication` option is a [target
+modifier](https://rust-lang.github.io/rfcs/3716-target-modifiers.html). Target
+modifiers are compiler options that affect the ABI, making it unsafe to link
+together Rust crates built with different values. The selected pointer
+authentication configuration becomes part of a crate's compilation
+configuration, and `rustc` verifies that all crates in the dependency graph
+agree on its value. If an incompatibility is detected, compilation is rejected
+with an ABI mismatch error before invoking the linker, providing a clear
+diagnostic. See `tests/ui/target_modifiers/incompatible_pauth.rs` for a sample
+use case.
+
+The order of options is not significant. The compiler canonicalizes the
+specified feature set before recording it, so the following are equivalent:
+
+```text
+-Zpointer-authentication=+calls,+init-fini
+-Zpointer-authentication=+init-fini,+calls
+```
+
+If the same option is specified multiple times, the last occurrence takes
+precedence, matching Clang's behavior. For example, the following would leave
+`init-fini` disable:
+
+```text
+-Zpointer-authentication=+init-fini,-init-fini
+```
+
 ## Cross-compilation toolchains and C code
 
 This target supports interoperability with C code. A
@@ -444,6 +473,7 @@ The following categories are supported (all present in tree):
   * enable_pointer_authentication_validation.rs
   * invalid_target_pointer_authentication.rs
   * type_discrimination_not_supported_pointer_authentication.rs
+  * incompatible_pauth.rs
 
 All tests from `assembly-llvm`, `codegen-llvm`, `codegen-units`, `coverage`,
 `crashes`, `incremental`, `library`, `mir-opt`, `run-make`, `ui` and
@@ -469,7 +499,8 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/ui/statics/crt-static-pauthtest.rs \
   tests/ui/pointer_authentication/enable_pointer_authentication_validation.rs \
   tests/ui/pointer_authentication/invalid_target_pointer_authentication.rs \
-  tests/ui/pointer_authentication/type_discrimination_not_supported_pointer_authentication.rs
+  tests/ui/pointer_authentication/type_discrimination_not_supported_pointer_authentication.rs \
+  tests/ui/target_modifiers/incompatible_pauth.rs
 ```
 
 ## Limitations

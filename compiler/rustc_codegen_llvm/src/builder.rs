@@ -2039,7 +2039,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
     ) -> Option<llvm::OperandBundleBox<'ll>> {
-        if !self.sess().pointer_authentication_functions() {
+        if self.sess().pointer_authentication_functions().is_none() {
             return None;
         }
         // Pointer authentication support is currently limited to extern "C" calls; filter out other

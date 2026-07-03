@@ -32,7 +32,7 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
     llfn: &'ll llvm::Value,
     schema: &PointerAuthSchema,
 ) -> &'ll llvm::Value {
-    if !cx.tcx.sess.pointer_authentication_functions() {
+    if cx.tcx.sess.pointer_authentication_functions().is_none() {
         return llfn;
     }
 

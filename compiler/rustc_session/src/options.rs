@@ -1041,22 +1041,31 @@ pub mod parse {
         slot: &mut Vec<(PointerAuthOption, bool)>,
         v: Option<&str>,
     ) -> bool {
-        match v {
-            Some(s) => {
-                for item in s.split(',') {
-                    let Some(name) = item.strip_prefix(&['+', '-'][..]) else {
-                        return false;
-                    };
-                    let Some(opt) = PointerAuthOption::parse(name) else {
-                        return false; // failed to parse, return.
-                    };
-                    let enabled = &item[..1] == "+";
-                    slot.push((opt, enabled));
-                }
-                true
-            }
-            None => false,
+        let Some(s) = v else {
+            return false;
+        };
+
+        let mut map = BTreeMap::<PointerAuthOption, bool>::new();
+
+        for item in s.split(',') {
+            let Some(name) = item.strip_prefix(&['+', '-'][..]) else {
+                return false;
+            };
+
+            let Some(opt) = PointerAuthOption::parse(name) else {
+                return false;
+            };
+
+            let enabled = item.starts_with('+');
+
+            // Last occurrence wins.
+            map.insert(opt, enabled);
         }
+
+        slot.clear();
+        slot.extend(map);
+
+        true
     }
 
     pub(crate) fn parse_fmt_debug(opt: &mut FmtDebug, v: Option<&str>) -> bool {
@@ -2651,7 +2660,11 @@ options! {
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled on x86_64)"),
-    pointer_authentication: Vec<(PointerAuthOption, bool)> = (Vec::new(), parse_pointer_authentication_list_with_polarity, [TRACKED],
+    pointer_authentication: Vec<(PointerAuthOption, bool)> = (
+        Vec::new(),
+        parse_pointer_authentication_list_with_polarity,
+        [TRACKED]
+        { TARGET_MODIFIER: PointerAuthentication },
         "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
         `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
         `auth-traps` - trap immediately on pointer authentication failure

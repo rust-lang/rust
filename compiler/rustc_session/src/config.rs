@@ -1602,11 +1602,12 @@ pub struct BranchProtection {
     pub gcs: bool,
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub enum PointerAuthOption {
     // See <compiler/rustc_session/src/options.rs> and Clang's command line reference:
     // <https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-fptrauth-auth-traps>
     // for the origin and meaning of the enum values.
+    // tidy-alphabetical-start
     Aarch64JumpTableHardening,
     AuthTraps,
     Calls,
@@ -1620,6 +1621,7 @@ pub enum PointerAuthOption {
     TypeInfoVTPtrDisc,
     VTPtrAddrDisc,
     VTPtrTypeDisc,
+    // tidy-alphabetical-end
 }
 impl PointerAuthOption {
     pub fn parse(s: &str) -> Option<Self> {

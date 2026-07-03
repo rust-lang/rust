@@ -981,10 +981,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     ty::List::empty(),
                     DUMMY_SP,
                 ),
-                tcx.sess
-                    .pointer_auth_config
-                    .as_ref()
-                    .and_then(|cfg| cfg.function_pointers.as_ref()),
+                tcx.sess.pointer_authentication_functions(),
             ),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");
