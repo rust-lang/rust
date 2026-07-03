@@ -89,6 +89,7 @@ const UNWIND_DATA_REG: (i32, i32) = (10, 11); // x10, x11
 #[cfg(any(target_arch = "loongarch32", target_arch = "loongarch64"))]
 const UNWIND_DATA_REG: (i32, i32) = (4, 5); // a0, a1
 
+#[rustc_force_inline]
 unsafe fn sign_lpad(context: *mut uw::_Unwind_Context, lpad: *const u8) -> *const u8 {
     cfg_select! {
         all(target_abi = "pauthtest", target_arch = "aarch64") => {
