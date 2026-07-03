@@ -235,6 +235,10 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<Self::Failure> {
+        if parser.token == token::Eof {
+            return Error(parser.token.span, "ambiguity: multiple successful parses".to_string());
+        }
+
         let nts = bb_locs
             .into_iter()
             .map(|loc| match loc {

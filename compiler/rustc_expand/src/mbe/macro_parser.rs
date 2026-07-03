@@ -598,7 +598,7 @@ impl TtParser {
                     parser.approx_token_stream_pos(),
                     "missing tokens in macro arguments",
                 )),
-                _ => Error(token.span, "ambiguity: multiple successful parses".to_string()),
+                _ => self.ambiguity_error(parser, matcher, track),
             })
         } else {
             None
