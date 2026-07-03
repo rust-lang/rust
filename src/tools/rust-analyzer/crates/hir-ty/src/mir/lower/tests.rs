@@ -121,3 +121,16 @@ fn tuple_field() {
     "#,
     );
 }
+
+#[test]
+fn borrowck_alias_projection_recovery_does_not_panic() {
+    check_borrowck(
+        r#"
+//- minicore: sized
+trait Tr { type A; }
+fn alias<T: Tr>(x: T::A) {
+    let (a, b) = x;
+}
+    "#,
+    );
+}
