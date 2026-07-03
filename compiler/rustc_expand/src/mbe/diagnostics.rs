@@ -231,7 +231,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 
     fn ambiguity(
         &mut self,
-        token_span: Span,
+        parser: &Parser<'_>,
         bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<Self::Failure> {
@@ -247,7 +247,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             .join(" or ");
 
         Error(
-            token_span,
+            parser.token.span,
             format!(
                 "local ambiguity when calling macro `{}`: multiple parsing options: {}",
                 self.macro_name,
