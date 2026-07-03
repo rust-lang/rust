@@ -384,9 +384,7 @@ pub(super) trait Tracker<'matcher> {
         parser: &TtParser,
         matcher: &'matcher [MatcherLoc],
         token_span: Span,
-    ) -> NamedParseResult<Self::Failure> {
-        parser.ambiguity_error(matcher, token_span)
-    }
+    ) -> NamedParseResult<Self::Failure>;
 
     /// For tracing.
     fn description() -> &'static str;
@@ -404,6 +402,15 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
     type Failure = ();
 
     fn build_failure(_tok: Token, _position: u32, _msg: &'static str) -> Self::Failure {}
+
+    fn ambiguity(
+        &mut self,
+        _parser: &TtParser,
+        _matcher: &'matcher [MatcherLoc],
+        token_span: Span,
+    ) -> NamedParseResult<Self::Failure> {
+        Error(token_span, "ignored".into())
+    }
 
     fn description() -> &'static str {
         "none"

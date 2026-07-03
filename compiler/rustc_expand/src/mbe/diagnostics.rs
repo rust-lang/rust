@@ -228,6 +228,15 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
+    fn ambiguity(
+        &mut self,
+        parser: &TtParser,
+        matcher: &'matcher [MatcherLoc],
+        token_span: Span,
+    ) -> NamedParseResult<Self::Failure> {
+        parser.ambiguity_error(matcher, token_span)
+    }
+
     fn description() -> &'static str {
         "detailed"
     }
