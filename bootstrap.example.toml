@@ -698,6 +698,7 @@
 #rust.debuginfo-level-tests = 0
 
 # Compress debuginfo of Rust and C/C++ code.
+# Currently, this only works on Linux.
 # Valid options:
 # - "off" or false: disable compression
 # - true: compress debuginfo with the default compression method (currently zlib)
@@ -1027,6 +1028,7 @@
 #split-debuginfo = if linux || windows-gnu { off } else if windows-msvc { packed } else if apple { unpacked }
 
 # Compress debuginfo for Rust and C/C++ code of this target.
+# Currently, this only works on Linux.
 # Valid options:
 # - "off" or false: disable compression
 # - true: compress debuginfo with the default compression method (currently zlib)
