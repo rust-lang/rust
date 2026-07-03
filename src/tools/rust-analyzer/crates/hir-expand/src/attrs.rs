@@ -375,12 +375,28 @@ impl AttrId {
 
     /// Returns the containing `ast::Attr` (note that it may contain other attributes as well due
     /// to `cfg_attr`) and its [`ast::Meta`].
+    ///
+    /// Assumes that the attribute syntax node was present in the
+    /// original file (not speculatively expanded macro output).
     pub fn find_attr_range_with_source(
         self,
         db: &dyn ExpandDatabase,
         krate: Crate,
         owner: &dyn ast::HasAttrs,
     ) -> (ast::Attr, ast::Meta) {
+        self.find_attr_range_with_source_opt(db, krate, owner).unwrap_or_else(|| {
+            panic!("used an incorrect `AttrId`; crate={krate:?}, attr_id={self:?}");
+        })
+    }
+
+    /// Returns the containing `ast::Attr` (note that it may contain other attributes as well due
+    /// to `cfg_attr`) and its [`ast::Meta`].
+    pub(crate) fn find_attr_range_with_source_opt(
+        self,
+        db: &dyn ExpandDatabase,
+        krate: Crate,
+        owner: &dyn ast::HasAttrs,
+    ) -> Option<(ast::Attr, ast::Meta)> {
         let cfg_options = OnceCell::new();
         let mut index = 0;
         let result = collect_item_tree_attrs(
@@ -395,10 +411,8 @@ impl AttrId {
             },
         );
         match result {
-            Some(Either::Left(it)) => it,
-            _ => {
-                panic!("used an incorrect `AttrId`; crate={krate:?}, attr_id={self:?}");
-            }
+            Some(Either::Left(it)) => Some(it),
+            _ => None,
         }
     }
 

@@ -217,7 +217,7 @@ pub fn expand_speculative(
                 // then try finding a token id for our token if it is inside this input subtree.
                 let item = ast::Item::cast(speculative_args.clone())?;
                 let (_, meta) =
-                    attr_ids.invoc_attr().find_attr_range_with_source(db, loc.krate, &item);
+                    attr_ids.invoc_attr().find_attr_range_with_source_opt(db, loc.krate, &item)?;
                 if let ast::Meta::TokenTreeMeta(meta) = meta
                     && let Some(tt) = meta.token_tree()
                 {
