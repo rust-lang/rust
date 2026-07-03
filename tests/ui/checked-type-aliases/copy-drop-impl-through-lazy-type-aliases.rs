@@ -8,13 +8,13 @@
 #[derive(Clone)]
 pub struct Local;
 
-type Alias = Local;
+pub type Alias = Local;
 impl Copy for Alias {}
 
 mod drop_impl {
     pub struct Local;
 
-    type Alias = Local;
+    pub type Alias = Local;
     impl Drop for Alias {
         fn drop(&mut self) {}
     }
