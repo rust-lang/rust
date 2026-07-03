@@ -703,7 +703,8 @@ impl TtParser {
     ) -> NamedParseResult<T::Failure> {
         let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
         let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
-        return track.ambiguity(parser, bb_locs, next_locs);
+        track.ambiguity(parser, bb_locs, next_locs);
+        Ambiguity
     }
 
     fn nameize<I: Iterator<Item = NamedMatch>>(

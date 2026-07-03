@@ -384,7 +384,7 @@ pub(super) trait Tracker<'matcher> {
         parser: &Parser<'_>,
         bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-    ) -> NamedParseResult<Self::Failure>;
+    );
 
     /// For tracing.
     fn description() -> &'static str;
@@ -408,8 +408,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
         _parser: &Parser<'_>,
         _bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         _next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-    ) -> NamedParseResult<Self::Failure> {
-        Ambiguity
+    ) {
     }
 
     fn description() -> &'static str {

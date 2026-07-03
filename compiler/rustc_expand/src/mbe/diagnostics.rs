@@ -235,14 +235,14 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         parser: &Parser<'_>,
         bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-    ) -> NamedParseResult<Self::Failure> {
+    ) {
         let span = parser.token.span.substitute_dummy(self.root_span);
 
         if parser.token == token::Eof {
             let msg = "ambiguity: multiple successful parses".to_string();
             let guar = self.dcx.span_err(span, msg);
             self.result = Some((span, guar));
-            return Ambiguity;
+            return;
         }
 
         let nts = bb_locs
@@ -267,7 +267,6 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 
         let guar = self.dcx.span_err(span, msg);
         self.result = Some((span, guar));
-        Ambiguity
     }
 
     fn description() -> &'static str {
