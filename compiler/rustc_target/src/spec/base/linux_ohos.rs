@@ -5,7 +5,7 @@ pub(crate) fn opts() -> TargetOptions {
         env: Env::Ohos,
         crt_static_default: false,
         tls_model: TlsModel::Emulated,
-        has_thread_local: false,
+        has_thread_local: true,
         ..base::linux::opts()
     }
 }
