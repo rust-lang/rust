@@ -25,16 +25,20 @@ pub use self::{
     io_slice::{IoSlice, IoSliceMut},
     seek::{Seek, SeekFrom},
     util::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink},
+    write::Write,
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
-    cursor::{slice_write, slice_write_all, slice_write_all_vectored, slice_write_vectored},
+    cursor::{
+        WriteThroughCursor, slice_write, slice_write_all, slice_write_all_vectored,
+        slice_write_vectored,
+    },
     error::{Custom, CustomOwner, OsFunctions},
     seek::stream_len_default,
     size_hint::SizeHint,
     util::{chain, take},
-    write::default_write_vectored,
+    write::{default_write_fmt, default_write_vectored},
 };
 
 /// Marks that a type `T` can have IO traits such as [`Seek`], [`Write`], etc. automatically

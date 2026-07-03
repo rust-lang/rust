@@ -1,5 +1,9 @@
 use crate::alloc::Allocator;
-use crate::io::{self, ErrorKind, IoSlice};
+use crate::boxed::Box;
+use crate::io::{
+    self, Cursor, ErrorKind, IoSlice, WriteThroughCursor, slice_write, slice_write_all,
+    slice_write_all_vectored, slice_write_vectored,
+};
 use crate::vec::Vec;
 
 /// Reserves the required space, and pads the vec with 0s if necessary.
@@ -68,17 +72,15 @@ where
 /// Resizing `write_all` implementation for [`Cursor`].
 ///
 /// Cursor is allowed to have a pre-allocated and initialised
-/// vector body, but with a position of 0. This means the `Write`
+/// vector body, but with a position of 0. This means the [`Write`]
 /// will overwrite the contents of the vec.
 ///
 /// This also allows for the vec body to be empty, but with a position of N.
-/// This means that `Write` will pad the vec with 0 initially,
+/// This means that [`Write`] will pad the vec with 0 initially,
 /// before writing anything from that point
 ///
-/// [`Cursor`]: crate::io::Cursor
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn vec_write_all<A>(pos_mut: &mut u64, vec: &mut Vec<u8, A>, buf: &[u8]) -> io::Result<usize>
+/// [`Write`]: crate::io::Write
+fn vec_write_all<A>(pos_mut: &mut u64, vec: &mut Vec<u8, A>, buf: &[u8]) -> io::Result<usize>
 where
     A: Allocator,
 {
@@ -103,17 +105,15 @@ where
 /// Resizing `write_all_vectored` implementation for [`Cursor`].
 ///
 /// Cursor is allowed to have a pre-allocated and initialised
-/// vector body, but with a position of 0. This means the `Write`
+/// vector body, but with a position of 0. This means the [`Write`]
 /// will overwrite the contents of the vec.
 ///
 /// This also allows for the vec body to be empty, but with a position of N.
-/// This means that `Write` will pad the vec with 0 initially,
+/// This means that [`Write`] will pad the vec with 0 initially,
 /// before writing anything from that point
 ///
-/// [`Cursor`]: crate::io::Cursor
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn vec_write_all_vectored<A>(
+/// [`Write`]: crate::io::Write
+fn vec_write_all_vectored<A>(
     pos_mut: &mut u64,
     vec: &mut Vec<u8, A>,
     bufs: &[IoSlice<'_>],
@@ -141,4 +141,120 @@ where
     // Bump us forward
     *pos_mut += buf_len as u64;
     Ok(buf_len)
+}
+
+#[stable(feature = "cursor_mut_vec", since = "1.25.0")]
+impl<A> WriteThroughCursor for &mut Vec<u8, A>
+where
+    A: Allocator,
+{
+    fn write(this: &mut Cursor<Self>, buf: &[u8]) -> io::Result<usize> {
+        let (pos, inner) = this.into_parts_mut();
+        vec_write_all(pos, inner, buf)
+    }
+
+    fn write_vectored(this: &mut Cursor<Self>, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let (pos, inner) = this.into_parts_mut();
+        vec_write_all_vectored(pos, inner, bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(_this: &Cursor<Self>) -> bool {
+        true
+    }
+
+    fn write_all(this: &mut Cursor<Self>, buf: &[u8]) -> io::Result<()> {
+        let (pos, inner) = this.into_parts_mut();
+        vec_write_all(pos, inner, buf)?;
+        Ok(())
+    }
+
+    fn write_all_vectored(this: &mut Cursor<Self>, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        let (pos, inner) = this.into_parts_mut();
+        vec_write_all_vectored(pos, inner, bufs)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn flush(_this: &mut Cursor<Self>) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A> WriteThroughCursor for Vec<u8, A>
+where
+    A: Allocator,
+{
+    fn write(this: &mut Cursor<Self>, buf: &[u8]) -> io::Result<usize> {
+        let (pos, inner) = this.into_parts_mut();
+        vec_write_all(pos, inner, buf)
+    }
+
+    fn write_vectored(this: &mut Cursor<Self>, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let (pos, inner) = this.into_parts_mut();
+        vec_write_all_vectored(pos, inner, bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(_this: &Cursor<Self>) -> bool {
+        true
+    }
+
+    fn write_all(this: &mut Cursor<Self>, buf: &[u8]) -> io::Result<()> {
+        let (pos, inner) = this.into_parts_mut();
+        vec_write_all(pos, inner, buf)?;
+        Ok(())
+    }
+
+    fn write_all_vectored(this: &mut Cursor<Self>, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        let (pos, inner) = this.into_parts_mut();
+        vec_write_all_vectored(pos, inner, bufs)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn flush(_this: &mut Cursor<Self>) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+#[stable(feature = "cursor_box_slice", since = "1.5.0")]
+impl<A> WriteThroughCursor for Box<[u8], A>
+where
+    A: Allocator,
+{
+    #[inline]
+    fn write(this: &mut Cursor<Self>, buf: &[u8]) -> io::Result<usize> {
+        let (pos, inner) = this.into_parts_mut();
+        slice_write(pos, inner, buf)
+    }
+
+    #[inline]
+    fn write_vectored(this: &mut Cursor<Self>, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let (pos, inner) = this.into_parts_mut();
+        slice_write_vectored(pos, inner, bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(_this: &Cursor<Self>) -> bool {
+        true
+    }
+
+    #[inline]
+    fn write_all(this: &mut Cursor<Self>, buf: &[u8]) -> io::Result<()> {
+        let (pos, inner) = this.into_parts_mut();
+        slice_write_all(pos, inner, buf)
+    }
+
+    #[inline]
+    fn write_all_vectored(this: &mut Cursor<Self>, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        let (pos, inner) = this.into_parts_mut();
+        slice_write_all_vectored(pos, inner, bufs)
+    }
+
+    #[inline]
+    fn flush(_this: &mut Cursor<Self>) -> io::Result<()> {
+        Ok(())
+    }
 }
