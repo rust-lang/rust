@@ -5,7 +5,7 @@ pub trait SizeHint {
 
     fn upper_bound(&self) -> Option<usize>;
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
+    final fn size_hint(&self) -> (usize, Option<usize>) {
         (self.lower_bound(), self.upper_bound())
     }
 }
