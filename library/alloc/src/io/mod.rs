@@ -15,15 +15,12 @@ pub use core::io::{BorrowedBuf, BorrowedCursor};
 #[unstable(feature = "alloc_io", issue = "154046")]
 pub use core::io::{
     Chain, Cursor, Empty, Error, ErrorKind, IoSlice, IoSliceMut, Repeat, Result, Seek, SeekFrom,
-    Sink, Take, empty, repeat, sink,
+    Sink, Take, Write, empty, repeat, sink,
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use core::io::{
-    IoHandle, OsFunctions, SizeHint, chain, default_write_vectored, slice_write, slice_write_all,
-    slice_write_all_vectored, slice_write_vectored, stream_len_default, take,
+    IoHandle, OsFunctions, SizeHint, WriteThroughCursor, chain, default_write_fmt,
+    default_write_vectored, slice_write, slice_write_all, slice_write_all_vectored,
+    slice_write_vectored, stream_len_default, take,
 };
-
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub use self::cursor::{vec_write_all, vec_write_all_vectored};
