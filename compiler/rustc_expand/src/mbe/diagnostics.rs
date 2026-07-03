@@ -158,21 +158,21 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
 struct BestFailure {
     token: Token,
 
-    /// A comparable approximate position.
+    /// The matcher in which the failure occurred.
+    matcher: WhichMatcher,
+
+    /// The approximate (parser) position of the failure.
     ///
-    /// [`MacroRule::Attr`] has two matchers (args and body). Failures can occur across the arms,
-    /// and we want to prioritize earlier failures over later ones, so we use [`WhichMatcher`].
-    ///
-    /// The second element is the approximate parser position.
-    position_in_tokenstream: (WhichMatcher, u32),
+    /// This is relative to [`Self::matcher`].
+    position: u32,
 
     msg: &'static str,
     remaining_matcher: MatcherLoc,
 }
 
 impl BestFailure {
-    fn is_better_position(&self, position: (WhichMatcher, u32)) -> bool {
-        position > self.position_in_tokenstream
+    fn is_better_position(&self, matcher: WhichMatcher, position: u32) -> bool {
+        (matcher, position) > (self.matcher, self.position)
     }
 }
 
@@ -192,7 +192,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
     }
 
     fn after_arm(&mut self, which_matcher: WhichMatcher, result: &NamedParseResult<Self::Failure>) {
-        match result {
+        match *result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
                 // but for that it must have emitted an error already
@@ -204,15 +204,13 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             Failure((token, approx_position, msg)) => {
                 debug!(?token, ?msg, "a new failure of an arm");
 
-                let position_in_tokenstream = (which_matcher, *approx_position);
-                if self
-                    .best_failure
-                    .as_ref()
-                    .is_none_or(|failure| failure.is_better_position(position_in_tokenstream))
-                {
+                if self.best_failure.as_ref().is_none_or(|failure| {
+                    failure.is_better_position(which_matcher, approx_position)
+                }) {
                     self.best_failure = Some(BestFailure {
-                        token: *token,
-                        position_in_tokenstream,
+                        token,
+                        matcher: which_matcher,
+                        position: approx_position,
                         msg,
                         remaining_matcher: self
                             .remaining_matcher
@@ -226,7 +224,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     bug!("`Error(..)` is only constructed through `Self::ambiguity()`");
                 }
             }
-            ErrorReported(guar) => self.result = Some((self.root_span, *guar)),
+            ErrorReported(guar) => self.result = Some((self.root_span, guar)),
         }
     }
 
