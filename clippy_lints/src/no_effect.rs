@@ -274,6 +274,14 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         && expr.range_span().unwrap_or(expr.span).ctxt() == ctxt
         && let Some(reduced) = reduce_expression(cx, expr)
         && reduced.iter().all(|e| e.span.ctxt() == ctxt)
+        // ignore operations that evaluate to `!`, because
+        // a statement expression of type `!` will make the
+        // containing block also have type `!`
+        && let ty = cx.typeck_results().expr_ty(expr)
+        && (!ty.is_never() || reduced.last().is_some_and(|e| {
+            let ty = cx.typeck_results().expr_ty(e);
+            ty.is_never()
+        }))
     {
         if let ExprKind::Index(..) = &expr.kind {
             if !is_inside_always_const_context(cx.tcx, expr.hir_id)
