@@ -302,6 +302,18 @@ pub impl(self) trait CommandExt {
     /// By default, stdin, stdout, and stderr are inherited from the parent
     /// process.
     ///
+    /// # Safety
+    ///
+    /// This requires all the attributes given to `ProcThreadAttributeListBuilder` are valid.
+    /// Pointers must not only point to live allocations, but they must point to appropriate data
+    /// as defined by each attribute, which may need to be valid at a specific type.
+    ///
+    /// Each attribute may have arbitrary additional requirements imposed by the OS.
+    ///
+    /// Read the [Windows documentation][1] carefully before calling this function.
+    ///
+    /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute>
+    ///
     /// # Example
     ///
     /// ```
@@ -333,7 +345,7 @@ pub impl(self) trait CommandExt {
     /// # Ok::<(), std::io::Error>(())
     /// ```
     #[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
-    fn spawn_with_attributes(
+    unsafe fn spawn_with_attributes(
         &mut self,
         attribute_list: &ProcThreadAttributeList<'_>,
     ) -> io::Result<process::Child>;
@@ -405,7 +417,7 @@ impl CommandExt for process::Command {
         self
     }
 
-    fn spawn_with_attributes(
+    unsafe fn spawn_with_attributes(
         &mut self,
         attribute_list: &ProcThreadAttributeList<'_>,
     ) -> io::Result<process::Child> {
@@ -536,14 +548,19 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     /// limit is exceeded, the call to [`Self::finish`] will return an `Error`
     /// indicating that the maximum number of attributes has been exceeded.
     ///
-    /// # Safety Note
+    /// # Safety
+    ///
+    /// This function guarantees the use of a correct length value based on `T`, compared
+    /// to passing it as an explicit argument to `raw_attribute`.
+    /// It does not enforce any other validity constraints the Windows API may impose on
+    /// the value used for an attribute.
     ///
     /// Remember that improper use of attributes can lead to undefined behavior
     /// or security vulnerabilities. Always consult the documentation and ensure
     /// proper attribute values are used.
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#parameters>
-    pub fn attribute<T>(self, attribute: usize, value: &'a T) -> Self {
+    pub unsafe fn attribute<T>(self, attribute: usize, value: &'a T) -> Self {
         unsafe {
             self.raw_attribute(attribute, ptr::addr_of!(*value).cast::<c_void>(), size_of::<T>())
         }
