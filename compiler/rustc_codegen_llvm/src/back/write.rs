@@ -1292,7 +1292,8 @@ fn embed_bitcode(
     }
 }
 
-// Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.
+// Create a `__imp_<symbol> = &symbol` global for each externally visible
+// static data symbol, including aliases to static data.
 // This is required to satisfy `dllimport` references to static data in .rlibs
 // when using MSVC linker. We do this only for data, as linker can fix up
 // code references on its own.
@@ -1305,31 +1306,38 @@ fn create_msvc_imps(cgcx: &CodegenContext, llcx: &llvm::Context, llmod: &llvm::M
     // names, so we need an extra underscore on x86. There's also a leading
     // '\x01' here which disables LLVM's symbol mangling (e.g., no extra
     // underscores added in front).
-    let prefix = if cgcx.target_arch == "x86" { "\x01__imp__" } else { "\x01__imp_" };
+    let prefix: &[u8] = if cgcx.target_arch == "x86" { b"\x01__imp__" } else { b"\x01__imp_" };
 
     let ptr_ty = llvm_type_ptr(llcx);
-    let globals = base::iter_globals(llmod)
-        .filter(|&val| {
-            llvm::get_linkage(val) == llvm::Linkage::ExternalLinkage && !llvm::is_declaration(val)
-        })
-        .filter_map(|val| {
-            // Exclude some symbols that we know are not Rust symbols.
-            let name = llvm::get_value_name(val);
-            if ignored(&name) { None } else { Some((val, name)) }
-        })
-        .map(move |(val, name)| {
-            let mut imp_name = prefix.as_bytes().to_vec();
-            imp_name.extend(name);
-            let imp_name = CString::new(imp_name).unwrap();
-            (imp_name, val)
-        })
-        .collect::<Vec<_>>();
+    let symbols = std::iter::chain(
+        base::iter_globals(llmod),
+        base::iter_global_aliases(llmod).filter(|&val| {
+            llvm::LLVMGetTypeKind(unsafe { llvm::LLVMGlobalGetValueType(val) }).to_rust()
+                != llvm::TypeKind::Function
+        }),
+    )
+    .map(|val| (val, llvm::get_linkage(val)))
+    .filter(|&(val, linkage)| {
+        matches!(linkage, llvm::Linkage::ExternalLinkage | llvm::Linkage::WeakAnyLinkage)
+            && !llvm::is_declaration(val)
+    })
+    .collect::<Vec<_>>();
 
-    for (imp_name, val) in globals {
+    for (val, linkage) in symbols {
+        let name = llvm::get_value_name(val);
+        // Exclude some symbols that we know are not Rust symbols.
+        if ignored(&name) {
+            continue;
+        }
+
+        let mut imp_name = prefix.to_vec();
+        imp_name.extend(name);
+        let imp_name = CString::new(imp_name).unwrap();
+
         let imp = llvm::add_global(llmod, ptr_ty, &imp_name);
 
         llvm::set_initializer(imp, val);
-        llvm::set_linkage(imp, llvm::Linkage::ExternalLinkage);
+        llvm::set_linkage(imp, linkage);
     }
 
     // Use this function to exclude certain symbols from `__imp` generation.

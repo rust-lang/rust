@@ -1098,6 +1098,17 @@ unsafe extern "C" {
     pub(crate) safe fn LLVMSetTailCallKind(CallInst: &Value, kind: TailCallKind);
     pub(crate) safe fn LLVMSetExternallyInitialized(GlobalVar: &Value, IsExtInit: Bool);
 
+    // Operations on global aliases
+    pub(crate) fn LLVMAddAlias2<'ll>(
+        M: &'ll Module,
+        ValueTy: &Type,
+        AddressSpace: c_uint,
+        Aliasee: &Value,
+        Name: *const c_char,
+    ) -> &'ll Value;
+    pub(crate) fn LLVMGetFirstGlobalAlias(M: &Module) -> Option<&Value>;
+    pub(crate) fn LLVMGetNextGlobalAlias(GlobalAlias: &Value) -> Option<&Value>;
+
     // Operations on attributes
     pub(crate) fn LLVMCreateStringAttribute(
         C: &Context,
@@ -2639,14 +2650,6 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
-
-    pub(crate) fn LLVMAddAlias2<'ll>(
-        M: &'ll Module,
-        ValueTy: &Type,
-        AddressSpace: c_uint,
-        Aliasee: &Value,
-        Name: *const c_char,
-    ) -> &'ll Value;
 
     pub(crate) fn LLVMRustConstPtrAuth(
         ptr: *const Value,

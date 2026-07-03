@@ -56,6 +56,12 @@ pub(crate) fn iter_globals(llmod: &llvm::Module) -> ValueIter<'_> {
     unsafe { ValueIter { cur: llvm::LLVMGetFirstGlobal(llmod), step: llvm::LLVMGetNextGlobal } }
 }
 
+pub(crate) fn iter_global_aliases(llmod: &llvm::Module) -> ValueIter<'_> {
+    unsafe {
+        ValueIter { cur: llvm::LLVMGetFirstGlobalAlias(llmod), step: llvm::LLVMGetNextGlobalAlias }
+    }
+}
+
 pub(crate) fn compile_codegen_unit(
     tcx: TyCtxt<'_>,
     cgu_name: Symbol,
