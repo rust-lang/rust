@@ -25,8 +25,9 @@ fn main() {
         }
     }
 
-    // FIXME(rust-lang/backtrace-rs#346) currently on MinGW we can't symbolize kernel32.dll and other
-    // system libraries, which means we miss the last few symbols.
+    // FIXME(rust-lang/backtrace-rs#346) currently on MinGW we can't
+    // symbolize kernel32.dll and other system libraries, which means
+    // we miss the last few symbols.
     if cfg!(windows) && cfg!(target_env = "gnu") {
         assert!(missing_symbols < has_symbols && has_symbols > 4);
     } else if cfg!(all(target_os = "linux", target_env = "gnu")) {
