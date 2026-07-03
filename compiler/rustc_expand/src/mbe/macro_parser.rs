@@ -692,14 +692,23 @@ impl TtParser {
 
                 (_, _) => {
                     // Too many possibilities!
-                    let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
-                    let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
-                    return track.ambiguity(parser.token.span, bb_locs, next_locs);
+                    return self.ambiguity_error(parser, matcher, track);
                 }
             }
 
             assert!(!self.cur_mps.is_empty());
         }
+    }
+
+    fn ambiguity_error<'matcher, T: Tracker<'matcher>>(
+        &self,
+        parser: &Parser<'_>,
+        matcher: &'matcher [MatcherLoc],
+        track: &mut T,
+    ) -> NamedParseResult<T::Failure> {
+        let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
+        let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
+        return track.ambiguity(parser.token.span, bb_locs, next_locs);
     }
 
     fn nameize<I: Iterator<Item = NamedMatch>>(
