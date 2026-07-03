@@ -445,3 +445,52 @@ mod no_std_attribute {}
 ///
 /// [the `inline` attribute]: ../reference/attributes/codegen.html#the-inline-attribute
 mod inline_attribute {}
+
+#[doc(attribute = "proc_macro")]
+//
+/// Defines a function-like procedural macro.
+///
+/// Applied to a `pub` function at the root of a proc-macro crate, `proc_macro` makes that function usable as a macro invoked as
+/// `foo!(...)` in other crates. The function receives the tokens written inside the invocation as a [`TokenStream`] and returns
+/// the [`TokenStream`] that replaces the invocation:
+///
+/// ```rust, ignore (requires depending on the proc-macro crate)
+/// # extern crate proc_macro;
+/// use proc_macro::TokenStream;
+///
+/// #[proc_macro]
+/// pub fn foo(input: TokenStream) -> TokenStream {
+///    "fn answer() -> u32 { 67 }".parse().unwrap()
+/// }
+/// ```
+///
+/// The macro can only be invoked from other crates, not from the crate where it is defined:
+///
+/// ```rust,ignore (requires depending on the proc-macro crate)
+/// use my_macro_crate::foo;
+///
+/// // Expands to `fn answer() -> u32 { 67 }`.
+/// foo!();
+///
+/// fn main() {
+///    println!("{}", answer()); // Prints 67
+/// }
+/// ```
+///
+/// The attribute is only usable with crates of the `proc-macro` crate type, which is set in the crate's `Cargo.toml`
+/// with `proc-macro = true` in the `[lib]` section. Using it anywhere else is a compilation error:
+///
+/// ```text
+///error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
+/// --> src/lib.rs:4:1
+///  |
+/// 4| #[proc_macro]
+///  | ^^^^^^^^^^^^
+/// ```
+///
+/// For more information, see the Reference on [function-like procedural macros] and the [`proc_macro`] crate documentation.
+///
+/// [`TokenStream`]: ../proc_macro/struct.TokenStream.html
+/// [function-like procedural macros]: ../reference/procedural-macros.html#the-proc_macro-attribute
+/// [`proc_macro`]: ../proc_macro/index.html
+mod proc_macro_attribute {}
