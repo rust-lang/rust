@@ -238,12 +238,12 @@ where
         }
 
         (ty::ConstKind::Infer(ty::InferConst::Var(vid)), _) => {
-            infcx.instantiate_const_var_raw(relation, true, vid, b)?;
+            infcx.instantiate_const_var(relation, true, vid, b)?;
             Ok(b)
         }
 
         (_, ty::ConstKind::Infer(ty::InferConst::Var(vid))) => {
-            infcx.instantiate_const_var_raw(relation, false, vid, a)?;
+            infcx.instantiate_const_var(relation, false, vid, a)?;
             Ok(a)
         }
 

@@ -230,10 +230,10 @@ where
             }
 
             (ty::Infer(ty::TyVar(a_vid)), _) => {
-                infcx.instantiate_ty_var_raw(self, true, a_vid, self.ambient_variance, b)?;
+                infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?;
             }
             (_, ty::Infer(ty::TyVar(b_vid))) => {
-                infcx.instantiate_ty_var_raw(
+                infcx.instantiate_ty_var(
                     self,
                     false,
                     b_vid,
