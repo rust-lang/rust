@@ -93,6 +93,7 @@ mod macros;
 pub mod rustdoc;
 
 type Res = def::Res<NodeId>;
+type NamespacedCrateNames = FxHashMap<Symbol, FxHashMap<Symbol, Symbol>>;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Determinacy {
@@ -125,6 +126,9 @@ enum Scope<'ra> {
     /// The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
     /// lint if it should be reported.
     ModuleGlobs(Module<'ra>, Option<NodeId>),
+    /// Namespaced extern crates available under the given module.
+    /// These have lower precedence than the module's regular non-glob and glob names.
+    NamespacedCrates(Module<'ra>, Option<NodeId>),
     /// Names introduced by `#[macro_use]` attributes on `extern crate` items.
     MacroUsePrelude,
     /// Built-in attributes.
@@ -1526,6 +1530,10 @@ pub struct Resolver<'ra, 'tcx> {
     /// Needed because glob delegations exclude explicitly defined names.
     impl_binding_keys: FxHashMap<LocalDefId, FxHashSet<BindingKey>> = default::fx_hash_map(),
 
+    /// Extern crates with names of the form `foo::bar`, keyed by root and child.
+    namespaced_crate_names: NamespacedCrateNames,
+    namespaced_crate_root_by_def_id: CacheRefCell<FxHashMap<DefId, Symbol>>,
+
     /// This is the `Span` where an `extern crate foo;` suggestion would be inserted, if `foo`
     /// could be a crate that wasn't imported. For diagnostics use only.
     current_crate_outer_attr_insert_span: Span,
@@ -1797,6 +1805,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
         let extern_prelude = build_extern_prelude(tcx, attrs);
+        let namespaced_crate_names = build_namespaced_crate_names(tcx);
         let registered_tools = tcx.registered_tools(());
         let edition = tcx.sess.edition();
 
@@ -1864,6 +1873,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             macro_reachable_adts: Default::default(),
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
+            namespaced_crate_names,
+            namespaced_crate_root_by_def_id: Default::default(),
             current_crate_outer_attr_insert_span,
             disambiguators: Default::default(),
             delegation_infos: Default::default(),
@@ -2116,6 +2127,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 Scope::ModuleGlobs(..) => {
                     // Already handled in `ModuleNonGlobs` (but see #144993).
+                }
+                Scope::NamespacedCrates(..) => {
+                    // This scope only resolves child crate roots, it does not introduce traits.
                 }
                 Scope::StdLibPrelude => {
                     if let Some(module) = this.prelude {
@@ -2476,6 +2490,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         crate_id.map(|crate_id| {
                             let def_id = crate_id.as_def_id();
                             let res = Res::Def(DefKind::Mod, def_id);
+                            self.try_add_def_id_for_namespaced_crate(def_id, ident);
                             self.arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT)
                         })
                     }
@@ -2484,6 +2499,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             flag_decl.set((PendingDecl::Ready(decl), finalize || finalized, is_open));
             decl.or_else(|| finalize.then_some(self.dummy_decl))
         })
+    }
+
+    fn try_add_def_id_for_namespaced_crate(&self, def_id: DefId, ident: IdentKey) {
+        if self.namespaced_crate_names.contains_key(&ident.name) {
+            self.namespaced_crate_root_by_def_id.borrow_mut().insert(def_id, ident.name);
+        }
+    }
+
+    fn resolve_namespaced_crate_in_module(
+        &self,
+        module: Module<'ra>,
+        ident: IdentKey,
+        orig_ident_span: Span,
+        finalize: bool,
+    ) -> Option<Decl<'ra>> {
+        let def_id = module.opt_def_id()?;
+        let root_name = {
+            let names = self.namespaced_crate_root_by_def_id.borrow();
+            names.get(&def_id).copied()
+        }?;
+        let full_name = self.namespaced_crate_names.get(&root_name)?.get(&ident.name).copied()?;
+        self.extern_prelude_get_flag(IdentKey::with_root_ctxt(full_name), orig_ident_span, finalize)
     }
 
     /// Rustdoc uses this to resolve doc link paths in a recoverable way. `PathResult<'a>`
@@ -2722,6 +2759,27 @@ fn build_extern_prelude<'tcx, 'ra>(
     }
 
     extern_prelude
+}
+
+fn build_namespaced_crate_names(tcx: TyCtxt<'_>) -> NamespacedCrateNames {
+    let mut names: NamespacedCrateNames = FxHashMap::default();
+    for (name, entry) in tcx.sess.opts.externs.iter() {
+        if !entry.add_prelude {
+            continue;
+        }
+        let Some((root, child)) = name.split_once("::") else {
+            continue;
+        };
+        if tcx.sess.opts.externs.get(root).is_none() {
+            continue;
+        }
+
+        names
+            .entry(Symbol::intern(root))
+            .or_default()
+            .insert(Symbol::intern(child), Symbol::intern(name));
+    }
+    names
 }
 
 fn names_to_string(names: impl Iterator<Item = Symbol>) -> String {

@@ -1,5 +1,4 @@
-// This test makes sure namespaced crates work if we don't use any use statements but instead fully
-// qualify all references.
+// Tests fully qualified paths through an existing root crate.
 
 //@ aux-crate: my_api=open-ns-my_api.rs
 //@ aux-crate: my_api::utils=open-ns-my_api_utils.rs

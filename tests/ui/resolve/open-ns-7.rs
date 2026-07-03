@@ -1,4 +1,4 @@
-// Tests that namespaced crates work with absolute paths.
+// Tests that a namespaced child crate resolves through an existing root crate.
 
 //@ aux-crate: my_api=open-ns-my_api.rs
 //@ aux-crate: my_api::utils=open-ns-my_api_utils.rs
