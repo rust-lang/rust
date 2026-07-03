@@ -1,5 +1,6 @@
 //! Traits, helpers, and type definitions for core I/O functionality.
 
+mod cursor;
 mod error;
 mod impls;
 
@@ -22,3 +23,7 @@ pub use core::io::{
     IoHandle, OsFunctions, SizeHint, chain, default_write_vectored, slice_write, slice_write_all,
     slice_write_all_vectored, slice_write_vectored, stream_len_default, take,
 };
+
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub use self::cursor::{vec_write_all, vec_write_all_vectored};
