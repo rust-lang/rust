@@ -189,8 +189,6 @@ pub(crate) struct AnnotationRequired<'a> {
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
-    #[subdiagnostic]
-    pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
 }
 
 // Copy of `AnnotationRequired` for E0283
@@ -211,8 +209,6 @@ pub(crate) struct AmbiguousImpl<'a> {
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
-    #[subdiagnostic]
-    pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
 }
 
 // Copy of `AnnotationRequired` for E0284
@@ -233,8 +229,6 @@ pub(crate) struct AmbiguousReturn<'a> {
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
-    #[subdiagnostic]
-    pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
 }
 
 // Used when a better one isn't available
@@ -354,10 +348,6 @@ pub(crate) enum SourceKindSubdiag<'a> {
         span: Span,
         param: String,
     },
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum SourceKindMultiSuggestion<'a> {
     #[multipart_suggestion(
         "try using a fully qualified path to specify the expected types",
         style = "verbose",
@@ -386,7 +376,7 @@ pub(crate) enum SourceKindMultiSuggestion<'a> {
     },
 }
 
-impl<'a> SourceKindMultiSuggestion<'a> {
+impl<'a> SourceKindSubdiag<'a> {
     pub(crate) fn new_fully_qualified(
         span: Span,
         def_path: String,

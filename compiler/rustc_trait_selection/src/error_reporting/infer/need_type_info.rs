@@ -24,8 +24,7 @@ use tracing::{debug, instrument, warn};
 
 use super::nice_region_error::placeholder_error::Highlighted;
 use crate::diagnostics::{
-    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
-    SourceKindMultiSuggestion, SourceKindSubdiag,
+    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError, SourceKindSubdiag,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
@@ -449,7 +448,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let source_name = "";
         let failure_span = None;
         let infer_subdiags = Vec::new();
-        let multi_suggestions = Vec::new();
         let bad_label = Some(arg_data.make_bad_error(span));
         match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
@@ -458,7 +456,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_name,
                 failure_span,
                 infer_subdiags,
-                multi_suggestions,
                 bad_label,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
@@ -467,7 +464,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_name,
                 failure_span,
                 infer_subdiags,
-                multi_suggestions,
                 bad_label,
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
@@ -476,7 +472,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_name,
                 failure_span,
                 infer_subdiags,
-                multi_suggestions,
                 bad_label,
             }),
         }
@@ -563,7 +558,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut infer_subdiags = Vec::new();
-        let mut multi_suggestions = Vec::new();
         self.suggestion(
             body_def_id,
             term,
@@ -572,7 +566,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             span,
             &kind,
             &mut infer_subdiags,
-            &mut multi_suggestions,
         );
         let mut err = match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
@@ -581,7 +574,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_name: &name,
                 failure_span,
                 infer_subdiags,
-                multi_suggestions,
                 bad_label: None,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
@@ -590,7 +582,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_name: &name,
                 failure_span,
                 infer_subdiags,
-                multi_suggestions,
                 bad_label: None,
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
@@ -599,7 +590,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_name: &name,
                 failure_span,
                 infer_subdiags,
-                multi_suggestions,
                 bad_label: None,
             }),
         };
@@ -620,7 +610,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         span: Span,
         kind: &InferSourceKind<'tcx>,
         infer_subdiags: &mut Vec<SourceKindSubdiag<'local>>,
-        multi_suggestions: &mut Vec<SourceKindMultiSuggestion<'local>>,
     ) where
         'tcx: 'local,
     {
@@ -777,7 +766,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         _ => "",
                     };
 
-                    multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
+                    infer_subdiags.push(SourceKindSubdiag::new_fully_qualified(
                         receiver.span,
                         def_path,
                         adjustment,
@@ -789,7 +778,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let placeholder = Some(self.next_ty_var(DUMMY_SP));
                 if let Some(ty) = ty.make_suggestable(self.infcx.tcx, true, placeholder) {
                     let ty_info = ty_to_string(self, ty, None);
-                    multi_suggestions.push(SourceKindMultiSuggestion::new_closure_return(
+                    infer_subdiags.push(SourceKindSubdiag::new_closure_return(
                         ty_info,
                         data,
                         should_wrap_expr,
