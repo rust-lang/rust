@@ -1570,11 +1570,8 @@ async fn foo(arg: u32) -> u32 {
 }
 fn spawn<T>(_: T) {}
 fn main() {
-    spawn({
-        let arg = 42;
-        async move {
-            bar(arg).await * 2
-        }
+    spawn(async move {
+        bar(42).await * 2
     });
 }
 "#,
@@ -1605,12 +1602,9 @@ async fn foo(arg: u32) -> u32 {
 }
 fn spawn<T>(_: T) {}
 fn main() {
-    spawn({
-        let arg = 42;
-        async move {
-            bar(arg).await;
-            42
-        }
+    spawn(async move {
+        bar(42).await;
+        42
     });
 }
 "#,
@@ -1645,11 +1639,10 @@ fn spawn<T>(_: T) {}
 fn main() {
     let var = 42;
     spawn({
-        let x = var;
         let y = var + 1;
         let z: &u32 = &var;
         async move {
-            bar(x).await;
+            bar(var).await;
             y + y + *z
         }
     });
