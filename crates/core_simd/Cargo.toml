@@ -31,3 +31,11 @@ path = "../test_helpers"
 
 [dev-dependencies]
 std_float = { path = "../std_float/", features = ["as_crate"] }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    # Internal features aren't marked known config by default, we use these to
+    # gate tests.
+    'cfg(target_has_reliable_f16_math)',
+]
