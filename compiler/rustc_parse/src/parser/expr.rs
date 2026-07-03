@@ -15,8 +15,8 @@ use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
     BlockCheckMode, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl,
-    FnRetTy, Guard, Label, MacCall, MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty,
-    TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
+    FnRetTy, ForLoop, Guard, Label, MacCall, MetaItemLit, Movability, Param, RangeLimits, StmtKind,
+    Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -1950,7 +1950,7 @@ impl<'a> Parser<'a> {
                 if label.is_some()
                     && match &expr.kind {
                         ExprKind::While(_, _, None)
-                        | ExprKind::ForLoop { label: None, .. }
+                        | ExprKind::ForLoop(ForLoop { label: None, .. })
                         | ExprKind::Loop(_, None, _) => true,
                         ExprKind::Block(block, None) => {
                             matches!(block.rules, BlockCheckMode::Default)
@@ -3048,7 +3048,13 @@ impl<'a> Parser<'a> {
             let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
             return Ok(self.mk_expr(
                 lo.to(self.prev_token.span),
-                ExprKind::ForLoop { pat, iter: err_expr, body: block, label: opt_label, kind },
+                ExprKind::ForLoop(Box::new(ForLoop {
+                    pat,
+                    iter: err_expr,
+                    body: block,
+                    label: opt_label,
+                    kind,
+                })),
             ));
         }
 
@@ -3058,7 +3064,13 @@ impl<'a> Parser<'a> {
             opt_label.is_none().then_some(lo),
         )?;
 
-        let kind = ExprKind::ForLoop { pat, iter: expr, body: loop_block, label: opt_label, kind };
+        let kind = ExprKind::ForLoop(Box::new(ForLoop {
+            pat,
+            iter: expr,
+            body: loop_block,
+            label: opt_label,
+            kind,
+        }));
 
         self.recover_loop_else("for", lo)?;
 

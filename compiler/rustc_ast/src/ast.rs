@@ -1656,6 +1656,15 @@ impl From<Box<Expr>> for Expr {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct ForLoop {
+    pub pat: Box<Pat>,
+    pub iter: Box<Expr>,
+    pub body: Box<Block>,
+    pub label: Option<Label>,
+    pub kind: ForLoopKind,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct Closure {
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
@@ -1780,13 +1789,7 @@ pub enum ExprKind {
     /// `'label: for await? pat in iter { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
-    ForLoop {
-        pat: Box<Pat>,
-        iter: Box<Expr>,
-        body: Box<Block>,
-        label: Option<Label>,
-        kind: ForLoopKind,
-    },
+    ForLoop(Box<ForLoop>),
     /// Conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// `'label: loop { block }`
@@ -4385,8 +4388,8 @@ mod size_asserts {
     static_assert_size!(AttrKind, 16);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 24);
-    static_assert_size!(Expr, 72);
-    static_assert_size!(ExprKind, 40);
+    static_assert_size!(Expr, 64);
+    static_assert_size!(ExprKind, 32);
     static_assert_size!(Fn, 192);
     static_assert_size!(FnDecl, 24);
     static_assert_size!(FnHeader, 76);
