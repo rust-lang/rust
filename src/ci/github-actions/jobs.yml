@@ -211,8 +211,12 @@ auto:
   - name: arm-android
     <<: *job-linux-4c
 
-  - name: armhf-gnu
-    <<: *job-linux-4c
+    # FIXME(#158716): `armhf-gnu` is temporarily disabled because the job
+    # directly uses kernel.org mirror artifacts but we didn't mirror them in
+    # our own ci-mirrors, and kernel.org mirror infra haven't fully recovered
+    # yet.
+  #- name: armhf-gnu
+  #  <<: *job-linux-4c
 
   - name: dist-aarch64-linux
     env:
