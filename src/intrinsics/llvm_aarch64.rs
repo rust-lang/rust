@@ -977,6 +977,88 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             );
         }
 
+        "llvm.aarch64.crypto.eor3s.v2i64"
+        | "llvm.aarch64.crypto.eor3s.v4i32"
+        | "llvm.aarch64.crypto.eor3s.v8i16"
+        | "llvm.aarch64.crypto.eor3s.v16i8"
+        | "llvm.aarch64.crypto.eor3u.v2i64"
+        | "llvm.aarch64.crypto.eor3u.v4i32"
+        | "llvm.aarch64.crypto.eor3u.v8i16"
+        | "llvm.aarch64.crypto.eor3u.v16i8" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/EOR3--Three-way-exclusive-OR-
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            simd_trio_for_each_lane(
+                fx,
+                a,
+                b,
+                c,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane, c_lane| {
+                    let xor = fx.bcx.ins().bxor(a_lane, b_lane);
+                    fx.bcx.ins().bxor(xor, c_lane)
+                },
+            );
+        }
+
+        "llvm.aarch64.crypto.bcaxs.v2i64"
+        | "llvm.aarch64.crypto.bcaxs.v4i32"
+        | "llvm.aarch64.crypto.bcaxs.v8i16"
+        | "llvm.aarch64.crypto.bcaxs.v16i8"
+        | "llvm.aarch64.crypto.bcaxu.v2i64"
+        | "llvm.aarch64.crypto.bcaxu.v4i32"
+        | "llvm.aarch64.crypto.bcaxu.v8i16"
+        | "llvm.aarch64.crypto.bcaxu.v16i8" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/BCAX--Bit-clear-and-exclusive-OR-
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            simd_trio_for_each_lane(
+                fx,
+                a,
+                b,
+                c,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane, c_lane| {
+                    let band_not = fx.bcx.ins().band_not(b_lane, c_lane);
+                    fx.bcx.ins().bxor(a_lane, band_not)
+                },
+            );
+        }
+
+        "llvm.aarch64.crypto.rax1" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/RAX1--Rotate-and-exclusive-OR-
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            simd_pair_for_each_lane(
+                fx,
+                a,
+                b,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane| {
+                    let rot = fx.bcx.ins().rotl_imm(b_lane, 1);
+                    fx.bcx.ins().bxor(a_lane, rot)
+                },
+            );
+        }
+
+        "llvm.aarch64.crypto.xar" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/XAR--Exclusive-OR-and-rotate-
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            let c = c.load_scalar(fx);
+
+            simd_pair_for_each_lane(
+                fx,
+                a,
+                b,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane| {
+                    let xor = fx.bcx.ins().bxor(a_lane, b_lane);
+                    fx.bcx.ins().rotr(xor, c)
+                },
+            );
+        }
+
         "llvm.aarch64.neon.pmull64" => {
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
