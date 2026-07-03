@@ -407,7 +407,7 @@ impl GenericBound {
     }
 }
 
-pub type GenericBounds = Vec<GenericBound>;
+pub type GenericBounds = ThinVec<GenericBound>;
 
 /// Specifies the enforced ordering for generic parameters. In the future,
 /// if we wanted to relax this order, we could override `PartialEq` and
@@ -1534,7 +1534,7 @@ impl Expr {
                 let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) else {
                     return None;
                 };
-                TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
+                TyKind::TraitObject(thin_vec![lhs, rhs], TraitObjectSyntax::None)
             }
 
             ExprKind::Underscore => TyKind::Infer,
@@ -4405,7 +4405,7 @@ mod size_asserts {
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericArgs, 40);
     static_assert_size!(GenericBound, 88);
-    static_assert_size!(GenericParam, 96);
+    static_assert_size!(GenericParam, 80);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 80);
     static_assert_size!(Item, 152);

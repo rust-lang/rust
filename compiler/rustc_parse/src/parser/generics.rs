@@ -26,7 +26,7 @@ impl<'a> Parser<'a> {
     /// BOUND = LT_BOUND (e.g., `'a`)
     /// ```
     fn parse_lt_param_bounds(&mut self) -> GenericBounds {
-        let mut lifetimes = Vec::new();
+        let mut lifetimes = ThinVec::new();
         while self.check_lifetime() {
             lifetimes.push(ast::GenericBound::Outlives(self.expect_lifetime()));
 
@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
             }
             self.parse_generic_bounds()?
         } else {
-            Vec::new()
+            ThinVec::new()
         };
 
         let default = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
@@ -125,7 +125,7 @@ impl<'a> Parser<'a> {
                     ident,
                     id: ast::DUMMY_NODE_ID,
                     attrs: preceding_attrs,
-                    bounds: Vec::new(),
+                    bounds: ThinVec::new(),
                     kind: GenericParamKind::Const { ty, span, default: None },
                     is_placeholder: false,
                     colon_span: None,
@@ -148,7 +148,7 @@ impl<'a> Parser<'a> {
             ident,
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs,
-            bounds: Vec::new(),
+            bounds: ThinVec::new(),
             kind: GenericParamKind::Const { ty, span, default },
             is_placeholder: false,
             colon_span: None,
@@ -189,7 +189,7 @@ impl<'a> Parser<'a> {
             ident,
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs,
-            bounds: Vec::new(),
+            bounds: ThinVec::new(),
             kind: GenericParamKind::Const { ty, span, default },
             is_placeholder: false,
             colon_span: None,
@@ -225,7 +225,7 @@ impl<'a> Parser<'a> {
                     let (colon_span, bounds) = if this.eat(exp!(Colon)) {
                         (Some(this.prev_token.span), this.parse_lt_param_bounds())
                     } else {
-                        (None, Vec::new())
+                        (None, ThinVec::new())
                     };
 
                     if this.check_noexpect(&token::Eq) && this.look_ahead(1, |t| t.is_lifetime()) {
