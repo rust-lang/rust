@@ -1,7 +1,5 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
-pub use moto_rt::futex;
-
 use crate::io;
 
 pub(crate) fn map_motor_error(err: moto_rt::Error) -> io::Error {

@@ -33,3 +33,6 @@ c682aa162b0d41e21cc6748f4fecfe01efb69d1f
 1fcae03369abb4c2cc180cd5a49e1f4440a81300
 # Breaking up of compiletest runtest.rs
 60600a6fa403216bfd66e04f948b1822f6450af7
+
+# std: move futex implementations into sys::sync::futex
+cdf99a3158fb447f4135e78a2cce4b436d157ed5
