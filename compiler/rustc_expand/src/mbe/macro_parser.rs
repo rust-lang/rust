@@ -79,7 +79,6 @@ pub(crate) use ParseResult::*;
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token, TokenKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_lint_defs::pluralize;
 use rustc_middle::span_bug;
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
@@ -704,36 +703,6 @@ impl TtParser {
 
             assert!(!self.cur_mps.is_empty());
         }
-    }
-
-    pub(super) fn ambiguity_error<'matcher, F>(
-        macro_name: Ident,
-        token_span: rustc_span::Span,
-        bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-        next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-    ) -> NamedParseResult<F> {
-        let nts = bb_locs
-            .into_iter()
-            .map(|loc| match loc {
-                MatcherLoc::MetaVarDecl { bind, kind, .. } => {
-                    format!("{kind} ('{bind}')")
-                }
-                _ => unreachable!(),
-            })
-            .collect::<Vec<String>>()
-            .join(" or ");
-
-        Error(
-            token_span,
-            format!(
-                "local ambiguity when calling macro `{}`: multiple parsing options: {}",
-                macro_name,
-                match next_locs.into_iter().count() {
-                    0 => format!("built-in NTs {nts}."),
-                    n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
-                }
-            ),
-        )
     }
 
     fn nameize<I: Iterator<Item = NamedMatch>>(

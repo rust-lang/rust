@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
@@ -235,7 +235,28 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<Self::Failure> {
-        TtParser::ambiguity_error(macro_name, token_span, bb_locs, next_locs)
+        let nts = bb_locs
+            .into_iter()
+            .map(|loc| match loc {
+                MatcherLoc::MetaVarDecl { bind, kind, .. } => {
+                    format!("{kind} ('{bind}')")
+                }
+                _ => unreachable!(),
+            })
+            .collect::<Vec<String>>()
+            .join(" or ");
+
+        Error(
+            token_span,
+            format!(
+                "local ambiguity when calling macro `{}`: multiple parsing options: {}",
+                macro_name,
+                match next_locs.into_iter().count() {
+                    0 => format!("built-in NTs {nts}."),
+                    n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
+                }
+            ),
+        )
     }
 
     fn description() -> &'static str {
