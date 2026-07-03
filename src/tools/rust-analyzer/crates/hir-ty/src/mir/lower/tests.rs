@@ -108,3 +108,16 @@ pub struct AssocTy {
     "#,
     );
 }
+
+#[test]
+fn borrowck_tuple_field_projection_recovery_does_not_panic() {
+    check_borrowck(
+        r#"
+//- minicore: sized
+fn tuple_field() {
+    let t = (1,);
+    let x = t.1;
+}
+    "#,
+    );
+}
