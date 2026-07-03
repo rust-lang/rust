@@ -2475,6 +2475,153 @@ mod remove_dir_impl {
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 
+    // Helpers to recover from EACCES by adding the owner permission bits to
+    // directories that are scheduled for deletion anyway, so that a tree
+    // containing e.g. read-only directories can still be deleted by its owner.
+    // Only directories owned by the caller's effective user ID are modified,
+    // and the mode is restored if the retried operation still fails.
+    #[cfg(not(any(target_os = "l4re", target_os = "nuttx", target_os = "wasi")))]
+    mod chmod_harder {
+        #[cfg(not(any(
+            all(target_os = "linux", not(target_env = "musl")),
+            target_os = "hurd"
+        )))]
+        use libc::fstatat as fstatat64;
+        #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
+        use libc::fstatat64;
+        use libc::mode_t;
+
+        use super::super::{fstat64, stat64};
+        use super::RawFd;
+        use crate::ffi::CStr;
+        use crate::mem;
+
+        // Returns the old and the new mode with the owner read/write/search
+        // bits added, if adding them could make an EACCES failure go away.
+        fn patched_mode(st: &stat64) -> Option<(mode_t, mode_t)> {
+            let mode = st.st_mode as mode_t;
+            if mode & libc::S_IFMT != libc::S_IFDIR
+                || mode & 0o700 == 0o700
+                || st.st_uid != unsafe { libc::geteuid() }
+            {
+                return None;
+            }
+            Some((mode & 0o7777, (mode | 0o700) & 0o7777))
+        }
+
+        // Returns the old mode on success.
+        pub(super) fn add_owner_rwx(fd: RawFd) -> Option<mode_t> {
+            unsafe {
+                let mut st: stat64 = mem::zeroed();
+                if fstat64(fd, &mut st) < 0 {
+                    return None;
+                }
+                let (old_mode, new_mode) = patched_mode(&st)?;
+                if libc::fchmod(fd, new_mode) < 0 { None } else { Some(old_mode) }
+            }
+        }
+
+        pub(super) fn restore_mode(fd: RawFd, mode: mode_t) {
+            unsafe { libc::fchmod(fd, mode) };
+        }
+
+        // Returns the old mode on success.
+        pub(super) fn add_owner_rwx_at(parent_fd: Option<RawFd>, path: &CStr) -> Option<mode_t> {
+            unsafe {
+                let dirfd = parent_fd.unwrap_or(libc::AT_FDCWD);
+                let mut st: stat64 = mem::zeroed();
+                if fstatat64(dirfd, path.as_ptr(), &mut st, libc::AT_SYMLINK_NOFOLLOW) < 0 {
+                    return None;
+                }
+                let (old_mode, new_mode) = patched_mode(&st)?;
+                // AT_SYMLINK_NOFOLLOW ensures we cannot be tricked into changing the mode of a
+                // directory elsewhere through a concurrently swapped-in symlink. Platforms that
+                // do not support the flag for fchmodat() fail, keeping the original error.
+                if libc::fchmodat(dirfd, path.as_ptr(), new_mode, libc::AT_SYMLINK_NOFOLLOW) < 0 {
+                    return None;
+                }
+                Some(old_mode)
+            }
+        }
+
+        pub(super) fn restore_mode_at(parent_fd: Option<RawFd>, path: &CStr, mode: mode_t) {
+            unsafe {
+                libc::fchmodat(
+                    parent_fd.unwrap_or(libc::AT_FDCWD),
+                    path.as_ptr(),
+                    mode,
+                    libc::AT_SYMLINK_NOFOLLOW,
+                );
+            }
+        }
+    }
+
+    // No permission fixups on platforms without a UNIX permission model (WASI)
+    // or without the required libc functions (l4re, NuttX).
+    #[cfg(any(target_os = "l4re", target_os = "nuttx", target_os = "wasi"))]
+    mod chmod_harder {
+        use libc::mode_t;
+
+        use super::RawFd;
+        use crate::ffi::CStr;
+
+        pub(super) fn add_owner_rwx(_fd: RawFd) -> Option<mode_t> {
+            None
+        }
+
+        pub(super) fn restore_mode(_fd: RawFd, _mode: mode_t) {}
+
+        pub(super) fn add_owner_rwx_at(_parent_fd: Option<RawFd>, _path: &CStr) -> Option<mode_t> {
+            None
+        }
+
+        pub(super) fn restore_mode_at(_parent_fd: Option<RawFd>, _path: &CStr, _mode: mode_t) {}
+    }
+
+    // Like unlinkat(), but on EACCES tries adding the owner permission bits to
+    // the parent directory and retries. The parent's mode is not restored on
+    // success: it is scheduled for deletion itself, and further entries may
+    // need the added permission bits as well.
+    fn unlinkat_harder(parent_fd: RawFd, path: &CStr, flags: libc::c_int) -> io::Result<()> {
+        match cvt(unsafe { unlinkat(parent_fd, path.as_ptr(), flags) }) {
+            Err(err) if err.raw_os_error() == Some(libc::EACCES) => {
+                let Some(old_mode) = chmod_harder::add_owner_rwx(parent_fd) else {
+                    return Err(err);
+                };
+                cvt(unsafe { unlinkat(parent_fd, path.as_ptr(), flags) })
+                    .map(drop)
+                    .inspect_err(|_| chmod_harder::restore_mode(parent_fd, old_mode))
+            }
+            result => result.map(drop),
+        }
+    }
+
+    // Like openat_nofollow_dironly(), but on EACCES tries adding the owner
+    // permission bits to the parent directory (needed to resolve `path`) as
+    // well as the directory itself (needed to list and remove its entries)
+    // and retries.
+    fn openat_nofollow_dironly_harder(
+        parent_fd: Option<RawFd>,
+        path: &CStr,
+    ) -> io::Result<OwnedFd> {
+        match openat_nofollow_dironly(parent_fd, path) {
+            Err(err) if err.raw_os_error() == Some(libc::EACCES) => {
+                let parent_patched = parent_fd
+                    .is_some_and(|parent_fd| chmod_harder::add_owner_rwx(parent_fd).is_some());
+                let old_mode = chmod_harder::add_owner_rwx_at(parent_fd, path);
+                if !parent_patched && old_mode.is_none() {
+                    return Err(err);
+                }
+                openat_nofollow_dironly(parent_fd, path).inspect_err(|_| {
+                    if let Some(old_mode) = old_mode {
+                        chmod_harder::restore_mode_at(parent_fd, path, old_mode);
+                    }
+                })
+            }
+            result => result,
+        }
+    }
+
     fn fdreaddir(dir_fd: OwnedFd) -> io::Result<(ReadDir, RawFd)> {
         let ptr = unsafe { fdopendir(dir_fd.as_raw_fd()) };
         if ptr.is_null() {
@@ -2528,15 +2675,13 @@ mod remove_dir_impl {
 
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
-        let fd = match openat_nofollow_dironly(parent_fd, &path) {
+        let fd = match openat_nofollow_dironly_harder(parent_fd, &path) {
             Err(err) if matches!(err.raw_os_error(), Some(libc::ENOTDIR | libc::ELOOP)) => {
                 // not a directory - don't traverse further
                 // (for symlinks, older Linux kernels may return ELOOP instead of ENOTDIR)
                 return match parent_fd {
                     // unlink...
-                    Some(parent_fd) => {
-                        cvt(unsafe { unlinkat(parent_fd, path.as_ptr(), 0) }).map(drop)
-                    }
+                    Some(parent_fd) => unlinkat_harder(parent_fd, path, 0),
                     // ...unless this was supposed to be the deletion root directory
                     None => Err(err),
                 };
@@ -2568,7 +2713,7 @@ mod remove_dir_impl {
                         remove_dir_all_recursive(Some(fd), child_name)?;
                     }
                     Some(false) => {
-                        cvt(unsafe { unlinkat(fd, child_name.as_ptr(), 0) })?;
+                        unlinkat_harder(fd, child_name, 0)?;
                     }
                     None => {
                         // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can succeed
@@ -2585,9 +2730,14 @@ mod remove_dir_impl {
         }
 
         // unlink the directory after removing its contents
-        ignore_notfound(cvt(unsafe {
-            unlinkat(parent_fd.unwrap_or(libc::AT_FDCWD), path.as_ptr(), libc::AT_REMOVEDIR)
-        }))?;
+        ignore_notfound(match parent_fd {
+            // The parent directory is scheduled for deletion too, so its
+            // permissions may be fixed up to make the unlink succeed...
+            Some(parent_fd) => unlinkat_harder(parent_fd, path, libc::AT_REMOVEDIR),
+            // ...but the parent of the deletion root is not ours to modify.
+            None => cvt(unsafe { unlinkat(libc::AT_FDCWD, path.as_ptr(), libc::AT_REMOVEDIR) })
+                .map(drop),
+        })?;
         Ok(())
     }
 

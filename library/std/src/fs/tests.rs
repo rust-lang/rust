@@ -931,6 +931,48 @@ fn recursive_rmdir_of_symlink() {
 }
 
 #[test]
+// The fallback implementation used on these targets does not attempt to fix up permissions,
+// and neither does the stubbed-out fixup on l4re and nuttx.
+#[cfg(all(
+    unix,
+    not(any(
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "l4re",
+        target_os = "nto",
+        target_os = "nuttx",
+        target_os = "qnx",
+        target_os = "redox",
+        target_os = "vita",
+        target_os = "vxworks",
+        target_os = "emscripten",
+    ))
+))]
+#[cfg_attr(miri, ignore = "Miri uses the fallback implementation, which does not fix permissions")]
+fn recursive_rmdir_inaccessible_dirs() {
+    use crate::os::unix::fs::PermissionsExt;
+
+    // Removing a tree containing directories that lack owner permissions should succeed by
+    // temporarily adding the missing permission bits, like `rm -rf` combined with `chmod`.
+    // (When running as root the permissions never get in the way, which keeps this test valid.)
+    let tmpdir = tmpdir();
+    let root = tmpdir.join("root");
+    let readonly = root.join("readonly");
+    let inaccessible = root.join("inaccessible");
+    check!(fs::create_dir_all(&readonly));
+    check!(check!(File::create(readonly.join("file"))).write(b"foo"));
+    check!(fs::create_dir(&inaccessible));
+    check!(check!(File::create(inaccessible.join("file"))).write(b"foo"));
+    // Unlinking readonly/file requires write permission on the readonly directory.
+    check!(fs::set_permissions(&readonly, fs::Permissions::from_mode(0o555)));
+    // Recursing into inaccessible requires read and search permission on it.
+    check!(fs::set_permissions(&inaccessible, fs::Permissions::from_mode(0)));
+
+    check!(fs::remove_dir_all(&root));
+    assert!(!root.exists());
+}
+
+#[test]
 fn recursive_rmdir_of_file_fails() {
     // test we do not delete a directly specified file.
     let tmpdir = tmpdir();

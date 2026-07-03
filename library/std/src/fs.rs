@@ -3159,6 +3159,12 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// - "Windows": This function currently corresponds to `CreateFileW`,
 /// `GetFileInformationByHandleEx`, `SetFileInformationByHandle`, and `NtCreateFile`.
 ///
+/// On Unix-family platforms, if removing an entry fails due to missing permissions on a
+/// directory that is itself part of the tree being removed, this function currently tries to
+/// add the owner read, write and search permission bits to that directory (as if by
+/// `chmod u+rwx`) and retries, provided the directory is owned by the caller's effective user
+/// ID. This mirrors Windows, where files are removed regardless of their read-only attribute.
+///
 /// ## Time-of-check to time-of-use (TOCTOU) race conditions
 /// See the [module-level TOCTOU explanation](self#time-of-check-to-time-of-use-toctou).
 ///
