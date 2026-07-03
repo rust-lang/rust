@@ -68,8 +68,6 @@ pub enum LinkagePreference {
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Symbol,
-    /// If packed_bundled_libs enabled, actual filename of library is stored.
-    pub filename: Option<Symbol>,
     pub cfg: Option<CfgEntry>,
     pub foreign_module: Option<DefId>,
     pub verbatim: Option<bool>,
