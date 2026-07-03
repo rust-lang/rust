@@ -18,7 +18,9 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_target::spec::{Arch, Cc, CfgAbi, LinkOutputKind, LinkerFlavor, Lld, Os};
+use rustc_target::spec::{
+    Arch, BinaryFormat, Cc, CfgAbi, LinkOutputKind, LinkerFlavor, Lld, Os, TlsModel,
+};
 use tracing::{debug, warn};
 
 use super::command::Command;
@@ -874,6 +876,17 @@ impl<'a> Linker for GccLinker<'a> {
                     for sym in symbols {
                         debug!("    {};", sym.name);
                         writeln!(f, "    {};", sym.name)?;
+                    }
+                    // Cygwin don't need this as PE/Coff don't have weak symbols
+                    if self.sess.target.tls_model == TlsModel::Emulated
+                        && self.sess.target.binary_format == BinaryFormat::Elf
+                    {
+                        let has_tls = symbols.iter().any(|s| s.kind == SymbolExportKind::Tls);
+                        if has_tls {
+                            // use `*` wildcard to avoid error with `--no-undefined-version`
+                            debug!("    __emutls_get_address*;");
+                            writeln!(f, "    __emutls_get_address*;")?;
+                        }
                     }
                 }
                 writeln!(f, "\n  local:\n    *;\n}};")?;
