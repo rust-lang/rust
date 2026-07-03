@@ -220,7 +220,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     })
                 }
             }
-            Error(err_sp, msg) => {
+            Ambiguity(err_sp, msg) => {
                 let span = err_sp.substitute_dummy(self.root_span);
                 let guar = self.dcx.span_err(span, msg.clone());
                 self.result = Some((span, guar));
@@ -236,7 +236,10 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<Self::Failure> {
         if parser.token == token::Eof {
-            return Error(parser.token.span, "ambiguity: multiple successful parses".to_string());
+            return Ambiguity(
+                parser.token.span,
+                "ambiguity: multiple successful parses".to_string(),
+            );
         }
 
         let nts = bb_locs
@@ -250,7 +253,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             .collect::<Vec<String>>()
             .join(" or ");
 
-        Error(
+        Ambiguity(
             parser.token.span,
             format!(
                 "local ambiguity when calling macro `{}`: multiple parsing options: {}",

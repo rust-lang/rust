@@ -301,8 +301,8 @@ pub(crate) enum ParseResult<T, F> {
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
     /// The usize is the approximate position of the token in the input token stream.
     Failure(F),
-    /// Fatal error (malformed macro?). Abort compilation.
-    Error(rustc_span::Span, String),
+    /// The input could be parsed in multiple distinct ways.
+    Ambiguity(rustc_span::Span, String),
     ErrorReported(ErrorGuaranteed),
 }
 

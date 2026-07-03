@@ -40,7 +40,7 @@ use crate::base::{
 use crate::diagnostics;
 use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
 use crate::mbe::macro_check::check_meta_variables;
-use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
+use crate::mbe::macro_parser::{Ambiguity, ErrorReported, Failure, MatcherLoc, Success, TtParser};
 use crate::mbe::quoted::{RulePart, parse_one_tt};
 use crate::mbe::transcribe::transcribe;
 use crate::mbe::{self, KleeneOp};
@@ -409,7 +409,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
         _bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         _next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<Self::Failure> {
-        Error(parser.token.span, "ignored".into())
+        Ambiguity(parser.token.span, "ignored".into())
     }
 
     fn description() -> &'static str {
@@ -647,7 +647,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
                 trace!("Failed to match arm, trying the next one");
                 // Try the next arm.
             }
-            Error(_, _) => {
+            Ambiguity(_, _) => {
                 debug!("Fatal error occurred during matching");
                 // We haven't emitted an error yet, so we can retry.
                 return Err(CanRetry::Yes);
@@ -697,7 +697,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut());
                 continue;
             }
-            Error(_, _) => return Err(CanRetry::Yes),
+            Ambiguity(_, _) => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         };
 
@@ -714,7 +714,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
             Failure(_) => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
             }
-            Error(_, _) => return Err(CanRetry::Yes),
+            Ambiguity(_, _) => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         }
     }
@@ -752,7 +752,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
             Failure(_) => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
             }
-            Error(_, _) => return Err(CanRetry::Yes),
+            Ambiguity(_, _) => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         }
     }
