@@ -29,6 +29,26 @@ mod a {
         let z: Trigger = 1;
         let _: u64 = z.into();
         //~^ ERROR useless conversion to the same type: `u64`
+
+        let x: Option<Int> = Some(1);
+        // Ok, should not lint because the type alias is behind a `cfg_select!`
+        let _: Option<i32> = x.map(Into::into);
+        let y: Option<Float> = Some(1.);
+        // Ok, should not lint because the type alias is behind a `cfg` attr
+        let _: Option<f64> = y.map(Into::into);
+        let z: Option<Trigger> = Some(1);
+        let _: Option<u64> = z.map(Into::into);
+        //~^ ERROR useless conversion to the same type: `u64`
+
+        let x: Result<Int, ()> = Ok(1);
+        // Ok, should not lint because the type alias is behind a `cfg_select!`
+        let _: Result<i32, ()> = x.map(Into::into);
+        let y: Result<Float, ()> = Ok(1.);
+        // Ok, should not lint because the type alias is behind a `cfg` attr
+        let _: Result<f64, ()> = y.map(Into::into);
+        let z: Result<Trigger, ()> = Ok(1);
+        let _: Result<u64, ()> = z.map(Into::into);
+        //~^ ERROR useless conversion to the same type: `u64`
     }
 }
 
@@ -71,6 +91,26 @@ mod b {
         let _: f64 = y.into(); // Ok, should not lint because the import is behind a `cfg` attr
         let z: Trigger = 1;
         let _: u64 = z.into();
+        //~^ ERROR useless conversion to the same type: `u64`
+
+        let x: Option<Int> = Some(1);
+        // Ok, should not lint because the type alias is behind a `cfg_select!`
+        let _: Option<i32> = x.map(Into::into);
+        let y: Option<Float> = Some(1.);
+        // Ok, should not lint because the type alias is behind a `cfg` attr
+        let _: Option<f64> = y.map(Into::into);
+        let z: Option<Trigger> = Some(1);
+        let _: Option<u64> = z.map(Into::into);
+        //~^ ERROR useless conversion to the same type: `u64`
+
+        let x: Result<Int, ()> = Ok(1);
+        // Ok, should not lint because the type alias is behind a `cfg_select!`
+        let _: Result<i32, ()> = x.map(Into::into);
+        let y: Result<Float, ()> = Ok(1.);
+        // Ok, should not lint because the type alias is behind a `cfg` attr
+        let _: Result<f64, ()> = y.map(Into::into);
+        let z: Result<Trigger, ()> = Ok(1);
+        let _: Result<u64, ()> = z.map(Into::into);
         //~^ ERROR useless conversion to the same type: `u64`
     }
 }

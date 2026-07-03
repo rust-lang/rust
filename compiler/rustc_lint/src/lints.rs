@@ -72,12 +72,30 @@ pub(crate) enum ShadowedIntoIterDiagSub {
      inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be \
      added in the future causing type inference errors"
 )]
-#[note(
-    "you can instead use the fully-qualified path `<{$ty} as Into<{$ty}>::into(val) to avoid \
-     triggering this lint"
-)]
 pub(crate) struct SelfTypeConversionDiag<'t> {
     pub ty: Ty<'t>,
+    #[suggestion(
+        "consider removing the conversion call",
+        style = "verbose",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub removal_span: Span,
+    #[subdiagnostic]
+    pub fully_qualified_path: Option<FullyQualifiedPathSuggestion<'t>>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "you can use the fully-qualified path to avoid triggering this lint",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct FullyQualifiedPathSuggestion<'t> {
+    pub ty: Ty<'t>,
+    #[suggestion_part(code = "<{ty} as Into<_>>::into(")]
+    pub pre: Span,
+    #[suggestion_part(code = ")")]
+    pub post: Span,
 }
 
 #[derive(Diagnostic)]

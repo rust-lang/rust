@@ -59,8 +59,9 @@ use crate::lints::{
     BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
     BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
-    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
-    SelfTypeConversionDiag, SelfTypeConversionInMacroDiag,
+    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented,
+    FullyQualifiedPathSuggestion, InvalidAsmLabel, SelfTypeConversionDiag,
+    SelfTypeConversionInMacroDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -3288,7 +3289,7 @@ declare_lint! {
 }
 
 pub struct SelfTypeConversion<'tcx> {
-    ignored_types: FxHashSet<Ty<'tcx>>,
+    pub ignored_types: FxHashSet<Ty<'tcx>>,
 }
 
 impl_lint_pass!(SelfTypeConversion<'_> => [SELF_TYPE_CONVERSION, SELF_TYPE_CONVERSION_IN_MACRO]);
@@ -3344,22 +3345,58 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
     ///
     /// This filters on explicit `foo.into()` method calls (ignoring `<_ as Into<_>>::into(foo)`).
     fn check_expr_post(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
-        let hir::ExprKind::MethodCall(_segment, rcvr, args, _) = expr.kind else { return };
-        if !args.is_empty() {
+        let mut fully_qualified_path = None;
+        let (rcvr, ty, rcvr_ty, removal_span) = match expr.kind {
             // If we have `foo.method(...)` with arguments, we already know that `method` can't be
             // `into`, so we bail.
-            return;
-        }
-
-        let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) else { return };
-        tracing::debug!(?def_id);
-        if Some(def_id) != cx.tcx.get_diagnostic_item(sym::into_fn) {
-            // We don't have `foo.into()` corresponding to `Into::into`.
-            return;
-        }
-
-        let ty = cx.typeck_results().expr_ty(expr);
-        let rcvr_ty = cx.typeck_results().expr_ty(rcvr);
+            hir::ExprKind::MethodCall(_segment, rcvr, args, _) => {
+                let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) else {
+                    return;
+                };
+                if Some(def_id) == cx.tcx.get_diagnostic_item(sym::into_fn) {
+                    // We've got `foo.into()`.
+                    let ty = cx.typeck_results().expr_ty(expr);
+                    let rcvr_ty = cx.typeck_results().expr_ty(rcvr);
+                    let removal_span = expr.span.with_lo(rcvr.span.hi());
+                    fully_qualified_path = Some(FullyQualifiedPathSuggestion {
+                        ty,
+                        pre: rcvr.span.shrink_to_lo(),
+                        post: removal_span,
+                    });
+                    (rcvr, ty, rcvr_ty, removal_span)
+                } else if (Some(def_id) == cx.tcx.get_diagnostic_item(sym::option_map)
+                    || Some(def_id) == cx.tcx.get_diagnostic_item(sym::result_map))
+                    && let [arg] = args
+                    && let hir::ExprKind::Path(qpath) = arg.kind
+                    && let Res::Def(DefKind::AssocFn, def_id) =
+                        cx.typeck_results().qpath_res(&qpath, arg.hir_id)
+                    && Some(def_id) == cx.tcx.get_diagnostic_item(sym::into_fn)
+                {
+                    // We've got a situation like `foo.map(Into::into)` where `foo`
+                    // is an `Option` or `Result`.
+                    let ty = cx.typeck_results().expr_ty(expr);
+                    let rcvr_ty = cx.typeck_results().expr_ty(rcvr);
+                    match (ty.kind(), rcvr_ty.kind()) {
+                        // We care about the `T` in `Option<T>` and `Result<T, _>`.
+                        (ty::Adt(_, args), ty::Adt(_, rcvr_args)) => {
+                            tracing::info!(?args, ?rcvr_args);
+                            (
+                                rcvr,
+                                args.type_at(0),
+                                rcvr_args.type_at(0),
+                                expr.span.with_lo(rcvr.span.hi()),
+                            )
+                        }
+                        _ => return,
+                    }
+                } else {
+                    // We don't have `foo.into()` corresponding to `Into::into` or
+                    // `foo.map(Into::into)`.
+                    return;
+                }
+            }
+            _ => return,
+        };
 
         if ty != rcvr_ty {
             // If the type we are converting from and converting towards are different, there's
@@ -3435,7 +3472,11 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
             return;
         }
 
-        cx.emit_span_lint(SELF_TYPE_CONVERSION, expr.span, SelfTypeConversionDiag { ty });
+        cx.emit_span_lint(
+            SELF_TYPE_CONVERSION,
+            expr.span,
+            SelfTypeConversionDiag { ty, removal_span, fully_qualified_path },
+        );
     }
 }
 
