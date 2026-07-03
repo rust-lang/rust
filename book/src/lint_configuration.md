@@ -1168,6 +1168,30 @@ The order of associated items in traits.
 * [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
 
 
+## `trait-impl-item-order`
+The required ordering of associated items in trait impls: purely alphabetical,
+following the trait definition order, or accepting either.
+
+Note that the trait definition order may change between versions of the
+crate defining the trait without being considered a breaking change.
+
+Examples:
+When using trait definition item ordering:
+```toml
+trait-impl-item-order = "trait_item_ordering"
+```
+When using trait definition item ordering and alphabetical for fallbacks:
+```toml
+trait-impl-item-order = "alphabetical_or_trait_item_ordering"
+```
+
+**Default Value:** `"alphabetical"`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
 ## `trivial-copy-size-limit`
 The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by
 reference.

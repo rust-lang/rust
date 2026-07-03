@@ -1,0 +1,31 @@
+error: incorrect ordering of impl items (should follow the trait definition order)
+  --> tests/ui-toml/arbitrary_source_item_ordering/alphabetical_or_trait_item_order/alphabetical_or_trait_item_order_failed.rs:20:5
+   |
+LL |     fn a() {}
+   |     ^^^^^^
+   |
+note: should be placed before `c`
+  --> tests/ui-toml/arbitrary_source_item_ordering/alphabetical_or_trait_item_order/alphabetical_or_trait_item_order_failed.rs:19:5
+   |
+LL |     fn c() {}
+   |     ^^^^^^
+note: the lint level is defined here
+  --> tests/ui-toml/arbitrary_source_item_ordering/alphabetical_or_trait_item_order/alphabetical_or_trait_item_order_failed.rs:2:9
+   |
+LL | #![deny(clippy::arbitrary_source_item_ordering)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/alphabetical_or_trait_item_order/alphabetical_or_trait_item_order_failed.rs:29:8
+   |
+LL |     fn a() {}
+   |        ^
+   |
+note: should be placed before `b`
+  --> tests/ui-toml/arbitrary_source_item_ordering/alphabetical_or_trait_item_order/alphabetical_or_trait_item_order_failed.rs:28:8
+   |
+LL |     fn b() {}
+   |        ^
+
+error: aborting due to 2 previous errors
+

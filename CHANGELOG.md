@@ -7626,6 +7626,7 @@ Released 2018-09-13
 [`too-many-arguments-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#too-many-arguments-threshold
 [`too-many-lines-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#too-many-lines-threshold
 [`trait-assoc-item-kinds-order`]: https://doc.rust-lang.org/clippy/lint_configuration.html#trait-assoc-item-kinds-order
+[`trait-impl-item-order`]: https://doc.rust-lang.org/clippy/lint_configuration.html#trait-impl-item-order
 [`trivial-copy-size-limit`]: https://doc.rust-lang.org/clippy/lint_configuration.html#trivial-copy-size-limit
 [`type-complexity-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#type-complexity-threshold
 [`unnecessary-box-size`]: https://doc.rust-lang.org/clippy/lint_configuration.html#unnecessary-box-size
