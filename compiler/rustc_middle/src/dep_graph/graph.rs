@@ -1061,11 +1061,13 @@ impl DepGraph {
         let _prof_timer = tcx.prof.generic_activity("incr_comp_query_cache_promotion");
 
         let data = self.data.as_ref().unwrap();
+        let nodes = data.previous.nodes();
         let colors = data.colors.values.as_slice();
+
         for prev_index in colors.indices() {
             match DepNodeColorMap::get_from_slice(colors, prev_index) {
                 DepNodeColor::Green(_) => {
-                    let dep_node = data.previous.index_to_node(prev_index);
+                    let dep_node = &nodes[prev_index];
                     if let Some(promote_fn) =
                         tcx.dep_kind_vtable(dep_node.kind).promote_from_disk_fn
                     {

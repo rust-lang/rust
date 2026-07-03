@@ -233,6 +233,11 @@ impl SerializedDepGraph {
     }
 
     #[inline]
+    pub fn nodes(&self) -> &IndexSlice<SerializedDepNodeIndex, DepNode> {
+        self.nodes.as_slice()
+    }
+
+    #[inline]
     pub fn node_to_index_opt(&self, dep_node: &DepNode) -> Option<SerializedDepNodeIndex> {
         let kind = self.reverse_index.kinds.get(dep_node.kind.as_usize())?;
         let map = kind.fingerprint_map(
