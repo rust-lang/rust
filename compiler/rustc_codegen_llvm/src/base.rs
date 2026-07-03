@@ -165,7 +165,7 @@ pub(crate) fn compile_codegen_unit(
                 if cfg.elf_got {
                     cx.add_ptrauth_elf_got_flag();
                 }
-                if cx.sess().pointer_authentication_functions() {
+                if cx.sess().pointer_authentication_functions().is_some() {
                     cx.add_ptrauth_sign_personality_flag();
                 }
             }
