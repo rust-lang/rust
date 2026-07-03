@@ -381,9 +381,10 @@ pub(super) trait Tracker<'matcher> {
 
     fn ambiguity(
         &mut self,
-        parser: &TtParser,
-        matcher: &'matcher [MatcherLoc],
+        macro_name: Ident,
         token_span: Span,
+        bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+        next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<Self::Failure>;
 
     /// For tracing.
@@ -405,9 +406,10 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
     fn ambiguity(
         &mut self,
-        _parser: &TtParser,
-        _matcher: &'matcher [MatcherLoc],
+        _macro_name: Ident,
         token_span: Span,
+        _bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+        _next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<Self::Failure> {
         Error(token_span, "ignored".into())
     }

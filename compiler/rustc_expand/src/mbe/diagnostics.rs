@@ -230,11 +230,12 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 
     fn ambiguity(
         &mut self,
-        parser: &TtParser,
-        matcher: &'matcher [MatcherLoc],
+        macro_name: Ident,
         token_span: Span,
+        bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+        next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<Self::Failure> {
-        parser.ambiguity_error(matcher, token_span)
+        TtParser::ambiguity_error(macro_name, token_span, bb_locs, next_locs)
     }
 
     fn description() -> &'static str {

@@ -696,7 +696,9 @@ impl TtParser {
 
                 (_, _) => {
                     // Too many possibilities!
-                    return track.ambiguity(self, matcher, parser.token.span);
+                    let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
+                    let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
+                    return track.ambiguity(self.macro_name, parser.token.span, bb_locs, next_locs);
                 }
             }
 
@@ -704,14 +706,12 @@ impl TtParser {
         }
     }
 
-    pub(super) fn ambiguity_error<F>(
-        &self,
-        matcher: &[MatcherLoc],
+    pub(super) fn ambiguity_error<'matcher, F>(
+        macro_name: Ident,
         token_span: rustc_span::Span,
+        bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+        next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
     ) -> NamedParseResult<F> {
-        let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
-        let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
-
         let nts = bb_locs
             .into_iter()
             .map(|loc| match loc {
@@ -727,7 +727,7 @@ impl TtParser {
             token_span,
             format!(
                 "local ambiguity when calling macro `{}`: multiple parsing options: {}",
-                self.macro_name,
+                macro_name,
                 match next_locs.into_iter().count() {
                     0 => format!("built-in NTs {nts}."),
                     n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
