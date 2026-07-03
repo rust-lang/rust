@@ -15,8 +15,7 @@ use canonicalizer::Canonicalizer;
 use rustc_index::IndexVec;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::{
-    self, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
-    VarianceDiagInfo, relate_args_invariantly,
+    self, Relate, RelateResult, TypeRelation, VarianceDiagInfo, relate_args_invariantly,
 };
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,

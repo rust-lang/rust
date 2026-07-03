@@ -3,8 +3,7 @@ use std::iter;
 use tracing::debug;
 
 use super::{
-    ExpectedFound, RelateResult, StructurallyRelateAliases, TypeRelation,
-    structurally_relate_consts, structurally_relate_tys,
+    ExpectedFound, RelateResult, TypeRelation, structurally_relate_consts, structurally_relate_tys,
 };
 use crate::error::TypeError;
 use crate::inherent::*;
@@ -22,11 +21,6 @@ where
     fn span(&self) -> I::Span;
 
     fn param_env(&self) -> I::ParamEnv;
-
-    /// Whether aliases should be related structurally. This is pretty much
-    /// always `No` unless you're equating in some specific locations of the
-    /// new solver. See the comments in these use-cases for more details.
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases;
 
     /// Register obligations that must hold in order for this relation to hold
     fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, I::Predicate>>);
@@ -115,8 +109,7 @@ where
         }
 
         (ty::Alias(ty::IsRigid::No, alias), _) | (_, ty::Alias(ty::IsRigid::No, alias))
-            if infcx.next_trait_solver()
-                && let StructurallyRelateAliases::No = relation.structurally_relate_aliases() =>
+            if infcx.next_trait_solver() =>
         {
             // If both sides are aliases, arbitrarily do the LHS first
             let terms_are_inverted = !matches!(a.kind(), ty::Alias(ty::IsRigid::No, _));
@@ -249,8 +242,7 @@ where
 
         (ty::ConstKind::Alias(ty::IsRigid::No, alias), _)
         | (_, ty::ConstKind::Alias(ty::IsRigid::No, alias))
-            if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver())
-                && let StructurallyRelateAliases::No = relation.structurally_relate_aliases() =>
+            if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver()) =>
         {
             if infcx.next_trait_solver() {
                 let other = if matches!(a.kind(), ty::ConstKind::Alias(..)) { b } else { a };
