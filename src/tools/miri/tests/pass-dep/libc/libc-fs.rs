@@ -877,6 +877,8 @@ fn test_readdir() {
     remove_dir(&dir_path).unwrap();
 }
 
+// We only support `readdir_r` on macOS.
+// (It is deprecated so we don't want to add more support.)
 #[cfg(target_os = "macos")]
 fn test_readdir_r() {
     use std::fs::{create_dir, remove_dir, write};
