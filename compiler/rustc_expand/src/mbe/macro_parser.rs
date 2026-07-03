@@ -709,10 +709,12 @@ impl TtParser {
         matcher: &[MatcherLoc],
         token_span: rustc_span::Span,
     ) -> NamedParseResult<F> {
-        let nts = self
-            .bb_mps
-            .iter()
-            .map(|mp| match &matcher[mp.idx] {
+        let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
+        let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
+
+        let nts = bb_locs
+            .into_iter()
+            .map(|loc| match loc {
                 MatcherLoc::MetaVarDecl { bind, kind, .. } => {
                     format!("{kind} ('{bind}')")
                 }
@@ -726,7 +728,7 @@ impl TtParser {
             format!(
                 "local ambiguity when calling macro `{}`: multiple parsing options: {}",
                 self.macro_name,
-                match self.next_mps.len() {
+                match next_locs.into_iter().count() {
                     0 => format!("built-in NTs {nts}."),
                     n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
                 }
