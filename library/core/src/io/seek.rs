@@ -174,6 +174,9 @@ pub trait Seek {
     }
 }
 
+/// The default implementation of [`Seek::stream_len`].
+/// This may be desirable in `libstd` where the default implementation is desirable,
+/// but additional work needs to be done before or after.
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub fn stream_len_default<T: Seek + ?Sized>(self_: &mut T) -> Result<u64> {
