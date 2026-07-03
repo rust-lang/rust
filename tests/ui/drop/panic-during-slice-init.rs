@@ -1,9 +1,9 @@
-//@ run-pass
-// Regression test for Issue #30018. This is very similar to the
-// original reported test, except that the panic is wrapped in a
-// spawned thread to isolate the expected error result from the
-// SIGTRAP injected by the drop-flag consistency checking.
+//! Regression test for <https://github.com/rust-lang/rust/issues/30018>.
+//! This is very similar to the original reported test, except that the
+//! panic is wrapped in a spawned thread to isolate the expected error
+//! result from the SIGTRAP injected by the drop-flag consistency checking.
 
+//@ run-pass
 //@ needs-unwind
 //@ needs-threads
 //@ ignore-backends: gcc

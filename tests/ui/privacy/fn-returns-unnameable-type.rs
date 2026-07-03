@@ -1,5 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29668>.
+//! Test functions can return unnameable types.
 //@ run-pass
-// Functions can return unnameable types
 
 mod m1 {
     mod m2 {

@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29743>.
+//! Test borrowck doesn't complain about using arithmetic with self item
+//! as index.
 //@ check-pass
 
 fn main() {

@@ -1,4 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/2989>.
 //@ run-pass
+
 #![allow(non_camel_case_types)]
 
 trait methods { //~ WARN trait `methods` is never used

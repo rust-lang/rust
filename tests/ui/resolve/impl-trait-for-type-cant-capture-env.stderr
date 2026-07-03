@@ -1,5 +1,5 @@
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/issue-3021.rs:12:22
+  --> $DIR/impl-trait-for-type-cant-capture-env.rs:15:22
    |
 LL |            self.v0 = k0 ^ 0x736f6d6570736575;
    |                      ^^
