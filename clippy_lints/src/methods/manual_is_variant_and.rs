@@ -273,13 +273,13 @@ pub(super) fn check_or<'tcx>(
         return;
     };
 
-    if !msrv.meets(cx, msrvs::IS_NONE_OR) {
-        return;
-    }
-
     let Ok(map_func) = MapFunc::try_from(some_arg) else {
         return;
     };
+
+    if !msrv.meets(cx, msrvs::IS_NONE_OR) {
+        return;
+    }
 
     span_lint_and_then(
         cx,

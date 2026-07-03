@@ -26,13 +26,9 @@ pub(super) fn check<'tcx>(
     }
 
     if is_const_evaluatable(cx.tcx, cx.typeck_results(), arg) {
-        if !msrv.meets(cx, msrvs::AS_CHUNKS) {
-            return;
-        }
-
         let use_ctxt = get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr);
 
-        if use_ctxt.is_ty_unified {
+        if use_ctxt.is_ty_unified || !msrv.meets(cx, msrvs::AS_CHUNKS) {
             return;
         }
 
