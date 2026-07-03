@@ -462,13 +462,13 @@ impl TtParser {
     /// track of through the mps generated.
     fn parse_tt_inner<'matcher, T: Tracker<'matcher>>(
         &mut self,
+        parser: &Parser<'_>,
         matcher: &'matcher [MatcherLoc],
-        token: &Token,
-        approx_position: u32,
         track: &mut T,
     ) -> Option<NamedParseResult<T::Failure>> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
         // modified if `token == Eof`.
+        let token = &parser.token;
         let mut eof_mps = SmallVec::<[MatcherPos; 1]>::new();
 
         while let Some(mut mp) = self.cur_mps.pop() {
@@ -595,7 +595,7 @@ impl TtParser {
                         token::Eof,
                         if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
                     ),
-                    approx_position,
+                    parser.approx_token_stream_pos(),
                     "missing tokens in macro arguments",
                 )),
                 _ => Error(token.span, "ambiguity: multiple successful parses".to_string()),
@@ -626,12 +626,7 @@ impl TtParser {
 
             // Process `cur_mps` until either we have finished the input or we need to get some
             // parsing from the black-box parser done.
-            let res = self.parse_tt_inner(
-                matcher,
-                &parser.token,
-                parser.approx_token_stream_pos(),
-                track,
-            );
+            let res = self.parse_tt_inner(parser, matcher, track);
 
             if let Some(res) = res {
                 return res;
