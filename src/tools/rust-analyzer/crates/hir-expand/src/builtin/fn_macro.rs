@@ -25,41 +25,27 @@ use crate::{
 };
 
 macro_rules! register_builtin {
-    ( $LAZY:ident: $(($name:ident, $kind: ident) => $expand:ident),* , $EAGER:ident: $(($e_name:ident, $e_kind: ident) => $e_expand:ident),*  ) => {
+    ( $EXPANDER:ident: $(($name:ident, $kind: ident) => $expand:ident),* $(,)? ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-        pub enum $LAZY {
+        pub enum $EXPANDER {
             $($kind),*
         }
 
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-        pub enum $EAGER {
-            $($e_kind),*
-        }
-
-        impl BuiltinFnLikeExpander {
+        impl $EXPANDER {
             fn expander(&self) -> fn (&dyn SourceDatabase, MacroCallId, &tt::TopSubtree, Span) -> ExpandResult<tt::TopSubtree>  {
                 match *self {
-                    $( BuiltinFnLikeExpander::$kind => $expand, )*
+                    $( Self::$kind => $expand, )*
+                }
+            }
+
+            fn find_by_name(ident: &name::Name) -> Option<Self> {
+                match ident {
+                    $( id if *id == sym::$name => Some(Self::$kind), )*
+                    _ => None,
                 }
             }
         }
-
-        impl EagerExpander {
-            fn expander(&self) -> fn (&dyn SourceDatabase, MacroCallId, &tt::TopSubtree, Span) -> ExpandResult<tt::TopSubtree>  {
-                match *self {
-                    $( EagerExpander::$e_kind => $e_expand, )*
-                }
-            }
-        }
-
-        fn find_by_name(ident: &name::Name) -> Option<Either<BuiltinFnLikeExpander, EagerExpander>> {
-            match ident {
-                $( id if id == &sym::$name => Some(Either::Left(BuiltinFnLikeExpander::$kind)), )*
-                $( id if id == &sym::$e_name => Some(Either::Right(EagerExpander::$e_kind)), )*
-                _ => return None,
-            }
-        }
-    };
+    }
 }
 
 impl BuiltinFnLikeExpander {
@@ -110,7 +96,8 @@ impl EagerExpander {
 pub fn find_builtin_macro(
     ident: &name::Name,
 ) -> Option<Either<BuiltinFnLikeExpander, EagerExpander>> {
-    find_by_name(ident)
+    (BuiltinFnLikeExpander::find_by_name(ident).map(Either::Left))
+        .or_else(|| EagerExpander::find_by_name(ident).map(Either::Right))
 }
 
 register_builtin! {
@@ -136,7 +123,9 @@ register_builtin! {
     (format_args_nl, FormatArgsNl) => format_args_nl_expand,
     (quote, Quote) => quote_expand,
     (pattern_type, PatternType) => pattern_type_expand,
+}
 
+register_builtin! {
     EagerExpander:
     (compile_error, CompileError) => compile_error_expand,
     (concat, Concat) => concat_expand,
@@ -145,7 +134,7 @@ register_builtin! {
     (include_bytes, IncludeBytes) => include_bytes_expand,
     (include_str, IncludeStr) => include_str_expand,
     (env, Env) => env_expand,
-    (option_env, OptionEnv) => option_env_expand
+    (option_env, OptionEnv) => option_env_expand,
 }
 
 fn mk_pound(span: Span) -> tt::Leaf {
