@@ -124,6 +124,13 @@ extern "C" bool LLVMRustTargetHasMnemonic(LLVMTargetMachineRef TM,
 static constexpr StringLiteral TargetFeatureAvailableAtCallSitePrefix(
     "rust.target_feature_available_at_call_site.");
 
+/// During MIR lowering, the target_feature_available_at_call_site intrinsic
+/// is lowered to a marker function call, for example:
+/// rust.target_feature_available_at_call_site.avx
+///
+/// This pass replaces those markers with true or false depending on whether the
+/// feature is enabled in the caller. To be useful, this pass must run after
+/// inlining.
 class TargetFeatureAvailableAtCallSitePass
     : public PassInfoMixin<TargetFeatureAvailableAtCallSitePass> {
   TargetMachine *TM;

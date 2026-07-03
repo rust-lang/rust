@@ -3681,6 +3681,8 @@ pub fn return_address() -> *const () {
 }
 
 /// Returns whether the named target feature is available at the current call site.
+/// This will not emit any runtime detection code; it always turns into `true` or `false` at some
+/// point during compilation.
 ///
 /// "Available" in this context means known to be enabled in the calling function.
 /// At a minimum, being enabled globally or in `#[target_features]` of the function containing
@@ -3698,10 +3700,14 @@ pub fn return_address() -> *const () {
 ///
 /// # Safety
 ///
-/// Code relying on the result of this intrinsic must be sound for both `true` and `false`.
-/// Even calling the same function multiple times can result in different return values,
-/// depending on how the function was inlined. In some cases, this intrinsic might still return
-/// `false` for features that are enabled in the inlined function.
+/// The return value of this intrinsic is call-site dependent and may vary between calls to the
+/// same function, depending on inlining and codegen. Callers must not rely on the result being
+/// stable across calls or multiple uses of the same function containing the intrinsic.
+///
+/// A return value of `true` guarantees that the feature is enabled at the call site and it is
+/// safe to call other functions that require the feature.
+/// A return value of `false` carries no information and does not indicate whether the feature is
+/// enabled or not.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]

@@ -600,7 +600,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         _rust_feature_name: &str,
     ) -> RValue<'gcc> {
         // SSA already handles the easy case where the caller function has the feature enabled.
-        // GCC doesn't (yet) have the equiavelent LLVM pass to replace a marker post-inlining,
+        // GCC doesn't (yet) have the equivalent LLVM pass to replace a marker post-inlining,
         // so report that the feature is unavailable at the call site.
         self.const_bool(false)
     }
