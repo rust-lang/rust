@@ -423,8 +423,6 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 // Note: the vectors could be created and dropped within `parse_tt`, but to avoid excess
 // allocations we have a single vector for each kind that is cleared and reused repeatedly.
 pub(crate) struct TtParser {
-    macro_name: Ident,
-
     /// The set of current mps to be processed. This should be empty by the end of a successful
     /// execution of `parse_tt_inner`.
     cur_mps: Vec<MatcherPos>,
@@ -442,9 +440,8 @@ pub(crate) struct TtParser {
 }
 
 impl TtParser {
-    pub(super) fn new(macro_name: Ident) -> TtParser {
+    pub(super) fn new() -> TtParser {
         TtParser {
-            macro_name,
             cur_mps: vec![],
             next_mps: vec![],
             bb_mps: vec![],
@@ -697,7 +694,7 @@ impl TtParser {
                     // Too many possibilities!
                     let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
                     let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
-                    return track.ambiguity(self.macro_name, parser.token.span, bb_locs, next_locs);
+                    return track.ambiguity(parser.token.span, bb_locs, next_locs);
                 }
             }
 

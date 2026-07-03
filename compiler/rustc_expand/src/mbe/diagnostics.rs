@@ -44,7 +44,7 @@ pub(super) fn failed_to_match_macro(
 
     // An error occurred, try the expansion again, tracking the expansion closely for better
     // diagnostics.
-    let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
+    let mut tracker = CollectTrackerAndEmitter::new(name, psess.dcx(), sp);
 
     let try_success_result = match args {
         FailedMacro::Func => try_match_macro(psess, name, body, rules, &mut tracker),
@@ -121,7 +121,7 @@ pub(super) fn failed_to_match_macro(
         for rule in rules {
             let MacroRule::Func { lhs, .. } = rule else { continue };
             let parser = parser_from_cx(psess, body.clone(), Recovery::Allowed);
-            let mut tt_parser = TtParser::new(name);
+            let mut tt_parser = TtParser::new();
 
             if let Success(_) =
                 tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker)
@@ -145,6 +145,7 @@ pub(super) fn failed_to_match_macro(
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.
 struct CollectTrackerAndEmitter<'dcx, 'matcher> {
+    macro_name: Ident,
     dcx: DiagCtxtHandle<'dcx>,
     remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
@@ -230,7 +231,6 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 
     fn ambiguity(
         &mut self,
-        macro_name: Ident,
         token_span: Span,
         bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
@@ -250,7 +250,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             token_span,
             format!(
                 "local ambiguity when calling macro `{}`: multiple parsing options: {}",
-                macro_name,
+                self.macro_name,
                 match next_locs.into_iter().count() {
                     0 => format!("built-in NTs {nts}."),
                     n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
@@ -269,8 +269,15 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 }
 
 impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
-    fn new(dcx: DiagCtxtHandle<'dcx>, root_span: Span) -> Self {
-        Self { dcx, remaining_matcher: None, best_failure: None, root_span, result: None }
+    fn new(macro_name: Ident, dcx: DiagCtxtHandle<'dcx>, root_span: Span) -> Self {
+        Self {
+            macro_name,
+            dcx,
+            remaining_matcher: None,
+            best_failure: None,
+            root_span,
+            result: None,
+        }
     }
 }
 

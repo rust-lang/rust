@@ -381,7 +381,6 @@ pub(super) trait Tracker<'matcher> {
 
     fn ambiguity(
         &mut self,
-        macro_name: Ident,
         token_span: Span,
         bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
@@ -406,7 +405,6 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
     fn ambiguity(
         &mut self,
-        _macro_name: Ident,
         token_span: Span,
         _bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
         _next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
@@ -621,7 +619,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     // this situation.)
     let parser = parser_from_cx(psess, arg.clone(), T::recovery());
     // Try each arm's matchers.
-    let mut tt_parser = TtParser::new(name);
+    let mut tt_parser = TtParser::new();
     for (i, rule) in rules.iter().enumerate() {
         let MacroRule::Func { lhs, .. } = rule else { continue };
         let _tracing_span = trace_span!("Matching arm", %i);
@@ -684,7 +682,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
     // This uses the same strategy as `try_match_macro`
     let args_parser = parser_from_cx(psess, attr_args.clone(), T::recovery());
     let body_parser = parser_from_cx(psess, attr_body.clone(), T::recovery());
-    let mut tt_parser = TtParser::new(name);
+    let mut tt_parser = TtParser::new();
     for (i, rule) in rules.iter().enumerate() {
         let MacroRule::Attr { args, body, .. } = rule else { continue };
 
@@ -737,7 +735,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
 ) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
     // This uses the same strategy as `try_match_macro`
     let body_parser = parser_from_cx(psess, body.clone(), T::recovery());
-    let mut tt_parser = TtParser::new(name);
+    let mut tt_parser = TtParser::new();
     for (i, rule) in rules.iter().enumerate() {
         let MacroRule::Derive { body, .. } = rule else { continue };
 
