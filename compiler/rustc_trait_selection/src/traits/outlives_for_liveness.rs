@@ -195,7 +195,19 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
     let parent_param_env = tcx.param_env(parent_def_id);
     tracing::debug!(?parent_param_env);
 
-    // Map the outlives regions to the parent regions
+    // Map the outlives regions to the parent regions.
+    // If we have `fn foo<'a>() -> impl Sized + 'a`, then this gets lowered as
+    // ```ignore (illustrative)
+    // opaque foo_opaque<'a0>: Sized + 'a0;
+    // fn foo<'a>() -> foo::<'a>::foo_opaque<'a> { ... }
+    // ```
+    // This maps `'a0` to `'a`, because that is what will be used to get the
+    // explicit and implied outlives relations.
+    //
+    // I suppose, an alternative way to do this would be iterate through all the
+    // *parent* regions and then find those that are captured. This should be
+    // basically equivalent (except with the added frustration of needing to
+    // build a `Region` from the opaque region's `LocalDefId`).
     let generics = tcx.generics_of(def_id);
     let mut parent_outlives_regions = Vec::with_capacity(generics.own_params.len());
     for opaque_arg in self_identity_args[generics.parent_count..].iter() {
@@ -364,9 +376,9 @@ fn live_args_for_outlives_clause<'tcx>(
         ty,
     )?;
 
-    let bound_region = outlives.skip_binder().1;
+    let outlived_region = outlives.skip_binder().1;
     let clause_identity_args = ty::GenericArgs::identity_for_item(tcx, alias_def_id);
-    match bound_region.kind() {
+    match outlived_region.kind() {
         // The underlying type must outlive `'static`, so it can't capture any of the args at all.
         //
         // Of course, you may ask: "what if the function has a `'a: 'static` bound?" See the corresponding
