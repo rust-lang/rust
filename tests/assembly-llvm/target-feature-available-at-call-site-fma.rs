@@ -55,13 +55,10 @@ pub fn with_fma_arch_intrinsic(x: f32, y: f32, z: f32) -> f32 {
     maybe_fma_arch_intrinsic(x, y, z)
 }
 
-// CHECK-LABEL: without_fma_arch_intrinsic:
-// CHECK: mulss
-// CHECK: addss
-// CHECK-NOT: vfmadd
 #[no_mangle]
 pub fn without_fma_arch_intrinsic(x: f32, y: f32, z: f32) -> f32 {
     maybe_fma_arch_intrinsic(x, y, z)
 }
 
 // CHECK: with_fma_arch_intrinsic = with_fma
+// CHECK: without_fma_arch_intrinsic = without_fma

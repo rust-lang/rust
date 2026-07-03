@@ -944,6 +944,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMFloatTypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMDoubleTypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMFP128TypeInContext(C: &Context) -> &Type;
+    pub(crate) fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on non-IEEE real types
     pub(crate) fn LLVMBFloatTypeInContext(C: &Context) -> &Type;

@@ -16,6 +16,7 @@
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRPrinter/IRPrintingPasses.h"
@@ -50,8 +51,6 @@
 #include "llvm/Transforms/Instrumentation/RealtimeSanitizer.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Scalar/AnnotationRemarks.h"
-#include "llvm/Transforms/Scalar/InstSimplifyPass.h"
-#include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
@@ -121,12 +120,9 @@ extern "C" bool LLVMRustTargetHasMnemonic(LLVMTargetMachineRef TM,
   return false;
 }
 
-static constexpr StringLiteral TargetFeatureAvailableAtCallSitePrefix(
-    "rust.target_feature_available_at_call_site.");
-
 /// During MIR lowering, the target_feature_available_at_call_site intrinsic
-/// is lowered to a marker function call, for example:
-/// rust.target_feature_available_at_call_site.avx
+/// is lowered to a marker function call carrying the LLVM feature as a
+/// metadata string argument.
 ///
 /// This pass replaces those markers with true or false depending on whether the
 /// feature is enabled in the caller. To be useful, this pass must run after
@@ -138,33 +134,36 @@ class TargetFeatureAvailableAtCallSitePass
 public:
   explicit TargetFeatureAvailableAtCallSitePass(TargetMachine *TM) : TM(TM) {}
 
-  PreservedAnalyses run(Module &M, ModuleAnalysisManager &MAM) {
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &) {
+    Function *MarkerDecl =
+        M.getFunction("rust.target_feature_available_at_call_site");
+    if (MarkerDecl == nullptr)
+      return PreservedAnalyses::all();
+
     SmallVector<CallInst *> CallsToErase;
-    DenseSet<Function *> ChangedFunctions;
-    for (Function &MarkerDecl : M.functions()) {
-      if (!MarkerDecl.getName().starts_with(
-              TargetFeatureAvailableAtCallSitePrefix))
+    for (User *U : MarkerDecl->users()) {
+      auto *Call = dyn_cast<CallInst>(U);
+      if (!Call || Call->getCalledFunction() != MarkerDecl ||
+          Call->arg_size() != 1)
         continue;
 
-      StringRef Feature = MarkerDecl.getName().drop_front(
-          TargetFeatureAvailableAtCallSitePrefix.size());
+      auto *FeatureAsValue = dyn_cast<MetadataAsValue>(Call->getArgOperand(0));
+      auto *FeatureMetadata =
+          FeatureAsValue ? dyn_cast<MDString>(FeatureAsValue->getMetadata())
+                         : nullptr;
+      if (FeatureMetadata == nullptr)
+        continue;
+
       SmallString<64> EnabledFeature("+");
-      EnabledFeature += Feature;
+      EnabledFeature += FeatureMetadata->getString();
 
-      for (User *U : MarkerDecl.users()) {
-        auto *Call = dyn_cast<CallInst>(U);
-        if (!Call || Call->getCalledFunction() != &MarkerDecl)
-          continue;
+      Function *Caller = Call->getFunction();
+      const TargetSubtargetInfo *Subtarget = TM->getSubtargetImpl(*Caller);
+      bool Enabled =
+          Subtarget != nullptr && Subtarget->checkFeatures(EnabledFeature);
 
-        Function *Caller = Call->getFunction();
-        const TargetSubtargetInfo *Subtarget = TM->getSubtargetImpl(*Caller);
-        bool Enabled =
-            Subtarget != nullptr && Subtarget->checkFeatures(EnabledFeature);
-
-        Call->replaceAllUsesWith(ConstantInt::getBool(M.getContext(), Enabled));
-        CallsToErase.push_back(Call);
-        ChangedFunctions.insert(Caller);
-      }
+      Call->replaceAllUsesWith(ConstantInt::getBool(M.getContext(), Enabled));
+      CallsToErase.push_back(Call);
     }
 
     if (CallsToErase.empty())
@@ -173,17 +172,7 @@ public:
     for (CallInst *Call : CallsToErase)
       Call->eraseFromParent();
 
-    auto &FAM =
-        MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
-    FunctionPassManager FPM;
-    FPM.addPass(InstSimplifyPass());
-    FPM.addPass(SimplifyCFGPass());
-    for (Function *F : ChangedFunctions)
-      FPM.run(*F, FAM);
-
-    PreservedAnalyses PA = PreservedAnalyses::none();
-    PA.preserve<FunctionAnalysisManagerModuleProxy>();
-    return PA;
+    return PreservedAnalyses::none();
   }
 };
 
@@ -794,11 +783,14 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       PipelineStartEPCallbacks;
   std::vector<std::function<void(ModulePassManager &, OptimizationLevel,
                                  ThinOrFullLTOPhase)>>
+      OptimizerEarlyEPCallbacks;
+  std::vector<std::function<void(ModulePassManager &, OptimizationLevel,
+                                 ThinOrFullLTOPhase)>>
       OptimizerLastEPCallbacks;
 
-  OptimizerLastEPCallbacks.push_back([TM](ModulePassManager &MPM,
-                                          OptimizationLevel Level,
-                                          ThinOrFullLTOPhase Phase) {
+  OptimizerEarlyEPCallbacks.push_back([TM](ModulePassManager &MPM,
+                                           OptimizationLevel Level,
+                                           ThinOrFullLTOPhase Phase) {
     MPM.addPass(TargetFeatureAvailableAtCallSitePass(TM));
   });
 
@@ -939,6 +931,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     if (!NoPrepopulatePasses) {
       for (const auto &C : PipelineStartEPCallbacks)
         PB.registerPipelineStartEPCallback(C);
+      for (const auto &C : OptimizerEarlyEPCallbacks)
+        PB.registerOptimizerEarlyEPCallback(C);
       for (const auto &C : OptimizerLastEPCallbacks)
         PB.registerOptimizerLastEPCallback(C);
 
@@ -993,6 +987,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       // add the verifier, instrumentation, etc passes if they were requested
       for (const auto &C : PipelineStartEPCallbacks)
         C(MPM, OptLevel);
+      for (const auto &C : OptimizerEarlyEPCallbacks)
+        C(MPM, OptLevel, ThinOrFullLTOPhase::None);
       for (const auto &C : OptimizerLastEPCallbacks)
         C(MPM, OptLevel, ThinOrFullLTOPhase::None);
     }
