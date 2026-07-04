@@ -108,6 +108,12 @@ fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
     }
 
     let string = snippet(cx, span, "");
+    // All three lints here can only fire when the snippet contains a non-ASCII character. Note
+    // that the snippet can contain non-ASCII characters even when the literal's value does not,
+    // e.g. the literal produced by `file!()` inside a macro spans the whole macro invocation.
+    if string.is_ascii() {
+        return;
+    }
     let is_raw = string.starts_with('r');
 
     if string.chars().any(|c| ['\u{200B}', '\u{ad}', '\u{2060}'].contains(&c)) {
