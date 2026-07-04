@@ -104,6 +104,16 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 permute(this, left, right, dest)?;
             }
+            "permvar.qi.512" | "permvar.qi.256" | "permvar.qi.128" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
+                if !unprefixed_name.ends_with("512") {
+                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                }
+
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+
+                permute(this, left, right, dest)?;
+            }
             // Used to implement the _mm512_permutex2var_epi64 intrinsic.
             "vpermi2var.q.512" => {
                 let [left, indices, right] = this.check_shim_sig_unadjusted(link_name, args)?;
