@@ -140,17 +140,19 @@ public:
     if (MarkerDecl == nullptr)
       return PreservedAnalyses::all();
 
+    auto FeatureKindID = M.getContext().getMDKindID("rust.target_feature");
+
     SmallVector<CallInst *> CallsToErase;
     for (User *U : MarkerDecl->users()) {
       auto *Call = dyn_cast<CallInst>(U);
-      if (!Call || Call->getCalledFunction() != MarkerDecl ||
-          Call->arg_size() != 1)
+      if (!Call || Call->getCalledFunction() != MarkerDecl)
         continue;
 
-      auto *FeatureAsValue = dyn_cast<MetadataAsValue>(Call->getArgOperand(0));
+      auto *FeatureNode = Call->getMetadata(FeatureKindID);
       auto *FeatureMetadata =
-          FeatureAsValue ? dyn_cast<MDString>(FeatureAsValue->getMetadata())
-                         : nullptr;
+          FeatureNode && FeatureNode->getNumOperands() == 1
+              ? dyn_cast<MDString>(FeatureNode->getOperand(0))
+              : nullptr;
       if (FeatureMetadata == nullptr)
         continue;
 

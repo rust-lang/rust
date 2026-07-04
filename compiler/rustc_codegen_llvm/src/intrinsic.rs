@@ -951,7 +951,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
 
         // Generate the marker to be replaced by the LLVM pass
-        let fn_ty = self.type_func(&[self.cx.type_metadata()], self.type_i1());
+        let fn_ty = self.type_func(&[], self.type_i1());
         let llfn = self.cx.declare_cfn(
             "rust.target_feature_available_at_call_site",
             llvm::UnnamedAddr::No,
@@ -959,9 +959,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         );
         let nounwind = llvm::AttributeKind::NoUnwind.create_attr(self.cx.llcx);
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[nounwind]);
-        let feature_arg =
-            self.cx.get_metadata_value(self.cx.create_metadata(llvm_feature_name.as_bytes()));
-        self.call(fn_ty, None, None, llfn, &[feature_arg], None, None)
+        let call = self.call(fn_ty, None, None, llfn, &[], None, None);
+        let kind = self.cx.get_md_kind_id("rust.target_feature");
+        let feature = self.cx.create_metadata(llvm_feature_name.as_bytes());
+        self.cx.set_metadata_node(call, kind, &[feature]);
+        call
     }
 
     fn codegen_llvm_intrinsic_call(
