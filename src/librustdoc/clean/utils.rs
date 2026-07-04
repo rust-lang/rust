@@ -352,10 +352,10 @@ pub(crate) fn print_const(tcx: TyCtxt<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Alias(_, ty::AliasConst { kind, .. }) => {
             let def_id: DefId = match kind {
-                ty::AliasConstKind::Projection { def_id } => def_id.into(),
-                ty::AliasConstKind::Inherent { def_id } => def_id.into(),
-                ty::AliasConstKind::Free { def_id } => def_id.into(),
-                ty::AliasConstKind::Anon { def_id } => def_id.into(),
+                ty::AliasConstKind::Projection { def_id }
+                | ty::AliasConstKind::Inherent { def_id }
+                | ty::AliasConstKind::Free { def_id }
+                | ty::AliasConstKind::Anon { def_id } => def_id,
             };
             if let Some(local_def_id) = def_id.as_local()
                 && let Some(body_id) = tcx.hir_maybe_body_owned_by(local_def_id)
