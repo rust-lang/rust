@@ -1104,7 +1104,8 @@ fn permute<'tcx>(
 /// Shuffle elements from *two* source registers (`left` and `right`) using
 /// the corresponding index in `indices`, and store the results in `dest`.
 ///
-/// For a vector with `N` lanes, the low `log2(N)` bits of each index select a
+/// For indexing, we basically concatenate `left` and `right`, and index into the concatenation.
+/// More precisely: For a vector with `N` lanes, the low `log2(N)` bits of each index select a
 /// lane within a source vector. Bit `log2(N)` selects the source vector (`0` =>
 /// `left`, `1` => `right`), and all higher bits are ignored.
 /// Equivalently, lane `i` of the result is copied from

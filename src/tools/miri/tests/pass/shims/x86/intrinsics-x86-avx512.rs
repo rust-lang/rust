@@ -12,8 +12,8 @@ use std::mem::transmute;
 fn main() {
     if !is_x86_feature_detected!("avx512f") {
         // GH runners don't have this, but we still want to run this natively if
-        // the machine happens to have gfni. So we bail out dynamically.
-        println!("warning: skipping AVX512 tests");
+        // the machine happens to have AVX512. So we bail out dynamically.
+        println!("warning: skipping avx512 tests");
         return;
     }
 
