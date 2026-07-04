@@ -5,6 +5,7 @@
 #![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
 use crate::{both, over};
+use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_ast::{self as ast, HasAttrs, *};
 use rustc_span::sym;
 use rustc_span::symbol::Ident;
@@ -1042,7 +1043,7 @@ fn eq_delim_args(l: &DelimArgs, r: &DelimArgs) -> bool {
         && l.tokens.iter().zip(r.tokens.iter()).all(|(a, b)| a.eq_unspanned(b))
 }
 
-/// Checks whether `#[cfg(test)]` is directly applied to `item`.
+/// Checks whether `item` is gated on `#[cfg(test)]`.
 pub fn is_cfg_test(item: &impl HasAttrs) -> bool {
     item.attrs().iter().any(|attr| {
         if attr.has_name(sym::cfg)
@@ -1050,8 +1051,20 @@ pub fn is_cfg_test(item: &impl HasAttrs) -> bool {
             && item_list.iter().any(|item| item.has_name(sym::test))
         {
             true
+        } else if attr.has_name(sym::cfg_trace)
+            && let AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg)) = &attr.get_normal_item().args
+        {
+            requires_test_cfg(cfg)
         } else {
             false
         }
     })
+}
+
+fn requires_test_cfg(cfg: &CfgEntry) -> bool {
+    match cfg {
+        CfgEntry::NameValue { name: sym::test, .. } => true,
+        CfgEntry::All(subs, _) => subs.iter().any(requires_test_cfg),
+        _ => false,
+    }
 }
