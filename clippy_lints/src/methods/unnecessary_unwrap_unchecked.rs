@@ -188,7 +188,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, recv: 
         return;
     }
     let expected_ret_ty = cx.typeck_results().expr_ty(expr);
-    let (variant, checked_span, unchecked_sugg, unchecked_full_path) = match recv.kind {
+    let (variant, checked_span, unchecked_sugg, unchecked_full_path, unchecked_def_id) = match recv.kind {
         // Construct `Variant::Fn(_)`, if applicable. This is necessary for us to handle
         // functions like `std::str::from_utf8_unchecked`.
         ExprKind::Call(path, _)
@@ -213,6 +213,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, recv: 
                     unchecked_ident.to_string()
                 },
                 unchecked_full_path,
+                unchecked_def_id,
             )
         },
         // We unfortunately must handle `A::a(&a)` and `a.a()` separately, this handles the
@@ -233,6 +234,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, recv: 
                 checked_ident.span,
                 unchecked_ident.to_string(),
                 unchecked_full_path,
+                unchecked.def_id,
             )
         },
         // ... And now the latter ^^
@@ -250,10 +252,16 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, recv: 
                 checked_ident.span,
                 unchecked_ident.to_string(),
                 unchecked_full_path,
+                unchecked.def_id,
             )
         },
         _ => return,
     };
+
+    // Do not lint from inside the `_unchecked` function itself
+    if unchecked_def_id.as_local() == Some(expr.hir_id.owner.def_id) {
+        return;
+    }
 
     if !is_from_proc_macro(cx, expr) {
         span_lint_and_then(cx, UNNECESSARY_UNWRAP_UNCHECKED, expr.span, variant.msg(), |diag| {
