@@ -1,6 +1,7 @@
 # `cfg(bootstrap)` in compiler dependencies
 
-The Rust compiler uses some external crates that can run into cyclic dependencies with the compiler itself: the compiler needs an updated crate to build, but the crate needs an updated compiler.
+The Rust compiler uses some external crates that can run into cyclic dependencies with the compiler itself:
+the compiler needs an updated crate to build, but the crate needs an updated compiler.
 This page describes how `#[cfg(bootstrap)]` can be used to break this cycle.
 
 ## Enabling `#[cfg(bootstrap)]`
