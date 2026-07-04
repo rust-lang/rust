@@ -130,7 +130,9 @@ rustflags = [
     # These link flags resolve to this sysroot:
     # `…/arm-none-eabi/armv7a_hard_vfpv3_d16_unaligned`
     # (hard float / VFP version 3 with 16 regs / unaligned access)
-    "-Clink-arg=--target=armv7a-none-eabihf",
+    "-Clink-arg=--target=thumbv7a-none-eabihf",
+    "-Clink-arg=-fno-rtti",
+    "-Clink-arg=-fno-exceptions",
 
     # To disable crt0 and use Rust's _boot implementation
     # (or something custom):
