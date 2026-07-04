@@ -1111,7 +1111,13 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 if source == MatchSource::Normal {
                     let is_match_like_matches = self.msrv.meets(cx, msrvs::MATCHES_MACRO)
                         && match_like_matches::check_match(cx, expr, ex, arms);
-                    if !(is_match_like_matches || is_lint_allowed(cx, MATCH_SAME_ARMS, expr.hir_id)) {
+                    // Even when the lint is allowed on the match expression, an arm can carry its
+                    // own `#[expect]`/`#[warn]` attribute, which `match_same_arms::check` handles
+                    // at arm granularity. Only skip the check when no arm has attributes.
+                    if !(is_match_like_matches
+                        || (is_lint_allowed(cx, MATCH_SAME_ARMS, expr.hir_id)
+                            && arms.iter().all(|arm| cx.tcx.hir_attrs(arm.hir_id).is_empty())))
+                    {
                         match_same_arms::check(cx, arms);
                     }
 
