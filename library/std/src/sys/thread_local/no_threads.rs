@@ -5,6 +5,9 @@ use crate::cell::{Cell, UnsafeCell};
 use crate::mem::MaybeUninit;
 use crate::ptr;
 
+#[cfg(target_has_threads)]
+compile_error!("Using no_threads implementation on a target with threads");
+
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
 #[allow_internal_unsafe]
