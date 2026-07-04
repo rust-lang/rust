@@ -1,6 +1,7 @@
 # `cfg(bootstrap)` in compiler dependencies
 
-The rust compiler uses some external crates that can run into cyclic dependencies with the compiler itself: the compiler needs an updated crate to build, but the crate needs an updated compiler. This page describes how `#[cfg(bootstrap)]` can be used to break this cycle.
+The rust compiler uses some external crates that can run into cyclic dependencies with the compiler itself: the compiler needs an updated crate to build, but the crate needs an updated compiler.
+This page describes how `#[cfg(bootstrap)]` can be used to break this cycle.
 
 ## Enabling `#[cfg(bootstrap)]`
 
@@ -50,4 +51,5 @@ For `compiler-builtins` this meant a version bump, in other cases it may be a gi
 
 ### Step 4: remove the old behavior from the compiler ([#139753](https://github.com/rust-lang/rust/pull/139753))
 
-The updated crate can now be used. In this example that meant that the old behavior could be removed.
+The updated crate can now be used.
+In this example that meant that the old behavior could be removed.
