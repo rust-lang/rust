@@ -40,7 +40,7 @@ As a concrete example we'll use a change where the `#[naked]` attribute was made
 
 ### Step 1: accept the new behavior in the compiler ([#139797](https://github.com/rust-lang/rust/pull/139797))
 
-In this example it is possible to accept both the old and new behavior at the same time by disabling an error.
+In this example, it is possible to accept both the old and new behavior at the same time by disabling an error.
 
 ### Step 2: update the crate ([#821](https://github.com/rust-lang/compiler-builtins/pull/821))
 
