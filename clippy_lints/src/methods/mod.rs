@@ -3157,7 +3157,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of the `offset` pointer method with a `usize` casted to an
+    /// Checks for usage of the `offset` pointer method with a `usize` cast to an
     /// `isize`.
     ///
     /// ### Why is this bad?

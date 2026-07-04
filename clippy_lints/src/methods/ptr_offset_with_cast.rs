@@ -43,7 +43,7 @@ pub(super) fn check(
         return;
     };
 
-    let msg = format!("use of `{method}` with a `usize` casted to an `isize`");
+    let msg = format!("use of `{method}` with a `usize` cast to an `isize`");
     span_lint_and_then(cx, PTR_OFFSET_WITH_CAST, expr.span, msg, |diag| {
         diag.multipart_suggestion(
             format!("use `{}` instead", method.suggestion()),

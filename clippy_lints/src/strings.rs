@@ -93,7 +93,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check if the string is transformed to byte array and casted back to string.
+    /// Check if the string is transformed to byte array and cast back to string.
     ///
     /// ### Why is this bad?
     /// It's unnecessary, the string can be used directly.
