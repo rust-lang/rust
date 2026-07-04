@@ -33,8 +33,8 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
     }
 
     /// Start listening on the socket.
-    /// `backlog` specifies how many pending incoming connections can exist
-    /// at the same time before new requests are rejected.
+    /// `backlog` specifies how many pending incoming connections can exist at the same
+    /// time before new requests are rejected.
     fn listen<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -45,11 +45,10 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
     }
 
     /// Accept an incoming connection on the socket.
-    /// `is_client_sock_non_block` specifies whether the newly accepted
-    /// client connection should be non-blocking.
-    /// After a successful accept, `finish` should be called with a
-    /// tuple containing the file descriptor of the peer socket and
-    /// it's address.
+    /// `is_client_sock_non_block` specifies whether the newly accepted client connection
+    /// should be non-blocking.
+    /// After a successful accept, `finish` should be called with a tuple containing the
+    /// file descriptor of the peer socket and it's address.
     fn accept<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -73,13 +72,10 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
 
     /// Recieve data on the socket into the given buffer `ptr`.
     /// `len` indicates how many bytes we should try to receive.
-    /// `is_peek` specifies whether the receive removes the bytes
-    /// from the receive buffer ([`false`]) or leaves them in the
-    /// reiceve buffer ([`true`]).
-    /// `is_non_block` specifies whether the receive operation is
-    /// non-blocking.
-    /// After a successful receive, `finish` should be called with
-    /// the amount of bytes received.
+    /// `is_peek` specifies whether the receive removes the bytes from the receive buffer
+    /// ([`false`]) or leaves them in the reiceve buffer ([`true`]).
+    /// `is_non_block` specifies whether the receive operation is non-blocking.
+    /// After a successful receive, `finish` should be called with the amount of bytes received.
     fn recv<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -95,10 +91,8 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
 
     /// Send data from the given buffer `ptr` into the socket.
     /// `len` indicates how many bytes we should try to send.
-    /// `is_non_block` specifies whether the send operation is
-    /// non-blocking.
-    /// After a successful send, `finish` should be called with
-    /// the amount of bytes sent.
+    /// `is_non_block` specifies whether the send operation is non-blocking.
+    /// After a successful send, `finish` should be called with the amount of bytes sent.
     fn send<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -112,9 +106,8 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
     }
 
     /// Set the socket option `option` on `level`.
-    /// `value_ptr` points to the new value of the socket option,
-    /// and `value_len` contains the amount of bytes the value uses
-    /// at `value_ptr`.
+    /// `value_ptr` points to the new value of the socket option, and `value_len` contains
+    /// the amount of bytes the value uses at `value_ptr`.
     fn setsockopt<'tcx>(
         self: FileDescriptionRef<Self>,
         _level: i32,
@@ -136,7 +129,7 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         throw_unsup_format!("cannot get socket option for {}", self.name());
     }
 
-    /// Get the address of the socket.
+    /// Get the local address of the socket.
     fn getsockname<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -145,7 +138,7 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         throw_unsup_format!("cannot get socket name for {}", self.name());
     }
 
-    /// Get the address of the connected socket.
+    /// Get the remote address of the socket.
     fn getpeername<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -351,9 +344,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     address_ptr: Pointer,
                     address_len_ptr: Pointer,
                     dest: MPlaceTy<'tcx>
-                } |this, result: Result<(i32, SocketAddr), IoError>| {
+                } |this, result: Result<(FdNum, SocketAddr), IoError>| {
                     let (client_sockfd, address) = match result {
-                        Ok((sockfd, address)) => (sockfd, address),
+                        Ok(data) => data,
                         Err(e) => return this.set_errno_and_return_neg1(e, &dest),
                     };
 
@@ -408,7 +401,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     dest: MPlaceTy<'tcx>
                  } |this, result: Result<(), IoError>| {
                      match result {
-                         Ok(_) => this.write_null(&dest),
+                         Ok(()) => this.write_null(&dest),
                          Err(e) => this.set_errno_and_return_neg1(e, &dest)
                      }
                  }
