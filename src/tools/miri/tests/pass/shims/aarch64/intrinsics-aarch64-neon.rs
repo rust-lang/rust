@@ -12,7 +12,7 @@ fn main() {
 
     unsafe {
         test_vpmaxq_u8();
-        test_tbl1_v16i8_basic();
+        test_tbl1_basic();
         test_vpadd();
         test_vpaddl();
         test_vqdmulh();
@@ -46,7 +46,27 @@ unsafe fn test_vpmaxq_u8() {
 }
 
 #[target_feature(enable = "neon")]
-fn test_tbl1_v16i8_basic() {
+fn test_tbl1_basic() {
+    unsafe {
+        // table = 0..7
+        let table: uint8x8_t = transmute::<[u8; 8], _>([0, 1, 2, 3, 4, 5, 6, 7]);
+
+        // indices
+        let idx: uint8x8_t = transmute::<[u8; 8], _>([0, 1, 2, 3, 4, 5, 6, 7]);
+        let got = vtbl1_u8(table, idx);
+        let got_arr: [u8; 8] = transmute(got);
+        assert_eq!(got_arr, [0, 1, 2, 3, 4, 5, 6, 7]);
+
+        // Also try different order and out-of-range indices (8, 255).
+        let idx2: uint8x8_t = transmute::<[u8; 8], _>([7, 8, 255, 0, 1, 2, 3, 4]);
+        let got2 = vtbl1_u8(table, idx2);
+        let got2_arr: [u8; 8] = transmute(got2);
+        assert_eq!(got2_arr[0], 7);
+        assert_eq!(got2_arr[1], 0); // out-of-range
+        assert_eq!(got2_arr[2], 0); // out-of-range
+        assert_eq!(&got2_arr[3..8], &[0, 1, 2, 3, 4][..]);
+    }
+
     unsafe {
         // table = 0..15
         let table: uint8x16_t =
@@ -69,6 +89,7 @@ fn test_tbl1_v16i8_basic() {
         assert_eq!(&got2_arr[3..16], &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12][..]);
     }
 }
+
 #[target_feature(enable = "neon")]
 unsafe fn test_vpadd() {
     let a = vld1_s8([1, 2, 3, 4, 5, 6, 7, 8].as_ptr());

@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use rustc_middle::mir::BinOp;
 use rustc_span::Symbol;
 
@@ -178,18 +180,23 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
-            // Vector table lookup: each index selects a byte from the 16-byte table, out-of-range -> 0.
-            // Used to implement vtbl1_u8 function.
+            // Vector table lookup: each index selects a byte from the 8 or 16-byte table,
+            // out-of-range -> 0.
+            //
+            // Used to implement the vqtbl1 and vqtbl1q set of functions, e.g.:
+            //
+            // - https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl1_u8
+            // - https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl1q_s8
+            //
             // LLVM does not have a portable shuffle that takes non-const indices
             // so we need to implement this ourselves.
-            // https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl1_u8
-            "neon.tbl1.v16i8" => {
+            "neon.tbl1.v8i8" | "neon.tbl1.v16i8" => {
                 let [table, indices] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let (table, table_len) = this.project_to_simd(table)?;
                 let (indices, idx_len) = this.project_to_simd(indices)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
-                assert_eq!(table_len, 16);
+                assert_matches!(table_len, 8 | 16);
                 assert_eq!(idx_len, dest_len);
 
                 for i in 0..dest_len {
