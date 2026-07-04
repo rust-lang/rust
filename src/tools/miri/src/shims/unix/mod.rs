@@ -7,6 +7,7 @@ mod mem;
 mod socket;
 mod socket_address;
 mod sync;
+mod tcp_socket;
 mod thread;
 mod virtual_socket;
 
