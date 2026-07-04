@@ -465,11 +465,12 @@ m!(g);
         ModuleSource::SourceFile(it) => it,
         ModuleSource::Module(_) | ModuleSource::BlockExpr(_) => panic!(),
     };
+    let span_map = db.real_span_map(file_id);
     let no_downmap_spans: Vec<_> = source_file
         .syntax()
         .descendants()
         .map(|node| {
-            let mut span = db.real_span_map(file_id).span_for_range(node.text_range());
+            let mut span = span_map.span_for_range(node.text_range());
             span.anchor.ast_id = NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER;
             span
         })

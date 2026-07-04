@@ -28,7 +28,6 @@ mod fixup;
 mod prettify_macro_expansion_;
 
 use salsa::plumbing::{AsId, FromId};
-use stdx::TupleExt;
 use thin_vec::ThinVec;
 use triomphe::Arc;
 
@@ -1216,8 +1215,8 @@ impl<'db> ExpansionInfo<'db> {
                     self.arg.file_id,
                     arg_map
                         .ranges_with_span_exact(span)
-                        .filter(|(range, _)| range.intersect(arg_range).is_some())
-                        .map(TupleExt::head)
+                        .map(|(range, _)| range)
+                        .filter(|range| range.intersect(arg_range).is_some())
                         .collect(),
                 )
             }

@@ -30,7 +30,7 @@ impl<'db> SpanMap<'db> {
             // FIXME: Is it correct for us to only take the span at the start? This feels somewhat
             // wrong. The context will be right, but the range could be considered wrong. See
             // https://github.com/rust-lang/rust/issues/23480, we probably want to fetch the span at
-            // the start and end, then merge them like rustc does in `Span::to
+            // the start and end, then merge them like rustc does in `Span::to`
             Self::ExpansionSpanMap(span_map) => span_map.span_at(range.start()),
             Self::RealSpanMap(span_map) => span_map.span_for_range(range),
         }
@@ -40,9 +40,7 @@ impl<'db> SpanMap<'db> {
     pub(crate) fn new(db: &'db dyn ExpandDatabase, file_id: HirFileId) -> SpanMap<'db> {
         match file_id {
             HirFileId::FileId(file_id) => SpanMap::RealSpanMap(db.real_span_map(file_id)),
-            HirFileId::MacroFile(m) => {
-                SpanMap::ExpansionSpanMap(&m.parse_macro_expansion(db).value.1)
-            }
+            HirFileId::MacroFile(m) => SpanMap::ExpansionSpanMap(db.expansion_span_map(m)),
         }
     }
 }
