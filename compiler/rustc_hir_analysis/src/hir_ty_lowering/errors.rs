@@ -281,7 +281,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     let identically_named = suggested_name == assoc_ident.name;
 
                     if let DefKind::TyAlias = tcx.def_kind(item_def_id)
-                        && !tcx.type_alias_is_lazy(item_def_id)
+                        && !tcx.type_alias_is_checked(item_def_id)
                     {
                         err.sugg =
                             Some(diagnostics::AssocItemNotFoundSugg::SimilarInOtherTraitQPath {

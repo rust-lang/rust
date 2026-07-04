@@ -228,7 +228,7 @@ provide! { tcx, def_id, other, cdata,
     explicit_super_predicates_of => { table_defaulted_array }
     explicit_implied_predicates_of => { table_defaulted_array }
     type_of => { table }
-    type_alias_is_lazy => { table_direct }
+    type_alias_is_checked => { table_direct }
     variances_of => { table }
     fn_sig => { table }
     codegen_fn_attrs => { table }

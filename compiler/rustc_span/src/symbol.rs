@@ -608,6 +608,7 @@ symbols! {
         cfi,
         cfi_encoding,
         char,
+        checked_type_aliases,
         clflushopt_target_feature,
         client,
         clippy,
