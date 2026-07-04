@@ -3725,20 +3725,18 @@ pub fn target_feature_available_at_call_site<const FEATURE: [u8; 100]>() -> bool
 pub macro target_feature_available_at_call_site($feature:literal) {{
     ::core::intrinsics::target_feature_available_at_call_site::<
         {
-            const {
-                let bytes = $feature.as_bytes();
+            let bytes = $feature.as_bytes();
 
-                assert!(bytes.len() <= 100, "feature string too long");
+            assert!(bytes.len() <= 100, "feature string too long");
 
-                let mut out = [0u8; 100];
-                let mut i = 0;
-                while i < bytes.len() {
-                    out[i] = bytes[i];
-                    i += 1;
-                }
-
-                out
+            let mut out = [0u8; 100];
+            let mut i = 0;
+            while i < bytes.len() {
+                out[i] = bytes[i];
+                i += 1;
             }
+
+            out
         },
     >()
 }}
