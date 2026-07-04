@@ -1,9 +1,9 @@
 //@ revisions: NEG_ONLY NEG_POS POS_NEG
-//@ compile-flags: --crate-type=lib -Copt-level=0 --target=x86_64-unknown-linux-gnu
+//@ compile-flags: --crate-type=lib -Copt-level=0
 //@ [NEG_ONLY] compile-flags: -Ctarget-feature=-fma
 //@ [NEG_POS] compile-flags: -Ctarget-feature=-fma,+fma
 //@ [POS_NEG] compile-flags: -Ctarget-feature=+fma,-fma
-//@ needs-llvm-components: x86
+//@ only-x86_64
 //@ ignore-backends: gcc
 
 // opt-level=0 has different inlining properties, so ensure that the pass still works.
@@ -24,7 +24,7 @@ use std::intrinsics::target_feature_available_at_call_site;
 #[no_mangle]
 #[target_feature(enable = "fma")]
 pub fn with_fma() -> bool {
-    target_feature_available_at_call_site("fma")
+    target_feature_available_at_call_site!("fma")
 }
 
 // NEG_ONLY-LABEL: @without_fma(
@@ -38,5 +38,5 @@ pub fn with_fma() -> bool {
 // POS_NEG: ret i1 false
 #[no_mangle]
 pub fn without_fma() -> bool {
-    target_feature_available_at_call_site("fma")
+    target_feature_available_at_call_site!("fma")
 }

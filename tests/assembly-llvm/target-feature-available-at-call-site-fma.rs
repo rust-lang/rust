@@ -1,6 +1,5 @@
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -Copt-level=3 -C llvm-args=-x86-asm-syntax=intel --target=x86_64-unknown-linux-gnu -Ctarget-feature=-avx,-fma
-//@ needs-llvm-components: x86
+//@ compile-flags: --crate-type=lib -Copt-level=3 -C llvm-args=-x86-asm-syntax=intel -Ctarget-feature=-avx,-fma
 //@ only-x86_64
 //@ ignore-sgx
 //@ ignore-backends: gcc
@@ -12,7 +11,7 @@ use std::intrinsics::target_feature_available_at_call_site;
 
 #[inline(always)]
 fn maybe_fma(x: f32, y: f32, z: f32) -> f32 {
-    if target_feature_available_at_call_site("fma") { x.mul_add(y, z) } else { x * y + z }
+    if target_feature_available_at_call_site!("fma") { x.mul_add(y, z) } else { x * y + z }
 }
 
 #[inline(always)]
@@ -21,7 +20,7 @@ fn maybe_fma_arch_intrinsic(x: f32, y: f32, z: f32) -> f32 {
         let x = _mm_set_ss(x);
         let y = _mm_set_ss(y);
         let z = _mm_set_ss(z);
-        let result = if target_feature_available_at_call_site("fma") {
+        let result = if target_feature_available_at_call_site!("fma") {
             _mm_fmadd_ss(x, y, z)
         } else {
             _mm_add_ss(_mm_mul_ss(x, y), z)

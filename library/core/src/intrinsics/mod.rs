@@ -3691,9 +3691,9 @@ pub fn return_address() -> *const () {
 /// to support negligible or zero overhead branching on feature availability, for scenarios where
 /// runtime detection has too much overhead and globally enabled features are not sufficient.
 ///
-/// Callers should pass a string literal naming a Rust target feature, such as `"avx"` or `"neon"`.
-/// The compiler may accept a few additional simple constant forms, but this intrinsic should be
-/// treated as taking a string literal.
+/// This intrinsic takes a null-terminated feature name passed as a byte array. For a more
+/// ergonomic interface, use the [`target_feature_available_at_call_site!`] macro, which accepts
+/// a string literal.
 ///
 /// The LLVM backend implements this intrinsic by lowering to a marker that is resolved by a
 /// post-inlining pass.
@@ -3711,4 +3711,34 @@ pub fn return_address() -> *const () {
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub fn target_feature_available_at_call_site(feature: &str) -> bool;
+pub fn target_feature_available_at_call_site<const FEATURE: [u8; 100]>() -> bool;
+
+/// Returns whether a target feature is enabled at the call site.
+///
+/// This macro is a more convenient interface for [`target_feature_available_at_call_site`].
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[allow_internal_unstable(adt_const_params)]
+#[diagnostic::on_unmatched_args(
+    note = "this macro expects a string literal target feature name, like `target_feature_available_at_call_site!(\"avx\")`"
+)]
+#[rustc_macro_transparency = "semiopaque"]
+pub macro target_feature_available_at_call_site($feature:literal) {{
+    ::core::intrinsics::target_feature_available_at_call_site::<
+        {
+            const {
+                let bytes = $feature.as_bytes();
+
+                assert!(bytes.len() <= 100, "feature string too long");
+
+                let mut out = [0u8; 100];
+                let mut i = 0;
+                while i < bytes.len() {
+                    out[i] = bytes[i];
+                    i += 1;
+                }
+
+                out
+            }
+        },
+    >()
+}}

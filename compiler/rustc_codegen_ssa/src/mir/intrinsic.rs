@@ -1,8 +1,6 @@
-use itertools::Itertools as _;
 use rustc_abi::{Align, FieldIdx, WrappingRange};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::{self, SourceInfo};
-use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
@@ -128,6 +126,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::atomic_fence
                 | sym::atomic_singlethreadfence
                 | sym::caller_location
+                | sym::target_feature_available_at_call_site
                 | sym::return_address => {}
                 _ => {
                     span_bug!(
@@ -610,30 +609,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     IntrinsicResult::Operand(OperandValue::Immediate(bx.const_bool(false)))
                 }
 
-                let [feature_arg] = mir_args else {
-                    span_bug!(span, "wrong number of MIR arguments for {name}");
+                let Some(feature_bytes) = fn_args
+                    .const_at(0)
+                    .try_to_value()
+                    .and_then(|feature| feature.try_to_raw_bytes(bx.tcx()))
+                else {
+                    span_bug!(span, "wrong const argument for {name}");
                 };
-
-                let Some(feature_name) = feature_arg
-                    .constant()
-                    .or_else(|| match feature_arg {
-                        // This intrinsic takes a string literal, but in MIR those are sometimes passed via `let x = "constant"`
-                        mir::Operand::Copy(place) | mir::Operand::Move(place) => {
-                            constant_assigned_to_local(&self.mir, place.as_local()?)
-                        }
-                        _ => None,
-                    })
-                    .map(|feature_const| self.eval_mir_constant(feature_const))
-                    .and_then(|feature_const| {
-                        // This isn't a diagnostic, but it's similar usage as we aren't using it within the interpreter.
-                        feature_const.try_get_slice_bytes_for_diagnostics(self.cx.tcx())
-                    })
-                    .and_then(|feature_bytes| std::str::from_utf8(feature_bytes).ok())
+                let feature_len =
+                    feature_bytes.iter().position(|&byte| byte == 0).unwrap_or(feature_bytes.len());
+                let Some(feature_name) = std::str::from_utf8(&feature_bytes[..feature_len]).ok()
                 else {
                     return err_false(
                         bx,
                         span,
-                        "`target_feature_available_at_call_site` requires a string literal argument",
+                        "`target_feature_available_at_call_site` requires a UTF-8 feature name",
                     );
                 };
 
@@ -712,25 +702,4 @@ fn float_type_width(ty: Ty<'_>) -> Option<u64> {
         ty::Float(t) => Some(t.bit_width()),
         _ => None,
     }
-}
-
-// Reads a constant through one level of assignment, e.g. `let x = "constant"`
-fn constant_assigned_to_local<'mir, 'tcx>(
-    mir: &'mir mir::Body<'tcx>,
-    local: mir::Local,
-) -> Option<&'mir mir::ConstOperand<'tcx>> {
-    let (_, rvalue) = mir
-        .basic_blocks
-        .iter()
-        .flat_map(|bb| bb.statements.iter())
-        .filter_map(|stmt| stmt.kind.as_assign())
-        .filter(|(place, _)| place.as_local() == Some(local))
-        .exactly_one()
-        .ok()?;
-
-    let mir::Rvalue::Use(operand, _) = rvalue else {
-        return None;
-    };
-
-    operand.constant()
 }

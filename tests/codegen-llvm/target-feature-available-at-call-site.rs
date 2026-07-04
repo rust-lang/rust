@@ -1,5 +1,5 @@
-//@ compile-flags: --crate-type=lib -Copt-level=3 --target=x86_64-unknown-linux-gnu -Ctarget-feature=-avx
-//@ needs-llvm-components: x86
+//@ compile-flags: --crate-type=lib -Copt-level=3 -Ctarget-feature=-avx
+//@ only-x86_64
 //@ ignore-backends: gcc
 
 #![feature(core_intrinsics)]
@@ -8,7 +8,7 @@ use std::intrinsics::target_feature_available_at_call_site;
 
 #[inline]
 pub fn avx_branch_value() -> i32 {
-    if target_feature_available_at_call_site("avx") { 1 } else { 0 }
+    if target_feature_available_at_call_site!("avx") { 1 } else { 0 }
 }
 
 // CHECK-LABEL: @with_avx(

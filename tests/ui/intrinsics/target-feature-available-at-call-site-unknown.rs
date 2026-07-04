@@ -1,5 +1,4 @@
-//@ compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=lib --emit=llvm-ir
-//@ needs-llvm-components: x86
+//@ compile-flags: --crate-type=lib --emit=llvm-ir
 //@ ignore-backends: gcc
 
 #![feature(core_intrinsics)]
@@ -9,6 +8,6 @@ use std::intrinsics::target_feature_available_at_call_site;
 
 #[no_mangle]
 pub fn check() {
-    let _ = target_feature_available_at_call_site("definitely-not-a-feature");
+    let _ = target_feature_available_at_call_site!("definitely-not-a-feature");
     //~^ ERROR unknown target feature `definitely-not-a-feature`
 }

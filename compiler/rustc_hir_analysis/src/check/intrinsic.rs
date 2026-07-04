@@ -684,12 +684,7 @@ pub(crate) fn check_intrinsic_type(
         sym::black_box => (1, 0, vec![param(0)], param(0)),
 
         sym::is_val_statically_known => (1, 0, vec![param(0)], tcx.types.bool),
-        sym::target_feature_available_at_call_site => {
-            let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon };
-            let feature_name =
-                Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), tcx.types.str_);
-            (0, 0, vec![feature_name], tcx.types.bool)
-        }
+        sym::target_feature_available_at_call_site => (0, 1, Vec::new(), tcx.types.bool),
 
         sym::const_eval_select => (4, 0, vec![param(0), param(1), param(2)], param(3)),
 
