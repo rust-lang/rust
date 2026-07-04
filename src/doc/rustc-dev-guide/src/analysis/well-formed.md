@@ -323,4 +323,4 @@ In Rust, our original usage was closer to "this thing is internally consistent" 
 [^terms-abbreviated]: Abbreviated as "Terms" on this page in some areas.
 [^kind-checking]: AKA "kind checking", as we might see in languages like Haskell.
 [^hir-ty-lower]: <https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/hir_ty_lowering/index.html>
-[^tyck-const-generics]: <https://rustc-dev-guide.rust-lang.org/const-generics.html#checking-types-of-const-arguments>
+[^tyck-const-generics]: #checking-types-of-const-arguments

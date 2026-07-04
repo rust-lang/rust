@@ -257,7 +257,7 @@ In particular, we don't recommend running the full `./x test` suite locally,
 since it takes a very long time to execute.
 See the [Testing with CI] chapter for using Rust's CI to test your changes.
 
-[Testing with CI]: https://rustc-dev-guide.rust-lang.org/tests/ci.html#testing-with-ci
+[Testing with CI]: tests/ci.md#testing-with-ci
 
 ### r+
 
