@@ -17,7 +17,7 @@ LL | fn foo(x:Box<dyn Fn(&u8, &u8)> , y: Vec<&u8>, z: &u8) {
    |                                         |
    |                                         let's call the lifetime of this reference `'2`
 LL |   y.push(z);
-   |   ^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |   ^^^^^^^^^ receiver requires that `'1` must outlive `'2`
    |
    = note: requirement occurs because of a mutable reference to `Vec<&u8>`
    = note: mutable references are invariant over their type parameter

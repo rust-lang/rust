@@ -19,10 +19,10 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::{
-    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
-    FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind,
-    Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement, StatementKind,
-    Terminator, TerminatorKind, VarBindingForm, VarDebugInfoContents,
+    self, AggregateKind, BindingForm, BorrowKind, CallArgumentKind, ClearCrossCrate,
+    ConstraintCategory, FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location,
+    MutBorrowKind, Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement,
+    StatementKind, Terminator, TerminatorKind, VarBindingForm, VarDebugInfoContents,
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
@@ -3070,7 +3070,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         name: self.synthesize_region_name(),
                         source: RegionNameSource::Static,
                     },
-                    ConstraintCategory::CallArgument(None),
+                    ConstraintCategory::CallArgument(None, CallArgumentKind::Normal),
                     var_or_use_span,
                     &format!("`{name}`"),
                     "block",
@@ -3081,7 +3081,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             ) if let OutlivesConstraint {
                 category:
                     category @ (ConstraintCategory::Return(_)
-                    | ConstraintCategory::CallArgument(_)
+                    | ConstraintCategory::CallArgument(_, _)
                     | ConstraintCategory::OpaqueType),
                 from_closure: false,
                 span,
@@ -3719,7 +3719,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 let msg = format!("{kind} is returned here");
                 err.span_note(constraint_span, msg);
             }
-            ConstraintCategory::CallArgument(_) => {
+            ConstraintCategory::CallArgument(_, _) => {
                 fr_name.highlight_region_name(&mut err);
                 if matches!(
                     use_span.coroutine_kind(),

@@ -93,6 +93,19 @@ pub struct ConstQualifs {
     pub needs_non_const_drop: bool,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(TyEncodable, TyDecodable, StableHash, TypeVisitable, TypeFoldable)]
+pub enum CallArgumentKind {
+    Normal,
+    Receiver,
+    Closure,
+}
+
+// Make sure this enum doesn't unintentionally grow
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
+
 /// Outlives-constraints can be categorized to determine whether and why they
 /// are interesting (for error reporting). Order of variants indicates sort
 /// order of the category, thereby influencing diagnostic output.
@@ -116,7 +129,7 @@ pub enum ConstraintCategory<'tcx> {
     },
 
     /// Contains the function type if available.
-    CallArgument(Option<Ty<'tcx>>),
+    CallArgument(Option<Ty<'tcx>>, CallArgumentKind), // to save binary size for static_assert_size!
     CopyBound,
     SizedBound,
     Assignment,
