@@ -194,7 +194,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, recv: 
         ExprKind::Call(path, _)
             if let ExprKind::Path(qpath) = path.kind
                 && let checked_ident = last_path_segment(&qpath).ident
-                && let checked_def_id = path.res(cx).def_id()
+                && let Some(checked_def_id) = path.res(cx).opt_def_id()
                 && let Some((unchecked_def_id, unchecked_ident)) =
                     find_unchecked_sibling_fn(cx, checked_def_id, checked_ident)
                 && same_functions_modulo_safety(cx, checked_def_id, unchecked_def_id, expected_ret_ty) =>
@@ -220,7 +220,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, recv: 
         ExprKind::Call(path, _)
             if let ExprKind::Path(qpath) = path.kind
                 && let checked_ident = last_path_segment(&qpath).ident
-                && let checked_def_id = path.res(cx).def_id()
+                && let Some(checked_def_id) = path.res(cx).opt_def_id()
                 && let Some((unchecked, unchecked_ident)) =
                     find_unchecked_sibling_method(cx, checked_def_id, checked_ident)
                 && let ty::AssocKind::Fn { has_self, .. } = unchecked.kind
