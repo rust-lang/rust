@@ -2,17 +2,17 @@
 
 ## What is Well-Formedness?
 
-"Well-formed" means "correctly built."[^wf-history] Something is _well-formed_ when its structure follows rules.
+"Well-formed" means "correctly built"[^wf-history]. Something is _well-formed_ when its structure follows rules.
 When we use this term in the Rust compiler we are concerned with establishing some kind of _internal consistency_.
 
 ## Well-Formedness in Rust
 
-To check that something is well-formed is to perform a "Well-formedness check."
+To check that something is well-formed is to perform a "Well-formedness check".
 
 In the Rust compiler there are two different forms of well-formedness checking:
 
 - **Type-Level Term**[^terms][^terms-abbreviated] well-formedness check.
-    - Also called "Term well-formedness" or "Term well-formedness checking."
+    - Also called "Term well-formedness" or "Term well-formedness checking".
     - Not a distinct analysis stage, this gets performed throughout analysis.
 - **Item**[^items] well-formedness check (item-wfck.)
     - "Item-wfck" will often wind up requiring Terms be well-formed, but skips some areas.
@@ -103,7 +103,7 @@ This obligation will be passed off to the trait solver just like any trait-style
 
 ## Well-Formedness of Items
 
-Items are, generally speaking, "Things that get defined." Item-wfck happens at the signature level for types and functions, methods, and definitions/implementations of traits.
+Items are, generally speaking, "Things that get defined". Item-wfck happens at the signature level for types and functions, methods, and definitions/implementations of traits.
 
 ```rust,ignore
 // The `Vec<str>` is checked during item wfck
@@ -186,7 +186,7 @@ As an example, the following will compile because we don't have a point where we
 
 ```rust,ignore
 trait Trait
-where 
+where
     for<'a> [u8]: Sized {}
 
 fn foo(_: &dyn Trait) {}
@@ -199,13 +199,13 @@ The above should not compile because `[u8]: Sized`, but this won't be checked un
 
 ```rust
 trait Trait
-where 
+where
     for<'a> [u8]: Sized {}
-    
+
 fn foo(_: &dyn Trait) {}
 
 // We still need to specify the bound here, otherwise `[u8]: Sized` _is_
-// checked as an obligation. 
+// checked as an obligation.
 impl Trait for u8 where for<'a> [u8]: Sized {}
 
 fn main() {
@@ -226,7 +226,7 @@ fn foo<const B: bool>(_: &dyn Trait<B>) {}
 const N: usize
 const B: bool
 N = B // Substitution
-const B: usize + bool 
+const B: usize + bool
 ```
 
 The above doesn't compile, unlike the previous example we gave.
@@ -292,7 +292,7 @@ type Alias = Consty<42>;
 
 ## "Well-Formed" or "Wellformed"?
 
-Prefer "well-formed" over "wellformed," as this is consistent with logic literature.
+Prefer "well-formed" over "wellformed", as this is consistent with logic literature.
 This also gets abbreviated to WF in other parts of the dev guide / docs.
 
 ## Informal Usage
@@ -309,10 +309,10 @@ These kinds of problems will get handled during HIR-ty Lowering[^hir-ty-lower], 
 Well-formedness doesn't check or validate lifetimes, this is handled in [MIR](../borrow-check.md).
 
 Well-formedness in the Rust compiler doesn't correspond to "correct syntax" as it does in logic.
-The term has a history of general use in a mathematical context of "follows a given set of rules." In Rust, our original usage was closer to "this thing is internally consistent" with respect to the bounds on a type in places such as the original [clarification on projections and well-formedness RFC](https://github.com/rust-lang/rfcs/blob/master/text/1214-projections-lifetimes-and-wf.md).
+The term has a history of general use in a mathematical context of "follows a given set of rules". In Rust, our original usage was closer to "this thing is internally consistent" with respect to the bounds on a type in places such as the original [clarification on projections and well-formedness RFC](https://github.com/rust-lang/rfcs/blob/master/text/1214-projections-lifetimes-and-wf.md).
 
-[^obligations]: These get referred to as Obligations, Requirements, or Constraints in the documentation. Preferred term is "obligations", as this matches the suffix of the type and the names of relevant functions. In future, this may be superseded by the new solver's term "Goal."
-[^wf-history]: In linguistics this is "grammatically correct," in logic it is "syntactically correct," and in casual mathematician use it can be read as a more general "follows the rules we set for this domain."
+[^obligations]: These get referred to as Obligations, Requirements, or Constraints in the documentation. Preferred term is "obligations", as this matches the suffix of the type and the names of relevant functions. In future, this may be superseded by the new solver's term "Goal".
+[^wf-history]: In linguistics this is "grammatically correct", in logic it is "syntactically correct", and in casual mathematician use it can be read as a more general "follows the rules we set for this domain".
 [^horrible]: Instead, this bound is checked during "MIR borrowck" when the lifetimes are instantiated.
 [^fta]: Type aliases not associated with anything, i.e. a module-level `type Alias = Vec<u8>;`.
 [^items]: "Definition" style things in rust, See the [glossary](../appendix/glossary.md).
