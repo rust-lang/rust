@@ -7,7 +7,7 @@ LL |     FOO(&n);
    |     ----^^-
    |     |   |
    |     |   borrowed value does not live long enough
-   |     argument requires that `n` is borrowed for `'static`
+   |     closure requires that `n` is borrowed for `'static`
 LL |
 LL | }
    | - `n` dropped here while still borrowed

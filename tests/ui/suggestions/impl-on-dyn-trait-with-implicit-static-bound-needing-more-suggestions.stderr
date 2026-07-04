@@ -36,7 +36,7 @@ LL |         val.use_self()
    |         ^^^^^^^^^^^^^^
    |         |
    |         `val` escapes the function body here
-   |         argument requires that `'a` must outlive `'static`
+   |         receiver requires that `'a` must outlive `'static`
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:60:30

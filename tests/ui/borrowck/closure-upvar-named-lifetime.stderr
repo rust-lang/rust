@@ -33,7 +33,7 @@ LL |         let value = map.borrow_mut().entry("foo".to_string());
    |                     ^^^ borrowed value does not live long enough
 ...
 LL |         f(wrapped_value);
-   |         ---------------- argument requires that `map` is borrowed for `'a`
+   |         ---------------- closure requires that `map` is borrowed for `'a`
 LL |     }
    |     - `map` dropped here while still borrowed
    |
@@ -52,7 +52,7 @@ LL |         let value = map.borrow_mut().entry("foo".to_string());
    |                     creates a temporary value which is freed while still in use
 ...
 LL |         f(wrapped_value);
-   |         ---------------- argument requires that borrow lasts for `'a`
+   |         ---------------- closure requires that borrow lasts for `'a`
    |
 note: requirement that the value outlives `'a` introduced here
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
@@ -92,7 +92,7 @@ LL |         let value = map.borrow_mut().entry("foo".to_string());
    |                     ^^^ borrowed value does not live long enough
 ...
 LL |         f(value);
-   |         -------- argument requires that `map` is borrowed for `'a`
+   |         -------- closure requires that `map` is borrowed for `'a`
 LL |     }
    |     - `map` dropped here while still borrowed
 
@@ -108,7 +108,7 @@ LL |         let value = map.borrow_mut().entry("foo".to_string());
    |                     creates a temporary value which is freed while still in use
 ...
 LL |         f(value);
-   |         -------- argument requires that borrow lasts for `'a`
+   |         -------- closure requires that borrow lasts for `'a`
 
 error: aborting due to 6 previous errors
 
