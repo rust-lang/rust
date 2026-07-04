@@ -1,12 +1,12 @@
-# Well-Formedness
+# Well-formedness
 
-## What is Well-Formedness?
+## What is well-formedness?
 
 "Well-formed" means "correctly built"[^wf-history].
 Something is _well-formed_ when its structure follows rules.
 When we use this term in the Rust compiler we are concerned with establishing some kind of _internal consistency_.
 
-## Well-Formedness in Rust
+## Well-formedness in Rust
 
 To check that something is well-formed is to perform a "Well-formedness check".
 
@@ -22,14 +22,14 @@ In the Rust compiler there are two different forms of well-formedness checking:
 
 See: [What Well-Formedness Isn't](#what-well-formedness-isnt).
 
-## Well-Formedness of Type-Level Terms
+## Well-formedness of type-level terms
 
 Term well-formedness checking begins with building a list of things that need to be true for a term to be well-formed.
 We call these "Obligations"[^obligations].
 
-Type-Level Terms are considered Well-Formed when their associated obligations are satisfied by the trait solver.
+Type-Level Terms are considered well-formed when their associated obligations are satisfied by the trait solver.
 
-### Obligations for Well-Formedness
+### Obligations for well-formedness
 
 Specific obligations are things like `String: Clone`, `A: usize`, or `<T as Iterator>::Item: Debug`.
 
@@ -69,23 +69,23 @@ Vec<str> where str: Sized
 The above computes the obligation `T: Sized`, like before, but we substitute `T` for `str` in the instance of `Vec<str>` finding the obligation `str: sized`.
 This obligation will be determined by the trait solver to be _unsatisfied_.
 
-#### Determining Obligations
+#### Determining obligations
 
 In the compiler, obligations of terms are found through the [`obligations`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/wf/fn.obligations.html) function in the [term well-formedness module](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/wf/index.html).
 
-#### Other Obligations
+#### Other obligations
 
 Obligations are more than just trait and const generic bounds, but we've only mentioned these specific obligations so far as they are what we care about when we do "well-formedness checking" of terms.
 See: [`PredicateKind`](https://doc.rust-lang.org/beta/nightly-rustc/rustc_type_ir/predicate_kind/enum.PredicateKind.html) and [`ClauseKind`](https://doc.rust-lang.org/beta/nightly-rustc/rustc_type_ir/predicate_kind/enum.ClauseKind.html) for a full list of obligations.
 
-### We Don't Need Normalization (Yet)
+### We don't need normalization (yet)
 
 [Normalization](../normalization.md) is the process of resolving [type aliases](../normalization.md#aliases) into their underlying type.
 
 A type alias is considered well-formed if its where clauses are satisfied.
 The underlying type undergoes well-formedness checking at most definition and instantiation sites, but there are exceptions.
 
-### Const Generic Arguments
+### Const generic arguments
 
 Term well-formedness is responsible for getting "type checking" obligations of const generic terms[^tyck-const-generics].
 Let's look at the following use of const generics:
@@ -102,7 +102,7 @@ const 6: usize
 The call site will provide us with the obligation `6: usize` during well-formedness checking.
 This obligation will be passed off to the trait solver just like any trait-style obligation, as the trait solver has more responsibilities than its name suggests.
 
-## Well-Formedness of Items
+## Well-formedness of items
 
 Items are, generally speaking, "Things that get defined".
 Item-wfck happens at the signature level for types and functions, methods, and definitions/implementations of traits.
@@ -123,7 +123,7 @@ We do not talk about all of these here, but they can be found at the individual 
 
 <!-- FIXME: Expand more on item well-formedness that isn't const generic / trait bound obligation based. These are not special cases, but important points! -->
 
-### Global and Trivial Bounds
+### Global and trivial bounds
 
 <!-- TODO later: Cut this into its own page -->
 
@@ -157,29 +157,29 @@ String: Copy // Trivial bound again, but this one is false!
 
 Here we have a trivial bound that does not hold, because `String` is not `Copy`.
 
-#### Trivial Bounds Are Not Always Global
+#### Trivial bounds are not always global
 
 Trivial Bounds are not a subset of Global Bounds.
 A trivial bound that isn't Global is `for<'a> String: Clone` (trivially true, has a bound variable) or `&'a str: Copy` (trivially false, has a generic parameter).
 
-#### Item-Wfck and Trivial/Global Bounds
+#### Item-wfck and trivial/global bounds
 
 <!-- When cutting out the subsection on global/trivial bounds, keep this part on the well-formedness page. -->
 
 When checking items are well-formed we will check that there are no trivially false global bounds.
 
-## When We Don't Fully Do Well-Formedness Checking
+## When we don't fully do well-formedness checking
 
 Well-formedness checking is not a coherent "stage" of type checking.
 There are many areas where well-formedness checking is performed, and some areas where we skip over well-formedness checking due to limitations in what kinds of analysis we can currently perform.
 Ideally, we would never skip or defer well-formedness checking.
 
-### We (Sometimes) Need Normalization
+### We (sometimes) need normalization
 
 There are places where normalization of an Item happens before its Terms have gone through well-formedness checking.
 This is considered problematic as doing so allows some terms to [bypass term well-formedness checking entirely](https://github.com/rust-lang/rust/issues/100041).
 
-### Trait Objects
+### Trait objects
 
 We do not require the where clauses of trait objects to be well-formed when determining if that trait object is well-formed.
 These where clauses are proven when coercing into a trait object, but this remains a hole in well-formedness checking.
@@ -234,7 +234,7 @@ const B: usize + bool
 The above doesn't compile, unlike the previous example we gave.
 We're doing _some_ well-formedness checking here when it comes to the const generic arguments.
 
-### Binders / Higher-Ranked Types
+### Binders / higher-ranked types
 
 Binders / Higher-Ranked Types reduce the amount well-formedness checking we do on a term, leaving well-formedness checking to when the bound is instantiated:
 
@@ -260,7 +260,7 @@ for<'a, 'b> fn(&'a &'b ())
 The above HRB implies `'b: 'a` (a lifetime bound), rather than two completely separate lifetimes.
 This is normal lifetime behavior, but during well-formedness checking we cannot prove that this bound is generally true[^horrible], so we skip it.
 
-### Free Type Aliases
+### Free type aliases
 
 The right-hand side of Free Type Aliases[^fta] is not fully checked to be well-formed at the definition site, only the types of const generic arguments in the RHS are checked.
 
@@ -292,17 +292,17 @@ type Alias = Consty<42>;
 
 <!-- TODO: Link to something explaining the underlying "why" of the difference between const and trait well-formedness checking in FTAs, or eliminate that difference. Whatever comes first. -->
 
-## "Well-Formed" or "Wellformed"?
+## "well-formed" or "wellformed"?
 
 Prefer "well-formed" over "wellformed", as this is consistent with logic literature.
 This also gets abbreviated to WF in other parts of the dev guide / docs.
 
-## Informal Usage
+## Informal usage
 
 In conversation, contributors may refer to something as "well-formed" and not necessarily mean what we cover here because "well-formedness" is a general phrase associated with the correctness of formal structures.
 This isn't necessarily in error, but it should be looked out for.
 
-## What Well-Formedness Isn't
+## What well-formedness isn't
 
 Well-formedness checking is not "number of parameters" or "parameter type" checking[^kind-checking].
 Neither term well-formedness checking nor item-wfck is concerned with if a type with 2 parameters has 1 or 3 types applied to it (assuming no defaults), or if a const generic parameter has a type applied to it.
