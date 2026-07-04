@@ -1849,7 +1849,7 @@ mod prim_ref {}
 ///     - It is a `repr(Rust)` (implicitly or explicitly, possibly with additional flags such as `packed`) `struct`, `enum`, `union` (regardless of its fields).
 ///     - It is a [tuple][prim_tuple] (regardless of its fields, and including [`()`][prim_unit]).
 ///     - It is a `repr(transparent)` `struct`, `enum`, or `union`, and all fields have trivial ABI.
-///     - It is an array, and its element type has trivial ABI. (Arrays of length 0 are not exempt from this requirement.)
+///     - It is an array, and its element type has trivial ABI. (This requirement applies even to arrays of length 0.)
 ///     - It is [the never type `!`][prim_never].
 ///     - It is a function item type or closure type.
 /// - A `repr(transparent)` type is ABI-compatible with its unique field that does not have trivial ABI
