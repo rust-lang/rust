@@ -19,6 +19,7 @@ pub mod global_ctor;
 pub mod io_error;
 pub mod os_str;
 pub mod panic;
+pub mod readiness;
 pub mod sig;
 pub mod time;
 pub mod tls;
@@ -27,7 +28,7 @@ pub mod unwind;
 pub use self::files::{FdId, FdTable, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
 #[cfg(all(feature = "native-lib", unix))]
 pub use self::native_lib::trace::{init_sv, register_retcode_sv};
-pub use self::unix::{DirTable, Epoll, EpollEvalContextExt, EpollInterestTable};
+pub use self::unix::DirTable;
 
 /// What needs to be done after emulating an item (a shim or an intrinsic) is done.
 pub enum EmulateItemResult {

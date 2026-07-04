@@ -8,6 +8,7 @@ use self::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use self::shims::unix::linux_like::syscall::syscall;
 use crate::machine::{SIGRTMAX, SIGRTMIN};
 use crate::shims::unix::foreign_items::EvalContextExt as _;
+use crate::shims::unix::linux_like::epoll::EvalContextExt as _;
 use crate::shims::unix::linux_like::thread::prctl;
 use crate::shims::unix::*;
 use crate::*;

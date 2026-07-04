@@ -14,7 +14,6 @@ use rustc_target::spec::Os;
 
 use crate::shims::files::{EvalContextExt as _, FdId, FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
-use crate::shims::unix::linux_like::epoll::{EpollReadiness, EvalContextExt as _};
 use crate::shims::unix::socket_address::EvalContextExt as _;
 use crate::*;
 
@@ -65,7 +64,7 @@ struct Socket {
     /// Whether this fd is non-blocking or not.
     is_non_block: Cell<bool>,
     /// The current blocking I/O readiness of the file description.
-    io_readiness: RefCell<BlockingIoSourceReadiness>,
+    io_readiness: RefCell<Readiness>,
     /// [`Some`] when the socket had an async error which has not yet been fetched via `SO_ERROR`.
     error: RefCell<Option<io::Error>>,
     /// Read timeout of the socket. [`None`] means that reads can block indefinitely.
@@ -248,6 +247,10 @@ impl FileDescription for Socket {
 
         interp_ok(Scalar::from_i32(0))
     }
+
+    fn readiness<'tcx>(&self) -> InterpResult<'tcx, Readiness> {
+        interp_ok(self.io_readiness.borrow().clone())
+    }
 }
 
 impl UnixFileDescription for Socket {
@@ -286,10 +289,6 @@ impl UnixFileDescription for Socket {
         }
 
         throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
-    }
-
-    fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadiness> {
-        interp_ok(EpollReadiness::from(&*self.io_readiness.borrow()))
     }
 }
 
@@ -368,7 +367,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             family,
             state: RefCell::new(SocketState::Initial),
             is_non_block: Cell::new(is_sock_nonblock),
-            io_readiness: RefCell::new(BlockingIoSourceReadiness::empty()),
+            io_readiness: RefCell::new(Readiness::EMPTY),
             error: RefCell::new(None),
             read_timeout: Cell::new(None),
             write_timeout: Cell::new(None),
@@ -1165,9 +1164,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 socket.error.replace(None);
 
                 // We know there is no longer an async error and thus we need to update the
-                // I/O and epoll readiness of the socket.
+                // I/O and fd readiness of the socket.
                 socket.io_readiness.borrow_mut().error = false;
-                this.update_epoll_active_events(socket, /* force_edge */ false)?;
+                this.update_fd_readiness(socket, /* force_edge */ false)?;
 
                 // Allocate new buffer on the stack with the `i32` layout.
                 let value_buffer = this.allocate(this.machine.layouts.i32, MemoryKind::Stack)?;
@@ -1476,15 +1475,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         drop(state);
 
-        // Because we map cross platform mio readiness to epoll readiness and
+        // Because we map cross platform mio readiness to our readiness struct and
         // the different platforms don't treat `shutdown` the same way, we set
-        // the readiness after a `shutdown` manually to achieve more consistent
-        // epoll readiness. Otherwise we do not generate enough epoll events
+        // the readiness after a `shutdown` manually to achieve a more consistent
+        // readiness. Otherwise we do not generate enough readiness events
         // on partial shutdowns on Windows hosts.
         let mut readiness = socket.io_readiness.borrow_mut();
-        // Closing the read end of a socket causes an EPOLLRDHUP event.
+        // Closing the read end of a socket causes an (E)POLLRDHUP event.
         readiness.read_closed |= is_read_shutdown || is_read_write_shutdown;
-        // Only shutting down the write end doesn't cause an EPOLLHUP event
+        // Only shutting down the write end doesn't cause an (E)POLLHUP event
         // and thus we won't set the `write_closed` readiness for it here.
         readiness.write_closed |= is_read_write_shutdown;
         // The Linux kernel also sets EPOLLIN when the read end of a socket is closed:
@@ -1493,8 +1492,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         drop(readiness);
 
-        // Update the epoll readiness for the socket.
-        this.update_epoll_active_events(socket, /* force_edge */ false)?;
+        // Update the readiness for the socket.
+        this.update_fd_readiness(socket, /* force_edge */ false)?;
 
         interp_ok(Scalar::from_i32(0))
     }
@@ -1603,7 +1602,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
                 // We know that the source is not readable so we need to update its readiness.
                 socket.io_readiness.borrow_mut().readable = false;
-                this.update_epoll_active_events(socket.clone(), /* force_edge */ false)?;
+                this.update_fd_readiness(socket.clone(), /* force_edge */ false)?;
 
                 return interp_ok(Err(IoError::HostError(e)));
             }
@@ -1626,7 +1625,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             family,
             state: RefCell::new(SocketState::Connected(stream)),
             is_non_block: Cell::new(is_client_sock_nonblock),
-            io_readiness: RefCell::new(BlockingIoSourceReadiness::empty()),
+            io_readiness: RefCell::new(Readiness::EMPTY),
             error: RefCell::new(None),
             read_timeout: Cell::new(None),
             write_timeout: Cell::new(None),
@@ -1716,9 +1715,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(IoError::HostError(e))
                 if matches!(e.kind(), io::ErrorKind::NotConnected | io::ErrorKind::WouldBlock) =>
             {
-                // We know that the source is not writable so we need to update it's readiness.
+                // We know that the source is not writable so we need to update its readiness.
                 socket.io_readiness.borrow_mut().writable = false;
-                this.update_epoll_active_events(socket.clone(), /* force_edge */ false)?;
+                this.update_fd_readiness(socket.clone(), /* force_edge */ false)?;
 
                 // On Windows hosts, `send` can return WSAENOTCONN where EAGAIN or EWOULDBLOCK
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
@@ -1727,7 +1726,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(bytes_written) if bytes_written < length => {
                 // We had a short write. On Unix hosts using the `epoll` and `kqueue` backends, a
                 // short write means that the write buffer is full. We update the readiness
-                // accordingly, which means that next time we see "writable" we will report an epoll
+                // accordingly, which means that next time we see "writable" we will report an
                 // edge. Some applications (e.g. tokio) rely on this behavior; see
                 // <https://github.com/tokio-rs/tokio/blob/HEAD/tokio/src/io/poll_evented.rs#L244-L264>.
                 if cfg!(any(
@@ -1748,7 +1747,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     target_os = "watchos",
                 )) {
                     socket.io_readiness.borrow_mut().writable = false;
-                    this.update_epoll_active_events(socket.clone(), /* force_edge */ false)?;
+                    this.update_fd_readiness(socket.clone(), /* force_edge */ false)?;
                 } else {
                     // On hosts which don't use the `epoll` or `kqueue` backends, a short write
                     // doesn't imply a full write buffer. However, the target we are emulating might
@@ -1759,7 +1758,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // This results in an unrealistic execution but we don't have another way of
                     // finding out whether the write buffer is full. The "default case" of linux
                     // host and linux target isn't affected by this.
-                    this.update_epoll_active_events(socket.clone(), /* force_edge */ true)?;
+                    this.update_fd_readiness(socket.clone(), /* force_edge */ true)?;
                 }
                 interp_ok(result)
             }
@@ -1849,9 +1848,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(IoError::HostError(e))
                 if matches!(e.kind(), io::ErrorKind::NotConnected | io::ErrorKind::WouldBlock) =>
             {
-                // We know that the source is not readable so we need to update it's readiness.
+                // We know that the source is not readable so we need to update its readiness.
                 socket.io_readiness.borrow_mut().readable = false;
-                this.update_epoll_active_events(socket.clone(), /* force_edge */ false)?;
+                this.update_fd_readiness(socket.clone(), /* force_edge */ false)?;
 
                 // On Windows hosts, `recv` can return WSAENOTCONN where EAGAIN or EWOULDBLOCK
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
@@ -1869,7 +1868,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // already been closed as those never block a read, i.e., they are always read-ready.)
                 // On Unix hosts using the `epoll` and `kqueue` backends, a short read means that the
                 // read buffer is empty. We update the readiness accordingly, which means that next time
-                // we see "readable" we will report an epoll edge. Some applications (e.g. tokio) rely on
+                // we see "readable" we will report an edge. Some applications (e.g. tokio) rely on
                 // this behavior; see
                 // <https://github.com/tokio-rs/tokio/blob/HEAD/tokio/src/io/poll_evented.rs#L190-L210>
                 if cfg!(any(
@@ -1890,7 +1889,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     target_os = "watchos",
                 )) {
                     socket.io_readiness.borrow_mut().readable = false;
-                    this.update_epoll_active_events(socket.clone(), /* force_edge */ false)?;
+                    this.update_fd_readiness(socket.clone(), /* force_edge */ false)?;
                 } else {
                     // On hosts which don't use the `epoll` or `kqueue` backends, a short read
                     // doesn't imply an empty read buffer. However, the target we are emulating
@@ -1901,7 +1900,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // This results in an unrealistic execution but we don't have another way of
                     // finding out whether the read buffer is empty. The "default case" of linux
                     // host and linux target isn't affected by this.
-                    this.update_epoll_active_events(socket.clone(), /* force_edge */ true)?;
+                    this.update_fd_readiness(socket.clone(), /* force_edge */ true)?;
                 }
                 interp_ok(result)
             }
@@ -2109,7 +2108,7 @@ impl SourceFileDescription for Socket {
         }
     }
 
-    fn get_readiness_mut(&self) -> RefMut<'_, BlockingIoSourceReadiness> {
+    fn get_readiness_mut(&self) -> RefMut<'_, Readiness> {
         self.io_readiness.borrow_mut()
     }
 }

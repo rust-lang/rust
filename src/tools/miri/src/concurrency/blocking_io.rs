@@ -1,15 +1,12 @@
 use std::cell::RefMut;
 use std::collections::BTreeMap;
 use std::io;
-use std::ops::BitOrAssign;
 use std::time::Duration;
 
 use mio::event::Source;
 use mio::{Events, Interest, Poll, Token};
 
-use crate::shims::{
-    EpollEvalContextExt, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
-};
+use crate::shims::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
 use crate::*;
 
 /// Capacity of the event queue which can be polled at a time.
@@ -23,7 +20,7 @@ pub trait SourceFileDescription: FileDescription {
     fn with_source(&self, f: &mut dyn FnMut(&mut dyn Source) -> io::Result<()>) -> io::Result<()>;
 
     /// Get a mutable reference to the readiness of the source.
-    fn get_readiness_mut(&self) -> RefMut<'_, BlockingIoSourceReadiness>;
+    fn get_readiness_mut(&self) -> RefMut<'_, Readiness>;
 }
 
 /// An I/O interest for a blocked thread. Note that all threads are always considered
@@ -39,58 +36,21 @@ pub enum BlockingIoInterest {
     ReadWrite,
 }
 
-/// Struct reflecting the readiness of a source file description.
-#[derive(Debug)]
-pub struct BlockingIoSourceReadiness {
-    /// Boolean whether the source is currently readable.
-    pub readable: bool,
-    /// Boolean whether the source is currently writable.
-    pub writable: bool,
-    /// Boolean whether the read end of the source has been
-    /// closed.
-    pub read_closed: bool,
-    /// Boolean whether the write end of the source has been
-    /// closed.
-    pub write_closed: bool,
-    /// Boolean whether the source currently has an error.
-    pub error: bool,
-}
-
-impl BlockingIoSourceReadiness {
-    pub fn empty() -> Self {
-        Self {
-            readable: false,
-            writable: false,
-            read_closed: false,
-            write_closed: false,
-            error: false,
-        }
-    }
-
-    /// Check whether the current readiness fulfills the blocking I/O interest of
-    /// `interest`.
+impl BlockingIoInterest {
+    /// Check whether the [`Readiness`] fulfills this blocking I/O interest.
     /// This function also returns `true` if the error readiness is set
     /// even when the requested interest might not be fulfilled.
-    fn fulfills_interest(&self, interest: &BlockingIoInterest) -> bool {
-        match interest {
-            BlockingIoInterest::Read => self.readable || self.error,
-            BlockingIoInterest::Write => self.writable || self.error,
-            BlockingIoInterest::ReadWrite => self.readable || self.writable || self.error,
+    fn is_fulfilled_by(&self, readiness: &Readiness) -> bool {
+        match self {
+            BlockingIoInterest::Read => readiness.readable || readiness.error,
+            BlockingIoInterest::Write => readiness.writable || readiness.error,
+            BlockingIoInterest::ReadWrite =>
+                readiness.readable || readiness.writable || readiness.error,
         }
     }
 }
 
-impl BitOrAssign for BlockingIoSourceReadiness {
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.readable |= rhs.readable;
-        self.writable |= rhs.writable;
-        self.read_closed |= rhs.read_closed;
-        self.write_closed |= rhs.write_closed;
-        self.error |= rhs.error;
-    }
-}
-
-impl From<&mio::event::Event> for BlockingIoSourceReadiness {
+impl From<&mio::event::Event> for Readiness {
     fn from(event: &mio::event::Event) -> Self {
         Self {
             readable: event.is_readable(),
@@ -119,10 +79,10 @@ struct BlockingIoSource {
 ///
 /// The semantics of this manager are that host I/O sources are registered
 /// to a [`Poll`] for their entire lifespan. Once host readiness events happen
-/// on a registered source, its internal epoll readiness gets updated -- even
-/// when the source isn't part of an active epoll instance. Also, for the entire
+/// on a registered source, its internal readiness gets updated -- even when
+/// the source isn't part of an active [`ReadinessWatcher`]. Also, for the entire
 /// lifespan of the source, threads can be added which should be unblocked
-/// once a certain [`BlockingIoSourceReadiness`] for an I/O source is satisfied.
+/// once a certain [`Readiness`] for an I/O source is satisfied.
 ///
 /// Since blocking host I/O is inherently non-deterministic, no method on this
 /// manager should be called when isolation is enabled. The only exception is
@@ -155,7 +115,7 @@ impl BlockingIoManager {
 
     /// Poll for new I/O events from the OS or wait until the timeout expired.
     /// The timeout semantics are the same as described in [`Poll::poll`].
-    /// The events also immediately get processed: threads get unblocked, and epoll readiness gets updated.
+    /// The events also immediately get processed: threads get unblocked, and fd readiness gets updated.
     fn poll<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
         timeout: Option<Duration>,
@@ -193,17 +153,17 @@ impl BlockingIoManager {
 
                 assert_eq!(fd.id(), fd_id);
                 // Update the readiness of the source.
-                *fd.get_readiness_mut() |= BlockingIoSourceReadiness::from(event);
+                *fd.get_readiness_mut() |= Readiness::from(event);
                 // Put FD into `event_fds` list.
                 fd
             })
             .collect::<Vec<_>>();
 
-        // Update the epoll readiness for all source file descriptions which received an event. Also,
+        // Update the readiness for all source file descriptions which received an event. Also,
         // unblock the threads which are blocked on such a source and whose interests are now fulfilled.
         for fd in event_fds.into_iter() {
-            // Update epoll readiness for the `fd` source.
-            ecx.update_epoll_active_events(fd.clone(), false)?;
+            // Update readiness for the `fd` source.
+            ecx.update_fd_readiness(fd.clone(), false)?;
 
             let source =
                 ecx.machine.blocking_io.sources.get(&fd.id()).expect(
@@ -218,7 +178,7 @@ impl BlockingIoManager {
                 .blocked_threads
                 .iter()
                 .filter_map(|(thread_id, interest)| {
-                    fd.get_readiness_mut().fulfills_interest(interest).then_some(*thread_id)
+                    interest.is_fulfilled_by(&fd.get_readiness_mut()).then_some(*thread_id)
                 })
                 .collect::<Vec<_>>();
 
@@ -360,7 +320,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // We always have to do this since the thread will de-register itself.
         this.machine.blocking_io.add_blocked_thread(source_fd.id(), this.active_thread(), interest);
 
-        if source_fd.get_readiness_mut().fulfills_interest(&interest) {
+        if interest.is_fulfilled_by(&source_fd.get_readiness_mut()) {
             // The requested readiness is currently already fulfilled for the provided source.
             // Instead of actually blocking the thread, we just run the callback function.
             callback.call(this, UnblockKind::Ready)

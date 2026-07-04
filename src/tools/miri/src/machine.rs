@@ -532,8 +532,8 @@ pub struct MiriMachine<'tcx> {
     /// The table of directory descriptors.
     pub(crate) dirs: shims::DirTable,
 
-    /// The list of all EpollEventInterest.
-    pub(crate) epoll_interests: shims::EpollInterestTable,
+    /// The table of all active [`ReadinessWatcher`]s.
+    pub(crate) readiness_interests: ReadinessInterestTable,
 
     /// This machine's monotone clock.
     pub(crate) monotonic_clock: MonotonicClock,
@@ -770,7 +770,7 @@ impl<'tcx> MiriMachine<'tcx> {
             isolated_op: config.isolated_op,
             validation: config.validation,
             fds: shims::FdTable::init(config.mute_stdout_stderr),
-            epoll_interests: shims::EpollInterestTable::new(),
+            readiness_interests: ReadinessInterestTable::new(),
             dirs: Default::default(),
             layouts,
             threads,
@@ -1035,7 +1035,7 @@ impl VisitProvenance for MiriMachine<'_> {
             alloc_addresses,
             fds,
             blocking_io:_,
-            epoll_interests:_,
+            readiness_interests: _,
             tcx: _,
             isolated_op: _,
             validation: _,

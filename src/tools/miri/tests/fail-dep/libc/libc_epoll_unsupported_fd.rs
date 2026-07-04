@@ -15,6 +15,6 @@ fn main() {
     let mut ev =
         libc::epoll_event { events: (libc::EPOLLIN | libc::EPOLLET) as _, u64: epfd1 as u64 };
     let res = unsafe { libc::epoll_ctl(epfd0, libc::EPOLL_CTL_ADD, epfd1, &mut ev) };
-    //~^ERROR: epoll does not support this file description
+    //~^ERROR: epoll: this file description doesn't support I/O readiness
     assert_eq!(res, 0);
 }

@@ -1,6 +1,7 @@
 //! Implements threads.
 
 use std::mem;
+use std::rc::Rc;
 use std::sync::atomic::Ordering::Relaxed;
 use std::task::Poll;
 use std::time::{Duration, SystemTime};
@@ -19,7 +20,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::Os;
 
 use crate::concurrency::GlobalDataRaceHandler;
-use crate::shims::{Epoll, EpollEvalContextExt, FileDescriptionRef, tls};
+use crate::shims::tls;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -107,8 +108,8 @@ pub enum BlockReason {
     Futex,
     /// Blocked on an InitOnce.
     InitOnce,
-    /// Blocked on epoll.
-    Epoll { epfd: FileDescriptionRef<Epoll> },
+    /// Blocked until a file description readiness is satisfied.
+    Readiness { watcher: Rc<ReadinessWatcher> },
     /// Blocked on eventfd.
     Eventfd,
     /// Blocked on virtual socket.
@@ -790,8 +791,8 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         match &thread.state {
             ThreadState::Blocked { reason: BlockReason::IO, .. } => true,
-            ThreadState::Blocked { reason: BlockReason::Epoll { epfd }, .. } =>
-                this.has_epoll_host_interests(epfd),
+            ThreadState::Blocked { reason: BlockReason::Readiness { watcher }, .. } =>
+                this.has_watcher_host_interests(watcher),
             _ => false,
         }
     }
