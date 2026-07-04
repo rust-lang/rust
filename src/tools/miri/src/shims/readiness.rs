@@ -220,18 +220,21 @@ impl ReadinessWatcher {
         key: ReadinessInterestKey,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> Option<()> {
-        self.interests.borrow_mut().remove(&key)?;
+        let mut interests = self.interests.borrow_mut();
 
-        // Remove the ready event for this key, should one exist.
-        let mut ready = self.ready.borrow_mut();
-        if let Some(idx) = ready.iter().position(|k| k == &key) {
-            ready.remove(idx);
+        if interests.remove(&key).is_none() {
+            // We did not have interest in this.
+            return None;
         }
 
-        let is_last = self.interests.borrow().range(range_for_id(key.0)).next().is_none();
-        if is_last {
-            // If this was the last interest in this FD, we remove the watcher from
-            // the global list of who is interested in this FD.
+        // Remove the ready event for this key, should one exist.
+        let mut ready_events = self.ready.borrow_mut();
+        if let Some(idx) = ready_events.iter().position(|k| k == &key) {
+            ready_events.remove(idx);
+        }
+        // If this was the last interest in this FD, remove us from the global list
+        // of who is interested in this FD.
+        if interests.range(range_for_id(key.0)).next().is_none() {
             ecx.machine.readiness_interests.remove(key.0, self);
         }
 
@@ -274,8 +277,6 @@ impl ReadinessWatcher {
     ) -> InterpResult<'tcx, Vec<ReadinessInterest>> {
         let interests = self.interests.borrow();
         let mut ready = self.ready.borrow_mut();
-        let count = count.min(ready.len());
-        let mut ready_interests = Vec::with_capacity(count);
 
         // Sanity-check to ensure that all event info is up-to-date.
         if cfg!(debug_assertions) {
@@ -288,13 +289,14 @@ impl ReadinessWatcher {
             }
         }
 
-        // We iterate over the first `count` entries from the `ready` queue
-        // and push the associated interests into the `ready_interests` list.
-        // If an interest is level-triggered, it's also added to the back of
-        // the queue again.
-        while ready_interests.len() < count
-            && let Some(key) = ready.pop_front()
-        {
+        // Compute how many events we can actually return.
+        let count = count.min(ready.len());
+        let mut ready_interests = Vec::with_capacity(count);
+
+        // We have to bound this iterator by `count`. Iterating until `ready` is empty would not
+        // work since we are re-adding level-triggered events to `ready` during the loop.
+        while ready_interests.len() < count {
+            let key = ready.pop_front().unwrap();
             let interest = interests.get(&key).expect("non-existing interest in ready set");
 
             if !interest.is_edge_triggered {
