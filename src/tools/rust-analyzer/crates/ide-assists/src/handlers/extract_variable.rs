@@ -110,6 +110,9 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
             .skip_while(|it| !it.text_range().contains_range(range))
             .find_map(valid_target_expr(ctx))?;
         let original_range = ctx.sema.original_range(expr.syntax());
+        if !node.text_range().contains_range(original_range.range) {
+            return None;
+        }
         (cover_edit_range(&node, original_range.range), expr)
     } else {
         let expr = node
@@ -3025,5 +3028,10 @@ fn main() {
 "#,
             "Extract into variable",
         );
+    }
+
+    #[test]
+    fn repro_bad_range_unresolved_macro_paren() {
+        check_assist_not_applicable(extract_variable, "fn f() { m!$0($0 }");
     }
 }
