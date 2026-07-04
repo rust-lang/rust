@@ -22,7 +22,7 @@
         strict_provenance_lints
     )
 )]
-#![cfg_attr(feature = "nightly", warn(fuzzy_provenance_casts))]
+#![cfg_attr(feature = "nightly", warn(implicit_provenance_casts))]
 #![cfg_attr(feature = "rustc-dep-of-std", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", expect(internal_features))]
 #![cfg_attr(
