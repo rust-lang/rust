@@ -425,7 +425,7 @@ Just a few things to keep in mind:
 
 - When contributing text to the guide, please contextualize the information with some time period
   and/or a reason so that the reader knows how much to trust the information.
-  Aim to provide a reasonable amount of context, possibly including but not limited to:
+  Aim to provide a reasonable amount of context, and consider including:
 
   - A reason for why the text may be out of date other than "change",
     as change is a constant across the project.
