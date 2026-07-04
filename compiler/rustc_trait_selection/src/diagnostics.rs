@@ -188,7 +188,7 @@ pub(crate) struct AnnotationRequired<'a> {
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
-    pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
+    pub subdiagnostic: Option<SourceKindSubdiag<'a>>,
 }
 
 // Copy of `AnnotationRequired` for E0283
@@ -208,7 +208,7 @@ pub(crate) struct AmbiguousImpl<'a> {
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
-    pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
+    pub subdiagnostic: Option<SourceKindSubdiag<'a>>,
 }
 
 // Copy of `AnnotationRequired` for E0284
@@ -228,7 +228,7 @@ pub(crate) struct AmbiguousReturn<'a> {
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
-    pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
+    pub subdiagnostic: Option<SourceKindSubdiag<'a>>,
 }
 
 // Used when a better one isn't available

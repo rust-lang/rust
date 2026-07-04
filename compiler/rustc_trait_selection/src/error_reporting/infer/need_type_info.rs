@@ -448,7 +448,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let source_kind = "other";
         let source_name = "";
         let failure_span = None;
-        let infer_subdiags = Vec::new();
+        let subdiagnostic = None;
         let bad_label = Some(arg_data.make_bad_error(span));
         match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
@@ -456,7 +456,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_kind,
                 source_name,
                 failure_span,
-                infer_subdiags,
+                subdiagnostic,
                 bad_label,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
@@ -464,7 +464,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_kind,
                 source_name,
                 failure_span,
-                infer_subdiags,
+                subdiagnostic,
                 bad_label,
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
@@ -472,7 +472,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_kind,
                 source_name,
                 failure_span,
-                infer_subdiags,
+                subdiagnostic,
                 bad_label,
             }),
         }
@@ -558,23 +558,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             None
         };
 
-        let mut infer_subdiags = Vec::new();
-        self.suggestion(
-            body_def_id,
-            term,
-            &arg_data,
-            typeck_results,
-            span,
-            &kind,
-            &mut infer_subdiags,
-        );
+        let subdiagnostic =
+            self.suggestion(body_def_id, term, &arg_data, typeck_results, span, &kind);
+
         let mut err = match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name: &name,
                 failure_span,
-                infer_subdiags,
+                subdiagnostic,
                 bad_label: None,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
@@ -582,7 +575,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_kind,
                 source_name: &name,
                 failure_span,
-                infer_subdiags,
+                subdiagnostic,
                 bad_label: None,
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
@@ -590,7 +583,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_kind,
                 source_name: &name,
                 failure_span,
-                infer_subdiags,
+                subdiagnostic,
                 bad_label: None,
             }),
         };
@@ -610,13 +603,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         typeck_results: &TypeckResults<'tcx>,
         span: Span,
         kind: &InferSourceKind<'tcx>,
-        infer_subdiags: &mut Vec<SourceKindSubdiag<'local>>,
-    ) where
+    ) -> Option<SourceKindSubdiag<'local>>
+    where
         'tcx: 'local,
     {
-        match *kind {
+        let subdiag = match *kind {
             InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id } => {
-                infer_subdiags.push(SourceKindSubdiag::LetLike {
+                SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
                     x_kind: arg_data.where_x_is_kind(self.infcx, ty),
@@ -625,20 +618,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     arg_name: &arg_data.name,
                     kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
                     type_name: ty_to_string(self, ty, def_id),
-                });
+                }
             }
-            InferSourceKind::ClosureArg { insert_span, ty, .. } => {
-                infer_subdiags.push(SourceKindSubdiag::LetLike {
-                    span: insert_span,
-                    name: String::new(),
-                    x_kind: arg_data.where_x_is_kind(self.infcx, ty),
-                    prefix_kind: arg_data.kind.clone(),
-                    prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
-                    arg_name: &arg_data.name,
-                    kind: "closure",
-                    type_name: ty_to_string(self, ty, None),
-                });
-            }
+            InferSourceKind::ClosureArg { insert_span, ty, .. } => SourceKindSubdiag::LetLike {
+                span: insert_span,
+                name: String::new(),
+                x_kind: arg_data.where_x_is_kind(self.infcx, ty),
+                prefix_kind: arg_data.kind.clone(),
+                prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
+                arg_name: &arg_data.name,
+                kind: "closure",
+                type_name: ty_to_string(self, ty, None),
+            },
             InferSourceKind::GenericArg {
                 insert_span,
                 argument_index,
@@ -735,7 +726,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 });
 
-                infer_subdiags.push(SourceKindSubdiag::Generic {
+                SourceKindSubdiag::Generic {
                     span,
                     is_type,
                     param_name,
@@ -743,51 +734,48 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     parent_prefix,
                     parent_name,
                     suggestion,
-                })
+                }
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
                 let placeholder = Some(self.next_ty_var(DUMMY_SP));
-                if let Some(args) = args.make_suggestable(self.infcx.tcx, true, placeholder) {
-                    let mut p = fmt_printer(self, Namespace::ValueNS);
-                    p.print_def_path(def_id, args).unwrap();
-                    let def_path = p.into_buffer();
+                let args = args.make_suggestable(self.infcx.tcx, true, placeholder)?;
 
-                    // We only care about whether we have to add `&` or `&mut ` for now.
-                    // This is the case if the last adjustment is a borrow and the
-                    // first adjustment was not a builtin deref.
-                    let adjustment = match typeck_results.expr_adjustments(receiver) {
-                        [
-                            Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: _ },
-                            ..,
-                            Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), target: _ },
-                        ] => "",
-                        [
-                            ..,
-                            Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mut_)), target: _ },
-                        ] => hir::Mutability::from(*mut_).ref_prefix_str(),
-                        _ => "",
-                    };
+                let mut p = fmt_printer(self, Namespace::ValueNS);
+                p.print_def_path(def_id, args).unwrap();
+                let def_path = p.into_buffer();
 
-                    infer_subdiags.push(SourceKindSubdiag::new_fully_qualified(
-                        receiver.span,
-                        def_path,
-                        adjustment,
-                        successor,
-                    ));
-                }
+                // We only care about whether we have to add `&` or `&mut ` for now.
+                // This is the case if the last adjustment is a borrow and the
+                // first adjustment was not a builtin deref.
+                let adjustment = match typeck_results.expr_adjustments(receiver) {
+                    [
+                        Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: _ },
+                        ..,
+                        Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), target: _ },
+                    ] => "",
+                    [.., Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mut_)), target: _ }] => {
+                        hir::Mutability::from(*mut_).ref_prefix_str()
+                    }
+                    _ => "",
+                };
+
+                SourceKindSubdiag::new_fully_qualified(
+                    receiver.span,
+                    def_path,
+                    adjustment,
+                    successor,
+                )
             }
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
                 let placeholder = Some(self.next_ty_var(DUMMY_SP));
-                if let Some(ty) = ty.make_suggestable(self.infcx.tcx, true, placeholder) {
-                    let ty_info = ty_to_string(self, ty, None);
-                    infer_subdiags.push(SourceKindSubdiag::new_closure_return(
-                        ty_info,
-                        data,
-                        should_wrap_expr,
-                    ));
-                }
+
+                let ty = ty.make_suggestable(self.infcx.tcx, true, placeholder)?;
+                let ty_info = ty_to_string(self, ty, None);
+                SourceKindSubdiag::new_closure_return(ty_info, data, should_wrap_expr)
             }
-        }
+        };
+
+        Some(subdiag)
     }
 }
 
