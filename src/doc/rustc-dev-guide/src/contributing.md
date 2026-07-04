@@ -257,7 +257,7 @@ In particular, we don't recommend running the full `./x test` suite locally,
 since it takes a very long time to execute.
 See the [Testing with CI] chapter for using Rust's CI to test your changes.
 
-[Testing with CI]: https://rustc-dev-guide.rust-lang.org/tests/ci.html#testing-with-ci
+[Testing with CI]: tests/ci.md#testing-with-ci
 
 ### r+
 
@@ -425,7 +425,7 @@ Just a few things to keep in mind:
 
 - When contributing text to the guide, please contextualize the information with some time period
   and/or a reason so that the reader knows how much to trust the information.
-  Aim to provide a reasonable amount of context, possibly including but not limited to:
+  Aim to provide a reasonable amount of context, and consider including:
 
   - A reason for why the text may be out of date other than "change",
     as change is a constant across the project.
@@ -464,9 +464,9 @@ Just a few things to keep in mind:
     further explanation for the change process or a way to verify that the information is not
     outdated.
 
-- If a text grows rather long (more than a few page scrolls) or complicated (more than four
-  subsections), it might benefit from having a Table of Contents at the beginning,
-  which you can auto-generate by including the `<!-- toc -->` marker at the top.
+- Use sentence case for chapter and sections titles.
+
+- Use dashes (`-`) to separate words file names.
 
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 
