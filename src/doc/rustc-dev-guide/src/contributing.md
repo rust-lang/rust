@@ -464,6 +464,10 @@ Just a few things to keep in mind:
     further explanation for the change process or a way to verify that the information is not
     outdated.
 
+- Use sentence case for chapter and sections titles.
+
+- Use dashes (`-`) to separate words file names.
+
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 
 For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so,
