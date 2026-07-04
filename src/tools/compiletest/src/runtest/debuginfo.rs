@@ -477,7 +477,8 @@ impl TestCx<'_> {
         ));
 
         let mut cmd = ArgFileCommand::new(lldb);
-        cmd.arg("--one-line")
+        cmd.arg("--batch") // --batch executes our script from --one-line and kills lldb afterwards
+            .arg("--one-line")
             .arg("script --language python -- import lldb_batchmode; lldb_batchmode.main()")
             .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
             .env("LLDB_BATCHMODE_SCRIPT_PATH", debugger_script)
