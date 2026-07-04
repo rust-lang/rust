@@ -381,6 +381,14 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         variant: VariantId,
     },
+    UnionPatMustHaveExactlyOneField {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
+    UnionPatHasRest {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
     FunctionalRecordUpdateOnNonStruct {
         #[type_visitable(ignore)]
         base_expr: ExprId,

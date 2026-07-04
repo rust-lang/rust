@@ -1242,10 +1242,10 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // Report an error if an incorrect number of fields was specified.
         if matches!(variant, VariantId::UnionId(_)) {
             if fields.len() != 1 {
-                // FIXME: Emit an error, unions can't have more than one field.
+                self.push_diagnostic(InferenceDiagnostic::UnionPatMustHaveExactlyOneField { pat });
             }
             if has_rest_pat {
-                // FIXME: Emit an error, unions can't have a rest pat.
+                self.push_diagnostic(InferenceDiagnostic::UnionPatHasRest { pat });
             }
         } else if !unmentioned_fields.is_empty() && !has_rest_pat {
             // FIXME: Emit an error.

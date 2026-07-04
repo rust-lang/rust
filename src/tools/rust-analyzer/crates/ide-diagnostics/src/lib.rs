@@ -90,6 +90,8 @@ mod handlers {
     pub(crate) mod unimplemented_builtin_macro;
     pub(crate) mod unimplemented_trait;
     pub(crate) mod union_expr_must_have_exactly_one_field;
+    pub(crate) mod union_pat_has_rest;
+    pub(crate) mod union_pat_must_have_exactly_one_field;
     pub(crate) mod unreachable_label;
     pub(crate) mod unresolved_assoc_item;
     pub(crate) mod unresolved_extern_crate;
@@ -551,6 +553,12 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::TypeMustBeKnown(d) => handlers::type_must_be_known::type_must_be_known(&ctx, &d),
             AnyDiagnostic::PatternArgInExternFn(d) => handlers::pattern_arg_in_extern_fn::pattern_arg_in_extern_fn(&ctx, &d),
             AnyDiagnostic::UnionExprMustHaveExactlyOneField(d) => handlers::union_expr_must_have_exactly_one_field::union_expr_must_have_exactly_one_field(&ctx, &d),
+            AnyDiagnostic::UnionPatMustHaveExactlyOneField(d) => {
+                handlers::union_pat_must_have_exactly_one_field::union_pat_must_have_exactly_one_field(&ctx, &d)
+            }
+            AnyDiagnostic::UnionPatHasRest(d) => {
+                handlers::union_pat_has_rest::union_pat_has_rest(&ctx, &d)
+            }
             AnyDiagnostic::UnimplementedTrait(d) => handlers::unimplemented_trait::unimplemented_trait(&ctx, &d),
             AnyDiagnostic::FruInDestructuringAssignment(d) => handlers::fru_in_destructuring_assignment::fru_in_destructuring_assignment(&ctx, &d),
             AnyDiagnostic::ExplicitDropMethodUse(d) => handlers::explicit_drop_method_use::explicit_drop_method_use(&ctx, &d),
