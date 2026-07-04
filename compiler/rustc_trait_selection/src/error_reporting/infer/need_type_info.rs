@@ -25,6 +25,7 @@ use tracing::{debug, instrument, warn};
 use super::nice_region_error::placeholder_error::Highlighted;
 use crate::diagnostics::{
     AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError, SourceKindSubdiag,
+    SpecifyGenericParamsSuggestion,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
@@ -659,15 +660,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let param = &generics.own_params[argument_index];
                 let param_name = param.name.to_string();
 
-                infer_subdiags.push(SourceKindSubdiag::GenericLabel {
-                    span,
-                    is_type,
-                    param_name: param_name.clone(),
-                    parent_exists,
-                    parent_prefix,
-                    parent_name,
-                });
-
                 let mut used_fallback = false;
                 let args = if self.tcx.get_diagnostic_item(sym::iterator_collect_fn)
                     == Some(generics_def_id)
@@ -715,33 +707,43 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     p.into_buffer()
                 };
 
-                if !have_turbofish {
+                let suggestion = have_turbofish.not().then(|| {
                     if generic_args.len() == 1 && used_fallback {
                         match param.kind {
                             GenericParamDefKind::Type { .. } => {
-                                infer_subdiags.push(SourceKindSubdiag::GenericTypeSuggestion {
+                                SpecifyGenericParamsSuggestion::GenericTypeSuggestion {
                                     span: insert_span,
-                                    param: param_name,
-                                });
+                                    param: param_name.clone(),
+                                }
                             }
                             GenericParamDefKind::Const { .. } => {
-                                infer_subdiags.push(SourceKindSubdiag::ConstGenericSuggestion {
+                                SpecifyGenericParamsSuggestion::ConstGenericSuggestion {
                                     span: insert_span,
-                                    param: param_name,
-                                });
+                                    param: param_name.clone(),
+                                }
                             }
                             GenericParamDefKind::Lifetime => {
                                 bug!("unexpected lifetime")
                             }
                         }
                     } else {
-                        infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
+                        SpecifyGenericParamsSuggestion::GenericSuggestion {
                             span: insert_span,
                             arg_count: generic_args.len(),
                             args,
-                        });
+                        }
                     }
-                }
+                });
+
+                infer_subdiags.push(SourceKindSubdiag::Generic {
+                    span,
+                    is_type,
+                    param_name,
+                    parent_exists,
+                    parent_prefix,
+                    parent_name,
+                    suggestion,
+                })
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
                 let placeholder = Some(self.next_ty_var(DUMMY_SP));

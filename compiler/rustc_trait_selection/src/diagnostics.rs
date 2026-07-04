@@ -302,7 +302,7 @@ pub(crate) enum SourceKindSubdiag<'a> {
             *[false] parameter {$param_name}
         }"
     )]
-    GenericLabel {
+    Generic {
         #[primary_span]
         span: Span,
         is_type: bool,
@@ -310,43 +310,8 @@ pub(crate) enum SourceKindSubdiag<'a> {
         parent_exists: bool,
         parent_prefix: String,
         parent_name: String,
-    },
-    #[suggestion(
-        "consider specifying the generic {$arg_count ->
-            [one] argument
-            *[other] arguments
-        }",
-        style = "verbose",
-        code = "::<{args}>",
-        applicability = "has-placeholders"
-    )]
-    GenericSuggestion {
-        #[primary_span]
-        span: Span,
-        arg_count: usize,
-        args: String,
-    },
-    #[suggestion(
-        "consider specifying a concrete type for the type parameter `{$param}`",
-        style = "verbose",
-        code = "::</* Type */>",
-        applicability = "has-placeholders"
-    )]
-    GenericTypeSuggestion {
-        #[primary_span]
-        span: Span,
-        param: String,
-    },
-    #[suggestion(
-        "consider specifying a const for the const parameter `{$param}`",
-        style = "verbose",
-        code = "::</* CONST */>",
-        applicability = "has-placeholders"
-    )]
-    ConstGenericSuggestion {
-        #[primary_span]
-        span: Span,
-        param: String,
+        #[subdiagnostic]
+        suggestion: Option<SpecifyGenericParamsSuggestion>,
     },
     #[multipart_suggestion(
         "try using a fully qualified path to specify the expected types",
@@ -407,6 +372,50 @@ impl<'a> SourceKindSubdiag<'a> {
         };
         Self::ClosureReturn { start_span, start_span_code, end_span }
     }
+}
+
+/// Suggestion to specify generic parameter(s) via `::<>`.
+#[derive(Subdiagnostic)]
+pub(crate) enum SpecifyGenericParamsSuggestion {
+    #[suggestion(
+        "consider specifying the generic {$arg_count ->
+            [one] argument
+            *[other] arguments
+        }",
+        style = "verbose",
+        code = "::<{args}>",
+        applicability = "has-placeholders"
+    )]
+    GenericSuggestion {
+        #[primary_span]
+        span: Span,
+        arg_count: usize,
+        args: String,
+    },
+    // FIXME: there is really no reason for `Generic{Type,Const}Suggestion` to be separate
+    // variants, all of these should be unified.
+    #[suggestion(
+        "consider specifying a concrete type for the type parameter `{$param}`",
+        style = "verbose",
+        code = "::</* Type */>",
+        applicability = "has-placeholders"
+    )]
+    GenericTypeSuggestion {
+        #[primary_span]
+        span: Span,
+        param: String,
+    },
+    #[suggestion(
+        "consider specifying a const for the const parameter `{$param}`",
+        style = "verbose",
+        code = "::</* CONST */>",
+        applicability = "has-placeholders"
+    )]
+    ConstGenericSuggestion {
+        #[primary_span]
+        span: Span,
+        param: String,
+    },
 }
 
 pub(crate) enum RegionOriginNote<'a> {
