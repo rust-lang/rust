@@ -464,10 +464,6 @@ Just a few things to keep in mind:
     further explanation for the change process or a way to verify that the information is not
     outdated.
 
-- If a text grows rather long (more than a few page scrolls) or complicated (more than four
-  subsections), it might benefit from having a Table of Contents at the beginning,
-  which you can auto-generate by including the `<!-- toc -->` marker at the top.
-
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 
 For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so,
