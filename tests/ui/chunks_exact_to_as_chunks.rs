@@ -71,4 +71,15 @@ fn main() {
     impl<const N: usize> A<N> {
         const A: usize = N + 1;
     }
+
+    trait Trait {
+        const C: usize;
+    }
+    fn bar<T: Trait>(slice: &[u8]) {
+        // Should NOT trigger - expressions in const arguments referencing generic parameters are not
+        // allowed
+
+        let _ = slice.chunks_exact(T::C);
+        let _ = slice.chunks_exact(size_of::<T>());
+    }
 }
