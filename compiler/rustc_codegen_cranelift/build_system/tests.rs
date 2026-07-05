@@ -91,6 +91,30 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::build_bin_and_run("aot.neon", "example/neon.rs", &[]),
     TestCase::build_bin_and_run("aot.gen_block_iterate", "example/gen_block_iterate.rs", &[]),
     TestCase::build_bin_and_run("aot.raw-dylib", "example/raw-dylib.rs", &[]),
+    TestCase::custom("aot.large-byval-align", &|runner| {
+        let output = runner
+            .rustc_command(["example/large-byval-align.rs", "--crate-type", "lib", "-Copt-level=0"])
+            .output()
+            .expect("failed to run rustc");
+        assert!(
+            !output.status.success(),
+            "expected large-byval-align.rs to exceed a backend implementation limit"
+        );
+
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("backend implementation limit exceeded"),
+            "expected backend implementation limit error, got:\n{stderr}"
+        );
+        assert!(
+            !stderr.contains("internal compiler error"),
+            "backend implementation limit should not ICE:\n{stderr}"
+        );
+        assert!(
+            !stderr.contains("expected abort due to worker thread errors"),
+            "worker thread fatal should be reported through diagnostics:\n{stderr}"
+        );
+    }),
     TestCase::custom("test.sysroot", &|runner| {
         apply_patches(
             &runner.dirs,

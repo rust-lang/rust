@@ -31,6 +31,7 @@ aot.issue-59326
 aot.neon
 aot.gen_block_iterate
 aot.raw-dylib
+aot.large-byval-align
 test.sysroot
 
 testsuite.extended_sysroot
