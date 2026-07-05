@@ -1390,8 +1390,8 @@ macro_rules! nonzero_integer {
             /// #
             #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_str_radix(\"1 \", 10).is_err());")]
             /// ```
-            #[stable(feature = "nonzero_from_str_radix", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "nonzero_from_str_radix", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "nonzero_from_str_radix", since = "1.98.0")]
+            #[rustc_const_stable(feature = "nonzero_from_str_radix", since = "1.98.0")]
             #[inline]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
                 Self::from_ascii_radix(src.as_bytes(), radix)
