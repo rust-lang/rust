@@ -60,7 +60,7 @@ $ErrorActionPreference = 'Stop'
 # Uninstall it, if possible
 if ($cdb_guid) {
     Write-Output "Uninstalling cdb ($cdb_guid)"
-    $log_file = Resolve-Path ./msi.log
+    $log_file = Join-Path (Resolve-Path .) msi.log
     Start-Process MsiExec.exe -ArgumentList "/x $cdb_guid /log $log_file /quiet IGNOREDEPENDENCIES=ALL" -Wait
 }
 
