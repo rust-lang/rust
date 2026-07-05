@@ -397,19 +397,19 @@ impl GlobalState {
                             if cancelled {
                                 self.prime_caches_queue
                                     .request_op("restart after cancellation".to_owned(), ());
-                            } else if self.config.check_on_save(None)
-                                && self.config.flycheck_workspace(None)
-                                && !self.fetch_build_data_queue.op_requested()
-                            {
-                                // Priming finished; now run the deferred initial workspace flycheck
-                                // (kept off the critical path so `cargo check` doesn't contend with
-                                // cache priming for CPU).
-                                self.flycheck
-                                    .iter()
-                                    .for_each(|flycheck| flycheck.restart_workspace(None));
-                            }
-                            if !cancelled {
-                                tracing::info!("workspace loaded and indexed");
+                            } else {
+                                if self.config.check_on_save(None)
+                                    && self.config.flycheck_workspace(None)
+                                    && !self.fetch_build_data_queue.op_requested()
+                                {
+                                    // Priming finished; now run the deferred initial workspace flycheck
+                                    // (kept off the critical path so `cargo check` doesn't contend with
+                                    // cache priming for CPU).
+                                    self.flycheck
+                                        .iter()
+                                        .for_each(|flycheck| flycheck.restart_workspace(None));
+                                }
+                                tracing::info!("cache priming completed successfully");
                             }
                             if let Some((message, fraction, title)) = last_report.take() {
                                 self.report_progress(
