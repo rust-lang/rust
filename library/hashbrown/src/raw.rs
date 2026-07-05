@@ -389,7 +389,7 @@ impl<T> Bucket<T> {
         // where: T0...Tlast - our stored data; C0...Clast - control bytes or metadata for data.
         if T::IS_ZERO_SIZED {
             // this can not be UB
-            self.ptr.as_ptr() as usize - 1
+            self.ptr.as_ptr().addr() - 1
         } else {
             unsafe { offset_from(base.as_ptr(), self.ptr.as_ptr()) }
         }
@@ -462,7 +462,7 @@ impl<T> Bucket<T> {
     unsafe fn next_n(&self, offset: usize) -> Self {
         let ptr = if T::IS_ZERO_SIZED {
             // invalid pointer is good enough for ZST
-            invalid_mut(self.ptr.as_ptr() as usize + offset)
+            invalid_mut(self.ptr.as_ptr().addr() + offset)
         } else {
             unsafe { self.ptr.as_ptr().sub(offset) }
         };
@@ -3577,7 +3577,7 @@ impl<T> RawIterRange<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new(ctrl: *const u8, data: Bucket<T>, len: usize) -> Self {
         debug_assert_ne!(len, 0);
-        debug_assert_eq!(ctrl as usize % Group::WIDTH, 0);
+        debug_assert!(ctrl.cast::<Group>().is_aligned());
         // SAFETY: The caller must uphold the safety rules for the [`RawIterRange::new`]
         let end = unsafe { ctrl.add(len) };
 
