@@ -3,7 +3,9 @@
 mod borrowed_buf;
 mod cursor;
 mod error;
+mod impls;
 mod io_slice;
+mod size_hint;
 mod util;
 
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
@@ -25,5 +27,26 @@ pub use self::{
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
     error::{Custom, CustomOwner, OsFunctions},
+    size_hint::SizeHint,
     util::{chain, take},
 };
+
+/// Marks that a type `T` can have IO traits such as [`Seek`], [`Write`], etc. automatically
+/// implemented for handle types like [`Arc`][arc] as well.
+///
+/// This trait should only be implemented for types where `<&T as Trait>::method(&mut &value, ..)`
+/// would be identical to `<T as Trait>::method(&mut value, ..)`.
+///
+/// [`File`][file] passes this test, as operations on `&File` and `File` both affect
+/// the same underlying file.
+/// `[u8]` fails, because any modification to `&mut &[u8]` would only affect a temporary
+/// and be lost after the method has been called.
+///
+// FIXME(#74481): Hard-links required to link from `core` to `std`
+/// [file]: ../../std/fs/struct.File.html
+/// [arc]: ../../alloc/sync/struct.Arc.html
+/// [`Write`]: ../../std/io/trait.Write.html
+/// [`Seek`]: ../../std/io/trait.Seek.html
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub trait IoHandle {}
