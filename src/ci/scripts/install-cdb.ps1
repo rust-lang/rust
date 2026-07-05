@@ -25,7 +25,7 @@ $debugger_path = $kits.WindowsDebuggersRoot10
 
 $kits32 = Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots'
 Write-Output "----"
-$kits | Get-ItemProperty | Write-Output
+$kits32 | Get-ItemProperty | Write-Output
 Write-Output "----"
 if (!$debugger_path) {
     $kits = $kits32
