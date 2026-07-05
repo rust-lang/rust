@@ -42,6 +42,7 @@ try {
 } catch [System.Management.Automation.CommandNotFoundException] {}
 
 # Search the registry for the already installed debugger component
+$log_file = Join-Path (Resolve-Path .) msi.log
 :loop foreach ($view in [Microsoft.Win32.RegistryView]::Registry64, [Microsoft.Win32.RegistryView]::Registry32) {
     $hklm = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $view)
     $kits = $hklm.OpenSubKey("SOFTWARE\Microsoft\Windows Kits\Installed Roots")
@@ -53,7 +54,6 @@ try {
             $ErrorActionPreference = 'Stop'
             if ($cdb_guid) {
                 Write-Output "Uninstalling cdb ($cdb_guid)"
-                $log_file = Join-Path (Resolve-Path .) msi.log
                 Start-Process MsiExec.exe -ArgumentList "/x $cdb_guid /log $log_file /quiet IGNOREDEPENDENCIES=ALL" -Wait
             }
         }
@@ -64,7 +64,7 @@ try {
     &$cdb_path /version
     Write-Output "uninstall failed for some reason, dumping logs"
     Get-Content $log_file | Write-Output
-    exit 1
+    #exit 1
 } catch [System.Management.Automation.CommandNotFoundException] {}
 
 # Install cdb
@@ -92,4 +92,20 @@ if ( $result -notin 0,$PACKAGE_ALREADY_INSTALLED )
 
 # Print the installed cdb version
 $ErrorActionPreference = 'Stop'
-&$cdb_path /version
+#&$cdb_path /version
+
+$version_str = &$cdb_path /version
+if ($version_str -match 'cdb version ([0-9]+\.[0-9]+\.[0-9]+)\..*') {
+    $version = $Matches.1
+    if ($version -eq $CDB_VERSION) {
+        exit 0
+    } else {
+        Write-Output "wrong cdb version"
+        Write-Output "expected: $CDB_VERSION"
+        Write-Output "found: $version"
+    }
+} else {
+    Write-Error "failed to read cdb version string: $version_str"
+}
+
+exit 1
