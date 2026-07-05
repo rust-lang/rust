@@ -1528,11 +1528,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[cold]
     pub(crate) fn type_must_be_known_at_this_point(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         let guar = self.tainted_by_errors().unwrap_or_else(|| {
+            let report_term = self.ambiguous_projection_input(ty).unwrap_or(ty);
             self.err_ctxt()
                 .emit_inference_failure_err(
                     self.body_id,
                     sp,
-                    ty.into(),
+                    report_term.into(),
                     TypeAnnotationNeeded::E0282,
                     true,
                 )

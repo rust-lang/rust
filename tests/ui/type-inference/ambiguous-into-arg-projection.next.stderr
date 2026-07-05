@@ -1,0 +1,17 @@
+error[E0282]: type annotations needed
+  --> $DIR/ambiguous-into-arg-projection.rs:21:24
+   |
+LL |     if let Some(x) = v.get(0_i16.into()) {
+   |                        ^^^ cannot infer type of the type parameter `I` declared on the method `get`
+LL |
+LL |         if let Some(f) = x.f {
+   |                          --- type must be known at this point
+   |
+help: consider specifying a concrete type for the type parameter `I`
+   |
+LL |     if let Some(x) = v.get::</* Type */>(0_i16.into()) {
+   |                           ++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

@@ -1,5 +1,6 @@
 //! A utility module to inspect currently ambiguous obligations in the current context.
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
@@ -112,6 +113,139 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             !obligation.predicate.has_placeholders()
         });
         obligations_for_self_ty
+    }
+
+    /// When we're about to emit `E0282` for a bare type inference variable `ty`,
+    /// find a better variable to blame: the unresolved input of a stalled
+    /// associated-type projection whose output is (equivalent to) `ty`.
+    ///
+    /// E.g. in `v.get(x.into())` with `v: Vec<Foo>`, `get` returns
+    /// `Option<&<?I as SliceIndex<[Foo]>>::Output>`. If `?I` (the `.into()` target)
+    /// is unknown we get stuck on the output `?Out` at a later use. `?Out` has no
+    /// annotatable source but `?I` does, so we blame `?I` instead. See #146126.
+    ///
+    /// Returns `None` unless `ty` is the output of such a stalled *trait* projection
+    /// with a bare inference-variable input. Type variables only (not consts).
+    #[instrument(level = "debug", skip(self), ret)]
+    pub(crate) fn ambiguous_projection_input(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        // Follow chains of stalled projections (e.g. `x.into().into()`) for a few
+        // hops. The bound keeps this cheap and guarantees termination; every known
+        // case needs a single hop.
+        const MAX_HOPS: usize = 4;
+
+        let mut current = self.shallow_resolve(ty);
+        let mut result = None;
+
+        for _ in 0..MAX_HOPS {
+            let ty::Infer(ty::TyVar(cur_vid)) = *current.kind() else { break };
+
+            let obligations = self.fulfillment_cx.borrow().pending_obligations();
+
+            // The stuck variable is often only a `Subtype`/`Coerce` sibling of the
+            // projection output, not the output itself. Follow those relations to a
+            // fixpoint to collect every variable holding the same value.
+            let mut related: FxHashSet<ty::TyVid> = FxHashSet::default();
+            related.insert(self.root_var(cur_vid));
+            loop {
+                let mut changed = false;
+                for obligation in &obligations {
+                    let predicate = self.resolve_vars_if_possible(obligation.predicate);
+                    let Some(kind) = predicate.kind().no_bound_vars() else { continue };
+                    let (a, b) = match kind {
+                        ty::PredicateKind::Subtype(p) => (p.a, p.b),
+                        ty::PredicateKind::Coerce(p) => (p.a, p.b),
+                        _ => continue,
+                    };
+                    if let (ty::Infer(ty::TyVar(av)), ty::Infer(ty::TyVar(bv))) =
+                        (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind())
+                    {
+                        let (ar, br) = (self.root_var(*av), self.root_var(*bv));
+                        if related.contains(&ar) != related.contains(&br) {
+                            related.insert(ar);
+                            related.insert(br);
+                            changed = true;
+                        }
+                    }
+                }
+                if !changed {
+                    break;
+                }
+            }
+
+            // Find stalled *trait* projections whose output is in `related` and
+            // collect their distinct unresolved inputs. (Only trait projections:
+            // their input is well-defined; inherent/opaque/free aliases aren't.)
+            // Retarget only if exactly one input turns up; otherwise blaming a
+            // single one would be arbitrary, so leave the diagnostic unchanged.
+            let mut candidate_roots: FxHashSet<ty::TyVid> = FxHashSet::default();
+            let mut candidate = None;
+            for obligation in &obligations {
+                let predicate = self.resolve_vars_if_possible(obligation.predicate);
+                let Some(kind) = predicate.kind().no_bound_vars() else { continue };
+
+                let (alias_args, term) = match kind {
+                    ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred))
+                        if pred.projection_term.kind.is_trait_projection() =>
+                    {
+                        (pred.projection_term.args, pred.term)
+                    }
+                    ty::PredicateKind::NormalizesTo(pred)
+                        if pred.alias.kind.is_trait_projection() =>
+                    {
+                        (pred.alias.args, pred.term)
+                    }
+                    ty::PredicateKind::AliasRelate(lhs, rhs, _) => {
+                        if let Some(lhs_ty) = lhs.as_type()
+                            && let ty::Alias(_, alias) = *self.shallow_resolve(lhs_ty).kind()
+                            && matches!(alias.kind, ty::AliasTyKind::Projection { .. })
+                        {
+                            (alias.args, rhs)
+                        } else if let Some(rhs_ty) = rhs.as_type()
+                            && let ty::Alias(_, alias) = *self.shallow_resolve(rhs_ty).kind()
+                            && matches!(alias.kind, ty::AliasTyKind::Projection { .. })
+                        {
+                            (alias.args, lhs)
+                        } else {
+                            continue;
+                        }
+                    }
+                    _ => continue,
+                };
+
+                // The output must be (equivalent to) the stuck variable.
+                let Some(term_ty) = term.as_type() else { continue };
+                let ty::Infer(ty::TyVar(term_vid)) = *self.shallow_resolve(term_ty).kind() else {
+                    continue;
+                };
+                if !related.contains(&self.root_var(term_vid)) {
+                    continue;
+                }
+
+                // Blame the first input that is still an unresolved variable. Args
+                // are `[Self, trait args.., assoc args..]`, so this prefers `Self`,
+                // e.g. `?input` of `<?input as SliceIndex<_>>::Output`.
+                for arg in alias_args {
+                    if let Some(arg_ty) = arg.as_type() {
+                        let arg_ty = self.shallow_resolve(arg_ty);
+                        if let ty::Infer(ty::TyVar(vid)) = arg_ty.kind() {
+                            if candidate_roots.insert(self.root_var(*vid)) {
+                                candidate = Some(arg_ty);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            match candidate {
+                Some(input) if candidate_roots.len() == 1 => {
+                    result = Some(input);
+                    current = input;
+                }
+                _ => break,
+            }
+        }
+        result
     }
 
     /// Only needed for the `From<{float}>` for `f32` type fallback.

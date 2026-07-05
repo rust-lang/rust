@@ -2,7 +2,13 @@ error[E0282]: type annotations needed
   --> $DIR/index-expr-ambiguous-type.rs:9:34
    |
 LL |     let _foo = [1, 2, 3][bad_idx.into()] as i32;
-   |                                  ^^^^ cannot infer type
+   |                                  ^^^^
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     let _foo = [1, 2, 3][bad_idx.into()] as i32;
+LL +     let _foo = [1, 2, 3][<u8 as Into<T>>::into(bad_idx)] as i32;
+   |
 
 error[E0284]: type annotations needed
   --> $DIR/index-expr-ambiguous-type.rs:15:38
