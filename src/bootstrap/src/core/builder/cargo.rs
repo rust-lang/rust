@@ -78,6 +78,26 @@ impl Rustflags {
     }
 }
 
+/// Picks the environment variable and value to pass a set of [`Rustflags`] to cargo.
+///
+/// `flags` is the `\x1f`-separated string built by [`Rustflags`]. We prefer the plain,
+/// space-separated form (`RUSTFLAGS`/`RUSTDOCFLAGS`) so the command stays readable and
+/// copy-pasteable in bootstrap's debug output, and only fall back to the `CARGO_ENCODED_*` form
+/// (which keeps the `\x1f` separators) when a flag value contains a space that the plain,
+/// whitespace-split form can't represent. See <https://github.com/rust-lang/rust/issues/158749>.
+pub(super) fn flags_env(
+    plain: &'static str,
+    encoded: &'static str,
+    flags: &str,
+) -> (&'static str, String) {
+    // A space can only appear inside a flag value, since the separators are `\x1f`.
+    if flags.contains(' ') {
+        (encoded, flags.to_string())
+    } else {
+        (plain, flags.replace('\x1f', " "))
+    }
+}
+
 /// Flags that are passed to the `rustc` shim binary. These flags will only be applied when
 /// compiling host code, i.e. when `--target` is unset.
 #[derive(Debug, Default)]
@@ -465,21 +485,25 @@ impl From<Cargo> for BootstrapCommand {
 
         cargo.command.args(cargo.args);
 
-        // Always unset the plain RUSTFLAGS/RUSTDOCFLAGS so that downstream
-        // tools (e.g. build.rs scripts) see only the encoded form. Any flags
-        // from the caller's environment have already been folded into the
-        // Rustflags struct via `propagate_cargo_env`.
+        // Unset any inherited flag variables (plain and encoded) so cargo uses only the flags
+        // bootstrap sets below. Flags from the caller's environment have already been folded into
+        // the Rustflags struct via `propagate_cargo_env`. This also matters because we may set the
+        // plain form below, which cargo ignores when `CARGO_ENCODED_RUSTFLAGS` is also present.
         cargo.command.env_remove("RUSTFLAGS");
+        cargo.command.env_remove("CARGO_ENCODED_RUSTFLAGS");
         cargo.command.env_remove("RUSTDOCFLAGS");
+        cargo.command.env_remove("CARGO_ENCODED_RUSTDOCFLAGS");
 
-        let rustflags = &cargo.rustflags.0;
-        if !rustflags.is_empty() {
-            cargo.command.env("CARGO_ENCODED_RUSTFLAGS", rustflags);
+        if !cargo.rustflags.0.is_empty() {
+            let (var, value) =
+                flags_env("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS", &cargo.rustflags.0);
+            cargo.command.env(var, value);
         }
 
-        let rustdocflags = &cargo.rustdocflags.0;
-        if !rustdocflags.is_empty() {
-            cargo.command.env("CARGO_ENCODED_RUSTDOCFLAGS", rustdocflags);
+        if !cargo.rustdocflags.0.is_empty() {
+            let (var, value) =
+                flags_env("RUSTDOCFLAGS", "CARGO_ENCODED_RUSTDOCFLAGS", &cargo.rustdocflags.0);
+            cargo.command.env(var, value);
         }
 
         let encoded_hostflags = cargo.hostflags.encode();
