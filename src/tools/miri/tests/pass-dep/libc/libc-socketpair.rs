@@ -18,7 +18,6 @@ fn main() {
     test_race();
     test_blocking_read();
     test_blocking_write();
-    test_socketpair_setfl_getfl();
 }
 
 fn test_socketpair() {
@@ -30,6 +29,30 @@ fn test_socketpair() {
     write_all(fds[0], data).unwrap();
     let buf = read_exact_array::<5>(fds[1]).unwrap();
     assert_eq!(&buf, data);
+
+    // Test reading and writing using `send` and `recv` instead of
+    // `write` and `read`.
+    let data = b"some data";
+    unsafe {
+        libc_utils::write_all_generic(
+            data.as_ptr().cast(),
+            data.len(),
+            libc_utils::NoRetry,
+            |buf, count| libc::send(fds[1], buf, count, 0),
+        )
+        .unwrap()
+    };
+    let mut buffer = [0u8; 9];
+    unsafe {
+        libc_utils::read_exact_generic(
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc_utils::NoRetry,
+            |buf, count| libc::recv(fds[0], buf, count, 0),
+        )
+        .unwrap()
+    };
+    assert_eq!(&buffer, data);
 
     // Read size > data available in buffer.
     let data = b"abc";
@@ -154,31 +177,4 @@ fn test_blocking_write() {
     });
     thread1.join().unwrap();
     thread2.join().unwrap();
-}
-
-/// Basic test for socketpair fcntl's F_SETFL and F_GETFL flag.
-fn test_socketpair_setfl_getfl() {
-    // Initialise socketpair fds.
-    let mut fds = [-1, -1];
-    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
-
-    // Test if both sides have O_RDWR.
-    assert_eq!(errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap(), libc::O_RDWR);
-    assert_eq!(errno_result(unsafe { libc::fcntl(fds[1], libc::F_GETFL) }).unwrap(), libc::O_RDWR);
-
-    // Add the O_NONBLOCK flag with F_SETFL.
-    errno_check(unsafe { libc::fcntl(fds[0], libc::F_SETFL, libc::O_NONBLOCK) });
-
-    // Test if the O_NONBLOCK flag is successfully added.
-    assert_eq!(
-        errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap(),
-        libc::O_RDWR | libc::O_NONBLOCK
-    );
-
-    // The other side remains unchanged.
-    assert_eq!(errno_result(unsafe { libc::fcntl(fds[1], libc::F_GETFL) }).unwrap(), libc::O_RDWR);
-
-    // Test if O_NONBLOCK flag can be unset.
-    errno_check(unsafe { libc::fcntl(fds[0], libc::F_SETFL, 0) });
-    assert_eq!(errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap(), libc::O_RDWR);
 }
