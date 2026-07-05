@@ -35,6 +35,7 @@ use crate::clone::TrivialClone;
 use crate::cmp::Ordering;
 use crate::marker::{Destruct, DiscriminantKind};
 use crate::panic::const_assert;
+use crate::ub_checks::assert_unsafe_precondition;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
 mod alignment;
@@ -1077,6 +1078,27 @@ pub const fn copy<T: Copy>(x: &T) -> T {
 ///
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
+/// If you have a raw pointer instead of a reference, you might be looking for
+/// `src.cast::<Dst>().`[`read_unaligned()`](pointer#method.read_unaligned) instead.
+///
+/// # Safety
+///
+/// - Requires `size_of_val::<Src>(src) >= size_of::<Dst>()`
+/// - The first `size_of::<Dst>()` bytes behind `src` must be *readable*
+/// - The first `size_of::<Dst>()` bytes behind `src` must be *[valid]*
+///   when interpreted as a `Dst`.
+///
+/// On top of that, remember that most types have additional invariants beyond merely
+/// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
+/// is considered initialized (under the current implementation; this does not constitute
+/// a stable guarantee) because the only requirement the compiler knows about it
+/// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
+/// *immediate* undefined behavior, but will cause undefined behavior with most
+/// safe operations (including dropping it).
+///
+/// [valid]: ../../reference/behavior-considered-undefined.html#r-undefined.validity
+/// [`Vec<T>`]: ../../std/vec/struct.Vec.html
+///
 /// # Examples
 ///
 /// ```
@@ -1101,20 +1123,32 @@ pub const fn copy<T: Copy>(x: &T) -> T {
 ///
 /// // The contents of 'foo_array' should not have changed
 /// assert_eq!(foo_array, [10]);
+///
+/// let bytes: &[u8] = &[1, 2, 3, 4, 5, 6, 7];
+/// assert_eq!(
+///     unsafe { mem::transmute_copy::<[u8], u32>(bytes) },
+///     u32::from_ne_bytes(*bytes.first_chunk().unwrap()),
+/// );
 /// ```
 #[inline]
 #[must_use]
 #[track_caller]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_transmute_copy", since = "1.74.0")]
-pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
-    assert!(
-        size_of::<Src>() >= size_of::<Dst>(),
-        "cannot transmute_copy if Dst is larger than Src"
+pub const unsafe fn transmute_copy<Src: ?Sized, Dst>(src: &Src) -> Dst {
+    // library UB because it's possible for the `Src` to be only a subset of the allocation
+    // and thus for a failure to not be immediate language UB
+    assert_unsafe_precondition!(
+        check_library_ub,
+        "cannot transmute_copy if Dst is larger than Src",
+        (
+            src_size: usize = size_of_val::<Src>(src),
+            dst_size: usize = Dst::SIZE,
+        ) => src_size >= dst_size
     );
 
     // If Dst has a higher alignment requirement, src might not be suitably aligned.
-    if align_of::<Dst>() > align_of::<Src>() {
+    if align_of::<Dst>() > align_of_val::<Src>(src) {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
         // The caller must guarantee that the actual transmutation is safe.
         unsafe { ptr::read_unaligned(src as *const Src as *const Dst) }
