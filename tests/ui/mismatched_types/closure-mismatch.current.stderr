@@ -6,7 +6,7 @@ LL |     baz(|_| ());
    |
    = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
-help: consider adding an explicit type annotation to the closure parameter to resolve the lifetime ambiguity
+help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     baz(|_: &()| ());
    |           +++++
@@ -19,7 +19,7 @@ LL |     baz(|_| ());
    |
    = note: closure with signature `fn(&'2 ())` must implement `Fn<(&'1 (),)>`, for any lifetime `'1`...
    = note: ...but it actually implements `Fn<(&'2 (),)>`, for some specific lifetime `'2`
-help: consider adding an explicit type annotation to the closure parameter to resolve the lifetime ambiguity
+help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     baz(|_: &()| ());
    |           +++++
@@ -32,7 +32,7 @@ LL |     baz(|x| ());
    |
    = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
-help: consider adding an explicit type annotation to the closure parameter to resolve the lifetime ambiguity
+help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     baz(|x: &()| ());
    |           +++++
@@ -45,7 +45,7 @@ LL |     baz(|x| ());
    |
    = note: closure with signature `fn(&'2 ())` must implement `Fn<(&'1 (),)>`, for any lifetime `'1`...
    = note: ...but it actually implements `Fn<(&'2 (),)>`, for some specific lifetime `'2`
-help: consider adding an explicit type annotation to the closure parameter to resolve the lifetime ambiguity
+help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     baz(|x: &()| ());
    |           +++++

@@ -6,7 +6,7 @@ LL |     require_send(future);
    |
    = note: closure with signature `fn(&'0 Vec<i32>) -> std::slice::Iter<'_, i32>` must implement `FnOnce<(&'1 Vec<i32>,)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `FnOnce<(&Vec<i32>,)>`
-help: consider adding an explicit type annotation to the closure parameter to resolve the lifetime ambiguity
+help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     for _ in things.iter().map(|n: &Vec<i32>| n.iter()).flatten() {
    |                                  +++++++++++
@@ -20,7 +20,7 @@ LL |     require_send(future);
    = note: closure with signature `fn(&'0 Vec<i32>) -> std::slice::Iter<'_, i32>` must implement `FnOnce<(&'1 Vec<i32>,)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `FnOnce<(&Vec<i32>,)>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider adding an explicit type annotation to the closure parameter to resolve the lifetime ambiguity
+help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     for _ in things.iter().map(|n: &Vec<i32>| n.iter()).flatten() {
    |                                  +++++++++++

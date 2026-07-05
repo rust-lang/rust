@@ -6,7 +6,7 @@ LL |     thing(f);
    |
    = note: closure with signature `fn(&'2 u32)` must implement `FnOnce<(&'1 u32,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 u32,)>`, for some specific lifetime `'2`
-help: consider adding an explicit type annotation to the closure parameter to resolve the lifetime ambiguity
+help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     let f = |_: &u32| ();
    |               ++++++
@@ -20,7 +20,7 @@ LL |     thing(f);
    = note: closure with signature `fn(&'2 u32)` must implement `FnOnce<(&'1 u32,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 u32,)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider adding an explicit type annotation to the closure parameter to resolve the lifetime ambiguity
+help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     let f = |_: &u32| ();
    |               ++++++

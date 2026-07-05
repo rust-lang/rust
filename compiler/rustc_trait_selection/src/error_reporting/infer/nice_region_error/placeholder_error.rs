@@ -413,12 +413,12 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                         })
                         .collect();
                     if !suggestions.is_empty() {
-                        err.multipart_suggestion(
-                            "consider adding an explicit type annotation to the closure \
-                             parameter to resolve the lifetime ambiguity",
-                            suggestions,
-                            Applicability::MaybeIncorrect,
-                        );
+                        let msg = if suggestions.len() == 1 {
+                            "consider adding an explicit type annotation to the closure's argument"
+                        } else {
+                            "consider adding explicit type annotations to the closure's arguments"
+                        };
+                        err.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
                     }
                 }
             }

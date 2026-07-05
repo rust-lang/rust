@@ -17,7 +17,7 @@ fn outer<F>(buf: &mut [u8], func: F) -> usize
 where
     F: FnOnce(&mut [u8]) -> Result<usize, isize>,
 {
-    let outer_closure = |buf| {
+    let outer_closure = |buf: &mut [u8]| {
         match func(buf) {
             Ok(n) => {
                 println!("OK: {n}");
