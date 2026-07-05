@@ -82,6 +82,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 */
 
 use std::mem;
+use std::ops::Range;
 
 use interpret::ErrorHandled;
 use rustc_data_structures::fx::FxHashMap;
@@ -1218,31 +1219,57 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {
+        let last = self.scopes.scopes.len() - 1;
+        self.leave_scopes(block, last..self.scopes.scopes.len())
+    }
+
+    fn leave_scopes(
+        &mut self,
+        mut block: BasicBlock,
+        range: Range<usize>,
+    ) -> BasicBlock {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
-        let needs_cleanup = self.scopes.scopes.last().is_some_and(|scope| scope.needs_cleanup());
+        let scopes = &self.scopes.scopes[range.clone()];
         let is_coroutine = self.coroutine.is_some();
-        let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
-
-        let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
+        let needs_cleanup = scopes.iter().any(|scope| scope.needs_cleanup());
         let has_async_drops = is_coroutine
-            && scope.drops.iter().any(|v| v.kind == DropKind::Value && self.is_async_drop(v.local));
-        let dropline_to = if has_async_drops { Some(self.diverge_dropline()) } else { None };
-        let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
+            && scopes
+                .iter()
+                .flat_map(|s| s.drops.iter())
+                .any(|v| v.kind == DropKind::Value && self.is_async_drop(v.local));
+
+        let region_scope = scopes.last().unwrap().region_scope;
+        let mut unwind_to = if needs_cleanup {
+            self.diverge_cleanup_target(region_scope, DUMMY_SP)
+        } else {
+            DropIdx::MAX
+        };
+        let mut dropline_to = if has_async_drops {
+            Some(self.diverge_dropline_target(region_scope, DUMMY_SP))
+        } else {
+            None
+        };
+
         let typing_env = self.typing_env();
-        build_scope_drops(
-            &mut self.cfg,
-            &mut self.scopes.unwind_drops,
-            &mut self.scopes.coroutine_drops,
-            scope,
-            block,
-            unwind_to,
-            dropline_to,
-            is_coroutine && needs_cleanup,
-            self.arg_count,
-            |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, typing_env, v),
-        )
-        .into_block()
+        for scope in self.scopes.scopes[range].iter().rev() {
+            (unwind_to, dropline_to) = unpack!(
+                block = build_scope_drops(
+                    &mut self.cfg,
+                    &mut self.scopes.unwind_drops,
+                    &mut self.scopes.coroutine_drops,
+                    scope,
+                    block,
+                    unwind_to,
+                    dropline_to,
+                    /* storage_dead_on_unwind */ is_coroutine && needs_cleanup,
+                    self.arg_count,
+                    /* is_async_drop */
+                    |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, typing_env, v),
+                )
+            );
+        }
+        block
     }
 
     /// Possibly creates a new source scope if `current_root` and `parent_root`
@@ -1812,7 +1839,7 @@ fn build_scope_drops<'tcx, F>(
     storage_dead_on_unwind: bool,
     arg_count: usize,
     is_async_drop: F,
-) -> BlockAnd<()>
+) -> BlockAnd<(DropIdx, Option<DropIdx>)>
 where
     F: Fn(Local) -> bool,
 {
@@ -1962,7 +1989,7 @@ where
             }
         }
     }
-    block.unit()
+    block.and((unwind_to, dropline_to))
 }
 
 impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
