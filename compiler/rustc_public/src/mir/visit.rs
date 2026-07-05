@@ -369,6 +369,7 @@ macro_rules! make_mir_visitor {
                     AssertMessage::ResumedAfterReturn(_)
                     | AssertMessage::ResumedAfterPanic(_)
                     | AssertMessage::NullPointerDereference
+                    | AssertMessage::NullReferenceConstructed
                     | AssertMessage::ResumedAfterDrop(_) => {
                         //nothing to visit
                     }

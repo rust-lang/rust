@@ -559,6 +559,9 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
                 }
             }
             AssertKind::NullPointerDereference => crate::mir::AssertMessage::NullPointerDereference,
+            AssertKind::NullReferenceConstructed => {
+                crate::mir::AssertMessage::NullReferenceConstructed
+            }
             AssertKind::InvalidEnumConstruction(source) => {
                 crate::mir::AssertMessage::InvalidEnumConstruction(source.stable(tables, cx))
             }
