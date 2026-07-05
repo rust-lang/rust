@@ -2326,18 +2326,80 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 {
                     return false;
                 }
+                let mut multi_span = MultiSpan::from_span(self.tcx.def_span(def_id));
                 let (desc, mention_castable) =
                     match (cand.self_ty().kind(), trait_pred.self_ty().skip_binder().kind()) {
                         (ty::FnPtr(..), ty::FnDef(..)) => {
                             (" implemented for fn pointer `", ", cast using `as`")
                         }
                         (ty::FnPtr(..), _) => (" implemented for fn pointer `", ""),
-                        _ => (" implemented for `", ""),
+                        _ => {
+                            let evaluate_obligations = || {
+                                let ocx = ObligationCtxt::new_with_diagnostics(self);
+                                self.enter_forall(trait_pred, |obligation_trait_ref| {
+                                    let impl_args = self.fresh_args_for_item(DUMMY_SP, def_id);
+                                    let impl_trait_ref = ocx.normalize(
+                                        &ObligationCause::dummy(),
+                                        param_env,
+                                        ty::EarlyBinder::bind(self.tcx, cand)
+                                            .instantiate(self.tcx, impl_args),
+                                    );
+                                    if ocx
+                                        .eq(
+                                            &ObligationCause::dummy(),
+                                            param_env,
+                                            obligation_trait_ref.trait_ref,
+                                            impl_trait_ref,
+                                        )
+                                        .is_err()
+                                    {
+                                        return Vec::new();
+                                    }
+                                    ocx.register_obligations(
+                                        self.tcx
+                                            .predicates_of(def_id)
+                                            .instantiate(self.tcx, impl_args)
+                                            .into_iter()
+                                            .map(|(clause, span)| {
+                                                Obligation::new(
+                                                    self.tcx,
+                                                    ObligationCause::dummy_with_span(span),
+                                                    param_env,
+                                                    clause.skip_normalization(),
+                                                )
+                                            }),
+                                    );
+                                    ocx.try_evaluate_obligations()
+                                })
+                            };
+                            let failing_obligations =
+                                if !self.tcx.predicates_of(def_id).predicates.is_empty() {
+                                    self.probe(|_| evaluate_obligations())
+                                } else {
+                                    Vec::new()
+                                };
+
+                            if failing_obligations.is_empty() {
+                                (" implemented for `", "")
+                            } else {
+                                for error in failing_obligations {
+                                    multi_span.push_span_label(
+                                        error.root_obligation.cause.span,
+                                        format!(
+                                            "unsatisfied requirement introduced here: `{}`",
+                                            error.root_obligation.predicate,
+                                        ),
+                                    );
+                                }
+
+                                (" conditionally implemented for `", "")
+                            }
+                        }
                     };
                 let trait_ = self.tcx.short_string(cand.print_trait_sugared(), err.long_ty_path());
                 let self_ty = self.tcx.short_string(cand.self_ty(), err.long_ty_path());
                 err.highlighted_span_help(
-                    self.tcx.def_span(def_id),
+                    multi_span,
                     vec![
                         StringPart::normal(format!("the trait `{trait_}` ")),
                         StringPart::highlighted("is"),
