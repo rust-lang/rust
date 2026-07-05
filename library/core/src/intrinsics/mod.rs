@@ -3715,7 +3715,7 @@ pub fn target_feature_available_at_call_site<const FEATURE: [u8; 100]>() -> bool
 
 /// Returns whether a target feature is enabled at the call site.
 ///
-/// This macro is a more convenient interface for [`target_feature_available_at_call_site`].
+/// This macro is a more convenient interface for [`target_feature_available_at_call_site()`].
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[allow_internal_unstable(adt_const_params)]
 #[diagnostic::on_unmatched_args(
@@ -3729,12 +3729,10 @@ pub macro target_feature_available_at_call_site($feature:literal) {{
 
             assert!(bytes.len() <= 100, "feature string too long");
 
+            // FIXME(const-hack) can't use subslicing yet
             let mut out = [0u8; 100];
-            let mut i = 0;
-            while i < bytes.len() {
-                out[i] = bytes[i];
-                i += 1;
-            }
+            let (dst, _) = out.split_at_mut(bytes.len());
+            dst.copy_from_slice(bytes);
 
             out
         },
