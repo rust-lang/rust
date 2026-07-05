@@ -905,8 +905,7 @@ impl SyntaxExtension {
             None => (None, helper_attrs),
         };
         let diagnostic_opaque = builtin_name.is_some()
-            || (!sess.opts.unstable_opts.macro_backtrace
-                && find_attr!(attrs, Opaque | RustcDiagnosticItem(..)));
+            || (!sess.opts.unstable_opts.macro_backtrace && find_attr!(attrs, Opaque));
 
         let stability = find_attr!(attrs, Stability { stability, .. } => *stability);
 
