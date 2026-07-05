@@ -131,7 +131,7 @@ impl FileDescription for VirtualSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        virtual_socket_write(self, ptr, len, ecx, finish)
+        ecx.virtual_socket_write(self, ptr, len, finish)
     }
 
     fn short_fd_operations(&self) -> bool {
@@ -250,30 +250,34 @@ impl FileDescription for VirtualSocket {
 
 impl UnixFileDescription for VirtualSocket {}
 
+impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 /// Write to VirtualSocket based on the space available and return the written byte size.
-fn virtual_socket_write<'tcx>(
+fn virtual_socket_write(
+    &mut self,
     self_ref: FileDescriptionRef<VirtualSocket>,
     ptr: Pointer,
     len: usize,
-    ecx: &mut MiriInterpCx<'tcx>,
     finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
 ) -> InterpResult<'tcx> {
+    let this = self.eval_context_mut();
+
     // Always succeed on write size 0.
     // ("If count is zero and fd refers to a file other than a regular file, the results are not specified.")
     if len == 0 {
-        return finish.call(ecx, Ok(0));
+        return finish.call(this, Ok(0));
     }
 
     // We are writing to our peer's readbuf.
     let Some(peer_fd) = self_ref.peer_fd().upgrade() else {
         // If the upgrade from Weak to Rc fails, it indicates that all read ends have been
         // closed. It is an error to write even if there would be space.
-        return finish.call(ecx, Err(ErrorKind::BrokenPipe.into()));
+        return finish.call(this, Err(ErrorKind::BrokenPipe.into()));
     };
 
     let Some(writebuf) = &peer_fd.readbuf else {
         // Writing to the read end of a pipe.
-        return finish.call(ecx, Err(IoError::LibcError("EBADF")));
+        return finish.call(this, Err(IoError::LibcError("EBADF")));
     };
 
     // Let's see if we can write.
@@ -281,13 +285,13 @@ fn virtual_socket_write<'tcx>(
     if available_space == 0 {
         if self_ref.is_nonblock.get() {
             // Non-blocking socketpair with a full buffer.
-            return finish.call(ecx, Err(ErrorKind::WouldBlock.into()));
+            return finish.call(this, Err(ErrorKind::WouldBlock.into()));
         } else {
-            self_ref.blocked_write_tid.borrow_mut().push(ecx.active_thread());
+            self_ref.blocked_write_tid.borrow_mut().push(this.active_thread());
             // Blocking socketpair with a full buffer.
             // Block the current thread; only keep a weak ref for this.
             let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
-            ecx.block_thread(
+            this.block_thread(
                 BlockReason::VirtualSocket,
                 None,
                 callback!(
@@ -302,7 +306,7 @@ fn virtual_socket_write<'tcx>(
                         // If we got unblocked, then our peer successfully upgraded its weak
                         // ref to us. That means we can also upgrade our weak ref.
                         let self_ref = weak_self_ref.upgrade().unwrap();
-                        virtual_socket_write(self_ref, ptr, len, this, finish)
+                        this.virtual_socket_write(self_ref, ptr, len, finish)
                     }
                 ),
             );
@@ -311,12 +315,12 @@ fn virtual_socket_write<'tcx>(
         // There is space to write!
         let mut writebuf = writebuf.borrow_mut();
         // Remember this clock so `read` can synchronize with us.
-        ecx.release_clock(|clock| {
+        this.release_clock(|clock| {
             writebuf.clock.join(clock);
         })?;
         // Do full write / partial write based on the space available.
         let write_size = len.min(available_space);
-        let actual_write_size = ecx.write_to_host(&mut writebuf.buf, write_size, ptr)?.unwrap();
+        let actual_write_size = this.write_to_host(&mut writebuf.buf, write_size, ptr)?.unwrap();
         assert_eq!(actual_write_size, write_size);
 
         // Need to stop accessing peer_fd so that it can be notified.
@@ -326,21 +330,19 @@ fn virtual_socket_write<'tcx>(
         let waiting_threads = std::mem::take(&mut *peer_fd.blocked_read_tid.borrow_mut());
         // FIXME: We can randomize the order of unblocking.
         for thread_id in waiting_threads {
-            ecx.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
+            this.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
         }
         // Notify readiness watchers: we might be no longer writable, peer might now be readable.
         // The notification to the peer seems to be always sent on Linux, even if the
         // FD was readable before.
-        ecx.update_fd_readiness(self_ref, /* force_edge */ false)?;
-        ecx.update_fd_readiness(peer_fd, /* force_edge */ true)?;
+        this.update_fd_readiness(self_ref, /* force_edge */ false)?;
+        this.update_fd_readiness(peer_fd, /* force_edge */ true)?;
 
-        return finish.call(ecx, Ok(write_size));
+        return finish.call(this, Ok(write_size));
     }
     interp_ok(())
 }
 
-impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Read from VirtualSocket and return the number of bytes read.
     fn virtual_socket_read(
         &mut self,
