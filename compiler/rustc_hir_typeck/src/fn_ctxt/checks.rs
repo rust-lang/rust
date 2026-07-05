@@ -1278,8 +1278,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // check the tail expression **without** holding the
             // `enclosing_breakables` lock below.
-            let tail_expr_ty =
-                blk.expr.map(|expr| (expr, self.check_expr_with_expectation(expr, expected)));
+            let tail_expr_ty = blk.expr.map(|expr| {
+                // If an inferred function or closure return type depends on this block result,
+                // the tail expression may be needed to determine that type even when it follows
+                // a diverging statement.
+                let old_diverges = if self.diverges.get().is_always() {
+                    let expected_ty = expected.only_has_type(self);
+                    let is_inferred_return_ty = expected_ty.is_some_and(|ty| {
+                        ty.is_ty_var()
+                            && self.ret_coercion.as_ref().is_some_and(|ret_coercion| {
+                                ret_coercion.borrow().expected_ty() == ty
+                            })
+                    });
+                    is_inferred_return_ty.then(|| self.diverges.replace(Diverges::Maybe))
+                } else {
+                    None
+                };
+                let ty = self.check_expr_with_expectation(expr, expected);
+                if let Some(old_diverges) = old_diverges {
+                    self.diverges.set(self.diverges.get() | old_diverges);
+                }
+                (expr, ty)
+            });
 
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
             let ctxt = enclosing_breakables.find_breakable(blk.hir_id);
