@@ -19,10 +19,10 @@ switch -Wildcard ($env:CI_JOB_NAME) {
     }
 }
 
-$kits = Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots'
+$kits = Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Kits\Installed Roots'
 $debugger_path = $kits.WindowsDebuggersRoot10
 if (!$debugger_path) {
-    $kits = Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Kits\Installed Roots'
+    $kits = Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots'
     $debugger_path = $kits.WindowsDebuggersRoot10
 }
 $cdb_path = "$debugger_path\$arch\cdb.exe"
@@ -42,7 +42,7 @@ try {
 } catch [System.Management.Automation.CommandNotFoundException] {}
 
 # Search the registry for the already installed debugger component
-:loop foreach ($view in [Microsoft.Win32.RegistryView]::Registry32, [Microsoft.Win32.RegistryView]::Registry64) {
+:loop foreach ($view in [Microsoft.Win32.RegistryView]::Registry64, [Microsoft.Win32.RegistryView]::Registry32) {
     $hklm = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $view)
     $kits = $hklm.OpenSubKey("SOFTWARE\Microsoft\Windows Kits\Installed Roots")
     foreach ($name in $kits.GetValueNames()) {
@@ -54,21 +54,27 @@ try {
     }
 }
 
+Write-Output "cdb guid: $cdb_guid"
+
 $ErrorActionPreference = 'Stop'
 # Uninstall it, if possible
 if ($cdb_guid) {
-    Start-Process MsiExec.exe -ArgumentList "/x$cdb_guid /quiet IGNOREDEPENDENCIES=ALL" -Wait
+    Write-Output "Uninstalling cdb ($cdb_guid)"
+    $log_file = Resolve-Path ./msi.log
+    Start-Process MsiExec.exe -ArgumentList "/x $cdb_guid /log $log_file /quiet IGNOREDEPENDENCIES=ALL" -Wait
 }
 
 try {
     &$cdb_path /version
-    Write-Output "uninstall failed for some reason"
+    Write-Output "uninstall failed for some reason, dumping logs"
+    Get-Content $log_file | Write-Output
     exit 1
 } catch [System.Management.Automation.CommandNotFoundException] {}
 
 # Install cdb
 $ErrorActionPreference = 'Continue'
 Write-Output "installing cdb..."
+winget source remove msstore
 winget install --id Microsoft.WindowsSDK.$CDB_VERSION `
     --source winget `
     --disable-interactivity `
