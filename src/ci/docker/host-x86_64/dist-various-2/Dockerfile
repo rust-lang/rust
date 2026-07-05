@@ -7,25 +7,25 @@ RUN sh /scripts/cross-apt-packages.sh
 RUN sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list
 
 RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no-install-recommends \
-  build-essential \
+    build-essential \
 # gcc-multilib can not be installed together with gcc-arm-linux-gnueabi
-  g++-9-multilib \
-  libedit-dev \
-  libgmp-dev \
-  libisl-dev \
-  libmpc-dev \
-  libmpfr-dev \
-  libtinfo5 \
-  ninja-build \
-  nodejs \
-  python3-dev \
-  software-properties-common \
-  unzip \
-  # Needed for apt-key to work:
-  dirmngr \
-  gpg-agent \
-  g++-9-arm-linux-gnueabi \
-  g++-11-riscv64-linux-gnu
+    g++-9-multilib \
+    libedit-dev \
+    libgmp-dev \
+    libisl-dev \
+    libmpc-dev \
+    libmpfr-dev \
+    libtinfo5 \
+    ninja-build \
+    nodejs \
+    python3-dev \
+    software-properties-common \
+    unzip \
+    # Needed for apt-key to work:
+    dirmngr \
+    gpg-agent \
+    g++-9-arm-linux-gnueabi \
+    g++-11-riscv64-linux-gnu
 
 ENV \
     AR_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-ar \
@@ -85,7 +85,7 @@ COPY host-x86_64/dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /
 RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 
 RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-33/wasi-sdk-33.0-x86_64-linux.tar.gz | \
-  tar -xz
+    tar -xz
 ENV WASI_SDK_PATH=/tmp/wasi-sdk-33.0-x86_64-linux
 
 COPY scripts/freebsd-toolchain.sh /tmp/
@@ -136,7 +136,7 @@ RUN ln -s /usr/include/x86_64-linux-gnu/asm /usr/local/include/asm
 RUN ln -s /usr/riscv64-linux-gnu/lib/libgcc_s.so.1 /usr/lib/gcc-cross/riscv64-linux-gnu/11/
 
 ENV RUST_CONFIGURE_ARGS="--enable-extended --enable-lld --enable-llvm-bitcode-linker --disable-docs \
-  --musl-root-armv7=/musl-armv7 \
-  --musl-root-riscv64gc=/musl-riscv64gc"
+    --musl-root-armv7=/musl-armv7 \
+    --musl-root-riscv64gc=/musl-riscv64gc"
 
 ENV SCRIPT="python3 ../x.py dist --host= --target $TARGETS && python3 ../x.py dist --host= --set build.sanitizers=true --target $TARGETS_SANITIZERS"

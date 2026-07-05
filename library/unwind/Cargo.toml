@@ -5,7 +5,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust.git"
 edition = "2024"
 include = [
-  '/libunwind/*',
+    '/libunwind/*',
 ]
 
 [lib]

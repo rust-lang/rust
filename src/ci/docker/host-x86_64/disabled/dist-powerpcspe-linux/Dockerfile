@@ -1,21 +1,21 @@
 FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  ninja-build \
-  file \
-  curl \
-  ca-certificates \
-  python3 \
-  git \
-  cmake \
-  sudo \
-  gdb \
-  xz-utils \
-  g++-powerpc-linux-gnuspe \
-  libssl-dev \
-  pkg-config
+    g++ \
+    make \
+    ninja-build \
+    file \
+    curl \
+    ca-certificates \
+    python3 \
+    git \
+    cmake \
+    sudo \
+    gdb \
+    xz-utils \
+    g++-powerpc-linux-gnuspe \
+    libssl-dev \
+    pkg-config
 
 
 COPY scripts/sccache.sh /scripts/

@@ -13,7 +13,7 @@ pretty printers loaded.
 
 Simple usage  : rust-gdbgui target/debug/myprog
 With arguments: rust-gdbgui 'target/debug/myprog arg1 arg2...'
-  (note the quotes)
+    (note the quotes)
 
 
 Hints
@@ -34,9 +34,9 @@ fi
 # Prefer rustc in the same directory as this script
 DIR="$(dirname "$0")"
 if [ -x "$DIR/rustc" ]; then
-  RUSTC="$DIR/rustc"
+    RUSTC="$DIR/rustc"
 else
-  RUSTC="rustc"
+    RUSTC="rustc"
 fi
 
 # Find out where the pretty printer Python module is
@@ -56,12 +56,12 @@ RUST_GDBGUI="${RUST_GDBGUI:-gdbgui}"
 # These arguments get passed through to GDB and make it load the
 # Rust pretty printers.
 GDB_ARGS="--directory=\"$GDB_PYTHON_MODULE_DIRECTORY\" \
-   -iex \"add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY\" \
-   -iex \"set substitute-path /rustc/$RUSTC_COMMIT_HASH $RUSTC_SYSROOT/lib/rustlib/src/rust\""
+    -iex \"add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY\" \
+    -iex \"set substitute-path /rustc/$RUSTC_COMMIT_HASH $RUSTC_SYSROOT/lib/rustlib/src/rust\""
 
 # Finally we execute gdbgui.
 PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" \
-  exec ${RUST_GDBGUI} \
-  --gdb-cmd "${RUST_GDB} ${GDB_ARGS}" \
-  "${@}"
+    exec ${RUST_GDBGUI} \
+    --gdb-cmd "${RUST_GDB} ${GDB_ARGS}" \
+    "${@}"
 

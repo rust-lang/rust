@@ -2,22 +2,22 @@ FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++-multilib \
-  make \
-  ninja-build \
-  file \
-  curl \
-  ca-certificates \
-  python3 \
-  git \
-  cmake \
-  sudo \
-  gdb \
-  zlib1g-dev \
-  lib32z1-dev \
-  xz-utils \
-  mingw-w64 \
-  && rm -rf /var/lib/apt/lists/*
+    g++-multilib \
+    make \
+    ninja-build \
+    file \
+    curl \
+    ca-certificates \
+    python3 \
+    git \
+    cmake \
+    sudo \
+    gdb \
+    zlib1g-dev \
+    lib32z1-dev \
+    xz-utils \
+    mingw-w64 \
+    && rm -rf /var/lib/apt/lists/*
 
 
 COPY scripts/sccache.sh /scripts/

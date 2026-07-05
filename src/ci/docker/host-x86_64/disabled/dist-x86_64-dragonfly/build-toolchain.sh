@@ -8,19 +8,19 @@ BINUTILS=2.25.1
 GCC=6.4.0
 
 hide_output() {
-  set +x
-  on_err="
+    set +x
+    on_err="
 echo ERROR: An error was encountered with the build.
 cat /tmp/build.log
 exit 1
 "
-  trap "$on_err" ERR
-  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
-  PING_LOOP_PID=$!
-  "$@" &> /tmp/build.log
-  trap - ERR
-  kill $PING_LOOP_PID
-  set -x
+    trap "$on_err" ERR
+    bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
+    PING_LOOP_PID=$!
+    "$@" &> /tmp/build.log
+    trap - ERR
+    kill $PING_LOOP_PID
+    set -x
 }
 
 mkdir binutils
@@ -31,7 +31,7 @@ curl https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS.tar.bz2 | tar xjf -
 mkdir binutils-build
 cd binutils-build
 hide_output ../binutils-$BINUTILS/configure \
-  --target=$ARCH-unknown-dragonfly
+    --target=$ARCH-unknown-dragonfly
 hide_output make -j10
 hide_output make install
 cd ../..
@@ -92,19 +92,19 @@ patch -p0 < $PATCH_TOOLCHAIN
 mkdir ../gcc-build
 cd ../gcc-build
 hide_output ../gcc-$GCC/configure                \
-  --enable-languages=c,c++                       \
-  --target=$ARCH-unknown-dragonfly               \
-  --disable-multilib                             \
-  --disable-nls                                  \
-  --disable-libgomp                              \
-  --disable-libquadmath                          \
-  --disable-libssp                               \
-  --disable-libvtv                               \
-  --disable-libcilkrts                           \
-  --disable-libada                               \
-  --disable-libsanitizer                         \
-  --disable-libquadmath-support                  \
-  --disable-lto
+    --enable-languages=c,c++                     \
+    --target=$ARCH-unknown-dragonfly             \
+    --disable-multilib                           \
+    --disable-nls                                \
+    --disable-libgomp                            \
+    --disable-libquadmath                        \
+    --disable-libssp                             \
+    --disable-libvtv                             \
+    --disable-libcilkrts                         \
+    --disable-libada                             \
+    --disable-libsanitizer                       \
+    --disable-libquadmath-support                \
+    --disable-lto
 hide_output make -j10
 hide_output make install
 cd ../..

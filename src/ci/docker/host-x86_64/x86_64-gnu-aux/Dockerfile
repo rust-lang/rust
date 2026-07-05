@@ -2,25 +2,25 @@ FROM ghcr.io/rust-lang/ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  ninja-build \
-  file \
-  curl \
-  ca-certificates \
-  python3 \
-  git \
-  cmake \
-  libssl-dev \
-  sudo \
-  xz-utils \
-  pkg-config \
-  libgl1-mesa-dev \
-  llvm-dev \
-  libfreetype6-dev \
-  libexpat1-dev \
-  tidy \
-  && rm -rf /var/lib/apt/lists/*
+    g++ \
+    make \
+    ninja-build \
+    file \
+    curl \
+    ca-certificates \
+    python3 \
+    git \
+    cmake \
+    libssl-dev \
+    sudo \
+    xz-utils \
+    pkg-config \
+    libgl1-mesa-dev \
+    llvm-dev \
+    libfreetype6-dev \
+    libexpat1-dev \
+    tidy \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

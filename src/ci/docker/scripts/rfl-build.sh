@@ -28,9 +28,9 @@ git -C linux checkout FETCH_HEAD
 
 # Install bindgen
 "${BUILD_DIR}"/stage0/bin/cargo install \
-  --version $(linux/scripts/min-tool-version.sh bindgen) \
-  --root ${BUILD_DIR}/bindgen \
-  bindgen-cli
+    --version $(linux/scripts/min-tool-version.sh bindgen) \
+    --root ${BUILD_DIR}/bindgen \
+    bindgen-cli
 
 # Provide path to bindgen to RfL
 export PATH=${PATH}:${BUILD_DIR}/bindgen/bin

@@ -8,11 +8,11 @@ set -ex
 # dedicated `tidy` job failing won't block other PR CI jobs from completing, and so tidy failures
 # shouldn't inhibit revealing other failures in PR CI jobs.
 if [ "$PR_CI_JOB" == "1" ]; then
-  echo "PR_CI_JOB set; skipping tidy"
-  SKIP_TIDY="--skip tidy"
+    echo "PR_CI_JOB set; skipping tidy"
+    SKIP_TIDY="--skip tidy"
 fi
 
 ../x.py --stage 2 test \
-  ${SKIP_TIDY:+$SKIP_TIDY} \
-  --skip compiler \
-  --skip src
+    ${SKIP_TIDY:+$SKIP_TIDY} \
+    --skip compiler \
+    --skip src

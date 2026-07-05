@@ -1,20 +1,20 @@
 FROM ubuntu:20.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  file \
-  curl \
-  ca-certificates \
-  python2.7 \
-  git \
-  cmake \
-  sudo \
-  gdb \
-  xz-utils \
-  g++-m68k-linux-gnu \
-  libssl-dev \
-  pkg-config
+    g++ \
+    make \
+    file \
+    curl \
+    ca-certificates \
+    python2.7 \
+    git \
+    cmake \
+    sudo \
+    gdb \
+    xz-utils \
+    g++-m68k-linux-gnu \
+    libssl-dev \
+    pkg-config
 
 COPY scripts/cmake.sh /scripts/
 RUN /scripts/cmake.sh
