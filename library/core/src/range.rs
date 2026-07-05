@@ -421,6 +421,10 @@ const impl<T> From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
     /// ```
     ///
     /// ```
+    /// # // This test requires unwinding to work.
+    /// # // Disable it when unwinding isn't available.
+    /// # #[cfg(panic = "unwind")]
+    /// # fn main() {
     /// use core::range::legacy;
     /// use core::range::RangeInclusive;
     /// use std::panic::catch_unwind;
@@ -430,6 +434,9 @@ const impl<T> From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
     /// let result = catch_unwind(|| RangeInclusive::from(exhausted));
     /// // The `from` call either panicked or returned an empty range.
     /// assert!(result.is_err() || result.is_ok_and(|range| range.is_empty()));
+    /// # }
+    /// # #[cfg(not(panic = "unwind"))]
+    /// # fn main() {}
     /// ```
     #[inline]
     fn from(value: legacy::RangeInclusive<T>) -> Self {
