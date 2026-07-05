@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-44023.rs:3:36
+  --> $DIR/multibyte-char-in-diagnostic-source-line.rs:4:36
    |
 LL | fn საჭმელად_გემრიელი_სადილი ( ) -> isize {
    |    ------------------------        ^^^^^ expected `isize`, found `()`
