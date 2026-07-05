@@ -93,7 +93,7 @@ impl<'tcx> VariantDef {
                 match field.vis {
                     Visibility::Public => pred,
                     Visibility::Restricted(from) => {
-                        pred.or(tcx, InhabitedPredicate::NotInModule(from))
+                        InhabitedPredicate::NotInModule(from).or(tcx, pred)
                     }
                 }
             }),
