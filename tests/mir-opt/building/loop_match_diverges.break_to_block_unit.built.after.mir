@@ -60,6 +60,8 @@ fn break_to_block_unit() -> u8 {
     }
 
     bb10 (cleanup): {
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
         resume;
     }
 }

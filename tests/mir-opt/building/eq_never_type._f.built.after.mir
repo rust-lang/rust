@@ -48,6 +48,10 @@ fn _f(_1: !, _2: !) -> () {
     }
 
     bb5 (cleanup): {
+        BackwardIncompatibleDropHint(_7, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_5, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_8, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
         resume;
     }
 }

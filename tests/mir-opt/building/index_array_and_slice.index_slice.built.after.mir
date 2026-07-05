@@ -27,6 +27,8 @@ fn index_slice(_1: &[i32], _2: usize) -> &i32 {
     }
 
     bb2 (cleanup): {
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
         resume;
     }
 }

@@ -19,7 +19,7 @@ fn main() -> () {
         StorageLive(_2);
         StorageLive(_3);
         _3 = ();
-        _2 = std::intrinsics::transmute::<(), Void>(move _3) -> [return: bb1, unwind: bb4];
+        _2 = std::intrinsics::transmute::<(), Void>(move _3) -> [return: bb1, unwind: bb5];
     }
 
     bb1: {
@@ -44,6 +44,18 @@ fn main() -> () {
     }
 
     bb4 (cleanup): {
+        BackwardIncompatibleDropHint(_5, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
+        goto -> bb6;
+    }
+
+    bb5 (cleanup): {
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
+        goto -> bb6;
+    }
+
+    bb6 (cleanup): {
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
         resume;
     }
 }

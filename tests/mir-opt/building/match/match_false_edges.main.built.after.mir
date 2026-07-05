@@ -107,7 +107,7 @@ fn main() -> () {
         _7 = &((_2 as Some).0: i32);
         _3 = &fake shallow _2;
         StorageLive(_8);
-        _8 = guard() -> [return: bb14, unwind: bb24];
+        _8 = guard() -> [return: bb14, unwind: bb25];
     }
 
     bb13: {
@@ -182,6 +182,21 @@ fn main() -> () {
     }
 
     bb24 (cleanup): {
+        BackwardIncompatibleDropHint(_13, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_12, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_11, UnwindStorageDead);
+        goto -> bb26;
+    }
+
+    bb25 (cleanup): {
+        BackwardIncompatibleDropHint(_8, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_7, UnwindStorageDead);
+        goto -> bb26;
+    }
+
+    bb26 (cleanup): {
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
         resume;
     }
 }

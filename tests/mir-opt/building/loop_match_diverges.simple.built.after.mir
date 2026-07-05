@@ -184,6 +184,7 @@ fn simple(_1: State) -> State {
     }
 
     bb37 (cleanup): {
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
         resume;
     }
 }

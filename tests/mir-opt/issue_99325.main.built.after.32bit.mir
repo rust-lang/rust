@@ -67,7 +67,7 @@ fn main() -> () {
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
-        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb23];
+        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb31];
     }
 
     bb1: {
@@ -91,7 +91,7 @@ fn main() -> () {
         _11 = &(*_8);
         StorageLive(_12);
         _12 = &(*_9);
-        _10 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _11, move _12) -> [return: bb3, unwind: bb23];
+        _10 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _11, move _12) -> [return: bb3, unwind: bb29];
     }
 
     bb2: {
@@ -132,7 +132,7 @@ fn main() -> () {
         _19 = &(*_20);
         StorageLive(_21);
         _21 = Option::<Arguments<'_>>::None;
-        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> [return: bb7, unwind: bb23];
+        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> [return: bb7, unwind: bb28];
     }
 
     bb7: {
@@ -173,7 +173,7 @@ fn main() -> () {
         StorageLive(_23);
         StorageLive(_24);
         StorageLive(_25);
-        _25 = function_with_bytes::<&*b"AAAA">() -> [return: bb12, unwind: bb23];
+        _25 = function_with_bytes::<&*b"AAAA">() -> [return: bb12, unwind: bb26];
     }
 
     bb12: {
@@ -195,7 +195,7 @@ fn main() -> () {
         _31 = &(*_28);
         StorageLive(_32);
         _32 = &(*_29);
-        _30 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _31, move _32) -> [return: bb14, unwind: bb23];
+        _30 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _31, move _32) -> [return: bb14, unwind: bb24];
     }
 
     bb13: {
@@ -277,6 +277,83 @@ fn main() -> () {
     }
 
     bb23 (cleanup): {
+        BackwardIncompatibleDropHint(_41, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_39, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_37, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_36, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_40, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_38, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_35, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_34, UnwindStorageDead);
+        goto -> bb25;
+    }
+
+    bb24 (cleanup): {
+        BackwardIncompatibleDropHint(_32, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_31, UnwindStorageDead);
+        goto -> bb25;
+    }
+
+    bb25 (cleanup): {
+        BackwardIncompatibleDropHint(_30, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_29, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_28, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_27, UnwindStorageDead);
+        goto -> bb27;
+    }
+
+    bb26 (cleanup): {
+        BackwardIncompatibleDropHint(_24, UnwindStorageDead);
+        goto -> bb27;
+    }
+
+    bb27 (cleanup): {
+        BackwardIncompatibleDropHint(_25, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_23, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_22, UnwindStorageDead);
+        goto -> bb33;
+    }
+
+    bb28 (cleanup): {
+        BackwardIncompatibleDropHint(_21, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_19, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_17, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_16, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_20, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_18, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_15, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_14, UnwindStorageDead);
+        goto -> bb30;
+    }
+
+    bb29 (cleanup): {
+        BackwardIncompatibleDropHint(_12, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_11, UnwindStorageDead);
+        goto -> bb30;
+    }
+
+    bb30 (cleanup): {
+        BackwardIncompatibleDropHint(_10, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_9, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_8, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_7, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_6, UnwindStorageDead);
+        goto -> bb32;
+    }
+
+    bb31 (cleanup): {
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
+        goto -> bb32;
+    }
+
+    bb32 (cleanup): {
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
+        goto -> bb33;
+    }
+
+    bb33 (cleanup): {
         resume;
     }
 }

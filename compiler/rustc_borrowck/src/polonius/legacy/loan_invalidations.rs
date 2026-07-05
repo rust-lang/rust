@@ -70,7 +70,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
             // Doesn't have any language semantics
             | StatementKind::Coverage(..)
             // Does not actually affect borrowck
-            | StatementKind::StorageLive(..) => {}
+            | StatementKind::StorageLive(..)
+            // Future-compatibility drop hints are lint markers, not loan invalidations.
+            | StatementKind::BackwardIncompatibleDropHint { .. } => {}
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     location,
@@ -81,7 +83,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
             }
             StatementKind::ConstEvalCounter
             | StatementKind::Nop
-            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }

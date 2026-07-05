@@ -445,8 +445,7 @@ pub enum StatementKind<'tcx> {
     /// Marker statement indicating where `place` would be dropped.
     /// This is semantically equivalent to `Nop`, so codegen and MIRI should interpret this
     /// statement as such.
-    /// The only use case of this statement is for linting in MIR to detect temporary lifetime
-    /// changes.
+    /// The only use case of this statement is for MIR future-compatibility linting.
     BackwardIncompatibleDropHint {
         /// Place to drop
         place: Box<Place<'tcx>>,
@@ -975,6 +974,7 @@ pub enum TerminatorKind<'tcx> {
 
 #[derive(
     Clone,
+    Copy,
     Debug,
     TyEncodable,
     TyDecodable,
@@ -986,6 +986,7 @@ pub enum TerminatorKind<'tcx> {
 )]
 pub enum BackwardIncompatibleDropReason {
     Edition2024,
+    UnwindStorageDead,
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, StableHash, PartialEq)]

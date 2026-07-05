@@ -21,6 +21,7 @@ fn foo(_1: [(Never, u32); 1]) -> u32 {
     }
 
     bb2 (cleanup): {
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
         resume;
     }
 }
