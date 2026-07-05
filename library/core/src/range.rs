@@ -20,7 +20,7 @@ use crate::hash::Hash;
 
 mod iter;
 
-#[stable(feature = "new_range_api_legacy", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api_legacy", since = "1.98.0")]
 pub mod legacy;
 
 use core::ops::Bound::{self, Excluded, Included, Unbounded};
@@ -40,7 +40,7 @@ use crate::iter::Step;
 // FIXME(range_into_bounds): Ditto. Also consider re-exporting `RangeBounds` and related.
 use crate::ops::{IntoBounds, OneSidedRange, OneSidedRangeBound, RangeBounds};
 #[doc(inline)]
-#[stable(feature = "new_range_api_exports", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api_exports", since = "1.98.0")]
 pub use crate::ops::{RangeFull, RangeTo};
 
 /// A (half-open) range bounded inclusively below and exclusively above.
