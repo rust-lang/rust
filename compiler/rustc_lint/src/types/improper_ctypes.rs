@@ -635,7 +635,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         debug_assert!(matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union));
         use FfiResult::*;
 
-        if !def.repr().c() && !def.repr().transparent() {
+        if !def.repr().c() && !def.repr().transparent() && !def.repr().complex() {
             return FfiUnsafe {
                 ty,
                 reason: if def.is_struct() {

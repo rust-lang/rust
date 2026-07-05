@@ -95,10 +95,12 @@ bitflags! {
         /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
         const PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS = 1 << 5;
         const IS_SCALABLE        = 1 << 6;
+        const IS_COMPLEX         = 1 << 7;
          // Any of these flags being set prevent field reordering optimisation.
         const FIELD_ORDER_UNOPTIMIZABLE = ReprFlags::IS_C.bits()
                                  | ReprFlags::IS_SIMD.bits()
                                  | ReprFlags::IS_SCALABLE.bits()
+                                 | ReprFlags::IS_COMPLEX.bits()
                                  | ReprFlags::IS_LINEAR.bits();
         const ABI_UNOPTIMIZABLE = ReprFlags::IS_C.bits() | ReprFlags::IS_SIMD.bits();
     }
@@ -176,6 +178,11 @@ impl ReprOptions {
     #[inline]
     pub fn c(&self) -> bool {
         self.flags.contains(ReprFlags::IS_C)
+    }
+
+    #[inline]
+    pub fn complex(&self) -> bool {
+        self.flags.contains(ReprFlags::IS_COMPLEX)
     }
 
     #[inline]

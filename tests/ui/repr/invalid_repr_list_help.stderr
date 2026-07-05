@@ -4,7 +4,7 @@ error[E0539]: malformed `repr` attribute input
 LL | #[repr(uwu)]
    | ^^^^^^^---^^
    |        |
-   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
+   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `complex`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
@@ -14,7 +14,7 @@ error[E0539]: malformed `repr` attribute input
 LL | #[repr(uwu = "a")]
    | ^^^^^^^---------^^
    |        |
-   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
+   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `complex`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
@@ -24,7 +24,7 @@ error[E0539]: malformed `repr` attribute input
 LL | #[repr(uwu(4))]
    | ^^^^^^^------^^
    |        |
-   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
+   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `complex`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
@@ -34,7 +34,7 @@ error[E0539]: malformed `repr` attribute input
 LL | #[repr(uwu, u8)]
    | ^^^^^^^---^^^^^^
    |        |
-   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
+   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `complex`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
@@ -44,7 +44,7 @@ error[E0539]: malformed `repr` attribute input
 LL | #[repr(uwu)]
    | ^^^^^^^---^^
    |        |
-   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
+   |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `complex`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 

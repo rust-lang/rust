@@ -1,0 +1,97 @@
+error[E0658]: `repr(complex)` is experimental
+  --> $DIR/feature-gate-repr-complex.rs:1:1
+   |
+LL | #[repr(complex)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
+   = help: add `#![feature(repr_complex)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `repr(complex)` is experimental
+  --> $DIR/feature-gate-repr-complex.rs:7:1
+   |
+LL | #[repr(complex)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
+   = help: add `#![feature(repr_complex)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `repr(complex)` is experimental
+  --> $DIR/feature-gate-repr-complex.rs:13:1
+   |
+LL | #[repr(complex)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
+   = help: add `#![feature(repr_complex)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `repr(complex)` is experimental
+  --> $DIR/feature-gate-repr-complex.rs:16:1
+   |
+LL | #[repr(complex)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
+   = help: add `#![feature(repr_complex)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `repr(complex)` is experimental
+  --> $DIR/feature-gate-repr-complex.rs:23:1
+   |
+LL | #[repr(complex)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
+   = help: add `#![feature(repr_complex)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `#[repr(complex)]` attribute cannot be used on unions
+  --> $DIR/feature-gate-repr-complex.rs:16:1
+   |
+LL | #[repr(complex)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(complex)]` can only be applied to structs
+
+error: `#[repr(complex)]` attribute cannot be used on enums
+  --> $DIR/feature-gate-repr-complex.rs:23:1
+   |
+LL | #[repr(complex)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(complex)]` can only be applied to structs
+
+error[E0566]: conflicting representation hints
+  --> $DIR/feature-gate-repr-complex.rs:10:8
+   |
+LL | #[repr(C)]
+   |        ^
+...
+LL | #[repr(complex)]
+   |        ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0566, E0658.
+For more information about an error, try `rustc --explain E0566`.
+Future incompatibility report: Future breakage diagnostic:
+error[E0566]: conflicting representation hints
+  --> $DIR/feature-gate-repr-complex.rs:10:8
+   |
+LL | #[repr(C)]
+   |        ^
+...
+LL | #[repr(complex)]
+   |        ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
+
