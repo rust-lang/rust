@@ -5,7 +5,7 @@ use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
+use crate::core::config::{CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
 use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
 
 define_config! {
@@ -28,6 +28,7 @@ define_config! {
         debuginfo_level_std: Option<DebuginfoLevel> = "debuginfo-level-std",
         debuginfo_level_tools: Option<DebuginfoLevel> = "debuginfo-level-tools",
         debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
+        compress_debuginfo: Option<CompressDebuginfo> = "compress-debuginfo",
         backtrace: Option<bool> = "backtrace",
         incremental: Option<bool> = "incremental",
         default_linker: Option<String> = "default-linker",
@@ -322,6 +323,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         randomize_layout,
         debug_logging,
         debuginfo_level_rustc,
+        compress_debuginfo,
         llvm_tools,
         llvm_bitcode_linker,
         stack_protector,
@@ -389,6 +391,7 @@ pub fn check_incompatible_options_for_ci_rustc(
 
     err!(current_rust_config.optimize, optimize, "rust");
     err!(current_rust_config.randomize_layout, randomize_layout, "rust");
+    err!(current_rust_config.compress_debuginfo, compress_debuginfo, "rust");
     err!(current_rust_config.debug_logging, debug_logging, "rust");
     err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc, "rust");
     err!(current_rust_config.rpath, rpath, "rust");
