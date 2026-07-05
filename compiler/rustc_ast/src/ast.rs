@@ -407,7 +407,7 @@ impl GenericBound {
     }
 }
 
-pub type GenericBounds = Vec<GenericBound>;
+pub type GenericBounds = ThinVec<GenericBound>;
 
 /// Specifies the enforced ordering for generic parameters. In the future,
 /// if we wanted to relax this order, we could override `PartialEq` and
@@ -1534,7 +1534,7 @@ impl Expr {
                 let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) else {
                     return None;
                 };
-                TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
+                TyKind::TraitObject(thin_vec![lhs, rhs], TraitObjectSyntax::None)
             }
 
             ExprKind::Underscore => TyKind::Infer,
@@ -1868,7 +1868,7 @@ pub enum ExprKind {
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `core::mem::offset_of!(...)`.
-    OffsetOf(Box<Ty>, Vec<Ident>),
+    OffsetOf(Box<Ty>, ThinVec<Ident>),
 
     /// A macro invocation; pre-expansion.
     MacCall(Box<MacCall>),
@@ -4391,27 +4391,37 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(AssocItem, 80);
     static_assert_size!(AssocItemKind, 16);
+    static_assert_size!(AttrKind, 16);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
     static_assert_size!(Fn, 192);
+    static_assert_size!(FnDecl, 24);
+    static_assert_size!(FnHeader, 76);
+    static_assert_size!(FnSig, 96);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);
+    static_assert_size!(GenericArgs, 40);
     static_assert_size!(GenericBound, 88);
+    static_assert_size!(GenericParam, 80);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 80);
     static_assert_size!(Item, 152);
     static_assert_size!(ItemKind, 88);
+    static_assert_size!(Lifetime, 16);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);
+    static_assert_size!(MetaItem, 88);
+    static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 80);
     static_assert_size!(PatKind, 56);
     static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
+    static_assert_size!(QSelf, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
     static_assert_size!(TraitImplHeader, 72);
