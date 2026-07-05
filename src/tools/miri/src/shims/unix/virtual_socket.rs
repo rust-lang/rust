@@ -120,7 +120,7 @@ impl FileDescription for VirtualSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        virtual_socket_read(self, ptr, len, ecx, finish)
+        ecx.virtual_socket_read(self, ptr, len, finish)
     }
 
     fn write<'tcx>(
@@ -339,17 +339,21 @@ fn virtual_socket_write<'tcx>(
     interp_ok(())
 }
 
+impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 /// Read from VirtualSocket and return the number of bytes read.
-fn virtual_socket_read<'tcx>(
+fn virtual_socket_read(
+    &mut self,
     self_ref: FileDescriptionRef<VirtualSocket>,
     ptr: Pointer,
     len: usize,
-    ecx: &mut MiriInterpCx<'tcx>,
     finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
 ) -> InterpResult<'tcx> {
+    let this = self.eval_context_mut();
+
     // Always succeed on read size 0.
     if len == 0 {
-        return finish.call(ecx, Ok(0));
+        return finish.call(this, Ok(0));
     }
 
     let Some(readbuf) = &self_ref.readbuf else {
@@ -362,20 +366,20 @@ fn virtual_socket_read<'tcx>(
         if self_ref.peer_fd().upgrade().is_none() {
             // Socketpair with no peer and empty buffer.
             // 0 bytes successfully read indicates end-of-file.
-            return finish.call(ecx, Ok(0));
+            return finish.call(this, Ok(0));
         } else if self_ref.is_nonblock.get() {
             // Non-blocking socketpair with writer and empty buffer.
             // https://linux.die.net/man/2/read
             // EAGAIN or EWOULDBLOCK can be returned for socket,
             // POSIX.1-2001 allows either error to be returned for this case.
             // Since there is no ErrorKind for EAGAIN, WouldBlock is used.
-            return finish.call(ecx, Err(ErrorKind::WouldBlock.into()));
+            return finish.call(this, Err(ErrorKind::WouldBlock.into()));
         } else {
-            self_ref.blocked_read_tid.borrow_mut().push(ecx.active_thread());
+            self_ref.blocked_read_tid.borrow_mut().push(this.active_thread());
             // Blocking socketpair with writer and empty buffer.
             // Block the current thread; only keep a weak ref for this.
             let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
-            ecx.block_thread(
+            this.block_thread(
                 BlockReason::VirtualSocket,
                 None,
                 callback!(
@@ -390,7 +394,7 @@ fn virtual_socket_read<'tcx>(
                         // If we got unblocked, then our peer successfully upgraded its weak
                         // ref to us. That means we can also upgrade our weak ref.
                         let self_ref = weak_self_ref.upgrade().unwrap();
-                        virtual_socket_read(self_ref, ptr, len, this, finish)
+                        this.virtual_socket_read(self_ref, ptr, len, finish)
                     }
                 ),
             );
@@ -401,11 +405,11 @@ fn virtual_socket_read<'tcx>(
         // Synchronize with all previous writes to this buffer.
         // FIXME: this over-synchronizes; a more precise approach would be to
         // only sync with the writes whose data we will read.
-        ecx.acquire_clock(&readbuf.clock)?;
+        this.acquire_clock(&readbuf.clock)?;
 
         // Do full read / partial read based on the space available.
         // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
-        let read_size = ecx.read_from_host(|buf| readbuf.buf.read(buf), len, ptr)?.unwrap();
+        let read_size = this.read_from_host(|buf| readbuf.buf.read(buf), len, ptr)?.unwrap();
         let readbuf_now_empty = readbuf.buf.is_empty();
 
         // Need to drop before others can access the readbuf again.
@@ -423,20 +427,21 @@ fn virtual_socket_read<'tcx>(
             let waiting_threads = std::mem::take(&mut *peer_fd.blocked_write_tid.borrow_mut());
             // FIXME: We can randomize the order of unblocking.
             for thread_id in waiting_threads {
-                ecx.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
+                this.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
             }
             // Notify readiness watchers: peer is now writable.
             // Linux seems to always notify the peer if the read buffer is now empty.
             // (Linux also does that if this was a "big" read, but to avoid some arbitrary
             // threshold, we do not match that.)
-            ecx.update_fd_readiness(peer_fd, /* force_edge */ readbuf_now_empty)?;
+            this.update_fd_readiness(peer_fd, /* force_edge */ readbuf_now_empty)?;
         };
         // Notify readiness watchers: we might be no longer readable.
-        ecx.update_fd_readiness(self_ref, /* force_edge */ false)?;
+        this.update_fd_readiness(self_ref, /* force_edge */ false)?;
 
-        return finish.call(ecx, Ok(read_size));
+        return finish.call(this, Ok(read_size));
     }
     interp_ok(())
+}
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
