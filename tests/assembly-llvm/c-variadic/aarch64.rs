@@ -287,11 +287,13 @@ unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
     // AARCH64_BE-NEXT: ldp     x0, x1, [x8]
     // AARCH64_BE-NEXT: ret
 
+    // NOTE: matches x86_64 Windows: an `i128` is passed indirectly, the slot holds a pointer.
+    //
     // ARM64EC_MSVC-LABEL: read_i128 = "#read_i128"
     // ARM64EC_MSVC: ldr x9, [x0]
-    // ARM64EC_MSVC-NEXT: mov x8, x0
-    // ARM64EC_MSVC-NEXT: ldp x0, x1, [x9], #16
-    // ARM64EC_MSVC-NEXT: str x9, [x8]
+    // ARM64EC_MSVC-NEXT: ldr x10, [x9], #8
+    // ARM64EC_MSVC-NEXT: str x9, [x0]
+    // ARM64EC_MSVC-NEXT: ldp x0, x1, [x10]
     // ARM64EC_MSVC-NEXT: ret
 
     // AARCH64_DARWIN-LABEL: _read_i128:
