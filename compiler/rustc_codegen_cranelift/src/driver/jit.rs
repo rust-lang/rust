@@ -157,6 +157,7 @@ fn codegen_and_compile_fn<'tcx>(
         let mut global_asm = String::new();
         crate::base::compile_fn(
             &tcx.prof,
+            tcx.dcx(),
             output_filenames,
             should_write_ir,
             cached_context,

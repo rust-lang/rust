@@ -7,6 +7,7 @@ use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_errors::DiagCtxtHandle;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -148,6 +149,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
 pub(crate) fn compile_fn(
     prof: &SelfProfilerRef,
+    dcx: DiagCtxtHandle<'_>,
     output_filenames: &OutputFilenames,
     should_write_ir: bool,
     cached_context: &mut Context,
@@ -200,25 +202,19 @@ pub(crate) fn compile_fn(
         match module.define_function(codegened_func.func_id, context) {
             Ok(()) => {}
             Err(ModuleError::Compilation(CodegenError::ImplLimitExceeded)) => {
-                let early_dcx = rustc_session::EarlyDiagCtxt::new(
-                    rustc_session::config::ErrorOutputType::default(),
-                );
-                early_dcx.early_fatal(format!(
+                dcx.fatal(format!(
                     "backend implementation limit exceeded while compiling {name}",
                     name = codegened_func.symbol_name
                 ));
             }
             Err(ModuleError::Compilation(CodegenError::Verifier(err))) => {
-                let early_dcx = rustc_session::EarlyDiagCtxt::new(
-                    rustc_session::config::ErrorOutputType::default(),
-                );
-                let _ = early_dcx.early_err(format!("{:?}", err));
+                let raw_error = format!("{:?}", err);
                 let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
                     &context.func,
                     Some(Box::new(&clif_comments)),
                     err,
                 );
-                early_dcx.early_fatal(format!("cranelift verify error:\n{}", pretty_error));
+                dcx.fatal(format!("cranelift verify error:\n{raw_error}\n{pretty_error}"));
             }
             Err(err) => {
                 panic!("Error while defining {name}: {err:?}", name = codegened_func.symbol_name);
