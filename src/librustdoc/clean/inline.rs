@@ -681,21 +681,26 @@ fn build_module(
 // We are only interested into `Res::Def`. And in there, we only want "items" which get their own
 //  rustdoc page. So not `DefKind::Ctor` for example (which is returned by `tcx.module_children()`).
 fn should_ignore_res(res: Res) -> bool {
+    !matches!(res, Res::Def(def_kind, _) if !should_ignore_def_kind(def_kind))
+}
+
+fn should_ignore_def_kind(kind: DefKind) -> bool {
     !matches!(
-        res,
-        Res::Def(DefKind::Trait, _)
-            | Res::Def(DefKind::TraitAlias, _)
-            | Res::Def(DefKind::Fn, _)
-            | Res::Def(DefKind::Struct, _)
-            | Res::Def(DefKind::Union, _)
-            | Res::Def(DefKind::TyAlias, _)
-            | Res::Def(DefKind::Enum, _)
-            | Res::Def(DefKind::ForeignTy, _)
-            | Res::Def(DefKind::Variant, _)
-            | Res::Def(DefKind::Mod, _)
-            | Res::Def(DefKind::Static { .. }, _)
-            | Res::Def(DefKind::Const { .. }, _)
-            | Res::Def(DefKind::Macro(_), _)
+        kind,
+        DefKind::Trait
+            | DefKind::TraitAlias
+            | DefKind::Fn
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::TyAlias
+            | DefKind::Enum
+            | DefKind::ForeignTy
+            | DefKind::Variant
+            | DefKind::Mod
+            | DefKind::Static { .. }
+            | DefKind::Const { .. }
+            | DefKind::Macro(_)
+            | DefKind::Use
     )
 }
 
@@ -770,13 +775,15 @@ fn build_module_items(
         } else if let Some(def_id) = res.opt_def_id()
             && let Some(reexport) = item.reexport_chain.first()
             && let Some(reexport_def_id) = reexport.id()
+            && !should_ignore_def_kind(cx.tcx.def_kind(reexport_def_id))
             && find_attr!(
                 load_attrs(cx.tcx, reexport_def_id),
                 Doc(d)
                 if d.inline.first().is_some_and(|(inline, _)| *inline == hir::attrs::DocInline::NoInline)
             )
         {
-            if should_ignore_res(res) {
+            // We don't inline foreign `use`.
+            if should_ignore_res(res) || matches!(res, Res::Def(DefKind::Use, _)) {
                 continue;
             }
             // This item is reexported as `no_inline` so it shouldn't be inlined.
