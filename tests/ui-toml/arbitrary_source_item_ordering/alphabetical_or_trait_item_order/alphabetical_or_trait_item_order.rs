@@ -43,4 +43,70 @@ impl BareImpl {
     fn c() {}
 }
 
+// Default trait impl ordering.
+trait WithDefault {
+    fn a() {}
+    fn b() {}
+    fn c() {}
+}
+
+trait WithDefault2 {
+    fn a();
+    fn b();
+    fn c();
+}
+
+struct SkipMiddle;
+
+impl WithDefault for SkipMiddle {
+    fn a() {}
+    fn c() {}
+}
+
+struct FullImpl;
+
+impl WithDefault for FullImpl {
+    fn a() {}
+    fn b() {}
+    fn c() {}
+}
+
+impl WithDefault2 for FullImpl {
+    fn a() {}
+    fn b() {}
+    fn c() {}
+}
+
+// Tests `const` in trait.
+trait ConstTrait {
+    const A: bool;
+    const B: bool;
+    const C: bool;
+    fn method();
+}
+
+struct FullImpl3;
+
+impl ConstTrait for FullImpl3 {
+    const A: bool = true;
+    const B: bool = false;
+    const C: bool = true;
+    fn method() {}
+}
+
+trait ConstTrait2 {
+    const A: bool = true;
+    const B: bool = false;
+    const C: bool = true;
+    fn method() {}
+}
+
+struct SkipImpl;
+
+// Skips `B` `C`, keeps order of `A` and `C`.
+impl ConstTrait2 for SkipImpl {
+    const A: bool = true;
+    fn method() {}
+}
+
 fn main() {}
