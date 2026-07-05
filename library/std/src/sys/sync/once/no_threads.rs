@@ -2,6 +2,9 @@ use crate::cell::Cell;
 use crate::sync as public;
 use crate::sync::once::OnceExclusiveState;
 
+#[cfg(target_has_threads)]
+compile_error!("Using no_threads implementation on a target with threads");
+
 pub struct Once {
     state: Cell<State>,
 }

@@ -2256,6 +2256,26 @@ impl Target {
             }
         }
     }
+
+    /// Is this target single-threaded?
+    ///
+    /// This affects both optimizations (e.g., atomics can be lowered to regular operations) and
+    /// is also exposed as cfg(target_has_threads).
+    pub fn singlethread(&self, target_features: &FxIndexSet<Symbol>) -> bool {
+        // On the wasm target once the `atomics` feature is enabled that means that
+        // we're no longer single-threaded, or otherwise we don't want LLVM to
+        // lower atomic operations to single-threaded operations.
+        //
+        // FIXME: This (probably?) implies that atomics should be a target modifier, at which point
+        // it probably makes sense to be a separate target to ship precompiled artifacts for it?
+        //
+        // cc #77839 (tracking issue for wasm atomics)
+        if self.singlethread && self.is_like_wasm && target_features.contains(&sym::atomics) {
+            return false;
+        }
+
+        self.singlethread
+    }
 }
 
 pub trait HasTargetSpec {
@@ -2571,7 +2591,8 @@ pub struct TargetOptions {
     pub requires_lto: bool,
 
     /// This target has no support for threads.
-    pub singlethread: bool,
+    // This is private because wasm changes this depending on target features.
+    singlethread: bool,
 
     /// Whether library functions call lowering/optimization is disabled in LLVM
     /// for this target unconditionally.
