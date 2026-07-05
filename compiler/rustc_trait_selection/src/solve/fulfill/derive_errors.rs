@@ -261,8 +261,7 @@ impl<'tcx> BestObligation<'tcx> {
         let body_id = self.obligation.cause.body_id;
 
         for obligation in wf::unnormalized_obligations(infcx, param_env, term, self.span(), body_id)
-            .into_iter()
-            .flatten()
+            .into_flat_iter()
         {
             let nested_goal = candidate.instantiate_proof_tree_for_nested_goal(
                 GoalSource::Misc,
