@@ -1,4 +1,11 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3220>.
+//! Initially a pretty-printer bug, which omitted parentheses around `move`
+//! keyword in lhs (`(move z).f()`), now this behaviour is untestable as
+//! plain `move` outside a closure doesn't exist.
+//!
+//! Now appears to test that drop works correctly when value is moved by method.
 //@ run-pass
+
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 

@@ -1,8 +1,10 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/31776>.
+//! Various scenarios in which `pub` is required in blocks.
 //@ run-pass
+
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(non_local_definitions)]
-// Various scenarios in which `pub` is required in blocks
 
 struct S;
 

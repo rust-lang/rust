@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/33241>.
+//! This used to fire LLVM assertion, and later on ICE because of
+//! `t` type size incosistency between LLVM and rustc.
 //@ check-pass
 
 use std::fmt;
