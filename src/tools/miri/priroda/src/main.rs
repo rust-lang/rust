@@ -18,6 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 use std::path::PathBuf;
 
+use miri::Immediate::{Scalar, ScalarPair, Uninit};
 use miri::*;
 use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
@@ -166,6 +167,9 @@ struct LocalDesc {
 
     /// Display-rendered type for this description.
     ty: String,
+
+    /// Run-time state for now; will be expanded later
+    value: String,
 }
 
 /// Controls when execution returns to the frontend.
@@ -469,6 +473,8 @@ impl<'tcx> PrirodaContext<'tcx> {
                 local: Some(local_idx),
                 storage_projection: Vec::new(),
                 ty: local_decl.ty.to_string(),
+                // FIXME: projection not handled yet.
+                value: "<unsupported>".to_string(),
             });
         }
 
@@ -524,7 +530,41 @@ impl<'tcx> PrirodaContext<'tcx> {
                         local: Some(place.local),
                         storage_projection,
                         ty: place.ty(local_decls, self.ecx.tcx.tcx).ty.to_string(),
+                        // FIXME: projection not handled yet.
+                        value: "<unsupported>".to_string(),
                     });
+                }
+            }
+        }
+
+        for local_desc in &mut locals {
+            if let Some(local) = local_desc.local {
+                if local_desc.storage_projection.is_empty() {
+                    match &frame.locals[local].as_mplace_or_imm() {
+                        None => {
+                            local_desc.value = "<dead>".to_string();
+                        }
+                        Some(Either::Left(_)) => {
+                            local_desc.value = "<indirect>".to_string();
+                        }
+                        Some(Either::Right(imm)) => {
+                            match imm {
+                                Scalar(_) => {
+                                    local_desc.value = "<immediate>".to_string();
+                                }
+                                ScalarPair(_, _) => {
+                                    local_desc.value = "<immediate-pair>".to_string();
+                                }
+
+                                Uninit => {
+                                    local_desc.value = "<uninit>".to_string();
+                                }
+                            };
+                        }
+                    };
+                } else {
+                    // FIXME: projection not handled yet.
+                    local_desc.value = "<unsupported-projection>".to_string();
                 }
             }
         }
@@ -623,8 +663,8 @@ impl Cli {
 
                                 let display_local_id = format!("{local_id}{storage_projection}");
                                 println!(
-                                    "Name: {}, Id: {}, Ty: {}",
-                                    display_name, display_local_id, local_desc.ty
+                                    "Name: {}, Id: {}, Ty: {}, Value: {}",
+                                    display_name, display_local_id, local_desc.ty, local_desc.value
                                 );
                             }
                         },
