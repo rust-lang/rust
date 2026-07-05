@@ -1154,8 +1154,8 @@ impl<'a> Parser<'a> {
     /// Parse the field access used in offset_of, matched by `$(e:expr)+`.
     /// Currently returns a list of idents. However, it should be possible in
     /// future to also do array indices, which might be arbitrary expressions.
-    pub(crate) fn parse_floating_field_access(&mut self) -> PResult<'a, Vec<Ident>> {
-        let mut fields = Vec::new();
+    pub(crate) fn parse_floating_field_access(&mut self) -> PResult<'a, ThinVec<Ident>> {
+        let mut fields = ThinVec::new();
         let mut trailing_dot = None;
 
         loop {
