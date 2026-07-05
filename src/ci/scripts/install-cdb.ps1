@@ -22,13 +22,15 @@ switch -Wildcard ($env:CI_JOB_NAME) {
 $kits = Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Kits\Installed Roots'
 $kits | Get-ItemProperty | Write-Output
 $debugger_path = $kits.WindowsDebuggersRoot10
+
+$kits32 = Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots'
+Write-Output "----"
+$kits | Get-ItemProperty | Write-Output
+Write-Output "----"
 if (!$debugger_path) {
-    $kits = Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots'
-    Write-Output "----"
-    $kits | Get-ItemProperty | Write-Output
+    $kits = $kits32
     $debugger_path = $kits.WindowsDebuggersRoot10
 }
-Write-Output "----"
 
 $cdb_path = "$debugger_path\$arch\cdb.exe"
 Write-Output "install path: $cdb_path"
