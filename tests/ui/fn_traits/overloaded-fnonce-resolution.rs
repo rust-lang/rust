@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/45510>
 // Test overloaded resolution of fn_traits.
 //@ run-pass
 

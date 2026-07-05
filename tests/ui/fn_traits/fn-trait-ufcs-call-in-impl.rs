@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/43431>
 #![feature(fn_traits)]
 
 trait CallSingle<A, B> {
