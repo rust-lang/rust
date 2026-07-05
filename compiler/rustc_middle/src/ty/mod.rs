@@ -1680,6 +1680,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
                     attr::ReprSimd => ReprFlags::IS_SIMD,
+                    attr::ReprComplex => ReprFlags::IS_COMPLEX,
                     attr::ReprInt(i) => {
                         size = Some(match i {
                             attr::IntType::SignedInt(x) => match x {

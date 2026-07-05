@@ -1224,6 +1224,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let mut is_explicit_rust = false;
         let mut is_c = false;
         let mut is_simd = false;
+        let mut is_complex = false;
         let mut is_transparent = false;
 
         for (repr, _repr_span) in reprs {
@@ -1238,6 +1239,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ReprAttr::ReprPacked(_) => {}
                 ReprAttr::ReprSimd => {
                     is_simd = true;
+                }
+                ReprAttr::ReprComplex => {
+                    is_complex = true;
                 }
                 ReprAttr::ReprTransparent => {
                     is_transparent = true;
@@ -1271,15 +1275,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 target: target.to_string(),
             });
         }
-        if is_explicit_rust && (int_reprs > 0 || is_c || is_simd) {
+        if is_explicit_rust && (int_reprs > 0 || is_c || is_simd || is_complex) {
             let hint_spans = hint_spans.clone().collect();
             self.dcx().emit_err(diagnostics::ReprConflicting { hint_spans });
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
             || (is_simd && is_c)
+            || (is_complex && is_c)
             || (int_reprs == 1 && is_c && item.is_some_and(is_c_like_enum))
         {
+            // FIXME: is_complex && is_c should be a hard error.
             self.tcx.emit_node_span_lint(
                 CONFLICTING_REPR_HINTS,
                 hir_id,

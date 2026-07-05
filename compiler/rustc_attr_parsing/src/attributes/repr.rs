@@ -155,6 +155,17 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             cx.expect_no_args(param.args())?;
             Some(ReprSimd)
         }
+        Some(sym::complex) => {
+            cx.check_target(
+                "(complex)",
+                &AllowedTargets::AllowList(&[
+                    Allow(Target::Struct), // Feature gated in `rustc_ast_passes`
+                    Warn(Target::MacroCall),
+                ]),
+            );
+            cx.expect_no_args(param.args())?;
+            Some(ReprComplex)
+        }
         Some(sym::transparent) => {
             cx.check_target(
                 "(transparent)",
@@ -190,6 +201,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
                     sym::Rust,
                     sym::C,
                     sym::simd,
+                    sym::complex,
                     sym::transparent,
                     sym::i8,
                     sym::u8,

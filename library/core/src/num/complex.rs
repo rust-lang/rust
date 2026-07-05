@@ -1,7 +1,7 @@
 /// A complex number.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[unstable(feature = "complex_numbers", issue = "154023")]
-#[repr(C)]
+#[repr(complex)]
 pub struct Complex<T> {
     /// The real component.
     pub re: T,
