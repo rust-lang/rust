@@ -416,20 +416,12 @@ pub fn is_const_evaluatable<'tcx>(tcx: TyCtxt<'tcx>, typeck: &'tcx TypeckResults
 /// Checks if the given expression can be used as a const parameter.
 ///
 /// This is more strict than `is_const_evaluatable` as it requires that the expression does not
-/// contain any operations on const parameters.
+/// contain any type parameters or any operations on const parameters.
 pub fn is_const_param_evaluatable<'tcx>(
     tcx: TyCtxt<'tcx>,
     typeck: &'tcx TypeckResults<'tcx>,
     e: &'tcx Expr<'_>,
 ) -> bool {
-    fn is_const_param(e: &QPath<'_>) -> bool {
-        if let QPath::Resolved(None, path) = e {
-            matches!(path.res, Res::Def(DefKind::ConstParam, _))
-        } else {
-            false
-        }
-    }
-
     struct V1<'tcx> {
         tcx: TyCtxt<'tcx>,
         typeck: &'tcx TypeckResults<'tcx>,
@@ -453,7 +445,7 @@ pub fn is_const_param_evaluatable<'tcx>(
             V2(self.tcx).visit_anon_const(c)
         }
         fn visit_qpath(&mut self, qpath: &'tcx QPath<'tcx>, id: HirId, _span: Span) -> Self::Result {
-            if is_const_param(qpath) {
+            if matches!(qpath.basic_res(), Res::Def(DefKind::ConstParam | DefKind::TyParam, _)) {
                 return ControlFlow::Break(());
             }
             walk_qpath(self, qpath, id)
@@ -468,7 +460,7 @@ pub fn is_const_param_evaluatable<'tcx>(
             self.0
         }
         fn visit_qpath(&mut self, qpath: &'tcx QPath<'tcx>, id: HirId, _span: Span) -> Self::Result {
-            if is_const_param(qpath) {
+            if matches!(qpath.basic_res(), Res::Def(DefKind::ConstParam | DefKind::TyParam, _)) {
                 return ControlFlow::Break(());
             }
             walk_qpath(self, qpath, id)
@@ -478,9 +470,10 @@ pub fn is_const_param_evaluatable<'tcx>(
     // We have to work around limitations of `#![feature(generic_const_exprs)]` being unstable.
     // A const parameter (e.g. `N` in `fn foo<const N: usize>()`) can be used as is, but any
     // expression involving a const parameter (e.g. `N * 2`) will be a compiler error.
+    // Any type parameter (e.g. `T` in `fn foo<T>()`) will be a compiler error.
 
     if let ExprKind::Path(ref qpath) = e.kind
-        && is_const_param(qpath)
+        && matches!(qpath.basic_res(), Res::Def(DefKind::ConstParam, _))
     {
         return true;
     }
