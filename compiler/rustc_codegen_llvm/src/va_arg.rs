@@ -1087,9 +1087,15 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             bx,
             addr,
             target_ty,
-            PassMode::Direct,
+            // MS x64 ABI requirement: "Any argument that doesn't fit in 8 bytes, or is
+            // not 1, 2, 4, or 8 bytes, must be passed by reference."
+            if target_ty_size > 8 || !target_ty_size.is_power_of_two() {
+                PassMode::Indirect
+            } else {
+                PassMode::Direct
+            },
             SlotSize::Bytes8,
-            if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
+            AllowHigherAlign::No,
             ForceRightAdjust::No,
         ),
         Arch::AArch64 if target.is_like_windows || target.is_like_darwin => emit_ptr_va_arg(
