@@ -8,6 +8,7 @@
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 #![feature(proc_macro_internals)]
 #![feature(trusted_len)]
 // tidy-alphabetical-end

@@ -1558,7 +1558,7 @@ impl UserTypeProjections {
 /// * `let (x, _): T = ...` -- here, the `projs` vector would contain
 ///   `field[0]` (aka `.0`), indicating that the type of `s` is
 ///   determined by finding the type of the `.0` field from `T`.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, StableHash, PartialEq)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash, PartialEq)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,

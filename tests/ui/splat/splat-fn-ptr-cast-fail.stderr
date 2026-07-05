@@ -1,0 +1,60 @@
+error[E0308]: mismatched types
+  --> $DIR/splat-fn-ptr-cast-fail.rs:16:34
+   |
+LL |     let _fn_ptr: fn((u32, i8)) = tuple_args;
+   |                  -------------   ^^^^^^^^^^ expected fn with no splatted arg, found fn with arg 0 splatted
+   |                  |
+   |                  expected due to this
+   |
+   = note: expected fn pointer `fn((_, _))`
+                 found fn item `fn(#[splat] (_, _)) {tuple_args}`
+
+error[E0308]: mismatched types
+  --> $DIR/splat-fn-ptr-cast-fail.rs:17:39
+   |
+LL |     let _fn_ptr: fn((u32, i8), f64) = splat_non_terminal_arg;
+   |                  ------------------   ^^^^^^^^^^^^^^^^^^^^^^ expected fn with no splatted arg, found fn with arg 0 splatted
+   |                  |
+   |                  expected due to this
+   |
+   = note: expected fn pointer `fn((_, _), _)`
+                 found fn item `fn(#[splat] (_, _), _) {splat_non_terminal_arg}`
+
+error[E0605]: non-primitive cast: `fn(, #[splat](u32, i8)) {tuple_args}` as `fn((u32, i8))`
+  --> $DIR/splat-fn-ptr-cast-fail.rs:19:34
+   |
+LL |     let _fn_ptr: fn((u32, i8)) = tuple_args as fn((u32, i8));
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error[E0605]: non-primitive cast: `fn(, #[splat](u32, i8), f64) {splat_non_terminal_arg}` as `fn((u32, i8), f64)`
+  --> $DIR/splat-fn-ptr-cast-fail.rs:20:39
+   |
+LL |     let _fn_ptr: fn((u32, i8), f64) = splat_non_terminal_arg as fn((u32, i8), f64);
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error[E0308]: mismatched types
+  --> $DIR/splat-fn-ptr-cast-fail.rs:23:32
+   |
+LL |     const _F2: fn((u8, u32)) = f::<(u8, u32)>;
+   |                -------------   ^^^^^^^^^^^^^^ expected fn with no splatted arg, found fn with arg 0 splatted
+   |                |
+   |                expected because of the type of the constant
+   |
+   = note: expected fn pointer `fn((_, _))`
+                 found fn item `fn(#[splat] (_, _)) {f::<(u8, u32)>}`
+
+error[E0308]: mismatched types
+  --> $DIR/splat-fn-ptr-cast-fail.rs:24:35
+   |
+LL |     const _F1: fn(((u8, u32),)) = f::<((u8, u32),)>;
+   |                ----------------   ^^^^^^^^^^^^^^^^^ expected fn with no splatted arg, found fn with arg 0 splatted
+   |                |
+   |                expected because of the type of the constant
+   |
+   = note: expected fn pointer `fn(((_, _),))`
+                 found fn item `fn(#[splat] ((_, _),)) {f::<((u8, u32),)>}`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0308, E0605.
+For more information about an error, try `rustc --explain E0308`.

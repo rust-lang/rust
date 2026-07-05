@@ -771,10 +771,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     Ok(EvaluatedToOkModuloRegions)
                 }
 
-                ty::PredicateKind::DynCompatible(_) => {
-                    bug!(
-                        "Obligation {obligation:?} should have been handled by fulfillment already."
-                    )
+                ty::PredicateKind::DynCompatible(trait_def_id) => {
+                    // `DynCompatible` obligations are only emitted as
+                    // nested obligations of `WellFormed` goals. It is quite
+                    // rare, but possible, that we encounter them during
+                    // evaluation. See #158665 for more details here.
+                    if self.tcx().is_dyn_compatible(trait_def_id) {
+                        Ok(EvaluatedToOk)
+                    } else {
+                        Ok(EvaluatedToErr)
+                    }
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
@@ -971,9 +977,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::PredicateKind::NormalizesTo(..) => {
                     bug!("NormalizesTo is only used by the new solver")
-                }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used by the new solver")
                 }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
@@ -2594,10 +2597,15 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // supertraits.
         let a_auto_traits: FxIndexSet<DefId> = a_data
             .auto_traits()
-            .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
-                elaborate::supertrait_def_ids(tcx, principal_def_id)
-                    .filter(|def_id| tcx.trait_is_auto(*def_id))
-            }))
+            .chain(
+                a_data
+                    .principal_def_id()
+                    .map(|principal_def_id| {
+                        elaborate::supertrait_def_ids(tcx, principal_def_id)
+                            .filter(|def_id| tcx.trait_is_auto(*def_id))
+                    })
+                    .into_flat_iter(),
+            )
             .collect();
 
         let upcast_principal = normalize_with_depth_to(

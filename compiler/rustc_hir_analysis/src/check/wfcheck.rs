@@ -1217,7 +1217,7 @@ fn check_eiis_fn(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // does the function have an EiiImpl attribute? that contains the defid of a *macro*
     // that was used to mark the implementation. This is a two step process.
     for EiiImpl { resolution, span, .. } in
-        find_attr!(tcx, def_id, EiiImpls(impls) => impls).into_iter().flatten()
+        find_attr!(tcx, def_id, EiiImpls(impls) => impls).into_flat_iter()
     {
         let (foreign_item, name) = match resolution {
             EiiImplResolution::Macro(def_id) => {
@@ -1244,7 +1244,7 @@ fn check_eiis_static<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, ty: Ty<'tcx>) 
     // does the function have an EiiImpl attribute? that contains the defid of a *macro*
     // that was used to mark the implementation. This is a two step process.
     for EiiImpl { resolution, span, .. } in
-        find_attr!(tcx, def_id, EiiImpls(impls) => impls).into_iter().flatten()
+        find_attr!(tcx, def_id, EiiImpls(impls) => impls).into_flat_iter()
     {
         let (foreign_item, name) = match resolution {
             EiiImplResolution::Macro(def_id) => {

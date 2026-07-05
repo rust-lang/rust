@@ -98,8 +98,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
         // From the full set of obligations, just filter down to the region relationships.
         for obligation in
             wf::unnormalized_obligations(ocx.infcx, param_env, arg, DUMMY_SP, CRATE_DEF_ID)
-                .into_iter()
-                .flatten()
+                .into_flat_iter()
         {
             let pred = ocx
                 .deeply_normalize(
@@ -125,8 +124,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::NormalizesTo(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_))
-                | ty::PredicateKind::AliasRelate(..) => {}
+                | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {}
 
                 // We need to search through *all* WellFormed predicates
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {

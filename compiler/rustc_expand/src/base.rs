@@ -503,39 +503,27 @@ pub trait MacResult {
     }
 }
 
-macro_rules! make_MacEager {
-    ( $( $fld:ident: $t:ty, )* ) => {
-        /// `MacResult` implementation for the common case where you've already
-        /// built each form of AST that you might return.
-        #[derive(Default)]
-        pub struct MacEager {
-            $(
-                pub $fld: Option<$t>,
-            )*
-        }
-
-        impl MacEager {
-            $(
-                pub fn $fld(v: $t) -> Box<dyn MacResult> {
-                    Box::new(MacEager {
-                        $fld: Some(v),
-                        ..Default::default()
-                    })
-                }
-            )*
-        }
-    }
+/// `MacResult` implementation for the common case where you've already
+/// built each form of AST that you might return.
+#[derive(Default)]
+pub struct MacEager {
+    pub expr: Option<Box<ast::Expr>>,
+    pub items: Option<SmallVec<[Box<ast::Item>; 1]>>,
+    pub ty: Option<Box<ast::Ty>>,
 }
 
-make_MacEager! {
-    expr: Box<ast::Expr>,
-    pat: Box<ast::Pat>,
-    items: SmallVec<[Box<ast::Item>; 1]>,
-    impl_items: SmallVec<[Box<ast::AssocItem>; 1]>,
-    trait_items: SmallVec<[Box<ast::AssocItem>; 1]>,
-    foreign_items: SmallVec<[Box<ast::ForeignItem>; 1]>,
-    stmts: SmallVec<[ast::Stmt; 1]>,
-    ty: Box<ast::Ty>,
+impl MacEager {
+    pub fn expr(v: Box<ast::Expr>) -> Box<dyn MacResult> {
+        Box::new(MacEager { expr: Some(v), ..Default::default() })
+    }
+
+    pub fn items(v: SmallVec<[Box<ast::Item>; 1]>) -> Box<dyn MacResult> {
+        Box::new(MacEager { items: Some(v), ..Default::default() })
+    }
+
+    pub fn ty(v: Box<ast::Ty>) -> Box<dyn MacResult> {
+        Box::new(MacEager { ty: Some(v), ..Default::default() })
+    }
 }
 
 impl MacResult for MacEager {
@@ -547,34 +535,7 @@ impl MacResult for MacEager {
         self.items
     }
 
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
-        self.impl_items
-    }
-
-    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
-        self.impl_items
-    }
-
-    fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
-        self.trait_items
-    }
-
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::ForeignItem>; 1]>> {
-        self.foreign_items
-    }
-
-    fn make_stmts(self: Box<Self>) -> Option<SmallVec<[ast::Stmt; 1]>> {
-        if self.stmts.as_ref().is_none_or(|s| s.is_empty()) {
-            make_stmts_default(self.make_expr())
-        } else {
-            self.stmts
-        }
-    }
-
     fn make_pat(self: Box<Self>) -> Option<Box<ast::Pat>> {
-        if let Some(p) = self.pat {
-            return Some(p);
-        }
         if let Some(e) = self.expr {
             if matches!(e.kind, ast::ExprKind::Lit(_) | ast::ExprKind::IncludedBytes(_)) {
                 return Some(Box::new(ast::Pat {

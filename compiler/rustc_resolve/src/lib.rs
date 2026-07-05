@@ -15,6 +15,7 @@
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
+#![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
 #![feature(trim_prefix_suffix)]
 #![recursion_limit = "256"]

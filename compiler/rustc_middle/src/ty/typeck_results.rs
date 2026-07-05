@@ -537,8 +537,8 @@ impl<'tcx> TypeckResults<'tcx> {
     ) -> impl Iterator<Item = &ty::CapturedPlace<'tcx>> {
         self.closure_min_captures
             .get(&closure_def_id)
-            .map(|closure_min_captures| closure_min_captures.values().flat_map(|v| v.iter()))
-            .into_iter()
+            .map(|closure_min_captures| closure_min_captures.values())
+            .into_flat_iter()
             .flatten()
     }
 

@@ -1,39 +1,51 @@
 error[E0057]: this splatted function takes 2 arguments, but 1 was provided
-  --> $DIR/splat-fn-tuple-generic-fail.rs:19:5
+  --> $DIR/splat-fn-tuple-generic-fail.rs:23:5
    |
 LL |     splat_generic_tuple::<(((u32, i8)))>((1, 2));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0057]: this splatted function takes 2 arguments, but 1 was provided
-  --> $DIR/splat-fn-tuple-generic-fail.rs:20:5
+  --> $DIR/splat-fn-tuple-generic-fail.rs:24:5
    |
 LL |     splat_generic_tuple::<(((u32, i8)))>((1u32, 2i8));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0057]: this splatted function takes 2 arguments, but 1 was provided
-  --> $DIR/splat-fn-tuple-generic-fail.rs:22:5
+  --> $DIR/splat-fn-tuple-generic-fail.rs:26:5
    |
 LL |     splat_generic_tuple::<((u32, i8))>((1, 2));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0057]: this splatted function takes 2 arguments, but 1 was provided
-  --> $DIR/splat-fn-tuple-generic-fail.rs:23:5
+  --> $DIR/splat-fn-tuple-generic-fail.rs:27:5
    |
 LL |     splat_generic_tuple::<((u32, i8))>((1u32, 2i8));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0057]: this splatted function takes 2 arguments, but 1 was provided
-  --> $DIR/splat-fn-tuple-generic-fail.rs:25:5
+  --> $DIR/splat-fn-tuple-generic-fail.rs:29:5
    |
 LL |     splat_generic_tuple::<(u32, i8)>((1, 2));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0057]: this splatted function takes 2 arguments, but 1 was provided
-  --> $DIR/splat-fn-tuple-generic-fail.rs:26:5
+  --> $DIR/splat-fn-tuple-generic-fail.rs:30:5
    |
 LL |     splat_generic_tuple::<(u32, i8)>((1u32, 2i8));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error[E0308]: mismatched types
+  --> $DIR/splat-fn-tuple-generic-fail.rs:32:31
+   |
+LL |     const F1: fn((u8, u32)) = f::<(u8, u32)>;
+   |               -------------   ^^^^^^^^^^^^^^ expected fn with no splatted arg, found fn with arg 0 splatted
+   |               |
+   |               expected because of the type of the constant
+   |
+   = note: expected fn pointer `fn((_, _))`
+                 found fn item `fn(#[splat] (_, _)) {f::<(u8, u32)>}`
 
-For more information about this error, try `rustc --explain E0057`.
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0057, E0308.
+For more information about an error, try `rustc --explain E0057`.
