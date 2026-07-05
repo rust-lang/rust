@@ -712,6 +712,7 @@ impl Token {
             Literal(_) |                         // literal
             DotDot |                             // range pattern (future compat)
             DotDotDot |                          // range pattern (future compat)
+            DotDotEq |                           // range-to-inclusive pattern
             PathSep |                            // path
             Lt |                                 // path (UFCS constant)
             Shl => true,                         // path (double UFCS)
