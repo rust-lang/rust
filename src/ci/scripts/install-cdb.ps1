@@ -20,13 +20,9 @@ switch -Wildcard ($env:CI_JOB_NAME) {
 }
 
 $kits = Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Kits\Installed Roots'
-$kits | Get-ItemProperty | Write-Output
 $debugger_path = $kits.WindowsDebuggersRoot10
 
 $kits32 = Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots'
-Write-Output "----"
-$kits32 | Get-ItemProperty | Write-Output
-Write-Output "----"
 if (!$debugger_path) {
     $kits = $kits32
     $debugger_path = $kits.WindowsDebuggersRoot10
@@ -71,6 +67,7 @@ try {
     &$cdb_path /version
     Write-Output "uninstall failed for some reason, dumping logs"
     Get-Content $log_file | Write-Output
+    Remove-Item -recurse -force $debugger_path
     #exit 1
 } catch [System.Management.Automation.CommandNotFoundException] {}
 
