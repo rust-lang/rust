@@ -33,6 +33,9 @@ pub(crate) enum AllowedResult {
 
 impl AllowedTargets<'_> {
     pub(crate) fn is_allowed(&self, target: Target) -> AllowedResult {
+        if target == Target::MacroCall {
+            return AllowedResult::Error;
+        }
         match self {
             AllowedTargets::AllowList(list) => {
                 if list.contains(&Policy::Allow(target))
@@ -113,11 +116,15 @@ impl<'sess> AttributeParser<'sess> {
 
         // For crate-level attributes we emit a specific set of lints to warn
         // people about accidentally not using them on the crate.
-        if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
+        if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets
+            && cx.target != Target::MacroCall
+        {
             Self::check_crate_level(cx, false);
             return;
         }
-        if let &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]) = allowed_targets {
+        if let &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]) = allowed_targets
+            && cx.target != Target::MacroCall
+        {
             Self::check_crate_level(cx, true);
             return;
         }
@@ -147,14 +154,8 @@ impl<'sess> AttributeParser<'sess> {
             AllowedResult::Allowed => unreachable!("Should have early returned above"),
             AllowedResult::Warn => {
                 let lint = if cx.attr_path.segments[0] == sym::deprecated
-                    && ![
-                        Target::Closure,
-                        Target::Expression,
-                        Target::Statement,
-                        Target::Arm,
-                        Target::MacroCall,
-                    ]
-                    .contains(&cx.target)
+                    && ![Target::Closure, Target::Expression, Target::Statement, Target::Arm]
+                        .contains(&cx.target)
                 {
                     rustc_session::lint::builtin::USELESS_DEPRECATED
                 } else if is_diagnostic_attr {

@@ -14,10 +14,6 @@ mod test_mod {}
 
 #[must_use] //~ ERROR attribute cannot be used on
 //~| WARN previously accepted
-use std::arch::global_asm;
-
-#[must_use] //~ ERROR attribute cannot be used on
-//~| WARN previously accepted
 const CONST: usize = 4;
 #[must_use] //~ ERROR attribute cannot be used on
 //~| WARN previously accepted
@@ -65,10 +61,6 @@ extern "Rust" {
     fn foreign_foo() -> i64;
 }
 
-#[must_use]
-//~^ ERROR `#[must_use]` attribute cannot be used on macro calls
-//~| WARN this was previously accepted by the compiler but is being phased out
-global_asm!("");
 
 #[must_use] //~ ERROR attribute cannot be used on
 //~| WARN previously accepted

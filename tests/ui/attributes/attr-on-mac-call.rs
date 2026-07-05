@@ -6,108 +6,108 @@
 
 fn main() {
     #[export_name = "x"]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[unsafe(naked)]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[track_caller]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[used]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[target_feature(enable = "x")]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[deprecated]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[inline]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[link_name = "x"]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[link_section = "__TEXT,__text"]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[link_ordinal(42)]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[non_exhaustive]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[proc_macro]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[cold]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[no_mangle]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[deprecated]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[automatically_derived]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[macro_use]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[must_use]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[no_implicit_prelude]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[path = ""]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[ignore]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[should_panic]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[link_name = "x"]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     #[sanitize(address = "off")]
     //~^ ERROR attribute cannot be used on macro calls
     unreachable!();
 
     #[repr()]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     //~| WARN unused attribute
     unreachable!();
     #[repr(u8)]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     unreachable!();
     #[repr(align(8))]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     unreachable!();
     #[repr(packed)]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     unreachable!();
     #[repr(C)]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     unreachable!();
     #[repr(Rust)]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     unreachable!();
     #[repr(simd)]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+
     unreachable!();
     #[register_tool(xyz)]
-    //~^ ERROR crate-level attribute should be an inner attribute
+    //~^ ERROR `#[register_tool]` attribute cannot be used on macro calls
     unreachable!();
 }

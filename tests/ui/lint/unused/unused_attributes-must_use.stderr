@@ -1,18 +1,3 @@
-error: `#[must_use]` attribute cannot be used on macro calls
-  --> $DIR/unused_attributes-must_use.rs:68:1
-   |
-LL | #[must_use]
-   | ^^^^^^^^^^^
-   |
-   = help: `#[must_use]` can be applied to data types, functions, and traits
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
-note: the lint level is defined here
-  --> $DIR/unused_attributes-must_use.rs:4:9
-   |
-LL | #![deny(unused_attributes, unused_must_use)]
-   |         ^^^^^^^^^^^^^^^^^
-
 error: `#[must_use]` attribute cannot be used on extern crates
   --> $DIR/unused_attributes-must_use.rs:7:1
    |
@@ -21,6 +6,11 @@ LL | #[must_use]
    |
    = help: `#[must_use]` can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+note: the lint level is defined here
+  --> $DIR/unused_attributes-must_use.rs:4:9
+   |
+LL | #![deny(unused_attributes, unused_must_use)]
+   |         ^^^^^^^^^^^^^^^^^
 
 error: `#[must_use]` attribute cannot be used on modules
   --> $DIR/unused_attributes-must_use.rs:11:1
@@ -31,7 +21,7 @@ LL | #[must_use]
    = help: `#[must_use]` can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: `#[must_use]` attribute cannot be used on use statements
+error: `#[must_use]` attribute cannot be used on constants
   --> $DIR/unused_attributes-must_use.rs:15:1
    |
 LL | #[must_use]
@@ -40,17 +30,8 @@ LL | #[must_use]
    = help: `#[must_use]` can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: `#[must_use]` attribute cannot be used on constants
-  --> $DIR/unused_attributes-must_use.rs:19:1
-   |
-LL | #[must_use]
-   | ^^^^^^^^^^^
-   |
-   = help: `#[must_use]` can be applied to data types, functions, and traits
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 error: `#[must_use]` attribute cannot be used on statics
-  --> $DIR/unused_attributes-must_use.rs:22:1
+  --> $DIR/unused_attributes-must_use.rs:18:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
@@ -59,7 +40,7 @@ LL | #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on inherent impl blocks
-  --> $DIR/unused_attributes-must_use.rs:40:1
+  --> $DIR/unused_attributes-must_use.rs:36:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
@@ -68,7 +49,7 @@ LL | #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on foreign modules
-  --> $DIR/unused_attributes-must_use.rs:55:1
+  --> $DIR/unused_attributes-must_use.rs:51:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
@@ -77,7 +58,7 @@ LL | #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on type aliases
-  --> $DIR/unused_attributes-must_use.rs:73:1
+  --> $DIR/unused_attributes-must_use.rs:65:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
@@ -86,7 +67,7 @@ LL | #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on type parameters
-  --> $DIR/unused_attributes-must_use.rs:77:8
+  --> $DIR/unused_attributes-must_use.rs:69:8
    |
 LL | fn qux<#[must_use] T>(_: T) {}
    |        ^^^^^^^^^^^
@@ -95,7 +76,7 @@ LL | fn qux<#[must_use] T>(_: T) {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on trait impl blocks
-  --> $DIR/unused_attributes-must_use.rs:95:1
+  --> $DIR/unused_attributes-must_use.rs:87:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
@@ -104,7 +85,7 @@ LL | #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on trait aliases
-  --> $DIR/unused_attributes-must_use.rs:107:1
+  --> $DIR/unused_attributes-must_use.rs:99:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
@@ -113,7 +94,7 @@ LL | #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on macro defs
-  --> $DIR/unused_attributes-must_use.rs:111:1
+  --> $DIR/unused_attributes-must_use.rs:103:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
@@ -122,7 +103,7 @@ LL | #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on statements
-  --> $DIR/unused_attributes-must_use.rs:120:5
+  --> $DIR/unused_attributes-must_use.rs:112:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
@@ -131,7 +112,7 @@ LL |     #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on closures
-  --> $DIR/unused_attributes-must_use.rs:125:13
+  --> $DIR/unused_attributes-must_use.rs:117:13
    |
 LL |     let x = #[must_use]
    |             ^^^^^^^^^^^
@@ -140,7 +121,7 @@ LL |     let x = #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on match arms
-  --> $DIR/unused_attributes-must_use.rs:148:9
+  --> $DIR/unused_attributes-must_use.rs:140:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
@@ -149,7 +130,7 @@ LL |         #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on struct fields
-  --> $DIR/unused_attributes-must_use.rs:157:28
+  --> $DIR/unused_attributes-must_use.rs:149:28
    |
 LL |     let s = PatternField { #[must_use]  foo: 123 };
    |                            ^^^^^^^^^^^
@@ -158,7 +139,7 @@ LL |     let s = PatternField { #[must_use]  foo: 123 };
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on pattern fields
-  --> $DIR/unused_attributes-must_use.rs:159:24
+  --> $DIR/unused_attributes-must_use.rs:151:24
    |
 LL |     let PatternField { #[must_use] foo } = s;
    |                        ^^^^^^^^^^^
@@ -167,7 +148,7 @@ LL |     let PatternField { #[must_use] foo } = s;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on associated consts
-  --> $DIR/unused_attributes-must_use.rs:82:5
+  --> $DIR/unused_attributes-must_use.rs:74:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
@@ -176,7 +157,7 @@ LL |     #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on associated types
-  --> $DIR/unused_attributes-must_use.rs:85:5
+  --> $DIR/unused_attributes-must_use.rs:77:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
@@ -185,7 +166,7 @@ LL |     #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on trait methods in impl blocks
-  --> $DIR/unused_attributes-must_use.rs:100:5
+  --> $DIR/unused_attributes-must_use.rs:92:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
@@ -194,7 +175,7 @@ LL |     #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on foreign statics
-  --> $DIR/unused_attributes-must_use.rs:59:5
+  --> $DIR/unused_attributes-must_use.rs:55:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
@@ -203,7 +184,7 @@ LL |     #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused `X` that must be used
-  --> $DIR/unused_attributes-must_use.rs:130:5
+  --> $DIR/unused_attributes-must_use.rs:122:5
    |
 LL |     X;
    |     ^
@@ -219,7 +200,7 @@ LL |     let _ = X;
    |     +++++++
 
 error: unused `Y` that must be used
-  --> $DIR/unused_attributes-must_use.rs:131:5
+  --> $DIR/unused_attributes-must_use.rs:123:5
    |
 LL |     Y::Z;
    |     ^^^^
@@ -230,7 +211,7 @@ LL |     let _ = Y::Z;
    |     +++++++
 
 error: unused `U` that must be used
-  --> $DIR/unused_attributes-must_use.rs:132:5
+  --> $DIR/unused_attributes-must_use.rs:124:5
    |
 LL |     U { unit: () };
    |     ^^^^^^^^^^^^^^
@@ -241,7 +222,7 @@ LL |     let _ = U { unit: () };
    |     +++++++
 
 error: unused return value of `U::method` that must be used
-  --> $DIR/unused_attributes-must_use.rs:133:5
+  --> $DIR/unused_attributes-must_use.rs:125:5
    |
 LL |     U::method();
    |     ^^^^^^^^^^^
@@ -252,7 +233,7 @@ LL |     let _ = U::method();
    |     +++++++
 
 error: unused return value of `foo` that must be used
-  --> $DIR/unused_attributes-must_use.rs:134:5
+  --> $DIR/unused_attributes-must_use.rs:126:5
    |
 LL |     foo();
    |     ^^^^^
@@ -263,7 +244,7 @@ LL |     let _ = foo();
    |     +++++++
 
 error: unused return value of `foreign_foo` that must be used
-  --> $DIR/unused_attributes-must_use.rs:137:9
+  --> $DIR/unused_attributes-must_use.rs:129:9
    |
 LL |         foreign_foo();
    |         ^^^^^^^^^^^^^
@@ -274,7 +255,7 @@ LL |         let _ = foreign_foo();
    |         +++++++
 
 error: unused return value of `Use::get_four` that must be used
-  --> $DIR/unused_attributes-must_use.rs:145:5
+  --> $DIR/unused_attributes-must_use.rs:137:5
    |
 LL |     ().get_four();
    |     ^^^^^^^^^^^^^
@@ -284,5 +265,5 @@ help: use `let _ = ...` to ignore the resulting value
 LL |     let _ = ().get_four();
    |     +++++++
 
-error: aborting due to 29 previous errors
+error: aborting due to 27 previous errors
 
