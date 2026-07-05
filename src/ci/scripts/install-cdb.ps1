@@ -49,19 +49,15 @@ try {
         $data = $kits.GetValue($name)
         if ($data -Like 'SDK Debuggers *') {
             $cdb_guid = $name
-            break loop
+            # Uninstall it, if possible
+            $ErrorActionPreference = 'Stop'
+            if ($cdb_guid) {
+                Write-Output "Uninstalling cdb ($cdb_guid)"
+                $log_file = Join-Path (Resolve-Path .) msi.log
+                Start-Process MsiExec.exe -ArgumentList "/x $cdb_guid /log $log_file /quiet IGNOREDEPENDENCIES=ALL" -Wait
+            }
         }
     }
-}
-
-Write-Output "cdb guid: $cdb_guid"
-
-$ErrorActionPreference = 'Stop'
-# Uninstall it, if possible
-if ($cdb_guid) {
-    Write-Output "Uninstalling cdb ($cdb_guid)"
-    $log_file = Join-Path (Resolve-Path .) msi.log
-    Start-Process MsiExec.exe -ArgumentList "/x $cdb_guid /log $log_file /quiet IGNOREDEPENDENCIES=ALL" -Wait
 }
 
 try {
