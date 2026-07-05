@@ -27,7 +27,7 @@ ast-stats Pat                      560 (NN.N%)             7            80
 ast-stats - Struct                    80 (NN.N%)             1
 ast-stats - Wild                      80 (NN.N%)             1
 ast-stats - Ident                    400 (NN.N%)             5
-ast-stats GenericParam             480 (NN.N%)             5            96
+ast-stats GenericParam             400 (NN.N%)             5            80
 ast-stats GenericBound             352 (NN.N%)             4            88
 ast-stats - Trait                    352 (NN.N%)             4
 ast-stats AssocItem                320 (NN.N%)             4            80
@@ -50,14 +50,14 @@ ast-stats Local                     96 (NN.N%)             1            96
 ast-stats Arm                       96 (NN.N%)             2            48
 ast-stats ForeignItem               80 (NN.N%)             1            80
 ast-stats - Fn                        80 (NN.N%)             1
-ast-stats WherePredicate            72 (NN.N%)             1            72
-ast-stats - BoundPredicate            72 (NN.N%)             1
+ast-stats WherePredicate            56 (NN.N%)             1            56
+ast-stats - BoundPredicate            56 (NN.N%)             1
 ast-stats ExprField                 48 (NN.N%)             1            48
 ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  7_624                   127
+ast-stats Total                  7_528                   127
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats

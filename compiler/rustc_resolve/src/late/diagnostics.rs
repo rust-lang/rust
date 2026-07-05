@@ -28,7 +28,7 @@ use rustc_session::{Session, lint};
 use rustc_span::edit_distance::{edit_distance, find_best_match_for_name};
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
-use thin_vec::ThinVec;
+use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
 use super::NoConstantGenericsReason;
@@ -4522,7 +4522,7 @@ fn mk_where_bound_predicate(
     let new_where_bound_predicate = ast::WhereBoundPredicate {
         bound_generic_params: ThinVec::new(),
         bounded_ty: Box::new(ty.clone()),
-        bounds: vec![ast::GenericBound::Trait(ast::PolyTraitRef {
+        bounds: thin_vec![ast::GenericBound::Trait(ast::PolyTraitRef {
             bound_generic_params: ThinVec::new(),
             modifiers: ast::TraitBoundModifiers::NONE,
             trait_ref: ast::TraitRef {
