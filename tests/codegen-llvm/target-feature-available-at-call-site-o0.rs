@@ -10,7 +10,7 @@
 
 #![feature(core_intrinsics)]
 
-use std::intrinsics::target_feature_available_at_call_site;
+use std::intrinsics::simd::target_feature_available_at_call_site;
 
 // NEG_ONLY-LABEL: @with_fma(
 // NEG_ONLY-NOT: rust.target_feature_available_at_call_site

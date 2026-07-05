@@ -7,7 +7,7 @@
 #![feature(core_intrinsics)]
 
 use std::arch::x86_64::{_mm_add_ss, _mm_cvtss_f32, _mm_fmadd_ss, _mm_mul_ss, _mm_set_ss};
-use std::intrinsics::target_feature_available_at_call_site;
+use std::intrinsics::simd::target_feature_available_at_call_site;
 
 #[inline(always)]
 fn maybe_fma(x: f32, y: f32, z: f32) -> f32 {

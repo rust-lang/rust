@@ -8,7 +8,7 @@
 
 #![feature(core_intrinsics)]
 
-use std::intrinsics::target_feature_available_at_call_site;
+use std::intrinsics::simd::target_feature_available_at_call_site;
 
 // CHECK-LABEL: @with_tme(
 // CHECK-NOT: rust.target_feature_available_at_call_site

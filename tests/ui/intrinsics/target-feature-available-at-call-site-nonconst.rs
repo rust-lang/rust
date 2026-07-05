@@ -4,7 +4,7 @@
 #![feature(core_intrinsics)]
 
 use std::hint::black_box;
-use std::intrinsics::target_feature_available_at_call_site;
+use std::intrinsics::simd::target_feature_available_at_call_site;
 
 #[no_mangle]
 pub fn check() {
