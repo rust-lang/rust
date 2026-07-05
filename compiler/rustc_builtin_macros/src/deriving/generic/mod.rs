@@ -617,7 +617,7 @@ impl<'a> TraitDef<'a> {
                     ident,
                     generics: Generics::default(),
                     after_where_clause: ast::WhereClause::default(),
-                    bounds: Vec::new(),
+                    bounds: ThinVec::new(),
                     ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 })),
                 tokens: None,
@@ -639,7 +639,7 @@ impl<'a> TraitDef<'a> {
                     // Extra restrictions on the generics parameters to the
                     // type being derived upon.
                     let span = param.ident.span.with_ctxt(ctxt);
-                    let bounds: Vec<_> = self
+                    let bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
                         .map(|p| {
@@ -723,7 +723,7 @@ impl<'a> TraitDef<'a> {
                     {
                         continue;
                     }
-                    let mut bounds: Vec<_> = self
+                    let mut bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
                         .map(|p| {
