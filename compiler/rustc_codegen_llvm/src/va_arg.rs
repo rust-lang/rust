@@ -1096,7 +1096,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             target_ty,
             PassMode::Direct,
             SlotSize::Bytes8,
-            if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
+            AllowHigherAlign::Yes,
             ForceRightAdjust::No,
         ),
         Arch::AArch64 => emit_aapcs_va_arg(bx, addr, target_ty),

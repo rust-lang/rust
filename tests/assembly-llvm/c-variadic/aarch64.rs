@@ -1,13 +1,15 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 //
-//@ revisions: AARCH64_LINUX AARCH64_DARWIN AARCH64_BE ARM64EC_MSVC
+//@ revisions: AARCH64_LINUX AARCH64_DARWIN AARCH64_BE AARCH64_MSVC ARM64EC_MSVC
 //@ [AARCH64_LINUX] compile-flags: -Copt-level=3 --target aarch64-unknown-linux-gnu
 //@ [AARCH64_LINUX] needs-llvm-components: aarch64
 //@ [AARCH64_BE] compile-flags: -Copt-level=3 --target aarch64_be-unknown-linux-gnu
 //@ [AARCH64_BE] needs-llvm-components: aarch64
 //@ [AARCH64_DARWIN] compile-flags: -Copt-level=3 --target aarch64-apple-darwin
 //@ [AARCH64_DARWIN] needs-llvm-components: aarch64
+//@ [AARCH64_MSVC] compile-flags: -Copt-level=3 --target aarch64-pc-windows-msvc
+//@ [AARCH64_MSVC] needs-llvm-components: aarch64
 //@ [ARM64EC_MSVC] compile-flags: -Copt-level=3 --target arm64ec-pc-windows-msvc
 //@ [ARM64EC_MSVC] needs-llvm-components: aarch64
 #![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs)]
@@ -101,6 +103,12 @@ unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // AARCH64_DARWIN-NEXT: ldr d0, [x8], #8
     // AARCH64_DARWIN-NEXT: str x8, [x0]
     // AARCH64_DARWIN-NEXT: ret
+
+    // AARCH64_MSVC-LABEL: read_f64:
+    // AARCH64_MSVC: ldr x8, [x0]
+    // AARCH64_MSVC-NEXT: ldr d0, [x8], #8
+    // AARCH64_MSVC-NEXT: str x8, [x0]
+    // AARCH64_MSVC-NEXT: ret
     va_arg(ap)
 }
 
@@ -157,6 +165,13 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // AARCH64_DARWIN-NEXT: str x9, [x0]
     // AARCH64_DARWIN-NEXT: mov x0, x8
     // AARCH64_DARWIN-NEXT: ret
+
+    // AARCH64_MSVC-LABEL: read_i32:
+    // AARCH64_MSVC: ldr x9, [x0]
+    // AARCH64_MSVC-NEXT: mov x8, x0
+    // AARCH64_MSVC-NEXT: ldr w0, [x9], #8
+    // AARCH64_MSVC-NEXT: str x9, [x8]
+    // AARCH64_MSVC-NEXT: ret
     va_arg(ap)
 }
 
@@ -214,6 +229,13 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // AARCH64_DARWIN-NEXT: str x9, [x0]
     // AARCH64_DARWIN-NEXT: mov x0, x8
     // AARCH64_DARWIN-NEXT: ret
+
+    // AARCH64_MSVC-LABEL: read_i64:
+    // AARCH64_MSVC: ldr x9, [x0]
+    // AARCH64_MSVC-NEXT: mov x8, x0
+    // AARCH64_MSVC-NEXT: ldr x0, [x9], #8
+    // AARCH64_MSVC-NEXT: str x9, [x8]
+    // AARCH64_MSVC-NEXT: ret
     va_arg(ap)
 }
 
@@ -281,6 +303,20 @@ unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
     // AARCH64_DARWIN-NEXT: str x9, [x0]
     // AARCH64_DARWIN-NEXT: mov x0, x8
     // AARCH64_DARWIN-NEXT: ret
+
+    // NOTE: rustc bumps the alignment to 16, which deviates from clang's va_arg
+    // but matches MSVC and how clang passes i128 c-variadic arguments.
+    //
+    // AARCH64_MSVC-LABEL: read_i128:
+    // AARCH64_MSVC: ldr x9, [x0]
+    // AARCH64_MSVC-NEXT: mov x8, x0
+    // AARCH64_MSVC-NEXT: add x9, x9, #15
+    // AARCH64_MSVC-NEXT: and x9, x9, #0xfffffffffffffff0
+    // AARCH64_MSVC-NEXT: mov x10, x9
+    // AARCH64_MSVC-NEXT: ldr x1, [x9, #8]
+    // AARCH64_MSVC-NEXT: ldr x0, [x10], #16
+    // AARCH64_MSVC-NEXT: str x10, [x8]
+    // AARCH64_MSVC-NEXT: ret
     va_arg(ap)
 }
 
@@ -288,6 +324,7 @@ unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
 unsafe extern "C" fn read_ptr(ap: &mut VaList<'_>) -> *const u8 {
     // AARCH64_LINUX-CHECK: read_ptr = read_i64
     // AARCH64_BE-CHECK: read_ptr = read_i64
+    // AARCH64_MSVC: read_ptr = read_i64
     // ARM64EC_MSVC: "#read_ptr" = "#read_i64"
     // AARCH64_DARWIN-CHECK: _read_ptr = _read_i64
     va_arg(ap)
