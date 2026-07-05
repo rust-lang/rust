@@ -92,6 +92,11 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::build_bin_and_run("aot.gen_block_iterate", "example/gen_block_iterate.rs", &[]),
     TestCase::build_bin_and_run("aot.raw-dylib", "example/raw-dylib.rs", &[]),
     TestCase::custom("aot.large-byval-align", &|runner| {
+        if !runner.target_compiler.triple.starts_with("x86_64") {
+            eprintln!("Skipping large-byval-align test: only x86_64 hits the Cranelift limit");
+            return;
+        }
+
         let output = runner
             .rustc_command(["example/large-byval-align.rs", "--crate-type", "lib", "-Copt-level=0"])
             .output()
