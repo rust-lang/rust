@@ -1155,6 +1155,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             resolution.as_ref().and_then(|r| r.non_glob_decl).filter(|b| Some(*b) != ignore_decl);
 
         if let Some(finalize) = finalize {
+            // finalize implies that the module is fully expanded
+            assert!(!module.has_unexpanded_invocations());
             return self.get_mut().finalize_module_binding(
                 ident,
                 orig_ident_span,
@@ -1219,6 +1221,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             resolution.as_ref().and_then(|r| r.glob_decl).filter(|b| Some(*b) != ignore_decl);
 
         if let Some(finalize) = finalize {
+            // finalize implies that the module is fully expanded
+            assert!(!module.has_unexpanded_invocations());
             return self.get_mut().finalize_module_binding(
                 ident,
                 orig_ident_span,

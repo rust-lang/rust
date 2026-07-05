@@ -475,7 +475,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn resolve_visibility(&mut self, vis: &ast::Visibility) -> Visibility {
-        match self.r.try_resolve_visibility(&self.parent_scope, vis, true) {
+        match self.r.try_resolve_visibility(&self.parent_scope, vis, false) {
             Ok(vis) => vis,
             Err(error) => {
                 self.r.delayed_vis_resolution_errors.push(DelayedVisResolutionError {
