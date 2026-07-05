@@ -3,7 +3,7 @@
 // to a virtual dispatch, which has no MIR body, and crashed the collector with "virtual dispatches
 // have no instance MIR". Such impls are accepted by coherence, so the program should compile.
 //
-// Regression test for #158411.
+// Regression test for #158411 and #114198 (an earlier report of the same bug).
 
 //@ build-pass
 //@ compile-flags: -Clink-dead-code
@@ -48,5 +48,19 @@ pub trait Qux {
 }
 pub type QuxAlias = dyn Qux + Send;
 impl Qux for QuxAlias {}
+
+// (5) The self type is an associated type projection on a concrete type, so it looks non-`dyn`
+//     until normalized (here to `dyn Corge + Send`). This form needs no feature gate. From #114198.
+pub trait Corge {
+    fn c(&self) {}
+}
+enum Ty {}
+trait Owner {
+    type Struct: ?Sized;
+}
+impl Owner for Ty {
+    type Struct = dyn Corge + Send;
+}
+impl Corge for <Ty as Owner>::Struct {}
 
 fn main() {}
