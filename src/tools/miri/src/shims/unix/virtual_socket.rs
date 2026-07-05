@@ -252,10 +252,12 @@ impl UnixFileDescription for VirtualSocket {}
 
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Write to VirtualSocket based on the space available and return the written byte size.
+    /// Attempt two write `len` bytes from the buffer pointed to by `ptr` into the
+    /// virtual socket `socket`. After a successful write, `finish` is called with
+    /// the amount of bytes written.
     fn virtual_socket_write(
         &mut self,
-        self_ref: FileDescriptionRef<VirtualSocket>,
+        socket: FileDescriptionRef<VirtualSocket>,
         ptr: Pointer,
         len: usize,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
@@ -269,7 +271,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // We are writing to our peer's readbuf.
-        let Some(peer_fd) = self_ref.peer_fd().upgrade() else {
+        let Some(peer_fd) = socket.peer_fd().upgrade() else {
             // If the upgrade from Weak to Rc fails, it indicates that all read ends have been
             // closed. It is an error to write even if there would be space.
             return finish.call(this, Err(ErrorKind::BrokenPipe.into()));
@@ -284,20 +286,20 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let available_space =
             MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(writebuf.borrow().buf.len());
         if available_space == 0 {
-            if self_ref.is_nonblock.get() {
+            if socket.is_nonblock.get() {
                 // Non-blocking socketpair with a full buffer.
                 return finish.call(this, Err(ErrorKind::WouldBlock.into()));
             } else {
-                self_ref.blocked_write_tid.borrow_mut().push(this.active_thread());
+                socket.blocked_write_tid.borrow_mut().push(this.active_thread());
                 // Blocking socketpair with a full buffer.
                 // Block the current thread; only keep a weak ref for this.
-                let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
+                let weak_socket = FileDescriptionRef::downgrade(&socket);
                 this.block_thread(
                     BlockReason::VirtualSocket,
                     None,
                     callback!(
                         @capture<'tcx> {
-                            weak_self_ref: WeakFileDescriptionRef<VirtualSocket>,
+                            weak_socket: WeakFileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
                             len: usize,
                             finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
@@ -306,8 +308,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             assert_eq!(unblock, UnblockKind::Ready);
                             // If we got unblocked, then our peer successfully upgraded its weak
                             // ref to us. That means we can also upgrade our weak ref.
-                            let self_ref = weak_self_ref.upgrade().unwrap();
-                            this.virtual_socket_write(self_ref, ptr, len, finish)
+                            let socket = weak_socket.upgrade().unwrap();
+                            this.virtual_socket_write(socket, ptr, len, finish)
                         }
                     ),
                 );
@@ -337,7 +339,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Notify readiness watchers: we might be no longer writable, peer might now be readable.
             // The notification to the peer seems to be always sent on Linux, even if the
             // FD was readable before.
-            this.update_fd_readiness(self_ref, /* force_edge */ false)?;
+            this.update_fd_readiness(socket, /* force_edge */ false)?;
             this.update_fd_readiness(peer_fd, /* force_edge */ true)?;
 
             return finish.call(this, Ok(write_size));
@@ -345,10 +347,12 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Read from VirtualSocket and return the number of bytes read.
+    /// Attempt to read `len` bytes from the virtual socket `socket` into the buffer
+    /// pointed to by `ptr`. After a successful read, `finish` is called with the
+    /// amount of bytes read.
     fn virtual_socket_read(
         &mut self,
-        self_ref: FileDescriptionRef<VirtualSocket>,
+        socket: FileDescriptionRef<VirtualSocket>,
         ptr: Pointer,
         len: usize,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
@@ -360,18 +364,18 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return finish.call(this, Ok(0));
         }
 
-        let Some(readbuf) = &self_ref.readbuf else {
+        let Some(readbuf) = &socket.readbuf else {
             // FIXME: This should return EBADF, but there's no nice way to do that as there's no
             // corresponding ErrorKind variant.
             throw_unsup_format!("reading from the write end of a pipe")
         };
 
         if readbuf.borrow_mut().buf.is_empty() {
-            if self_ref.peer_fd().upgrade().is_none() {
+            if socket.peer_fd().upgrade().is_none() {
                 // Socketpair with no peer and empty buffer.
                 // 0 bytes successfully read indicates end-of-file.
                 return finish.call(this, Ok(0));
-            } else if self_ref.is_nonblock.get() {
+            } else if socket.is_nonblock.get() {
                 // Non-blocking socketpair with writer and empty buffer.
                 // https://linux.die.net/man/2/read
                 // EAGAIN or EWOULDBLOCK can be returned for socket,
@@ -379,16 +383,16 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Since there is no ErrorKind for EAGAIN, WouldBlock is used.
                 return finish.call(this, Err(ErrorKind::WouldBlock.into()));
             } else {
-                self_ref.blocked_read_tid.borrow_mut().push(this.active_thread());
+                socket.blocked_read_tid.borrow_mut().push(this.active_thread());
                 // Blocking socketpair with writer and empty buffer.
                 // Block the current thread; only keep a weak ref for this.
-                let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
+                let weak_socket = FileDescriptionRef::downgrade(&socket);
                 this.block_thread(
                     BlockReason::VirtualSocket,
                     None,
                     callback!(
                         @capture<'tcx> {
-                            weak_self_ref: WeakFileDescriptionRef<VirtualSocket>,
+                            weak_socket: WeakFileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
                             len: usize,
                             finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
@@ -397,8 +401,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             assert_eq!(unblock, UnblockKind::Ready);
                             // If we got unblocked, then our peer successfully upgraded its weak
                             // ref to us. That means we can also upgrade our weak ref.
-                            let self_ref = weak_self_ref.upgrade().unwrap();
-                            this.virtual_socket_read(self_ref, ptr, len, finish)
+                            let socket = weak_socket.upgrade().unwrap();
+                            this.virtual_socket_read(socket, ptr, len, finish)
                         }
                     ),
                 );
@@ -426,7 +430,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // don't know what that *certain number* is, we will provide a notification every time
             // a read is successful. This might result in our readiness emulation providing more
             // events than the real system.
-            if let Some(peer_fd) = self_ref.peer_fd().upgrade() {
+            if let Some(peer_fd) = socket.peer_fd().upgrade() {
                 // Unblock all threads that are currently blocked on peer_fd's write.
                 let waiting_threads = std::mem::take(&mut *peer_fd.blocked_write_tid.borrow_mut());
                 // FIXME: We can randomize the order of unblocking.
@@ -440,7 +444,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.update_fd_readiness(peer_fd, /* force_edge */ readbuf_now_empty)?;
             };
             // Notify readiness watchers: we might be no longer readable.
-            this.update_fd_readiness(self_ref, /* force_edge */ false)?;
+            this.update_fd_readiness(socket, /* force_edge */ false)?;
 
             return finish.call(this, Ok(read_size));
         }
