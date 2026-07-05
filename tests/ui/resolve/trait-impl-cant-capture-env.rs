@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3021>.
+//! Ensure upvars from fn cannot be used in impl method block body.
+
 trait SipHash {
     fn result(&self) -> u64;
     fn reset(&self);

@@ -1,5 +1,5 @@
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/issue-3021-c.rs:4:24
+  --> $DIR/outer-generic-in-trait-method.rs:7:24
    |
 LL | fn siphash<T>() {
    |            - type parameter from outer item
@@ -16,7 +16,7 @@ LL |     trait U<T> {
    |            +++
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/issue-3021-c.rs:4:30
+  --> $DIR/outer-generic-in-trait-method.rs:7:30
    |
 LL | fn siphash<T>() {
    |            - type parameter from outer item

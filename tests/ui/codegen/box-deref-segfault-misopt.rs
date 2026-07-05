@@ -1,5 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/30081>.
+//! Misoptimization caused this to segfault.
 //@ run-pass
-// This used to segfault #30081
 
 pub enum Instruction {
     Increment(i8),
