@@ -2262,6 +2262,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
     pub fn same_type_modulo_infer<T: relate::Relate<TyCtxt<'tcx>>>(&self, a: T, b: T) -> bool {
         let (a, b) = self.resolve_vars_if_possible((a, b));
+        let (a, b) = ty::set_aliases_to_non_rigid(self.tcx, (a, b)).skip_norm_wip();
         SameTypeModuloInfer(self).relate(a, b).is_ok()
     }
 }
