@@ -1,3 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29946>.
+//! Test `FnOnce` impl closure's value gets properly dropped
+//! (during unwind as well).
+
 //@ run-pass
 //@ needs-unwind
 //@ ignore-backends: gcc

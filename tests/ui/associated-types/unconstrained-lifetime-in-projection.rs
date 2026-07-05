@@ -1,3 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29861>.
+//! Unconstrained lifetimes in associated type were wrongly allowed when
+//! occurred in projection.
+
 pub trait MakeRef<'a> {
     type Ref;
 }
