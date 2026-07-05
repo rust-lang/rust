@@ -25,7 +25,7 @@ use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
-    GenericParamKind, HirId, Item, ItemKind, MethodKind, Node, ParamName, Target, TraitItem,
+    GenericParamKind, HirId, Item, ItemKind, MethodKind, Mod, Node, ParamName, Target, TraitItem,
     find_attr,
 };
 use rustc_macros::Diagnostic;
@@ -291,7 +291,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Optimize(..) => (),
             AttributeKind::PanicRuntime => (),
             AttributeKind::PatchableFunctionEntry { .. } => (),
-            AttributeKind::Path(..) => (),
+            AttributeKind::Path(_, span) => self.check_path(*span, hir_id),
             AttributeKind::PatternComplexityLimit { .. } => (),
             AttributeKind::PinV2(..) => (),
             AttributeKind::PreludeImport => (),
@@ -409,6 +409,53 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::WindowsSubsystem(..) => (),
             // tidy-alphabetical-end
         }
+    }
+
+    fn check_path(&self, span: Span, hir_id: HirId) {
+        let Node::Item(item) = self.tcx.hir_node(hir_id) else {
+            return;
+        };
+
+        let ItemKind::Mod(_, module) = &item.kind else {
+            return;
+        };
+
+        // Only warn for an inline module: `mod foo { ... }`.
+        if !item.span.contains(module.spans.inner_span) {
+            return;
+        }
+
+        // Do not warn when a nested module uses `#[path]` or is out-of-line,
+        // because the attribute may affect nested module path resolution.
+        if self.has_nested_module_path_dependency(module) {
+            return;
+        }
+
+        self.tcx.emit_node_span_lint(
+            UNUSED_ATTRIBUTES,
+            hir_id,
+            span,
+            diagnostics::Unused {
+                attr_span: span,
+                note: diagnostics::UnusedNote::PathOnInlineModule,
+            },
+        );
+    }
+
+    fn has_nested_module_path_dependency(&self, module: &Mod<'tcx>) -> bool {
+        module.item_ids.iter().any(|item_id| {
+            let child = self.tcx.hir_item(*item_id);
+
+            let ItemKind::Mod(_, child_module) = &child.kind else {
+                return false;
+            };
+
+            let is_out_of_line = !child.span.contains(child_module.spans.inner_span);
+
+            let has_path_attr = find_attr!(self.tcx, child.hir_id(), Path(..));
+
+            is_out_of_line || has_path_attr || self.has_nested_module_path_dependency(child_module)
+        })
     }
 
     fn check_rustc_must_implement_one_of(
