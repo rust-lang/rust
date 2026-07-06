@@ -49,43 +49,43 @@ fn main() {
 
     // Err, reference to a &String
     match Some(&x) {
-        Some(ref x) => m2!(x),
+        Some(x) => m2!(&x),
         //~^ ref_binding_to_reference
         None => return,
     }
 
     // Err, reference to a &String
-    let _ = |&ref x: &&String| {
+    let _ = |&x: &&String| {
         //~^ ref_binding_to_reference
 
-        let _: &&String = x;
+        let _: &&String = &x;
     };
 }
 
 // Err, reference to a &String
-fn f2<'a>(&ref x: &&'a String) -> &'a String {
+fn f2<'a>(&x: &&'a String) -> &'a String {
     //~^ ref_binding_to_reference
 
-    let _: &&String = x;
-    *x
+    let _: &&String = &x;
+    x
 }
 
 trait T1 {
     // Err, reference to a &String
-    fn f(&ref x: &&String) {
+    fn f(&x: &&String) {
         //~^ ref_binding_to_reference
 
-        let _: &&String = x;
+        let _: &&String = &x;
     }
 }
 
 struct S;
 impl T1 for S {
     // Err, reference to a &String
-    fn f(&ref x: &&String) {
+    fn f(&x: &&String) {
         //~^ ref_binding_to_reference
 
-        let _: &&String = x;
+        let _: &&String = &x;
     }
 }
 
