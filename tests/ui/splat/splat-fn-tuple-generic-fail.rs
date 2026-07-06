@@ -4,7 +4,11 @@
 #![feature(splat)]
 #![feature(tuple_trait)]
 
-fn splat_generic_tuple<T: std::marker::Tuple>(#[splat] _t: T) {}
+use std::marker::Tuple;
+
+fn splat_generic_tuple<T: Tuple>(#[splat] _t: T) {}
+
+fn f<Args: Tuple>(#[splat] args: Args) {}
 
 fn main() {
     // FIXME(splat): should splatted functions be callable with tupled and un-tupled arguments?
@@ -24,4 +28,6 @@ fn main() {
 
     splat_generic_tuple::<(u32, i8)>((1, 2)); //~ ERROR this splatted function takes 2 arguments, but 1 was provided
     splat_generic_tuple::<(u32, i8)>((1u32, 2i8)); //~ ERROR this splatted function takes 2 arguments, but 1 was provided
+
+    const F1: fn((u8, u32)) = f::<(u8, u32)>; //~ ERROR mismatched types
 }

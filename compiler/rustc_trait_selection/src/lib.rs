@@ -19,6 +19,7 @@
 #![feature(iter_intersperse)]
 #![feature(iterator_try_reduce)]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
 #![feature(yeet_expr)]

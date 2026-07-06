@@ -32,6 +32,7 @@ use std::path::PathBuf;
 
 use build_helper::exit;
 pub use config::*;
+use serde::de::Unexpected;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 pub use target_selection::TargetSelection;
@@ -375,6 +376,53 @@ impl std::str::FromStr for SplitDebuginfo {
             "off" => Ok(SplitDebuginfo::Off),
             _ => Err(()),
         }
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum CompressDebuginfo {
+    Zlib,
+    #[default]
+    Off,
+}
+
+impl CompressDebuginfo {
+    fn default_on() -> Self {
+        Self::Zlib
+    }
+}
+
+impl std::str::FromStr for CompressDebuginfo {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "zlib" => Ok(CompressDebuginfo::Zlib),
+            "off" => Ok(CompressDebuginfo::Off),
+            _ => Err(()),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for CompressDebuginfo {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        Ok(match Deserialize::deserialize(deserializer)? {
+            StringOrBool::Bool(value) => {
+                if value {
+                    CompressDebuginfo::default_on()
+                } else {
+                    CompressDebuginfo::Off
+                }
+            }
+            StringOrBool::String(value) => CompressDebuginfo::from_str(&value).map_err(|_| {
+                D::Error::invalid_value(Unexpected::Str(&value), &"`zlib` or `off`")
+            })?,
+        })
     }
 }
 

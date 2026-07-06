@@ -733,29 +733,11 @@ where
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
-        // FIXME: We should revisit and consider removing this after
-        // *assumptions on binders* is available, like once we had done in the
-        // stabilization of `-Znext-solver=coherence`(#121848).
-        // We ignore constraints from the nested goals in leak check. This is to match
-        // with the old solver's behavior, which has separated evaluation and fulfillment,
-        // and the former doesn't consider outlives obligations from the later.
-        let vis = match goal.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(_)
-            | ty::PredicateKind::DynCompatible(_)
-            | ty::PredicateKind::Subtype(_)
-            | ty::PredicateKind::Coerce(_)
-            | ty::PredicateKind::ConstEquate(_, _)
-            | ty::PredicateKind::Ambiguous
-            | ty::PredicateKind::NormalizesTo(_) => VisibleForLeakCheck::No,
-            ty::PredicateKind::AliasRelate(_, _, _) => VisibleForLeakCheck::Yes,
-        };
-
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
             goal.param_env,
             &orig_values,
             response,
-            vis,
             self.origin_span,
         );
 
@@ -965,11 +947,6 @@ where
                 ty::PredicateKind::NormalizesTo(predicate) => {
                     ecx.compute_normalizes_to_goal(Goal { param_env, predicate })?
                 }
-                ty::PredicateKind::AliasRelate(lhs, rhs, direction) => ecx
-                    .compute_alias_relate_goal(Goal {
-                        param_env,
-                        predicate: (lhs, rhs, direction),
-                    })?,
                 ty::PredicateKind::Ambiguous => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)?
                 }
@@ -1276,7 +1253,8 @@ where
         let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
         for &goal in goals.iter() {
             let source = match goal.predicate.kind().skip_binder() {
-                ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {
+                ty::PredicateKind::Subtype { .. }
+                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
                     GoalSource::TypeRelating
                 }
                 // FIXME(-Znext-solver=coinductive): should these WF goals also be unproductive?
@@ -1814,7 +1792,6 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         goal.param_env,
         &proof_tree.orig_values,
         response,
-        VisibleForLeakCheck::Yes,
         origin_span,
     );
 

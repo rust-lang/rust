@@ -1,0 +1,77 @@
+diff --git a/packages/linux/3.10.108/chksum b/packages/linux/3.10.108/chksum
+index 17c7f8ec..f6498231 100644
+--- a/packages/linux/3.10.108/chksum
++++ b/packages/linux/3.10.108/chksum
+@@ -4,5 +4,5 @@ sha256 linux-3.10.108.tar.xz 3849ea8119517f605f9d53c57dd6c539af8d584c2f1d9031f4f
+ sha512 linux-3.10.108.tar.xz 2ed1bda124fbc0f03e7f4c4e5ddac73d15b82d24ff51f5dbb265cec7cc614b28f83923b5fc8df5e97a3244d2bbb861853f0f2a3894a0c64c5a08b489d4ae12ac
+ md5 linux-3.10.108.tar.gz b38e458f3a90ffa0815f2e2740bba7aa
+ sha1 linux-3.10.108.tar.gz 0b09e6fdc8152bea07a9d678119a23a35025d4d6
+-sha256 linux-3.10.108.tar.gz aff93454b2df33a0394253c8977c6d36c7205a423af6d8d4e3e1d67dfc9e07f8
++sha256 linux-3.10.108.tar.gz b1711610cf3faf7194156dacdb98c63c1b7ffd02377269d7f75df63d823ccbba
+ sha512 linux-3.10.108.tar.gz 71c6f89a7620fecc8ce0f215b6aab52f6a6337b6474ae7447491a1ab4fc95eafa38e700cf667ec304220e9cbcaa669671b9ed15fe79cc679a4e4e9139b37ad8c
+diff --git a/packages/linux/3.2.101/chksum b/packages/linux/3.2.101/chksum
+index 1f9a68ba..7188ceeb 100644
+--- a/packages/linux/3.2.101/chksum
++++ b/packages/linux/3.2.101/chksum
+@@ -4,5 +4,5 @@ sha256 linux-3.2.101.tar.xz 4453686b001685144f44c88d57c716fcb6e85ef8a2aad2f95d36
+ sha512 linux-3.2.101.tar.xz 1058369878610cb9e42021dc7feb2e6b2fa67541b0fb4152e526f63e5dfee1d7a63b2f1fb0cfe59097824a743ba74f81526dc706bdb61fc7f1c5e29972b139ed
+ md5 linux-3.2.101.tar.gz ac6286e2ff2a66be117c1de20bdb6c72
+ sha1 linux-3.2.101.tar.gz 8b2ab0dd4915e7517a26fa63112bde9b438d14d8
+-sha256 linux-3.2.101.tar.gz 0d02f47871e44fc12de452a8b41da119848a76d5f81159b8ae9ef57da5824712
++sha256 linux-3.2.101.tar.gz 93e8391e029f131d5ba4b7ad76cc34b12f2c2244059604042f2297c4bde093f7
+ sha512 linux-3.2.101.tar.gz 3951bda6970658c2915a0a8e8b022f7fc28d0fa4a5a8ef37a3a48a5d33a328dba3220a13979887b0df0cc2ba7f4ee92c32bc34ec84c6c1b0e4a1727765d412e0
+diff --git a/packages/linux/4.14.329/chksum b/packages/linux/4.14.329/chksum
+index e5a318d3..44fa0469 100644
+--- a/packages/linux/4.14.329/chksum
++++ b/packages/linux/4.14.329/chksum
+@@ -4,5 +4,5 @@ sha256 linux-4.14.329.tar.xz de36689d713ed17f8bc1286fe4b9afcdb9a3de3b6f1d6aff525
+ sha512 linux-4.14.329.tar.xz b7851bfdd9b5b778c6dcd4fe0376ae3851a93d0030050e57e29472be11785e3fd01c8b167f26f2c04c1b05c89aed309b24d77407aabdcbfb76173545236c1c7b
+ md5 linux-4.14.329.tar.gz 0a75f96e4a19bfdeb41ff9289a111318
+ sha1 linux-4.14.329.tar.gz 07f91c6f13ed3403d105d0a34b586f916f90c26c
+-sha256 linux-4.14.329.tar.gz b0b08ea229defc872bef5c5dbe2fccde5ce739ba0c15dc3bce17aa26e7c24e43
++sha256 linux-4.14.329.tar.gz 3850511cf1822f3bb7c4f2dcfb47a4575dfc2dd9510b3a22be1225a0b7a316b3
+ sha512 linux-4.14.329.tar.gz 6056521d902d1681986a244f7edf12870eacfe39748d75a86ac1df0cec470f94eafe9fcd7c086fb55bdaff8eda97fdfbeaff3944b28500aa6a4334c511708508
+diff --git a/packages/linux/4.19.325/chksum b/packages/linux/4.19.325/chksum
+index 9219f096..e938f889 100644
+--- a/packages/linux/4.19.325/chksum
++++ b/packages/linux/4.19.325/chksum
+@@ -4,5 +4,5 @@ sha256 linux-4.19.325.tar.xz 607bed7de5cda31a443df4c8a78dbe5e8a9ad31afde2a4d28fe
+ sha512 linux-4.19.325.tar.xz 4a2c5f358e9caf47061d707db67738e0d1b1f24aebeeaab81dc2701cc3793ab574a7e0a3a5df2f99d6ff1d777acdca1d885da87ee31098c5b901853d8b580310
+ md5 linux-4.19.325.tar.gz d8201f438135d2dc50302de5e6b7febc
+ sha1 linux-4.19.325.tar.gz 1a882796a187bbb2145d0e091ed370eed3d7f31b
+-sha256 linux-4.19.325.tar.gz 8f360bb8ba9fb692507f27596422c7ceddec5f7fed4d8f3df2b7656b6042cfee
++sha256 linux-4.19.325.tar.gz 8753443636e475b506e08abd40059ec9b84904a115d206014f0c856dfe13a25e
+ sha512 linux-4.19.325.tar.gz 4e8cbfed3211b1c53122905ce588c421aedb05138581cd64986ddcba89b10ffcea8a3b1c63ec273abc02eac7c31f0f901e17677f4c3ed749b26fc47b75bce5f1
+diff --git a/packages/linux/4.20.17/chksum b/packages/linux/4.20.17/chksum
+index 0d77f052..d64edcfd 100644
+--- a/packages/linux/4.20.17/chksum
++++ b/packages/linux/4.20.17/chksum
+@@ -4,5 +4,5 @@ sha256 linux-4.20.17.tar.xz d011245629b980d4c15febf080b54804aaf215167b514a3577fe
+ sha512 linux-4.20.17.tar.xz d048b2e1e88be90c1983acbe71931fc0e716919b433990bd42ab1bb635fc4fc5953667966432b2bc1256fcd5afc211c12ca3e41b7feccdb39b4ced05e6e4071d
+ md5 linux-4.20.17.tar.gz 6b9d049ddeb6cb54ecd2bd3d5931ecda
+ sha1 linux-4.20.17.tar.gz 4743162961123c9c475628ecc31cfa80d822992a
+-sha256 linux-4.20.17.tar.gz 830c472e5c0b4394936c347d70564dd661d8bed4ceb07f79dc8e8efdefd9bf73
++sha256 linux-4.20.17.tar.gz 313b7bebb46084efbfcaf75f4ea6faf2e14c8cbc1711fcba483dc0a036c9acc1
+ sha512 linux-4.20.17.tar.gz 8d4ff845e500e42908a3103a5c08ae3fa76265716cc0c4f37c4712a4d1f0721bd4adbac275136213ee40f490a5650de6e9d5e246e8c700ac11d65ad3ebb74425
+diff --git a/packages/linux/4.4.302/chksum b/packages/linux/4.4.302/chksum
+index 9d2b041b..8dadd2f1 100644
+--- a/packages/linux/4.4.302/chksum
++++ b/packages/linux/4.4.302/chksum
+@@ -4,5 +4,5 @@ sha256 linux-4.4.302.tar.xz 35017bb40b604e0b577fc2b87e727632b46608a2ba3a4f5858b9
+ sha512 linux-4.4.302.tar.xz 2eb03f08bd0a8ee1630b20bc01bfe28f3ff396aca8c88247cc4db3a5c41bcabb6d8385dff90040480f4990f51b538415dedf283a5bc3807ef85e3d982b369570
+ md5 linux-4.4.302.tar.gz 81f7f97ebc94e89311bb20e22b0e6004
+ sha1 linux-4.4.302.tar.gz 2160955ff98a3694ae0574d247cea293d91292af
+-sha256 linux-4.4.302.tar.gz 66271f9d9fce8596622e8154ca0ea160e46b78a5a6c967a15b55855f744d1b0b
++sha256 linux-4.4.302.tar.gz a22ceab143d40f511203265e5a70d6cc5ec39163cd54fa281346d19176f64451
+ sha512 linux-4.4.302.tar.gz de6ad09783be1faf422e0b476d67768fff8bf1fcdc1e2ab27f915a26f7acdbecaa4a1a2385f78d3001e28ad83b3b55150eb2b996d1b64c6376f5f1d68af019f4
+diff --git a/packages/linux/5.19.16/chksum b/packages/linux/5.19.16/chksum
+index c16d312c..64ee13fa 100644
+--- a/packages/linux/5.19.16/chksum
++++ b/packages/linux/5.19.16/chksum
+@@ -4,5 +4,5 @@ sha256 linux-5.19.16.tar.xz a1ebaf667e1059ae2d72aa6374a4d6e2febc0b8ccda6a124687a
+ sha512 linux-5.19.16.tar.xz 1ff662424830fbd48ac1d8c1aabd4d11a8eabc284c4fe3fdf803064d4f56d9c1b631a0fb60679bac40a4e05b77d5e6706a8fd52a5e025ef4f1231a6cc84bbbde
+ md5 linux-5.19.16.tar.gz 15c43c56b85175aacafaaa4ef1983298
+ sha1 linux-5.19.16.tar.gz cd7fb09335a4814a88fedf7ed064e6f10fd1c8db
+-sha256 linux-5.19.16.tar.gz 9b835ea04b0210ad0748829367acd84e09357c3dd6d0f48e31737a7f21e990ff
++sha256 linux-5.19.16.tar.gz bbf0ead65559250e0784c13d4f9716b7f917a1d3a4e00f671f3994cc6990bb02
+ sha512 linux-5.19.16.tar.gz 9b0330c7257aecba3f6f97566014c03d8012e1b2c5c1ee2c3b5ea1b7a2ca01addf346b5235d772b26e4312b0fc1bb529689390445668606ed96e66174cf93341
