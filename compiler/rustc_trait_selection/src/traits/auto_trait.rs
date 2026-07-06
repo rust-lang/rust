@@ -33,6 +33,7 @@ pub struct RegionDeps<'tcx> {
 }
 
 pub enum AutoTraitResult<A> {
+    NoImpl,
     ExplicitImpl,
     PositiveImpl(A),
     NegativeImpl,
@@ -79,6 +80,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         mut auto_trait_callback: impl FnMut(AutoTraitInfo<'tcx>) -> A,
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
+
+        if tcx.next_trait_solver_globally() {
+            return self.find_auto_trait_generics_next_solver(
+                ty,
+                typing_env,
+                trait_did,
+                auto_trait_callback,
+            );
+        }
 
         let trait_ref = ty::TraitRef::new(tcx, trait_did, [ty]);
 
@@ -172,6 +182,79 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let info = AutoTraitInfo { full_user_env, region_data, vid_to_region };
 
+        AutoTraitResult::PositiveImpl(auto_trait_callback(info))
+    }
+
+    fn find_auto_trait_generics_next_solver<A>(
+        &self,
+        ty: Ty<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        trait_did: DefId,
+        mut auto_trait_callback: impl FnMut(AutoTraitInfo<'tcx>) -> A,
+    ) -> AutoTraitResult<A> {
+        // When the new solver is enabled globally we keep things deliberately
+        // simple. The precise auto-trait synthesis depends on old-solver
+        // internals, so here we only synthesize a simple field-based auto-trait
+        // impl for ADTs.
+        //
+        // If the self type is not an ADT we return `NoImpl` instead of trying
+        // to do anything fancy. To decide whether to emit a negative impl, we
+        // replace the ADT's generic arguments with inference variables and
+        // check whether the auto trait can hold. A true error from that probe
+        // becomes a `NegativeImpl`, otherwise we continue on to emit the
+        // imprecise field-based impl.
+        //
+        // This keeps rustdoc from ICE-ing while `-Znext-solver=globally` is
+        // used for testing, even if the generated synthetic impls are less
+        // precise.
+        let tcx = self.tcx;
+        let ty::Adt(adt_def, args) = *ty.kind() else {
+            return AutoTraitResult::NoImpl;
+        };
+
+        let mut disqualifying_impl = None;
+        tcx.for_each_relevant_impl(trait_did, ty, |impl_def_id| {
+            disqualifying_impl = Some(impl_def_id);
+        });
+        if let Some(impl_def_id) = disqualifying_impl {
+            debug!(
+                "find_auto_trait_generics({:?}): possible manual impl {impl_def_id:?} found, bailing",
+                ty::TraitRef::new(tcx, trait_did, [ty]),
+            );
+            return AutoTraitResult::ExplicitImpl;
+        }
+
+        let (infcx, orig_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+        let field_clauses = adt_def
+            .all_fields()
+            .map(|field| field.ty(tcx, args).skip_norm_wip())
+            .filter(|field_ty| field_ty.has_non_region_param())
+            .map(|field_ty| {
+                ty::TraitPredicate {
+                    trait_ref: ty::TraitRef::new(tcx, trait_did, [field_ty]),
+                    polarity: ty::PredicatePolarity::Positive,
+                }
+                .upcast(tcx)
+            })
+            .collect::<Vec<ty::Clause<'tcx>>>();
+        let full_user_env = ty::ParamEnv::new(
+            tcx.mk_clauses_from_iter(orig_env.caller_bounds().iter().chain(field_clauses)),
+        );
+
+        let fresh_args = infcx.fresh_args_for_item(DUMMY_SP, adt_def.did());
+        let fresh_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, fresh_args).skip_norm_wip();
+        let ocx = ObligationCtxt::new(&infcx);
+        ocx.register_bound(ObligationCause::dummy(), orig_env, fresh_ty, trait_did);
+        let errors = ocx.try_evaluate_obligations();
+        if !errors.is_empty() {
+            return AutoTraitResult::NegativeImpl;
+        }
+
+        let info = AutoTraitInfo {
+            full_user_env,
+            region_data: RegionConstraintData::default(),
+            vid_to_region: FxIndexMap::default(),
+        };
         AutoTraitResult::PositiveImpl(auto_trait_callback(info))
     }
 
