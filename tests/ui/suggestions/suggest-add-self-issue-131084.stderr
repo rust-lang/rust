@@ -29,8 +29,8 @@ LL |         self
    |
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
-LL |     fn some_fn(&&self, some_name) {
-   |                 ++++++
+LL |     fn some_fn(&self, &some_name) {
+   |                ++++++
 
 error: aborting due to 2 previous errors
 
