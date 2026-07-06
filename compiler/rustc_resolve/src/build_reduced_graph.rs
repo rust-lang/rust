@@ -5,7 +5,6 @@
 //! unexpanded macros in the fragment are visited and registered.
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
-use std::cell::RefMut;
 use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
@@ -16,6 +15,7 @@ use rustc_ast::{
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::sync::WriteGuard;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
@@ -134,7 +134,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn get_extern_module_with_lock(
         &self,
         def_id: DefId,
-        map_lock: &mut RefMut<'_, FxIndexMap<DefId, ExternModule<'ra>>>,
+        map_lock: &mut WriteGuard<'_, FxIndexMap<DefId, ExternModule<'ra>>>,
     ) -> Option<ExternModule<'ra>> {
         if let module @ Some(..) = map_lock.get(&def_id) {
             return module.copied();

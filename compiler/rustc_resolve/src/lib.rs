@@ -21,7 +21,6 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-use std::cell::Ref;
 use std::collections::BTreeSet;
 use std::ops::ControlFlow;
 use std::sync::{Arc, Once};
@@ -46,7 +45,7 @@ use rustc_ast::{
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, default};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard, WorkerLocal};
+use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard, ReadGuard, WorkerLocal};
 use rustc_data_structures::unord::{UnordItems, UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
@@ -1992,7 +1991,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Currently only dependent on `assert_speculative`, if `assert_speculative` is false,
     /// the resolver will allow mutation; otherwise, it will be immutable.
     fn cm(&mut self) -> CmResolver<'_, 'ra, 'tcx> {
-        CmResolver::new(self, !self.assert_speculative)
+        // SAFETY: we know that `assert_speculative` is true whenever we are using the
+        // resolver in a multi-threaded context, so this is safe.
+        unsafe { CmResolver::new(self, !self.assert_speculative) }
     }
 
     /// Runs the function on each namespace.
@@ -2174,7 +2175,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &self,
         module: Module<'ra>,
         key: BindingKey,
-    ) -> Option<Ref<'ra, NameResolution<'ra>>> {
+    ) -> Option<ReadGuard<'ra, NameResolution<'ra>>> {
         self.resolutions(module).borrow().get(&key).map(|resolution| resolution.0.borrow())
     }
 
@@ -2416,7 +2417,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Option<Decl<'ra>> {
         let entry = self.extern_prelude.get(&ident);
         entry.and_then(|entry| entry.flag_decl.as_ref()).and_then(|flag_decl| {
-            let (pending_decl, finalized, is_open) = flag_decl.get();
+            let (pending_decl, finalized, is_open) = *flag_decl.read();
             let decl = match pending_decl {
                 PendingDecl::Ready(decl) => {
                     if finalize && !finalized && !is_open {
@@ -2451,7 +2452,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
             };
-            flag_decl.set((PendingDecl::Ready(decl), finalize || finalized, is_open));
+            *flag_decl.write() = (PendingDecl::Ready(decl), finalize || finalized, is_open);
             decl.or_else(|| finalize.then_some(self.dummy_decl))
         })
     }
@@ -2793,13 +2794,15 @@ type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
 // FIXME: These are cells for caches that can be populated even during speculative resolution,
 // and should be replaced with mutexes, atomics, or other synchronized data when migrating to
 // parallel name resolution.
-use std::cell::{Cell as CacheCell, RefCell as CacheRefCell};
+use rustc_data_structures::sync::{RwLock as CacheCell, RwLock as CacheRefCell};
 
 mod ref_mut {
-    use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
-    use std::fmt;
+    use std::cell::Cell;
     use std::marker::PhantomData;
     use std::ops::Deref;
+    use std::{fmt, mem};
+
+    use rustc_data_structures::sync::{DynSend, DynSync, ReadGuard, RwLock, WriteGuard};
 
     use crate::Resolver;
 
@@ -2812,6 +2815,22 @@ mod ref_mut {
         mutable: bool,
         _marker: PhantomData<&'a mut T>,
     }
+
+    // SAFETY: `RefOrMut` can only be constructed via `RefOrMut::new`, which is `unsafe`.
+    // Its safety contract requires the caller to guarantee that any instance which might be
+    // observed from more than one thread is constructed with `mutable = false`.
+    //
+    // Given that contract holds:
+    // - `DynSync`: a shared `RefOrMut` only ever yields `&T`, so letting multiple threads
+    //   read through it concurrently is just ordinary shared-reference aliasing; no
+    //   thread can obtain `&mut T` through it, so there is no data race to worry about.
+    // - `DynSend`: sending a shared `RefOrMut` to another thread only transfers the ability
+    //   to take `&T` there too, which is equally sound. A mutable `RefOrMut` is never actually
+    //   moved across threads in practice, because the contract of `new` forbids it.
+    //
+    // Thus, these `impl`s rely entirely on safe usage of `RefOrMut::new`.
+    unsafe impl<'a, T: DynSync> DynSync for RefOrMut<'a, T> {}
+    unsafe impl<'a, T: DynSync> DynSend for RefOrMut<'a, T> {}
 
     impl<'a, T> Deref for RefOrMut<'a, T> {
         type Target = T;
@@ -2830,7 +2849,25 @@ mod ref_mut {
     }
 
     impl<'a, T> RefOrMut<'a, T> {
-        pub(crate) fn new(p: &'a mut T, mutable: bool) -> Self {
+        /// Constructs a new `RefOrMut` from an exclusive reference, choosing up front
+        /// whether it will be used as an exclusive (`&mut T`) or a shared (`&T`), done
+        /// via `mutable`.
+        ///
+        /// # Safety
+        ///
+        /// `RefOrMut<'a, T>`  implements `DynSync` and `DynSend`, for any
+        /// `T: DynSync`. However, this is only safe if this `RefOrMut` is used as a
+        /// shared reference:
+        ///
+        /// - If the resulting `RefOrMut` may ever be accessed from, or sent to, more than
+        ///   one thread, it **must** be constructed with `mutable = false`, and must only
+        ///   ever be used to obtain shared (`&T`) access for its entire lifetime.
+        /// - `mutable = true` is only sound if this value is guaranteed to remain on a
+        ///   single thread for its entire lifetime, since doing so permits exclusive
+        ///   (`&mut T`) access to be taken through it.
+        ///
+        /// Violating this is undefined behavior.
+        pub(crate) unsafe fn new(p: &'a mut T, mutable: bool) -> Self {
             RefOrMut { p, mutable, _marker: PhantomData }
         }
 
@@ -2839,6 +2876,7 @@ mod ref_mut {
                 !self.mutable,
                 "Tried to reborrow a mutable `RefOrMut` through shared reference."
             );
+            // Safe because of contract in `RefOrMut::new`.
             RefOrMut { p: self.p, mutable: self.mutable, _marker: PhantomData }
         }
 
@@ -2859,14 +2897,23 @@ mod ref_mut {
                 // SAFETY:
                 // - `RefOrMut` is only constructable through a `&mut T` and we
                 //   have tested that it may indeed be used as a `&mut T` in this match.
+                // - `RefOrMut::new` also guarantees that this exclusive reference is never
+                //   obtained from multiple threads.
                 true => unsafe { self.p.as_mut_unchecked() },
             }
         }
     }
 
     /// A wrapper around a [`Cell`] that only allows mutation based on a condition in the resolver.
+    ///
     #[derive(Default)]
     pub(crate) struct CmCell<T>(Cell<T>);
+
+    // SAFETY: `CmCell<T>` is `Sync` only because every path that can call `Cell::set`
+    // (i.e. `CmCell::set`, and `update`, which is built on top of it) first checks
+    // `r.assert_speculative` and panics if it's set, refusing to mutate. Soundness
+    // therefore depends on proper usage of the `assert_speculative` field in the `Resolver`.
+    unsafe impl<T: DynSync> DynSync for CmCell<T> {}
 
     impl<T: Copy + fmt::Debug> fmt::Debug for CmCell<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2911,44 +2958,44 @@ mod ref_mut {
         }
     }
 
-    /// A wrapper around a [`RefCell`] that only allows writes (mutable borrows) based on a condition in the resolver.
+    /// A wrapper around a [`RwLock`] that only allows writes (mutable borrows) based on a condition in the resolver.
     #[derive(Default)]
-    pub(crate) struct CmRefCell<T>(RefCell<T>);
+    pub(crate) struct CmRefCell<T>(RwLock<T>);
 
     impl<T> CmRefCell<T> {
         pub(crate) fn new(value: T) -> CmRefCell<T> {
-            CmRefCell(RefCell::new(value))
+            CmRefCell(RwLock::new(value))
         }
 
         #[track_caller]
         // FIXME: this should be eliminated in the process of migration
         // to parallel name resolution.
-        pub(crate) fn borrow_mut_unchecked(&self) -> RefMut<'_, T> {
-            self.0.borrow_mut()
+        pub(crate) fn borrow_mut_unchecked(&self) -> WriteGuard<'_, T> {
+            self.0.write()
         }
 
         #[track_caller]
-        pub(crate) fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> RefMut<'_, T> {
+        pub(crate) fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> WriteGuard<'_, T> {
             if r.assert_speculative {
                 panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
             }
-            self.0.borrow_mut()
+            self.0.write()
         }
 
         #[track_caller]
         pub(crate) fn try_borrow_mut<'ra, 'tcx>(
             &self,
             r: &Resolver<'ra, 'tcx>,
-        ) -> Result<RefMut<'_, T>, BorrowMutError> {
+        ) -> Result<WriteGuard<'_, T>, ()> {
             if r.assert_speculative {
                 panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
             }
-            self.0.try_borrow_mut()
+            self.0.try_write()
         }
 
         #[track_caller]
-        pub(crate) fn borrow(&self) -> Ref<'_, T> {
-            self.0.borrow()
+        pub(crate) fn borrow(&self) -> ReadGuard<'_, T> {
+            self.0.read()
         }
     }
 
@@ -2957,7 +3004,7 @@ mod ref_mut {
             if r.assert_speculative {
                 panic!("not allowed to mutate a CmRefCell during speculative resolution");
             }
-            self.0.take()
+            mem::take(&mut *self.0.write())
         }
     }
 }

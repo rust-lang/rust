@@ -142,11 +142,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // used to avoid long scope chains, see the comments on `MacroRulesScopeRef`.
                     // As another consequence of this optimization visitors never observe invocation
                     // scopes for macros that were already expanded.
-                    let mut scope = macro_rules_scope.get();
+                    let mut scope = *macro_rules_scope.borrow();
                     while let MacroRulesScope::Invocation(invoc_id) = scope {
                         if let Some(next) = self.output_macro_rules_scopes.get(&invoc_id) {
-                            scope = next.get();
-                            macro_rules_scope.set(scope);
+                            scope = *next.borrow();
+                            *macro_rules_scope.borrow_mut() = scope;
                         } else {
                             break;
                         }
@@ -187,7 +187,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
                 Scope::DeriveHelpersCompat => Scope::MacroRules(parent_scope.macro_rules),
-                Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
+                Scope::MacroRules(macro_rules_scope) => match *macro_rules_scope.read() {
                     MacroRulesScope::Def(binding) => {
                         Scope::MacroRules(binding.parent_macro_rules_scope)
                     }
@@ -592,7 +592,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 result
             }
-            Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
+            Scope::MacroRules(macro_rules_scope) => match *macro_rules_scope.read() {
                 MacroRulesScope::Def(macro_rules_def) if ident == macro_rules_def.ident => {
                     Ok(macro_rules_def.decl)
                 }
