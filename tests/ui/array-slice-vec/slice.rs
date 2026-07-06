@@ -3,7 +3,7 @@
 
 // Test slicing sugar.
 
-// FIXME(static_mut_refs): this could use an atomic
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
 extern crate core;

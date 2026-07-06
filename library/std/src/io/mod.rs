@@ -1295,7 +1295,7 @@ pub trait Read {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "read_le", issue = "156983")]
+    #[unstable(feature = "read_le", issue = "156984")]
     #[inline]
     fn read_le<T: FromEndianBytes>(&mut self) -> Result<T>
     where
@@ -1328,7 +1328,7 @@ pub trait Read {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "read_le", issue = "156983")]
+    #[unstable(feature = "read_le", issue = "156984")]
     #[inline]
     fn read_be<T: FromEndianBytes>(&mut self) -> Result<T>
     where

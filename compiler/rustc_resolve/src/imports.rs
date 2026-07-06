@@ -210,22 +210,9 @@ pub(crate) struct ImportData<'ra> {
     pub on_unknown_attr: Option<OnUnknownData>,
 }
 
-/// All imports are unique and allocated on a same arena,
-/// so we can use referential equality to compare them.
+/// `Interned` is used because values of this type have "identity" and compare as unequal even if
+/// they have the same contents.
 pub(crate) type Import<'ra> = Interned<'ra, ImportData<'ra>>;
-
-// Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
-// contained data.
-// FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
-// are upheld.
-impl std::hash::Hash for ImportData<'_> {
-    fn hash<H>(&self, _: &mut H)
-    where
-        H: std::hash::Hasher,
-    {
-        unreachable!()
-    }
-}
 
 impl<'ra> ImportData<'ra> {
     pub(crate) fn is_glob(&self) -> bool {
@@ -291,6 +278,8 @@ pub(crate) struct NameResolution<'ra> {
     pub orig_ident_span: Span,
 }
 
+/// `Interned` is used because values of this type have "identity" and compare as unequal even if
+/// they have the same contents.
 pub(crate) type NameResolutionRef<'ra> = Interned<'ra, CmRefCell<NameResolution<'ra>>>;
 
 impl<'ra> NameResolution<'ra> {

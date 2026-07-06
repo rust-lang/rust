@@ -149,6 +149,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_pointer_width, Some(_))
             | (sym::target_vendor, None | Some(_))
             | (sym::target_has_atomic, Some(_))
+            | (sym::target_has_threads, None | Some(_))
             | (sym::target_has_atomic_primitive_alignment, Some(_))
             | (sym::target_has_atomic_load_store, Some(_))
             | (sym::target_has_reliable_f16, None | Some(_))
@@ -301,6 +302,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
                 insert_atomic(sym::ptr, layout.pointer_align().abi);
             }
         }
+    }
+
+    if !sess.target.singlethread(&sess.target_features) {
+        ins_none!(sym::target_has_threads);
     }
 
     ins_sym!(sym::target_os, sess.target.os.desc_symbol());
@@ -485,6 +490,7 @@ impl CheckCfg {
         ins!(sym::target_has_atomic_primitive_alignment, empty_values).extend(atomic_values);
 
         ins!(sym::target_thread_local, no_values);
+        ins!(sym::target_has_threads, no_values);
 
         ins!(sym::ub_checks, no_values);
         ins!(sym::contract_checks, no_values);

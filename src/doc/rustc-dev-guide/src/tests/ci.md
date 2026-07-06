@@ -209,7 +209,7 @@ to help make the perf comparison as fair as possible.
 >
 > 3. Run the prescribed try jobs with `@bors try`. As aforementioned, this
 >    requires the user to either (1) have `try` permissions or (2) be delegated
->    with `try` permissions by `@bors delegate=try` by someone who has `try`
+>    with `try` permissions by `@bors delegate try` by someone who has `try`
 >    permissions.
 >
 > Note that this is usually easier to do than manually edit [`jobs.yml`].
