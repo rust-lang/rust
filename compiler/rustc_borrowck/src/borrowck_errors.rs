@@ -2,12 +2,12 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
 impl<'diag, 'tcx> crate::MirBorrowckCtxt<'_, 'diag, 'tcx> {
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'diag> {
-        self.infcx.dcx()
+        self.root_cx.dcx()
     }
 
     pub(crate) fn cannot_move_when_borrowed(
@@ -486,13 +486,13 @@ impl<'diag, 'tcx> crate::MirBorrowckCtxt<'_, 'diag, 'tcx> {
     }
 }
 
-pub(crate) fn borrowed_data_escapes_closure<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn borrowed_data_escapes_closure<'diag>(
+    dcx: DiagCtxtHandle<'diag>,
     escape_span: Span,
     escapes_from: &str,
-) -> Diag<'tcx> {
+) -> Diag<'diag> {
     struct_span_code_err!(
-        tcx.dcx(),
+        dcx,
         escape_span,
         E0521,
         "borrowed data escapes outside of {}",

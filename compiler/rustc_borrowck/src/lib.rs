@@ -139,7 +139,8 @@ fn mir_borrowck(
         let opaque_types = Default::default();
         Ok(tcx.arena.alloc(opaque_types))
     } else {
-        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);
+        let tainted_by_errors = Default::default();
+        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None, &tainted_by_errors);
         root_cx.do_mir_borrowck();
         root_cx.finalize()
     }
@@ -315,7 +316,7 @@ struct CollectRegionConstraintsResult<'tcx> {
 /// the current body. This initializes the relevant data structures
 /// and then type checks the MIR body.
 fn borrowck_collect_region_constraints<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &mut BorrowCheckRootCtxt<'_, 'tcx>,
     def: LocalDefId,
 ) -> CollectRegionConstraintsResult<'tcx> {
     let tcx = root_cx.tcx;
@@ -394,7 +395,7 @@ fn borrowck_collect_region_constraints<'tcx>(
 /// and the additional constraints from [BorrowCheckRootCtxt::handle_opaque_type_uses],
 /// compute the region graph and actually check for any borrowck errors.
 fn borrowck_check_region_constraints<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &mut BorrowCheckRootCtxt<'_, 'tcx>,
     CollectRegionConstraintsResult {
         infcx,
         body_owned,
@@ -578,7 +579,9 @@ fn borrowck_check_region_constraints<'tcx>(
         used_mut_upvars: mbcx.used_mut_upvars,
     };
 
-    if let Some(guar) = mbcx.diags_buffer.emit_errors().or(infcx.tainted_by_errors()) {
+    diags_buffer.emit_errors(root_cx);
+
+    if let Some(guar) = infcx.tainted_by_errors() {
         root_cx.set_tainted_by_errors(guar);
     }
 
@@ -728,8 +731,8 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
 }
 
 pub(crate) struct MirBorrowckCtxt<'a, 'diag, 'tcx> {
-    root_cx: &'a BorrowCheckRootCtxt<'tcx>,
-    infcx: &'diag BorrowckInferCtxt<'tcx>,
+    root_cx: &'a BorrowCheckRootCtxt<'diag, 'tcx>,
+    infcx: &'a BorrowckInferCtxt<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
 

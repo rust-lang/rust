@@ -1,8 +1,10 @@
+use std::cell::Cell;
 use std::mem;
 use std::rc::Rc;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, TyCtxt};
@@ -10,6 +12,7 @@ use rustc_span::ErrorGuaranteed;
 use smallvec::SmallVec;
 
 use crate::consumers::BorrowckConsumer;
+use crate::diagnostics::BufferedDiag;
 use crate::nll::compute_closure_requirements_modulo_opaques;
 use crate::region_infer::opaque_types::{
     UnexpectedHiddenRegion, apply_definition_site_hidden_types, clone_and_resolve_opaque_types,
@@ -24,7 +27,7 @@ use crate::{
 
 /// The shared context used by both the root as well as all its nested
 /// items.
-pub(super) struct BorrowCheckRootCtxt<'tcx> {
+pub(super) struct BorrowCheckRootCtxt<'diag, 'tcx: 'diag> {
     pub tcx: TyCtxt<'tcx>,
     root_def_id: LocalDefId,
     /// This contains fully resolved hidden types or `ty::Error`.
@@ -39,18 +42,20 @@ pub(super) struct BorrowCheckRootCtxt<'tcx> {
     collect_region_constraints_results:
         FxIndexMap<LocalDefId, CollectRegionConstraintsResult<'tcx>>,
     propagated_borrowck_results: FxHashMap<LocalDefId, PropagatedBorrowCheckResults<'tcx>>,
-    tainted_by_errors: Option<ErrorGuaranteed>,
+    tainted_by_errors: &'diag Cell<Option<ErrorGuaranteed>>,
     /// This should be `None` during normal compilation. See [`crate::consumers`] for more
     /// information on how this is used.
     pub consumer: Option<BorrowckConsumer<'tcx>>,
+    errors: Vec<BufferedDiag<'diag>>,
 }
 
-impl<'tcx> BorrowCheckRootCtxt<'tcx> {
+impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
     pub(super) fn new(
         tcx: TyCtxt<'tcx>,
         root_def_id: LocalDefId,
         consumer: Option<BorrowckConsumer<'tcx>>,
-    ) -> BorrowCheckRootCtxt<'tcx> {
+        tainted_by_errors: &'diag Cell<Option<ErrorGuaranteed>>,
+    ) -> BorrowCheckRootCtxt<'diag, 'tcx> {
         BorrowCheckRootCtxt {
             tcx,
             root_def_id,
@@ -58,8 +63,9 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             unconstrained_hidden_type_errors: Default::default(),
             collect_region_constraints_results: Default::default(),
             propagated_borrowck_results: Default::default(),
-            tainted_by_errors: None,
+            tainted_by_errors,
             consumer,
+            errors: Default::default(),
         }
     }
 
@@ -67,8 +73,12 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         self.root_def_id
     }
 
-    pub(super) fn set_tainted_by_errors(&mut self, guar: ErrorGuaranteed) {
-        self.tainted_by_errors = Some(guar);
+    pub(super) fn set_tainted_by_errors(&self, guar: ErrorGuaranteed) {
+        self.tainted_by_errors.set(Some(guar));
+    }
+
+    pub(super) fn dcx(&self) -> DiagCtxtHandle<'diag> {
+        self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
     }
 
     pub(super) fn used_mut_upvars(
@@ -79,10 +89,11 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
     }
 
     pub(super) fn finalize(
-        self,
+        mut self,
     ) -> Result<&'tcx FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>, ErrorGuaranteed>
     {
-        if let Some(guar) = self.tainted_by_errors {
+        self.emit_errors();
+        if let Some(guar) = self.tainted_by_errors.get() {
             Err(guar)
         } else {
             Ok(self.tcx.arena.alloc(self.hidden_types))
@@ -305,6 +316,30 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
 
             let result = borrowck_check_region_constraints(self, input);
             self.propagated_borrowck_results.insert(def_id, result);
+        }
+    }
+
+    pub(crate) fn buffer_error(&mut self, buffered_diag: BufferedDiag<'_>) {
+        match buffered_diag {
+            BufferedDiag::Error(diag) => {
+                let diag = diag.with_dcx(self.dcx());
+                self.errors.push(BufferedDiag::Error(diag));
+            }
+            BufferedDiag::NonError(diag) => {
+                let diag = diag.with_dcx(self.dcx());
+                self.errors.push(BufferedDiag::NonError(diag));
+            }
+        }
+    }
+
+    pub(crate) fn emit_errors(&mut self) {
+        for buffered_diag in self.errors.drain(..) {
+            match buffered_diag {
+                BufferedDiag::Error(diag) => {
+                    diag.emit();
+                }
+                BufferedDiag::NonError(diag) => diag.emit(),
+            }
         }
     }
 }

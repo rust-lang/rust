@@ -3757,7 +3757,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let escapes_from = tcx.def_descr(self.mir_def_id().to_def_id());
 
         let mut err =
-            borrowck_errors::borrowed_data_escapes_closure(tcx, escape_span, escapes_from);
+            borrowck_errors::borrowed_data_escapes_closure(self.dcx(), escape_span, escapes_from);
 
         err.span_label(
             upvar_span,

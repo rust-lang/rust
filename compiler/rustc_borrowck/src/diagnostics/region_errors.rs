@@ -708,7 +708,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         }
 
         let mut diag =
-            borrowck_errors::borrowed_data_escapes_closure(self.infcx.tcx, *span, escapes_from);
+            borrowck_errors::borrowed_data_escapes_closure(self.dcx(), *span, escapes_from);
 
         if let Some((Some(outlived_fr_name), outlived_fr_span)) = outlived_fr_name_and_span {
             diag.span_label(

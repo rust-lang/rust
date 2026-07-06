@@ -356,6 +356,7 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
             |vid| RegionVariableOrigin::Nll(mbcx.regioncx.definitions[vid].origin),
             |vid| mbcx.regioncx.definitions[vid].universe,
         )
+        .map(|d| d.with_dcx(mbcx.dcx()))
     }
 }
 
