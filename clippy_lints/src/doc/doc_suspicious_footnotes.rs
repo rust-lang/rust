@@ -4,7 +4,7 @@ use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_errors::Applicability;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrStyle, Attribute};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 
 use std::ops::Range;
 

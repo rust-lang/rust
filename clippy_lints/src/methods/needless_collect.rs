@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{has_non_owning_mutable_access, make_normalized_projection, make_projection};

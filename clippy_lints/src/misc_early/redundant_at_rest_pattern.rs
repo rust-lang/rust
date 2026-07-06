@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_ast::{Pat, PatKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, LintContext};
+use rustc_lint::{EarlyContext, LintContext as _};
 
 use super::REDUNDANT_AT_REST_PATTERN;
 

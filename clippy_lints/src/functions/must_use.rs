@@ -4,7 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, Attribute, QPath, find_attr};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 

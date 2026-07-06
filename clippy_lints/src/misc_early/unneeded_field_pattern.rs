@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::source::SpanExt;
-use itertools::Itertools;
+use clippy_utils::source::SpanExt as _;
+use itertools::Itertools as _;
 use rustc_ast::ast::{Pat, PatKind};
 use rustc_lint::EarlyContext;
 

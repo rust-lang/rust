@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
-use clippy_utils::source::SpanExt;
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::sym;
 use clippy_utils::visitors::{is_local_used, local_used_once};
 use rustc_errors::Applicability;

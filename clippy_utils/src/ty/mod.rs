@@ -11,29 +11,29 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, find_attr};
 use rustc_hir_analysis::lower_ty;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
-use rustc_middle::ty::layout::{LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutError, LayoutOf as _, TyAndLayout};
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
     GenericArgKind, GenericArgsRef, IntTy, ProjectionAliasTy, Region, RegionKind, TraitRef, Ty, TyCtxt,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Unnormalized, Upcast, VariantDef,
-    VariantDiscr,
+    TypeSuperVisitable as _, TypeVisitable, TypeVisitableExt as _, TypeVisitor, UintTy, Unnormalized, Upcast as _,
+    VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::collections::hash_map::Entry;
 use std::{debug_assert_matches, iter, mem};
 
 use crate::paths::{PathNS, lookup_path_str};
-use crate::res::{MaybeDef, MaybeQPath};
+use crate::res::{MaybeDef as _, MaybeQPath as _};
 use crate::{over, sym};
 
 mod type_certainty;
@@ -1007,7 +1007,7 @@ pub fn adt_and_variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<
 /// Comes up with an "at least" guesstimate for the type's size, not taking into
 /// account the layout of type parameters.
 pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
-    use rustc_middle::ty::layout::LayoutOf;
+    use rustc_middle::ty::layout::LayoutOf as _;
     match (cx.layout_of(ty).map(|layout| layout.size.bytes()), ty.kind()) {
         (Ok(size), _) => size,
         (Err(_), ty::Tuple(list)) => list.iter().map(|t| approx_ty_size(cx, t)).sum(),
@@ -1052,7 +1052,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
 #[cfg(debug_assertions)]
 /// Asserts that the given arguments match the generic parameters of the given item.
 fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[GenericArg<'tcx>]) {
-    use itertools::Itertools;
+    use itertools::Itertools as _;
     let g = tcx.generics_of(did);
     let parent = g.parent.map(|did| tcx.generics_of(did));
     let count = g.parent_count + g.own_params.len();

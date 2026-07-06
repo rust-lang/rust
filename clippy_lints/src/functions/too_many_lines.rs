@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_span::Span;
 
 use super::TOO_MANY_LINES;

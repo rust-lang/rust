@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::{is_expr_identity_function, is_expr_untyped_identity_function};
 use rustc_errors::Applicability;
 use rustc_hir as hir;

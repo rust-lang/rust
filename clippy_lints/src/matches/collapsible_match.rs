@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::{If, IfLetOrMatch};
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::source::{IntoSpan, SpanExt, snippet};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
+use clippy_utils::source::{IntoSpan as _, SpanExt as _, snippet};
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{SpanlessEq, get_ref_operators, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators};

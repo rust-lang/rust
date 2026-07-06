@@ -10,7 +10,7 @@ use arrayvec::ArrayVec;
 use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol};

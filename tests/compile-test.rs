@@ -24,7 +24,7 @@ use ui_test::{Args, CommandBuilder, Config, Match, error_on_output_conflict};
 use std::collections::{BTreeMap, HashMap};
 use std::env::{self, set_var, var_os};
 use std::ffi::{OsStr, OsString};
-use std::fmt::Write;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Sender, channel};
 use std::{fs, iter, thread};

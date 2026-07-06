@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Ty, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::IsSuggestable;
+use rustc_middle::ty::IsSuggestable as _;
 
 use super::AS_UNDERSCORE;
 

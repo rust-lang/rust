@@ -26,13 +26,13 @@ mod wild_in_or_pats;
 
 use clippy_config::Conf;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::{
     higher, is_direct_expn_of, is_in_const_context, is_lint_allowed, is_span_match, sym, tokenize_with_text,
 };
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
 use rustc_lexer::{TokenKind, is_whitespace};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 

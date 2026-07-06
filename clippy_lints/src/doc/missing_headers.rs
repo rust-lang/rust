@@ -1,7 +1,7 @@
 use super::{DocHeaders, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::ty::implements_trait_with_env;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{fulfill_or_allowed, is_doc_hidden, is_inside_always_const_context, method_chain_args, return_ty};

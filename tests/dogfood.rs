@@ -5,8 +5,8 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use itertools::Itertools;
-use std::io::{self, IsTerminal};
+use itertools::Itertools as _;
+use std::io::{self, IsTerminal as _};
 use std::path::PathBuf;
 use std::process::Command;
 use test_utils::IS_RUSTC_TEST_SUITE;

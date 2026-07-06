@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{DefinedTy, ExprUseNode, get_expr_use_site, peel_blocks, strip_pat_refs};
 use rustc_ast::ast;

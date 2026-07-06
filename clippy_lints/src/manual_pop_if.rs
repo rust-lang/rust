@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
 use clippy_utils::{eq_expr_value, is_else_clause, is_lang_item_or_ctor, span_contains_non_whitespace, sym};

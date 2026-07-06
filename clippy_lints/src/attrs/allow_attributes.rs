@@ -1,10 +1,10 @@
 use super::ALLOW_ATTRIBUTES;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
-use rustc_ast::attr::AttributeExt;
+use rustc_ast::attr::AttributeExt as _;
 use rustc_ast::{AttrStyle, Attribute};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, LintContext};
+use rustc_lint::{EarlyContext, LintContext as _};
 
 // Separate each crate's features.
 pub fn check<'cx>(cx: &EarlyContext<'cx>, attr: &'cx Attribute) {

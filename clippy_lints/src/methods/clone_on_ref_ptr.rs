@@ -4,7 +4,7 @@ use clippy_utils::ty::peel_and_count_ty_refs;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, IsSuggestable};
+use rustc_middle::ty::{self, IsSuggestable as _};
 use rustc_span::symbol::sym;
 
 use super::CLONE_ON_REF_PTR;

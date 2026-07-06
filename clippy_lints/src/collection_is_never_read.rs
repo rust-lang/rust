@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::visitors::{Visitable, for_each_expr};
 use clippy_utils::{get_enclosing_block, sym};
 use core::ops::ControlFlow;

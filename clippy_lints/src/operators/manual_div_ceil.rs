@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::{SpanlessEq, sym};
 use rustc_ast::{BinOpKind, LitIntType, LitKind, UnOp};

@@ -7,7 +7,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{Span, SyntaxContext};
 
-use std::borrow::{Borrow, Cow};
+use std::borrow::{Borrow as _, Cow};
 
 use crate::internal_paths;
 

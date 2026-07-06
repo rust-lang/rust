@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanExt as _;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_errors::Applicability;
 use rustc_hir::Item;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 

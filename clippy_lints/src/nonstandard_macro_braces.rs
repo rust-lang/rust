@@ -10,7 +10,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
-use crate::rustc_lint::LintContext;
+use crate::rustc_lint::LintContext as _;
 use clippy_utils::source::snippet_opt;
 
 declare_clippy_lint! {

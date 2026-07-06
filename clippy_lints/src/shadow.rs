@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{Descend, Visitable, for_each_expr};
 use rustc_data_structures::fx::FxHashMap;
