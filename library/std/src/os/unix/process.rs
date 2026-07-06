@@ -102,7 +102,7 @@ pub impl(self) trait CommandExt {
     /// locations might not appear where intended.
     ///
     /// [POSIX fork() specification]:
-    ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/fork.html
+    ///     https://pubs.opengroup.org/onlinepubs/9799919799/functions/fork.html
     /// [`std::env`]: mod@crate::env
     /// [`Error::new`]: ../../../io/struct.Error.html#method.new
     /// [`Error::other`]: ../../../io/struct.Error.html#method.other

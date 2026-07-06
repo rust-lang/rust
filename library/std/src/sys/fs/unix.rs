@@ -1926,7 +1926,7 @@ impl fmt::Debug for File {
 // Format in octal, followed by the mode format used in `ls -l`.
 //
 // References:
-//   https://pubs.opengroup.org/onlinepubs/009696899/utilities/ls.html
+//   https://pubs.opengroup.org/onlinepubs/9799919799/utilities/ls.html
 //   https://www.gnu.org/software/libc/manual/html_node/Testing-File-Type.html
 //   https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
 //
