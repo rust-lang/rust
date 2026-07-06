@@ -881,9 +881,11 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
         &tcx.sess.psess.attr_id_generator,
     );
     let export_output = tcx.output_filenames(()).interface_path();
-    let mut file = fs::File::create_buffered(export_output).unwrap();
-    if let Err(err) = write!(file, "{}", krate) {
-        tcx.dcx().fatal(format!("error writing interface file: {}", err));
+    let mut file = fs::File::create_buffered(&export_output).unwrap_or_else(|error| {
+        tcx.dcx().emit_fatal(diagnostics::FailedWritingFile { path: &export_output, error })
+    });
+    if let Err(error) = write!(file, "{}", krate) {
+        tcx.dcx().emit_fatal(diagnostics::FailedWritingFile { path: &export_output, error });
     }
 }
 
