@@ -5,7 +5,7 @@ use crate::iter::{FusedIterator, TrustedLen};
 use crate::marker::PhantomData;
 use crate::mem::SizedTypeProperties;
 use crate::num::NonZero;
-use crate::ptr::{self, NonNull};
+use crate::ptr::NonNull;
 use crate::{cmp, fmt};
 
 mod end_or_len;
@@ -53,6 +53,7 @@ impl<'a, T> IterRaw<'a, T> {
     /// does not bound the lifetime in anyway, so the caller is responsible to make sure it's correct.
     #[inline]
     #[rustc_const_unstable(feature = "raw_slice_iter", issue = "none")]
+    #[rustc_const_stable_indirect]
     pub const unsafe fn new(slice: NonNull<[T]>) -> IterRaw<'a, T> {
         let ptr: NonNull<T> = slice.cast();
         let len = slice.len();
@@ -64,29 +65,27 @@ impl<'a, T> IterRaw<'a, T> {
     }
 
     #[rustc_const_unstable(feature = "raw_slice_iter", issue = "none")]
+    #[rustc_const_stable_indirect]
     pub const fn from_ref(slice: &'a [T]) -> IterRaw<'a, T> {
-        // This should just be `NonNull::from(slice)`, but it's not const stable :(
-        //
         // Safety:
         //
         // - The pointer & length come from a slice, guaranteeing that everything is in bounds of
         //   an allocation
         // - The input slice has the same lifetime as the output iterator, so it's guaranteed that
         //   the allocation will live long enough for any call to a method on an iterator
-        unsafe { IterRaw::new(NonNull::from(slice)) }
+        unsafe { IterRaw::new(NonNull::from_ref(slice)) }
     }
 
     #[rustc_const_unstable(feature = "raw_slice_iter", issue = "none")]
+    #[rustc_const_stable_indirect]
     pub const fn from_mut(slice: &'a mut [T]) -> IterRaw<'a, T> {
-        // This should just be `NonNull::from(slice)`, but it's not const stable :(
-        //
         // Safety:
         //
         // - The pointer & length come from a slice, guaranteeing that everything is in bounds of
         //   an allocation
         // - The input slice has the same lifetime as the output iterator, so it's guaranteed that
         //   the allocation will live long enough for any call to a method on an iterator
-        unsafe { IterRaw::new(NonNull::new(ptr::from_mut(slice)).unwrap()) }
+        unsafe { IterRaw::new(NonNull::from_mut(slice)) }
     }
 
     #[must_use]
