@@ -2,8 +2,8 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::literal;
 use rustc_ast::{
-    self as ast, AnonConst, AttrItem, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind,
-    MgcaDisambiguation, PatKind, UnOp, attr, token, tokenstream,
+    self as ast, AnonConst, AttrItem, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind,
+    UnOp, attr, token, tokenstream,
 };
 use rustc_span::{DUMMY_SP, Ident, Span, Spanned, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -100,7 +100,6 @@ impl<'a> ExtCtxt<'a> {
                 attrs: AttrVec::new(),
                 tokens: None,
             }),
-            mgca_disambiguation: MgcaDisambiguation::Direct,
         }
     }
 

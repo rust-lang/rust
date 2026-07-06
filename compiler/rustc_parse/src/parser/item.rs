@@ -1695,9 +1695,9 @@ impl<'a> Parser<'a> {
             if self.may_recover() { self.parse_where_clause()? } else { WhereClause::default() };
 
         let rhs = match (self.eat(exp!(Eq)), const_arg) {
-            (true, true) => ConstItemRhsKind::TypeConst {
-                rhs: Some(self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?),
-            },
+            (true, true) => {
+                ConstItemRhsKind::TypeConst { rhs: Some(self.parse_expr_anon_const()?) }
+            }
             (true, false) => ConstItemRhsKind::Body { rhs: Some(self.parse_expr()?) },
             (false, true) => ConstItemRhsKind::TypeConst { rhs: None },
             (false, false) => ConstItemRhsKind::Body { rhs: None },
@@ -1917,11 +1917,8 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             };
 
-            let disr_expr = if this.eat(exp!(Eq)) {
-                Some(this.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?)
-            } else {
-                None
-            };
+            let disr_expr =
+                if this.eat(exp!(Eq)) { Some(this.parse_expr_anon_const()?) } else { None };
 
             let span = vlo.to(this.prev_token.span);
             if ident.name == kw::Underscore {
@@ -2142,7 +2139,7 @@ impl<'a> Parser<'a> {
                 if p.token == token::Eq {
                     let mut snapshot = p.create_snapshot_for_diagnostic();
                     snapshot.bump();
-                    match snapshot.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst) {
+                    match snapshot.parse_expr_anon_const() {
                         Ok(const_expr) => {
                             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
                             p.psess.gated_spans.gate(sym::default_field_values, sp);
@@ -2371,7 +2368,7 @@ impl<'a> Parser<'a> {
         }
         let default = if self.token == token::Eq {
             self.bump();
-            let const_expr = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
+            let const_expr = self.parse_expr_anon_const()?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
             self.psess.gated_spans.gate(sym::default_field_values, sp);
             Some(const_expr)
