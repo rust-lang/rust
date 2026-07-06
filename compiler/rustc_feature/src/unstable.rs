@@ -254,6 +254,8 @@ declare_features! (
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
     /// Allows checking whether or not the backend correctly supports unstable float types.
     (internal, cfg_target_has_reliable_f16_f128, "1.88.0", None),
+    /// Allows checking whether or not the target might have thread support.
+    (internal, cfg_target_has_threads, "CURRENT_RUSTC_VERSION", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows skipping `ConstParamTy_` trait implementation checks
