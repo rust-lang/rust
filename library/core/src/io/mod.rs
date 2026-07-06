@@ -5,6 +5,7 @@ mod cursor;
 mod error;
 mod impls;
 mod io_slice;
+mod seek;
 mod size_hint;
 mod util;
 
@@ -21,12 +22,14 @@ pub use self::{
     cursor::Cursor,
     error::{Error, ErrorKind, Result},
     io_slice::{IoSlice, IoSliceMut},
+    seek::{Seek, SeekFrom},
     util::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink},
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
     error::{Custom, CustomOwner, OsFunctions},
+    seek::stream_len_default,
     size_hint::SizeHint,
     util::{chain, take},
 };
@@ -46,7 +49,7 @@ pub use self::{
 /// [file]: ../../std/fs/struct.File.html
 /// [arc]: ../../alloc/sync/struct.Arc.html
 /// [`Write`]: ../../std/io/trait.Write.html
-/// [`Seek`]: ../../std/io/trait.Seek.html
+/// [`Seek`]: crate::io::Seek
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub trait IoHandle {}
