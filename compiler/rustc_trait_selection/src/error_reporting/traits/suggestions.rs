@@ -4479,7 +4479,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
                 let (expr_ty, expr) = if let Some((expr_ty, hir_id)) = expr_info {
-                    let expr_ty = tcx.short_string(expr_ty, err.long_ty_path());
                     let expr = tcx.hir_expect_expr(hir_id);
                     (expr_ty, expr)
                 } else if let Some(body_id) = tcx.hir_node_by_def_id(body_id).body_id()
@@ -4494,15 +4493,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder()
                     && self.can_eq(param_env, pred.self_ty(), expr_ty)
                 {
-                    let expr_ty = tcx.short_string(expr_ty, err.long_ty_path());
                     (expr_ty, expr)
                 } else {
                     return;
                 };
+                let expr_ty_string = tcx.short_string(expr_ty, err.long_ty_path());
+                if expr_ty.is_never()
+                    && let span = expr.span.source_callsite()
+                    && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span)
+                    && span != expr.span
+                {
+                    err.span_suggestion(
+                        span,
+                        "`!` can be coerced to any type; consider casting it to a concrete type that implements the trait",
+                        format!("{snippet} as /* Type */"),
+                        Applicability::HasPlaceholders,
+                    );
+                }
                 err.span_label(
                     expr.span,
                     with_forced_trimmed_paths!(format!(
-                        "return type was inferred to be `{expr_ty}` here",
+                        "return type was inferred to be `{expr_ty_string}` here",
                     )),
                 );
                 suggest_remove_deref(err, &expr);

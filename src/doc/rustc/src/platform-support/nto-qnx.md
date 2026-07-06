@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-Support for the [QNX®][qnx.com] [QNX Software Development Platform (SDP)], version 7.0, 7.1 and 8.0.
+Support for the [QNX®](https://qnx.com) [QNX Software Development Platform (SDP)], version 7.0, 7.1 and 8.0.
 
 [QNX Software Development Platform (SDP)]: https://qnx.software/en/software/products-and-solutions/qnx-software-development-platform
 
