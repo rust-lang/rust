@@ -167,7 +167,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
         let ty_dyn_debug = cx.ty(
             span,
             ast::TyKind::TraitObject(
-                vec![cx.trait_bound(path_debug, false)],
+                thin_vec![cx.trait_bound(path_debug, false)],
                 ast::TraitObjectSyntax::Dyn,
             ),
         );
