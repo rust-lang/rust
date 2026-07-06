@@ -717,7 +717,7 @@ macro_rules! common_visitor_and_walkers {
                     walk_flat_map_arm(self, arm)
                 }
 
-                fn filter_map_expr(&mut self, e: Box<Expr>) -> Option<Box<Expr>> {
+                fn filter_map_expr(&mut self, e: Expr) -> Option<Expr> {
                     walk_filter_map_expr(self, e)
                 }
 
@@ -1177,7 +1177,7 @@ generate_list_visit_fns! {
     visit_foreign_items, Box<ForeignItem>, visit_foreign_item;
     visit_generic_params, GenericParam, visit_generic_param;
     visit_stmts, Stmt, visit_stmt;
-    visit_exprs, Box<Expr>, visit_expr;
+    visit_exprs, Expr, visit_expr;
     visit_expr_fields, ExprField, visit_expr_field;
     visit_pat_fields, PatField, visit_pat_field;
     visit_variants, Variant, visit_variant;

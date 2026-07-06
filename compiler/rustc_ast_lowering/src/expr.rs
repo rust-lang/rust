@@ -152,7 +152,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         (ident, binding)
     }
 
-    fn lower_exprs(&mut self, exprs: &[Box<Expr>]) -> &'hir [hir::Expr<'hir>] {
+    fn lower_exprs(&mut self, exprs: &[Expr]) -> &'hir [hir::Expr<'hir>] {
         self.arena.alloc_from_iter(exprs.iter().map(|x| self.lower_expr_mut(x)))
     }
 
@@ -545,7 +545,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_legacy_const_generics(
         &mut self,
         mut f: Expr,
-        args: ThinVec<Box<Expr>>,
+        args: ThinVec<Expr>,
         legacy_args_idx: &[usize],
     ) -> hir::ExprKind<'hir> {
         let ExprKind::Path(None, path) = &mut f.kind else {
@@ -588,20 +588,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.create_def(node_id, None, DefKind::AnonConst, f.span);
                 let const_value =
                     if let ControlFlow::Break(span) = WillCreateDefIdsVisitor.visit_expr(&arg) {
-                        Box::new(Expr {
+                        Expr {
                             id: self.next_node_id(),
                             kind: ExprKind::Err(invalid_expr_error(self.tcx, span)),
                             span: f.span,
                             attrs: [].into(),
                             tokens: None,
-                        })
+                        }
                     } else {
                         arg
                     };
 
                 let anon_const = AnonConst {
                     id: node_id,
-                    value: const_value,
+                    value: Box::new(const_value),
                     mgca_disambiguation: MgcaDisambiguation::AnonConst,
                 };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
@@ -1416,7 +1416,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Each sub-assignment is recorded in `assignments`.
     fn destructure_sequence(
         &mut self,
-        elements: &[Box<Expr>],
+        elements: &[Expr],
         ctx: &str,
         eq_sign_span: Span,
         assignments: &mut Vec<hir::Stmt<'hir>>,

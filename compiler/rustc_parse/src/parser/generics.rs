@@ -351,20 +351,24 @@ impl<'a> Parser<'a> {
         if requires.is_none() && ensures.is_none() {
             Ok(None)
         } else {
-            Ok(Some(Box::new(ast::FnContract { declarations, requires, ensures })))
+            Ok(Some(Box::new(ast::FnContract {
+                declarations,
+                requires: requires.map(Box::new),
+                ensures: ensures.map(Box::new),
+            })))
         }
     }
 
     fn parse_contract_requires(
         &mut self,
-    ) -> PResult<'a, (ThinVec<rustc_ast::Stmt>, Option<Box<rustc_ast::Expr>>)> {
+    ) -> PResult<'a, (ThinVec<rustc_ast::Stmt>, Option<rustc_ast::Expr>)> {
         Ok(if self.eat_keyword_noexpect(exp!(ContractRequires).kw) {
             self.psess.gated_spans.gate(sym::contracts_internals, self.prev_token.span);
             let mut decls_and_precond = self.parse_block()?;
 
             let precond = match decls_and_precond.stmts.pop() {
                 Some(precond) => match precond.kind {
-                    rustc_ast::StmtKind::Expr(expr) => expr,
+                    rustc_ast::StmtKind::Expr(expr) => *expr,
                     // Insert dummy node that will be rejected by typechecker to
                     // avoid reinventing an error
                     _ => self.mk_unit_expr(decls_and_precond.span),
@@ -379,7 +383,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_contract_ensures(&mut self) -> PResult<'a, Option<Box<rustc_ast::Expr>>> {
+    fn parse_contract_ensures(&mut self) -> PResult<'a, Option<rustc_ast::Expr>> {
         Ok(if self.eat_keyword_noexpect(exp!(ContractEnsures).kw) {
             self.psess.gated_spans.gate(sym::contracts_internals, self.prev_token.span);
             let postcond = self.parse_expr()?;

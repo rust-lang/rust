@@ -183,15 +183,8 @@ struct ChainItem {
 // would remove a lot of cloning.
 #[derive(Debug)]
 enum ChainItemKind {
-    Parent {
-        expr: ast::Expr,
-        parens: bool,
-    },
-    MethodCall(
-        ast::PathSegment,
-        Vec<ast::GenericArg>,
-        ThinVec<Box<ast::Expr>>,
-    ),
+    Parent { expr: ast::Expr, parens: bool },
+    MethodCall(ast::PathSegment, Vec<ast::GenericArg>, ThinVec<ast::Expr>),
     StructField(symbol::Ident),
     TupleField(symbol::Ident, bool),
     Await,
@@ -351,7 +344,7 @@ impl ChainItem {
     fn rewrite_method_call(
         method_name: symbol::Ident,
         types: &[ast::GenericArg],
-        args: &[Box<ast::Expr>],
+        args: &[ast::Expr],
         span: Span,
         context: &RewriteContext<'_>,
         shape: Shape,

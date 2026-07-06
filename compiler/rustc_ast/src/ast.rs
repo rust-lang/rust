@@ -1708,7 +1708,7 @@ pub struct MethodCall {
     /// The receiver, e.g. `x`.
     pub receiver: Box<Expr>,
     /// The arguments, e.g. `a, b, c`.
-    pub args: ThinVec<Box<Expr>>,
+    pub args: ThinVec<Expr>,
     /// The span of the function, without the dot and receiver e.g. `foo::<Bar,
     /// Baz>(a, b, c)`.
     pub span: Span,
@@ -1742,7 +1742,7 @@ pub struct StructExpr {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ExprKind {
     /// An array (e.g, `[a, b, c, d]`).
-    Array(ThinVec<Box<Expr>>),
+    Array(ThinVec<Expr>),
     /// Allow anonymous constants from an inline `const` block.
     ConstBlock(AnonConst),
     /// A function call.
@@ -1751,11 +1751,11 @@ pub enum ExprKind {
     /// and the second field is the list of arguments.
     /// This also represents calling the constructor of
     /// tuple-like ADTs such as tuple structs and enum variants.
-    Call(Box<Expr>, ThinVec<Box<Expr>>),
+    Call(Box<Expr>, ThinVec<Expr>),
     /// A method call (e.g., `x.foo::<Bar, Baz>(a, b, c)`).
     MethodCall(Box<MethodCall>),
     /// A tuple (e.g., `(a, b, c, d)`).
-    Tup(ThinVec<Box<Expr>>),
+    Tup(ThinVec<Expr>),
     /// A binary operation (e.g., `a + b`, `a * b`).
     Binary(BinOp, Box<Expr>, Box<Expr>),
     /// A unary operation (e.g., `!x`, `*x`).
@@ -4008,8 +4008,8 @@ pub enum ConstItemRhsKind {
 }
 
 impl ConstItemRhsKind {
-    pub fn new_body(rhs: Box<Expr>) -> Self {
-        Self::Body { rhs: Some(rhs) }
+    pub fn new_body(rhs: Expr) -> Self {
+        Self::Body { rhs: Some(Box::new(rhs)) }
     }
 
     pub fn span(&self) -> Option<Span> {
@@ -4050,7 +4050,7 @@ impl ConstBlockItem {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct Guard {
-    pub cond: Expr,
+    pub cond: Expr, // njn: not Box<Expr>!
     pub span_with_leading_if: Span,
 }
 

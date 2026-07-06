@@ -72,7 +72,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
     let mut p = ecx.new_parser_from_tts(tts);
 
     // parse the format string
-    let fmtstr = match p.token.kind {
+    let fmtstr = Box::new(match p.token.kind {
         token::Eof => {
             return Err(ecx.dcx().create_err(diagnostics::FormatRequiresString { span: sp }));
         }
@@ -84,7 +84,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
         }
         // Otherwise, we fall back to the expression parser.
         _ => p.parse_expr()?,
-    };
+    });
 
     // parse comma FormatArgument pairs
     let mut args = FormatArguments::new();
@@ -122,7 +122,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
             Some((ident, _)) if p.look_ahead(1, |t| *t == token::Eq) => {
                 p.bump();
                 p.expect(exp!(Eq))?;
-                let expr = p.parse_expr()?;
+                let expr = Box::new(p.parse_expr()?);
                 if let Some((_, prev)) = args.by_name(ident.name) {
                     ecx.dcx().emit_err(diagnostics::FormatDuplicateArg {
                         span: ident.span,
@@ -135,7 +135,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
                 args.add(FormatArgument { kind: FormatArgumentKind::Named(ident), expr });
             }
             _ => {
-                let expr = p.parse_expr()?;
+                let expr = Box::new(p.parse_expr()?);
                 if !args.named_args().is_empty() {
                     return Err(ecx.dcx().create_err(diagnostics::PositionalAfterNamed {
                         span: expr.span,
@@ -185,7 +185,7 @@ fn make_format_args(
             None
         };
 
-        let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, efmt.clone(), msg) else {
+        let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, (*efmt).clone(), msg) else {
             return ExpandResult::Retry(());
         };
         match mac {
@@ -445,7 +445,10 @@ fn make_format_args(
                         unnamed_arg_after_named_arg = true;
                         DummyResult::raw_expr(span, Some(guar))
                     };
-                    Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured(ident), expr }))
+                    Ok(args.add(FormatArgument {
+                        kind: FormatArgumentKind::Captured(ident),
+                        expr: Box::new(expr),
+                    }))
                 }
             }
         };

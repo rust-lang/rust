@@ -197,7 +197,7 @@ impl Bounds {
     }
 }
 
-pub(crate) fn get_explicit_self(cx: &ExtCtxt<'_>, span: Span) -> (Box<Expr>, ast::ExplicitSelf) {
+pub(crate) fn get_explicit_self(cx: &ExtCtxt<'_>, span: Span) -> (Expr, ast::ExplicitSelf) {
     // This constructs a fresh `self` path.
     let self_path = cx.expr_self(span);
     let self_ty = respan(span, SelfKind::Region(None, ast::Mutability::Not));

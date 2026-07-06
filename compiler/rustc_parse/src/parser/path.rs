@@ -848,7 +848,7 @@ impl<'a> Parser<'a> {
     /// - A numeric literal prefixed by `-`.
     /// - A single-segment path.
     /// - A const block (under mGCA)
-    pub(super) fn expr_is_valid_const_arg(&self, expr: &Box<rustc_ast::Expr>) -> bool {
+    pub(super) fn expr_is_valid_const_arg(&self, expr: &rustc_ast::Expr) -> bool {
         match &expr.kind {
             ast::ExprKind::Block(_, _)
             | ast::ExprKind::Lit(_)
@@ -882,7 +882,7 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_unambiguous_unbraced_const_arg()?
         };
-        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value, mgca_disambiguation })
+        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value: Box::new(value), mgca_disambiguation })
     }
 
     /// Attempt to parse a const argument that has not been enclosed in braces.
@@ -894,7 +894,7 @@ impl<'a> Parser<'a> {
     /// wrapped in braces.
     pub(super) fn parse_unambiguous_unbraced_const_arg(
         &mut self,
-    ) -> PResult<'a, (Box<Expr>, MgcaDisambiguation)> {
+    ) -> PResult<'a, (Expr, MgcaDisambiguation)> {
         let start = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         let (expr, _) =
@@ -1021,7 +1021,7 @@ impl<'a> Parser<'a> {
                     let error_expr = self.mk_expr(attr_span, ExprKind::Err(guar));
                     GenericArg::Const(AnonConst {
                         id: ast::DUMMY_NODE_ID,
-                        value: error_expr,
+                        value: Box::new(error_expr),
                         mgca_disambiguation: MgcaDisambiguation::Direct,
                     })
                 }

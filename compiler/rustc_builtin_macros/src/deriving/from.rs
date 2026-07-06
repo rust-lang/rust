@@ -97,7 +97,7 @@ pub(crate) fn expand_deriving_from(
                 };
 
                 let self_kw = Ident::new(kw::SelfUpper, span);
-                let expr: Box<ast::Expr> = match substructure.fields {
+                let expr = match substructure.fields {
                     SubstructureFields::StaticStruct(variant, _) => match variant {
                         // Self { field: value }
                         VariantData::Struct { .. } => cx.expr_struct_ident(

@@ -140,7 +140,7 @@ pub(crate) fn expand_include<'cx>(
         span: Span,
     }
     impl<'a> MacResult for ExpandInclude<'a> {
-        fn make_expr(self: Box<ExpandInclude<'a>>) -> Option<Box<ast::Expr>> {
+        fn make_expr(self: Box<ExpandInclude<'a>>) -> Option<ast::Expr> {
             let mut p = unwrap_or_emit_fatal(new_parser_from_file(
                 self.psess,
                 &self.path,

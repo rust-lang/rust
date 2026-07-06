@@ -48,7 +48,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
     parse_macro_arg!(
         Expr,
         NonterminalKind::Expr(Expr),
-        |parser: &mut Parser<'b>| parser.parse_expr(),
+        |parser: &mut Parser<'b>| parser.parse_expr().map(Box::new),
         |x: Box<ast::Expr>| Some(x)
     );
     parse_macro_arg!(
@@ -161,10 +161,7 @@ pub(crate) fn parse_macro_args(
     })
 }
 
-pub(crate) fn parse_expr(
-    context: &RewriteContext<'_>,
-    tokens: TokenStream,
-) -> Option<Box<ast::Expr>> {
+pub(crate) fn parse_expr(context: &RewriteContext<'_>, tokens: TokenStream) -> Option<ast::Expr> {
     let mut parser = build_parser(context, tokens);
     parser.parse_expr().ok()
 }

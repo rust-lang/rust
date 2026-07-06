@@ -1156,7 +1156,7 @@ pub(crate) fn convert_try_mac(
 
         Some(ast::Expr {
             id: ast::NodeId::root(), // dummy value
-            kind: ast::ExprKind::Try(parse_expr(context, ts)?),
+            kind: ast::ExprKind::Try(Box::new(parse_expr(context, ts)?)),
             span: mac.span(), // incorrect span, but shouldn't matter too much
             attrs: ast::AttrVec::new(),
             tokens: None,

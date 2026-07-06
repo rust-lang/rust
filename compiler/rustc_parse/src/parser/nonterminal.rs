@@ -156,13 +156,13 @@ impl<'a> Parser<'a> {
                 pat_kind,
             )),
             NonterminalKind::Expr(expr_kind) => {
-                Ok(ParseNtResult::Expr(self.parse_expr_force_collect()?, expr_kind))
+                Ok(ParseNtResult::Expr(Box::new(self.parse_expr_force_collect()?), expr_kind))
             }
             NonterminalKind::Literal => {
                 // The `:literal` matcher does not support attributes.
-                Ok(ParseNtResult::Literal(
+                Ok(ParseNtResult::Literal(Box::new(
                     self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?,
-                ))
+                )))
             }
             NonterminalKind::Ty => Ok(ParseNtResult::Ty(
                 self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?,

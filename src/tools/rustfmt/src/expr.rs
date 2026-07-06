@@ -1507,7 +1507,7 @@ fn choose_separator_tactic(context: &RewriteContext<'_>, span: Span) -> Option<S
 pub(crate) fn rewrite_call(
     context: &RewriteContext<'_>,
     callee: &str,
-    args: &[Box<ast::Expr>],
+    args: &[ast::Expr],
     span: Span,
     shape: Shape,
 ) -> RewriteResult {

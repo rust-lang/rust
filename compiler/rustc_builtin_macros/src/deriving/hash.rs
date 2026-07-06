@@ -1,4 +1,4 @@
-use rustc_ast::{MetaItem, Mutability, Safety};
+use rustc_ast::{Expr, MetaItem, Mutability, Safety};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
@@ -53,7 +53,7 @@ fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'
     let [state_expr] = substr.nonselflike_args else {
         cx.dcx().span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
-    let call_hash = |span, expr| {
+    let call_hash = |span, expr: Expr| {
         let hash_path = {
             let strs = cx.std_path(&[sym::hash, sym::Hash, sym::hash]);
 

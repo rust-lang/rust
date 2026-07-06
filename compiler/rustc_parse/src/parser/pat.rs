@@ -117,7 +117,7 @@ impl<'a> Parser<'a> {
                 let leading_if_span = self.prev_token.span;
                 let cond = self.parse_expr()?;
                 let cond_span = cond.span;
-                Box::new(Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) })
+                Box::new(Guard { cond, span_with_leading_if: leading_if_span.to(cond_span) })
             };
 
             // Feature-gate guard patterns
@@ -798,7 +798,7 @@ impl<'a> Parser<'a> {
             if let Some(re) = self.parse_range_end() {
                 self.parse_pat_range_begin_with(const_expr, re)?
             } else {
-                PatKind::Expr(const_expr)
+                PatKind::Expr(Box::new(const_expr))
             }
         } else if self.is_builtin() {
             self.parse_pat_builtin()?
@@ -865,7 +865,7 @@ impl<'a> Parser<'a> {
                         .struct_span_err(self_.token.span, msg)
                         .with_span_label(self_.token.span, format!("expected {expected}"))
                 });
-            PatKind::Expr(self.mk_expr(lo, ExprKind::Lit(lit)))
+            PatKind::Expr(Box::new(self.mk_expr(lo, ExprKind::Lit(lit))))
         } else {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
@@ -877,7 +877,7 @@ impl<'a> Parser<'a> {
 
                     match self.parse_range_end() {
                         Some(form) => self.parse_pat_range_begin_with(begin, form)?,
-                        None => PatKind::Expr(begin),
+                        None => PatKind::Expr(Box::new(begin)),
                     }
                 }
                 Err(err) => return self.fatal_unexpected_non_pat(err, expected),
@@ -1041,7 +1041,7 @@ impl<'a> Parser<'a> {
                         },
                     });
 
-                    self.parse_pat_range_begin_with(begin.clone(), form)?
+                    self.parse_pat_range_begin_with(*begin.clone(), form)?
                 }
                 // recover ranges with parentheses around the `(start)..`
                 PatKind::Err(guar)
@@ -1202,7 +1202,7 @@ impl<'a> Parser<'a> {
     /// `$begin $form` has already been parsed.
     fn parse_pat_range_begin_with(
         &mut self,
-        begin: Box<Expr>,
+        begin: Expr,
         re: Spanned<RangeEnd>,
     ) -> PResult<'a, PatKind> {
         let end = if self.is_pat_range_end_start(0) {
@@ -1216,7 +1216,7 @@ impl<'a> Parser<'a> {
             }
             None
         };
-        Ok(PatKind::Range(Some(begin), end, re))
+        Ok(PatKind::Range(Some(Box::new(begin)), end.map(Box::new), re))
     }
 
     pub(super) fn inclusive_range_with_incorrect_end(&mut self) -> ErrorGuaranteed {
@@ -1257,7 +1257,7 @@ impl<'a> Parser<'a> {
             *syn = RangeSyntax::DotDotEq;
             self.dcx().emit_err(DotDotDotRangeToPatternNotAllowed { span: re.span });
         }
-        Ok(PatKind::Range(None, Some(end), re))
+        Ok(PatKind::Range(None, Some(Box::new(end)), re))
     }
 
     /// Is the token `dist` away from the current suitable as the start of a range patterns end?
@@ -1278,7 +1278,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a range pattern end bound
-    fn parse_pat_range_end(&mut self) -> PResult<'a, Box<Expr>> {
+    fn parse_pat_range_end(&mut self) -> PResult<'a, Expr> {
         // recover leading `(`
         let open_paren = (self.may_recover() && self.eat_noexpect(&token::OpenParen))
             .then_some(self.prev_token.span);

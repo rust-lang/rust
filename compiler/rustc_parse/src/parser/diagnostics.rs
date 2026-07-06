@@ -1039,7 +1039,7 @@ impl<'a> Parser<'a> {
         token: token::Token,
         lo: Span,
         decl_hi: Span,
-    ) -> PResult<'a, Box<Expr>> {
+    ) -> PResult<'a, Expr> {
         err.span_label(lo.to(decl_hi), "while parsing the body of this closure");
         let guar = match before.kind {
             token::OpenBrace if token.kind != token::OpenBrace => {
@@ -1257,7 +1257,7 @@ impl<'a> Parser<'a> {
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
         &mut self,
         mut e: Diag<'a>,
-        expr: &mut Box<Expr>,
+        expr: &mut Expr,
     ) -> PResult<'a, ErrorGuaranteed> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind
             && let ast::BinOpKind::Lt = binop.node
@@ -1442,7 +1442,7 @@ impl<'a> Parser<'a> {
         &mut self,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
-    ) -> PResult<'a, Option<Box<Expr>>> {
+    ) -> PResult<'a, Option<Expr>> {
         debug_assert!(
             outer_op.node.is_comparison(),
             "check_no_chained_comparison: {:?} is not comparison",
@@ -1689,10 +1689,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_from_prefix_increment(
         &mut self,
-        operand_expr: Box<Expr>,
+        operand_expr: Expr,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
+    ) -> PResult<'a, Expr> {
         let standalone = if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr };
         let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
         self.recover_from_inc_dec(operand_expr, kind, op_span)
@@ -1700,10 +1700,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_from_postfix_increment(
         &mut self,
-        operand_expr: Box<Expr>,
+        operand_expr: Expr,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
+    ) -> PResult<'a, Expr> {
         let kind = IncDecRecovery {
             standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
             op: IncOrDec::Inc,
@@ -1714,10 +1714,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_from_postfix_decrement(
         &mut self,
-        operand_expr: Box<Expr>,
+        operand_expr: Expr,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
+    ) -> PResult<'a, Expr> {
         let kind = IncDecRecovery {
             standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
             op: IncOrDec::Dec,
@@ -1728,10 +1728,10 @@ impl<'a> Parser<'a> {
 
     fn recover_from_inc_dec(
         &mut self,
-        base: Box<Expr>,
+        base: Expr,
         kind: IncDecRecovery,
         op_span: Span,
-    ) -> PResult<'a, Box<Expr>> {
+    ) -> PResult<'a, Expr> {
         let mut err = self.dcx().struct_span_err(
             op_span,
             format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
@@ -1967,10 +1967,7 @@ impl<'a> Parser<'a> {
 
     /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
     /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
-    pub(super) fn recover_incorrect_await_syntax(
-        &mut self,
-        await_sp: Span,
-    ) -> PResult<'a, Box<Expr>> {
+    pub(super) fn recover_incorrect_await_syntax(&mut self, await_sp: Span) -> PResult<'a, Expr> {
         let (hi, expr, is_question) = if self.token == token::Bang {
             // Handle `await!(<expr>)`.
             self.recover_await_macro()?
@@ -1982,7 +1979,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    fn recover_await_macro(&mut self) -> PResult<'a, (Span, Box<Expr>, bool)> {
+    fn recover_await_macro(&mut self) -> PResult<'a, (Span, Expr, bool)> {
         self.expect(exp!(Bang))?;
         self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
@@ -1990,7 +1987,7 @@ impl<'a> Parser<'a> {
         Ok((self.prev_token.span, expr, false))
     }
 
-    fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, Box<Expr>, bool)> {
+    fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, Expr, bool)> {
         let is_question = self.eat(exp!(Question)); // Handle `await? <expr>`.
         let expr = if self.token == token::OpenBrace {
             // Handle `await { <expr> }`.
@@ -2052,7 +2049,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, Box<Expr>> {
+    pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, Expr> {
         let is_try = self.token.is_keyword(kw::Try);
         let is_questionmark = self.look_ahead(1, |t| t == &token::Bang); //check for !
         let is_open = self.look_ahead(2, |t| t == &token::OpenParen); //check for (
@@ -2124,7 +2121,7 @@ impl<'a> Parser<'a> {
         close: ExpTokenPair,
         lo: Span,
         err: Diag<'a>,
-    ) -> Box<Expr> {
+    ) -> Expr {
         let guar = err.emit();
         // Recover from parse error, callers expect the closing delim to be consumed.
         self.consume_block(open, close, ConsumeClosingDelim::Yes);
@@ -2587,7 +2584,7 @@ impl<'a> Parser<'a> {
         let value = self.mk_expr_err(param.span(), guar);
         Some(GenericArg::Const(AnonConst {
             id: ast::DUMMY_NODE_ID,
-            value,
+            value: Box::new(value),
             mgca_disambiguation: MgcaDisambiguation::Direct,
         }))
     }
@@ -2675,7 +2672,7 @@ impl<'a> Parser<'a> {
                     let value = self.mk_expr_err(start.to(expr.span), guar);
                     return Ok(GenericArg::Const(AnonConst {
                         id: ast::DUMMY_NODE_ID,
-                        value,
+                        value: Box::new(value),
                         mgca_disambiguation: MgcaDisambiguation::Direct,
                     }));
                 } else if snapshot.token == token::Colon
@@ -2717,7 +2714,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn recover_unbraced_const_arg_that_can_begin_ty(
         &mut self,
         mut snapshot: SnapshotParser<'a>,
-    ) -> Option<Box<ast::Expr>> {
+    ) -> Option<ast::Expr> {
         match (|| {
             let attrs = self.parse_outer_attributes()?;
             snapshot.parse_expr_res(Restrictions::CONST_EXPR, attrs)
@@ -2748,7 +2745,7 @@ impl<'a> Parser<'a> {
         let value = self.mk_expr_err(span, guar);
         GenericArg::Const(AnonConst {
             id: ast::DUMMY_NODE_ID,
-            value,
+            value: Box::new(value),
             mgca_disambiguation: MgcaDisambiguation::Direct,
         })
     }

@@ -295,7 +295,7 @@ generate_flat_map_visitor_fns! {
     visit_foreign_items, Box<ForeignItem>, flat_map_foreign_item;
     visit_generic_params, GenericParam, flat_map_generic_param;
     visit_stmts, Stmt, flat_map_stmt;
-    visit_exprs, Box<Expr>, filter_map_expr;
+    visit_exprs, Expr, filter_map_expr;
     visit_expr_fields, ExprField, flat_map_expr_field;
     visit_pat_fields, PatField, flat_map_pat_field;
     visit_variants, Variant, flat_map_variant;
@@ -336,7 +336,7 @@ generate_walk_flat_map_fns! {
     walk_flat_map_assoc_item(Box<AssocItem>, ctxt: AssocCtxt) => visit_assoc_item;
 }
 
-pub fn walk_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: Box<Expr>) -> Option<Box<Expr>> {
+pub fn walk_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: Expr) -> Option<Expr> {
     vis.visit_expr(&mut e);
     Some(e)
 }
@@ -371,8 +371,12 @@ pub fn walk_flat_map_stmt_kind<T: MutVisitor>(
             local
         })],
         StmtKind::Item(item) => vis.flat_map_item(item).into_iter().map(StmtKind::Item).collect(),
-        StmtKind::Expr(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Expr).collect(),
-        StmtKind::Semi(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Semi).collect(),
+        StmtKind::Expr(expr) => {
+            vis.filter_map_expr(*expr).into_iter().map(|e| StmtKind::Expr(Box::new(e))).collect()
+        }
+        StmtKind::Semi(expr) => {
+            vis.filter_map_expr(*expr).into_iter().map(|e| StmtKind::Semi(Box::new(e))).collect()
+        }
         StmtKind::Empty => smallvec![StmtKind::Empty],
         StmtKind::MacCall(mut mac) => {
             let MacCallStmt { mac: mac_, style: _, attrs, tokens: _ } = mac.deref_mut();

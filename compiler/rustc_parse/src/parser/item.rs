@@ -1649,7 +1649,7 @@ impl<'a> Parser<'a> {
             ty,
             safety,
             mutability,
-            expr,
+            expr: expr.map(Box::new),
             define_opaque: None,
             eii_impls: ThinVec::default(),
         };
@@ -1699,7 +1699,7 @@ impl<'a> Parser<'a> {
             (true, true) => ConstItemRhsKind::TypeConst {
                 rhs: Some(self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?),
             },
-            (true, false) => ConstItemRhsKind::Body { rhs: Some(self.parse_expr()?) },
+            (true, false) => ConstItemRhsKind::Body { rhs: Some(Box::new(self.parse_expr()?)) },
             (false, true) => ConstItemRhsKind::TypeConst { rhs: None },
             (false, false) => ConstItemRhsKind::Body { rhs: None },
         };
@@ -1758,7 +1758,7 @@ impl<'a> Parser<'a> {
         generics.where_clause = where_clause;
 
         if let Some(rhs) = self.try_recover_const_missing_semi(&rhs, const_span) {
-            return Ok((ident, generics, ty, ConstItemRhsKind::Body { rhs: Some(rhs) }));
+            return Ok((ident, generics, ty, ConstItemRhsKind::Body { rhs: Some(Box::new(rhs)) }));
         }
         self.expect_semi()?;
 
@@ -2903,7 +2903,7 @@ impl<'a> Parser<'a> {
                     if let Some(guar) = self.fn_body_missing_semi_guar.take() {
                         body.stmts.push(self.mk_stmt(
                             body.span,
-                            StmtKind::Expr(self.mk_expr(body.span, ExprKind::Err(guar))),
+                            StmtKind::Expr(Box::new(self.mk_expr(body.span, ExprKind::Err(guar)))),
                         ));
                     }
                     (attrs, Some(body))
@@ -3678,7 +3678,7 @@ impl<'a> Parser<'a> {
         &mut self,
         rhs: &ConstItemRhsKind,
         const_span: Span,
-    ) -> Option<Box<Expr>> {
+    ) -> Option<Expr> {
         if self.token == TokenKind::Semi {
             return None;
         }

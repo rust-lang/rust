@@ -1292,12 +1292,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses inline const expressions.
-    fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, Box<Expr>> {
+    fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, Expr> {
         self.expect_keyword(exp!(Const))?;
         let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
-            value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
+            value: Box::new(self.mk_expr(blk.span, ExprKind::Block(blk, None))),
             mgca_disambiguation: MgcaDisambiguation::AnonConst,
         };
         let blk_span = anon_const.value.span;
@@ -1384,7 +1384,7 @@ impl<'a> Parser<'a> {
             AttrArgs::Delimited(args)
         } else if self.eat(exp!(Eq)) {
             let eq_span = self.prev_token.span;
-            let expr = self.parse_expr_force_collect()?;
+            let expr = Box::new(self.parse_expr_force_collect()?);
             AttrArgs::Eq { eq_span, expr }
         } else {
             AttrArgs::Empty

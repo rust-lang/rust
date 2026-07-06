@@ -69,7 +69,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///   }
     /// }
     /// ```
-    pub(super) fn build(mut self, mut cond_expr: Box<Expr>, panic_path: Path) -> Box<Expr> {
+    pub(super) fn build(mut self, mut cond_expr: Box<Expr>, panic_path: Path) -> Expr {
         let expr_str = pprust::expr_to_string(&cond_expr);
         self.manage_cond_expr(&mut cond_expr);
         let initial_imports = self.build_initial_imports();
@@ -87,9 +87,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
         stmts.push(initial_imports);
         stmts.extend(capture_decls.into_iter().map(|c| c.decl));
         stmts.extend(local_bind_decls);
-        stmts.push(
-            cx.stmt_expr(cx.expr(span, ExprKind::If(cond_expr_with_unlikely, assert_then, None))),
-        );
+        stmts.push(cx.stmt_expr(
+            cx.expr(span, ExprKind::If(Box::new(cond_expr_with_unlikely), assert_then, None)),
+        ));
         cx.expr_block(cx.block(span, stmts))
     }
 
@@ -126,7 +126,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     }
 
     /// Takes the conditional expression of `assert!` and then wraps it inside `unlikely`
-    fn build_unlikely(&self, cond_expr: Box<Expr>) -> Box<Expr> {
+    fn build_unlikely(&self, cond_expr: Box<Expr>) -> Expr {
         let unlikely_path = self.cx.std_path(&[sym::intrinsics, sym::unlikely]);
         self.cx.expr_call(
             self.span,
@@ -142,7 +142,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///     __capture0,
     ///     ...
     /// );
-    fn build_panic(&self, expr_str: &str, panic_path: Path) -> Box<Expr> {
+    fn build_panic(&self, expr_str: &str, panic_path: Path) -> Expr {
         let escaped_expr_str = escape_to_fmt(expr_str);
         let initial = [
             TokenTree::token_joint(
@@ -187,7 +187,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     /// Recursive function called until `cond_expr` and `fmt_str` are fully modified.
     ///
     /// See [Self::manage_initial_capture] and [Self::manage_try_capture]
-    fn manage_cond_expr(&mut self, expr: &mut Box<Expr>) {
+    fn manage_cond_expr(&mut self, expr: &mut Expr) {
         match &mut expr.kind {
             ExprKind::AddrOf(_, mutability, local_expr) => {
                 self.with_is_consumed_management(matches!(mutability, Mutability::Mut), |this| {
@@ -331,7 +331,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///
     /// `fmt_str`, the formatting string used for debugging, is constructed to show possible
     /// captured variables.
-    fn manage_initial_capture(&mut self, expr: &mut Box<Expr>, path_ident: Ident) {
+    fn manage_initial_capture(&mut self, expr: &mut Expr, path_ident: Ident) {
         if self.paths.contains(&path_ident) {
             return;
         } else {
@@ -360,12 +360,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///    (&Wrapper(__local_bindN)).try_capture(&mut __captureN);
     ///    __local_bindN
     /// }
-    fn manage_try_capture(
-        &mut self,
-        capture: Ident,
-        curr_capture_idx: usize,
-        expr: &mut Box<Expr>,
-    ) {
+    fn manage_try_capture(&mut self, capture: Ident, curr_capture_idx: usize, expr: &mut Expr) {
         let local_bind_string = format!("__local_bind{curr_capture_idx}");
         let local_bind = Ident::new(Symbol::intern(&local_bind_string), self.span);
         self.local_bind_decls.push(self.cx.stmt_let(
@@ -446,20 +441,28 @@ fn escape_to_fmt(s: &str) -> String {
     rslt
 }
 
-fn expr_addr_of_mut(cx: &ExtCtxt<'_>, sp: Span, e: Box<Expr>) -> Box<Expr> {
-    cx.expr(sp, ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, e))
+fn expr_addr_of_mut(cx: &ExtCtxt<'_>, sp: Span, e: Expr) -> Expr {
+    cx.expr(sp, ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, Box::new(e)))
 }
 
 fn expr_method_call(
     cx: &ExtCtxt<'_>,
     seg: PathSegment,
-    receiver: Box<Expr>,
-    args: ThinVec<Box<Expr>>,
+    receiver: Expr,
+    args: ThinVec<Expr>,
     span: Span,
-) -> Box<Expr> {
-    cx.expr(span, ExprKind::MethodCall(Box::new(MethodCall { seg, receiver, args, span })))
+) -> Expr {
+    cx.expr(
+        span,
+        ExprKind::MethodCall(Box::new(MethodCall {
+            seg,
+            receiver: Box::new(receiver),
+            args,
+            span,
+        })),
+    )
 }
 
-fn expr_paren(cx: &ExtCtxt<'_>, sp: Span, e: Box<Expr>) -> Box<Expr> {
-    cx.expr(sp, ExprKind::Paren(e))
+fn expr_paren(cx: &ExtCtxt<'_>, sp: Span, e: Expr) -> Expr {
+    cx.expr(sp, ExprKind::Paren(Box::new(e)))
 }

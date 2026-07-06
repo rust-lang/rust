@@ -17,7 +17,7 @@ use crate::util::{ExprToSpannedString, expr_to_spanned_string};
 
 /// Validated assembly arguments, ready for macro expansion.
 struct ValidatedAsmArgs {
-    pub templates: Vec<Box<ast::Expr>>,
+    pub templates: Vec<ast::Expr>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxIndexMap<Symbol, usize>,
     reg_args: GrowableBitSet<usize>,
@@ -590,13 +590,13 @@ pub(super) fn expand_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => Box::new(ast::Expr {
+                Ok(inline_asm) => ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ExprKind::InlineAsm(Box::new(inline_asm)),
                     span: sp,
                     attrs: ast::AttrVec::new(),
                     tokens: None,
-                }),
+                },
                 Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
             };
             MacEager::expr(expr)
@@ -620,13 +620,13 @@ pub(super) fn expand_naked_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => Box::new(ast::Expr {
+                Ok(inline_asm) => ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ExprKind::InlineAsm(Box::new(inline_asm)),
                     span: sp,
                     attrs: ast::AttrVec::new(),
                     tokens: None,
-                }),
+                },
                 Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
             };
             MacEager::expr(expr)

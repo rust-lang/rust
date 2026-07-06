@@ -97,7 +97,7 @@ impl AllocFnFactory<'_, '_> {
         self.cx.stmt_item(self.ty_span, item)
     }
 
-    fn call_allocator(&self, method: Symbol, mut args: ThinVec<Box<Expr>>) -> Box<Expr> {
+    fn call_allocator(&self, method: Symbol, mut args: ThinVec<Expr>) -> Expr {
         let method = self.cx.std_path(&[sym::alloc, sym::GlobalAlloc, method]);
         let method = self.cx.expr_path(self.cx.path(self.ty_span, method));
         let allocator = self.cx.path_ident(self.ty_span, self.global);
@@ -122,7 +122,7 @@ impl AllocFnFactory<'_, '_> {
         ]
     }
 
-    fn arg_ty(&self, input: &AllocatorMethodInput, args: &mut ThinVec<Param>) -> Box<Expr> {
+    fn arg_ty(&self, input: &AllocatorMethodInput, args: &mut ThinVec<Param>) -> Expr {
         match input.ty {
             AllocatorTy::Layout => {
                 // If an allocator method is ever introduced having multiple

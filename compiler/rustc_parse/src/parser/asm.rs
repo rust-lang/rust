@@ -13,7 +13,7 @@ pub struct AsmArg {
 }
 
 pub enum AsmArgKind {
-    Template(Box<ast::Expr>),
+    Template(ast::Expr),
     Operand(Option<Symbol>, ast::InlineAsmOperand),
     Options(Vec<AsmOption>),
     ClobberAbi(Vec<(Symbol, Span)>),
@@ -108,25 +108,28 @@ fn parse_asm_operand<'a>(
             return Err(err);
         }
         let expr = p.parse_expr()?;
-        ast::InlineAsmOperand::In { reg, expr }
+        ast::InlineAsmOperand::In { reg, expr: Box::new(expr) }
     } else if eat_operand_keyword(p, exp!(Out), asm_macro)? {
         let reg = parse_reg(p)?;
         let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-        ast::InlineAsmOperand::Out { reg, expr, late: false }
+        ast::InlineAsmOperand::Out { reg, expr: expr.map(Box::new), late: false }
     } else if eat_operand_keyword(p, exp!(Lateout), asm_macro)? {
         let reg = parse_reg(p)?;
         let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-        ast::InlineAsmOperand::Out { reg, expr, late: true }
+        ast::InlineAsmOperand::Out { reg, expr: expr.map(Box::new), late: true }
     } else if eat_operand_keyword(p, exp!(Inout), asm_macro)? {
         let reg = parse_reg(p)?;
         if p.eat_keyword(exp!(Underscore)) {
             let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
             return Err(err);
         }
-        let expr = p.parse_expr()?;
+        let expr = Box::new(p.parse_expr()?);
         if p.eat(exp!(FatArrow)) {
-            let out_expr =
-                if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
+            let out_expr = if p.eat_keyword(exp!(Underscore)) {
+                None
+            } else {
+                Some(Box::new(p.parse_expr()?))
+            };
             ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: false }
         } else {
             ast::InlineAsmOperand::InOut { reg, expr, late: false }
@@ -137,10 +140,13 @@ fn parse_asm_operand<'a>(
             let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
             return Err(err);
         }
-        let expr = p.parse_expr()?;
+        let expr = Box::new(p.parse_expr()?);
         if p.eat(exp!(FatArrow)) {
-            let out_expr =
-                if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
+            let out_expr = if p.eat_keyword(exp!(Underscore)) {
+                None
+            } else {
+                Some(Box::new(p.parse_expr()?))
+            };
             ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: true }
         } else {
             ast::InlineAsmOperand::InOut { reg, expr, late: true }

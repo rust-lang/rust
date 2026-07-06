@@ -91,15 +91,15 @@ fn call_intrinsic(
     cx: &ExtCtxt<'_>,
     span: Span,
     intrinsic: Symbol,
-    args: ThinVec<Box<ast::Expr>>,
-) -> Box<ast::Expr> {
+    args: ThinVec<ast::Expr>,
+) -> ast::Expr {
     let span = cx.with_def_site_ctxt(span);
     let path = cx.std_path(&[sym::intrinsics, intrinsic]);
     cx.expr_call_global(span, path, args)
 }
 
 /// Constructs an expression that calls the `unreachable` intrinsic.
-fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
+fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> ast::Expr {
     let span = cx.with_def_site_ctxt(span);
     let path = cx.std_path(&[sym::intrinsics, sym::unreachable]);
     let call = cx.expr_call_global(span, path, ThinVec::new());

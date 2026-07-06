@@ -66,8 +66,8 @@ macro_rules! ast_fragments {
         /// A fragment of AST that can be produced by a single macro expansion.
         /// Can also serve as an input and intermediate result for macro expansion operations.
         pub enum AstFragment {
-            OptExpr(Option<Box<ast::Expr>>),
-            MethodReceiverExpr(Box<ast::Expr>),
+            OptExpr(Option<ast::Expr>),
+            MethodReceiverExpr(ast::Expr),
             $($Kind($AstTy),)*
         }
 
@@ -113,14 +113,14 @@ macro_rules! ast_fragments {
                 }
             }
 
-            pub(crate) fn make_opt_expr(self) -> Option<Box<ast::Expr>> {
+            pub(crate) fn make_opt_expr(self) -> Option<ast::Expr> {
                 match self {
                     AstFragment::OptExpr(expr) => expr,
                     _ => panic!("AstFragment::make_opt_expr called on the wrong kind of fragment"),
                 }
             }
 
-            pub(crate) fn make_method_receiver_expr(self) -> Box<ast::Expr> {
+            pub(crate) fn make_method_receiver_expr(self) -> ast::Expr {
                 match self {
                     AstFragment::MethodReceiverExpr(expr) => expr,
                     _ => panic!("AstFragment::make_method_receiver_expr called on the wrong kind of fragment"),
@@ -174,7 +174,7 @@ macro_rules! ast_fragments {
 }
 
 ast_fragments! {
-    Expr(Box<ast::Expr>) {
+    Expr(ast::Expr) {
         "expression";
         one fn visit_expr;
         fn make_expr;
@@ -1910,10 +1910,10 @@ impl InvocationCollectorNode for ast::Pat {
 }
 
 impl InvocationCollectorNode for ast::Expr {
-    type OutputTy = Box<ast::Expr>;
+    type OutputTy = ast::Expr;
     const KIND: AstFragmentKind = AstFragmentKind::Expr;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Expr(Box::new(self))
+        Annotatable::Expr(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_expr()
@@ -1939,8 +1939,8 @@ impl InvocationCollectorNode for ast::Expr {
 }
 
 struct OptExprTag;
-impl InvocationCollectorNode for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {
-    type OutputTy = Option<Box<ast::Expr>>;
+impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, OptExprTag> {
+    type OutputTy = Option<ast::Expr>;
     const KIND: AstFragmentKind = AstFragmentKind::OptExpr;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Expr(self.wrapped)
@@ -1975,13 +1975,13 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {
 struct MethodReceiverTag;
 
 impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
-    type OutputTy = AstNodeWrapper<Box<ast::Expr>, MethodReceiverTag>;
+    type OutputTy = AstNodeWrapper<ast::Expr, MethodReceiverTag>;
     const KIND: AstFragmentKind = AstFragmentKind::MethodReceiverExpr;
     fn descr() -> &'static str {
         "an expression"
     }
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Expr(Box::new(self.wrapped))
+        Annotatable::Expr(self.wrapped)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         AstNodeWrapper::new(fragment.make_method_receiver_expr(), MethodReceiverTag)
@@ -2573,7 +2573,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(AstNodeWrapper::from_mut(node, MethodReceiverTag))
     }
 
-    fn filter_map_expr(&mut self, node: Box<ast::Expr>) -> Option<Box<ast::Expr>> {
+    fn filter_map_expr(&mut self, node: ast::Expr) -> Option<ast::Expr> {
         self.flat_map_node(AstNodeWrapper::new(node, OptExprTag))
     }
 

@@ -104,9 +104,9 @@ fn expr_if_not(
     cx: &ExtCtxt<'_>,
     span: Span,
     cond: Box<Expr>,
-    then: Box<Expr>,
-    els: Option<Box<Expr>>,
-) -> Box<Expr> {
+    then: Expr,
+    els: Option<Expr>,
+) -> Expr {
     cx.expr_if(span, cx.expr(span, ExprKind::Unary(UnOp::Not, cond)), then, els)
 }
 
@@ -117,7 +117,7 @@ fn parse_assert<'a>(cx: &ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<
         return Err(cx.dcx().create_err(diagnostics::AssertRequiresBoolean { span: sp }));
     }
 
-    let cond_expr = parser.parse_expr()?;
+    let cond_expr = Box::new(parser.parse_expr()?);
 
     // Some crates use the `assert!` macro in the following form (note extra semicolon):
     //

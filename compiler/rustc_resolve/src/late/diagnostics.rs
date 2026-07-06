@@ -2577,7 +2577,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         err: &mut Diag<'_>,
         path_span: Span,
         call_span: Span,
-        args: &[Box<Expr>],
+        args: &[Expr],
     ) {
         if def_id.is_local() {
             // Doing analysis on local `DefId`s would cause infinite recursion.

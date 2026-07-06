@@ -18,7 +18,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::{AttrId, DUMMY_SP, FileName, Span};
 use std::sync::Arc;
 
-pub fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<Box<Expr>> {
+pub fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<Expr> {
     let parser = rustc_parse::unwrap_or_emit_fatal(rustc_parse::new_parser_from_source_str(
         psess,
         FileName::anon_source_code(source_code),

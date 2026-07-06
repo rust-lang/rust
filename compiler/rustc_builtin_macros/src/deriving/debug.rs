@@ -91,12 +91,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
     // The number of fields that can be handled without an array.
     const CUTOFF: usize = 5;
 
-    fn expr_for_field(
-        cx: &ExtCtxt<'_>,
-        field: &FieldInfo,
-        index: usize,
-        len: usize,
-    ) -> Box<ast::Expr> {
+    fn expr_for_field(cx: &ExtCtxt<'_>, field: &FieldInfo, index: usize, len: usize) -> ast::Expr {
         if index < len - 1 {
             field.self_expr.clone()
         } else {

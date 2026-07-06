@@ -57,7 +57,7 @@ pub(crate) fn expand_deriving_default(
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
+fn default_call(cx: &ExtCtxt<'_>, span: Span) -> ast::Expr {
     // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
     let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
     cx.expr_call_global(span, default_ident, ThinVec::new())

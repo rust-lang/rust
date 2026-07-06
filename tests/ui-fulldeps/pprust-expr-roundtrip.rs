@@ -73,7 +73,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(Box<Expr>)) {
                     g(ExprKind::MethodCall(Box::new(MethodCall {
                         seg: seg.clone(),
                         receiver: e,
-                        args: thin_vec![make_x()],
+                        args: thin_vec![*make_x()],
                         span: DUMMY_SP,
                     })))
                 });
@@ -81,7 +81,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(Box<Expr>)) {
                     g(ExprKind::MethodCall(Box::new(MethodCall {
                         seg: seg.clone(),
                         receiver: make_x(),
-                        args: thin_vec![e],
+                        args: thin_vec![*e],
                         span: DUMMY_SP,
                     })))
                 });

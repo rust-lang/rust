@@ -277,7 +277,7 @@ pub(crate) struct Substructure<'a> {
     pub type_ident: Ident,
     /// Verbatim access to any non-selflike arguments, i.e. arguments that
     /// don't have type `&Self`.
-    pub nonselflike_args: &'a [Box<Expr>],
+    pub nonselflike_args: &'a [Expr],
     pub fields: &'a SubstructureFields<'a>,
 }
 
@@ -289,10 +289,10 @@ pub(crate) struct FieldInfo {
     pub name: Option<Ident>,
     /// The expression corresponding to this field of `self`
     /// (specifically, a reference to it).
-    pub self_expr: Box<Expr>,
+    pub self_expr: Expr,
     /// The expressions corresponding to references to this field in
     /// the other selflike arguments.
-    pub other_selflike_exprs: Vec<Box<Expr>>,
+    pub other_selflike_exprs: Vec<Expr>,
     pub maybe_scalar: bool,
 }
 
@@ -328,7 +328,7 @@ pub(crate) enum SubstructureFields<'a> {
     /// The discriminant of an enum. The first field is a `FieldInfo` for the discriminants, as
     /// if they were fields. The second field is the expression to combine the
     /// discriminant expression with; it will be `None` if no match is necessary.
-    EnumDiscr(FieldInfo, Option<Box<Expr>>),
+    EnumDiscr(FieldInfo, Option<Expr>),
 
     /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::VariantData, StaticFields<'a>),
@@ -359,18 +359,18 @@ struct TypeParameter {
 /// avoiding the insertion of any unnecessary blocks.
 ///
 /// The statements come before the expression.
-pub(crate) struct BlockOrExpr(ThinVec<ast::Stmt>, Option<Box<Expr>>);
+pub(crate) struct BlockOrExpr(ThinVec<ast::Stmt>, Option<Expr>);
 
 impl BlockOrExpr {
     pub(crate) fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
         BlockOrExpr(stmts, None)
     }
 
-    pub(crate) fn new_expr(expr: Box<Expr>) -> BlockOrExpr {
+    pub(crate) fn new_expr(expr: Expr) -> BlockOrExpr {
         BlockOrExpr(ThinVec::new(), Some(expr))
     }
 
-    pub(crate) fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<Box<Expr>>) -> BlockOrExpr {
+    pub(crate) fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<Expr>) -> BlockOrExpr {
         BlockOrExpr(stmts, expr)
     }
 
@@ -383,7 +383,7 @@ impl BlockOrExpr {
     }
 
     // Converts it into an expression.
-    fn into_expr(self, cx: &ExtCtxt<'_>, span: Span) -> Box<Expr> {
+    fn into_expr(self, cx: &ExtCtxt<'_>, span: Span) -> Expr {
         if self.0.is_empty() {
             match self.1 {
                 None => cx.expr_block(cx.block(span, ThinVec::new())),
@@ -394,7 +394,7 @@ impl BlockOrExpr {
             && self.1.is_none()
         {
             // There's only a single statement expression. Pull it out.
-            expr.clone()
+            (**expr).clone()
         } else {
             // Multiple statements and/or expressions.
             cx.expr_block(self.into_block(cx, span))
@@ -978,7 +978,7 @@ impl<'a> MethodDef<'a> {
         cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
-        nonselflike_args: &[Box<Expr>],
+        nonselflike_args: &[Expr],
         fields: &SubstructureFields<'_>,
     ) -> BlockOrExpr {
         let span = trait_.span;
@@ -1005,8 +1005,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
-    ) -> (Option<ast::ExplicitSelf>, ThinVec<Box<Expr>>, Vec<Box<Expr>>, Vec<(Ident, Box<ast::Ty>)>)
-    {
+    ) -> (Option<ast::ExplicitSelf>, ThinVec<Expr>, Vec<Expr>, Vec<(Ident, Box<ast::Ty>)>) {
         let mut selflike_args = ThinVec::new();
         let mut nonselflike_args = Vec::new();
         let mut nonself_arg_tys = Vec::new();
@@ -1140,8 +1139,8 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         struct_def: &'b VariantData,
         type_ident: Ident,
-        selflike_args: &[Box<Expr>],
-        nonselflike_args: &[Box<Expr>],
+        selflike_args: &[Expr],
+        nonselflike_args: &[Expr],
         is_packed: bool,
     ) -> BlockOrExpr {
         assert!(selflike_args.len() == 1 || selflike_args.len() == 2);
@@ -1163,7 +1162,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'a>,
         struct_def: &'a VariantData,
         type_ident: Ident,
-        nonselflike_args: &[Box<Expr>],
+        nonselflike_args: &[Expr],
     ) -> BlockOrExpr {
         let summary = trait_.summarise_struct(cx, struct_def);
 
@@ -1217,8 +1216,8 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
-        mut selflike_args: ThinVec<Box<Expr>>,
-        nonselflike_args: &[Box<Expr>],
+        mut selflike_args: ThinVec<Expr>,
+        nonselflike_args: &[Expr],
     ) -> BlockOrExpr {
         assert!(
             !selflike_args.is_empty(),
@@ -1430,7 +1429,7 @@ impl<'a> MethodDef<'a> {
         //          ...
         //          _ => ::core::intrinsics::unreachable(),
         //      }
-        let get_match_expr = |mut selflike_args: ThinVec<Box<Expr>>| {
+        let get_match_expr = |mut selflike_args: ThinVec<Expr>| {
             let match_arg = if selflike_args.len() == 1 {
                 selflike_args.pop().unwrap()
             } else {
@@ -1466,7 +1465,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         enum_def: &EnumDef,
         type_ident: Ident,
-        nonselflike_args: &[Box<Expr>],
+        nonselflike_args: &[Expr],
     ) -> BlockOrExpr {
         self.call_substructure_method(
             cx,
@@ -1570,7 +1569,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_fields<F>(&self, struct_def: &'a VariantData, mk_exprs: F) -> Vec<FieldInfo>
     where
-        F: Fn(usize, &ast::FieldDef, Span) -> Vec<Box<ast::Expr>>,
+        F: Fn(usize, &ast::FieldDef, Span) -> Vec<ast::Expr>,
     {
         struct_def
             .fields()
@@ -1618,7 +1617,7 @@ impl<'a> TraitDef<'a> {
     fn create_struct_field_access_fields(
         &self,
         cx: &ExtCtxt<'_>,
-        selflike_args: &[Box<Expr>],
+        selflike_args: &[Expr],
         struct_def: &'a VariantData,
         is_packed: bool,
     ) -> Vec<FieldInfo> {
@@ -1633,7 +1632,7 @@ impl<'a> TraitDef<'a> {
                     let mut field_expr = cx.expr(
                         sp,
                         ast::ExprKind::Field(
-                            selflike_arg.clone(),
+                            Box::new(selflike_arg.clone()),
                             struct_field.ident.unwrap_or_else(|| {
                                 Ident::from_str_and_span(&i.to_string(), struct_field.span)
                             }),
@@ -1663,7 +1662,7 @@ pub(crate) enum CsFold<'a> {
 
     /// The combination of two field expressions. E.g. for `PartialEq::eq` this
     /// is something like `<field1 equality> && <field2 equality>`.
-    Combine(Span, Box<Expr>, Box<Expr>),
+    Combine(Span, Expr, Expr),
 
     // The fallback case for a struct or enum variant with no fields.
     Fieldless,
@@ -1677,9 +1676,9 @@ pub(crate) fn cs_fold<F>(
     trait_span: Span,
     substructure: &Substructure<'_>,
     mut f: F,
-) -> Box<Expr>
+) -> Expr
 where
-    F: FnMut(&ExtCtxt<'_>, CsFold<'_>) -> Box<Expr>,
+    F: FnMut(&ExtCtxt<'_>, CsFold<'_>) -> Expr,
 {
     match substructure.fields {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {

@@ -183,7 +183,7 @@ impl<'a> Parser<'a> {
                 // This is not allowed, but point it out in a nice way.
                 self.dcx().emit_err(errors::AssignmentElseNotAllowed { span: e.span.to(bl.span) });
             }
-            self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
+            self.mk_stmt(lo.to(e.span), StmtKind::Expr(Box::new(e)))
         } else {
             self.error_outer_attrs(attrs);
             return Ok(None);
@@ -218,7 +218,7 @@ impl<'a> Parser<'a> {
             })?;
             // `DUMMY_SP` will get overwritten later in this function
             Ok((
-                this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)),
+                this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(Box::new(expr))),
                 Trailing::No,
                 UsePreAttrPos::No,
             ))
@@ -228,9 +228,9 @@ impl<'a> Parser<'a> {
             // Perform this outside of the `collect_tokens` closure, since our
             // outer attributes do not apply to this part of the expression.
             let (expr, _) = self.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc_rest_with(Bound::Unbounded, true, expr)
+                this.parse_expr_assoc_rest_with(Bound::Unbounded, true, *expr)
             })?;
-            Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Expr(expr)))
+            Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Expr(Box::new(expr))))
         } else {
             Ok(stmt)
         }
@@ -264,7 +264,7 @@ impl<'a> Parser<'a> {
             let e = self.maybe_recover_from_bad_qpath(e)?;
             let e = self.parse_expr_dot_or_call_with(attrs, e, lo)?;
             let (e, _) = self.parse_expr_assoc_rest_with(Bound::Unbounded, false, e)?;
-            StmtKind::Expr(e)
+            StmtKind::Expr(Box::new(e))
         };
         Ok(self.mk_stmt(lo.to(hi), kind))
     }
@@ -403,9 +403,9 @@ impl<'a> Parser<'a> {
                     let els = self.parse_block()?;
                     self.check_let_else_init_bool_expr(&init);
                     self.check_let_else_init_trailing_brace(&init);
-                    LocalKind::InitElse(init, els)
+                    LocalKind::InitElse(Box::new(init), els)
                 } else {
-                    LocalKind::Init(init)
+                    LocalKind::Init(Box::new(init))
                 }
             }
         };
@@ -464,7 +464,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the RHS of a local variable declaration (e.g., `= 14;`).
-    fn parse_initializer(&mut self, eq_optional: bool) -> PResult<'a, Option<Box<Expr>>> {
+    fn parse_initializer(&mut self, eq_optional: bool) -> PResult<'a, Option<Expr>> {
         let eq_consumed = match self.token.kind {
             token::PlusEq
             | token::MinusEq
@@ -933,7 +933,7 @@ impl<'a> Parser<'a> {
             self.missing_semi_from_binop("`let` binding", expr, Some(local.span.shrink_to_lo()))
         {
             self.fn_body_missing_semi_guar = Some(guar);
-            *expr = self.mk_expr(span, ExprKind::Err(guar));
+            **expr = self.mk_expr(span, ExprKind::Err(guar));
             return Some(guar);
         }
         None
@@ -979,7 +979,7 @@ impl<'a> Parser<'a> {
                 let guar = self.attr_on_non_tail_expr(&expr);
                 // We already emitted an error, so don't emit another type error
                 let sp = expr.span.to(self.prev_token.span);
-                *expr = self.mk_expr_err(sp, guar);
+                **expr = self.mk_expr_err(sp, guar);
             }
 
             // Expression without semicolon.
@@ -1044,7 +1044,7 @@ impl<'a> Parser<'a> {
                                                     span: label.ident.span,
                                                     suggestion: label.ident.span.shrink_to_lo(),
                                                 });
-                                                *expr = labeled_expr;
+                                                **expr = labeled_expr;
                                                 break 'break_recover None;
                                             }
                                             Err(err) => {
@@ -1077,7 +1077,7 @@ impl<'a> Parser<'a> {
                 if let Some(guar) = replace_with_err {
                     // We already emitted an error, so don't emit another type error
                     let sp = expr.span.to(self.prev_token.span);
-                    *expr = self.mk_expr_err(sp, guar);
+                    **expr = self.mk_expr_err(sp, guar);
                 }
             }
             StmtKind::Expr(_) | StmtKind::MacCall(_) => {}
@@ -1173,7 +1173,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_stmt_err(&self, span: Span, guar: ErrorGuaranteed) -> Stmt {
-        self.mk_stmt(span, StmtKind::Expr(self.mk_expr_err(span, guar)))
+        self.mk_stmt(span, StmtKind::Expr(Box::new(self.mk_expr_err(span, guar))))
     }
 
     pub(super) fn mk_block_err(&self, span: Span, guar: ErrorGuaranteed) -> Box<Block> {

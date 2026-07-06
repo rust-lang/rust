@@ -47,7 +47,7 @@ pub enum Annotatable {
     AssocItem(Box<ast::AssocItem>, AssocCtxt),
     ForeignItem(Box<ast::ForeignItem>),
     Stmt(Box<ast::Stmt>),
-    Expr(Box<ast::Expr>),
+    Expr(ast::Expr),
     Arm(ast::Arm),
     ExprField(ast::ExprField),
     PatField(ast::PatField),
@@ -174,7 +174,7 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_expr(self) -> Box<ast::Expr> {
+    pub fn expect_expr(self) -> ast::Expr {
         match self {
             Annotatable::Expr(expr) => expr,
             _ => panic!("expected expression"),
@@ -409,9 +409,13 @@ pub trait GlobDelegationExpander {
     fn expand(&self, ecx: &mut ExtCtxt<'_>) -> ExpandResult<Vec<(Ident, Option<Ident>)>, ()>;
 }
 
-fn make_stmts_default(expr: Option<Box<ast::Expr>>) -> Option<SmallVec<[ast::Stmt; 1]>> {
+fn make_stmts_default(expr: Option<ast::Expr>) -> Option<SmallVec<[ast::Stmt; 1]>> {
     expr.map(|e| {
-        smallvec![ast::Stmt { id: ast::DUMMY_NODE_ID, span: e.span, kind: ast::StmtKind::Expr(e) }]
+        smallvec![ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            span: e.span,
+            kind: ast::StmtKind::Expr(Box::new(e))
+        }]
     })
 }
 
@@ -419,7 +423,7 @@ fn make_stmts_default(expr: Option<Box<ast::Expr>>) -> Option<SmallVec<[ast::Stm
 /// methods are spliced into the AST at the callsite of the macro.
 pub trait MacResult {
     /// Creates an expression.
-    fn make_expr(self: Box<Self>) -> Option<Box<ast::Expr>> {
+    fn make_expr(self: Box<Self>) -> Option<ast::Expr> {
         None
     }
 
@@ -507,13 +511,13 @@ pub trait MacResult {
 /// built each form of AST that you might return.
 #[derive(Default)]
 pub struct MacEager {
-    pub expr: Option<Box<ast::Expr>>,
+    pub expr: Option<ast::Expr>,
     pub items: Option<SmallVec<[Box<ast::Item>; 1]>>,
     pub ty: Option<Box<ast::Ty>>,
 }
 
 impl MacEager {
-    pub fn expr(v: Box<ast::Expr>) -> Box<dyn MacResult> {
+    pub fn expr(v: ast::Expr) -> Box<dyn MacResult> {
         Box::new(MacEager { expr: Some(v), ..Default::default() })
     }
 
@@ -527,7 +531,7 @@ impl MacEager {
 }
 
 impl MacResult for MacEager {
-    fn make_expr(self: Box<Self>) -> Option<Box<ast::Expr>> {
+    fn make_expr(self: Box<Self>) -> Option<ast::Expr> {
         self.expr
     }
 
@@ -541,7 +545,7 @@ impl MacResult for MacEager {
                 return Some(Box::new(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
-                    kind: PatKind::Expr(e),
+                    kind: PatKind::Expr(Box::new(e)),
                     tokens: None,
                 }));
             }
@@ -577,8 +581,8 @@ impl DummyResult {
     }
 
     /// A plain dummy expression.
-    pub fn raw_expr(sp: Span, guar: Option<ErrorGuaranteed>) -> Box<ast::Expr> {
-        Box::new(ast::Expr {
+    pub fn raw_expr(sp: Span, guar: Option<ErrorGuaranteed>) -> ast::Expr {
+        ast::Expr {
             id: ast::DUMMY_NODE_ID,
             kind: if let Some(guar) = guar {
                 ast::ExprKind::Err(guar)
@@ -588,12 +592,12 @@ impl DummyResult {
             span: sp,
             attrs: ast::AttrVec::new(),
             tokens: None,
-        })
+        }
     }
 }
 
 impl MacResult for DummyResult {
-    fn make_expr(self: Box<DummyResult>) -> Option<Box<ast::Expr>> {
+    fn make_expr(self: Box<DummyResult>) -> Option<ast::Expr> {
         Some(DummyResult::raw_expr(self.span, self.guar))
     }
 
@@ -629,7 +633,7 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
         Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.guar)),
+            kind: ast::StmtKind::Expr(Box::new(DummyResult::raw_expr(self.span, self.guar))),
             span: self.span,
         }])
     }

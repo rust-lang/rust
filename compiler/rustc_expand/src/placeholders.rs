@@ -33,14 +33,12 @@ pub(crate) fn placeholder(
         tokens: None,
     });
     let span = DUMMY_SP;
-    let expr_placeholder = || {
-        Box::new(ast::Expr {
-            id,
-            span,
-            attrs: ast::AttrVec::new(),
-            kind: ast::ExprKind::MacCall(mac_placeholder()),
-            tokens: None,
-        })
+    let expr_placeholder = || ast::Expr {
+        id,
+        span,
+        attrs: ast::AttrVec::new(),
+        kind: ast::ExprKind::MacCall(mac_placeholder()),
+        tokens: None,
     };
     let ty = || {
         Box::new(ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span, tokens: None })
@@ -134,7 +132,7 @@ pub(crate) fn placeholder(
         }]),
         AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
             attrs: Default::default(),
-            body: Some(expr_placeholder()),
+            body: Some(Box::new(expr_placeholder())),
             guard: None,
             id,
             pat: pat(),
@@ -143,7 +141,7 @@ pub(crate) fn placeholder(
         }]),
         AstFragmentKind::ExprFields => AstFragment::ExprFields(smallvec![ast::ExprField {
             attrs: Default::default(),
-            expr: expr_placeholder(),
+            expr: Box::new(expr_placeholder()),
             id,
             ident,
             is_shorthand: false,
@@ -352,19 +350,19 @@ impl MutVisitor for PlaceholderExpander {
 
     fn visit_expr(&mut self, expr: &mut ast::Expr) {
         match expr.kind {
-            ast::ExprKind::MacCall(_) => *expr = *self.remove(expr.id).make_expr(),
+            ast::ExprKind::MacCall(_) => *expr = self.remove(expr.id).make_expr(),
             _ => walk_expr(self, expr),
         }
     }
 
     fn visit_method_receiver_expr(&mut self, expr: &mut ast::Expr) {
         match expr.kind {
-            ast::ExprKind::MacCall(_) => *expr = *self.remove(expr.id).make_method_receiver_expr(),
+            ast::ExprKind::MacCall(_) => *expr = self.remove(expr.id).make_method_receiver_expr(),
             _ => walk_expr(self, expr),
         }
     }
 
-    fn filter_map_expr(&mut self, expr: Box<ast::Expr>) -> Option<Box<ast::Expr>> {
+    fn filter_map_expr(&mut self, expr: ast::Expr) -> Option<ast::Expr> {
         match expr.kind {
             ast::ExprKind::MacCall(_) => self.remove(expr.id).make_opt_expr(),
             _ => walk_filter_map_expr(self, expr),

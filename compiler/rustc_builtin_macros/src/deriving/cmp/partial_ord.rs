@@ -112,7 +112,7 @@ pub(crate) fn expand_deriving_partial_ord(
 // ```
 // Some(::core::cmp::Ord::cmp(self, other))
 // ```
-fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
+fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: ast::Expr) -> BlockOrExpr {
     let ord_cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
     let cmp_expr =
         cx.expr_call_global(span, ord_cmp_path, thin_vec![cx.expr_self(span), other_expr]);
@@ -188,7 +188,7 @@ fn cs_partial_cmp(
                     && let Some(last) = arms.last_mut()
                     && let PatKind::Wild = last.pat.kind
                 {
-                    last.body = Some(expr2);
+                    last.body = Some(Box::new(expr2));
                     expr1
                 } else {
                     let eq_arm = cx.arm(

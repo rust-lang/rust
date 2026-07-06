@@ -89,7 +89,7 @@ fn handle_array_element(
     cx: &ExtCtxt<'_>,
     guar: &mut Option<ErrorGuaranteed>,
     missing_literals: &mut Vec<rustc_span::Span>,
-    expr: &Box<rustc_ast::Expr>,
+    expr: &rustc_ast::Expr,
 ) -> Option<u8> {
     let dcx = cx.dcx();
 

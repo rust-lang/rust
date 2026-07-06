@@ -79,7 +79,7 @@ type UnexpectedExprKind<'a> = Result<(Diag<'a>, bool /* has_suggestions */), Err
 /// indicates that an ast error was encountered.
 pub(crate) fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
-    expr: Box<ast::Expr>,
+    expr: ast::Expr,
     err_msg: &'static str,
 ) -> ExpandResult<ExprToSpannedStringResult<'a>, ()> {
     if !cx.force_mode
@@ -131,7 +131,7 @@ pub(crate) fn expr_to_spanned_string<'a>(
 /// compilation on error, merely emits a non-fatal error and returns `Err`.
 pub(crate) fn expr_to_string(
     cx: &mut ExtCtxt<'_>,
-    expr: Box<ast::Expr>,
+    expr: ast::Expr,
     err_msg: &'static str,
 ) -> ExpandResult<Result<(Symbol, ast::StrStyle), ErrorGuaranteed>, ()> {
     expr_to_spanned_string(cx, expr, err_msg).map(|res| {
@@ -154,7 +154,7 @@ pub(crate) fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, nam
 }
 
 /// Parse an expression. On error, emit it, advancing to `Eof`, and return `Err`.
-pub(crate) fn parse_expr(p: &mut parser::Parser<'_>) -> Result<Box<ast::Expr>, ErrorGuaranteed> {
+pub(crate) fn parse_expr(p: &mut parser::Parser<'_>) -> Result<ast::Expr, ErrorGuaranteed> {
     let guar = match p.parse_expr() {
         Ok(expr) => return Ok(expr),
         Err(err) => err.emit(),
@@ -205,7 +205,7 @@ pub(crate) fn get_single_expr_from_tts(
     span: Span,
     tts: TokenStream,
     name: &str,
-) -> ExpandResult<Result<Box<ast::Expr>, ErrorGuaranteed>, ()> {
+) -> ExpandResult<Result<ast::Expr, ErrorGuaranteed>, ()> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
         let guar = cx.dcx().emit_err(diagnostics::OnlyOneArgument { span, name });
@@ -228,7 +228,7 @@ pub(crate) fn get_single_expr_from_tts(
 pub(crate) fn get_exprs_from_tts(
     cx: &mut ExtCtxt<'_>,
     tts: TokenStream,
-) -> ExpandResult<Result<Vec<Box<ast::Expr>>, ErrorGuaranteed>, ()> {
+) -> ExpandResult<Result<Vec<ast::Expr>, ErrorGuaranteed>, ()> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
