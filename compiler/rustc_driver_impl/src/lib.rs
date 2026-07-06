@@ -597,6 +597,16 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
 fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
     match sess.io.input {
         Input::File(ref path) => {
+            if path.extension().is_some_and(|extension| extension == "rs") {
+                let mut err = sess
+                    .dcx()
+                    .struct_fatal("`-Zls` takes a `.rmeta` file as input, not a source file");
+                if rustc_session::utils::was_invoked_from_cargo() {
+                    // Give a Cargo-tailored suggestion if we're coming from Cargo
+                    err.note("use `rustc +nightly -Zls=... path/to/file.rmeta` directly, instead of going through Cargo");
+                }
+                err.emit();
+            }
             let mut v = Vec::new();
             locator::list_file_metadata(
                 &sess.target,
