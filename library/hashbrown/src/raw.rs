@@ -87,9 +87,8 @@ impl ProbeSeq {
             "Went past end of probe sequence"
         );
 
-        self.stride += Group::WIDTH;
-        self.pos += self.stride;
-        self.pos &= bucket_mask;
+        self.stride = self.stride.wrapping_add(Group::WIDTH);
+        self.pos = self.pos.wrapping_add(self.stride) & bucket_mask;
     }
 }
 
