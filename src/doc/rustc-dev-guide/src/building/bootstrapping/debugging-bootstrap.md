@@ -1,12 +1,15 @@
 # Debugging bootstrap
 
-There are two main ways of debugging (and profiling bootstrap). The first is through println logging, and the second is through the `tracing` feature.
+There are two main ways of debugging (and profiling bootstrap).
+The first is through println logging, and the second is through the `tracing` feature.
 
 ## `println` logging
 
-Bootstrap has extensive unstructured logging. Most of it is gated behind the `--verbose` flag (pass `-vv` for even more detail).
+Bootstrap has extensive unstructured logging.
+Most of it is gated behind the `--verbose` flag (pass `-vv` for even more detail).
 
-If you want to see verbose output of executed Cargo commands and other kinds of detailed logs, pass `-v` or `-vv` when invoking bootstrap. Note that the logs are unstructured and may be overwhelming.
+If you want to see verbose output of executed Cargo commands and other kinds of detailed logs, pass `-v` or `-vv` when invoking bootstrap.
+Note that the logs are unstructured and may be overwhelming.
 
 ```
 $ ./x dist rustc --dry-run -vv
@@ -27,7 +30,8 @@ Bootstrap has a conditional `tracing` feature, which provides the following feat
 - It generates a command execution summary, which shows which commands were executed, how many of their executions were cached, and what commands were the slowest to run.
   - The generated `command-stats.txt` file is in a simple human-readable format.
 
-The structured logs will be written to standard error output (`stderr`), while the other outputs will be stored in files in the `<build-dir>/bootstrap-trace/<pid>` directory. For convenience, bootstrap will also create a symlink to the latest generated trace output directory at `<build-dir>/bootstrap-trace/latest`.
+The structured logs will be written to standard error output (`stderr`), while the other outputs will be stored in files in the `<build-dir>/bootstrap-trace/<pid>` directory.
+For convenience, bootstrap will also create a symlink to the latest generated trace output directory at `<build-dir>/bootstrap-trace/latest`.
 
 > Note that if you execute bootstrap with `--dry-run`, the tracing output directory might change. Bootstrap will always print a path where the tracing output files were stored at the end of its execution.
 
@@ -73,18 +77,24 @@ Build completed successfully in 0:00:00
 
 #### Controlling tracing output
 
-The environment variable `BOOTSTRAP_TRACING` accepts a [`tracing_subscriber` filter][tracing-env-filter]. If you set `BOOTSTRAP_TRACING=trace`, you will enable all logs, but that can be overwhelming. You can thus use the filter to reduce the amount of data logged.
+The environment variable `BOOTSTRAP_TRACING` accepts a [`tracing_subscriber` filter][tracing-env-filter].
+If you set `BOOTSTRAP_TRACING=trace`, you will enable all logs, but that can be overwhelming.
+You can thus use the filter to reduce the amount of data logged.
 
 There are two orthogonal ways to control which kind of tracing logs you want:
 
 1. You can specify the log **level**, e.g. `debug` or `trace`.
    - If you select a level, all events/spans with an equal or higher priority level will be shown.
 2. You can also control the log **target**, e.g. `bootstrap` or `bootstrap::core::config` or a custom target like `CONFIG_HANDLING` or `STEP`.
-    - Custom targets are used to limit what kinds of spans you are interested in, as the `BOOTSTRAP_TRACING=trace` output can be quite verbose. Currently, you can use the following custom targets:
+    - Custom targets are used to limit what kinds of spans you are interested in, as the `BOOTSTRAP_TRACING=trace` output can be quite verbose.
+      Currently, you can use the following custom targets:
         - `CONFIG_HANDLING`: show spans related to config handling.
-        - `STEP`: show all executed steps. Executed commands have `info` event level.
-        - `COMMAND`: show all executed commands. Executed commands have `trace` event level.
-        - `IO`: show performed I/O operations. Executed commands have `trace` event level.
+        - `STEP`: show all executed steps.
+          Executed commands have `info` event level.
+        - `COMMAND`: show all executed commands.
+          Executed commands have `trace` event level.
+        - `IO`: show performed I/O operations.
+          Executed commands have `trace` event level.
             - Note that many I/O are currently not being traced.
 
 You can of course combine them (custom target logs are typically gated behind `TRACE` log level additionally):
@@ -100,14 +110,15 @@ Note that the level that you specify using `BOOTSTRAP_TRACING` also has an effec
 ##### FIXME(#96176): specific tracing for `compiler()` vs `compiler_for()`
 
 The additional targets `COMPILER` and `COMPILER_FOR` are used to help trace what
-`builder.compiler()` and `builder.compiler_for()` does. They should be removed
-if [#96176][cleanup-compiler-for] is resolved.
+`builder.compiler()` and `builder.compiler_for()` does.
+They should be removed if [#96176][cleanup-compiler-for] is resolved.
 
 [cleanup-compiler-for]: https://github.com/rust-lang/rust/issues/96176
 
 ### Using `tracing` in bootstrap
 
-Both `tracing::*` macros and the `tracing::instrument` proc-macro attribute need to be gated behind `tracing` feature. Examples:
+Both `tracing::*` macros and the `tracing::instrument` proc-macro attribute need to be gated behind `tracing` feature.
+Examples:
 
 ```rs
 #[cfg(feature = "tracing")]
