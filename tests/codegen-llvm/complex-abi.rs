@@ -119,7 +119,7 @@ pub extern "C" fn cplx_f16(x: Complex<f16>) -> Complex<f16> {
     // WIN32_MSVC:     define{{.*}} <2 x half> @cplx_f16(ptr {{.*}} byval({ half, half }) {{.*}})
     // WINDOWS_GNU:    define{{.*}} i32 @cplx_f16(i32 {{.*}})
     // WINDOWS_MSVC:   define{{.*}} i32 @cplx_f16(i32 {{.*}})
-    // X86_64:         define{{.*}} <2 x half> @cplx_f16(<2 x half> {{.*}})
+    // X86_64:         define{{.*}} float @cplx_f16(float {{.*}})
     x
 }
 
@@ -153,7 +153,7 @@ pub extern "C" fn cplx_f32(x: Complex<f32>) -> Complex<f32> {
     // WIN32_MSVC:     define{{.*}} i64 @cplx_f32(ptr {{.*}} byval({ float, float }) {{.*}})
     // WINDOWS_GNU:    define{{.*}} i64 @cplx_f32(i64 {{.*}})
     // WINDOWS_MSVC:   define{{.*}} i64 @cplx_f32(i64 {{.*}})
-    // X86_64:         define{{.*}} <2 x float> @cplx_f32(<2 x float> {{.*}})
+    // X86_64:         define{{.*}} double @cplx_f32(double {{.*}})
     x
 }
 
@@ -185,9 +185,9 @@ pub extern "C" fn cplx_f64(x: Complex<f64>) -> Complex<f64> {
     // WASM64:         define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, ptr {{.*}} byval({ double, double }) {{.*}})
     // WIN32_GNU:      define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, ptr {{.*}} byval({ double, double }) {{.*}})
     // WIN32_MSVC:     define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, ptr {{.*}} byval({ double, double }) {{.*}})
-    // WINDOWS_GNU:    define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, ptr {{.*}})
-    // WINDOWS_MSVC:   define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, ptr {{.*}})
-    // X86_64:         define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
+    // WINDOWS_GNU:    define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // X86_64:         define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
     x
 }
 
@@ -197,8 +197,8 @@ pub extern "C" fn cplx_f128(x: Complex<f128>) -> Complex<f128> {
     // WASM32:         define{{.*}} void @cplx_f128(ptr {{.*}} sret({ fp128, fp128 }) {{.*}}, ptr {{.*}} byval({ fp128, fp128 }) {{.*}})
     // WASM64:         define{{.*}} void @cplx_f128(ptr {{.*}} sret({ fp128, fp128 }) {{.*}}, ptr {{.*}} byval({ fp128, fp128 }) {{.*}})
     // WIN32_GNU:      define{{.*}} void @cplx_f128(ptr {{.*}} sret({ fp128, fp128 }) {{.*}}, ptr {{.*}} byval({ fp128, fp128 }) {{.*}})
-    // WINDOWS_GNU:    define{{.*}} void @cplx_f128(ptr {{.*}} sret({ fp128, fp128 }) {{.*}}, ptr {{.*}})
-    // X86_64:         define{{.*}} void @cplx_f128(ptr {{.*}} sret({ fp128, fp128 }) {{.*}}, ptr {{.*}} byval({ fp128, fp128 }) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    // X86_64:         define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
     x
 }
 
@@ -332,8 +332,8 @@ pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
     // WASM64:         define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, ptr {{.*}} byval({ i64, i64 }) {{.*}})
     // WIN32_GNU:      define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, ptr {{.*}} byval({ i64, i64 }) {{.*}})
     // WIN32_MSVC:     define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, ptr {{.*}} byval({ i64, i64 }) {{.*}})
-    // WINDOWS_GNU:    define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, ptr {{.*}})
-    // WINDOWS_MSVC:   define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, ptr {{.*}})
-    // X86_64:         define{{.*}} { i64, i64 } @cplx_i64(i64 {{.*}}, i64 {{.*}})
+    // WINDOWS_GNU:    define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // X86_64:         define{{.*}} { i64, i64 } @cplx_i64({ i64, i64 } {{.*}})
     x
 }
