@@ -74,7 +74,7 @@ impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
     ) -> Self::T {
         Statement {
             kind: self.kind.stable(tables, cx),
-            span: self.source_info.span.stable(tables, cx),
+            source_info: self.source_info.stable(tables, cx),
         }
     }
 }
@@ -695,7 +695,7 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
         use crate::mir::Terminator;
         Terminator {
             kind: self.kind.stable(tables, cx),
-            span: self.source_info.span.stable(tables, cx),
+            source_info: self.source_info.stable(tables, cx),
         }
     }
 }
