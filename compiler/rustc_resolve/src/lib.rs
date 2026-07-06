@@ -47,7 +47,7 @@ use rustc_ast::{
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, default};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
+use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard, WorkerLocal};
 use rustc_data_structures::unord::{UnordItems, UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
@@ -1388,7 +1388,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Crate-local macro expanded `macro_export` referred to by a module-relative path.
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)> = BTreeSet::new(),
 
-    arenas: &'ra ResolverArenas<'ra>,
+    arenas: &'ra WorkerLocal<ResolverArenas<'ra>>,
     dummy_decl: Decl<'ra>,
     builtin_type_decls: FxHashMap<Symbol, Decl<'ra>>,
     builtin_attr_decls: FxHashMap<Symbol, Decl<'ra>>,
@@ -1568,11 +1568,9 @@ impl<'ra> ResolverArenas<'ra> {
         // SAFETY: `Interned` is valid because values of this type have "identity".
         Interned::new_unchecked(self.imports.alloc(import))
     }
-    fn alloc_name_resolution(&'ra self, orig_ident_span: Span) -> NameResolutionRef<'ra> {
+    fn alloc_name_resolution(&'ra self, resolution: NameResolution<'ra>) -> NameResolutionRef<'ra> {
         // SAFETY: `Interned` is valid because values of this type have "identity".
-        Interned::new_unchecked(
-            self.name_resolutions.alloc(CmRefCell::new(NameResolution::new(orig_ident_span))),
-        )
+        Interned::new_unchecked(self.name_resolutions.alloc(CmRefCell::new(resolution)))
     }
     fn alloc_macro_rules_scope(&'ra self, scope: MacroRulesScope<'ra>) -> MacroRulesScopeRef<'ra> {
         self.dropless.alloc(CacheCell::new(scope))
@@ -1742,7 +1740,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         attrs: &[ast::Attribute],
         crate_span: Span,
         current_crate_outer_attr_insert_span: Span,
-        arenas: &'ra ResolverArenas<'ra>,
+        arenas: &'ra WorkerLocal<ResolverArenas<'ra>>,
     ) -> Resolver<'ra, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
         let graph_root = LocalModule::new(
@@ -2174,7 +2172,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
         if module.populate_on_access.get() {
             module.populate_on_access.set(false);
-            self.build_reduced_graph_external(module.expect_extern());
+            // unchecked because extern
+            *module.lazy_resolutions.borrow_mut_unchecked() =
+                self.build_reduced_graph_external(module.expect_extern());
         }
         &module.0.0.lazy_resolutions
     }
@@ -2193,11 +2193,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         key: BindingKey,
         orig_ident_span: Span,
     ) -> NameResolutionRef<'ra> {
-        *self
-            .resolutions(module)
-            .borrow_mut_unchecked()
-            .entry(key)
-            .or_insert_with(|| self.arenas.alloc_name_resolution(orig_ident_span))
+        *self.resolutions(module).borrow_mut(self).entry(key).or_insert_with(|| {
+            self.arenas.alloc_name_resolution(NameResolution::new(orig_ident_span))
+        })
     }
 
     /// Test if AmbiguityError ambi is any identical to any one inside ambiguity_errors
