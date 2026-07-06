@@ -54,6 +54,8 @@ pub use index::SliceIndex;
 pub use index::{range, try_range};
 #[stable(feature = "array_windows", since = "1.94.0")]
 pub use iter::ArrayWindows;
+#[unstable(feature = "raw_slice_iter", issue = "none")]
+pub use iter::raw::IterRaw;
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use iter::{ChunkBy, ChunkByMut};
 #[stable(feature = "rust1", since = "1.0.0")]
