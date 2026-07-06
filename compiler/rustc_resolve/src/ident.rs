@@ -142,9 +142,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // used to avoid long scope chains, see the comments on `MacroRulesScopeRef`.
                     // As another consequence of this optimization visitors never observe invocation
                     // scopes for macros that were already expanded.
-                    while let MacroRulesScope::Invocation(invoc_id) = macro_rules_scope.get() {
-                        if let Some(next_scope) = self.output_macro_rules_scopes.get(&invoc_id) {
-                            macro_rules_scope.set(next_scope.get());
+                    let mut scope = macro_rules_scope.get();
+                    while let MacroRulesScope::Invocation(invoc_id) = scope {
+                        if let Some(next) = self.output_macro_rules_scopes.get(&invoc_id) {
+                            scope = next.get();
+                            macro_rules_scope.set(scope);
                         } else {
                             break;
                         }
