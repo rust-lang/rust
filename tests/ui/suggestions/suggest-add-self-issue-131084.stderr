@@ -1,0 +1,37 @@
+error: expected one of `:`, `@`, or `|`, found `)`
+  --> $DIR/suggest-add-self-issue-131084.rs:9:26
+   |
+LL |     fn some_fn(&some_name) {
+   |                          ^ expected one of `:`, `@`, or `|`
+   |
+help: if this is a `self` type, give it a parameter name
+   |
+LL |     fn some_fn(self: &some_name) {
+   |                +++++
+help: if this is a parameter name, give it a type
+   |
+LL -     fn some_fn(&some_name) {
+LL +     fn some_fn(some_name: &TypeName) {
+   |
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL |     fn some_fn(_: &some_name) {
+   |                ++
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/suggest-add-self-issue-131084.rs:11:9
+   |
+LL |     fn some_fn(&some_name) {
+   |        ------- this function doesn't have a `self` parameter
+LL |
+LL |         self
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn some_fn(&&self, some_name) {
+   |                 ++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0424`.
