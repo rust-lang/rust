@@ -175,7 +175,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let Some(generalized_ty) = generalized_term.as_type() {
                     match instantiation_variance {
                         ty::Invariant => relation.register_predicates([ty::ProjectionPredicate {
-                            projection_term: source_alias.into(),
+                            projection_term: source_alias,
                             term: generalized_ty.into(),
                         }]),
                         ty::Covariant => {
@@ -190,7 +190,7 @@ impl<'tcx> InferCtxt<'tcx> {
                                 }),
                                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(
                                     ty::ProjectionPredicate {
-                                        projection_term: source_alias.into(),
+                                        projection_term: source_alias,
                                         term: new_var.into(),
                                     },
                                 )),
@@ -207,7 +207,7 @@ impl<'tcx> InferCtxt<'tcx> {
                                 }),
                                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(
                                     ty::ProjectionPredicate {
-                                        projection_term: source_alias.into(),
+                                        projection_term: source_alias,
                                         term: new_var.into(),
                                     },
                                 )),
