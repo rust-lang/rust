@@ -3346,7 +3346,8 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
     /// This filters on explicit `foo.into()` method calls (ignoring `<_ as Into<_>>::into(foo)`).
     fn check_expr_post(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
         let mut fully_qualified_path = None;
-        let (rcvr, ty, rcvr_ty, removal_span) = match expr.kind {
+        let mut removal_span = None;
+        let (rcvr, ty, rcvr_ty) = match expr.kind {
             // If we have `foo.method(...)` with arguments, we already know that `method` can't be
             // `into`, so we bail.
             hir::ExprKind::MethodCall(_segment, rcvr, args, _) => {
@@ -3357,13 +3358,17 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
                     // We've got `foo.into()`.
                     let ty = cx.typeck_results().expr_ty(expr);
                     let rcvr_ty = cx.typeck_results().expr_ty(rcvr);
-                    let removal_span = expr.span.with_lo(rcvr.span.hi());
-                    fully_qualified_path = Some(FullyQualifiedPathSuggestion {
-                        ty,
-                        pre: rcvr.span.shrink_to_lo(),
-                        post: removal_span,
-                    });
-                    (rcvr, ty, rcvr_ty, removal_span)
+                    // check that the span context is the same for both sides.
+                    if expr.span.eq_ctxt(rcvr.span) {
+                        let post = expr.span.with_lo(rcvr.span.hi());
+                        removal_span = Some(post);
+                        fully_qualified_path = Some(FullyQualifiedPathSuggestion {
+                            ty,
+                            pre: rcvr.span.shrink_to_lo(),
+                            post,
+                        });
+                    }
+                    (rcvr, ty, rcvr_ty)
                 } else if (Some(def_id) == cx.tcx.get_diagnostic_item(sym::option_map)
                     || Some(def_id) == cx.tcx.get_diagnostic_item(sym::result_map))
                     && let [arg] = args
@@ -3379,13 +3384,10 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
                     match (ty.kind(), rcvr_ty.kind()) {
                         // We care about the `T` in `Option<T>` and `Result<T, _>`.
                         (ty::Adt(_, args), ty::Adt(_, rcvr_args)) => {
-                            tracing::info!(?args, ?rcvr_args);
-                            (
-                                rcvr,
-                                args.type_at(0),
-                                rcvr_args.type_at(0),
-                                expr.span.with_lo(rcvr.span.hi()),
-                            )
+                            if expr.span.eq_ctxt(rcvr.span) {
+                                removal_span = Some(expr.span.with_lo(rcvr.span.hi()));
+                            }
+                            (rcvr, args.type_at(0), rcvr_args.type_at(0))
                         }
                         _ => return,
                     }

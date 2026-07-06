@@ -80,7 +80,7 @@ pub(crate) struct SelfTypeConversionDiag<'t> {
         code = "",
         applicability = "machine-applicable"
     )]
-    pub removal_span: Span,
+    pub removal_span: Option<Span>,
     #[subdiagnostic]
     pub fully_qualified_path: Option<FullyQualifiedPathSuggestion<'t>>,
 }
