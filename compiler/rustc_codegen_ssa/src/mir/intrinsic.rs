@@ -1,10 +1,9 @@
 use rustc_abi::{Align, FieldIdx, WrappingRange};
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::{self, SourceInfo};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{ErrorGuaranteed, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, sym};
 use rustc_target::spec::Arch;
 
 use super::operand::{OperandRef, OperandValue};
@@ -14,7 +13,7 @@ use crate::common::{AtomicRmwBinOp, SynchronizationScope};
 use crate::errors::InvalidMonomorphization;
 use crate::mir::operand::OperandRefBuilder;
 use crate::traits::*;
-use crate::{MemFlags, meth, size_of_val};
+use crate::{MemFlags, meth, size_of_val, target_features};
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -593,62 +592,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             sym::target_feature_available_at_call_site => {
-                // This intrinsic either returns a bool reflecting feature presence, or a marker. A later
-                // LLVM pass will replace the marker with the feature presence.
-                // * If the feature is already known to be present, we can immediately return true.
-                // * If we can detect the feature later in the LLVM pass, return the marker.
-                // * If the feature isn't present and we can't detect it later, return false.
-
-                // Return false on errors to allow diagnostics to continue
-                fn err_false<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-                    bx: &mut Bx,
-                    span: rustc_span::Span,
-                    msg: impl Into<rustc_errors::DiagMessage>,
-                ) -> IntrinsicResult<'tcx, Bx::Value> {
-                    bx.tcx().dcx().span_err(span, msg);
-                    IntrinsicResult::Operand(OperandValue::Immediate(bx.const_bool(false)))
-                }
-
-                let Some(feature_bytes) = fn_args
-                    .const_at(0)
-                    .try_to_value()
-                    .and_then(|feature| feature.try_to_raw_bytes(bx.tcx()))
-                else {
-                    span_bug!(span, "wrong const argument for {name}");
-                };
-                let feature_len =
-                    feature_bytes.iter().position(|&byte| byte == 0).unwrap_or(feature_bytes.len());
-                let Some(feature_name) = std::str::from_utf8(&feature_bytes[..feature_len]).ok()
-                else {
-                    return err_false(
-                        bx,
-                        span,
-                        "`target_feature_available_at_call_site` requires a UTF-8 feature name",
-                    );
-                };
-
-                // Ensure it's a valid Rust feature
-                let rust_target_features = bx.tcx().rust_target_features(LOCAL_CRATE);
-                let Some(&stability) = rust_target_features.get(feature_name) else {
-                    return err_false(bx, span, format!("unknown target feature `{feature_name}`"));
-                };
-                if let Err(reason) = stability.toggle_allowed() {
-                    return err_false(
-                        bx,
-                        span,
-                        format!("cannot use target feature `{feature_name}`: {reason}"),
-                    );
-                }
-
-                // If the function has the feature, we can emit true now. Otherwise emit the marker.
-                let current_fn_features =
-                    crate::target_features::asm_target_features(bx.tcx(), self.instance.def_id());
-                if current_fn_features.contains(&Symbol::intern(feature_name)) {
-                    OperandValue::Immediate(bx.const_bool(true))
-                } else {
-                    OperandValue::Immediate(
-                        bx.codegen_target_feature_available_at_call_site(feature_name),
-                    )
+                match target_features::target_feature_available_at_call_site_intrinsic(
+                    bx.tcx(),
+                    span,
+                    self.instance.def_id(),
+                    fn_args,
+                ) {
+                    target_features::TargetFeatureAvailableAtCallSite::Known(enabled) => {
+                        OperandValue::Immediate(bx.const_bool(enabled))
+                    }
+                    target_features::TargetFeatureAvailableAtCallSite::CheckBackend(feature) => {
+                        OperandValue::Immediate(
+                            bx.codegen_target_feature_available_at_call_site(feature.as_str()),
+                        )
+                    }
                 }
             }
 
