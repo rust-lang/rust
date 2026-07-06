@@ -163,7 +163,7 @@ impl<'db> AssocItemCollector<'db> {
             def_map,
             local_def_map,
             ast_id_map: file_id.ast_id_map(db),
-            span_map: db.span_map(file_id),
+            span_map: file_id.span_map(db),
             cfg_options: module_id.krate(db).cfg_options(db),
             file_id,
             container,

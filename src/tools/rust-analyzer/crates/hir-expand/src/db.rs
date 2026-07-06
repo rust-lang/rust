@@ -14,7 +14,7 @@ use crate::{
     fixup::{self, SyntaxFixupUndoInfo},
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
     proc_macro::CustomProcMacroExpander,
-    span_map::{ExpansionSpanMap, RealSpanMap, SpanMap},
+    span_map::{RealSpanMap, SpanMap},
     tt,
 };
 
@@ -39,18 +39,6 @@ pub enum TokenExpander<'db> {
 pub trait ExpandDatabase: SourceDatabase {
     #[salsa::transparent]
     fn resolve_span(&self, span: Span) -> FileRange;
-
-    #[salsa::transparent]
-    #[salsa::invoke(SpanMap::new)]
-    fn span_map(&self, file_id: HirFileId) -> SpanMap<'_>;
-
-    #[salsa::transparent]
-    #[salsa::invoke(crate::span_map::expansion_span_map)]
-    fn expansion_span_map(&self, file_id: MacroCallId) -> &ExpansionSpanMap;
-
-    #[salsa::invoke(crate::span_map::real_span_map)]
-    #[salsa::transparent]
-    fn real_span_map(&self, file_id: EditionedFileId) -> &RealSpanMap;
 
     /// Fetches the expander for this macro.
     #[salsa::transparent]

@@ -1002,7 +1002,8 @@ impl<'db> SemanticsImpl<'db> {
         else {
             return tok.into();
         };
-        let span = self.db.real_span_map(tok.file_id).span_for_range(tok.value.text_range());
+        let span =
+            HirFileId::from(tok.file_id).span_map(self.db).span_for_range(tok.value.text_range());
         let Some(InMacroFile { file_id, value: mut mapped_tokens }) = self.with_ctx(|ctx| {
             Some(
                 ctx.cache
@@ -1254,7 +1255,7 @@ impl<'db> SemanticsImpl<'db> {
         let _p = tracing::info_span!("descend_into_macros_impl").entered();
 
         let db = self.db;
-        let span = db.span_map(file_id).span_for_range(token.text_range());
+        let span = file_id.span_map(db).span_for_range(token.text_range());
 
         // Process the expansion of a call, pushing all tokens with our span in the expansion back onto our stack
         let process_expansion_for_token =

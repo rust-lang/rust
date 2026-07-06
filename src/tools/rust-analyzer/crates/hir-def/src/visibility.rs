@@ -306,7 +306,7 @@ pub fn visibility_from_ast(
 ) -> Visibility {
     let mut span_map = None;
     let raw_vis = crate::item_tree::visibility_from_ast(db, ast_vis.value, &mut |range| {
-        span_map.get_or_insert_with(|| db.span_map(ast_vis.file_id)).span_for_range(range).ctx
+        span_map.get_or_insert_with(|| ast_vis.file_id.span_map(db)).span_for_range(range).ctx
     });
     match raw_vis {
         RawVisibility::PubSelf(explicitness) => {

@@ -18,7 +18,7 @@ use std::{any::TypeId, iter, ops::Range, sync};
 
 use expect_test::Expect;
 use hir_expand::{
-    AstId, ExpansionInfo, InFile, MacroCallId, MacroCallKind, MacroKind,
+    AstId, ExpansionInfo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroKind,
     builtin::quote::quote,
     db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
@@ -215,7 +215,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             }
             let pp = pretty_print_macro_expansion(
                 src.value,
-                db.span_map(src.file_id),
+                src.file_id.span_map(&db),
                 show_spans,
                 show_ctxt,
             );
@@ -230,7 +230,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         if let Some(macro_file) = src.file_id.macro_file() {
             let pp = pretty_print_macro_expansion(
                 src.value.syntax().clone(),
-                db.span_map(macro_file.into()),
+                HirFileId::from(macro_file).span_map(&db),
                 false,
                 false,
             );
@@ -245,7 +245,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         {
             let pp = pretty_print_macro_expansion(
                 src.value.syntax().clone(),
-                db.span_map(macro_file.into()),
+                HirFileId::from(macro_file).span_map(&db),
                 false,
                 false,
             );
@@ -465,7 +465,7 @@ m!(g);
         ModuleSource::SourceFile(it) => it,
         ModuleSource::Module(_) | ModuleSource::BlockExpr(_) => panic!(),
     };
-    let span_map = db.real_span_map(file_id);
+    let span_map = HirFileId::from(file_id).span_map(&db);
     let no_downmap_spans: Vec<_> = source_file
         .syntax()
         .descendants()

@@ -53,7 +53,7 @@ fn use_tree_source_map(db: &dyn DefDatabase, use_ast_id: AstId<ast::Use>) -> Are
     let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
     let mut span_map = None;
     crate::item_tree::lower_use_tree(db, ast_use_tree, &mut |range| {
-        span_map.get_or_insert_with(|| db.span_map(use_ast_id.file_id)).span_for_range(range).ctx
+        span_map.get_or_insert_with(|| use_ast_id.file_id.span_map(db)).span_for_range(range).ctx
     })
     .expect("failed to lower use tree")
     .1

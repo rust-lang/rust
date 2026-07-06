@@ -35,16 +35,20 @@ impl<'db> SpanMap<'db> {
             Self::RealSpanMap(span_map) => span_map.span_for_range(range),
         }
     }
+}
 
+impl HirFileId {
     #[inline]
-    pub(crate) fn new(db: &'db dyn ExpandDatabase, file_id: HirFileId) -> SpanMap<'db> {
-        match file_id {
-            HirFileId::FileId(file_id) => SpanMap::RealSpanMap(db.real_span_map(file_id)),
-            HirFileId::MacroFile(m) => SpanMap::ExpansionSpanMap(db.expansion_span_map(m)),
+    pub fn span_map<'db>(self, db: &'db dyn ExpandDatabase) -> SpanMap<'db> {
+        match self {
+            HirFileId::FileId(file_id) => SpanMap::RealSpanMap(real_span_map(db, file_id)),
+            HirFileId::MacroFile(m) => SpanMap::ExpansionSpanMap(m.expansion_span_map(db)),
         }
     }
 }
 
+/// This is an implementation detail of [`HirFileId::span_map`]. Outside this crate, use
+/// `HirFileId::from(file_id).span_map(db)` instead of `real_span_map(db, file_id)`.
 #[salsa_macros::tracked(returns(ref))]
 pub(crate) fn real_span_map(
     db: &dyn ExpandDatabase,
@@ -109,9 +113,8 @@ pub(crate) fn real_span_map(
     )
 }
 
-pub(crate) fn expansion_span_map(
-    db: &dyn ExpandDatabase,
-    file_id: MacroCallId,
-) -> &ExpansionSpanMap {
-    &file_id.parse_macro_expansion(db).value.1
+impl MacroCallId {
+    pub fn expansion_span_map(self, db: &dyn ExpandDatabase) -> &ExpansionSpanMap {
+        &self.parse_macro_expansion(db).value.1
+    }
 }

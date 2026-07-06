@@ -342,7 +342,7 @@ impl<SN: Borrow<SyntaxNode>> InFile<SN> {
 
         let FileRange { file_id: editioned_file_id, range } = map_node_range_up_rooted(
             db,
-            db.expansion_span_map(file_id),
+            file_id.expansion_span_map(db),
             self.value.borrow().text_range(),
         )?;
 
@@ -385,7 +385,7 @@ impl InFile<SyntaxToken> {
             HirFileId::MacroFile(mac_file) => {
                 let (range, ctxt) = span_for_offset(
                     db,
-                    db.expansion_span_map(mac_file),
+                    mac_file.expansion_span_map(db),
                     self.value.text_range().start(),
                 );
 
@@ -411,7 +411,7 @@ impl InFile<SyntaxToken> {
             HirFileId::MacroFile(mac_file) => {
                 let (range, ctxt) = span_for_offset(
                     db,
-                    db.expansion_span_map(mac_file),
+                    mac_file.expansion_span_map(db),
                     self.value.text_range().start(),
                 );
 
@@ -425,7 +425,7 @@ impl InFile<SyntaxToken> {
 
 impl InMacroFile<TextSize> {
     pub fn original_file_range(self, db: &dyn db::ExpandDatabase) -> (FileRange, SyntaxContext) {
-        span_for_offset(db, db.expansion_span_map(self.file_id), self.value)
+        span_for_offset(db, self.file_id.expansion_span_map(db), self.value)
     }
 }
 
@@ -439,7 +439,7 @@ impl InFile<TextRange> {
                 (FileRange { file_id, range: self.value }, SyntaxContext::root(file_id.edition(db)))
             }
             HirFileId::MacroFile(mac_file) => {
-                match map_node_range_up(db, db.expansion_span_map(mac_file), self.value) {
+                match map_node_range_up(db, mac_file.expansion_span_map(db), self.value) {
                     Some(it) => it,
                     None => {
                         let loc = mac_file.loc(db);
@@ -457,7 +457,7 @@ impl InFile<TextRange> {
         match self.file_id {
             HirFileId::FileId(file_id) => FileRange { file_id, range: self.value },
             HirFileId::MacroFile(mac_file) => {
-                match map_node_range_up_rooted(db, db.expansion_span_map(mac_file), self.value) {
+                match map_node_range_up_rooted(db, mac_file.expansion_span_map(db), self.value) {
                     Some(it) => it,
                     _ => {
                         let loc = mac_file.loc(db);
@@ -475,7 +475,7 @@ impl InFile<TextRange> {
         match self.file_id {
             HirFileId::FileId(file_id) => FileRange { file_id, range: self.value },
             HirFileId::MacroFile(mac_file) => {
-                match map_node_range_up_rooted(db, db.expansion_span_map(mac_file), self.value) {
+                match map_node_range_up_rooted(db, mac_file.expansion_span_map(db), self.value) {
                     Some(it) => it,
                     _ => {
                         let loc = mac_file.loc(db);
@@ -496,7 +496,7 @@ impl InFile<TextRange> {
                 SyntaxContext::root(file_id.edition(db)),
             )),
             HirFileId::MacroFile(mac_file) => {
-                map_node_range_up(db, db.expansion_span_map(mac_file), self.value)
+                map_node_range_up(db, mac_file.expansion_span_map(db), self.value)
             }
         }
     }
@@ -508,7 +508,7 @@ impl InFile<TextRange> {
         match self.file_id {
             HirFileId::FileId(file_id) => Some(FileRange { file_id, range: self.value }),
             HirFileId::MacroFile(mac_file) => {
-                map_node_range_up_rooted(db, db.expansion_span_map(mac_file), self.value)
+                map_node_range_up_rooted(db, mac_file.expansion_span_map(db), self.value)
             }
         }
     }
@@ -530,7 +530,7 @@ impl<N: AstNode> InFile<N> {
 
         let FileRange { file_id: editioned_file_id, range } = map_node_range_up_rooted(
             db,
-            db.expansion_span_map(file_id),
+            file_id.expansion_span_map(db),
             self.value.syntax().text_range(),
         )?;
 

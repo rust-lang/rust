@@ -644,7 +644,6 @@ mod tests {
     use std::cell::LazyCell;
 
     use expect_test::{Expect, expect};
-    use hir_expand::db::ExpandDatabase;
     use itertools::Itertools;
     use span::Edition;
     use stdx::format_to;
@@ -674,7 +673,7 @@ mod tests {
             syntax::SourceFile::parse(&format!("use {path};"), span::Edition::CURRENT);
         let ast_path =
             parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
-        let span_map = LazyCell::new(|| db.span_map(pos.file_id.into()));
+        let span_map = LazyCell::new(|| hir_expand::HirFileId::from(pos.file_id).span_map(&db));
         let mod_path =
             ModPath::from_src(&db, ast_path, &mut |range| span_map.span_for_range(range).ctx)
                 .unwrap();

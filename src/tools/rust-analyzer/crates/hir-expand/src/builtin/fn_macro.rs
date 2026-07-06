@@ -828,7 +828,7 @@ fn include_expand(
     // FIXME: Parse errors
     ExpandResult::ok(syntax_node_to_token_tree(
         &editioned_file_id.parse(db).syntax_node(),
-        db.span_map(editioned_file_id.into()),
+        crate::HirFileId::from(editioned_file_id).span_map(db),
         span,
         syntax_bridge::DocCommentDesugarMode::ProcMacro,
     ))

@@ -46,7 +46,7 @@ impl<'db> Expander<'db> {
             current_file_id,
             recursion_depth: 0,
             recursion_limit,
-            span_map: db.span_map(current_file_id),
+            span_map: current_file_id.span_map(db),
             ast_id_map: current_file_id.ast_id_map(db),
         }
     }
