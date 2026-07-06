@@ -735,6 +735,11 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().type_variables().var_origin(vid)
     }
 
+    /// Returns the instantiation span of the type variable identified by `vid`.
+    pub fn type_var_instantiate_span(&self, vid: TyVid) -> Option<Span> {
+        self.inner.borrow_mut().type_variables().instantiate_span(vid)
+    }
+
     /// Returns the origin of the float type variable identified by `vid`.
     ///
     /// No attempt is made to resolve `vid` to its root variable.

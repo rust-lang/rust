@@ -142,11 +142,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     where
         T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + Clone,
     {
+        // Try to use better span rather than obligation.cause.span
         let predicate = obligation.predicate.clone().upcast(self.tcx);
         let predicate = self.resolve_vars_if_possible(predicate);
+        let span = if let ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) =
+            predicate.kind().skip_binder()
+            && let Some(ty) = term.as_type()
+            && let Some(vid) = ty.peel_refs().ty_vid()
+        {
+            self.infcx.type_var_instantiate_span(vid).unwrap_or_else(|| {
+                let span = self.infcx.type_var_origin(vid).span;
+                if span.is_dummy() { obligation.cause.span } else { span }
+            })
+        } else {
+            obligation.cause.span
+        };
+
         self.report_overflow_error(
             OverflowCause::TraitSolver(predicate),
-            obligation.cause.span,
+            span,
             suggest_increasing_limit,
             |err| {
                 self.note_obligation_cause_code(
