@@ -1254,7 +1254,7 @@ fn check_overriding_final_trait_item<'tcx>(
     trait_item: ty::AssocItem,
     impl_item: ty::AssocItem,
 ) {
-    if trait_item.defaultness(tcx).is_final() {
+    if trait_item.is_fn() && trait_item.defaultness(tcx).is_final() {
         tcx.dcx().emit_err(diagnostics::OverridingFinalTraitFunction {
             impl_span: tcx.def_span(impl_item.def_id),
             trait_span: tcx.def_span(trait_item.def_id),
