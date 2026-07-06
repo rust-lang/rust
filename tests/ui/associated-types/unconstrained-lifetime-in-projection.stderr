@@ -1,11 +1,11 @@
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-29861.rs:11:6
+  --> $DIR/unconstrained-lifetime-in-projection.rs:15:6
    |
 LL | impl<'a, T: 'a> MakeRef2 for T {
    |      ^^ unconstrained lifetime parameter
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/issue-29861.rs:16:43
+  --> $DIR/unconstrained-lifetime-in-projection.rs:20:43
    |
 LL | fn foo() -> <String as MakeRef2>::Ref2 { &String::from("foo") }
    |                                           ^^^^^^^^^^^^^^^^^^^ -- borrow later used here
