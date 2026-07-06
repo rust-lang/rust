@@ -15,9 +15,12 @@ use rustc_hir::{Expr, ExprKind, FnRetTy, HirId, LangItem, Node, QPath, is_range_
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, ResolvedStructPath};
 use rustc_index::IndexVec;
-use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace};
+use rustc_infer::infer::{
+    BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace, relate,
+};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
@@ -278,12 +281,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         formal_input_tys
                             .iter()
                             .map(|&ty| self.resolve_vars_if_possible(ty))
-                            .collect(),
+                            .collect::<Vec<_>>(),
                     ))
                 })
                 .ok()
             })
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .map(|expected_input_tys| {
+                expected_input_tys
+                    .into_iter()
+                    .zip(formal_input_tys)
+                    // if the expected input type is structurally equal to the formal input type,
+                    // i.e. we've only changed some inference variables around, keep the formal
+                    // input ty as the expected input ty.
+                    .map(|(expected_input_ty, formal_input_ty)| {
+                        if same_type_modulo_vars(tcx, expected_input_ty, *formal_input_ty) {
+                            // if they're the same, fall back to the formal input type
+                            *formal_input_ty
+                        } else {
+                            expected_input_ty
+                        }
+                    })
+                    .collect()
+            });
 
         let mut err_code = E0061;
 
@@ -3518,4 +3538,99 @@ enum SuggestionText {
     Swap,
     Reorder,
     DidYouMean,
+}
+
+fn same_type_modulo_vars<'tcx>(tcx: TyCtxt<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+    struct SameModuloVars<'tcx> {
+        tcx: TyCtxt<'tcx>,
+    }
+    impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameModuloVars<'tcx> {
+        fn cx(&self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn relate_ty_args(
+            &mut self,
+            a_ty: Ty<'tcx>,
+            _b_ty: Ty<'tcx>,
+            _ty_def_id: DefId,
+            a_args: ty::GenericArgsRef<'tcx>,
+            b_args: ty::GenericArgsRef<'tcx>,
+            _mk: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+        ) -> RelateResult<'tcx, Ty<'tcx>> {
+            relate::relate_args_invariantly(self, a_args, b_args)?;
+            Ok(a_ty)
+        }
+
+        fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
+            &mut self,
+            _variance: ty::Variance,
+            _info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
+            a: T,
+            b: T,
+        ) -> RelateResult<'tcx, T> {
+            self.relate(a, b)
+        }
+
+        fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+            if a == b {
+                return Ok(a);
+            }
+
+            match (a.kind(), b.kind()) {
+                (&ty::Infer(ty::InferTy::TyVar(_)), &ty::Infer(ty::InferTy::TyVar(_)))
+                | (&ty::Infer(ty::InferTy::FloatVar(_)), &ty::Infer(ty::InferTy::FloatVar(_)))
+                | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Infer(ty::InferTy::IntVar(_))) => Ok(a),
+                (&ty::Infer(_), _) | (_, &ty::Infer(_)) => Err(TypeError::Mismatch),
+                (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(self.cx(), guar)),
+                _ => relate::structurally_relate_tys(self, a, b),
+            }
+        }
+
+        fn regions(
+            &mut self,
+            a: ty::Region<'tcx>,
+            _b: ty::Region<'tcx>,
+        ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+            Ok(a)
+        }
+
+        fn consts(
+            &mut self,
+            mut a: ty::Const<'tcx>,
+            mut b: ty::Const<'tcx>,
+        ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+            if a == b {
+                return Ok(a);
+            }
+
+            if self.tcx.features().generic_const_exprs() {
+                a = self.tcx.expand_abstract_consts(a);
+                b = self.tcx.expand_abstract_consts(b);
+            }
+
+            match (a.kind(), b.kind()) {
+                (ty::ConstKind::Infer(_), ty::ConstKind::Infer(_)) => return Ok(a),
+                (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
+                    return Err(TypeError::ConstMismatch(ExpectedFound::new(a, b)));
+                }
+                _ => {}
+            }
+
+            relate::structurally_relate_consts(self, a, b)
+        }
+
+        fn binders<T>(
+            &mut self,
+            a: ty::Binder<'tcx, T>,
+            b: ty::Binder<'tcx, T>,
+        ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
+        where
+            T: Relate<TyCtxt<'tcx>>,
+        {
+            Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
+        }
+    }
+
+    SameModuloVars { tcx }.relate(a, b).is_ok()
 }
