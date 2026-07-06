@@ -21,7 +21,6 @@ use std::path::PathBuf;
 use miri::*;
 use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
-use rustc_index::IndexVec;
 use rustc_interface::interface;
 use rustc_middle::mir::{self, Local, ProjectionElem, VarDebugInfoContents, VarDebugInfoFragment};
 use rustc_middle::ty::{TyCtxt, TyKind};
@@ -132,14 +131,43 @@ struct PrirodaContext<'tcx> {
     last_location: Option<SourceLocation>,
 }
 
+enum StorageProj {
+    Field(usize),
+    Deref,
+    Downcast(Symbol),
+    Variant(usize),
+    Unsupported(String),
+}
+
+impl StorageProj {
+    fn render(&self) -> String {
+        match self {
+            StorageProj::Field(field_idx) => format!(".{field_idx}"),
+            StorageProj::Deref => format!(".*"),
+            StorageProj::Downcast(name) => format!(" as {name}"),
+            StorageProj::Variant(variant_idx) => format!(" as variant#{variant_idx}"),
+            StorageProj::Unsupported(unsop) => format!(".<unsupported:{unsop}>"),
+        }
+    }
+}
+
 struct LocalDesc {
+    /// Source variable name from `VarDebugInfo`, if this row has one.
     source_name: Option<Symbol>,
-    // Source-side projection from `VarDebugInfo::composite`. Each symbol is
-    // already rendered as one source projection segment, such as `.field` or `.0`.
+
+    /// Source-side projection from `VarDebugInfo::composite`, e.g. `.field` in source fragment `x.field`.
     source_projection: Option<Vec<Symbol>>,
+
+    /// MIR storage local that backs this description, if any.
     local: Option<Local>,
+
+    /// rendered/debug MIR place projection for now
+    storage_projection: Vec<StorageProj>,
+
+    /// Display-rendered type for this description.
     ty: String,
 }
+
 /// Controls when execution returns to the frontend.
 enum ResumeMode {
     /// Stop at the next visible MIR instruction.
@@ -349,34 +377,100 @@ impl<'tcx> PrirodaContext<'tcx> {
 
     /// Returns structured descriptions for locals in the innermost stack frame.
     ///
-    /// Starts from all MIR locals, then enriches them with source names from
-    /// `var_debug_info` when a debug entry maps directly to a whole local.
+    /// Starts from all MIR locals, enriches whole-local debug entries in place,
+    /// and appends extra rows for projected debug-info storage.
     fn list_locals(&self) -> Vec<LocalDesc> {
         let Some(frame) = self.ecx.active_thread_stack().last() else {
             return Vec::new();
         };
 
-        self.local_desc_map(frame).into_iter().collect()
+        self.build_local_descs(frame)
     }
 
-    fn local_desc_map(
-        &self,
-        frame: &Frame<'tcx, Provenance, FrameExtra<'tcx>>,
-    ) -> IndexVec<Local, LocalDesc> {
-        // Initialize one description per MIR local so the table can be indexed by Local.
-        let mut locals: IndexVec<Local, LocalDesc> = frame
-            .body()
-            .local_decls
-            .iter_enumerated()
-            .map(|(local, local_decl)| {
-                LocalDesc {
-                    source_name: None,
-                    source_projection: None,
-                    local: Some(local),
-                    ty: local_decl.ty.to_string(),
+    /// Render the source-side path from composite debug info, such as `.field`.
+    fn render_source_projection(
+        fragment: Option<&VarDebugInfoFragment<'tcx>>,
+    ) -> Option<Vec<Symbol>> {
+        let Some(VarDebugInfoFragment { ty, projection }) = fragment else { return None };
+
+        // Walk the source-side projection from the original
+        // composite variable type. Each `Field` element stores the
+        // resulting field type, so resolve the field name from the
+        // current base type before advancing to `field_ty`.
+        let mut projection_ty = ty;
+
+        let source_projection = Some(
+            projection
+                .iter()
+                .map(|elem| {
+                    match elem {
+                        ProjectionElem::Field(field_idx, field_ty) => {
+                            let rendered = match projection_ty.kind() {
+                                TyKind::Adt(adt_def, _args) if adt_def.is_struct() => {
+                                    let variant = adt_def.non_enum_variant();
+                                    let field = &variant.fields[*field_idx];
+                                    Symbol::intern(&format!(".{}", field.name))
+                                }
+
+                                TyKind::Tuple(_) =>
+                                    Symbol::intern(&format!(".{}", field_idx.index())),
+
+                                _ => Symbol::intern(".<unexpected>"),
+                            };
+
+                            projection_ty = field_ty;
+
+                            rendered
+                        }
+                        // `VarDebugInfoFragment::projection` is expected to be
+                        // field-only. If that ever changes, keep the unexpected
+                        // segment visible instead of silently rendering a
+                        // misleading source path.
+                        other => Symbol::intern(&format!(".<unsupported:{other:?}>")),
+                    }
+                })
+                .collect(),
+        );
+        source_projection
+    }
+
+    /// Render the MIR storage-side path that backs a debug-info local.
+    fn render_storage_projection(projection: &[mir::PlaceElem<'tcx>]) -> Vec<StorageProj> {
+        let storage_proj = projection
+            .iter()
+            .map(|projection_elem| {
+                match projection_elem {
+                    ProjectionElem::Field(field_idx, _) => StorageProj::Field(field_idx.index()),
+                    ProjectionElem::Deref => StorageProj::Deref,
+                    ProjectionElem::Downcast(Some(name), _) => StorageProj::Downcast(*name),
+                    ProjectionElem::Downcast(None, variant_idx) =>
+                        StorageProj::Variant(variant_idx.index()),
+                    other => StorageProj::Unsupported(format!("{other:?}")),
                 }
             })
             .collect();
+        storage_proj
+    }
+
+    fn build_local_descs(
+        &self,
+        frame: &Frame<'tcx, Provenance, FrameExtra<'tcx>>,
+    ) -> Vec<LocalDesc> {
+        let local_decls = &frame.body().local_decls;
+
+        let mut locals: Vec<LocalDesc> = Vec::with_capacity(local_decls.len());
+
+        // Create LocalDesc for every MIR local before processing debug info.
+        // Later debug-derived descriptions will be pushed back to LocalDesc list.
+        for (local_idx, local_decl) in local_decls.iter_enumerated() {
+            locals.push(LocalDesc {
+                source_name: None,
+                source_projection: None,
+                local: Some(local_idx),
+                storage_projection: Vec::new(),
+                ty: local_decl.ty.to_string(),
+            });
+        }
 
         // FIXME: Finish classifying `var_debug_info` by keeping the source path
         // and MIR storage path separate:
@@ -402,62 +496,36 @@ impl<'tcx> PrirodaContext<'tcx> {
         // - optimized-out/debug-only/unsupported shapes:
         //   explicit deferred state, not silent discard.
         //
-        // `list_locals` should collect this local-indexed table into a Vec,
+        // Final output should be produced by walking `Vec<LocalDesc>`,
         // then append explicit deferred/debug-info-only rows where needed.
         // Related: SROA can split a source local like `_slice: ExtraSlice` into
         // field locals whose debug paths should be printed as `_slice._slice`
         // and `_slice._extra`, not as two separate locals both named `_slice`.
 
-        // Attach source names from debug info when the debug entry maps directly to a whole MIR local.
+        // Whole-place debug entries enrich the direct storage-local description.
+        // Projected places and constants are handled separately/deferred.
         for var_debug_info in &frame.body().var_debug_info {
-            if let VarDebugInfoContents::Place(place) = &var_debug_info.value
-                && let Some(local) = place.as_local()
-                && locals[local].source_name.is_none()
-            {
-                if let Some(VarDebugInfoFragment { ty, projection }) =
-                    var_debug_info.composite.as_deref()
+            if let VarDebugInfoContents::Place(place) = &var_debug_info.value {
+                if let Some(local_idx) = place.as_local()
+                    && locals[local_idx.index()].source_name.is_none()
                 {
-                    // Walk the source-side projection from the original
-                    // composite variable type. Each `Field` element stores the
-                    // resulting field type, so resolve the field name from the
-                    // current base type before advancing to `field_ty`.
-                    let mut projection_ty = ty;
+                    let local_idx = local_idx.index();
+                    locals[local_idx].source_projection =
+                        Self::render_source_projection(var_debug_info.composite.as_deref());
+                    locals[local_idx].source_name = Some(var_debug_info.name);
+                } else if !place.projection.is_empty() {
+                    let storage_projection = Self::render_storage_projection(place.projection);
+                    let source_projection =
+                        Self::render_source_projection(var_debug_info.composite.as_deref());
 
-                    locals[local].source_projection = Some(
-                        projection
-                            .iter()
-                            .filter_map(|elem| {
-                                match elem {
-                                    ProjectionElem::Field(field_idx, field_ty) => {
-                                        let rendered = match projection_ty.kind() {
-                                            TyKind::Adt(adt_def, _args) if adt_def.is_struct() => {
-                                                let variant = adt_def.non_enum_variant();
-                                                let field = &variant.fields[*field_idx];
-                                                Symbol::intern(&format!(".{}", field.name))
-                                            }
-
-                                            TyKind::Tuple(_) =>
-                                                Symbol::intern(&format!(".{}", field_idx.index())),
-
-                                            _ => Symbol::intern(".<unexpected>"),
-                                        };
-
-                                        projection_ty = field_ty;
-
-                                        Some(rendered)
-                                    }
-                                    // Composite projections are currently
-                                    // expected to be field-only. Leave any
-                                    // unexpected shape for the later deferred
-                                    // debug-info representation instead of
-                                    // printing noise in the CLI.
-                                    _ => None,
-                                }
-                            })
-                            .collect(),
-                    );
-                };
-                locals[local].source_name = Some(var_debug_info.name);
+                    locals.push(LocalDesc {
+                        source_name: Some(var_debug_info.name),
+                        source_projection,
+                        local: Some(place.local),
+                        storage_projection,
+                        ty: place.ty(local_decls, self.ecx.tcx.tcx).ty.to_string(),
+                    });
+                }
             }
         }
 
@@ -542,14 +610,21 @@ impl Cli {
 
                                 let display_name = format!("{name}{source_projection}");
 
-                                let local = local_desc.local.map_or_else(
+                                let local_id = local_desc.local.map_or_else(
                                     || "<none>".to_string(),
-                                    |local| format!("_{}", local.index()),
+                                    |local_idx| format!("_{}", local_idx.index()),
                                 );
 
+                                let storage_projection = local_desc
+                                    .storage_projection
+                                    .iter()
+                                    .map(StorageProj::render)
+                                    .collect::<String>();
+
+                                let display_local_id = format!("{local_id}{storage_projection}");
                                 println!(
                                     "Name: {}, Id: {}, Ty: {}",
-                                    display_name, local, local_desc.ty
+                                    display_name, display_local_id, local_desc.ty
                                 );
                             }
                         },
