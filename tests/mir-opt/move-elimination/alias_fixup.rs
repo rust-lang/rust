@@ -1,7 +1,11 @@
 //@ test-mir-pass: MoveElimination
 //@ compile-flags: -Cpanic=abort
 
+#![feature(core_intrinsics, custom_mir)]
 #![allow(dead_code)]
+#![allow(internal_features)]
+
+use std::intrinsics::mir::*;
 
 #[derive(Copy, Clone)]
 pub struct Triple(u8, u8, u8);
@@ -64,4 +68,28 @@ pub fn simple_partial_alias(x: [u8; 4]) -> U {
     let tmp = unsafe { u.a };
     u.b = tmp;
     u
+}
+
+// EMIT_MIR alias_fixup.aggregate_indirect_source_alias.MoveElimination.diff
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+pub fn aggregate_indirect_source_alias() -> (u8, u8) {
+    // This checks that, when an aggregate has a direct operand aliasing the
+    // destination, indirect operands are also hoisted before field writes.
+    // CHECK-LABEL: fn aggregate_indirect_source_alias(
+    // CHECK: [[p:_.*]] = &raw const (_0.1: u8);
+    // CHECK: [[tmp:_.*]] = no_retag copy (*[[p]]);
+    // CHECK: (_0.0: u8) = no_retag move [[tmp]];
+    mir! {
+        let a: u8;
+        let p: *const u8;
+        let out: (u8, u8);
+
+        {
+            a = 1_u8;
+            p = &raw const a;
+            out = (*p, Move(a));
+            RET = out;
+            Return()
+        }
+    }
 }

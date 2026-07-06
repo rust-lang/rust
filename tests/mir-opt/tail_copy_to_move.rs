@@ -97,6 +97,64 @@ pub fn set_discriminant(choice: Choice) -> Choice {
     })
 }
 
+// EMIT_MIR tail_copy_to_move.set_discriminant_indirect.TailCopyToMove.diff
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+pub fn set_discriminant_indirect(choice: Choice) -> Choice {
+    // Checks that an indirect `SetDiscriminant` place stops the scan.
+    // CHECK-LABEL: fn set_discriminant_indirect(
+    // CHECK: _0 = copy _1;
+    // CHECK: discriminant((*[[P:_.*]])) = 1;
+    mir! {
+        let p: *mut Choice;
+
+        {
+            p = &raw mut choice;
+            RET = choice;
+            SetDiscriminant(*p, 1);
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR tail_copy_to_move.set_discriminant_borrowed.TailCopyToMove.diff
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+pub fn set_discriminant_borrowed(input: Choice) -> Choice {
+    // Checks that writing a borrowed local's discriminant stops the scan.
+    // CHECK-LABEL: fn set_discriminant_borrowed(
+    // CHECK: _0 = copy _1;
+    // CHECK: discriminant([[LOCAL:_.*]]) = 1;
+    mir! {
+        let local: Choice;
+        let p: *const Choice;
+
+        {
+            p = &raw const local;
+            RET = input;
+            SetDiscriminant(local, 1);
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR tail_copy_to_move.set_discriminant_index.TailCopyToMove.diff
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+pub fn set_discriminant_index(arr: [Choice; 4], idx: usize) -> usize {
+    // Checks that `SetDiscriminant` records projection locals such as indexes.
+    // CHECK-LABEL: fn set_discriminant_index(
+    // CHECK: _0 = copy _2;
+    // CHECK: discriminant([[ARR:_.*]][_2]) = 1;
+    mir! {
+        let local: [Choice; 4];
+
+        {
+            local = arr;
+            RET = idx;
+            SetDiscriminant(local[idx], 1);
+            Return()
+        }
+    }
+}
+
 // EMIT_MIR tail_copy_to_move.indirect_tail_read.TailCopyToMove.diff
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 pub fn indirect_tail_read(x: u32) -> (u32, u32) {
@@ -116,6 +174,25 @@ pub fn indirect_tail_read(x: u32) -> (u32, u32) {
             q = x;
             s = *p;
             RET = (q, s);
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR tail_copy_to_move.indirect_tail_write.TailCopyToMove.diff
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+pub fn indirect_tail_write(x: u32, z: u32) -> u32 {
+    // Checks that an indirect assignment destination stops the scan.
+    // CHECK-LABEL: fn indirect_tail_write(
+    // CHECK: _0 = copy _1;
+    // CHECK: (*[[P:_.*]]) = copy _2;
+    mir! {
+        let p: *mut u32;
+
+        {
+            p = &raw mut x;
+            RET = x;
+            *p = z;
             Return()
         }
     }

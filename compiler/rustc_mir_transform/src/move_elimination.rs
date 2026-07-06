@@ -786,14 +786,14 @@ fn apply_alias_fixup<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     patcher.apply(body);
 }
 
-fn places_alias<'tcx>(
+/// Returns whether 2 places alias, ignoring indirect places.
+fn places_directly_alias<'tcx>(
     tcx: TyCtxt<'tcx>,
     local_decls: &IndexVec<Local, LocalDecl<'tcx>>,
     a: Place<'tcx>,
     b: Place<'tcx>,
 ) -> bool {
-    // Indirect places don't overlap because we assume they didn't overlap in
-    // the input MIR.
+    // This function doesn't handle indirect aliasing.
     if a.local != b.local || a.is_indirect_first_projection() || b.is_indirect_first_projection() {
         return false;
     }
@@ -863,14 +863,38 @@ impl<'tcx> AliasFixup<'_, 'tcx> {
         source_info: SourceInfo,
         location: Location,
     ) {
-        // Fast path: if no operand alias the destination, we're done.
-        let has_any_alias = operands.iter().any(|op| match op {
+        // Fast path: if no direct operand aliases the destination, we're done.
+        //
+        // We only look for direct aliases here, which is sufficient because we
+        // know the input MIR did not have any aliasing and we didn't introduce
+        // any indirect aliasing in this pass.
+        //
+        // If the destination place is indirect then it cannot be the start of
+        // a lifetime as per the RFC 3943 MIR semantics. This means that the
+        // lifetime of the underlying allocation must have started earlier,
+        // which overlaps the early point of the assignment statement. Therefore
+        // we couldn't have unified any source operand with this destination
+        // place.
+        //
+        // If the source place is indirect then a similar reasoning applies. The
+        // only exception is if there are multiple source places (e.g.
+        // aggregates). In that situation it's possible for an indirect source
+        // to overlap the destination if and only if there is also a direct
+        // source that overlaps it:
+        //
+        // _2 = &_1
+        // _3 = (copy *_2, move _1) // _1 becomes _3.1 after unification
+        //
+        // We handle this here in 2 ways: if there is no direct alias, then
+        // we're fine. Otherwise, treat all indirect sources as potentially
+        // aliasing with the destination operand.
+        let has_direct_alias = operands.iter().any(|op| match op {
             Operand::Copy(src) | Operand::Move(src) => {
-                places_alias(self.tcx, self.local_decls, dest, *src)
+                places_directly_alias(self.tcx, self.local_decls, dest, *src)
             }
             Operand::Constant(_) | Operand::RuntimeChecks(_) => false,
         });
-        if !has_any_alias {
+        if !has_direct_alias {
             return;
         }
 
@@ -887,9 +911,13 @@ impl<'tcx> AliasFixup<'_, 'tcx> {
                     if *src == dest_field {
                         // Skip identity assignments.
                         continue;
-                    } else if places_alias(self.tcx, self.local_decls, dest, *src) {
-                        // Partial alias: hoist the source to a temp first so
-                        // the per-field write no longer overlaps the dest.
+                    } else if src.is_indirect_first_projection()
+                        || places_directly_alias(self.tcx, self.local_decls, dest, *src)
+                    {
+                        // Partial alias: hoist the source to a temp first so the
+                        // per-field write no longer overlaps the dest. Indirect
+                        // sources also need hoisting here because they may point
+                        // at one of the direct aliasing operands.
                         Operand::Move(self.isolate_rvalue_to_local(
                             Rvalue::Use(op.clone(), WithRetag::No),
                             source_info,
@@ -933,7 +961,7 @@ impl<'tcx> MutVisitor<'tcx> for AliasFixup<'_, 'tcx> {
         if let StatementKind::Assign((dest, rvalue)) = &mut statement.kind {
             match *rvalue {
                 Rvalue::Use(Operand::Copy(src) | Operand::Move(src), with_retag) => {
-                    if places_alias(self.tcx, self.local_decls, *dest, src) {
+                    if places_directly_alias(self.tcx, self.local_decls, *dest, src) {
                         if src == *dest {
                             debug!("{:?} turned into self-assignment, deleting", location);
                             statement.make_nop(true);
@@ -1034,7 +1062,7 @@ impl<'tcx> MutVisitor<'tcx> for AliasFixup<'_, 'tcx> {
                 | Rvalue::WrapUnsafeBinder(..) => {
                     let mut overlaps_dest = false;
                     VisitPlacesWith(|place, _ctxt| {
-                        if places_alias(self.tcx, self.local_decls, *dest, place) {
+                        if places_directly_alias(self.tcx, self.local_decls, *dest, place) {
                             overlaps_dest = true;
                         }
                     })
@@ -1049,8 +1077,8 @@ impl<'tcx> MutVisitor<'tcx> for AliasFixup<'_, 'tcx> {
                     }
                 }
 
-                // These permit either cannot have aliasing, or allow it because
-                // they only operate on scalar backend types.
+                // These either cannot have aliasing, or allow it because they
+                // only operate on scalar backend types.
                 Rvalue::Use(Operand::Constant(..) | Operand::RuntimeChecks(..), _)
                 | Rvalue::Ref(..)
                 | Rvalue::ThreadLocalRef(..)

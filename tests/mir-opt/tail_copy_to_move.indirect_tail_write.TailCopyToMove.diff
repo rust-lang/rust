@@ -1,0 +1,15 @@
+- // MIR for `indirect_tail_write` before TailCopyToMove
++ // MIR for `indirect_tail_write` after TailCopyToMove
+  
+  fn indirect_tail_write(_1: u32, _2: u32) -> u32 {
+      let mut _0: u32;
+      let mut _3: *mut u32;
+  
+      bb0: {
+          _3 = &raw mut _1;
+          _0 = copy _1;
+          (*_3) = copy _2;
+          return;
+      }
+  }
+  
