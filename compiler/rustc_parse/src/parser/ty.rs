@@ -576,7 +576,7 @@ impl<'a> Parser<'a> {
             lo.to(self.prev_token.span),
             parens,
         );
-        let bounds = vec![GenericBound::Trait(poly_trait_ref)];
+        let bounds = thin_vec![GenericBound::Trait(poly_trait_ref)];
         self.parse_remaining_bounds(bounds, parse_plus)
     }
 
@@ -1080,7 +1080,7 @@ impl<'a> Parser<'a> {
     /// Only if `allow_plus` this parses a `+`-separated list of bounds (trailing `+` is admitted).
     /// Otherwise, this only parses a single bound or none.
     fn parse_generic_bounds_common(&mut self, allow_plus: AllowPlus) -> PResult<'a, GenericBounds> {
-        let mut bounds = Vec::new();
+        let mut bounds = ThinVec::new();
 
         // In addition to looping while we find generic bounds:
         // We continue even if we find a keyword. This is necessary for error recovery on,
@@ -1432,7 +1432,7 @@ impl<'a> Parser<'a> {
             // Someone has written something like `&dyn (Trait + Other)`. The correct code
             // would be `&(dyn Trait + Other)`
             if self.token.is_like_plus() && leading_token.is_keyword(kw::Dyn) {
-                let bounds = vec![];
+                let bounds = thin_vec![];
                 self.parse_remaining_bounds(bounds, true)?;
                 self.expect(exp!(CloseParen))?;
                 self.dcx().emit_err(errors::IncorrectParensTraitBounds {
@@ -1617,7 +1617,7 @@ impl<'a> Parser<'a> {
                 id: lt.id,
                 ident: lt.ident,
                 attrs: ast::AttrVec::new(),
-                bounds: Vec::new(),
+                bounds: ThinVec::new(),
                 is_placeholder: false,
                 kind: ast::GenericParamKind::Lifetime,
                 colon_span: None,
