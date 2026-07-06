@@ -56,7 +56,14 @@ cfg_select! {
     }
 }
 
-#[cfg(target_env = "musl")]
+// `target_abi = "pauthtest"` is currently only used by the Linux/musl
+// `aarch64-unknown-linux-pauthtest` target. That target only supports unwinding
+// via libunwind.
+#[cfg(target_abi = "pauthtest")]
+#[link(name = "unwind")]
+unsafe extern "C" {}
+
+#[cfg(all(target_env = "musl", not(target_abi = "pauthtest")))]
 cfg_select! {
     all(feature = "llvm-libunwind", feature = "system-llvm-libunwind") => {
         compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
