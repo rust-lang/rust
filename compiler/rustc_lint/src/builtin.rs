@@ -3304,9 +3304,7 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
     fn check_item_post(&mut self, cx: &LateContext<'tcx>, item: &hir::Item<'_>) {
         let path = match item.kind {
             hir::ItemKind::Use(path, _kind) => path,
-            hir::ItemKind::TyAlias(_, _, _)
-                if find_attr!(cx.tcx, item.hir_id(), CfgTrace(..)) =>
-            {
+            hir::ItemKind::TyAlias(_, _, _) if find_attr!(cx.tcx, item.hir_id(), CfgTrace(..)) => {
                 // We've encountered `#[cfg(..)] type Alias = Foo;`.
                 // FIXME(generic_const_exprs): Revisit this before stabilization.
                 // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
