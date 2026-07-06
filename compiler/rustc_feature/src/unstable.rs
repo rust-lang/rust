@@ -455,7 +455,7 @@ declare_features! (
     /// Allows to use the `#[cfi_encoding = ""]` attribute.
     (unstable, cfi_encoding, "1.71.0", Some(89653)),
     /// The `clflushopt` target feature on x86.
-    (unstable, clflushopt_target_feature, "CURRENT_RUSTC_VERSION", Some(157096)),
+    (unstable, clflushopt_target_feature, "1.98.0", Some(157096)),
     /// Allows `for<...>` on closures and coroutines.
     (unstable, closure_lifetime_binder, "1.64.0", Some(97362)),
     /// Allows `#[track_caller]` on closures and coroutines.
@@ -513,7 +513,7 @@ declare_features! (
     /// Allows giving on-move borrowck custom diagnostic messages for a type
     (unstable, diagnostic_on_move, "1.96.0", Some(154181)),
     /// Allows giving custom types diagnostic messages on type errors
-    (unstable, diagnostic_on_type_error, "CURRENT_RUSTC_VERSION", Some(155382)),
+    (unstable, diagnostic_on_type_error, "1.98.0", Some(155382)),
     /// Allows giving unresolved imports a custom diagnostic message
     (unstable, diagnostic_on_unknown, "1.96.0", Some(152900)),
     /// Allows macros to customize macro argument matcher diagnostics.
@@ -598,7 +598,7 @@ declare_features! (
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
     /// Enable #[instrument_fn] on function.
-    (unstable, instrument_fn, "CURRENT_RUSTC_VERSION", Some(157081)),
+    (unstable, instrument_fn, "1.98.0", Some(157081)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
     /// lahfsahf target feature on x86.
@@ -613,7 +613,7 @@ declare_features! (
     /// Target features on loongarch.
     (unstable, loongarch_target_feature, "1.73.0", Some(150252)),
     /// Allows use of loop optimization hints via attributes.
-    (unstable, loop_hints, "CURRENT_RUSTC_VERSION", Some(156874)),
+    (unstable, loop_hints, "1.98.0", Some(156874)),
     /// Allows fused `loop`/`match` for direct intraprocedural jumps.
     (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Target features on m68k.
@@ -657,7 +657,7 @@ declare_features! (
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows `mut(crate) field: Type` restrictions.
-    (incomplete, mut_restriction, "CURRENT_RUSTC_VERSION", Some(105077)),
+    (incomplete, mut_restriction, "1.98.0", Some(105077)),
     /// Allows using `#[naked]` on `extern "Rust"` functions.
     (unstable, naked_functions_rustic_abi, "1.88.0", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
@@ -718,7 +718,7 @@ declare_features! (
     /// Allows `extern "rust-preserve-none"`.
     (unstable, rust_preserve_none_cc, "1.95.0", Some(151401)),
     /// Allows `extern "tail"`.
-    (unstable, rust_tail_cc, "CURRENT_RUSTC_VERSION", Some(157427)),
+    (unstable, rust_tail_cc, "1.98.0", Some(157427)),
     /// Target features on s390x.
     (unstable, s390x_target_feature, "1.82.0", Some(150259)),
     /// Allows the use of the `sanitize` attribute.
@@ -731,7 +731,7 @@ declare_features! (
     (incomplete, specialization, "1.7.0", Some(31844)),
     /// Experimental "splatting" of function call arguments at the call site.
     /// e.g. `foo(a, b, c)` calls `#[splat] fn foo((a: A, b: B, c: C))`.
-    (incomplete, splat, "CURRENT_RUSTC_VERSION", Some(153629)),
+    (incomplete, splat, "1.98.0", Some(153629)),
     /// Allows using `#[rustc_align_static(...)]` on static items.
     (unstable, static_align, "1.91.0", Some(146177)),
     /// Allows attributes on expressions and non-item statements.
@@ -762,7 +762,7 @@ declare_features! (
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
     /// Allows using `_ = <range-or-int>` enum variants.
-    (incomplete, unnamed_enum_variants, "CURRENT_RUSTC_VERSION", Some(156628)),
+    (incomplete, unnamed_enum_variants, "1.98.0", Some(156628)),
     /// Allows using `unsafe<'a> &'a T` unsafe binder types.
     (incomplete, unsafe_binders, "1.85.0", Some(130516)),
     /// Allows declaring fields `unsafe`.
@@ -787,7 +787,7 @@ declare_features! (
     /// Allows use of the `xop` target-feature
     (unstable, xop_target_feature, "1.81.0", Some(127208)),
     /// Allows use of the Xtensa target-features
-    (unstable, xtensa_target_feature, "CURRENT_RUSTC_VERSION", Some(157063)),
+    (unstable, xtensa_target_feature, "1.98.0", Some(157063)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
     (unstable, yield_expr, "1.87.0", Some(43122)),

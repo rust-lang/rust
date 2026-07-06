@@ -2519,7 +2519,7 @@ impl str {
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[stable(feature = "strip_circumfix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "strip_circumfix", since = "1.98.0")]
     pub fn strip_circumfix<P: Pattern, S: Pattern>(&self, prefix: P, suffix: S) -> Option<&str>
     where
         for<'a> S::Searcher<'a>: ReverseSearcher<'a>,
@@ -3207,7 +3207,7 @@ impl str {
     /// assert_eq!(iter.next(), Some(Range { start: 9, end: 10 }));
     /// ```
     #[must_use]
-    #[stable(feature = "substr_range", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "substr_range", since = "1.98.0")]
     pub fn substr_range(&self, substr: &str) -> Option<Range<usize>> {
         self.as_bytes().subslice_range(substr.as_bytes())
     }
