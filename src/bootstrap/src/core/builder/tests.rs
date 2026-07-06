@@ -3349,3 +3349,26 @@ fn render_compiler(compiler: Compiler, config: &RenderConfig) -> String {
 fn host_target() -> String {
     get_host_target().to_string()
 }
+
+#[test]
+fn flags_env_prefers_plain_form_without_spaces() {
+    use super::cargo::flags_env;
+
+    // No flag value contains a space, so use the readable, copy-pasteable plain form
+    // rather than the `\x1f`-separated encoded form (rust-lang/rust#158749).
+    assert_eq!(
+        flags_env("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS", "--cfg=foo\u{1f}-Cdebuginfo=0"),
+        ("RUSTFLAGS", "--cfg=foo -Cdebuginfo=0".to_string()),
+    );
+
+    // A flag value contains a space (e.g. an `-L` path), which the whitespace-split plain
+    // form can't represent, so keep the encoded form.
+    assert_eq!(
+        flags_env(
+            "RUSTFLAGS",
+            "CARGO_ENCODED_RUSTFLAGS",
+            "-Clink-arg=-L/opt/my libs\u{1f}--cfg=foo"
+        ),
+        ("CARGO_ENCODED_RUSTFLAGS", "-Clink-arg=-L/opt/my libs\u{1f}--cfg=foo".to_string()),
+    );
+}
