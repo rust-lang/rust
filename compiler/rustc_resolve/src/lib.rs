@@ -2860,10 +2860,30 @@ pub fn provide(providers: &mut Providers) {
 /// Prefer constructing it through `Resolver::cm(_mut)` to ensure correctness.
 type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
 
+/// The [`Resolver`] has different resolution phases, which share most of the resolution logic.
+/// Some of these phases mutate the resolver (`&mut Resolver`) during resolution. However, we are
+/// transforming import resolution (one of these phases), often referred to as
+/// "speculative resolution", to a parallel algorithm, which requires 2 things to change:
+///     - A `&Resolver`, because cannot mutate any fields in it.
+///     - Some fields with interior mutability may not be changed during import resolution, as
+///       this can conflict with other in progress resolutions (so locks are not the solution).
+///       But these fields do require interior mutability during the other phases.
+///
+/// Because refactoring the entire name resolution code to be split into "immutable" and "mutable"
+/// logic, we opted for a more "developer friendly" and "unsafe" approach using data structures
+/// that are immutable during import resolution. This module is the collection of 3 data structures
+/// that offer use the above 2 points:
+///     - a `RefOrMut<'a, T>` smart pointer that gates a `&'a mut T` through a flag
+///       (i.e. are we in import res?).
+///     - `CmCell` and `CmRefCell`, which are conditionally mutable through a flag.
+///
+/// We hope one day to not have to do this :D
 mod ref_mut {
     use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
     use std::fmt;
     use std::ops::Deref;
+
+    use rustc_data_structures::sync::DynSync;
 
     use crate::Resolver;
 
@@ -2916,6 +2936,12 @@ mod ref_mut {
     /// A wrapper around a [`Cell`] that only allows mutation based on a condition in the resolver.
     #[derive(Default)]
     pub(crate) struct CmCell<T>(Cell<T>);
+
+    // SAFETY: `CmCell<T>` is `Sync` only because every path that can call `Cell::set`
+    // (i.e. `CmCell::set`, and `update`, which is built on top of it) first checks
+    // `r.assert_speculative` and panics if it's set, refusing to mutate. Soundness
+    // therefore depends on proper usage of the `assert_speculative` field in the `Resolver`.
+    unsafe impl<T: DynSync> DynSync for CmCell<T> {}
 
     impl<T: Copy + fmt::Debug> fmt::Debug for CmCell<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -3005,9 +3031,20 @@ mod ref_mut {
         }
     }
 
-    /// A wrapper around a [`RefCell`] that only allows writes (mutable borrows) based on a condition in the resolver.
     #[derive(Default)]
+    /// A wrapper around a [`RefCell`] that only allows writes (mutable borrows) based on a condition in the resolver.
     pub(crate) struct CmRefCell<T>(RefCell<T>);
+
+    // SAFETY: This is safe because we can only mutate the inner state (borrow counter and `T`)
+    // if we are not in speculative resolution, which is run in parallel. This is checked
+    // dynamically with the `resolver.speculative_flag` field:
+    //
+    // - Any form of `borrow_mut` causes an immediate panic if that flag is set to ture.
+    // - We can only ever update the read counter in `borrow` if we have a `&mut Resolver`,
+    //   thus proving no speculative resolution exists. If we do need a shared borrow, the
+    //   `borrow_checked` function can be used, which gives out a `CmRef`. (see the safety comment
+    //   in `borrow_checked` for why this works)
+    unsafe impl<T: DynSync> DynSync for CmRefCell<T> {}
 
     impl<T> CmRefCell<T> {
         pub(crate) fn new(value: T) -> CmRefCell<T> {
