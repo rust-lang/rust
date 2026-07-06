@@ -175,13 +175,14 @@ self.inner.fold(init, |acc, x| f(acc, unsafe { {x}.$into_ref()}))
             // We override the default implementation, which uses `try_fold`,
             // because this simple implementation generates less LLVM IR and is
             // faster to compile. Also, the `assume` avoids a bounds check.
-            #[inline]
-            fn rposition<P>(&mut self, mut predicate: P) -> Option<usize> where
-                P: FnMut(Self::Item) -> bool,
-                Self: Sized + ExactSizeIterator + DoubleEndedIterator
-            {
-                self.inner.rposition(|x| predicate(x.$into_ref()))
-            }
+            // FIXME: this crashes the compiler?...
+            // #[inline]
+            // fn rposition<P>(&mut self, mut predicate: P) -> Option<usize> where
+            //     P: FnMut(Self::Item) -> bool,
+            //     Self: Sized + ExactSizeIterator + DoubleEndedIterator
+            // {
+            //     self.inner.rposition(|x| predicate(x.$into_ref()))
+            // }
 
             #[inline]
             unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
