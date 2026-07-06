@@ -3302,7 +3302,21 @@ impl SelfTypeConversion<'_> {
 
 impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
     fn check_item_post(&mut self, cx: &LateContext<'tcx>, item: &hir::Item<'_>) {
-        let hir::ItemKind::Use(path, _kind) = item.kind else { return };
+        let path = match item.kind {
+            hir::ItemKind::Use(path, _kind) => path,
+            hir::ItemKind::TyAlias(_, _, _)
+                if find_attr!(cx.tcx, item.hir_id(), CfgTrace(..)) =>
+            {
+                // We've encountered `#[cfg(..)] type Alias = Foo;`.
+                // FIXME(generic_const_exprs): Revisit this before stabilization.
+                // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
+                let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
+                self.ignored_types.insert(ty);
+                return;
+            }
+            _ => return,
+        };
+
         // Look at `cfg`d types as to account for things like `std::io::repr_bitpacked` and
         // `std::io::repr_unpacked`.
         //

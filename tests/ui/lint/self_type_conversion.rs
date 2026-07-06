@@ -114,6 +114,54 @@ mod b {
         //~^ ERROR useless conversion to the same type: `u64`
     }
 }
+mod c {
+    cfg_select! {
+        any(target_arch = "avr", target_arch = "msp430") => {
+            pub type Int = i16;
+        }
+        _ => {
+            pub type Int = i32;
+        }
+    }
+    #[cfg(false)]
+    pub type Float = f32;
+    #[cfg(true)]
+    pub type Float = f64;
+
+    pub type Trigger = u64;
+
+    pub fn bar() {
+        let x: Int = 1;
+        // Ok, should not lint because the type alias is behind a `cfg_select!`
+        let _: i32 = x.into();
+        let y: Float = 1.;
+        // Ok, should not lint because the type alias is behind a `cfg` attr
+        let _: f64 = y.into();
+        let z: Trigger = 1;
+        let _: u64 = z.into();
+        //~^ ERROR useless conversion to the same type: `u64`
+
+        let x: Option<Int> = Some(1);
+        // Ok, should not lint because the type alias is behind a `cfg_select!`
+        let _: Option<i32> = x.map(Into::into);
+        let y: Option<Float> = Some(1.);
+        // Ok, should not lint because the type alias is behind a `cfg` attr
+        let _: Option<f64> = y.map(Into::into);
+        let z: Option<Trigger> = Some(1);
+        let _: Option<u64> = z.map(Into::into);
+        //~^ ERROR useless conversion to the same type: `u64`
+
+        let x: Result<Int, ()> = Ok(1);
+        // Ok, should not lint because the type alias is behind a `cfg_select!`
+        let _: Result<i32, ()> = x.map(Into::into);
+        let y: Result<Float, ()> = Ok(1.);
+        // Ok, should not lint because the type alias is behind a `cfg` attr
+        let _: Result<f64, ()> = y.map(Into::into);
+        let z: Result<Trigger, ()> = Ok(1);
+        let _: Result<u64, ()> = z.map(Into::into);
+        //~^ ERROR useless conversion to the same type: `u64`
+    }
+}
 
 struct C {
     #[cfg(true)]
