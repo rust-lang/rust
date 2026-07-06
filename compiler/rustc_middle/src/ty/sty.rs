@@ -1717,7 +1717,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(tcx),
             ty::Coroutine(_, args) => args.as_coroutine().discr_ty(tcx),
 
-            ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
+            ty::Param(_) | ty::Placeholder(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, DUMMY_SP),
                 );
@@ -1757,9 +1757,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types.u8,
 
-            ty::Bound(..)
-            | ty::Placeholder(_)
-            | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Bound(..) | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`discriminant_ty` applied to unexpected type: {:?}", self)
             }
         }
