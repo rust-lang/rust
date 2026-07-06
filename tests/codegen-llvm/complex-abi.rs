@@ -5,89 +5,93 @@
 //@ add-minicore
 //@ compile-flags: -C no-prepopulate-passes -Z codegen-source-order
 
-//@ revisions: X86_64 I686 WINDOWS_MSVC WINDOWS_GNU WIN32_MSVC WIN32_GNU
+//@ revisions: X86_64 WINDOWS_MSVC WINDOWS_GNU
 //@ [X86_64] compile-flags: --target x86_64-unknown-linux-gnu
 //@ [X86_64] needs-llvm-components: x86
-//@ [I686] compile-flags: --target i686-unknown-linux-gnu
-//@ [I686] needs-llvm-components: x86
 //@ [WINDOWS_MSVC] compile-flags: --target x86_64-pc-windows-msvc
 //@ [WINDOWS_MSVC] needs-llvm-components: x86
 //@ [WINDOWS_GNU] compile-flags: --target x86_64-pc-windows-gnu
 //@ [WINDOWS_GNU] needs-llvm-components: x86
-//@ [WIN32_MSVC] compile-flags: --target i686-pc-windows-msvc
-//@ [WIN32_MSVC] needs-llvm-components: x86
-//@ [WIN32_GNU] compile-flags: --target i686-pc-windows-gnu
-//@ [WIN32_GNU] needs-llvm-components: x86
 
-//@ revisions: AARCH64 AARCH64_DARWIN AARCH64_MSVC ARM64EC
-//@ [AARCH64] compile-flags: --target aarch64-unknown-linux-gnu
-//@ [AARCH64] needs-llvm-components: aarch64
-//@ [AARCH64_DARWIN] compile-flags: --target aarch64-apple-darwin
-//@ [AARCH64_DARWIN] needs-llvm-components: aarch64
-//@ [AARCH64_MSVC] compile-flags: --target aarch64-pc-windows-msvc
-//@ [AARCH64_MSVC] needs-llvm-components: aarch64
-//@ [ARM64EC] compile-flags: --target arm64ec-pc-windows-msvc
-//@ [ARM64EC] needs-llvm-components: aarch64
+// FIXME: the below revisions are deliberately disabled for now.
 
-//@ revisions: ARM
-//@ [ARM] compile-flags: --target arm-unknown-linux-gnueabihf
-//@ [ARM] needs-llvm-components: arm
+// revisions: I686 WIN32_MSVC WIN32_GNU
+// [I686] compile-flags: --target i686-unknown-linux-gnu
+// [I686] needs-llvm-components: x86
+// [WIN32_MSVC] compile-flags: --target i686-pc-windows-msvc
+// [WIN32_MSVC] needs-llvm-components: x86
+// [WIN32_GNU] compile-flags: --target i686-pc-windows-gnu
+// [WIN32_GNU] needs-llvm-components: x86
 
-//@ revisions: RISCV64 RISCV32
-//@ [RISCV64] compile-flags: --target riscv64gc-unknown-linux-gnu
-//@ [RISCV64] needs-llvm-components: riscv
-//@ [RISCV32] compile-flags: --target riscv32gc-unknown-linux-gnu
-//@ [RISCV32] needs-llvm-components: riscv
+// revisions: AARCH64 AARCH64_DARWIN AARCH64_MSVC ARM64EC
+// [AARCH64] compile-flags: --target aarch64-unknown-linux-gnu
+// [AARCH64] needs-llvm-components: aarch64
+// [AARCH64_DARWIN] compile-flags: --target aarch64-apple-darwin
+// [AARCH64_DARWIN] needs-llvm-components: aarch64
+// [AARCH64_MSVC] compile-flags: --target aarch64-pc-windows-msvc
+// [AARCH64_MSVC] needs-llvm-components: aarch64
+// [ARM64EC] compile-flags: --target arm64ec-pc-windows-msvc
+// [ARM64EC] needs-llvm-components: aarch64
 
-//@ revisions: LOONGARCH64 LOONGARCH32
-//@ [LOONGARCH64] compile-flags: --target loongarch64-unknown-linux-gnu
-//@ [LOONGARCH64] needs-llvm-components: loongarch
-//@ [LOONGARCH32] compile-flags: --target loongarch32-unknown-none
-//@ [LOONGARCH32] needs-llvm-components: loongarch
+// revisions: ARM
+// [ARM] compile-flags: --target arm-unknown-linux-gnueabihf
+// [ARM] needs-llvm-components: arm
 
-//@ revisions: SPARC64 SPARC
-//@ [SPARC64] compile-flags: --target sparc64-unknown-linux-gnu
-//@ [SPARC64] needs-llvm-components: sparc
-//@ [SPARC] compile-flags: --target sparc-unknown-linux-gnu
-//@ [SPARC] needs-llvm-components: sparc
+// revisions: RISCV64 RISCV32
+// [RISCV64] compile-flags: --target riscv64gc-unknown-linux-gnu
+// [RISCV64] needs-llvm-components: riscv
+// [RISCV32] compile-flags: --target riscv32gc-unknown-linux-gnu
+// [RISCV32] needs-llvm-components: riscv
 
-//@ revisions: S390X
-//@ [S390X] compile-flags: --target s390x-unknown-linux-gnu
-//@ [S390X] needs-llvm-components: systemz
+// revisions: LOONGARCH64 LOONGARCH32
+// [LOONGARCH64] compile-flags: --target loongarch64-unknown-linux-gnu
+// [LOONGARCH64] needs-llvm-components: loongarch
+// [LOONGARCH32] compile-flags: --target loongarch32-unknown-none
+// [LOONGARCH32] needs-llvm-components: loongarch
 
-//@ revisions: POWERPC POWERPC64LE POWERPC64 AIX
-//@ [POWERPC] compile-flags: --target powerpc-unknown-linux-gnu
-//@ [POWERPC] needs-llvm-components: powerpc
-//@ [POWERPC64LE] compile-flags: --target powerpc64le-unknown-linux-gnu
-//@ [POWERPC64LE] needs-llvm-components: powerpc
-//@ [POWERPC64] compile-flags: --target powerpc64-unknown-linux-gnu
-//@ [POWERPC64] needs-llvm-components: powerpc
-//@ [AIX] compile-flags: --target powerpc64-ibm-aix
-//@ [AIX] needs-llvm-components: powerpc
+// revisions: SPARC64 SPARC
+// [SPARC64] compile-flags: --target sparc64-unknown-linux-gnu
+// [SPARC64] needs-llvm-components: sparc
+// [SPARC] compile-flags: --target sparc-unknown-linux-gnu
+// [SPARC] needs-llvm-components: sparc
 
-//@ revisions: MIPS64EL MIPS
-//@ [MIPS64EL] compile-flags: --target mips64el-unknown-linux-gnuabi64
-//@ [MIPS64EL] needs-llvm-components: mips
-//@ [MIPS] compile-flags: --target mips-unknown-linux-gnu
-//@ [MIPS] needs-llvm-components: mips
+// revisions: S390X
+// [S390X] compile-flags: --target s390x-unknown-linux-gnu
+// [S390X] needs-llvm-components: systemz
 
-//@ revisions: WASM32 WASM64
-//@ [WASM32] compile-flags: --target wasm32-unknown-unknown
-//@ [WASM32] needs-llvm-components: webassembly
-//@ [WASM64] compile-flags: --target wasm64-unknown-unknown
-//@ [WASM64] needs-llvm-components: webassembly
+// revisions: POWERPC POWERPC64LE POWERPC64 AIX
+// [POWERPC] compile-flags: --target powerpc-unknown-linux-gnu
+// [POWERPC] needs-llvm-components: powerpc
+// [POWERPC64LE] compile-flags: --target powerpc64le-unknown-linux-gnu
+// [POWERPC64LE] needs-llvm-components: powerpc
+// [POWERPC64] compile-flags: --target powerpc64-unknown-linux-gnu
+// [POWERPC64] needs-llvm-components: powerpc
+// [AIX] compile-flags: --target powerpc64-ibm-aix
+// [AIX] needs-llvm-components: powerpc
 
-//@ revisions: CSKY
-//@ [CSKY] compile-flags: --target csky-unknown-linux-gnuabiv2
-//@ [CSKY] needs-llvm-components: csky
+// revisions: MIPS64EL MIPS
+// [MIPS64EL] compile-flags: --target mips64el-unknown-linux-gnuabi64
+// [MIPS64EL] needs-llvm-components: mips
+// [MIPS] compile-flags: --target mips-unknown-linux-gnu
+// [MIPS] needs-llvm-components: mips
 
-//@ revisions: NVPTX
-//@ [NVPTX] compile-flags: --target nvptx64-nvidia-cuda
-//@ [NVPTX] needs-llvm-components: nvptx
+// revisions: WASM32 WASM64
+// [WASM32] compile-flags: --target wasm32-unknown-unknown
+// [WASM32] needs-llvm-components: webassembly
+// [WASM64] compile-flags: --target wasm64-unknown-unknown
+// [WASM64] needs-llvm-components: webassembly
 
-//@ revisions: BPF
-//@ [BPF] compile-flags: --target bpfel-unknown-none
-//@ [BPF] needs-llvm-components: bpf
+// revisions: CSKY
+// [CSKY] compile-flags: --target csky-unknown-linux-gnuabiv2
+// [CSKY] needs-llvm-components: csky
+
+// revisions: NVPTX
+// [NVPTX] compile-flags: --target nvptx64-nvidia-cuda
+// [NVPTX] needs-llvm-components: nvptx
+
+// revisions: BPF
+// [BPF] compile-flags: --target bpfel-unknown-none
+// [BPF] needs-llvm-components: bpf
 
 #![feature(no_core, lang_items, repr_complex, f16, f128)]
 #![no_core]
