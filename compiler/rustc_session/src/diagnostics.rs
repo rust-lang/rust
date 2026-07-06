@@ -388,11 +388,27 @@ pub(crate) struct PointerAuthenticationTypeDiscriminationNotSupportedForTarget<'
 }
 
 #[derive(Diagnostic)]
+#[diag("`-Z stack-protector-guard` is not supported for the `{$arch}` architecture")]
+pub(crate) struct StackProtectorGuardUnsupportedArch {
+    pub(crate) arch: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     "`-Z pointer-authentication` is not supported for target {$target_triple} and will be ignored"
 )]
 pub(crate) struct PointerAuthenticationNotSupportedForTarget<'a> {
     pub(crate) target_triple: &'a TargetTuple,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "invalid value `{$guard}` for `-Z stack-protector-guard` on `{$arch}` architecture, expected one of: {$valid}"
+)]
+pub(crate) struct StackProtectorGuardInvalidValue {
+    pub(crate) arch: String,
+    pub(crate) guard: String,
+    pub(crate) valid: String,
 }
 
 #[derive(Diagnostic)]

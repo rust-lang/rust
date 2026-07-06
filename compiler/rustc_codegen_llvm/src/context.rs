@@ -557,6 +557,46 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
+    // Set stack-protector-guard module flags (equivalent to Clang's -mstack-protector-guard=*)
+    if let Some(ref guard) = sess.opts.unstable_opts.stack_protector_guard {
+        if let Some(ref mode) = guard.mode {
+            llvm::add_module_flag_str(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "stack-protector-guard",
+                mode.as_str(),
+            );
+        }
+        if let Some(offset) = guard.offset {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "stack-protector-guard-offset",
+                offset,
+            );
+        }
+        if let Some(ref reg) = guard.reg {
+            if !reg.is_empty() {
+                llvm::add_module_flag_str(
+                    llmod,
+                    llvm::ModuleFlagMergeBehavior::Error,
+                    "stack-protector-guard-reg",
+                    reg,
+                );
+            }
+        }
+        if let Some(ref sym) = guard.symbol {
+            if !sym.is_empty() {
+                llvm::add_module_flag_str(
+                    llmod,
+                    llvm::ModuleFlagMergeBehavior::Error,
+                    "stack-protector-guard-symbol",
+                    sym,
+                );
+            }
+        }
+    }
+
     // Add module flags specified via -Z llvm_module_flag
     for (key, value, merge_behavior) in &sess.opts.unstable_opts.llvm_module_flag {
         let merge_behavior = match merge_behavior.as_str() {
