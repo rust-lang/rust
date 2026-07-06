@@ -78,6 +78,11 @@ pub struct Type {
     pub kind: Kind,
     pub child: TypeTree,
 }
+impl Type {
+    pub fn from_ty(offset: isize, other: &Type) -> Self {
+        Self { offset, size: other.size, kind: other.kind, child: other.child.clone() }
+    }
+}
 
 impl Type {
     pub fn add_offset(self, add: isize) -> Self {
