@@ -3,6 +3,8 @@
 #[macro_use] // import iterator! and forward_iterator!
 mod macros;
 
+pub(super) mod raw;
+
 use super::{from_raw_parts, from_raw_parts_mut};
 use crate::hint::assert_unchecked;
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
