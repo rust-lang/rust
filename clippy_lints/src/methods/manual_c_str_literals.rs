@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::{get_parent_expr, sym};
@@ -34,16 +34,25 @@ pub(super) fn check_as_ptr<'tcx>(
         && let Some(sugg) = rewrite_as_cstr(cx, lit.span, lit.node)
         && msrv.meets(cx, msrvs::C_STR_LITERALS)
     {
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             MANUAL_C_STR_LITERALS,
             receiver.span,
             "manually constructing a nul-terminated string",
-            r#"use a `c""` literal"#,
-            sugg,
-            // an additional cast may be needed, since the type of `CStr::as_ptr` and
-            // `"".as_ptr()` can differ and is platform dependent
-            Applicability::HasPlaceholders,
+            |diag| {
+                diag.span_suggestion(
+                    receiver.span,
+                    r#"use a `c""` literal"#,
+                    sugg,
+                    Applicability::HasPlaceholders,
+                );
+                if casts_removed.hir_id == expr.hir_id {
+                    diag.note(
+                        "an additional cast may be needed, since the type of `c\"\".as_ptr()` \
+                        and `b\"\".as_ptr()` can differ and is platform dependent",
+                    );
+                }
+            },
         );
     }
 }
