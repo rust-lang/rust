@@ -1155,6 +1155,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
+    #[rustc_diagnostic_item = "option_map"]
     pub const fn map<U, F>(self, f: F) -> Option<U>
     where
         F: [const] FnOnce(T) -> U + [const] Destruct,

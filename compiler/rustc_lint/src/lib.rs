@@ -208,7 +208,7 @@ early_lint_methods!(
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
-        BuiltinCombinedLateLintModPass,
+        BuiltinCombinedLateLintModPass<'tcx>,
         [
             ForLoopsOverFallibles: ForLoopsOverFallibles,
             DefaultCouldBeDerived: DefaultCouldBeDerived,
@@ -273,6 +273,7 @@ late_lint_methods!(
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
             ImplicitProvenanceCasts: ImplicitProvenanceCasts,
             CVoidReturns: CVoidReturns,
+            SelfTypeConversion<'tcx>: SelfTypeConversion { ignored_types: Default::default() },
         ]
     ]
 );
