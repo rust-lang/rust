@@ -1346,7 +1346,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                     subject: ClosureOutlivesSubject::Region(fr_minus),
                     outlived_free_region: fr_plus,
-                    blame_span: blame_constraint.cause.span,
+                    blame_span: blame_constraint.span,
                     category: blame_constraint.category,
                 });
             }
@@ -1652,24 +1652,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .collect::<Vec<_>>()
         );
 
-        // We try to avoid reporting a `ConstraintCategory::Predicate` as our best constraint.
-        // Instead, we use it to produce an improved `ObligationCauseCode`.
-        // FIXME - determine what we should do if we encounter multiple
-        // `ConstraintCategory::Predicate` constraints. Currently, we just pick the first one.
-        let cause_code = path
-            .iter()
-            .find_map(|constraint| {
-                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
-                    // We currently do not store the `DefId` in the `ConstraintCategory`
-                    // for performances reasons. The error reporting code used by NLL only
-                    // uses the span, so this doesn't cause any problems at the moment.
-                    Some(ObligationCauseCode::WhereClause(CRATE_DEF_ID.to_def_id(), predicate_span))
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| ObligationCauseCode::Misc);
-
         // When reporting an error, there is typically a chain of constraints leading from some
         // "source" region which must outlive some "target" region.
         // In most cases, we prefer to "blame" the constraints closer to the target --
@@ -1836,7 +1818,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let blame_constraint = BlameConstraint {
             category: best_constraint.category,
             from_closure: best_constraint.from_closure,
-            cause: ObligationCause::new(best_constraint.span, CRATE_DEF_ID, cause_code.clone()),
+            span: best_constraint.span,
             variance_info: best_constraint.variance_info,
         };
         (blame_constraint, path)
@@ -1917,6 +1899,31 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 pub(crate) struct BlameConstraint<'tcx> {
     pub category: ConstraintCategory<'tcx>,
     pub from_closure: bool,
-    pub cause: ObligationCause<'tcx>,
+    pub span: Span,
     pub variance_info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
+}
+
+impl<'tcx> BlameConstraint<'tcx> {
+    pub(crate) fn to_obligation_cause_from_path(
+        &self,
+        path: &[OutlivesConstraint<'tcx>],
+    ) -> ObligationCause<'tcx> {
+        // FIXME - determine what we should do if we encounter multiple
+        // `ConstraintCategory::Predicate` constraints. Currently, we just pick the first one.
+        let cause_code = path
+            .iter()
+            .find_map(|constraint| {
+                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
+                    // We currently do not store the `DefId` in the `ConstraintCategory`
+                    // for performances reasons. The error reporting code used by NLL only
+                    // uses the span, so this doesn't cause any problems at the moment.
+                    Some(ObligationCauseCode::WhereClause(CRATE_DEF_ID.to_def_id(), predicate_span))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| ObligationCauseCode::Misc);
+
+        ObligationCause::new(self.span, CRATE_DEF_ID, cause_code.clone())
+    }
 }

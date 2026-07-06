@@ -1118,9 +1118,7 @@ fn link_natively(
             let get_objects = |objects: &CrtObjects, kind| {
                 objects
                     .get(&kind)
-                    .iter()
-                    .copied()
-                    .flatten()
+                    .into_flat_iter()
                     .map(|obj| {
                         get_object_file_path(sess, obj, self_contained_crt_objects).into_os_string()
                     })
@@ -2100,7 +2098,7 @@ fn add_pre_link_objects(
     } else {
         &empty
     };
-    for obj in objects.get(&link_output_kind).iter().copied().flatten() {
+    for obj in objects.get(&link_output_kind).into_flat_iter() {
         cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
 }
@@ -2117,7 +2115,7 @@ fn add_post_link_objects(
     } else {
         &sess.target.post_link_objects
     };
-    for obj in objects.get(&link_output_kind).iter().copied().flatten() {
+    for obj in objects.get(&link_output_kind).into_flat_iter() {
         cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
 }

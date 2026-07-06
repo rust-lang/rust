@@ -38,8 +38,7 @@ where
         obligations: impl IntoIterator<Item: Upcast<I, I::Predicate>>,
     );
 
-    /// Register `AliasRelate` obligation(s) that both types must be related to each other.
-    fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty);
+    fn ambient_variance(&self) -> ty::Variance;
 }
 
 pub fn super_combine_tys<Infcx, I, R>(
@@ -115,60 +114,69 @@ where
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
 
-        (ty::Alias(is_rigid_a, _), ty::Alias(is_rigid_b, _)) if infcx.next_trait_solver() => {
-            match (is_rigid_a, is_rigid_b) {
-                (ty::IsRigid::Yes, ty::IsRigid::Yes) => structurally_relate_tys(relation, a, b),
-                _ => match relation.structurally_relate_aliases() {
-                    StructurallyRelateAliases::Yes => structurally_relate_tys(relation, a, b),
-                    StructurallyRelateAliases::No => {
-                        relation.register_alias_relate_predicate(a, b);
-                        Ok(a)
-                    }
-                },
-            }
-        }
-
-        (other, ty::Alias(is_rigid, _)) | (ty::Alias(is_rigid, _), other)
-            if infcx.next_trait_solver() =>
+        (ty::Alias(ty::IsRigid::No, alias), _) | (_, ty::Alias(ty::IsRigid::No, alias))
+            if infcx.next_trait_solver()
+                && let StructurallyRelateAliases::No = relation.structurally_relate_aliases() =>
         {
-            if let StructurallyRelateAliases::No = relation.structurally_relate_aliases()
-                && is_rigid == ty::IsRigid::No
-            {
-                relation.register_alias_relate_predicate(a, b);
-                Ok(a)
-            } else {
-                match other {
-                    ty::Infer(infer_ty) => match infer_ty {
-                        // Normally, we shouldn't be combining an infer ty with an alias here. But
-                        // when we evaluate a `Projection(assoc_ty, expected)` goal, we normalize
-                        // the projection term and structurally equate it with the expected term. If
-                        // the normalized term is an alias type and the expected term is a ty var,
-                        // the ty var just instantiated with the alias type without combining them.
-                        // However, if the expected term is either an int var or a float var, e.g.,
-                        // when the expected term is an int literal that only can be fully inferred
-                        // after the fallback, they are passed to this function because int/float
-                        // vars can't be instantiated. As we can't structurally relate infer ty with
-                        // another type, we just error them out here instead.
-                        ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(_) => {
-                            Err(TypeError::Sorts(ExpectedFound::new(a, b)))
-                        }
-
-                        ty::InferTy::TyVar(_)
-                        | ty::InferTy::FreshTy(_)
-                        | ty::InferTy::FreshIntTy(_)
-                        | ty::InferTy::FreshFloatTy(_) => unreachable!(),
-                    },
-                    _ => structurally_relate_tys(relation, a, b),
+            // If both sides are aliases, arbitrarily do the LHS first
+            let terms_are_inverted = !matches!(a.kind(), ty::Alias(ty::IsRigid::No, _));
+            let other = if terms_are_inverted { a } else { b };
+            match (relation.ambient_variance(), terms_are_inverted) {
+                (ty::Invariant, _) => relation.register_predicates([ty::ProjectionPredicate {
+                    projection_term: alias.into(),
+                    term: other.into(),
+                }]),
+                (ty::Covariant, false) | (ty::Contravariant, true) => {
+                    // Generate a new var to represent `alias <: other`
+                    // with `alias == ?A && ?A <: other`
+                    let new_var = infcx.next_ty_infer();
+                    relation.register_predicates([
+                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                            ty::ProjectionPredicate {
+                                projection_term: alias.into(),
+                                term: new_var.into(),
+                            },
+                        )),
+                        ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                            a_is_expected: !terms_are_inverted,
+                            a: new_var,
+                            b: other,
+                        }),
+                    ]);
+                }
+                (ty::Contravariant, false) | (ty::Covariant, true) => {
+                    // a :> b is b <: a
+                    let new_var = infcx.next_ty_infer();
+                    relation.register_predicates([
+                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                            ty::ProjectionPredicate {
+                                projection_term: alias.into(),
+                                term: new_var.into(),
+                            },
+                        )),
+                        ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                            a_is_expected: terms_are_inverted,
+                            a: other,
+                            b: new_var,
+                        }),
+                    ]);
+                }
+                (ty::Bivariant, _) => {
+                    unreachable!(
+                        "cannot handle bivariant aliases in register_projection_with_variance"
+                    )
                 }
             }
+            Ok(a)
         }
 
         // All other cases of inference are errors
         (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
         (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
-        | (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
-            assert!(!infcx.next_trait_solver());
+        | (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }))
+            if !infcx.next_trait_solver() =>
+        {
             match infcx.typing_mode_raw().assert_not_erased() {
                 // During coherence, opaque types should be treated as *possibly*
                 // equal to any other type. This is an
@@ -239,32 +247,24 @@ where
             Ok(a)
         }
 
-        (ty::ConstKind::Alias(ty::IsRigid::Yes, _), ty::ConstKind::Alias(ty::IsRigid::Yes, _))
-            if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver()) =>
+        (ty::ConstKind::Alias(ty::IsRigid::No, alias), _)
+        | (_, ty::ConstKind::Alias(ty::IsRigid::No, alias))
+            if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver())
+                && let StructurallyRelateAliases::No = relation.structurally_relate_aliases() =>
         {
-            structurally_relate_consts(relation, a, b)
-        }
-
-        (ty::ConstKind::Alias(..), _) | (_, ty::ConstKind::Alias(..))
-            if infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver() =>
-        {
-            match relation.structurally_relate_aliases() {
-                StructurallyRelateAliases::No => {
-                    relation.register_predicates([if infcx.next_trait_solver() {
-                        ty::PredicateKind::AliasRelate(
-                            a.into(),
-                            b.into(),
-                            ty::AliasRelationDirection::Equate,
-                        )
-                    } else {
-                        ty::PredicateKind::ConstEquate(a, b)
-                    }]);
-
-                    Ok(b)
-                }
-                StructurallyRelateAliases::Yes => structurally_relate_consts(relation, a, b),
+            if infcx.next_trait_solver() {
+                let other = if matches!(a.kind(), ty::ConstKind::Alias(..)) { b } else { a };
+                relation.register_predicates([ty::ProjectionPredicate {
+                    projection_term: alias.into(),
+                    term: other.into(),
+                }])
+            } else {
+                relation.register_predicates([ty::PredicateKind::ConstEquate(a, b)]);
             }
+
+            Ok(b)
         }
+
         _ => structurally_relate_consts(relation, a, b),
     }
 }

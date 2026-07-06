@@ -26,6 +26,7 @@ use crate::{
     Determinacy, ExternModule, Finalize, IdentKey, ImportKind, ImportSummary, LateDecl,
     LocalModule, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError,
     Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage, Symbol, Used, diagnostics,
+    module_to_string,
 };
 
 #[derive(Copy, Clone)]
@@ -1154,6 +1155,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             resolution.as_ref().and_then(|r| r.non_glob_decl).filter(|b| Some(*b) != ignore_decl);
 
         if let Some(finalize) = finalize {
+            // finalize implies that the module is fully expanded
+            assert!(!module.has_unexpanded_invocations());
             return self.get_mut().finalize_module_binding(
                 ident,
                 orig_ident_span,
@@ -1218,6 +1221,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             resolution.as_ref().and_then(|r| r.glob_decl).filter(|b| Some(*b) != ignore_decl);
 
         if let Some(finalize) = finalize {
+            // finalize implies that the module is fully expanded
+            assert!(!module.has_unexpanded_invocations());
             return self.get_mut().finalize_module_binding(
                 ident,
                 orig_ident_span,
@@ -1869,6 +1874,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module = Some(ModuleOrUniformRoot::Module(parent));
                         continue;
                     }
+                    let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
+                    let current_module = self.resolve_self(&mut ctxt, parent_scope.module);
+                    let current_module_path = module_to_string(current_module)
+                        .map_or_else(|| "crate".to_string(), |path| format!("crate::{path}"));
                     return PathResult::failed(
                         ident,
                         false,
@@ -1877,8 +1886,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module,
                         || {
                             (
-                                "too many leading `super` keywords".to_string(),
-                                "there are too many leading `super` keywords".to_string(),
+                                format!(
+                                    "too many leading `super` keywords within `{current_module_path}`"
+                                ),
+                                "this `super` would go above the crate root".to_string(),
                                 None,
                                 None,
                             )

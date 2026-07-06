@@ -32,7 +32,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                 let item_def_id = trait_item_ref.owner_id.to_def_id();
                 [item_def_id]
                     .into_iter()
-                    .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
+                    .chain(rpitit_items.get(&item_def_id).into_flat_iter().copied())
             }))
         }
         hir::ItemKind::Impl(impl_) => {
@@ -44,7 +44,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                 let item_def_id = impl_item_ref.owner_id.to_def_id();
                 [item_def_id]
                     .into_iter()
-                    .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
+                    .chain(rpitit_items.get(&item_def_id).into_flat_iter().copied())
             }))
         }
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),

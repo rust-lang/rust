@@ -10,7 +10,7 @@ use rustc_hir::ItemKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{self, InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt};
-use rustc_infer::traits::{Obligation, PredicateObligations};
+use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::relate::solver_relating::RelateExt;
@@ -469,37 +469,6 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     }
 }
 
-fn structurally_normalize_ty<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    infcx: &InferCtxt<'tcx>,
-    impl_did: LocalDefId,
-    span: Span,
-    ty: Unnormalized<'tcx, Ty<'tcx>>,
-) -> Option<(Ty<'tcx>, PredicateObligations<'tcx>)> {
-    let ocx = ObligationCtxt::new(infcx);
-    let Ok(normalized_ty) = ocx.structurally_normalize_ty(
-        &traits::ObligationCause::misc(span, impl_did),
-        tcx.param_env(impl_did),
-        ty,
-    ) else {
-        // We shouldn't have errors here in the old solver, except for
-        // evaluate/fulfill mismatches, but that's not a reason for an ICE.
-        return None;
-    };
-    let errors = ocx.try_evaluate_obligations();
-    if !errors.is_empty() {
-        if infcx.next_trait_solver() {
-            unreachable!();
-        }
-        // We shouldn't have errors here in the old solver, except for
-        // evaluate/fulfill mismatches, but that's not a reason for an ICE.
-        debug!(?errors, "encountered errors while fulfilling");
-        return None;
-    }
-
-    Some((normalized_ty, ocx.into_pending_obligations()))
-}
-
 pub(crate) fn reborrow_info<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
@@ -552,8 +521,12 @@ pub(crate) fn reborrow_info<'tcx>(
         return Ok(());
     }
 
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     // We've found some data fields. They must all be either be Copy or Reborrow.
     for (field, span) in data_fields {
+        let field = ocx
+            .deeply_normalize(&traits::ObligationCause::misc(span, impl_did), param_env, field)
+            .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
         if assert_field_type_is_reborrow(
             tcx,
             &infcx,
@@ -620,17 +593,16 @@ pub(crate) fn coerce_shared_info<'tcx>(
     }
 
     assert_eq!(trait_ref.def_id, coerce_shared_trait);
-    let Some((target, _obligations)) = structurally_normalize_ty(
-        tcx,
-        &infcx,
-        impl_did,
-        span,
-        Unnormalized::new_wip(trait_ref.args.type_at(1)),
-    ) else {
-        todo!("something went wrong with structurally_normalize_ty");
-    };
-
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let param_env = tcx.param_env(impl_did);
+    let (source, target) = ocx
+        .deeply_normalize(
+            &traits::ObligationCause::misc(span, impl_did),
+            param_env,
+            Unnormalized::new_wip((source, trait_ref.args.type_at(1))),
+        )
+        .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
+
     assert!(!source.has_escaping_bound_vars());
 
     let data = match (source.kind(), target.kind()) {
@@ -672,6 +644,20 @@ pub(crate) fn coerce_shared_info<'tcx>(
                 // them below.
                 let (a, span_a) = a_data_fields[0];
                 let (b, span_b) = b_data_fields[0];
+                let a = ocx
+                    .deeply_normalize(
+                        &traits::ObligationCause::misc(span_a, impl_did),
+                        param_env,
+                        a,
+                    )
+                    .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
+                let b = ocx
+                    .deeply_normalize(
+                        &traits::ObligationCause::misc(span_b, impl_did),
+                        param_env,
+                        b,
+                    )
+                    .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
 
                 Some((a, b, coerce_shared_trait, span_a, span_b))
             } else {
@@ -696,12 +682,19 @@ pub(crate) fn coerce_shared_info<'tcx>(
         //
         // 1 data field each; they must be the same type and Copy, or relate to one another using
         // CoerceShared.
+        //
+        // FIXME(reborrow): we should do the relating inside `probe` so the region constraint
+        // doesn't affect later result in case that this relating fails.
+        // We should resolve regions if the relating succeeds.
+        // Besides, the regions of `Ref`s are not checked here so `&'a mut T -> &'static T` is
+        // allowed.
         if source.ref_mutability() == Some(ty::Mutability::Mut)
             && target.ref_mutability() == Some(ty::Mutability::Not)
             && infcx
-                .eq_structurally_relating_aliases(
+                .relate(
                     param_env,
                     source.peel_refs(),
+                    ty::Variance::Invariant,
                     target.peel_refs(),
                     source_field_span,
                 )
@@ -710,14 +703,16 @@ pub(crate) fn coerce_shared_info<'tcx>(
             // &mut T implements CoerceShared to &T, except not really.
             return Ok(());
         }
+
+        // FIXME(reborrow): we should do the relating inside `probe` so the region constraint
+        // doesn't affect later result in case that this relating fails.
         if infcx
-            .eq_structurally_relating_aliases(param_env, source, target, source_field_span)
+            .relate(param_env, source, ty::Variance::Invariant, target, source_field_span)
             .is_err()
         {
             // The two data fields don't agree on a common type; this means
             // that they must be `A: CoerceShared<B>`. Register an obligation
             // for that.
-            let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
             let cause = traits::ObligationCause::misc(span, impl_did);
             let obligation = Obligation::new(
                 tcx,
@@ -735,6 +730,8 @@ pub(crate) fn coerce_shared_info<'tcx>(
             ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
         } else {
             // Types match: check that it is Copy.
+            //
+            // FIXME(reborrow): We should resolve regions here.
             assert_field_type_is_copy(tcx, &infcx, impl_did, param_env, source, source_field_span)?;
         }
     }
@@ -754,19 +751,20 @@ fn generic_lifetime_params_count(args: &[ty::GenericArg<'_>]) -> usize {
     args.iter().filter(|arg| arg.as_region().is_some()).count()
 }
 
-// FIXME(#155345): This should return `Unnormalized`
 fn collect_struct_data_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::AdtDef<'tcx>,
     args: ty::GenericArgsRef<'tcx>,
-) -> Vec<(Ty<'tcx>, Span)> {
+) -> Vec<(Unnormalized<'tcx, Ty<'tcx>>, Span)> {
     def.non_enum_variant()
         .fields
         .iter()
         .filter_map(|f| {
             // Ignore PhantomData fields
-            let ty = f.ty(tcx, args).skip_norm_wip();
-            if ty.is_phantom_data() {
+            let ty = f.ty(tcx, args);
+            // FIXME(#155345): alias might be normalized to PhantomData.
+            // We probably should normalize here instead.
+            if ty.skip_norm_wip().is_phantom_data() {
                 return None;
             }
             Some((ty, tcx.def_span(f.did)))
