@@ -1,0 +1,16 @@
+- // MIR for `set_discriminant_borrowed` before TailCopyToMove
++ // MIR for `set_discriminant_borrowed` after TailCopyToMove
+  
+  fn set_discriminant_borrowed(_1: Choice) -> Choice {
+      let mut _0: Choice;
+      let mut _2: Choice;
+      let mut _3: *const Choice;
+  
+      bb0: {
+          _3 = &raw const _2;
+          _0 = copy _1;
+          discriminant(_2) = 1;
+          return;
+      }
+  }
+  

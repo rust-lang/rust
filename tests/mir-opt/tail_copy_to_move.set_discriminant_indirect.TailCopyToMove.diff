@@ -1,0 +1,15 @@
+- // MIR for `set_discriminant_indirect` before TailCopyToMove
++ // MIR for `set_discriminant_indirect` after TailCopyToMove
+  
+  fn set_discriminant_indirect(_1: Choice) -> Choice {
+      let mut _0: Choice;
+      let mut _2: *mut Choice;
+  
+      bb0: {
+          _2 = &raw mut _1;
+          _0 = copy _1;
+          discriminant((*_2)) = 1;
+          return;
+      }
+  }
+  
