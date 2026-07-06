@@ -944,8 +944,10 @@ impl DepGraphData {
         // We never try to mark eval_always nodes as green
         debug_assert!(!tcx.is_eval_always(self.previous.index_to_node(prev_dep_node_index).kind));
 
+        let colors = self.colors.values.as_slice();
+
         for parent_dep_node_index in self.previous.edge_targets_from(prev_dep_node_index) {
-            match self.colors.get(parent_dep_node_index) {
+            match DepNodeColorMap::get_from_slice(colors, parent_dep_node_index) {
                 // This dependency has been marked as green before, we are still ok and can
                 // continue checking the remaining dependencies.
                 DepNodeColor::Green(parent_index) => {
@@ -983,7 +985,7 @@ impl DepGraphData {
                 return None;
             }
 
-            match self.colors.get(parent_dep_node_index) {
+            match DepNodeColorMap::get_from_slice(colors, parent_dep_node_index) {
                 DepNodeColor::Green(parent_index) => {
                     edges.push(parent_index);
                     continue;
