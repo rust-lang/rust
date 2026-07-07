@@ -64,7 +64,7 @@ pub(crate) struct CastCheck<'tcx> {
     cast_ty: Ty<'tcx>,
     cast_span: Span,
     span: Span,
-    pub body_id: LocalDefId,
+    pub body_def_id: LocalDefId,
 }
 
 /// The kind of pointer and associated metadata (thin, length or vtable) - we
@@ -247,8 +247,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         span: Span,
     ) -> Result<CastCheck<'tcx>, ErrorGuaranteed> {
         let expr_span = expr.span.find_ancestor_inside(span).unwrap_or(expr.span);
-        let check =
-            CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span, body_id: fcx.body_id };
+        let check = CastCheck {
+            expr,
+            expr_ty,
+            expr_span,
+            cast_ty,
+            cast_span,
+            span,
+            body_def_id: fcx.body_def_id,
+        };
 
         // For better error messages, check for some obviously unsized
         // cases now. We do a more thorough check at the end, once

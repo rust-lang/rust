@@ -258,10 +258,11 @@ impl<'tcx> BestObligation<'tcx> {
     ) -> ControlFlow<PredicateObligation<'tcx>> {
         let infcx = candidate.goal().infcx();
         let param_env = candidate.goal().goal().param_env;
-        let body_id = self.obligation.cause.body_id;
+        let body_def_id = self.obligation.cause.body_def_id;
 
-        for obligation in wf::unnormalized_obligations(infcx, param_env, term, self.span(), body_id)
-            .into_flat_iter()
+        for obligation in
+            wf::unnormalized_obligations(infcx, param_env, term, self.span(), body_def_id)
+                .into_flat_iter()
         {
             let nested_goal = candidate.instantiate_proof_tree_for_nested_goal(
                 GoalSource::Misc,
