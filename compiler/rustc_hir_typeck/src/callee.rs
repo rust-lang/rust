@@ -39,11 +39,11 @@ pub(crate) fn check_legal_trait_for_method_call(
     receiver: Option<Span>,
     expr_span: Span,
     trait_id: DefId,
-    body_id: DefId,
+    body_def_id: DefId,
 ) -> Result<(), ErrorGuaranteed> {
     if tcx.is_lang_item(trait_id, LangItem::Drop)
         // Allow calling `Drop::pin_drop` in `Drop::drop`
-        && !tcx.is_lang_item(tcx.parent(body_id), LangItem::Drop)
+        && !tcx.is_lang_item(tcx.parent(body_def_id), LangItem::Drop)
     {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
             diagnostics::ExplicitDestructorCallSugg::Snippet {
@@ -1040,7 +1040,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
     ) {
-        let const_context = self.tcx.hir_body_const_context(self.body_id);
+        let const_context = self.tcx.hir_body_const_context(self.body_def_id);
 
         if let hir::Constness::Const { always: true } = self.tcx.constness(callee_did) {
             match const_context {
@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
-        if self.has_rustc_attrs && find_attr!(self.tcx, self.body_id, RustcDoNotConstCheck) {
+        if self.has_rustc_attrs && find_attr!(self.tcx, self.body_def_id, RustcDoNotConstCheck) {
             return;
         }
 
