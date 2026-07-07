@@ -1464,7 +1464,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     // found. This is to avoid the linker errors about undefined references to
     // `__llvm_profile_instrument_memop` when linking `rustc_driver`.
     let mut llvm_linker_flags = String::new();
-    if builder.config.llvm_profile_generate
+    if builder.config.llvm_pgo.generate_profile.is_some()
         && target.is_msvc()
         && let Some(ref clang_cl_path) = builder.config.llvm_clang_cl
     {

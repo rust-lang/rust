@@ -162,7 +162,7 @@ pub struct Flags {
     /// use PGO profile for LLVM build
     // FIXME: Remove this option at the end of 2026
     #[arg(global = true, value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
-    pub llvm_profile_use: Option<String>,
+    pub llvm_profile_use: Option<PathBuf>,
     // LLVM doesn't support a custom location for generating profile
     // information.
     //

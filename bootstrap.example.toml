@@ -985,7 +985,11 @@
 # Instrument the Rust compiler, so that when executed, it will gather profiles
 # to this path.
 #rustc.generate = "/tmp/profiles/foo.profraw"
-
+# Use the following profile to PGO optimize LLVM.
+#llvm.use = "/tmp/profiles/foo.profraw"
+# Instrument LLVM, so that when executed, it will gather profiles
+# Note: for LLVM specifically, this should be a directory, not a file path.
+#llvm.generate = "/tmp/profiles"
 
 # =============================================================================
 # Options for specific targets

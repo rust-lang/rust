@@ -191,6 +191,7 @@ pub struct Config {
     pub llvm_cxxflags: Option<String>,
     pub llvm_ldflags: Option<String>,
     pub llvm_use_libcxx: bool,
+    pub llvm_pgo: LlvmPgoConfig,
 
     // gcc codegen options
     pub gcc_ci_mode: GccCiMode,
@@ -234,8 +235,6 @@ pub struct Config {
     pub rust_rustflags: Vec<String>,
     pub rust_pgo: PgoConfig,
 
-    pub llvm_profile_use: Option<String>,
-    pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
     pub enable_bolt_settings: bool,
 
@@ -656,8 +655,7 @@ impl Config {
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
         } = toml_gcc.unwrap_or_default();
 
-        let Pgo { rustc: pgo_rustc } = toml_pgo.unwrap_or_default();
-        let mut pgo_rustc = pgo_rustc.unwrap_or_default();
+        let Pgo { rustc: pgo_rustc, llvm: pgo_llvm } = toml_pgo.unwrap_or_default();
 
         // Backcompat: flags have priority over config
         if flags_rust_profile_use.is_some() || flags_rust_profile_generate.is_some() {
@@ -670,13 +668,36 @@ impl Config {
                 "WARNING: the `rust.profile-generate` and `rust.profile-use` config options have been deprecated. Configure PGO through the config file instead, in the [pgo.rustc] section."
             );
         }
+        if flags_llvm_profile_use.is_some() || flags_llvm_profile_generate {
+            eprintln!(
+                "WARNING: the `--llvm-profile-generate` and `--llvm-profile-use` flags have been deprecated. Configure PGO through the config file instead, in the [pgo.llvm] section."
+            );
+        }
 
+        let mut pgo_rustc = pgo_rustc.unwrap_or_default();
         pgo_rustc.use_profile =
             flags_rust_profile_use.or(pgo_rustc.use_profile).or(rust_profile_use);
         pgo_rustc.generate_profile =
             flags_rust_profile_generate.or(pgo_rustc.generate_profile).or(rust_profile_generate);
         if pgo_rustc.use_profile.is_some() && pgo_rustc.generate_profile.is_some() {
             panic!("Cannot use and generate rust PGO profiles at the same time");
+        }
+
+        let pgo_llvm = pgo_llvm.unwrap_or_default();
+        let pgo_llvm = LlvmPgoConfig {
+            use_profile: flags_llvm_profile_use.or(pgo_llvm.use_profile),
+            generate_profile: if flags_llvm_profile_generate {
+                Some(if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
+                    LlvmPgoGenerationMode::Directory(PathBuf::from(llvm_profile_dir))
+                } else {
+                    LlvmPgoGenerationMode::Implicit
+                })
+            } else {
+                pgo_llvm.generate_profile.map(LlvmPgoGenerationMode::Directory)
+            },
+        };
+        if pgo_llvm.use_profile.is_some() && pgo_llvm.generate_profile.is_some() {
+            panic!("Cannot use and generate LLVM PGO profiles at the same time");
         }
 
         if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
@@ -1463,10 +1484,9 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             ),
             llvm_offload: llvm_offload.unwrap_or(false),
             llvm_optimize: llvm_optimize.unwrap_or(true),
+            llvm_pgo: pgo_llvm,
             llvm_plugins: llvm_plugin.unwrap_or(false),
             llvm_polly: llvm_polly.unwrap_or(false),
-            llvm_profile_generate: flags_llvm_profile_generate,
-            llvm_profile_use: flags_llvm_profile_use,
             llvm_release_debuginfo: llvm_release_debuginfo.unwrap_or(false),
             llvm_static_stdcpp: llvm_static_libstdcpp.unwrap_or(false),
             llvm_targets,
@@ -2062,6 +2082,20 @@ fn compute_src_directory(src_dir: Option<PathBuf>, exec_ctx: &ExecutionContext) 
         }
     };
     None
+}
+
+#[derive(Clone)]
+pub enum LlvmPgoGenerationMode {
+    /// Enable PGO instrumentation that will write profiles into a default path.
+    Implicit,
+    /// Enable PGO instrumentation that will write profiles into the specified directory.
+    Directory(PathBuf),
+}
+
+#[derive(Clone)]
+pub struct LlvmPgoConfig {
+    pub use_profile: Option<PathBuf>,
+    pub generate_profile: Option<LlvmPgoGenerationMode>,
 }
 
 /// Loads bootstrap TOML config and returns the config together with a path from where

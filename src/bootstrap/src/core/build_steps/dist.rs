@@ -3039,7 +3039,7 @@ impl Step for ReproducibleArtifacts {
             tarball.add_file(path, ".", FileType::Regular);
             added_anything = true;
         }
-        if let Some(path) = builder.config.llvm_profile_use.as_ref() {
+        if let Some(path) = builder.config.llvm_pgo.use_profile.as_ref() {
             tarball.add_file(path, ".", FileType::Regular);
             added_anything = true;
         }
