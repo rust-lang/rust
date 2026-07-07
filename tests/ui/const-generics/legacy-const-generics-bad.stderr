@@ -18,6 +18,7 @@ LL |     legacy_const_generics::foo(0, N + 1, 2);
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: aborting due to 2 previous errors
 
