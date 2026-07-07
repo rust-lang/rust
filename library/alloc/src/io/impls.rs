@@ -129,20 +129,7 @@ impl<A: Allocator> Write for Vec<u8, A> {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         cfg_select! {
             no_global_oom_handling => {
-                let n = buf.len();
-                self.try_reserve(n)?;
-                // SAFETY:
-                // * self and buf are non-overlapping
-                // * self[..len] is already initialized
-                // * self[len..len + n] is initialized by copy_nonoverlapping
-                // * len + n is within the capacity of self based on the reservation completed above
-                unsafe {
-                    let len = self.len();
-                    let src = buf.as_ptr();
-                    let dst = self.as_mut_ptr().add(len);
-                    core::ptr::copy_nonoverlapping(src, dst, n);
-                    self.set_len(len + n);
-                }
+                self.try_extend_from_slice_of_bytes(buf)?;
             }
             _ => {
                 self.extend_from_slice(buf);
