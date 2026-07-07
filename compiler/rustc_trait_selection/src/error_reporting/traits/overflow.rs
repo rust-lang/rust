@@ -150,7 +150,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             suggest_increasing_limit,
             |err| {
                 self.note_obligation_cause_code(
-                    obligation.cause.body_id,
+                    obligation.cause.body_def_id,
                     err,
                     predicate,
                     obligation.param_env,
