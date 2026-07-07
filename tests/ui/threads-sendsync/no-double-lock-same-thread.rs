@@ -1,3 +1,13 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/33770>.
+//! Ensure both `Mutex` and `RwLock` cannot be locked twice on same
+//! thread.
+//!
+//! This was possible as mutexes were initialized with `PTHREAD_MUTEX_DEFAULT`
+//! for which attempt to relock from the same thread is considered undefined
+//! behaviour, and during glibc's lock-elision transaction lock appeared
+//! unlocked, which allowed to lock it again from the same thread.
+//!
+//! This resulted in ability to aquire 2 mutable references at the same time.
 //@ run-pass
 //@ needs-subprocess
 

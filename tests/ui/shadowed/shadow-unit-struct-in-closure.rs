@@ -1,4 +1,5 @@
-// Shadowing a unit-like enum in a closure
+//! Regression test for <https://github.com/rust-lang/rust/issues/33504>.
+//! Test shadowing a unit-like struct in a closure doesn't cause ICE.
 
 struct Test;
 
