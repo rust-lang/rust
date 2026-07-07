@@ -75,6 +75,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::TypeMismatch<'_>) -> Option<
         remove_semicolon(ctx, d, expr_ptr, &mut fixes);
         str_ref_to_owned(ctx, d, expr_ptr, &mut fixes);
         add_await(ctx, d, expr_ptr, &mut fixes);
+        array_length(ctx, d, expr_ptr, &mut fixes);
     }
 
     if fixes.is_empty() { None } else { Some(fixes) }
@@ -398,6 +399,58 @@ fn add_await(
     let edit = TextEdit::insert(range.end(), ".await".to_owned());
     let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.db()), edit);
     acc.push(fix("add_await", "Add .await here", source_change, range));
+
+    Some(())
+}
+
+fn array_length(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::TypeMismatch<'_>,
+    expr_ptr: &InFile<AstPtr<ast::Expr>>,
+    acc: &mut Vec<Assist>,
+) -> Option<()> {
+    let (ty1, expected) = d.expected.as_array(ctx.db())?;
+    let (ty2, actual) = d.actual.as_array(ctx.db())?;
+
+    if ty1 != ty2 || expected == actual {
+        return None;
+    }
+
+    let root = expr_ptr.file_id.parse_or_expand(ctx.db());
+    let expr = expr_ptr.value.to_node(&root);
+    let container = skip_transparent(expr).syntax().parent()?;
+    let ty = syntax::match_ast! {
+        match container {
+            ast::LetStmt(it) => it.ty()?,
+            ast::Static(it) => it.ty()?,
+            ast::Const(it) => it.ty()?,
+            _ => return None,
+        }
+    };
+    let ast::Type::ArrayType(ty) = ty else { return None };
+    let len = ty.const_arg()?.expr()?;
+    let hir::FileRange { file_id, range } = ctx.sema.original_range_opt(len.syntax())?;
+
+    let edit = TextEdit::replace(range, actual.to_string());
+    let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.db()), edit);
+    let label = &format!("Change array length to {actual}");
+    acc.push(fix("array_length", label, source_change, range));
+
+    fn skip_transparent(mut expr: Expr) -> Expr {
+        while let Some(parent) = expr.syntax().parent() {
+            if let Some(it) = ast::StmtList::cast(parent.clone())
+                && it.statements().next().is_none()
+                && let Some(parent) = it.syntax().parent().and_then(Expr::cast)
+            {
+                expr = parent;
+            } else if let Some(parent) = ast::ParenExpr::cast(parent) {
+                expr = parent.into();
+            } else {
+                break;
+            }
+        }
+        expr
+    }
 
     Some(())
 }
@@ -1455,6 +1508,51 @@ identity! {
     async fn test() {
         let x: u32 = foo().await;
     }
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn array_length() {
+        check_fix(
+            r#"
+const VALS: [i32; 2$0] = [1, 2, 3];
+            "#,
+            r#"
+const VALS: [i32; 3] = [1, 2, 3];
+            "#,
+        );
+
+        check_fix(
+            r#"
+static VALS: [i32; 2$0] = [1, 2, 3];
+            "#,
+            r#"
+static VALS: [i32; 3] = [1, 2, 3];
+            "#,
+        );
+
+        check_fix(
+            r#"
+static VALS: [i32; 2$0] = {[1, 2, 3]};
+            "#,
+            r#"
+static VALS: [i32; 3] = {[1, 2, 3]};
+            "#,
+        );
+
+        check_fix(
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+identity! {
+    const VALS: [i32; 2$0] = [1, 2, 3];
+}
+            "#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+identity! {
+    const VALS: [i32; 3] = [1, 2, 3];
 }
             "#,
         );
