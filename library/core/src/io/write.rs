@@ -378,9 +378,7 @@ where
     write(buf)
 }
 
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn default_write_fmt<W: Write + ?Sized>(this: &mut W, args: fmt::Arguments<'_>) -> Result<()> {
+fn default_write_fmt<W: Write + ?Sized>(this: &mut W, args: fmt::Arguments<'_>) -> Result<()> {
     // Create a shim which translates a `Write` to a `fmt::Write` and saves off
     // I/O errors, instead of discarding them.
     struct Adapter<'a, T: ?Sized + 'a> {

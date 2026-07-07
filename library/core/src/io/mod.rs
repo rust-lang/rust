@@ -38,7 +38,7 @@ pub use self::{
     seek::stream_len_default,
     size_hint::SizeHint,
     util::{chain, take},
-    write::{default_write_fmt, default_write_vectored},
+    write::default_write_vectored,
 };
 
 /// Marks that a type `T` can have IO traits such as [`Seek`], [`Write`], etc. automatically
