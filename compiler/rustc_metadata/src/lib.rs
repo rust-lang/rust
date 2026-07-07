@@ -1,7 +1,5 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(result_option_map_or_default))]
-#![cfg_attr(bootstrap, feature(strip_circumfix))]
 #![feature(error_iter)]
 #![feature(file_buffered)]
 #![feature(gen_blocks)]
