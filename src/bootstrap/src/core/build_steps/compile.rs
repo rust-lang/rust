@@ -1293,12 +1293,12 @@ pub fn rustc_cargo(
         cargo.rustflag("-Clink-args=-Wl,--icf=all");
     }
 
-    if builder.config.rust_profile_use.is_some() && builder.config.rust_profile_generate.is_some() {
-        panic!("Cannot use and generate PGO profiles at the same time");
-    }
-    let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
+    eprintln!("Profile: {:?}", builder.config.rust_pgo.generate_profile);
+
+    let is_collecting = if let Some(path) = &builder.config.rust_pgo.generate_profile {
         if build_compiler.stage == 1 {
-            cargo.rustflag(&format!("-Cprofile-generate={path}"));
+            cargo
+                .rustflag(&format!("-Cprofile-generate={}", path.to_str().expect("non-UTF8 path")));
             // Apparently necessary to avoid overflowing the counters during
             // a Cargo build profile
             cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
@@ -1306,9 +1306,9 @@ pub fn rustc_cargo(
         } else {
             false
         }
-    } else if let Some(path) = &builder.config.rust_profile_use {
+    } else if let Some(path) = &builder.config.rust_pgo.use_profile {
         if build_compiler.stage == 1 {
-            cargo.rustflag(&format!("-Cprofile-use={path}"));
+            cargo.rustflag(&format!("-Cprofile-use={}", path.to_str().expect("non-UTF8 path")));
             if builder.is_verbose() {
                 cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
             }

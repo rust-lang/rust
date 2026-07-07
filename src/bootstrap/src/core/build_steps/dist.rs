@@ -3035,7 +3035,7 @@ impl Step for ReproducibleArtifacts {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let mut added_anything = false;
         let tarball = Tarball::new(builder, "reproducible-artifacts", &self.target.triple);
-        if let Some(path) = builder.config.rust_profile_use.as_ref() {
+        if let Some(path) = builder.config.rust_pgo.use_profile.as_ref() {
             tarball.add_file(path, ".", FileType::Regular);
             added_anything = true;
         }
