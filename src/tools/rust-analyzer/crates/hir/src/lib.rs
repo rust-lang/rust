@@ -1190,7 +1190,7 @@ fn emit_macro_def_diagnostics<'db>(
     let id = db.macro_def(m.id);
     let krate = id.krate;
     if let hir_expand::MacroDefKind::Declarative(ast, _) = id.kind
-        && let expander = db.decl_macro_expander(krate, ast)
+        && let expander = ast.decl_macro_expander(db, krate)
         && let Some(e) = expander.mac.err()
     {
         let edition = krate.data(db).edition;

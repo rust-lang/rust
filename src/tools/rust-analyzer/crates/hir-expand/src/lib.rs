@@ -673,7 +673,7 @@ impl MacroCallId {
                 let arg = macro_arg;
                 let res = match loc.def.kind {
                     MacroDefKind::Declarative(id, _) => {
-                        db.decl_macro_expander(loc.def.krate, id).expand(db, arg, self, span)
+                        id.decl_macro_expander(db, loc.def.krate).expand(db, arg, self, span)
                     }
                     MacroDefKind::BuiltIn(_, it) => {
                         it.expand(db, self, arg, span).map_err(Into::into).zip_val(None)
@@ -915,8 +915,8 @@ impl MacroCallId {
             MacroDefKind::BuiltInAttr(_, it) if it.is_derive() => {
                 pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?, span)
             }
-            MacroDefKind::Declarative(it, _) => db
-                .decl_macro_expander(loc.krate, it)
+            MacroDefKind::Declarative(it, _) => it
+                .decl_macro_expander(db, loc.krate)
                 .expand_unhygienic(db, &tt, loc.kind.call_style(), span),
             MacroDefKind::BuiltIn(_, it) => it.expand(db, self, &tt, span).map_err(Into::into),
             MacroDefKind::BuiltInDerive(_, it) => {

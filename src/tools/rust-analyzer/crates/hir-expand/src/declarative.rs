@@ -80,13 +80,15 @@ impl DeclarativeMacroExpander {
 }
 
 #[salsa::tracked]
-impl DeclarativeMacroExpander {
+impl AstId<ast::Macro> {
+    /// Fetches (and compiles) the expander of this decl macro.
     #[salsa::tracked(returns(ref))]
-    pub(crate) fn expander(
+    pub fn decl_macro_expander(
+        self,
         db: &dyn ExpandDatabase,
         def_crate: Crate,
-        id: AstId<ast::Macro>,
     ) -> DeclarativeMacroExpander {
+        let id = self;
         let (root, map) = id.file_id.parse_with_map(db);
 
         let root = root.syntax_node();
