@@ -75,6 +75,7 @@ mod assigning_clones;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
+mod bit_width;
 mod blocks_in_conditions;
 mod bool_assert_comparison;
 mod bool_comparison;
@@ -733,6 +734,7 @@ rustc_lint::late_lint_methods!(
         NeedlessLateInit: needless_late_init::NeedlessLateInit<'tcx> = needless_late_init::NeedlessLateInit::new(conf),
         ReturnSelfNotMustUse: return_self_not_must_use::ReturnSelfNotMustUse = return_self_not_must_use::ReturnSelfNotMustUse,
         NumberedFields: init_numbered_fields::NumberedFields = init_numbered_fields::NumberedFields,
+        ManualBitWidth: bit_width::ManualBitWidth = bit_width::ManualBitWidth::new(conf),
         ManualBits: manual_bits::ManualBits = manual_bits::ManualBits::new(conf),
         DefaultUnionRepresentation: default_union_representation::DefaultUnionRepresentation = default_union_representation::DefaultUnionRepresentation,
         OnlyUsedInRecursion: only_used_in_recursion::OnlyUsedInRecursion = <only_used_in_recursion::OnlyUsedInRecursion>::default(),
