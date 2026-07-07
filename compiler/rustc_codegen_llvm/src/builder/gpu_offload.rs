@@ -216,7 +216,7 @@ fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, &'ll ll
     (tgt_decl, tgt_fn_ty)
 }
 
-fn generate_sync(
+fn generate_sync<'ll>(
     cx: &CodegenCx<'ll, '_>,
 ) -> (&'ll llvm::Value, &'ll llvm::Type, &'ll llvm::Value, &'ll llvm::Type) {
     let tptr = cx.type_ptr();
@@ -677,6 +677,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     generate_mapper_call(
         builder,
         geps,
+        offload_globals,
         memtransfer_begin,
         begin_mapper_decl,
         fn_ty,
@@ -722,6 +723,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     generate_mapper_call(
         builder,
         geps,
+        offload_globals,
         memtransfer_end,
         end_mapper_decl,
         fn_ty,

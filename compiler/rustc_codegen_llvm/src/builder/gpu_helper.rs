@@ -1,5 +1,6 @@
 use crate::SimpleCx;
 use crate::builder::Builder;
+use crate::builder::gpu_offload::OffloadGlobals;
 use crate::intrinsic::TransferType;
 use crate::llvm;
 use crate::llvm::{Type, Value};
@@ -63,6 +64,7 @@ pub(crate) fn get_geps<'ll, 'tcx>(
 pub(crate) fn generate_mapper_call<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
     geps: [&'ll Value; 3],
+    offload_globals: &OffloadGlobals<'ll>,
     o_type: &'ll Value,
     fn_to_call: &'ll Value,
     fn_ty: &'ll Type,
@@ -79,6 +81,15 @@ pub(crate) fn generate_mapper_call<'ll, 'tcx>(
     if matches!(transfer, TransferType::NowaitBegin) {
         let i32_0 = cx.get_const_i32(0);
         args.append(&mut vec![i32_0, nullptr, i32_0, nullptr]);
+    }
+    if matches!(transfer, TransferType::End) {
+        let a = offload_globals.taskwait;
+        let b = offload_globals.taskwait_ty;
+        let c = offload_globals.threadnum;
+        let d = offload_globals.threadnum_ty;
+        let tid = builder.call(d, None, None, c, &vec![s_ident_t], None, None);
+        let args2 = vec![s_ident_t, tid];
+        builder.call(b, None, None, a, &args2, None, None);
     }
     builder.call(fn_ty, None, None, fn_to_call, &args, None, None);
 }
