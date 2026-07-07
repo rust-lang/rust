@@ -1980,7 +1980,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_macro_call_arm(&self, macro_call: &ast::MacroCall) -> Option<u32> {
-        self.to_def(macro_call)?.parse_macro_expansion(self.db).value.1.matched_arm
+        self.to_def(macro_call)?.expansion_span_map(self.db).matched_arm
     }
 
     pub fn get_unsafe_ops(&self, def: ExpressionStoreOwner) -> FxHashSet<ExprOrPatSource> {

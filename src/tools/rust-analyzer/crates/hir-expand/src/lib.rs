@@ -790,9 +790,9 @@ fn expand_unimplemented_builtin_macro(span: Span) -> ExpandResult<tt::TopSubtree
 fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
     #[salsa::tracked]
     fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>, _: ()) -> Span {
-        let root = ast.file_id.parse_or_expand(db);
+        let (parse, span_map) = ast.file_id.parse_with_map(db);
+        let root = parse.syntax_node();
         let ast_id_map = ast.file_id.ast_id_map(db);
-        let span_map = ast.file_id.span_map(db);
 
         let node = ast_id_map.get(ast.value).to_node(&root);
         let range = ast::HasName::name(&node)
