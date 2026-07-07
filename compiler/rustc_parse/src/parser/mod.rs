@@ -1565,12 +1565,11 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp!(Impl)) {
             let (kind, span, gated_span) = self.parse_restriction(ParsingRestrictionKind::Impl)?;
             self.psess.gated_spans.gate(sym::impl_restriction, gated_span);
-            return Ok(ImplRestriction { kind, span, tokens: None });
+            return Ok(ImplRestriction { kind, span });
         }
         Ok(ImplRestriction {
             kind: RestrictionKind::Unrestricted,
             span: self.token.span.shrink_to_lo(),
-            tokens: None,
         })
     }
 
@@ -1580,12 +1579,11 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp!(Mut)) {
             let (kind, span, gated_span) = self.parse_restriction(ParsingRestrictionKind::Mut)?;
             self.psess.gated_spans.gate(sym::mut_restriction, gated_span);
-            return Ok(MutRestriction { kind, span, tokens: None });
+            return Ok(MutRestriction { kind, span });
         }
         Ok(MutRestriction {
             kind: RestrictionKind::Unrestricted,
             span: self.token.span.shrink_to_lo(),
-            tokens: None,
         })
     }
 

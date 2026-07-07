@@ -2628,7 +2628,6 @@ pub struct TyPat {
     pub id: NodeId,
     pub kind: TyPatKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 /// All the different flavors of pattern that Rust recognizes.
@@ -3604,14 +3603,12 @@ impl VisibilityKind {
 pub struct ImplRestriction {
     pub kind: RestrictionKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct MutRestriction {
     pub kind: RestrictionKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

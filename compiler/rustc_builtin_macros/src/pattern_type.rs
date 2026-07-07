@@ -54,7 +54,7 @@ fn parse_pat_ty<'a>(
 }
 
 fn ty_pat(kind: TyPatKind, span: Span) -> TyPat {
-    TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None }
+    TyPat { id: DUMMY_NODE_ID, kind, span }
 }
 
 fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> TyPat {
