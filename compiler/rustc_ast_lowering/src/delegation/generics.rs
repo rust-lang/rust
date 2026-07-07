@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_span::symbol::kw;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, sym};
 
 use crate::LoweringContext;
 use crate::delegation::resolution::resolver::DelegationResolver;
@@ -281,7 +281,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         &self,
         delegation: &'a Delegation,
         sig_id: DefId,
-    ) -> GenericsResolution<'a, 'hir> {
+    ) -> Result<GenericsResolution<'a, 'hir>, ErrorGuaranteed> {
         let tcx = self.tcx();
         let delegation_parent_kind = tcx.def_kind(tcx.local_parent(self.owner_id()));
 
@@ -300,9 +300,8 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         let qself_is_none = delegation.qself.is_none();
 
         let parent_args = if let [.., parent_segment, _] = &delegation.path.segments[..] {
-            if let Some(res) = self.get_resolution_id(parent_segment.id)
-                && matches!(tcx.def_kind(res), DefKind::Trait | DefKind::TraitAlias)
-            {
+            let res = self.get_resolution_id(parent_segment.id)?;
+            if matches!(tcx.def_kind(res), DefKind::Trait | DefKind::TraitAlias) {
                 sig_parent_params = &tcx.generics_of(sig_parent).own_params;
                 self.get_user_args(parent_segment)
                     .map(|args| ParentSegmentArgs::Specified(args))
@@ -314,7 +313,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
             ParentSegmentArgs::Invalid
         };
 
-        GenericsResolution {
+        Ok(GenericsResolution {
             parent_args,
             sig_parent_params,
             qself_is_none,
@@ -326,7 +325,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
             child_args: self.get_user_args(
                 delegation.path.segments.last().expect("must be at least one segment"),
             ),
-        }
+        })
     }
 
     fn get_user_args<'a>(&self, segment: &'a PathSegment) -> Option<&'a AngleBracketedArgs> {
@@ -350,14 +349,14 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         &self,
         delegation: &Delegation,
         sig_id: DefId,
-    ) -> GenericsGenerationResults<'hir> {
+    ) -> Result<GenericsGenerationResults<'hir>, ErrorGuaranteed> {
         let res @ GenericsResolution {
             trait_impl,
             generate_self,
             sig_child_params,
             sig_parent_params,
             ..
-        } = self.resolve_generics(delegation, sig_id);
+        } = self.resolve_generics(delegation, sig_id)?;
 
         // If we are in trait impl always generate function whose generics matches
         // those that are defined in trait.
@@ -374,7 +373,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
 
             let child = GenericsGenerationResult::new(child);
 
-            return GenericsGenerationResults { parent, child, self_ty_propagation_kind: None };
+            return Ok(GenericsGenerationResults { parent, child, self_ty_propagation_kind: None });
         }
 
         let tcx = self.tcx();
@@ -421,7 +420,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
             DelegationGenerics::generate_all(sig_child_params, GenericsPosition::Child, trait_impl)
         };
 
-        GenericsGenerationResults {
+        Ok(GenericsGenerationResults {
             parent: GenericsGenerationResult::new(parent_generics),
             child: GenericsGenerationResult::new(child_generics),
             self_ty_propagation_kind: match res.free_to_trait_delegation {
@@ -435,7 +434,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
                 }),
                 false => None,
             },
-        }
+        })
     }
 
     /// Generates generic argument slots for user-specified `args` and

@@ -724,17 +724,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let Some(path_res_id) = info.call_path_res else { return None };
-
         // Check that delegation has first provided arg and that the call path
         // resolves to a trait method (inherent methods are not yet supported).
         if arg_exprs.is_empty()
-            || !self.tcx.opt_associated_item(path_res_id).is_some_and(|i| i.is_method())
+            || !self.tcx.opt_associated_item(info.call_path_res).is_some_and(|i| i.is_method())
         {
             return None;
         }
 
-        Some(ProbeScope::Single(path_res_id))
+        Some(ProbeScope::Single(info.call_path_res))
     }
 
     /// Attempts to reinterpret `method(rcvr, args...)` as `rcvr.method(args...)`
