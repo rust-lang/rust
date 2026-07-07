@@ -175,34 +175,28 @@ pub trait UserDirsExt: Sized + Sealed {
     fn set_templates(&mut self, path: PathBuf) -> &mut Self;
 }
 
-impl UserDirs {
-    fn set_xdg_base(&mut self, user_home: &Path) {
-        self.home.data = Some(xdg_dir("XDG_DATA_HOME", || user_home.join(".local/share")));
-        self.home.config = Some(xdg_dir("XDG_CONFIG_HOME", || user_home.join(".config")));
-        self.home.state = Some(xdg_dir("XDG_STATE_HOME", || user_home.join(".local/state")));
-        self.home.cache = Some(xdg_dir("XDG_CACHE_HOME", || user_home.join(".cache")));
-        self.home.runtime = var_os("XDG_RUNTIME_DIR").filter(|s| !s.is_empty()).map(PathBuf::from);
-
-        self.search.data = Some(xdg_env("XDG_DATA_DIRS", "/usr/local/share/:/usr/share/"));
-        self.search.config = Some(xdg_env("XDG_CONFIG_DIRS", "/etc/xdg"));
-    }
-}
-
 #[unstable(feature = "dir_discovery", issue = "157515")]
 impl UserDirsExt for UserDirs {
     fn xdg_base() -> io::Result<Self> {
-        let mut dirs = Self::empty();
-        let user_home = user_home()?;
-        dirs.set_xdg_base(&user_home);
+        let mut dirs = Self::new();
+        let user_home = home_dir()
+            .filter(|p| !p.is_empty())
+            .ok_or(const_error!(ErrorKind::NotFound, "no home directory"))?;
+
+        dirs.home.data = Some(xdg_dir("XDG_DATA_HOME", || user_home.join(".local/share")));
+        dirs.home.config = Some(xdg_dir("XDG_CONFIG_HOME", || user_home.join(".config")));
+        dirs.home.state = Some(xdg_dir("XDG_STATE_HOME", || user_home.join(".local/state")));
+        dirs.home.cache = Some(xdg_dir("XDG_CACHE_HOME", || user_home.join(".cache")));
+        dirs.home.runtime = var_os("XDG_RUNTIME_DIR").filter(|s| !s.is_empty()).map(PathBuf::from);
+
+        dirs.search.data = Some(xdg_env("XDG_DATA_DIRS", "/usr/local/share/:/usr/share/"));
+        dirs.search.config = Some(xdg_env("XDG_CONFIG_DIRS", "/etc/xdg"));
+
         Ok(dirs)
     }
 
     fn xdg_user() -> io::Result<Self> {
-        let mut dirs = Self::empty();
-        let user_home = user_home()?;
-
-        // load the base directories first
-        dirs.set_xdg_base(&user_home);
+        let mut dirs = Self::xdg_base()?;
 
         let spec = match fs::read(dirs.config_home().unwrap().join("user-dirs.dirs")) {
             Ok(spec) => spec,
@@ -233,7 +227,10 @@ impl UserDirsExt for UserDirs {
             let buffer;
             const HOME_RELATIVE_PREFIX: &[u8] = b"\"$HOME/";
             let expanded = if val.starts_with(HOME_RELATIVE_PREFIX) {
-                let joined = user_home.join(OsStr::from_bytes(&val[HOME_RELATIVE_PREFIX.len()..]));
+                let joined = dirs
+                    .user_home()
+                    .unwrap()
+                    .join(OsStr::from_bytes(&val[HOME_RELATIVE_PREFIX.len()..]));
                 buffer = OsString::from_iter([OsStr::new("\""), joined.as_os_str()]);
                 buffer.as_bytes()
             } else {
@@ -307,12 +304,6 @@ impl UserDirsExt for UserDirs {
         self.media.templates = Some(path);
         self
     }
-}
-
-fn user_home() -> Result<PathBuf, io::Error> {
-    home_dir()
-        .filter(|p| !p.is_empty())
-        .ok_or(const_error!(ErrorKind::NotFound, "no home directory"))
 }
 
 fn xdg_dir(env: &str, fallback: impl FnOnce() -> PathBuf) -> PathBuf {

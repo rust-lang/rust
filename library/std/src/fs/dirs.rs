@@ -1,6 +1,6 @@
 use crate::ffi::OsString;
-use crate::mem;
 use crate::path::{Path, PathBuf};
+use crate::{env, mem};
 
 /// A set of known user-specific directories.
 ///
@@ -16,6 +16,10 @@ use crate::path::{Path, PathBuf};
 /// directories in this way is the common practice of some operating systems,
 /// so it is important that a program still works correctly even if user paths
 /// alias each other.
+///
+/// It is not required that the user directories are for the current user, nor
+/// that there is a directory at that path. A robust application should handle
+/// the case where user directories are incorrectly configured.
 ///
 /// # Platform-specific behavior
 ///
@@ -34,6 +38,7 @@ pub struct UserDirs {
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct UserHomeDirs {
+    pub(crate) user: Option<PathBuf>,
     pub(crate) cache: Option<PathBuf>,
     pub(crate) config: Option<PathBuf>,
     pub(crate) data: Option<PathBuf>,
@@ -64,6 +69,21 @@ pub(crate) struct UserSearchDirs {
 }
 
 impl UserDirs {
+    /// Create a known user directory set with only [`user_home`] set.
+    ///
+    /// Unlike [`env::home_dir`], this treats an empty home path as `None`.
+    ///
+    /// This is useful with the builder `set_*` methods to create a `UserDirs`
+    /// with exactly the directories you want, without any other defaults.
+    ///
+    /// [`user_home`]: Self::user_home
+    #[unstable(feature = "dir_discovery", issue = "157515")]
+    pub fn new() -> Self {
+        let mut dirs = Self::empty();
+        dirs.home.user = env::home_dir().filter(|p| !p.is_empty());
+        dirs
+    }
+
     /// Create a known user directory set with no known directories.
     ///
     /// This is useful with the builder `set_*` methods to create a `UserDirs`
@@ -71,6 +91,18 @@ impl UserDirs {
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn empty() -> Self {
         Self { home: Default::default(), media: Default::default(), search: Default::default() }
+    }
+
+    /// The path to the user's home directory.
+    ///
+    /// Applications putting files in the user's home directory without being
+    /// directed to is generally discouraged. This should typically be used as
+    /// a default path for file selection dialogs, not for automatically
+    /// accessed file paths. Use one of [`config_home`], [`data_home`],
+    /// [`state_home`], or [`cache_home`] instead as appropriate for the file.
+    #[unstable(feature = "dir_discovery", issue = "157515")]
+    pub fn user_home(&self) -> Option<&Path> {
+        self.home.user.as_deref()
     }
 
     /// A base directory relative to which user-specific configuration files
@@ -219,6 +251,13 @@ impl UserDirs {
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn take(&mut self) -> Self {
         mem::replace(self, Self::empty())
+    }
+
+    /// Set the path for [Self::user_home].
+    #[unstable(feature = "dir_discovery", issue = "157515")]
+    pub fn set_user_home(&mut self, path: PathBuf) -> &mut Self {
+        self.home.user = Some(path);
+        self
     }
 
     /// Set the path for [Self::config_home].

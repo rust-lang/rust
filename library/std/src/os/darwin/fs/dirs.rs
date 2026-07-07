@@ -92,9 +92,8 @@ pub trait UserDirsExt: Sized + Sealed {
 
 impl UserDirsExt for UserDirs {
     fn sysdir() -> io::Result<Self> {
-        let home = home_dir()
-            .filter(|p| !p.is_empty())
-            .ok_or(const_error!(ErrorKind::NotFound, "no home directory"))?;
+        let mut dirs = UserDirs::new();
+        let home = dirs.home_dir().ok_or(const_error!(ErrorKind::NotFound, "no home directory"))?;
 
         let caches = unsafe { get_user_sysdir(&home, sys::SYSDIR_DIRECTORY_CACHES) }?;
         let application_support =

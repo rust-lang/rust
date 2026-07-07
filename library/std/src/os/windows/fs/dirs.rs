@@ -93,7 +93,7 @@ impl UserDirsExt for UserDirs {
         // AppData/Local -- system-local, doesn't make sense to sync to another
         // AppData/Roaming -- data that makes sense to sync accross machines
 
-        let mut dirs = UserDirs::empty();
+        let mut dirs = UserDirs::new();
 
         dirs.home.cache_home = Some(local_app_data.clone());
         dirs.home.config_home = Some(roaming_app_data.clone());
