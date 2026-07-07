@@ -36,6 +36,7 @@ even other Rust compilers, such as rust-analyzer!
 
 */
 
+use std::cmp::min;
 use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
@@ -1060,14 +1061,8 @@ impl Align {
     /// Either `1 << (pointer_bits - 1)` or [`Align::MAX`], whichever is smaller.
     #[inline]
     pub fn max_for_target(tdl: &TargetDataLayout) -> Align {
-        let pointer_bits = tdl.pointer_size().bits();
-        if let Ok(pointer_bits) = u8::try_from(pointer_bits)
-            && pointer_bits <= Align::MAX.pow2
-        {
-            Align { pow2: pointer_bits - 1 }
-        } else {
-            Align::MAX
-        }
+        let pointer_bits = u8::try_from(tdl.pointer_size().bits()).unwrap();
+        min(Align { pow2: pointer_bits - 1 }, Align::MAX)
     }
 
     #[inline]
