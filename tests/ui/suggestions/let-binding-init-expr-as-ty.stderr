@@ -1,5 +1,5 @@
 error: expected type, found `42`
-  --> $DIR/let-binding-init-expr-as-ty.rs:32:12
+  --> $DIR/let-binding-init-expr-as-ty.rs:43:12
    |
 LL |     let x: 42;
    |          - ^^ expected type
@@ -13,7 +13,7 @@ LL +     let x = 42;
    |
 
 error: expected type, found `""`
-  --> $DIR/let-binding-init-expr-as-ty.rs:33:12
+  --> $DIR/let-binding-init-expr-as-ty.rs:44:12
    |
 LL |     let x: "";
    |          - ^^ expected type
@@ -39,7 +39,7 @@ LL +     let foo = i32::from_be(num);
    |
 
 error[E0573]: expected type, found function `bar`
-  --> $DIR/let-binding-init-expr-as-ty.rs:36:12
+  --> $DIR/let-binding-init-expr-as-ty.rs:47:12
    |
 LL |     let x: bar();
    |            ^^^^^ not a type
@@ -51,13 +51,13 @@ LL +     let x = bar();
    |
 
 error[E0573]: expected type, found function `bar`
-  --> $DIR/let-binding-init-expr-as-ty.rs:37:12
+  --> $DIR/let-binding-init-expr-as-ty.rs:48:12
    |
 LL |     let x: bar;
    |            ^^^ not a type
 
 error[E0573]: expected type, found local variable `x`
-  --> $DIR/let-binding-init-expr-as-ty.rs:40:12
+  --> $DIR/let-binding-init-expr-as-ty.rs:51:12
    |
 LL | struct K(S::new(()));
    | --------------------- similarly named struct `K` defined here
@@ -153,7 +153,30 @@ LL -     let x: S::new(());
 LL +     let x = S::new(());
    |
 
-error: aborting due to 13 previous errors
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:32:12
+   |
+LL |     let x: vec![];
+   |            ^^^^^^
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: vec![];
+LL +     let x = vec![];
+   |
+
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:37:23
+   |
+LL |             let $pat: Vec::new();
+   |                       ^^^^^^^^^^
+...
+LL |     make!(_);
+   |     -------- in this macro invocation
+   |
+   = note: this error originates in the macro `make` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 15 previous errors
 
 Some errors have detailed explanations: E0573, E0658.
 For more information about an error, try `rustc --explain E0573`.
