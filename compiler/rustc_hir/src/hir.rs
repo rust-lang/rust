@@ -3877,7 +3877,7 @@ pub enum DelegationSelfTyPropagationKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
 pub struct DelegationInfo {
     pub call_expr_id: HirId,
-    pub call_path_res: Option<DefId>,
+    pub call_path_res: DefId,
 
     /// Id of the child segment in delegation: `reuse Trait::foo`,
     /// `child_seg_id` points to `foo`.
