@@ -5,7 +5,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::tokenstream::LazyAttrTokenStream;
+use crate::tokenstream::{LazyAttrTokenStream, WithTokens};
 use crate::{
     Arm, AssocItem, AttrItem, AttrKind, AttrVec, Attribute, Block, Crate, Expr, ExprField,
     FieldDef, ForeignItem, GenericParam, Item, NodeId, Param, Pat, PatField, Path, Stmt, StmtKind,
@@ -97,7 +97,7 @@ macro_rules! impl_has_tokens_none {
     };
 }
 
-impl_has_tokens!(AssocItem, AttrItem, Block, Expr, ForeignItem, Item, Pat, Path, Ty, Visibility);
+impl_has_tokens!(AssocItem, AttrItem, Expr, ForeignItem, Item);
 impl_has_tokens_none!(
     Arm,
     ExprField,
@@ -108,6 +108,15 @@ impl_has_tokens_none!(
     Variant,
     WherePredicate
 );
+
+impl<T> HasTokens for WithTokens<T> {
+    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+        self.tokens.as_ref()
+    }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+        Some(&mut self.tokens)
+    }
+}
 
 impl<T: HasTokens> HasTokens for Option<T> {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
@@ -243,6 +252,16 @@ impl_has_attrs!(
     WherePredicate,
 );
 impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility);
+
+impl<T: HasAttrs> HasAttrs for WithTokens<T> {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::SUPPORTS_CUSTOM_INNER_ATTRS;
+    fn attrs(&self) -> &[Attribute] {
+        self.node.attrs()
+    }
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
+        self.node.visit_attrs(f);
+    }
+}
 
 impl<T: HasAttrs> HasAttrs for Box<T> {
     const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::SUPPORTS_CUSTOM_INNER_ATTRS;

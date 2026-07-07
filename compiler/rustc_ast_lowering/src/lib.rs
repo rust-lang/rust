@@ -557,11 +557,11 @@ fn index_ast<'tcx>(
                 attrs: AttrVec::default(),
                 id,
                 span,
-                vis: Visibility { kind: VisibilityKind::Public, span, tokens: None },
+                vis: Visibility { kind: VisibilityKind::Public, span },
                 // Lacking a better choice, we replace the contents with a macro call.
                 // Unexpanded macros should never reach lowering, so this is not confusing.
                 kind: dummy(Box::new(MacCall {
-                    path: Path { span, segments: thin_vec![], tokens: None },
+                    path: Path { span, segments: thin_vec![] },
                     args: Box::new(DelimArgs {
                         dspan: DelimSpan::from_single(span),
                         delim: Delimiter::Parenthesis,

@@ -49,11 +49,7 @@ fn test_variant_to_string() {
 
         let var = ast::Variant {
             ident,
-            vis: ast::Visibility {
-                span: DUMMY_SP,
-                kind: ast::VisibilityKind::Inherited,
-                tokens: None,
-            },
+            vis: ast::Visibility { span: DUMMY_SP, kind: ast::VisibilityKind::Inherited },
             attrs: ast::AttrVec::new(),
             id: ast::DUMMY_NODE_ID,
             data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),
@@ -77,12 +73,10 @@ fn test_field_view() {
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::TyKind::Dummy,
                     span: DUMMY_SP,
-                    tokens: None,
                 }),
                 thin_vec![Ident::from_str("milhouse"), Ident::from_str("apu")],
             ),
             span: DUMMY_SP,
-            tokens: None,
         };
 
         let ty_str = ty_to_string(&ty);

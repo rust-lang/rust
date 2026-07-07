@@ -248,11 +248,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::Use(use_tree) => {
                 // Start with an empty prefix.
-                let prefix = Path {
-                    segments: ThinVec::new(),
-                    span: use_tree.prefix.span.shrink_to_lo(),
-                    tokens: None,
-                };
+                let prefix =
+                    Path { segments: ThinVec::new(), span: use_tree.prefix.span.shrink_to_lo() };
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, attrs)
             }
@@ -609,7 +606,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let mut ident = tree.ident();
 
                 // First, apply the prefix to the path.
-                let mut path = Path { segments, span: path.span, tokens: None };
+                let mut path = Path { segments, span: path.span };
 
                 // Correctly resolve `self` imports.
                 if path.segments.len() > 1
@@ -644,7 +641,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                     _ => span_bug!(path.span, "bad glob res {:?}", res),
                 };
-                let path = Path { segments, span: path.span, tokens: None };
+                let path = Path { segments, span: path.span };
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
@@ -674,7 +671,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // `ListStem`).
 
                 let span = prefix.span.to(path.span);
-                let prefix = Path { segments, span, tokens: None };
+                let prefix = Path { segments, span };
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {

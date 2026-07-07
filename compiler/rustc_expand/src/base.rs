@@ -542,7 +542,6 @@ impl MacResult for MacEager {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
                     kind: PatKind::Expr(e),
-                    tokens: None,
                 }));
             }
         }
@@ -598,12 +597,7 @@ impl MacResult for DummyResult {
     }
 
     fn make_pat(self: Box<DummyResult>) -> Option<Box<ast::Pat>> {
-        Some(Box::new(ast::Pat {
-            id: ast::DUMMY_NODE_ID,
-            kind: PatKind::Wild,
-            span: self.span,
-            tokens: None,
-        }))
+        Some(Box::new(ast::Pat { id: ast::DUMMY_NODE_ID, kind: PatKind::Wild, span: self.span }))
     }
 
     fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
@@ -642,7 +636,6 @@ impl MacResult for DummyResult {
             id: ast::DUMMY_NODE_ID,
             kind: ast::TyKind::Tup(ThinVec::new()),
             span: self.span,
-            tokens: None,
         }))
     }
 

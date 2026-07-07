@@ -464,7 +464,7 @@ fn generate_attribute_macro_to_implement(
         id: ast::DUMMY_NODE_ID,
         span,
         // pub
-        vis: ast::Visibility { span, kind: ast::VisibilityKind::Public, tokens: None },
+        vis: ast::Visibility { span, kind: ast::VisibilityKind::Public },
         kind: ast::ItemKind::MacroDef(
             // macro macro_name
             macro_name,

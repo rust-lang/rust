@@ -515,7 +515,7 @@ impl MetaItem {
                     iter.next();
                 }
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
-                Path { span, segments, tokens: None }
+                Path { span, segments }
             }
             Some(TokenTree::Delimited(
                 _span,

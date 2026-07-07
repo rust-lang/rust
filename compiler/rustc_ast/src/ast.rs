@@ -97,7 +97,6 @@ pub struct Path {
     /// The segments in the path: the things separated by `::`.
     /// Global paths begin with `kw::PathRoot`.
     pub segments: ThinVec<PathSegment>,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 // Succeeds if the path has a single segment that is arg-free and matches the given symbol.
@@ -135,7 +134,7 @@ impl Path {
     /// Convert a span and an identifier to the corresponding
     /// one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
-        Path { segments: thin_vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
+        Path { segments: thin_vec![PathSegment::from_ident(ident)], span: ident.span }
     }
 
     pub fn is_global(&self) -> bool {
@@ -616,7 +615,6 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 /// A match pattern.
@@ -627,7 +625,6 @@ pub struct Pat {
     pub id: NodeId,
     pub kind: PatKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Pat {
@@ -663,7 +660,7 @@ impl Pat {
             _ => return None,
         };
 
-        Some(Box::new(Ty { kind, id: self.id, span: self.span, tokens: None }))
+        Some(Box::new(Ty { kind, id: self.id, span: self.span }))
     }
 
     /// Walk top-down and call `it` in each place where a pattern occurs
@@ -1533,7 +1530,7 @@ impl Expr {
             _ => return None,
         };
 
-        Some(Box::new(Ty { kind, id: self.id, span: self.span, tokens: None }))
+        Some(Box::new(Ty { kind, id: self.id, span: self.span }))
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
@@ -2443,17 +2440,11 @@ pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Clone for Ty {
     fn clone(&self) -> Self {
-        ensure_sufficient_stack(|| Self {
-            id: self.id,
-            kind: self.kind.clone(),
-            span: self.span,
-            tokens: self.tokens.clone(),
-        })
+        ensure_sufficient_stack(|| Self { id: self.id, kind: self.kind.clone(), span: self.span })
     }
 }
 
@@ -2990,12 +2981,8 @@ impl Param {
     /// Builds a `Param` object from `ExplicitSelf`.
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
-        let infer_ty = Box::new(Ty {
-            id: DUMMY_NODE_ID,
-            kind: TyKind::ImplicitSelf,
-            span: eself_ident.span,
-            tokens: None,
-        });
+        let infer_ty =
+            Box::new(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span: eself_ident.span });
         let (mutbl, ty) = match eself.node {
             SelfKind::Explicit(ty, mutbl) => (mutbl, ty),
             SelfKind::Value(mutbl) => (mutbl, infer_ty),
@@ -3005,7 +2992,6 @@ impl Param {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::Ref(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
-                    tokens: None,
                 }),
             ),
             SelfKind::Pinned(lt, mutbl) => (
@@ -3014,7 +3000,6 @@ impl Param {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::PinnedRef(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
-                    tokens: None,
                 }),
             ),
         };
@@ -3024,7 +3009,6 @@ impl Param {
                 id: DUMMY_NODE_ID,
                 kind: PatKind::Ident(BindingMode(ByRef::No, mutbl), eself_ident, None),
                 span,
-                tokens: None,
             }),
             span,
             ty,
@@ -3583,7 +3567,6 @@ impl PolyTraitRef {
 pub struct Visibility {
     pub kind: VisibilityKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4387,44 +4370,44 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(AssocItem, 80);
+    static_assert_size!(AssocItem, 72);
     static_assert_size!(AssocItemKind, 16);
     static_assert_size!(AttrKind, 16);
     static_assert_size!(Attribute, 32);
-    static_assert_size!(Block, 32);
+    static_assert_size!(Block, 24);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
     static_assert_size!(Fn, 192);
     static_assert_size!(FnDecl, 24);
     static_assert_size!(FnHeader, 76);
     static_assert_size!(FnSig, 96);
-    static_assert_size!(ForeignItem, 80);
+    static_assert_size!(ForeignItem, 72);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericArgs, 40);
-    static_assert_size!(GenericBound, 88);
+    static_assert_size!(GenericBound, 80);
     static_assert_size!(GenericParam, 80);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 80);
-    static_assert_size!(Item, 152);
+    static_assert_size!(Item, 144);
     static_assert_size!(ItemKind, 88);
     static_assert_size!(Lifetime, 16);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);
-    static_assert_size!(MetaItem, 88);
+    static_assert_size!(MetaItem, 80);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
-    static_assert_size!(NormalAttr, 88);
+    static_assert_size!(NormalAttr, 80);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 80);
-    static_assert_size!(PatKind, 56);
-    static_assert_size!(Path, 24);
+    static_assert_size!(Pat, 64);
+    static_assert_size!(PatKind, 48);
+    static_assert_size!(Path, 16);
     static_assert_size!(PathSegment, 24);
     static_assert_size!(QSelf, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(TraitImplHeader, 72);
-    static_assert_size!(Ty, 64);
+    static_assert_size!(TraitImplHeader, 64);
+    static_assert_size!(Ty, 56);
     static_assert_size!(TyKind, 40);
     // tidy-alphabetical-end
 }

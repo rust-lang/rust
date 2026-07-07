@@ -2065,23 +2065,13 @@ impl DummyAstNode for ast::Crate {
 
 impl DummyAstNode for ast::Ty {
     fn dummy() -> Self {
-        ast::Ty {
-            id: DUMMY_NODE_ID,
-            kind: TyKind::Dummy,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
+        ast::Ty { id: DUMMY_NODE_ID, kind: TyKind::Dummy, span: Default::default() }
     }
 }
 
 impl DummyAstNode for ast::Pat {
     fn dummy() -> Self {
-        ast::Pat {
-            id: DUMMY_NODE_ID,
-            kind: PatKind::Wild,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
+        ast::Pat { id: DUMMY_NODE_ID, kind: PatKind::Wild, span: Default::default() }
     }
 }
 

@@ -609,7 +609,6 @@ impl<'a> TraitDef<'a> {
                 vis: ast::Visibility {
                     span: self.span.shrink_to_lo(),
                     kind: ast::VisibilityKind::Inherited,
-                    tokens: None,
                 },
                 attrs: ast::AttrVec::new(),
                 kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
@@ -1080,11 +1079,7 @@ impl<'a> MethodDef<'a> {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
             span,
-            vis: ast::Visibility {
-                span: trait_lo_sp,
-                kind: ast::VisibilityKind::Inherited,
-                tokens: None,
-            },
+            vis: ast::Visibility { span: trait_lo_sp, kind: ast::VisibilityKind::Inherited },
             kind: ast::AssocItemKind::Fn(Box::new(ast::Fn {
                 defaultness,
                 sig,
