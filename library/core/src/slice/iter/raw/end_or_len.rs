@@ -1,6 +1,7 @@
+use crate::intrinsics::transmute;
 use crate::mem::SizedTypeProperties;
 
-pub(super) struct EndOrLenRepr<T>(*const T);
+pub(super) struct EndOrLenRepr<T>(#[expect(dead_code)] *const T);
 
 /// A view into [`IterRaw::end_or_len`] field.
 ///
@@ -35,11 +36,11 @@ impl<T> EndOrLenRepr<T> {
 
     #[rustc_force_inline]
     #[inline(always)]
-    pub(super) fn view(&self) -> EndOrLen<T> {
+    pub(super) fn view(self) -> EndOrLen<T> {
         if T::IS_ZST {
-            Len(self.0.addr())
+            Len(unsafe { transmute::<Self, usize>(self) })
         } else {
-            unsafe { End(NonNull::new_unchecked(self.0.cast_mut())) }
+            End(unsafe { transmute::<Self, NonNull<T>>(self) })
         }
     }
 
@@ -47,9 +48,9 @@ impl<T> EndOrLenRepr<T> {
     #[inline(always)]
     pub(super) fn view_mut(&mut self) -> EndOrLenMut<'_, T> {
         if T::IS_ZST {
-            Len(unsafe { &mut *ptr::from_mut(&mut self.0).cast::<usize>() })
+            Len(unsafe { transmute::<&mut Self, &mut usize>(self) })
         } else {
-            End(unsafe { &mut *ptr::from_mut(&mut self.0).cast::<NonNull<T>>() })
+            End(unsafe { transmute::<&mut Self, &mut NonNull<T>>(self) })
         }
     }
 }
