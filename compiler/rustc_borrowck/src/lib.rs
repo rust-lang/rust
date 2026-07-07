@@ -495,8 +495,8 @@ fn borrowck_check_region_constraints<'tcx>(
             diags_buffer,
             polonius_context: polonius_context.as_ref(),
         };
-        struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
-            ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
+        struct MoveVisitor<'a, 'b, 'diag, 'tcx> {
+            ctxt: &'a mut MirBorrowckCtxt<'b, 'diag, 'tcx>,
         }
 
         impl<'tcx> Visitor<'tcx> for MoveVisitor<'_, '_, '_, 'tcx> {
@@ -727,9 +727,9 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
     }
 }
 
-pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
+pub(crate) struct MirBorrowckCtxt<'a, 'diag, 'tcx> {
     root_cx: &'a BorrowCheckRootCtxt<'tcx>,
-    infcx: &'infcx BorrowckInferCtxt<'tcx>,
+    infcx: &'diag BorrowckInferCtxt<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
 
@@ -785,7 +785,7 @@ pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// The counter for generating new region names.
     next_region_name: RefCell<usize>,
 
-    diags_buffer: &'a mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
+    diags_buffer: &'a mut BorrowckDiagnosticsBuffer<'diag, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 
     /// Results of Polonius analysis.

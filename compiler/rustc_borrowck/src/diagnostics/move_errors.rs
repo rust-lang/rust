@@ -102,7 +102,7 @@ struct PatternBindingInfo {
     has_mutable_by_value_binding: bool,
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     pub(crate) fn report_move_errors(&mut self) {
         let grouped_errors = self.group_move_errors();
         for error in grouped_errors {
@@ -310,7 +310,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             && self.infcx.tcx.ensure_result().coherent_trait(copy_def_id).is_err()
     }
 
-    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {
+    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'diag> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {
@@ -439,7 +439,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> (Diag<'infcx>, CloneSuggestion) {
+    ) -> (Diag<'diag>, CloneSuggestion) {
         let tcx = self.infcx.tcx;
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
@@ -573,7 +573,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         closure_kind_ty: Ty<'tcx>,
         upvar_field: FieldIdx,
         asyncness: ty::Asyncness,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         let tcx = self.infcx.tcx;
 
         let closure_kind = match closure_kind_ty.to_opt_closure_kind() {

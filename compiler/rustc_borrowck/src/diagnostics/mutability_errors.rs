@@ -664,9 +664,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             /// Walks through the HIR, looking for the corresponding span for this error.
             /// When it finds it, see if it corresponds to assignment operator whose LHS
             /// is an index expr.
-            struct SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx> {
+            struct SuggestIndexOperatorAlternativeVisitor<'a, 'diag, 'tcx> {
                 assign_span: Span,
-                err: &'a mut Diag<'infcx>,
+                err: &'a mut Diag<'diag>,
                 ty: Ty<'tcx>,
                 suggested: bool,
                 infcx: &'a rustc_infer::infer::InferCtxt<'tcx>,
