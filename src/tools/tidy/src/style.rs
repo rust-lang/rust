@@ -372,8 +372,7 @@ fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
         return;
     }
 
-    let file_ignore =
-        Directives::from_line(&path_str, LineNumber::WholeFile, can_contain, contents);
+    let file_ignore = Directives::from_str(&path_str, LineNumber::WholeFile, can_contain, contents);
     // the ignores set in this line, meant for the next line
     let mut next_line_ignore = Default::default();
 
@@ -415,7 +414,7 @@ fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
         let mut ignore = file_ignore.create_child(
             mem::replace(
                 &mut next_line_ignore,
-                Directives::from_line(&path_str, LineNumber::Line(line_number), can_contain, line),
+                Directives::from_str(&path_str, LineNumber::Line(line_number), can_contain, line),
             ),
             check,
             file,
