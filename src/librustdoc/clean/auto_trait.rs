@@ -110,6 +110,7 @@ fn synthesize_auto_trait_impl<'tcx>(
 
             (generics, ty::ImplPolarity::Negative)
         }
+        auto_trait::AutoTraitResult::NoImpl => return None,
         auto_trait::AutoTraitResult::ExplicitImpl => return None,
     };
 
