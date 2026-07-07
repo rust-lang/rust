@@ -732,6 +732,7 @@ where
                     )
                 };
                 let a_size = a_val.size();
+                let b_size = b_val.size();
                 assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
@@ -742,12 +743,12 @@ where
                 // destination now to ensure that no stray pointer fragments are being
                 // preserved (see <https://github.com/rust-lang/rust/issues/148470>).
                 // We can skip this if there is no padding (e.g. for wide pointers).
-                if !will_later_validate && a_size + b_val.size() != layout.size {
+                if !will_later_validate && a_size + b_size != layout.size {
                     alloc.write_uninit_full();
                 }
 
                 alloc.write_scalar(alloc_range(Size::ZERO, a_size), a_val)?;
-                alloc.write_scalar(alloc_range(b_offset, b_val.size()), b_val)?;
+                alloc.write_scalar(alloc_range(b_offset, b_size), b_val)?;
             }
             Immediate::Uninit => alloc.write_uninit_full(),
         }
