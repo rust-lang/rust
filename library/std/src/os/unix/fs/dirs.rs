@@ -183,14 +183,14 @@ impl UserDirsExt for UserDirs {
             .filter(|p| !p.is_empty())
             .ok_or(const_error!(ErrorKind::NotFound, "no home directory"))?;
 
-        dirs.home.data = Some(xdg_dir("XDG_DATA_HOME", || user_home.join(".local/share")));
-        dirs.home.config = Some(xdg_dir("XDG_CONFIG_HOME", || user_home.join(".config")));
-        dirs.home.state = Some(xdg_dir("XDG_STATE_HOME", || user_home.join(".local/state")));
         dirs.home.cache = Some(xdg_dir("XDG_CACHE_HOME", || user_home.join(".cache")));
+        dirs.home.config = Some(xdg_dir("XDG_CONFIG_HOME", || user_home.join(".config")));
+        dirs.home.data = Some(xdg_dir("XDG_DATA_HOME", || user_home.join(".local/share")));
+        dirs.home.state = Some(xdg_dir("XDG_STATE_HOME", || user_home.join(".local/state")));
         dirs.home.runtime = var_os("XDG_RUNTIME_DIR").filter(|s| !s.is_empty()).map(PathBuf::from);
 
-        dirs.search.data = Some(xdg_env("XDG_DATA_DIRS", "/usr/local/share/:/usr/share/"));
         dirs.search.config = Some(xdg_env("XDG_CONFIG_DIRS", "/etc/xdg"));
+        dirs.search.data = Some(xdg_env("XDG_DATA_DIRS", "/usr/local/share/:/usr/share/"));
 
         Ok(dirs)
     }

@@ -63,9 +63,9 @@ pub(crate) struct UserMediaDirs {
 #[derive(Debug, Default, Clone)]
 pub(crate) struct UserSearchDirs {
     #[allow(dead_code)] // only used for XDG
-    pub(crate) data: Option<OsString>,
-    #[allow(dead_code)] // only used for XDG
     pub(crate) config: Option<OsString>,
+    #[allow(dead_code)] // only used for XDG
+    pub(crate) data: Option<OsString>,
 }
 
 impl UserDirs {
@@ -105,10 +105,24 @@ impl UserDirs {
         self.home.user.as_deref()
     }
 
+    /// A base directory relative to which user-specific non-essential cache
+    /// data files should be stored.
+    ///
+    /// Files in this directory may be automatically purged any time they are
+    /// not currently open.
+    ///
+    /// This is the same directory for all applications. As such, applications
+    /// should use a subdirectory for application-specific cache files.
+    #[unstable(feature = "dir_discovery", issue = "157515")]
+    pub fn cache_home(&self) -> Option<&Path> {
+        self.home.cache.as_deref()
+    }
+
     /// A base directory relative to which user-specific configuration files
     /// should be stored.
     ///
     /// This is the same directory for all applications. As such, applications
+
     /// should use a subdirectory for application-specific configuration files.
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn config_home(&self) -> Option<&Path> {
@@ -140,19 +154,6 @@ impl UserDirs {
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn state_home(&self) -> Option<&Path> {
         self.home.state.as_deref()
-    }
-
-    /// A base directory relative to which user-specific non-essential cache
-    /// data files should be stored.
-    ///
-    /// Files in this directory may be automatically purged any time they are
-    /// not currently open.
-    ///
-    /// This is the same directory for all applications. As such, applications
-    /// should use a subdirectory for application-specific cache files.
-    #[unstable(feature = "dir_discovery", issue = "157515")]
-    pub fn cache_home(&self) -> Option<&Path> {
-        self.home.cache.as_deref()
     }
 
     /// The OS-privileged user "Desktop" directory, often the `Desktop`
@@ -260,6 +261,13 @@ impl UserDirs {
         self
     }
 
+    /// Set the path for [Self::cache_home].
+    #[unstable(feature = "dir_discovery", issue = "157515")]
+    pub fn set_cache_home(&mut self, path: PathBuf) -> &mut Self {
+        self.home.cache = Some(path);
+        self
+    }
+
     /// Set the path for [Self::config_home].
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn set_config_home(&mut self, path: PathBuf) -> &mut Self {
@@ -278,13 +286,6 @@ impl UserDirs {
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn set_state_home(&mut self, path: PathBuf) -> &mut Self {
         self.home.state = Some(path);
-        self
-    }
-
-    /// Set the path for [Self::cache_home].
-    #[unstable(feature = "dir_discovery", issue = "157515")]
-    pub fn set_cache_home(&mut self, path: PathBuf) -> &mut Self {
-        self.home.cache = Some(path);
         self
     }
 
