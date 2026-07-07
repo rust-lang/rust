@@ -353,7 +353,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn suggest_ref_or_clone(
         &self,
         mpi: MovePathIndex,
-        err: &mut Diag<'infcx>,
+        err: &mut Diag<'_>,
         move_spans: UseSpans<'tcx>,
         moved_place: PlaceRef<'tcx>,
         has_suggest_reborrow: &mut bool,
@@ -590,7 +590,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         body: &hir::Expr<'_>,
         place: &Place<'tcx>,
         move_span: Span,
-        err: &mut Diag<'infcx>,
+        err: &mut Diag<'_>,
     ) {
         let var_info = self.body.var_debug_info.iter().find(|info| match info.value {
             VarDebugInfoContents::Place(ref p) => p == place,
@@ -634,7 +634,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     pub(crate) fn suggest_reborrow(
         &self,
-        err: &mut Diag<'infcx>,
+        err: &mut Diag<'_>,
         span: Span,
         moved_place: PlaceRef<'tcx>,
     ) {
@@ -2094,7 +2094,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         err
     }
 
-    fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'infcx>, place: Place<'tcx>) {
+    fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'_>, place: Place<'tcx>) {
         let tcx = self.infcx.tcx;
         let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
 

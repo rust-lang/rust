@@ -287,8 +287,8 @@ pub(crate) fn emit_nll_mir<'tcx>(
     Ok(())
 }
 
-pub(super) fn dump_annotation<'tcx, 'infcx>(
-    infcx: &'infcx BorrowckInferCtxt<'tcx>,
+pub(super) fn dump_annotation<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
