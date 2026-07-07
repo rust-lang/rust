@@ -37,11 +37,11 @@ macro_rules! iterator {
                 self
                     .inner
                     .next_chunk::<N>()
-                    .map(|chunk: [crate::ptr::NonNull<_>; N]| crate::intrinsics::transmute_unchecked(chunk))
+                    .map(|chunk: [crate::ptr::NonNull<_>; N]| unsafe { crate::intrinsics::transmute_unchecked(chunk) })
                     .map_err(
                         |rest| {
                             let (data, alive) = rest.into_inner();
-                            crate::array::IntoIter::new_unchecked(crate::intrinsics::transmute_unchecked(data), alive)
+                            unsafe { crate::array::IntoIter::new_unchecked(crate::intrinsics::transmute_unchecked(data), alive) }
                         },
                     )
             }
