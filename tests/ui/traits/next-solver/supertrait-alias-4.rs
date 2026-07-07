@@ -1,5 +1,4 @@
 //@ compile-flags: -Znext-solver
-//@ check-pass
 
 // Exercises the ambiguity that comes from replacing the associated types within the bounds
 // that are required for a `impl Trait for dyn Trait` built-in object impl to hold.
@@ -19,6 +18,8 @@ fn foo<A, B>(x: &(impl Foo<A, B> + ?Sized)) {}
 
 fn main() {
     let x: &dyn Foo<_, _, Other = ()> = todo!();
+    //~^ ERROR the trait `Foo` is not dyn compatible
     foo(x);
     let y: &dyn Foo<i32, u32, Other = ()> = x;
+    //~^ ERROR the trait `Foo` is not dyn compatible
 }

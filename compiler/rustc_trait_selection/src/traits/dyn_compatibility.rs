@@ -6,14 +6,17 @@
 
 use std::ops::ControlFlow;
 
+use itertools::Itertools;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::FatalError;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
-    Upcast, elaborate,
+    self, Clause, EarlyBinder, GenericArgs, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, TypingMode, Unnormalized, Upcast, elaborate,
 };
 use rustc_span::{DUMMY_SP, Span};
 use smallvec::SmallVec;
@@ -54,7 +57,8 @@ fn dyn_compatibility_violations(
     debug!("dyn_compatibility_violations: {:?}", trait_def_id);
     tcx.arena.alloc_from_iter(
         elaborate::supertrait_def_ids(tcx, trait_def_id)
-            .flat_map(|def_id| dyn_compatibility_violations_for_trait(tcx, def_id)),
+            .flat_map(|def_id| dyn_compatibility_violations_for_trait(tcx, def_id))
+            .chain(incoherent_supertrait_assocs(tcx, trait_def_id)),
     )
 }
 
@@ -976,6 +980,91 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalRpititVisitor<'tcx> {
             ty.super_visit_with(self)
         }
     }
+}
+
+/// Computes [`DynCompatibilityViolation::IncoherentSupertraitAssocs`]
+#[instrument(level = "debug", skip(tcx))]
+fn incoherent_supertrait_assocs(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> impl Iterator<Item = DynCompatibilityViolation> {
+    let predicates = tcx
+        .predicates_of(trait_def_id)
+        .instantiate_identity(tcx)
+        .predicates
+        .into_iter()
+        .map(Unnormalized::skip_normalization);
+    // Map from associated items to projection predicates that apply to them.
+    let mut preds_for_assoc = FxHashMap::<DefId, Vec<PolyProjectionPredicate<'_>>>::default();
+    elaborate(tcx, predicates).filter_map(Clause::as_projection_clause).flat_map(move |proj| {
+        let prev_projs = preds_for_assoc.entry(proj.item_def_id()).or_default();
+        let violations: Vec<_> = prev_projs
+            .iter()
+            .copied()
+            .filter(move |&prev_proj| {
+                !does_pair_have_coherent_supertrait_assocs(tcx, trait_def_id, prev_proj, proj)
+            })
+            .map(move |_| {
+                DynCompatibilityViolation::IncoherentSupertraitAssocs(
+                    tcx.item_name(proj.item_def_id()),
+                    tcx.def_ident_span(proj.item_def_id())
+                        .expect("Associated items should have a def_ident_span"),
+                )
+            })
+            .collect();
+        prev_projs.push(proj);
+        violations
+    })
+}
+
+#[instrument(level = "debug", skip(tcx), ret)]
+fn does_pair_have_coherent_supertrait_assocs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: DefId,
+    proj_1: PolyProjectionPredicate<'tcx>,
+    proj_2: PolyProjectionPredicate<'tcx>,
+) -> bool {
+    // We syntactically compare the two terms. If they're equal, then
+    // they do not conflict with each other.
+    // FIXME: This is an overly strict definition of equality. Could this be done better?
+    if proj_1.term() == proj_2.term() {
+        return true;
+    }
+
+    let infcx = tcx
+        .infer_ctxt()
+        .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
+        .build(TypingMode::Coherence);
+    // We instantiate type parameters in the two projections with the same
+    // fresh inference variables.
+    let trait_args = infcx.fresh_args_for_item(DUMMY_SP, trait_def_id);
+    let process_proj = |proj: PolyProjectionPredicate<'tcx>| {
+        let instantiated_proj = EarlyBinder::bind(tcx, proj).instantiate(tcx, trait_args);
+        infcx.instantiate_binder_with_fresh_vars(
+            DUMMY_SP,
+            BoundRegionConversionTime::AssocTypeProjection(proj.item_def_id()),
+            // FIXME: Normalizing here could maybe make more code compile?
+            instantiated_proj.skip_normalization(),
+        )
+    };
+    let proj_1 = process_proj(proj_1);
+    let proj_2 = process_proj(proj_2);
+    assert_eq!(
+        proj_1.projection_term.kind, proj_2.projection_term.kind,
+        "should compare the same projection kind"
+    );
+    proj_1.projection_term.args.iter().zip_eq(proj_2.projection_term.args).any(|(arg_1, arg_2)| {
+        // Note that we discard any obligations we get here.
+        // We don't care about proving them.
+        //
+        // If this call returns an Err, then the two sets of generic args
+        // can't possibly be instantiated with the same concrete types.
+        // So, we return true from the function
+        infcx
+            .at(&ObligationCause::dummy(), tcx.param_env(trait_def_id))
+            .eq(DefineOpaqueTypes::Yes, arg_1, arg_2)
+            .is_err()
+    })
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

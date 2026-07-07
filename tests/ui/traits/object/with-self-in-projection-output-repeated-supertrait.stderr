@@ -1,0 +1,37 @@
+error[E0038]: the trait `NormalizingHelper` is not dyn compatible
+  --> $DIR/with-self-in-projection-output-repeated-supertrait.rs:47:21
+   |
+LL |     let _x: Box<dyn NormalizingHelper<Target=i32>> = Box::new(2u32);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `NormalizingHelper` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/with-self-in-projection-output-repeated-supertrait.rs:27:10
+   |
+LL |     type Output;
+   |          ^^^^^^ ...because it has conflicting associated item bounds for Output in supertraits
+...
+LL | trait NormalizingHelper: Base<Output=<Self as ConstI32>::Out> + Base<Output=i32> {
+   |       ----------------- this trait is not dyn compatible...
+   = help: only type `u32` implements `NormalizingHelper`; consider using it directly instead.
+
+error[E0038]: the trait `NormalizingHelper` is not dyn compatible
+  --> $DIR/with-self-in-projection-output-repeated-supertrait.rs:49:21
+   |
+LL |     let _y: Box<dyn NormalizingHelper<Target=i32, Output=i32>> = Box::new(2u32);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `NormalizingHelper` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/with-self-in-projection-output-repeated-supertrait.rs:27:10
+   |
+LL |     type Output;
+   |          ^^^^^^ ...because it has conflicting associated item bounds for Output in supertraits
+...
+LL | trait NormalizingHelper: Base<Output=<Self as ConstI32>::Out> + Base<Output=i32> {
+   |       ----------------- this trait is not dyn compatible...
+   = help: only type `u32` implements `NormalizingHelper`; consider using it directly instead.
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

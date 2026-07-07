@@ -1,0 +1,37 @@
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/multiple-supers-should-work.rs:17:17
+   |
+LL |     let x: &dyn Trait<(), _> = &();
+   |                 ^^^^^^^^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/multiple-supers-should-work.rs:5:10
+   |
+LL |     type Assoc;
+   |          ^^^^^ ...because it has conflicting associated item bounds for Assoc in supertraits
+...
+LL | trait Trait<A, B>: Sup<A, Assoc = A> + Sup<B, Assoc = B> {}
+   |       ----- this trait is not dyn compatible...
+   = help: only type `()` implements `Trait`; consider using it directly instead.
+
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/multiple-supers-should-work.rs:19:17
+   |
+LL |     let y: &dyn Trait<_, ()> = x;
+   |                 ^^^^^^^^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/multiple-supers-should-work.rs:5:10
+   |
+LL |     type Assoc;
+   |          ^^^^^ ...because it has conflicting associated item bounds for Assoc in supertraits
+...
+LL | trait Trait<A, B>: Sup<A, Assoc = A> + Sup<B, Assoc = B> {}
+   |       ----- this trait is not dyn compatible...
+   = help: only type `()` implements `Trait`; consider using it directly instead.
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

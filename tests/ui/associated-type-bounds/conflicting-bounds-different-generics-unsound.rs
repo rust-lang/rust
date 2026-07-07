@@ -1,5 +1,3 @@
-//@ build-pass
-
 // We currently accept conflicting associated type bounds with different generics,
 // which results in unsoundness, since those generics can be instantiated with the
 // same concrete type.
@@ -41,6 +39,7 @@ fn require_trait<
 
 fn use_dyn<'a, A1, A2, C: Callback<A1, A2>>(payload: Src<'a>) -> Dst {
     require_trait::<'a, A1, A2, dyn Sub<'a, A1, A2>, C>(payload)
+    //~^ ERROR the trait `Sub` is not dyn compatible
 }
 
 fn extend<'a>(payload: Src<'a>) -> Dst {
