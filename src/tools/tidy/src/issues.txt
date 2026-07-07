@@ -2324,8 +2324,6 @@ ui/resolve/issue-2356.rs
 ui/resolve/issue-23716.rs
 ui/resolve/issue-24968.rs
 ui/resolve/issue-26545.rs
-ui/resolve/issue-3021-c.rs
-ui/resolve/issue-3021.rs
 ui/resolve/issue-30535.rs
 ui/resolve/issue-3099-a.rs
 ui/resolve/issue-3099-b.rs
