@@ -156,13 +156,16 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             Some(ReprSimd)
         }
         Some(sym::complex) => {
-            cx.check_target(
-                "(complex)",
-                &AllowedTargets::AllowList(&[
-                    Allow(Target::Struct), // Feature gated in `rustc_ast_passes`
-                    Warn(Target::MacroCall),
-                ]),
-            );
+            if cx.features.is_some_and(|feats| !feats.repr_complex()) {
+                feature_err(
+                    &cx.sess(),
+                    sym::repr_complex,
+                    param.span(),
+                    "`repr(complex)` is experimental",
+                )
+                .emit();
+            }
+            cx.check_target("(complex)", &AllowedTargets::AllowList(&[Allow(Target::Struct)]));
             cx.expect_no_args(param.args())?;
             Some(ReprComplex)
         }
