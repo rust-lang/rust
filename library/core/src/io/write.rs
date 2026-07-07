@@ -366,6 +366,8 @@ pub trait Write {
     }
 }
 
+/// Default implementation of [`Write::write_vectored`], which is currently used
+/// in `libstd` for file system implementations of similar methods.
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub fn default_write_vectored<F>(write: F, bufs: &[IoSlice<'_>]) -> Result<usize>

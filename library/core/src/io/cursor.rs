@@ -295,7 +295,8 @@ where
     }
 }
 
-// Non-resizing write implementation
+/// Non-resizing [`Write::write`] implementation for slices.
+/// Exported for `Cursor<Box<[u8], A>>`'s implementation of [`Write`].
 #[inline]
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
@@ -308,6 +309,8 @@ pub fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Resul
     Ok(amt)
 }
 
+/// Non-resizing [`Write::write_vectored`] implementation for slices.
+/// Exported for `Cursor<Box<[u8], A>>`'s implementation of [`Write`].
 #[inline]
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
@@ -327,6 +330,8 @@ pub fn slice_write_vectored(
     Ok(nwritten)
 }
 
+/// Non-resizing [`Write::write_all`] implementation for slices.
+/// Exported for `Cursor<Box<[u8], A>>`'s implementation of [`Write`].
 #[inline]
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
@@ -335,6 +340,8 @@ pub fn slice_write_all(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::R
     if n < buf.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
 }
 
+/// Non-resizing [`Write::write_all_vectored`] implementation for slices.
+/// Exported for `Cursor<Box<[u8], A>>`'s implementation of [`Write`].
 #[inline]
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
