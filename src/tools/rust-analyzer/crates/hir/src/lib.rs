@@ -813,7 +813,7 @@ impl Module {
                             expr_store_diagnostics(db, acc, source_map);
                             let (variants, diagnostics) = e.id.enum_variants_with_diagnostics(db);
                             let file = e.id.lookup(db).id.file_id;
-                            let ast_id_map = db.ast_id_map(file);
+                            let ast_id_map = file.ast_id_map(db);
                             for diag in diagnostics {
                                 acc.push(
                                     InactiveCode {
@@ -883,7 +883,7 @@ impl Module {
                 .iter()
                 .for_each(|&(_ast, call_id)| macro_call_diagnostics(db, call_id, acc));
 
-            let ast_id_map = db.ast_id_map(file_id);
+            let ast_id_map = file_id.ast_id_map(db);
 
             for diag in impl_id.impl_items_with_diagnostics(db).1.iter() {
                 emit_def_diagnostic(db, acc, diag, edition, loc.container.krate(db));
@@ -1159,7 +1159,7 @@ fn macro_call_diagnostics<'db>(
     macro_call_id: MacroCallId,
     acc: &mut Vec<AnyDiagnostic<'db>>,
 ) {
-    let Some(e) = db.parse_macro_expansion_error(macro_call_id) else {
+    let Some(e) = macro_call_id.parse_macro_expansion_error(db) else {
         return;
     };
     let ValueResult { value: parse_errors, err } = e;
@@ -1170,7 +1170,7 @@ fn macro_call_diagnostics<'db>(
         let RenderedExpandError { message, error, kind } = err.render_to_string(db);
         if Some(err.span().anchor.file_id) == file_id.file_id().map(|it| it.span_file_id(db)) {
             range.value = err.span().range
-                + db.ast_id_map(file_id).get_erased(err.span().anchor.ast_id).text_range().start();
+                + file_id.ast_id_map(db).get_erased(err.span().anchor.ast_id).text_range().start();
         }
         acc.push(MacroError { range, message, error, kind }.into());
     }
@@ -1260,7 +1260,7 @@ fn emit_def_diagnostic_<'db>(
         }
 
         DefDiagnosticKind::UnconfiguredCode { ast_id, cfg, opts } => {
-            let ast_id_map = db.ast_id_map(ast_id.file_id);
+            let ast_id_map = ast_id.file_id.ast_id_map(db);
             let ptr = ast_id_map.get_erased(ast_id.value);
             acc.push(
                 InactiveCode {

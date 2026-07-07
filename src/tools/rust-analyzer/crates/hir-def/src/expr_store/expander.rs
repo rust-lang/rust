@@ -47,7 +47,7 @@ impl<'db> Expander<'db> {
             recursion_depth: 0,
             recursion_limit,
             span_map: db.span_map(current_file_id),
-            ast_id_map: db.ast_id_map(current_file_id),
+            ast_id_map: current_file_id.ast_id_map(db),
         }
     }
 
@@ -184,12 +184,12 @@ impl<'db> Expander<'db> {
             self.recursion_depth = u32::MAX;
             cov_mark::hit!(your_stack_belongs_to_me);
             return ExpandResult::only_err(ExpandError::new(
-                db.macro_arg_considering_derives(call_id, &call_id.lookup(db).kind).2,
+                call_id.macro_arg_considering_derives(db, &call_id.lookup(db).kind).2,
                 ExpandErrorKind::RecursionOverflow,
             ));
         }
 
-        let res = db.parse_macro_expansion(call_id);
+        let res = call_id.parse_macro_expansion(db);
 
         let err = err.or_else(|| res.err.clone());
         ExpandResult {
@@ -201,7 +201,7 @@ impl<'db> Expander<'db> {
                 let old_span_map =
                     std::mem::replace(&mut self.span_map, SpanMap::ExpansionSpanMap(&res.value.1));
                 let prev_ast_id_map =
-                    mem::replace(&mut self.ast_id_map, db.ast_id_map(self.current_file_id));
+                    mem::replace(&mut self.ast_id_map, self.current_file_id.ast_id_map(db));
                 let mark = Mark {
                     file_id: old_file_id,
                     span_map: old_span_map,

@@ -1366,7 +1366,7 @@ impl<'db> SourceAnalyzer<'db> {
                             },
                         );
                     if let Some(adt) = adt {
-                        let ast_id = db.ast_id_map(self.file_id).ast_id(&adt);
+                        let ast_id = self.file_id.ast_id_map(db).ast_id(&adt);
                         if let Some(helpers) = self
                             .resolver
                             .def_map()

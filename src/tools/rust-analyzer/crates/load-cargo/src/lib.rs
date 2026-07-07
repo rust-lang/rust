@@ -705,8 +705,8 @@ impl ProcMacroExpander for Expander {
                     let call_site_ast_id = macro_call_loc.kind.erased_ast_id();
 
                     if let Some(editioned_file_id) = call_site_file.file_id() {
-                        let range = db
-                            .ast_id_map(editioned_file_id.into())
+                        let range = hir_expand::HirFileId::from(editioned_file_id)
+                            .ast_id_map(db)
                             .get_erased(call_site_ast_id)
                             .text_range();
 

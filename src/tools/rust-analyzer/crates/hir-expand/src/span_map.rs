@@ -41,7 +41,7 @@ impl<'db> SpanMap<'db> {
         match file_id {
             HirFileId::FileId(file_id) => SpanMap::RealSpanMap(db.real_span_map(file_id)),
             HirFileId::MacroFile(m) => {
-                SpanMap::ExpansionSpanMap(&db.parse_macro_expansion(m).value.1)
+                SpanMap::ExpansionSpanMap(&m.parse_macro_expansion(db).value.1)
             }
         }
     }
@@ -54,7 +54,7 @@ pub(crate) fn real_span_map(
 ) -> RealSpanMap {
     use syntax::ast::HasModuleItem;
     let mut pairs = vec![(syntax::TextSize::new(0), span::ROOT_ERASED_FILE_AST_ID)];
-    let ast_id_map = db.ast_id_map(editioned_file_id.into());
+    let ast_id_map = HirFileId::from(editioned_file_id).ast_id_map(db);
 
     let tree = editioned_file_id.parse(db).tree();
     // This is an incrementality layer. Basically we can't use absolute ranges for our spans as that
@@ -115,5 +115,5 @@ pub(crate) fn expansion_span_map(
     db: &dyn ExpandDatabase,
     file_id: MacroCallId,
 ) -> &ExpansionSpanMap {
-    &db.parse_macro_expansion(file_id).value.1
+    &file_id.parse_macro_expansion(db).value.1
 }

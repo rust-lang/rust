@@ -550,7 +550,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode {
-        let node = self.db.parse_or_expand(file_id);
+        let node = file_id.parse_or_expand(self.db);
         self.cache(node.clone(), file_id);
         node
     }
@@ -564,7 +564,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn expand(&self, file_id: MacroCallId) -> ExpandResult<SyntaxNode> {
-        let res = self.db.parse_macro_expansion(file_id).as_ref().map(|it| it.0.syntax_node());
+        let res = file_id.parse_macro_expansion(self.db).as_ref().map(|it| it.0.syntax_node());
         self.cache(res.value.clone(), file_id.into());
         res
     }
@@ -661,7 +661,7 @@ impl<'db> SemanticsImpl<'db> {
             .into_iter()
             .map(|call| {
                 let file_id = call?.left()?;
-                let ExpandResult { value, err } = self.db.parse_macro_expansion(file_id);
+                let ExpandResult { value, err } = file_id.parse_macro_expansion(self.db);
                 let root_node = value.0.syntax_node();
                 self.cache(root_node.clone(), file_id.into());
                 Some(ExpandResult { value: root_node, err: err.clone() })
@@ -690,7 +690,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn derive_helpers_in_scope(&self, adt: &ast::Adt) -> Option<Vec<(Symbol, Symbol)>> {
         let sa = self.analyze_no_infer(adt.syntax())?;
-        let id = self.db.ast_id_map(sa.file_id).ast_id(adt);
+        let id = sa.file_id.ast_id_map(self.db).ast_id(adt);
         let result = sa
             .resolver
             .def_map()
@@ -713,7 +713,7 @@ impl<'db> SemanticsImpl<'db> {
         })?;
         let attr_name = attr.path().and_then(|it| it.as_single_name_ref())?.as_name();
         let sa = self.analyze_no_infer(adt.syntax())?;
-        let id = self.db.ast_id_map(sa.file_id).ast_id(&adt);
+        let id = sa.file_id.ast_id_map(self.db).ast_id(&adt);
         let res: Vec<_> = sa
             .resolver
             .def_map()
@@ -1498,7 +1498,7 @@ impl<'db> SemanticsImpl<'db> {
                                     self.analyze_impl(InFile::new(expansion, &parent), None, false)
                                 })?
                                 .resolver;
-                            let id = db.ast_id_map(expansion).ast_id(&adt);
+                            let id = expansion.ast_id_map(db).ast_id(&adt);
                             let helpers = resolver
                                 .def_map()
                                 .derive_helpers_in_scope(InFile::new(expansion, id))?;
@@ -1979,8 +1979,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_macro_call_arm(&self, macro_call: &ast::MacroCall) -> Option<u32> {
-        let file_id = self.to_def(macro_call)?;
-        self.db.parse_macro_expansion(file_id).value.1.matched_arm
+        self.to_def(macro_call)?.parse_macro_expansion(self.db).value.1.matched_arm
     }
 
     pub fn get_unsafe_ops(&self, def: ExpressionStoreOwner) -> FxHashSet<ExprOrPatSource> {

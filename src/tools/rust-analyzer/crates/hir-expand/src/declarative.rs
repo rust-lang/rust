@@ -87,7 +87,8 @@ impl DeclarativeMacroExpander {
         def_crate: Crate,
         id: AstId<ast::Macro>,
     ) -> DeclarativeMacroExpander {
-        let (root, map) = crate::db::parse_with_map(db, id.file_id);
+        let (root, map) = id.file_id.parse_with_map(db);
+
         let root = root.syntax_node();
 
         let transparency = |node: ast::AnyHasAttrs| {

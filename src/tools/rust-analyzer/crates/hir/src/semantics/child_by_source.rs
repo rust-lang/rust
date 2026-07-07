@@ -200,7 +200,7 @@ impl ChildBySource for EnumId {
             return;
         }
 
-        let ast_id_map = db.ast_id_map(loc.id.file_id);
+        let ast_id_map = loc.id.file_id.ast_id_map(db);
 
         self.enum_variants(db).variants.values().for_each(|&(variant, _)| {
             res[keys::ENUM_VARIANT].insert(ast_id_map.get(variant.lookup(db).id.value), variant);

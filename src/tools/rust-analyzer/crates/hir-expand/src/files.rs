@@ -94,16 +94,16 @@ pub type AstId<N> = crate::InFile<FileAstId<N>>;
 
 impl<N: AstNode> AstId<N> {
     pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
-        self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
+        self.to_ptr(db).to_node(&self.file_id.parse_or_expand(db))
     }
     pub fn to_range(&self, db: &dyn ExpandDatabase) -> TextRange {
         self.to_ptr(db).text_range()
     }
     pub fn to_in_file_node(&self, db: &dyn ExpandDatabase) -> crate::InFile<N> {
-        crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id)))
+        crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&self.file_id.parse_or_expand(db)))
     }
     pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> AstPtr<N> {
-        db.ast_id_map(self.file_id).get(self.value)
+        self.file_id.ast_id_map(db).get(self.value)
     }
     pub fn erase(&self) -> ErasedAstId {
         crate::InFile::new(self.file_id, self.value.erase())
@@ -124,7 +124,7 @@ impl ErasedAstId {
         self.to_ptr(db).text_range()
     }
     pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> SyntaxNodePtr {
-        db.ast_id_map(self.file_id).get_erased(self.value)
+        self.file_id.ast_id_map(db).get_erased(self.value)
     }
 }
 
@@ -213,12 +213,12 @@ impl FileIdToSyntax for EditionedFileId {
 }
 impl FileIdToSyntax for MacroCallId {
     fn file_syntax(self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
-        db.parse_macro_expansion(self).value.0.syntax_node()
+        self.parse_macro_expansion(db).value.0.syntax_node()
     }
 }
 impl FileIdToSyntax for HirFileId {
     fn file_syntax(self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
-        db.parse_or_expand(self)
+        self.parse_or_expand(db)
     }
 }
 
