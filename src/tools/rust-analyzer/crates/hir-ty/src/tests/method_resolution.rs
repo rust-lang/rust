@@ -2258,3 +2258,30 @@ fn main() {
     "#,
     );
 }
+
+#[test]
+fn trait_impl_with_error_self_ty_does_not_match_arbitrary_receiver() {
+    check_types(
+        r#"
+//- minicore: sized
+trait UnrelatedTrait {
+    fn take(self) {}
+}
+
+struct MyOption<T>(T);
+
+impl<T> MyOption<T> {
+    fn take(&mut self) -> MyOption<T> {
+        loop {}
+    }
+}
+
+fn f<T>(mut o: MyOption<T>) {
+    let value = o.take();
+      //^^^^^ MyOption<T>
+}
+
+impl UnrelatedTrait for &'_ MissingType {}
+"#,
+    );
+}

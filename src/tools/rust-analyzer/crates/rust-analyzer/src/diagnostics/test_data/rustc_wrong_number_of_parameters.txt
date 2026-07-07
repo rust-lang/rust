@@ -55,6 +55,7 @@
                 "rustc",
             ),
             message: "this function takes 2 parameters but 3 parameters were supplied\nexpected 2 parameters",
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -85,7 +86,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,
@@ -146,6 +146,7 @@
                 "rustc",
             ),
             message: "defined here",
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -176,7 +177,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,

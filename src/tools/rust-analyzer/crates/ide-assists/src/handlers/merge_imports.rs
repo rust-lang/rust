@@ -36,7 +36,7 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> O
 
         let use_item = tree.syntax().parent().and_then(ast::Use::cast)?;
         let neighbor = next_prev().find_map(|dir| neighbor(&use_item, dir))?;
-        let (editor, _) = SyntaxEditor::new(use_item.syntax().parent()?.ancestors().last()?);
+        let (editor, _) = SyntaxEditor::new(use_item.syntax().parent()?.tree_top());
         merge_uses(use_item, vec![neighbor], &ctx.config.insert_use, &editor)?;
         (target, editor)
     } else {
@@ -51,7 +51,7 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> O
         });
 
         let first_selected = selected_nodes.next()?;
-        let (editor, _) = SyntaxEditor::new(parent_node.ancestors().last().unwrap());
+        let (editor, _) = SyntaxEditor::new(parent_node.tree_top());
         match_ast! {
             match first_selected {
                 ast::Use(use_item) => {

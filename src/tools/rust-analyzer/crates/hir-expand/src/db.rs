@@ -2,7 +2,7 @@
 
 use base_db::{Crate, SourceDatabase};
 use mbe::MatchedArmIndex;
-use span::{AstIdMap, Edition, Span, SyntaxContext};
+use span::{AstIdMap, Span};
 use std::borrow::Cow;
 use syntax::{AstNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T, ast};
 use syntax_bridge::{DocCommentDesugarMode, syntax_node_to_token_tree};
@@ -17,7 +17,7 @@ use crate::{
     declarative::DeclarativeMacroExpander,
     fixup::{self, SyntaxFixupUndoInfo},
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
-    proc_macro::{CrateProcMacros, CustomProcMacroExpander, ProcMacros},
+    proc_macro::CustomProcMacroExpander,
     span_map::{ExpansionSpanMap, RealSpanMap, SpanMap},
     tt,
 };
@@ -50,14 +50,6 @@ pub enum TokenExpander<'db> {
 
 #[query_group::query_group]
 pub trait ExpandDatabase: SourceDatabase {
-    /// The proc macros. Do not use this! Use `proc_macros_for_crate()` instead.
-    #[salsa::input]
-    fn proc_macros(&self) -> Arc<ProcMacros>;
-
-    /// Incrementality query to prevent queries from directly depending on `ExpandDatabase::proc_macros`.
-    #[salsa::invoke(crate::proc_macro::proc_macros_for_crate)]
-    fn proc_macros_for_crate(&self, krate: Crate) -> Option<Arc<CrateProcMacros>>;
-
     #[salsa::invoke(ast_id_map)]
     #[salsa::transparent]
     fn ast_id_map(&self, file_id: HirFileId) -> &AstIdMap;
@@ -115,40 +107,12 @@ pub trait ExpandDatabase: SourceDatabase {
         id: AstId<ast::Macro>,
     ) -> &DeclarativeMacroExpander;
 
-    /// Special case of the previous query for procedural macros. We can't LRU
-    /// proc macros, since they are not deterministic in general, and
-    /// non-determinism breaks salsa in a very, very, very bad way.
-    /// @edwin0cheng heroically debugged this once! See #4315 for details
-    #[salsa::invoke(expand_proc_macro)]
-    #[salsa::transparent]
-    fn expand_proc_macro(&self, call: MacroCallId) -> &ExpandResult<tt::TopSubtree>;
-    /// Retrieves the span to be used for a proc-macro expansions spans.
-    /// This is a firewall query as it requires parsing the file, which we don't want proc-macros to
-    /// directly depend on as that would cause to frequent invalidations, mainly because of the
-    /// parse queries being LRU cached. If they weren't the invalidations would only happen if the
-    /// user wrote in the file that defines the proc-macro.
-    #[salsa::invoke_interned(proc_macro_span)]
-    fn proc_macro_span(&self, fun: AstId<ast::Fn>) -> Span;
-
     #[salsa::invoke(parse_macro_expansion_error)]
     #[salsa::transparent]
     fn parse_macro_expansion_error(
         &self,
         macro_call: MacroCallId,
     ) -> Option<ExpandResult<Arc<[SyntaxError]>>>;
-
-    #[salsa::transparent]
-    fn syntax_context(&self, file: HirFileId, edition: Edition) -> SyntaxContext;
-}
-
-fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) -> SyntaxContext {
-    match file {
-        HirFileId::FileId(_) => SyntaxContext::root(edition),
-        HirFileId::MacroFile(m) => {
-            let kind = &m.loc(db).kind;
-            db.macro_arg_considering_derives(m, kind).2.ctx
-        }
-    }
 }
 
 fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
@@ -253,7 +217,7 @@ pub fn expand_speculative(
                 // then try finding a token id for our token if it is inside this input subtree.
                 let item = ast::Item::cast(speculative_args.clone())?;
                 let (_, meta) =
-                    attr_ids.invoc_attr().find_attr_range_with_source(db, loc.krate, &item);
+                    attr_ids.invoc_attr().find_attr_range_with_source_opt(db, loc.krate, &item)?;
                 if let ast::Meta::TokenTreeMeta(meta) = meta
                     && let Some(tt) = meta.token_tree()
                 {
@@ -277,7 +241,7 @@ pub fn expand_speculative(
     // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
     let mut speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(ast, expander, _) => {
-            let span = db.proc_macro_span(ast);
+            let span = proc_macro_span(db, ast);
             tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
             tt.set_top_subtree_delimiter_span(tt::DelimSpan::from_single(span));
             expander.expand(
@@ -296,7 +260,7 @@ pub fn expand_speculative(
         }
         MacroDefKind::Declarative(it, _) => db
             .decl_macro_expander(loc.krate, it)
-            .expand_unhygienic(db, tt, loc.kind.call_style(), span),
+            .expand_unhygienic(db, &tt, loc.kind.call_style(), span),
         MacroDefKind::BuiltIn(_, it) => {
             it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
         }
@@ -556,8 +520,7 @@ fn macro_expand<'db>(
 
     let (ExpandResult { value: (tt, matched_arm), err }, span) = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => {
-            return db
-                .expand_proc_macro(macro_call_id)
+            return expand_proc_macro(db, macro_call_id)
                 .as_ref()
                 .map(|it| (Cow::Borrowed(it), None));
         }
@@ -568,9 +531,9 @@ fn macro_expand<'db>(
 
             let arg = macro_arg;
             let res = match loc.def.kind {
-                MacroDefKind::Declarative(id, _) => db
-                    .decl_macro_expander(loc.def.krate, id)
-                    .expand(db, arg.clone(), macro_call_id, span),
+                MacroDefKind::Declarative(id, _) => {
+                    db.decl_macro_expander(loc.def.krate, id).expand(db, arg, macro_call_id, span)
+                }
                 MacroDefKind::BuiltIn(_, it) => {
                     it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
                 }
@@ -610,7 +573,7 @@ fn macro_expand<'db>(
                 }
                 MacroDefKind::ProcMacro(_, _, _) => unreachable!(),
             };
-            (ExpandResult { value: res.value, err: res.err }, span)
+            (res, span)
         }
     };
 
@@ -627,17 +590,30 @@ fn macro_expand<'db>(
     ExpandResult { value: (Cow::Owned(tt), matched_arm), err }
 }
 
+/// Retrieves the span to be used for a proc-macro expansions spans.
+/// This is a firewall query as it requires parsing the file, which we don't want proc-macros to
+/// directly depend on as that would cause to frequent invalidations, mainly because of the
+/// parse queries being LRU cached. If they weren't the invalidations would only happen if the
+/// user wrote in the file that defines the proc-macro.
 fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
-    let root = db.parse_or_expand(ast.file_id);
-    let ast_id_map = &db.ast_id_map(ast.file_id);
-    let span_map = &db.span_map(ast.file_id);
+    #[salsa::tracked]
+    fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>, _: ()) -> Span {
+        let root = db.parse_or_expand(ast.file_id);
+        let ast_id_map = db.ast_id_map(ast.file_id);
+        let span_map = db.span_map(ast.file_id);
 
-    let node = ast_id_map.get(ast.value).to_node(&root);
-    let range = ast::HasName::name(&node)
-        .map_or_else(|| node.syntax().text_range(), |name| name.syntax().text_range());
-    span_map.span_for_range(range)
+        let node = ast_id_map.get(ast.value).to_node(&root);
+        let range = ast::HasName::name(&node)
+            .map_or_else(|| node.syntax().text_range(), |name| name.syntax().text_range());
+        span_map.span_for_range(range)
+    }
+    proc_macro_span(db, ast, ())
 }
 
+/// Special case of [`macro_expand`] for procedural macros. We can't LRU
+/// proc macros, since they are not deterministic in general, and
+/// non-determinism breaks salsa in a very, very, very bad way.
+/// @edwin0cheng heroically debugged this once! See #4315 for details
 #[salsa_macros::tracked(returns(ref))]
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<tt::TopSubtree> {
     let loc = id.loc(db);
@@ -654,7 +630,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<t
     };
 
     let ExpandResult { value: mut tt, err } = {
-        let span = db.proc_macro_span(ast);
+        let span = proc_macro_span(db, ast);
         expander.expand(
             db,
             loc.def.krate,

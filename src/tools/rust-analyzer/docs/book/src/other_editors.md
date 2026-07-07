@@ -146,7 +146,7 @@ still recommended to get the
 for free.
 
 1. Install [neovim/nvim-lspconfig](https://github.com/neovim/nvim-lspconfig)
-2. Add `lua vim.lsp.enable('rust-analyzer')` to your `init.vim`
+2. Add `lua vim.lsp.enable('rust_analyzer')` to your `init.vim`
 3. Customize your setup.
 
 ```lua

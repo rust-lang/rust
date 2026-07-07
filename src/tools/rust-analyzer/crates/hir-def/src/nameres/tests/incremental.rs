@@ -286,7 +286,7 @@ fn f() { foo }
                 "parse",
                 "real_span_map",
                 "crate_local_def_map",
-                "proc_macros_for_crate_shim",
+                "ProcMacros::get_for_crate_",
                 "file_item_tree_query",
                 "ast_id_map",
                 "parse",
@@ -305,7 +305,7 @@ fn f() { foo }
                 "parse_macro_expansion",
                 "expand_proc_macro",
                 "macro_arg",
-                "proc_macro_span_shim",
+                "proc_macro_span",
             ]
         "#]],
         expect![[r#"
@@ -410,7 +410,7 @@ pub struct S {}
                 "parse",
                 "real_span_map",
                 "crate_local_def_map",
-                "proc_macros_for_crate_shim",
+                "ProcMacros::get_for_crate_",
                 "file_item_tree_query",
                 "ast_id_map",
                 "parse",
@@ -441,7 +441,7 @@ pub struct S {}
                 "parse_macro_expansion",
                 "expand_proc_macro",
                 "macro_arg",
-                "proc_macro_span_shim",
+                "proc_macro_span",
             ]
         "#]],
         expect![[r#"

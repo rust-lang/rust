@@ -1188,21 +1188,18 @@ fn emit_macro_def_diagnostics<'db>(
     m: Macro,
 ) {
     let id = db.macro_def(m.id);
-    if let hir_expand::db::TokenExpander::DeclarativeMacro(expander) = db.macro_expander(id)
+    let krate = id.krate;
+    if let hir_expand::MacroDefKind::Declarative(ast, _) = id.kind
+        && let expander = db.decl_macro_expander(krate, ast)
         && let Some(e) = expander.mac.err()
     {
-        let Some(ast) = id.ast_id().left() else {
-            never!("declarative expander for non decl-macro: {:?}", e);
-            return;
-        };
-        let krate = HasModule::krate(&m.id, db);
         let edition = krate.data(db).edition;
         emit_def_diagnostic_(
             db,
             acc,
             &DefDiagnosticKind::MacroDefError { ast, message: e.to_string() },
             edition,
-            m.krate(db).id,
+            krate,
         );
     }
 }
@@ -2737,14 +2734,14 @@ impl<'db> Param<'db> {
             Callee::Def(CallableDefId::FunctionId(it)) => {
                 let parent = DefWithBodyId::FunctionId(it);
                 let body = Body::of(db, parent);
-                if let Some(self_param) = body.self_param().filter(|_| self.idx == 0) {
+                if let Some(self_param) = body.self_param.filter(|_| self.idx == 0) {
                     Some(Local {
                         parent: parent.into(),
                         parent_infer: parent.into(),
-                        binding_id: self_param,
+                        binding_id: self_param.user_written,
                     })
                 } else if let Pat::Bind { id, .. } =
-                    &body[body.params[self.idx - body.self_param().is_some() as usize]]
+                    &body[body.params[self.idx - body.self_param.is_some() as usize].user_written]
                 {
                     Some(Local {
                         parent: parent.into(),
@@ -4193,7 +4190,7 @@ impl Local {
             }
             ExpressionStoreOwnerId::Body(def_with_body_id) => {
                 b = Body::with_source_map(db, def_with_body_id);
-                if b.0.self_params.contains(&self.binding_id)
+                if b.0.is_any_self_param(self.binding_id)
                     && let Some(source) = b.1.self_param_syntax()
                 {
                     let root = source.file_syntax(db);
@@ -4234,7 +4231,7 @@ impl Local {
             }
             ExpressionStoreOwnerId::Body(def_with_body_id) => {
                 b = Body::with_source_map(db, def_with_body_id);
-                if b.0.self_params.contains(&self.binding_id)
+                if b.0.is_any_self_param(self.binding_id)
                     && let Some(source) = b.1.self_param_syntax()
                 {
                     let root = source.file_syntax(db);
@@ -6849,8 +6846,8 @@ impl<'db> Layout<'db> {
                     .into_iter()
                     .flatten()
                     .chain(iter::once((0, self.0.size.bytes())))
-                    .tuple_windows()
-                    .filter_map(|((i, start), (_, end))| {
+                    .array_windows()
+                    .filter_map(|[(i, start), (_, end)]| {
                         let size = field_size(i)?;
                         end.checked_sub(start)?.checked_sub(size)
                     })
@@ -7381,9 +7378,9 @@ pub fn resolve_absolute_path<'a, I: Iterator<Item = Symbol> + Clone + 'a>(
                     let mut def_map = crate_def_map(db, krate);
                     let mut module = &def_map[def_map.root_module_id()];
                     let mut segments = segments.with_position().peekable();
-                    while let Some((_, segment)) = segments.next_if(|&(position, _)| {
-                        !matches!(position, itertools::Position::Last | itertools::Position::Only)
-                    }) {
+                    while let Some((_, segment)) =
+                        segments.next_if(|&(position, _)| !position.is_last)
+                    {
                         let res = module
                             .scope
                             .get(&Name::new_symbol_root(segment))
