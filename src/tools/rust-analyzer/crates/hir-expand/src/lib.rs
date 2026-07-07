@@ -28,7 +28,6 @@ mod fixup;
 mod prettify_macro_expansion_;
 
 use salsa::plumbing::{AsId, FromId};
-use stdx::TupleExt;
 use thin_vec::ThinVec;
 use triomphe::Arc;
 
@@ -793,7 +792,7 @@ fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
     fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>, _: ()) -> Span {
         let root = ast.file_id.parse_or_expand(db);
         let ast_id_map = ast.file_id.ast_id_map(db);
-        let span_map = db.span_map(ast.file_id);
+        let span_map = ast.file_id.span_map(db);
 
         let node = ast_id_map.get(ast.value).to_node(&root);
         let range = ast::HasName::name(&node)
@@ -1216,8 +1215,8 @@ impl<'db> ExpansionInfo<'db> {
                     self.arg.file_id,
                     arg_map
                         .ranges_with_span_exact(span)
-                        .filter(|(range, _)| range.intersect(arg_range).is_some())
-                        .map(TupleExt::head)
+                        .map(|(range, _)| range)
+                        .filter(|range| range.intersect(arg_range).is_some())
                         .collect(),
                 )
             }
@@ -1229,7 +1228,7 @@ impl<'db> ExpansionInfo<'db> {
         let loc = macro_file.loc(db);
 
         let arg_tt = loc.kind.arg(db);
-        let arg_map = db.span_map(arg_tt.file_id);
+        let arg_map = arg_tt.file_id.span_map(db);
 
         let (parse, exp_map) = &macro_file.parse_macro_expansion(db).value;
         let expanded = InMacroFile { file_id: macro_file, value: parse.syntax_node() };
@@ -1531,9 +1530,10 @@ impl HirFileId {
         db: &dyn ExpandDatabase,
     ) -> (Parse<SyntaxNode>, SpanMap<'_>) {
         match self {
-            HirFileId::FileId(file_id) => {
-                (file_id.parse(db).to_syntax(), SpanMap::RealSpanMap(db.real_span_map(file_id)))
-            }
+            HirFileId::FileId(file_id) => (
+                file_id.parse(db).to_syntax(),
+                SpanMap::RealSpanMap(crate::span_map::real_span_map(db, file_id)),
+            ),
             HirFileId::MacroFile(macro_file) => {
                 let (parse, map) = &macro_file.parse_macro_expansion(db).value;
                 (parse.clone(), SpanMap::ExpansionSpanMap(map))

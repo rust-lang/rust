@@ -641,8 +641,9 @@ fn find_local_import_locations(
 
 #[cfg(test)]
 mod tests {
+    use std::cell::LazyCell;
+
     use expect_test::{Expect, expect};
-    use hir_expand::db::ExpandDatabase;
     use itertools::Itertools;
     use span::Edition;
     use stdx::format_to;
@@ -672,10 +673,10 @@ mod tests {
             syntax::SourceFile::parse(&format!("use {path};"), span::Edition::CURRENT);
         let ast_path =
             parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
-        let mod_path = ModPath::from_src(&db, ast_path, &mut |range| {
-            db.span_map(pos.file_id.into()).span_for_range(range).ctx
-        })
-        .unwrap();
+        let span_map = LazyCell::new(|| hir_expand::HirFileId::from(pos.file_id).span_map(&db));
+        let mod_path =
+            ModPath::from_src(&db, ast_path, &mut |range| span_map.span_for_range(range).ctx)
+                .unwrap();
 
         let (def_map, local_def_map) = module.local_def_map(&db);
         let resolved = def_map

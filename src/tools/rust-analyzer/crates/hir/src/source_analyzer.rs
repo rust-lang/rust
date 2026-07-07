@@ -2108,7 +2108,7 @@ pub(crate) fn name_hygiene(db: &dyn HirDatabase, name: InFile<&SyntaxNode>) -> H
     let Some(macro_file) = name.file_id.macro_file() else {
         return HygieneId::ROOT;
     };
-    let span_map = db.expansion_span_map(macro_file);
+    let span_map = macro_file.expansion_span_map(db);
     let ctx = span_map.span_at(name.value.text_range().start()).ctx;
     HygieneId::new(ctx.opaque_and_semiopaque(db))
 }

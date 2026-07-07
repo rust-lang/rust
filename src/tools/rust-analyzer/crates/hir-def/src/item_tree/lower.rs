@@ -56,7 +56,7 @@ impl<'db> Ctx<'db> {
     }
 
     pub(super) fn span_map(&self) -> SpanMap<'_> {
-        *self.span_map.get_or_init(|| self.db.span_map(self.file))
+        *self.span_map.get_or_init(|| self.file.span_map(self.db))
     }
 
     pub(super) fn lower_module_items(mut self, item_owner: &dyn HasModuleItem) -> ItemTree {

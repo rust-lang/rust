@@ -31,7 +31,7 @@
 //! }
 //! ```
 
-use hir::{MacroCallId, Name, db::ExpandDatabase};
+use hir::{MacroCallId, Name};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     SymbolKind, documentation::HasDocs, path_transform::PathTransform,
@@ -494,7 +494,7 @@ fn make_const_compl_syntax(
     macro_file: Option<MacroCallId>,
 ) -> SmolStr {
     let const_ = if let Some(macro_file) = macro_file {
-        let span_map = ctx.db.expansion_span_map(macro_file);
+        let span_map = macro_file.expansion_span_map(ctx.db);
         prettify_macro_expansion(ctx.db, const_.syntax().clone(), span_map, ctx.krate.into())
     } else {
         const_.syntax().clone()
@@ -522,7 +522,7 @@ fn function_declaration(
     macro_file: Option<MacroCallId>,
 ) -> String {
     let node = if let Some(macro_file) = macro_file {
-        let span_map = ctx.db.expansion_span_map(macro_file);
+        let span_map = macro_file.expansion_span_map(ctx.db);
         prettify_macro_expansion(ctx.db, node.syntax().clone(), span_map, ctx.krate.into())
     } else {
         node.syntax().clone()

@@ -990,7 +990,7 @@ fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
     let mut col = ExprCollector::new(db, module, fields.file_id);
     let override_visibility = override_visibility.map(|vis| {
         LazyCell::new(|| {
-            let span_map = db.span_map(fields.file_id);
+            let span_map = fields.file_id.span_map(db);
             visibility_from_ast(db, vis, &mut |range| span_map.span_for_range(range).ctx)
         })
     });

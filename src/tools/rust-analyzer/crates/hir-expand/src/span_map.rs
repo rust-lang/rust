@@ -30,23 +30,25 @@ impl<'db> SpanMap<'db> {
             // FIXME: Is it correct for us to only take the span at the start? This feels somewhat
             // wrong. The context will be right, but the range could be considered wrong. See
             // https://github.com/rust-lang/rust/issues/23480, we probably want to fetch the span at
-            // the start and end, then merge them like rustc does in `Span::to
+            // the start and end, then merge them like rustc does in `Span::to`
             Self::ExpansionSpanMap(span_map) => span_map.span_at(range.start()),
             Self::RealSpanMap(span_map) => span_map.span_for_range(range),
         }
     }
+}
 
+impl HirFileId {
     #[inline]
-    pub(crate) fn new(db: &'db dyn ExpandDatabase, file_id: HirFileId) -> SpanMap<'db> {
-        match file_id {
-            HirFileId::FileId(file_id) => SpanMap::RealSpanMap(db.real_span_map(file_id)),
-            HirFileId::MacroFile(m) => {
-                SpanMap::ExpansionSpanMap(&m.parse_macro_expansion(db).value.1)
-            }
+    pub fn span_map<'db>(self, db: &'db dyn ExpandDatabase) -> SpanMap<'db> {
+        match self {
+            HirFileId::FileId(file_id) => SpanMap::RealSpanMap(real_span_map(db, file_id)),
+            HirFileId::MacroFile(m) => SpanMap::ExpansionSpanMap(m.expansion_span_map(db)),
         }
     }
 }
 
+/// This is an implementation detail of [`HirFileId::span_map`]. Outside this crate, use
+/// `HirFileId::from(file_id).span_map(db)` instead of `real_span_map(db, file_id)`.
 #[salsa_macros::tracked(returns(ref))]
 pub(crate) fn real_span_map(
     db: &dyn ExpandDatabase,
@@ -111,9 +113,8 @@ pub(crate) fn real_span_map(
     )
 }
 
-pub(crate) fn expansion_span_map(
-    db: &dyn ExpandDatabase,
-    file_id: MacroCallId,
-) -> &ExpansionSpanMap {
-    &file_id.parse_macro_expansion(db).value.1
+impl MacroCallId {
+    pub fn expansion_span_map(self, db: &dyn ExpandDatabase) -> &ExpansionSpanMap {
+        &self.parse_macro_expansion(db).value.1
+    }
 }

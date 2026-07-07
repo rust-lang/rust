@@ -1,4 +1,3 @@
-use hir::db::ExpandDatabase;
 use itertools::Itertools;
 use std::iter::successors;
 
@@ -512,7 +511,7 @@ fn pretty_pat_inside_macro(
         let pretty_node = hir::prettify_macro_expansion(
             db,
             pat,
-            db.expansion_span_map(file_id),
+            file_id.expansion_span_map(db),
             scope.module().krate(db).into(),
         );
         ast::Pat::cast(pretty_node)

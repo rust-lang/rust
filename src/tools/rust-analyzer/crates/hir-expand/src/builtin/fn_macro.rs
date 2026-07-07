@@ -22,7 +22,6 @@ use crate::{
     db::ExpandDatabase,
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt},
     name,
-    span_map::SpanMap,
     tt::{self, DelimSpan, TtElement, TtIter},
 };
 
@@ -826,11 +825,10 @@ fn include_expand(
             );
         }
     };
-    let span_map = db.real_span_map(editioned_file_id);
     // FIXME: Parse errors
     ExpandResult::ok(syntax_node_to_token_tree(
         &editioned_file_id.parse(db).syntax_node(),
-        SpanMap::RealSpanMap(span_map),
+        crate::HirFileId::from(editioned_file_id).span_map(db),
         span,
         syntax_bridge::DocCommentDesugarMode::ProcMacro,
     ))
