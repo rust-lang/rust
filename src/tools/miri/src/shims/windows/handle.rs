@@ -287,7 +287,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if target_proc != Handle::Pseudo(PseudoHandle::CurrentProcess) {
             throw_unsup_format!(
-                "`DuplicateHandle` `hSourceProcessHandle` parameter is not the current process, which is unsupported"
+                "`DuplicateHandle` `hTargetProcessHandle` parameter is not the current process, which is unsupported"
             );
         }
 
