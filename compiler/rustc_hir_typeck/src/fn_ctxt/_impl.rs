@@ -213,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // let it keep doing that and just ensure that compilation won't succeed.
                 self.dcx().span_delayed_bug(
                     self.tcx.hir_span(id),
-                    format!("`{prev}` overridden by `{ty}` for {id:?} in {:?}", self.body_id),
+                    format!("`{prev}` overridden by `{ty}` for {id:?} in {:?}", self.body_def_id),
                 );
             }
         }
@@ -1070,7 +1070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             arg_span,
                             span,
                             container_id,
-                            self.body_id.to_def_id(),
+                            self.body_def_id.to_def_id(),
                         ) {
                             self.set_tainted_by_errors(e);
                         }
@@ -1192,7 +1192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // error in `validate_res_from_ribs` -- it's just difficult to tell whether the
             // self type has any generic types during rustc_resolve, which is what we use
             // to determine if this is a hard error or warning.
-            if std::iter::successors(Some(self.body_id.to_def_id()), |&def_id| {
+            if std::iter::successors(Some(self.body_def_id.to_def_id()), |&def_id| {
                 self.tcx.generics_of(def_id).parent
             })
             .all(|def_id| def_id != impl_def_id)
@@ -1534,7 +1534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let guar = self.tainted_by_errors().unwrap_or_else(|| {
             self.err_ctxt()
                 .emit_inference_failure_err(
-                    self.body_id,
+                    self.body_def_id,
                     sp,
                     ty.into(),
                     TypeAnnotationNeeded::E0282,
@@ -1560,7 +1560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let e = self.tainted_by_errors().unwrap_or_else(|| {
                 self.err_ctxt()
                     .emit_inference_failure_err(
-                        self.body_id,
+                        self.body_def_id,
                         sp,
                         ct.into(),
                         TypeAnnotationNeeded::E0282,

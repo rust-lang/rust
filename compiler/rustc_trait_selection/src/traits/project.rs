@@ -230,7 +230,7 @@ fn project_and_unify_term<'cx, 'tcx>(
     let InferOk { value: actual, obligations: new } =
         selcx.infcx.replace_opaque_types_with_inference_vars(
             actual,
-            obligation.cause.body_id,
+            obligation.cause.body_def_id,
             obligation.cause.span,
             obligation.param_env,
         );
@@ -557,7 +557,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
 
         let nested_cause = ObligationCause::new(
             cause.span,
-            cause.body_id,
+            cause.body_def_id,
             // FIXME(inherent_associated_types): Since we can't pass along the self type to the
             // cause code, inherent projections will be printed with identity instantiation in
             // diagnostics which is not ideal.
@@ -2149,7 +2149,7 @@ fn assoc_term_own_obligations<'cx, 'tcx>(
         } else {
             ObligationCause::new(
                 obligation.cause.span,
-                obligation.cause.body_id,
+                obligation.cause.body_def_id,
                 ObligationCauseCode::WhereClause(def_id, span),
             )
         };

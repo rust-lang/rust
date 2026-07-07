@@ -158,11 +158,11 @@ impl<'tcx, O> Obligation<'tcx, O> {
     pub fn misc(
         tcx: TyCtxt<'tcx>,
         span: Span,
-        body_id: LocalDefId,
+        body_def_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         trait_ref: impl Upcast<TyCtxt<'tcx>, O>,
     ) -> Obligation<'tcx, O> {
-        Obligation::new(tcx, ObligationCause::misc(span, body_id), param_env, trait_ref)
+        Obligation::new(tcx, ObligationCause::misc(span, body_def_id), param_env, trait_ref)
     }
 
     pub fn with<P>(

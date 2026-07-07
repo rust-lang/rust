@@ -2320,6 +2320,7 @@ symbols! {
         vgpr384,
         vgpr512,
         vgpr1024,
+        view_type,
         view_types,
         vis,
         visible_private_types,

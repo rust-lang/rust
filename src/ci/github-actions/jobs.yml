@@ -474,7 +474,7 @@ auto:
   - name: dist-x86_64-apple
     env:
       SCRIPT: >-
-        ./x.py dist bootstrap
+        ./x.py dist bootstrap enzyme
         --include-default-paths
         --host=x86_64-apple-darwin
         --target=x86_64-apple-darwin
