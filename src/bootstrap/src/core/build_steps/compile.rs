@@ -1293,8 +1293,6 @@ pub fn rustc_cargo(
         cargo.rustflag("-Clink-args=-Wl,--icf=all");
     }
 
-    eprintln!("Profile: {:?}", builder.config.rust_pgo.generate_profile);
-
     let is_collecting = if let Some(path) = &builder.config.rust_pgo.generate_profile {
         if build_compiler.stage == 1 {
             cargo
