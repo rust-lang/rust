@@ -132,7 +132,6 @@ unsafe impl<T: Sync, const N: usize> Sync for [T; N] {}
 #[lang = "freeze"]
 pub unsafe auto trait Freeze {}
 
-unsafe impl<T: PointeeSized> Freeze for PhantomData<T> {}
 unsafe impl<T: PointeeSized> Freeze for *const T {}
 unsafe impl<T: PointeeSized> Freeze for *mut T {}
 unsafe impl<T: PointeeSized> Freeze for &T {}
