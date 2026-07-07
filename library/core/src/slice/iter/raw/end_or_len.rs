@@ -23,6 +23,7 @@ pub(super) type EndOrLen<T> = EndOrLenView<NonNull<T>, usize>;
 pub(super) type EndOrLenMut<'a, T> = EndOrLenView<&'a mut NonNull<T>, &'a mut usize>;
 
 impl<T> EndOrLenRepr<T> {
+    #[rustc_force_inline]
     #[inline(always)]
     pub(super) const fn new(zst: usize, non_zst: NonNull<T>) -> Self {
         if T::IS_ZST {
@@ -32,8 +33,8 @@ impl<T> EndOrLenRepr<T> {
         }
     }
 
+    #[rustc_force_inline]
     #[inline(always)]
-
     pub(super) fn view(&self) -> EndOrLen<T> {
         if T::IS_ZST {
             Len(self.0.addr())
@@ -42,6 +43,7 @@ impl<T> EndOrLenRepr<T> {
         }
     }
 
+    #[rustc_force_inline]
     #[inline(always)]
     pub(super) fn view_mut(&mut self) -> EndOrLenMut<'_, T> {
         if T::IS_ZST {
