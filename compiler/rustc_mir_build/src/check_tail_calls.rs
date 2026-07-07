@@ -27,8 +27,7 @@ pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), E
         tcx,
         thir,
         found_errors: Ok(()),
-        // FIXME(#132279): we're clearly in a body here.
-        typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
+        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
         is_closure,
         caller_def_id: def,
     };
