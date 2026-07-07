@@ -496,11 +496,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             })
             .unwrap_or_else(|| self.arena.alloc_from_iter(args_iter.consume_all(self)));
 
+        // Do not omit constraints as there might be some and they must be present in HIR (#158812).
+        let has_constraints = segment.args.is_some_and(|a| !a.constraints.is_empty());
+
         // Needed for better error messages (`trait-impl-wrong-args-count.rs` test).
-        segment.args = (!new_args.is_empty()).then(|| {
+        segment.args = (has_constraints || !new_args.is_empty()).then(|| {
             &*self.arena.alloc(hir::GenericArgs {
                 args: new_args,
-                constraints: &[],
+                constraints: segment.args.map(|a| a.constraints).unwrap_or(&[]),
                 parenthesized: hir::GenericArgsParentheses::No,
                 span_ext: segment.args.map_or(span, |args| args.span_ext),
             })
