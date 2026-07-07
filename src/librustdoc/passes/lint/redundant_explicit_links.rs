@@ -154,13 +154,13 @@ fn check_redundant_explicit_link<'md>(
     }
 }
 
-struct RedundantExplicitLinksCannotSuggest {
+struct RedundantExplicitLinksWithoutSuggestion {
     attr_span: Span,
     display_link: String,
     dest_link: String,
 }
 
-impl<'a> Diagnostic<'a, ()> for RedundantExplicitLinksCannotSuggest {
+impl<'a> Diagnostic<'a, ()> for RedundantExplicitLinksWithoutSuggestion {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         let Self { attr_span, display_link, dest_link } = self;
 
@@ -186,7 +186,7 @@ fn check_inline_or_reference_unknown_redundancy(
     dest: String,
     link_data: LinkData,
     (open, close): (u8, u8),
-) -> Result<(), RedundantExplicitLinksCannotSuggest> {
+) -> Result<(), RedundantExplicitLinksWithoutSuggestion> {
     struct RedundantExplicitLinks {
         explicit_span: Span,
         display_span: Span,
@@ -256,7 +256,7 @@ fn check_inline_or_reference_unknown_redundancy(
             Some((_, true)) => return Ok(()),
             // Cannot give a contiguous span for this link.
             None => {
-                return Err(RedundantExplicitLinksCannotSuggest {
+                return Err(RedundantExplicitLinksWithoutSuggestion {
                     display_link: resolvable_link.clone(),
                     dest_link: dest.to_string(),
                     attr_span,
@@ -274,7 +274,7 @@ fn check_inline_or_reference_unknown_redundancy(
             Some((_, true)) => return Ok(()),
             // Cannot give a contiguous span for this link.
             None => {
-                return Err(RedundantExplicitLinksCannotSuggest {
+                return Err(RedundantExplicitLinksWithoutSuggestion {
                     display_link: resolvable_link.clone(),
                     dest_link: dest.to_string(),
                     attr_span,
@@ -308,7 +308,7 @@ fn check_reference_redundancy(
     link_range: Range<usize>,
     dest: &CowStr<'_>,
     link_data: LinkData,
-) -> Result<(), RedundantExplicitLinksCannotSuggest> {
+) -> Result<(), RedundantExplicitLinksWithoutSuggestion> {
     struct RedundantExplicitLinkTarget {
         explicit_span: Span,
         display_span: Span,
@@ -378,7 +378,7 @@ fn check_reference_redundancy(
             Some((_, true)) => return Ok(()),
             // Cannot give a contiguous span for this link.
             None => {
-                return Err(RedundantExplicitLinksCannotSuggest {
+                return Err(RedundantExplicitLinksWithoutSuggestion {
                     display_link: resolvable_link.clone(),
                     dest_link: dest.to_string(),
                     attr_span,
@@ -396,7 +396,7 @@ fn check_reference_redundancy(
             Some((_, true)) => return Ok(()),
             // Cannot give a contiguous span for this link.
             None => {
-                return Err(RedundantExplicitLinksCannotSuggest {
+                return Err(RedundantExplicitLinksWithoutSuggestion {
                     display_link: resolvable_link.clone(),
                     dest_link: dest.to_string(),
                     attr_span,
@@ -412,7 +412,7 @@ fn check_reference_redundancy(
             Some((def_span, _)) => def_span,
             // Cannot give a contiguous span for this link.
             None => {
-                return Err(RedundantExplicitLinksCannotSuggest {
+                return Err(RedundantExplicitLinksWithoutSuggestion {
                     display_link: resolvable_link.clone(),
                     dest_link: dest.to_string(),
                     attr_span,
