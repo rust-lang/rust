@@ -748,7 +748,7 @@ impl<'db> SemanticsImpl<'db> {
         speculative_args: &SyntaxNode,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
-        hir_expand::db::expand_speculative(self.db, macro_file, speculative_args, token_to_map)
+        macro_file.expand_speculative(self.db, speculative_args, token_to_map)
     }
 
     /// Expand the macro call with a different item as the input, mapping the `token_to_map` down into the
