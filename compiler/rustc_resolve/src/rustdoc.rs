@@ -690,7 +690,7 @@ pub fn source_span_for_markdown_range_inner(
                     //                   ^^^^^^^^^
                     //                   | this
                     //
-                    //     2| /** doc2 */ fn foo() {}
+                    //     2| /** doc2 */
                     //     3| fn foo() {}
                     return None;
                 }
