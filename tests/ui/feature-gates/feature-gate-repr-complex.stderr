@@ -1,48 +1,38 @@
 error[E0658]: `repr(complex)` is experimental
-  --> $DIR/feature-gate-repr-complex.rs:1:1
+  --> $DIR/feature-gate-repr-complex.rs:1:8
    |
 LL | #[repr(complex)]
-   | ^^^^^^^^^^^^^^^^
+   |        ^^^^^^^
    |
    = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
    = help: add `#![feature(repr_complex)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `repr(complex)` is experimental
-  --> $DIR/feature-gate-repr-complex.rs:7:1
+  --> $DIR/feature-gate-repr-complex.rs:7:8
    |
 LL | #[repr(complex)]
-   | ^^^^^^^^^^^^^^^^
+   |        ^^^^^^^
    |
    = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
    = help: add `#![feature(repr_complex)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `repr(complex)` is experimental
-  --> $DIR/feature-gate-repr-complex.rs:13:1
+  --> $DIR/feature-gate-repr-complex.rs:13:8
    |
 LL | #[repr(complex)]
-   | ^^^^^^^^^^^^^^^^
+   |        ^^^^^^^
    |
    = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
    = help: add `#![feature(repr_complex)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `repr(complex)` is experimental
-  --> $DIR/feature-gate-repr-complex.rs:16:1
+  --> $DIR/feature-gate-repr-complex.rs:16:8
    |
 LL | #[repr(complex)]
-   | ^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
-   = help: add `#![feature(repr_complex)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `repr(complex)` is experimental
-  --> $DIR/feature-gate-repr-complex.rs:23:1
-   |
-LL | #[repr(complex)]
-   | ^^^^^^^^^^^^^^^^
+   |        ^^^^^^^
    |
    = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
    = help: add `#![feature(repr_complex)]` to the crate attributes to enable
@@ -55,6 +45,16 @@ LL | #[repr(complex)]
    | ^^^^^^^^^^^^^^^^
    |
    = help: `#[repr(complex)]` can only be applied to structs
+
+error[E0658]: `repr(complex)` is experimental
+  --> $DIR/feature-gate-repr-complex.rs:23:8
+   |
+LL | #[repr(complex)]
+   |        ^^^^^^^
+   |
+   = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
+   = help: add `#![feature(repr_complex)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `#[repr(complex)]` attribute cannot be used on enums
   --> $DIR/feature-gate-repr-complex.rs:23:1
