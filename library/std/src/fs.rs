@@ -48,6 +48,11 @@ use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, fs as fs_imp};
 use crate::time::SystemTime;
 use crate::{error, fmt};
 
+pub(crate) mod dirs;
+
+#[unstable(feature = "dir_discovery", issue = "157515")]
+pub use self::dirs::UserDirs;
+
 /// An object providing access to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
