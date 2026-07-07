@@ -377,16 +377,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     load
                 }
             }
-            sym::volatile_store => {
-                let dst = args[0].deref(self.cx());
-                args[1].val.volatile_store(self, dst);
-                return IntrinsicResult::WroteIntoPlace;
-            }
-            sym::unaligned_volatile_store => {
-                let dst = args[0].deref(self.cx());
-                args[1].val.unaligned_volatile_store(self, dst);
-                return IntrinsicResult::WroteIntoPlace;
-            }
             sym::prefetch_read_data
             | sym::prefetch_write_data
             | sym::prefetch_read_instruction
