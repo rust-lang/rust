@@ -216,7 +216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         prior_arm: Option<(Option<hir::HirId>, Ty<'tcx>, Span)>,
     ) {
         // First, check that we're actually in the tail of a function.
-        let Some(body) = self.tcx.hir_maybe_body_owned_by(self.body_id) else {
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(self.body_def_id) else {
             return;
         };
         let hir::ExprKind::Block(block, _) = body.value.kind else {
@@ -233,7 +233,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Next, make sure that we have no type expectation.
         let Some(ret) =
-            self.tcx.hir_node_by_def_id(self.body_id).fn_decl().map(|decl| decl.output.span())
+            self.tcx.hir_node_by_def_id(self.body_def_id).fn_decl().map(|decl| decl.output.span())
         else {
             return;
         };

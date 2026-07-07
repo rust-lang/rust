@@ -30,7 +30,7 @@ use crate::traits;
 pub fn obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
     recursion_depth: usize,
     term: Term<'tcx>,
     span: Span,
@@ -72,17 +72,17 @@ pub fn obligations<'tcx>(
     let mut wf = WfPredicates {
         infcx,
         param_env,
-        body_id,
+        body_def_id,
         span,
         out: PredicateObligations::new(),
         recursion_depth,
         item: None,
     };
     wf.add_wf_preds_for_term(term);
-    debug!("wf::obligations({:?}, body_id={:?}) = {:?}", term, body_id, wf.out);
+    debug!("wf::obligations({:?}, body_def_id={:?}) = {:?}", term, body_def_id, wf.out);
 
     let result = wf.normalize(infcx);
-    debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", term, body_id, result);
+    debug!("wf::obligations({:?}, body_def_id={:?}) ~~> {:?}", term, body_def_id, result);
     Some(result)
 }
 
@@ -95,7 +95,7 @@ pub fn unnormalized_obligations<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     term: Term<'tcx>,
     span: Span,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
 ) -> Option<PredicateObligations<'tcx>> {
     debug_assert_eq!(term, infcx.resolve_vars_if_possible(term));
 
@@ -109,7 +109,7 @@ pub fn unnormalized_obligations<'tcx>(
     let mut wf = WfPredicates {
         infcx,
         param_env,
-        body_id,
+        body_def_id,
         span,
         out: PredicateObligations::new(),
         recursion_depth: 0,
@@ -126,7 +126,7 @@ pub fn unnormalized_obligations<'tcx>(
 pub fn trait_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
     trait_pred: ty::TraitPredicate<'tcx>,
     span: Span,
     item: &'tcx hir::Item<'tcx>,
@@ -134,7 +134,7 @@ pub fn trait_obligations<'tcx>(
     let mut wf = WfPredicates {
         infcx,
         param_env,
-        body_id,
+        body_def_id,
         span,
         out: PredicateObligations::new(),
         recursion_depth: 0,
@@ -154,14 +154,14 @@ pub fn trait_obligations<'tcx>(
 pub fn clause_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
     clause: ty::Clause<'tcx>,
     span: Span,
 ) -> PredicateObligations<'tcx> {
     let mut wf = WfPredicates {
         infcx,
         param_env,
-        body_id,
+        body_def_id,
         span,
         out: PredicateObligations::new(),
         recursion_depth: 0,
@@ -205,7 +205,7 @@ pub fn clause_obligations<'tcx>(
 struct WfPredicates<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
     span: Span,
     out: PredicateObligations<'tcx>,
     recursion_depth: usize,
@@ -334,7 +334,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     }
 
     fn cause(&self, code: traits::ObligationCauseCode<'tcx>) -> traits::ObligationCause<'tcx> {
-        traits::ObligationCause::new(self.span, self.body_id, code)
+        traits::ObligationCause::new(self.span, self.body_def_id, code)
     }
 
     fn normalize(self, infcx: &InferCtxt<'tcx>) -> PredicateObligations<'tcx> {
@@ -423,7 +423,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 .filter_map(|(i, arg)| arg.as_term().map(|t| (i, t)))
                 .filter(|(_, term)| !term.has_escaping_bound_vars())
                 .map(|(i, term)| {
-                    let mut cause = traits::ObligationCause::misc(self.span, self.body_id);
+                    let mut cause = traits::ObligationCause::misc(self.span, self.body_def_id);
                     // The first arg is the self ty - use the correct span for it.
                     if i == 0 {
                         if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =

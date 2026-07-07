@@ -468,7 +468,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         }
                         if let Some(s) = parent_label {
-                            let body = obligation.cause.body_id;
+                            let body = obligation.cause.body_def_id;
                             err.span_label(tcx.def_span(body), s);
                         }
 
@@ -689,7 +689,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             violations,
                         );
                         if let hir::Node::Item(item) =
-                            self.tcx.hir_node_by_def_id(obligation.cause.body_id)
+                            self.tcx.hir_node_by_def_id(obligation.cause.body_def_id)
                             && let hir::ItemKind::Impl(impl_) = item.kind
                             && let None = impl_.of_trait
                             && let hir::TyKind::TraitObject(_, tagged_ptr) = impl_.self_ty.kind
@@ -949,7 +949,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         } else if let ty::Param(param) = trait_ref.self_ty().skip_binder().kind()
             && let Some(generics) =
-                self.tcx.hir_node_by_def_id(main_obligation.cause.body_id).generics()
+                self.tcx.hir_node_by_def_id(main_obligation.cause.body_def_id).generics()
         {
             let constraint = ty::print::with_no_trimmed_paths!(format!(
                 "[const] {}",
@@ -1144,7 +1144,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
         }
-        let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_id);
+        let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_def_id);
         let Some(body_id) = self.tcx.hir_node(hir_id).body_id() else { return (false, false) };
         let ControlFlow::Break(expr) =
             (FindMethodSubexprOfTry { search_span: span }).visit_body(self.tcx.hir_body(body_id))
@@ -1382,7 +1382,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> Diag<'a> {
-        let def_id = obligation.cause.body_id;
+        let def_id = obligation.cause.body_def_id;
         let span = self.tcx.ty_span(def_id);
 
         let mut file = None;
@@ -2869,7 +2869,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // message, and fall back to regular note otherwise.
         if !self.maybe_note_obligation_cause_for_async_await(err, obligation) {
             self.note_obligation_cause_code(
-                obligation.cause.body_id,
+                obligation.cause.body_def_id,
                 err,
                 obligation.predicate,
                 obligation.param_env,
@@ -2884,7 +2884,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 obligation.cause.code(),
             );
             self.suggest_borrow_for_unsized_closure_return(
-                obligation.cause.body_id,
+                obligation.cause.body_def_id,
                 err,
                 obligation.predicate,
             );
@@ -3211,7 +3211,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         is_fn_trait: bool,
         suggested: bool,
     ) {
-        let body_def_id = obligation.cause.body_id;
+        let body_def_id = obligation.cause.body_def_id;
         let span = if let ObligationCauseCode::BinOp { rhs_span, .. } = obligation.cause.code() {
             *rhs_span
         } else {
@@ -3242,7 +3242,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err,
                 trait_predicate,
                 None,
-                obligation.cause.body_id,
+                obligation.cause.body_def_id,
             );
         } else if trait_def_id.is_local()
             && self.tcx.trait_impls_of(trait_def_id).is_empty()
@@ -3798,7 +3798,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         {
                             trait_item_def_id.as_local()
                         } else {
-                            Some(obligation.cause.body_id)
+                            Some(obligation.cause.body_def_id)
                         };
                         if let Some(suggestion_def_id) = suggestion_def_id
                             && let Some(generics) = self.tcx.hir_get_generics(suggestion_def_id)

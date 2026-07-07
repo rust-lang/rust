@@ -246,15 +246,15 @@ where
     /// will result in region constraints getting ignored.
     pub fn resolve_regions_and_report_errors(
         self,
-        body_id: LocalDefId,
+        body_def_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
     ) -> Result<(), ErrorGuaranteed> {
-        let errors = self.infcx.resolve_regions(body_id, param_env, assumed_wf_tys);
+        let errors = self.infcx.resolve_regions(body_def_id, param_env, assumed_wf_tys);
         if errors.is_empty() {
             Ok(())
         } else {
-            Err(self.infcx.err_ctxt().report_region_errors(body_id, &errors))
+            Err(self.infcx.err_ctxt().report_region_errors(body_def_id, &errors))
         }
     }
 
@@ -265,11 +265,11 @@ where
     #[must_use]
     pub fn resolve_regions(
         self,
-        body_id: LocalDefId,
+        body_def_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        self.infcx.resolve_regions(body_id, param_env, assumed_wf_tys)
+        self.infcx.resolve_regions(body_def_id, param_env, assumed_wf_tys)
     }
 }
 

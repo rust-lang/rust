@@ -173,7 +173,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             exp_span, exp_found.expected, exp_found.found,
         );
 
-        match self.tcx.coroutine_kind(cause.body_id) {
+        match self.tcx.coroutine_kind(cause.body_def_id) {
             Some(hir::CoroutineKind::Desugared(
                 hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen,
                 _,
@@ -636,7 +636,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.hir_maybe_body_owned_by(cause.body_id).and_then(|body| {
+        self.tcx.hir_maybe_body_owned_by(cause.body_def_id).and_then(|body| {
             IfVisitor { err_span: span, found_if: false }
                 .visit_body(&body)
                 .is_break()
