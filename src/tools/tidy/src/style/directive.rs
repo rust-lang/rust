@@ -72,6 +72,10 @@ configurable_checks!(
     #[dont_check_unused]
     filelength => "filelength",
 
+    // ignore tidy for this entire file
+    #[dont_check_unused]
+    all => "all",
+
     /// ignoring CR characters unnecessarily
     cr => "cr",
     /// ignoring undocumented unsafe unnecessarily
@@ -185,7 +189,7 @@ impl NamedDirective {
     }
 
     /// Explicitly discard the fact that this directive may be ignored unnecessary.
-    fn force_discard_unsused_ignore(&self) {
+    pub fn force_discard_unsused_ignore(&self) {
         self.is_ignore_and_defuse();
     }
 }

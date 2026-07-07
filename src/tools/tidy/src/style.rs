@@ -377,6 +377,12 @@ fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
     // the ignores set in this line, meant for the next line
     let mut next_line_ignore = Default::default();
 
+    // return immediately if we should ignore this entire file
+    if file_ignore.all.is_ignore_and_defuse() {
+        file_ignore.iter().for_each(|i| i.force_discard_unsused_ignore());
+        return;
+    }
+
     let mut leading_new_lines = false;
     let mut trailing_new_lines = 0;
     let mut lines = 0;

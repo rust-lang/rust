@@ -1,3 +1,6 @@
+// This file tests a bunch of tidy's own directives, so a lot of unwanted directives trigger here otherwise.
+// By ignoring all, we can play around with whatever we'd like in this file
+// ignore-tidy-file-all
 use super::*;
 use crate::diagnostics::TidyFlags;
 
