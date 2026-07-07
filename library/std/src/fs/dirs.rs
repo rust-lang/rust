@@ -24,7 +24,7 @@ use crate::path::{Path, PathBuf};
 /// filesystem conventions are provided as extension traits under the `std::os`
 /// module.
 #[unstable(feature = "dir_discovery", issue = "157515")]
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct UserDirs {
     pub(crate) home: UserHomeDirs,
     pub(crate) media: UserMediaDirs,
@@ -70,7 +70,7 @@ impl UserDirs {
     /// with exactly the directories you want, without any other defaults.
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn empty() -> Self {
-        Self::default()
+        Self { home: Default::default(), media: Default::default(), search: Default::default() }
     }
 
     /// A base directory relative to which user-specific configuration files
@@ -218,7 +218,7 @@ impl UserDirs {
     /// ```
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn take(&mut self) -> Self {
-        mem::take(self)
+        mem::replace(self, Self::empty())
     }
 
     /// Set the path for [Self::config_home].
