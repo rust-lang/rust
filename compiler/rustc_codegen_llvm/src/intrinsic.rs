@@ -225,7 +225,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 )
             }
             sym::autodiff => {
-                return codegen_autodiff(self, tcx, instance, args, result_layout, result_place);
+                return codegen_autodiff(self, instance, args, result_layout, result_place);
             }
             sym::offload => {
                 if tcx.sess.opts.unstable_opts.offload.is_empty() {
@@ -1743,12 +1743,12 @@ fn codegen_retag_inner<'ll, 'tcx>(
 
 fn codegen_autodiff<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
     result_layout: ty::layout::TyAndLayout<'tcx>,
     result_place: Option<PlaceValue<&'ll Value>>,
 ) -> IntrinsicResult<'tcx, &'ll Value> {
+    let tcx = bx.tcx;
     if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
         let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutEnable);
     }
@@ -1815,7 +1815,6 @@ fn codegen_autodiff<'ll, 'tcx>(
     // Build body
     generate_enzyme_call(
         bx,
-        bx.cx,
         fn_to_diff,
         &diff_symbol,
         llret_ty,
