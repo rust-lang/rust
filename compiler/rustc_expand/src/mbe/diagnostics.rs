@@ -2,9 +2,10 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
+use rustc_middle::bug;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
@@ -16,7 +17,7 @@ use crate::expand::{AstFragmentKind, parse_ast_fragment};
 use crate::mbe::macro_parser::ParseResult::*;
 use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
 use crate::mbe::macro_rules::{
-    Tracker, try_match_macro, try_match_macro_attr, try_match_macro_derive,
+    Tracker, WhichMatcher, try_match_macro, try_match_macro_attr, try_match_macro_derive,
 };
 
 pub(super) enum FailedMacro<'a> {
@@ -44,7 +45,7 @@ pub(super) fn failed_to_match_macro(
 
     // An error occurred, try the expansion again, tracking the expansion closely for better
     // diagnostics.
-    let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
+    let mut tracker = CollectTrackerAndEmitter::new(name, psess.dcx(), sp);
 
     let try_success_result = match args {
         FailedMacro::Func => try_match_macro(psess, name, body, rules, &mut tracker),
@@ -121,7 +122,7 @@ pub(super) fn failed_to_match_macro(
         for rule in rules {
             let MacroRule::Func { lhs, .. } = rule else { continue };
             let parser = parser_from_cx(psess, body.clone(), Recovery::Allowed);
-            let mut tt_parser = TtParser::new(name);
+            let mut tt_parser = TtParser::new();
 
             if let Success(_) =
                 tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker)
@@ -145,6 +146,7 @@ pub(super) fn failed_to_match_macro(
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.
 struct CollectTrackerAndEmitter<'dcx, 'matcher> {
+    macro_name: Ident,
     dcx: DiagCtxtHandle<'dcx>,
     remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
@@ -155,14 +157,22 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
 
 struct BestFailure {
     token: Token,
-    position_in_tokenstream: (bool, u32),
+
+    /// The matcher in which the failure occurred.
+    matcher: WhichMatcher,
+
+    /// The approximate (parser) position of the failure.
+    ///
+    /// This is relative to [`Self::matcher`].
+    position: u32,
+
     msg: &'static str,
     remaining_matcher: MatcherLoc,
 }
 
 impl BestFailure {
-    fn is_better_position(&self, position: (bool, u32)) -> bool {
-        position > self.position_in_tokenstream
+    fn is_better_position(&self, matcher: WhichMatcher, position: u32) -> bool {
+        (matcher, position) > (self.matcher, self.position)
     }
 }
 
@@ -181,8 +191,8 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
-    fn after_arm(&mut self, in_body: bool, result: &NamedParseResult<Self::Failure>) {
-        match result {
+    fn after_arm(&mut self, which_matcher: WhichMatcher, result: &NamedParseResult<Self::Failure>) {
+        match *result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
                 // but for that it must have emitted an error already
@@ -194,15 +204,13 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             Failure((token, approx_position, msg)) => {
                 debug!(?token, ?msg, "a new failure of an arm");
 
-                let position_in_tokenstream = (in_body, *approx_position);
-                if self
-                    .best_failure
-                    .as_ref()
-                    .is_none_or(|failure| failure.is_better_position(position_in_tokenstream))
-                {
+                if self.best_failure.as_ref().is_none_or(|failure| {
+                    failure.is_better_position(which_matcher, approx_position)
+                }) {
                     self.best_failure = Some(BestFailure {
-                        token: *token,
-                        position_in_tokenstream,
+                        token,
+                        matcher: which_matcher,
+                        position: approx_position,
                         msg,
                         remaining_matcher: self
                             .remaining_matcher
@@ -211,13 +219,52 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     })
                 }
             }
-            Error(err_sp, msg) => {
-                let span = err_sp.substitute_dummy(self.root_span);
-                let guar = self.dcx.span_err(span, msg.clone());
-                self.result = Some((span, guar));
+            Ambiguity => {
+                if self.result.is_none() {
+                    bug!("`Error(..)` is only constructed through `Self::ambiguity()`");
+                }
             }
-            ErrorReported(guar) => self.result = Some((self.root_span, *guar)),
+            ErrorReported(guar) => self.result = Some((self.root_span, guar)),
         }
+    }
+
+    fn ambiguity(
+        &mut self,
+        parser: &Parser<'_>,
+        bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+        next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+    ) {
+        let span = parser.token.span.substitute_dummy(self.root_span);
+
+        if parser.token == token::Eof {
+            let msg = "ambiguity: multiple successful parses".to_string();
+            let guar = self.dcx.span_err(span, msg);
+            self.result = Some((span, guar));
+            return;
+        }
+
+        let nts = bb_locs
+            .into_iter()
+            .map(|loc| match loc {
+                MatcherLoc::MetaVarDecl { bind, kind, .. } => {
+                    format!("{kind} ('{bind}')")
+                }
+                _ => unreachable!(),
+            })
+            .collect::<Vec<String>>()
+            .join(" or ");
+
+        let msg = format!(
+            "local ambiguity when calling macro `{}`: multiple parsing options: {}",
+            self.macro_name,
+            match next_locs.into_iter().count() {
+                0 => format!("built-in NTs {nts}."),
+                n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
+            }
+        );
+
+        let guar = self.dcx.span_err(span, msg);
+        self.result = Some((span, guar));
     }
 
     fn description() -> &'static str {
@@ -230,8 +277,15 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 }
 
 impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
-    fn new(dcx: DiagCtxtHandle<'dcx>, root_span: Span) -> Self {
-        Self { dcx, remaining_matcher: None, best_failure: None, root_span, result: None }
+    fn new(macro_name: Ident, dcx: DiagCtxtHandle<'dcx>, root_span: Span) -> Self {
+        Self {
+            macro_name,
+            dcx,
+            remaining_matcher: None,
+            best_failure: None,
+            root_span,
+            result: None,
+        }
     }
 }
 

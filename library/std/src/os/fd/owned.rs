@@ -199,7 +199,7 @@ impl Drop for OwnedFd {
         unsafe {
             // Note that errors are ignored when closing a file descriptor. According to POSIX 2024,
             // we can and indeed should retry `close` on `EINTR`
-            // (https://pubs.opengroup.org/onlinepubs/9799919799.2024edition/functions/close.html),
+            // (https://pubs.opengroup.org/onlinepubs/9799919799/functions/close.html),
             // but it is not clear yet how well widely-used implementations are conforming with this
             // mandate since older versions of POSIX left the state of the FD after an `EINTR`
             // unspecified. Ignoring errors is "fine" because some of the major Unices (in

@@ -63,6 +63,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         result_place: Option<PlaceValue<Bx::Value>>,
         source_info: SourceInfo,
     ) -> IntrinsicResult<'tcx, Bx::Value> {
+        // When `-Zforce-intrinsic-fallback` is enabled, always use the fallback body if it exists,
+        if bx.tcx().sess.opts.unstable_opts.force_intrinsic_fallback
+            && let Some(def) = bx.tcx().intrinsic(instance.def_id())
+            && !def.must_be_overridden
+        {
+            return IntrinsicResult::Fallback(ty::Instance::new_raw(
+                instance.def_id(),
+                instance.args,
+            ));
+        }
+
         let span = source_info.span;
 
         let name = bx.tcx().item_name(instance.def_id());
@@ -262,14 +273,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 OperandValue::ZeroSized
             }
-            sym::volatile_store => {
+            sym::volatile_store | sym::unaligned_volatile_store => {
                 let dst = args[0].deref(bx.cx());
+                let dst = if name == sym::volatile_store { dst } else { dst.unaligned() };
                 args[1].val.volatile_store(bx, dst);
-                OperandValue::ZeroSized
-            }
-            sym::unaligned_volatile_store => {
-                let dst = args[0].deref(bx.cx());
-                args[1].val.unaligned_volatile_store(bx, dst);
                 OperandValue::ZeroSized
             }
             sym::disjoint_bitor => {

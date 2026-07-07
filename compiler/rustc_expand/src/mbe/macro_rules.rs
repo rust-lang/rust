@@ -40,7 +40,7 @@ use crate::base::{
 use crate::diagnostics;
 use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
 use crate::mbe::macro_check::check_meta_variables;
-use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
+use crate::mbe::macro_parser::{Ambiguity, ErrorReported, Failure, MatcherLoc, Success, TtParser};
 use crate::mbe::quoted::{RulePart, parse_one_tt};
 use crate::mbe::transcribe::transcribe;
 use crate::mbe::{self, KleeneOp};
@@ -160,6 +160,32 @@ pub(crate) enum MacroRule {
     },
     /// A derive rule, for use with `#[m]`
     Derive { body: Vec<MatcherLoc>, body_span: Span, rhs: mbe::TokenTree },
+}
+
+/// A selection of a matcher in a [`MacroRule`].
+///
+/// [`MacroRule::Attr`] has two different matchers (args and body). This enum allows distinguishing
+/// between them, even when used for other kinds of rules.
+///
+/// This type implements [`Ord`]. The arms within a rule come in a fixed order and this type is
+/// consistent with that ordering.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum WhichMatcher {
+    /// The arguments of an attr macro ([`MacroRule::Attr::args`]).
+    Args,
+
+    /// The body of an attr macro ([`MacroRule::Attr::body`]), **or** the only arm of the rule.
+    ///
+    /// This is also used to express the only arm in a [`MacroRule::Func`] or [`MacroRule::Derive`].
+    Body,
+}
+
+impl WhichMatcher {
+    /// The [`WhichMatcher`] for [`MacroRule::Func`].
+    pub(crate) const FOR_FUNC: Self = Self::Body;
+
+    /// The [`WhichMatcher`] for [`MacroRule::Derive`].
+    pub(crate) const FOR_DERIVE: Self = Self::Body;
 }
 
 pub struct MacroRulesMacroExpander {
@@ -342,18 +368,23 @@ pub(super) trait Tracker<'matcher> {
     fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure;
 
     /// This is called before trying to match next MatcherLoc on the current token.
-    fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
+    fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
 
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
-    fn after_arm(&mut self, _in_body: bool, _result: &NamedParseResult<Self::Failure>) {}
+    fn after_arm(&mut self, which_matcher: WhichMatcher, result: &NamedParseResult<Self::Failure>);
+
+    fn ambiguity(
+        &mut self,
+        parser: &Parser<'_>,
+        bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+        next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+    );
 
     /// For tracing.
     fn description() -> &'static str;
 
-    fn recovery() -> Recovery {
-        Recovery::Forbidden
-    }
+    fn recovery() -> Recovery;
 }
 
 /// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to
@@ -365,8 +396,29 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
     fn build_failure(_tok: Token, _position: u32, _msg: &'static str) -> Self::Failure {}
 
+    fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
+
+    fn ambiguity(
+        &mut self,
+        _parser: &Parser<'_>,
+        _bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+        _next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
+    ) {
+    }
+
+    fn after_arm(
+        &mut self,
+        _which_matcher: WhichMatcher,
+        _result: &NamedParseResult<Self::Failure>,
+    ) {
+    }
+
     fn description() -> &'static str {
         "none"
+    }
+
+    fn recovery() -> Recovery {
+        Recovery::Forbidden
     }
 }
 
@@ -572,7 +624,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     // this situation.)
     let parser = parser_from_cx(psess, arg.clone(), T::recovery());
     // Try each arm's matchers.
-    let mut tt_parser = TtParser::new(name);
+    let mut tt_parser = TtParser::new();
     for (i, rule) in rules.iter().enumerate() {
         let MacroRule::Func { lhs, .. } = rule else { continue };
         let _tracing_span = trace_span!("Matching arm", %i);
@@ -585,7 +637,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, track);
 
-        track.after_arm(true, &result);
+        track.after_arm(WhichMatcher::FOR_FUNC, &result);
 
         match result {
             Success(named_matches) => {
@@ -600,7 +652,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
                 trace!("Failed to match arm, trying the next one");
                 // Try the next arm.
             }
-            Error(_, _) => {
+            Ambiguity => {
                 debug!("Fatal error occurred during matching");
                 // We haven't emitted an error yet, so we can retry.
                 return Err(CanRetry::Yes);
@@ -635,14 +687,14 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
     // This uses the same strategy as `try_match_macro`
     let args_parser = parser_from_cx(psess, attr_args.clone(), T::recovery());
     let body_parser = parser_from_cx(psess, attr_body.clone(), T::recovery());
-    let mut tt_parser = TtParser::new(name);
+    let mut tt_parser = TtParser::new();
     for (i, rule) in rules.iter().enumerate() {
         let MacroRule::Attr { args, body, .. } = rule else { continue };
 
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&args_parser), args, track);
-        track.after_arm(false, &result);
+        track.after_arm(WhichMatcher::Args, &result);
 
         let mut named_matches = match result {
             Success(named_matches) => named_matches,
@@ -650,12 +702,12 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut());
                 continue;
             }
-            Error(_, _) => return Err(CanRetry::Yes),
+            Ambiguity => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         };
 
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
-        track.after_arm(true, &result);
+        track.after_arm(WhichMatcher::Body, &result);
 
         match result {
             Success(body_named_matches) => {
@@ -667,7 +719,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
             Failure(_) => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
             }
-            Error(_, _) => return Err(CanRetry::Yes),
+            Ambiguity => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         }
     }
@@ -688,14 +740,14 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
 ) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
     // This uses the same strategy as `try_match_macro`
     let body_parser = parser_from_cx(psess, body.clone(), T::recovery());
-    let mut tt_parser = TtParser::new(name);
+    let mut tt_parser = TtParser::new();
     for (i, rule) in rules.iter().enumerate() {
         let MacroRule::Derive { body, .. } = rule else { continue };
 
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
-        track.after_arm(true, &result);
+        track.after_arm(WhichMatcher::FOR_DERIVE, &result);
 
         match result {
             Success(named_matches) => {
@@ -705,7 +757,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
             Failure(_) => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
             }
-            Error(_, _) => return Err(CanRetry::Yes),
+            Ambiguity => return Err(CanRetry::Yes),
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         }
     }

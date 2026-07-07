@@ -246,13 +246,11 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     }
 
     /// Returns the "root" variable of `vid` in the `sub_unification_table`
-    /// equivalence table. All type variables that have been are related via
+    /// equivalence table. All type variables that have been related via
     /// equality or subtyping will yield the same root variable (per the
     /// union-find algorithm), so `sub_unification_table_root_var(a)
-    /// == sub_unification_table_root_var(b)` implies that:
-    /// ```text
-    /// exists X. (a <: X || X <: a) && (b <: X || X <: b)
-    /// ```
+    /// == sub_unification_table_root_var(b)` implies that `a` and `b` are
+    /// transitively related via subtyping.
     pub(crate) fn sub_unification_table_root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
         self.sub_unification_table().find(vid).vid
     }

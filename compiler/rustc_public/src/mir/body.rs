@@ -139,7 +139,7 @@ pub struct BasicBlock {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Terminator {
     pub kind: TerminatorKind,
-    pub span: Span,
+    pub source_info: SourceInfo,
 }
 
 impl Terminator {
@@ -468,7 +468,7 @@ pub enum NonDivergingIntrinsic {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Statement {
     pub kind: StatementKind,
-    pub span: Span,
+    pub source_info: SourceInfo,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
