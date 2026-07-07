@@ -47,7 +47,7 @@ RUN curl https://ci-mirrors.rust-lang.org/rustc/linux-4.14.336.tar.gz | \
 # Compile an instance of busybox as this provides a lightweight system and init
 # binary which we will boot into. Only trick here is configuring busybox to
 # build static binaries.
-RUN curl https://www.busybox.net/downloads/busybox-1.32.1.tar.bz2 | tar xjf - && \
+RUN curl https://ci-mirrors.rust-lang.org/rustc/busybox/busybox-1.32.1.tar.bz2 | tar xjf - && \
       cd busybox-1.32.1 && \
       make defconfig && \
       sed -i 's/.*CONFIG_STATIC.*/CONFIG_STATIC=y/' .config && \
@@ -60,7 +60,7 @@ RUN curl https://www.busybox.net/downloads/busybox-1.32.1.tar.bz2 | tar xjf - &&
 # Download the ubuntu rootfs, which we'll use as a chroot for all our tests.
 WORKDIR /tmp
 RUN mkdir rootfs/ubuntu
-RUN curl https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04.2-base-armhf.tar.gz | \
+RUN curl https://ci-mirrors.rust-lang.org/rustc/ubuntu/ubuntu-base-22.04.2-base-armhf.tar.gz | \
       tar xzf - -C rootfs/ubuntu && \
       cd rootfs && mkdir proc sys dev etc etc/init.d
 
