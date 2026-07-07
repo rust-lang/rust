@@ -210,6 +210,7 @@ impl<O> AssertKind<O> {
                 LangItem::PanicGenFnNonePanic
             }
             NullPointerDereference => LangItem::PanicNullPointerDereference,
+            NullReferenceConstructed => LangItem::PanicNullReferenceConstructed,
             InvalidEnumConstruction(_) => LangItem::PanicInvalidEnumConstruction,
             ResumedAfterDrop(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumedDrop,
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
@@ -287,6 +288,7 @@ impl<O> AssertKind<O> {
                 )
             }
             NullPointerDereference => write!(f, "\"null pointer dereference occurred\""),
+            NullReferenceConstructed => write!(f, "\"null reference produced\""),
             InvalidEnumConstruction(source) => {
                 write!(f, "\"trying to construct an enum from an invalid value {{}}\", {source:?}")
             }
@@ -387,6 +389,7 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
                 write!(f, "coroutine resumed after panicking")
             }
             NullPointerDereference => write!(f, "null pointer dereference occurred"),
+            NullReferenceConstructed => write!(f, "null reference produced"),
             InvalidEnumConstruction(source) => {
                 write!(f, "trying to construct an enum from an invalid value `{source:#?}`")
             }

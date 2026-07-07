@@ -105,6 +105,8 @@ pub enum ValTreeCreationError<'tcx> {
     InvalidConst,
     /// Values of this type, or this particular value, are not supported as valtrees.
     NonSupportedType(Ty<'tcx>),
+    /// Trying to valtree this constant would cause the valtree to have cycles.
+    CyclicConst,
     /// The error has already been handled by const evaluation.
     ErrorHandled(ErrorHandled),
 }

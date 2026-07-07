@@ -1,6 +1,6 @@
-//
-// Test that lifetime elision error messages correctly omit parameters
-// with no elided lifetimes
+//! Regression test for <https://github.com/rust-lang/rust/issues/30255>.
+//! Test that lifetime elision error messages correctly omit parameters
+//! with no elided lifetimes.
 
 struct S<'a> {
     field: &'a i32,

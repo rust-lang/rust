@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/31011>.
+//! This macro used to ICE with unprintable span.
 //@ dont-require-annotations: NOTE
 
 macro_rules! log {

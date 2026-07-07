@@ -1,0 +1,10 @@
+error: constant C cannot be used as pattern
+  --> $DIR/cyclic-const-long-chain-issue-144719.rs:22:12
+   |
+LL |     if let C = C {}
+   |            ^
+   |
+   = note: constants whose type references itself cannot be used as patterns
+
+error: aborting due to 1 previous error
+

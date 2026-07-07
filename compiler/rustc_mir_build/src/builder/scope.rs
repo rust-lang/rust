@@ -968,8 +968,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             tcx: self.tcx,
             typeck_results,
             module: self.tcx.parent_module(self.hir_id).to_def_id(),
-            // FIXME(#132279): We're in a body, should handle opaques.
-            typing_env: rustc_middle::ty::TypingEnv::non_body_analysis(self.tcx, self.def_id),
+            typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(
+                self.tcx,
+                self.def_id,
+            ),
             dropless_arena: &dropless_arena,
             match_lint_level: self.hir_id,
             whole_match_span: Some(rustc_span::Span::default()),

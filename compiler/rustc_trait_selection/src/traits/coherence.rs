@@ -44,7 +44,6 @@ use crate::traits::{
 /// bounds / where-clauses).
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct ImplHeader<'tcx> {
-    pub impl_def_id: DefId,
     pub impl_args: ty::GenericArgsRef<'tcx>,
     pub self_ty: Ty<'tcx>,
     pub trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -207,7 +206,6 @@ fn fresh_impl_header<'tcx>(
     let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
 
     ImplHeader {
-        impl_def_id,
         impl_args,
         self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip(),
         trait_ref: is_of_trait

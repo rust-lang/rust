@@ -1,4 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/33461>.
+//! This used to ICE as coercion to trait object didn't normalize associated
+//! type.
 //@ run-pass
+
 #![allow(unused_variables)]
 use std::marker::PhantomData;
 

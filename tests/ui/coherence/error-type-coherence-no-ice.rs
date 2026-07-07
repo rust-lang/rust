@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29857>.
+//! This used to ICE during coherence on Error types.
 //@ check-pass
 
 use std::marker::PhantomData;
