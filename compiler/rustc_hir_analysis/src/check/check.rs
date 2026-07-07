@@ -113,6 +113,8 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuarante
         check_scalable_vector(tcx, span, def_id, scalable);
     } else if def.repr().simd() {
         check_simd(tcx, span, def_id);
+    } else if def.repr().complex() {
+        check_complex(tcx, span, def_id);
     }
 
     check_transparent(tcx, def);
@@ -1524,6 +1526,46 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                 return;
             }
         }
+    }
+}
+
+fn check_complex(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
+    let t = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+    let ty::Adt(def, args) = t.kind() else { return };
+
+    // This constraint is enforced during attribute parsing.
+    assert!(def.is_struct(), "`repr(complex)` is only allowed on structs");
+
+    let fields = &def.non_enum_variant().fields;
+
+    // A complex number is a pair, so we require exactly two fields of the same type.
+    let (Some(first), Some(second)) = (fields.get(FieldIdx::ZERO), fields.get(FieldIdx::ONE))
+    else {
+        tcx.dcx().struct_span_err(sp, "`repr(complex)` type must have two fields").emit();
+        return;
+    };
+
+    if let Some(third) = fields.get(FieldIdx::from_usize(2)) {
+        tcx.dcx()
+            .struct_span_err(sp, "`repr(complex)` type cannot have more than two fields")
+            .with_span_label(tcx.def_span(third.did), "excess field")
+            .emit();
+        return;
+    }
+
+    // repr(complex) is internal, so this check is not as thorough as we'd require if it were
+    // user-facing.
+    let first_ty = first.ty(tcx, args).skip_norm_wip();
+    let second_ty = second.ty(tcx, args).skip_norm_wip();
+    if first_ty != second_ty {
+        tcx.dcx()
+            .struct_span_err(sp, "`repr(complex)` type must have two fields of the same type")
+            .with_span_label(tcx.def_span(first.did), format!("this field is of type `{first_ty}`"))
+            .with_span_label(
+                tcx.def_span(second.did),
+                format!("this field is of type `{second_ty}`"),
+            )
+            .emit();
     }
 }
 
