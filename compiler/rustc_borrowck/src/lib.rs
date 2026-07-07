@@ -394,8 +394,9 @@ fn borrowck_collect_region_constraints<'tcx>(
 /// Using the region constraints computed by [borrowck_collect_region_constraints]
 /// and the additional constraints from [BorrowCheckRootCtxt::handle_opaque_type_uses],
 /// compute the region graph and actually check for any borrowck errors.
-fn borrowck_check_region_constraints<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'_, 'tcx>,
+fn borrowck_check_region_constraints<'diag, 'tcx>(
+    root_cx: &mut BorrowCheckRootCtxt<'diag, 'tcx>,
+    diags_buffer: &mut BorrowckDiagnosticsBuffer<'diag, 'tcx>,
     CollectRegionConstraintsResult {
         infcx,
         body_owned,
@@ -462,7 +463,6 @@ fn borrowck_check_region_constraints<'tcx>(
     let movable_coroutine = body.coroutine.is_some()
         && tcx.coroutine_movability(def.to_def_id()) == hir::Movability::Movable;
 
-    let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
     // While promoteds should mostly be correct by construction, we need to check them for
     // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
     for promoted_body in &promoted {
@@ -578,8 +578,6 @@ fn borrowck_check_region_constraints<'tcx>(
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
     };
-
-    diags_buffer.emit_errors(root_cx);
 
     if let Some(guar) = infcx.tainted_by_errors() {
         root_cx.set_tainted_by_errors(guar);

@@ -34,13 +34,13 @@ use tracing::debug;
 
 use super::MirBorrowckCtxt;
 use super::borrow_set::BorrowData;
+use crate::LocalMutationIsAllowed;
 use crate::constraints::OutlivesConstraint;
 use crate::nll::ConstraintDescription;
 use crate::session_diagnostics::{
     CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
     CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
 };
-use crate::{BorrowCheckRootCtxt, LocalMutationIsAllowed};
 
 mod find_all_local_uses;
 mod find_use;
@@ -120,7 +120,7 @@ impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
         self.buffered_diags.push(BufferedDiag::Error(diag));
     }
 
-    pub(crate) fn emit_errors(&mut self, root_cx: &mut BorrowCheckRootCtxt<'diag, 'tcx>) {
+    pub(crate) fn emit_errors(&mut self) {
         // Buffer any move errors that we collected and de-duplicated.
         for (_, (_, diag)) in std::mem::take(&mut self.buffered_move_errors) {
             // We have already set tainted for this error, so just buffer it.
@@ -136,7 +136,12 @@ impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
         if !self.buffered_diags.is_empty() {
             self.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
             for buffered_diag in self.buffered_diags.drain(..) {
-                root_cx.buffer_error(buffered_diag);
+                match buffered_diag {
+                    BufferedDiag::Error(diag) => {
+                        diag.emit();
+                    }
+                    BufferedDiag::NonError(diag) => diag.emit(),
+                }
             }
         }
     }
