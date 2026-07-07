@@ -7,6 +7,7 @@ windows_link::link!("kernel32.dll" "system" fn AcquireSRWLockShared(srwlock : *m
 windows_link::link!("kernel32.dll" "system" fn AddVectoredExceptionHandler(first : u32, handler : PVECTORED_EXCEPTION_HANDLER) -> *mut core::ffi::c_void);
 windows_link::link!("kernel32.dll" "system" fn CancelIo(hfile : HANDLE) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn CloseHandle(hobject : HANDLE) -> BOOL);
+windows_link::link!("combase.dll" "system" fn CoTaskMemFree(pv : *const core::ffi::c_void));
 windows_link::link!("kernel32.dll" "system" fn CompareStringOrdinal(lpstring1 : PCWSTR, cchcount1 : i32, lpstring2 : PCWSTR, cchcount2 : i32, bignorecase : BOOL) -> COMPARESTRING_RESULT);
 windows_link::link!("kernel32.dll" "system" fn CopyFileExW(lpexistingfilename : PCWSTR, lpnewfilename : PCWSTR, lpprogressroutine : LPPROGRESS_ROUTINE, lpdata : *const core::ffi::c_void, pbcancel : *mut BOOL, dwcopyflags : COPYFILE_FLAGS) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn CreateDirectoryW(lppathname : PCWSTR, lpsecurityattributes : *const SECURITY_ATTRIBUTES) -> BOOL);
@@ -93,6 +94,7 @@ windows_link::link!("kernel32.dll" "system" fn ReleaseSRWLockShared(srwlock : *m
 windows_link::link!("kernel32.dll" "system" fn RemoveDirectoryW(lppathname : PCWSTR) -> BOOL);
 windows_link::link!("advapi32.dll" "system" "SystemFunction036" fn RtlGenRandom(randombuffer : *mut core::ffi::c_void, randombufferlength : u32) -> bool);
 windows_link::link!("ntdll.dll" "system" fn RtlNtStatusToDosError(status : NTSTATUS) -> u32);
+windows_link::link!("shell32.dll" "system" fn SHGetKnownFolderPath(rfid : *const GUID, dwflags : u32, htoken : HANDLE, ppszpath : *mut PWSTR) -> HRESULT);
 windows_link::link!("kernel32.dll" "system" fn SetCurrentDirectoryW(lppathname : PCWSTR) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn SetEnvironmentVariableW(lpname : PCWSTR, lpvalue : PCWSTR) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn SetFileAttributesW(lpfilename : PCWSTR, dwfileattributes : FILE_FLAGS_AND_ATTRIBUTES) -> BOOL);
@@ -2388,6 +2390,7 @@ impl Default for EXCEPTION_RECORD {
 }
 pub const EXCEPTION_STACK_OVERFLOW: NTSTATUS = 0xC00000FD_u32 as _;
 pub const EXTENDED_STARTUPINFO_PRESENT: PROCESS_CREATION_FLAGS = 524288u32;
+pub const E_INVALIDARG: HRESULT = 0x80070057_u32 as _;
 pub const E_NOTIMPL: HRESULT = 0x80004001_u32 as _;
 pub const ExceptionCollidedUnwind: EXCEPTION_DISPOSITION = 3i32;
 pub const ExceptionContinueExecution: EXCEPTION_DISPOSITION = 0i32;
@@ -2700,6 +2703,16 @@ impl Default for FLOATING_SAVE_AREA {
     }
 }
 pub const FLS_OUT_OF_INDEXES: u32 = 4294967295u32;
+pub const FOLDERID_Desktop: GUID = GUID::from_u128(0xb4bfcc3a_db2c_424c_b029_7fe99a87c641);
+pub const FOLDERID_Documents: GUID = GUID::from_u128(0xfdd39ad0_238f_46af_adb4_6c85480369c7);
+pub const FOLDERID_Downloads: GUID = GUID::from_u128(0x374de290_123f_4565_9164_39c4925e467b);
+pub const FOLDERID_LocalAppData: GUID = GUID::from_u128(0xf1b32785_6fba_4fcf_9d55_7b8e7f157091);
+pub const FOLDERID_LocalAppDataLow: GUID = GUID::from_u128(0xa520a1a4_1780_4ff6_bd18_167343c5af16);
+pub const FOLDERID_Music: GUID = GUID::from_u128(0x4bd8d571_6d19_48d3_be97_422220080e43);
+pub const FOLDERID_Pictures: GUID = GUID::from_u128(0x33e28130_4e1e_4676_835a_98395c3bc3bb);
+pub const FOLDERID_Public: GUID = GUID::from_u128(0xdfdf76a2_c82a_4d63_906a_5644ac457385);
+pub const FOLDERID_RoamingAppData: GUID = GUID::from_u128(0x3eb685db_65f9_4cf6_a03a_e3ef65729f3d);
+pub const FOLDERID_Videos: GUID = GUID::from_u128(0x18989b1d_99b5_455b_841c_ab7c74e4ddfc);
 pub const FORMAT_MESSAGE_ALLOCATE_BUFFER: FORMAT_MESSAGE_OPTIONS = 256u32;
 pub const FORMAT_MESSAGE_ARGUMENT_ARRAY: FORMAT_MESSAGE_OPTIONS = 8192u32;
 pub const FORMAT_MESSAGE_FROM_HMODULE: FORMAT_MESSAGE_OPTIONS = 2048u32;
@@ -2941,6 +2954,8 @@ impl Default for IP_MREQ {
 pub const IP_MULTICAST_LOOP: i32 = 11i32;
 pub const IP_MULTICAST_TTL: i32 = 10i32;
 pub const IP_TTL: i32 = 4i32;
+pub const KF_FLAG_DONT_VERIFY: KNOWN_FOLDER_FLAG = 16384i32;
+pub type KNOWN_FOLDER_FLAG = i32;
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub struct LINGER {
@@ -3358,6 +3373,7 @@ pub struct SYSTEM_INFO_0_0 {
     pub wProcessorArchitecture: PROCESSOR_ARCHITECTURE,
     pub wReserved: u16,
 }
+pub const S_OK: HRESULT = 0x0_u32 as _;
 pub const TCP_NODELAY: i32 = 1i32;
 pub const THREAD_CREATE_RUN_IMMEDIATELY: THREAD_CREATION_FLAGS = 0u32;
 pub const THREAD_CREATE_SUSPENDED: THREAD_CREATION_FLAGS = 4u32;

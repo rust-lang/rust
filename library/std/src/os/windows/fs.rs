@@ -11,6 +11,11 @@ use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
 use crate::{io, sys};
 
+mod dirs;
+
+#[unstable(feature = "dir_discovery", issue = "157515")]
+pub use self::dirs::UserDirsExt;
+
 /// Windows-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
