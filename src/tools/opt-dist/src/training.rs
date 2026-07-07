@@ -108,7 +108,7 @@ pub fn llvm_benchmarks(env: &Environment) -> CmdBuilder {
 }
 
 pub fn rustc_benchmarks(env: &Environment) -> CmdBuilder {
-    init_compiler_benchmarks(env, &["Check", "Debug", "Opt"], &["All"], RUSTC_PGO_CRATES)
+    init_compiler_benchmarks(env, &["Check", "Debug", "Opt", "Doc"], &["All"], RUSTC_PGO_CRATES)
 }
 
 pub struct LlvmPGOProfile(pub Utf8PathBuf);
