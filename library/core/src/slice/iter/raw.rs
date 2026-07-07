@@ -51,7 +51,7 @@ impl<'a, T> IterRaw<'a, T> {
     ///
     /// The lifetime of the `RawSliceIter` might help with that, although note that this method
     /// does not bound the lifetime in anyway, so the caller is responsible to make sure it's correct.
-    #[inline]
+    #[rustc_force_inline]
     #[rustc_const_unstable(feature = "raw_slice_iter", issue = "none")]
     #[rustc_const_stable_indirect]
     pub const unsafe fn new(slice: NonNull<[T]>) -> IterRaw<'a, T> {
@@ -89,14 +89,14 @@ impl<'a, T> IterRaw<'a, T> {
     }
 
     #[must_use]
-    #[inline]
+    #[rustc_force_inline]
     pub fn as_slice(&self) -> NonNull<[T]> {
         NonNull::slice_from_raw_parts(self.ptr, self.len())
     }
 }
 
 impl<T> Clone for IterRaw<'_, T> {
-    #[inline]
+    #[inline(always)]
     fn clone(&self) -> Self {
         IterRaw { ..*self }
     }
@@ -108,7 +108,7 @@ impl<'a, T> IterRaw<'a, T> {
     /// # Safety
     ///
     /// The iterator must not be empty
-    #[inline]
+    #[rustc_force_inline]
     unsafe fn next_back_unchecked(&mut self) -> NonNull<T> {
         unsafe { self.pre_dec_end(1) }
     }
@@ -116,7 +116,7 @@ impl<'a, T> IterRaw<'a, T> {
     /// Helper function for moving the start of the iterator forwards by `offset` elements,
     /// returning the old start.
     /// Unsafe because the offset must not exceed `self.len()`.
-    #[inline(always)]
+    #[rustc_force_inline]
     unsafe fn post_inc_start(&mut self, offset: usize) -> NonNull<T> {
         let old = self.ptr;
 
@@ -135,7 +135,7 @@ impl<'a, T> IterRaw<'a, T> {
     /// Helper function for moving the end of the iterator backwards by `offset` elements,
     /// returning the new end.
     /// Unsafe because the offset must not exceed `self.len()`.
-    #[inline(always)]
+    #[rustc_force_inline]
     unsafe fn pre_dec_end(&mut self, offset: usize) -> NonNull<T> {
         match self.end_or_len.view_mut() {
             End(end) => unsafe {
@@ -171,7 +171,7 @@ impl<T> ExactSizeIterator for IterRaw<'_, T> {
 impl<'a, T> Iterator for IterRaw<'a, T> {
     type Item = NonNull<T>;
 
-    #[inline]
+    #[inline(always)]
     fn next(&mut self) -> Option<NonNull<T>> {
         let ptr = self.ptr;
 
@@ -223,18 +223,18 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let exact = self.len();
         (exact, Some(exact))
     }
 
-    #[inline]
+    #[inline(always)]
     fn count(self) -> usize {
         self.len()
     }
 
-    #[inline]
+    #[inline(always)]
     fn nth(&mut self, n: usize) -> Option<NonNull<T>> {
         if n >= self.len() {
             match self.end_or_len.view_mut() {
@@ -251,7 +251,7 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let advance = cmp::min(self.len(), n);
         // SAFETY: By construction, `advance` does not exceed `self.len()`.
@@ -259,12 +259,12 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
         NonZero::new(n - advance).map_or(Ok(()), Err)
     }
 
-    #[inline]
+    #[inline(always)]
     fn last(mut self) -> Option<NonNull<T>> {
         self.next_back()
     }
 
-    #[inline]
+    #[inline(always)]
     fn fold<B, F>(self, init: B, mut f: F) -> B
     where
         F: FnMut(B, Self::Item) -> B,
@@ -300,7 +300,7 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
     // We override the default implementation, which uses `try_fold`,
     // because this simple implementation generates less LLVM IR and is
     // faster to compile.
-    #[inline]
+    #[inline(always)]
     fn for_each<F>(mut self, mut f: F)
     where
         Self: Sized,
@@ -314,7 +314,7 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
     // We override the default implementation, which uses `try_fold`,
     // because this simple implementation generates less LLVM IR and is
     // faster to compile.
-    #[inline]
+    #[inline(always)]
     fn all<F>(&mut self, mut f: F) -> bool
     where
         Self: Sized,
@@ -331,7 +331,7 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
     // We override the default implementation, which uses `try_fold`,
     // because this simple implementation generates less LLVM IR and is
     // faster to compile.
-    #[inline]
+    #[inline(always)]
     fn any<F>(&mut self, mut f: F) -> bool
     where
         Self: Sized,
@@ -348,7 +348,7 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
     // We override the default implementation, which uses `try_fold`,
     // because this simple implementation generates less LLVM IR and is
     // faster to compile.
-    #[inline]
+    #[inline(always)]
     fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item>
     where
         Self: Sized,
@@ -365,7 +365,7 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
     // We override the default implementation, which uses `try_fold`,
     // because this simple implementation generates less LLVM IR and is
     // faster to compile.
-    #[inline]
+    #[inline(always)]
     fn find_map<B, F>(&mut self, mut f: F) -> Option<B>
     where
         Self: Sized,
@@ -382,7 +382,7 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
     // We override the default implementation, which uses `try_fold`,
     // because this simple implementation generates less LLVM IR and is
     // faster to compile. Also, the `assume` avoids a bounds check.
-    #[inline]
+    #[inline(always)]
     fn position<P>(&mut self, mut predicate: P) -> Option<usize>
     where
         Self: Sized,
@@ -405,7 +405,7 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
     // We override the default implementation, which uses `try_fold`,
     // because this simple implementation generates less LLVM IR and is
     // faster to compile. Also, the `assume` avoids a bounds check.
-    #[inline]
+    #[inline(always)]
     fn rposition<P>(&mut self, mut predicate: P) -> Option<usize>
     where
         P: FnMut(Self::Item) -> bool,
@@ -425,7 +425,7 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
         None
     }
 
-    #[inline]
+    #[inline(always)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         // SAFETY: the caller must guarantee that `i` is in bounds of
         // the underlying slice, so `i` cannot overflow an `isize`, and
@@ -444,14 +444,14 @@ impl<'a, T> Iterator for IterRaw<'a, T> {
 }
 
 impl<'a, T> DoubleEndedIterator for IterRaw<'a, T> {
-    #[inline]
+    #[inline(always)]
     fn next_back(&mut self) -> Option<NonNull<T>> {
         // SAFETY: The call to `next_back_unchecked`
         // is safe since we check if the iterator is empty first.
         unsafe { if self.is_empty() { None } else { Some(self.next_back_unchecked()) } }
     }
 
-    #[inline]
+    #[inline(always)]
     fn nth_back(&mut self, n: usize) -> Option<NonNull<T>> {
         if n >= self.len() {
             match self.end_or_len.view_mut() {
@@ -468,7 +468,7 @@ impl<'a, T> DoubleEndedIterator for IterRaw<'a, T> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let advance = cmp::min(self.len(), n);
         // SAFETY: By construction, `advance` does not exceed `self.len()`.
