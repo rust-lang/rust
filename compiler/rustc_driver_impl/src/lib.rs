@@ -597,7 +597,18 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
 fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
     match sess.io.input {
         Input::File(ref path) => {
-            if path.extension().is_some_and(|extension| extension == "rs") {
+            let mut v = Vec::new();
+            if locator::list_file_metadata(
+                &sess.target,
+                path,
+                metadata_loader,
+                &mut v,
+                &sess.opts.unstable_opts.ls,
+                sess.cfg_version,
+            )
+            .is_err()
+                && path.extension().is_some_and(|extension| extension == "rs")
+            {
                 let mut err = sess
                     .dcx()
                     .struct_fatal("`-Zls` takes a `.rmeta` file as input, not a source file");
@@ -607,16 +618,6 @@ fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
                 }
                 err.emit();
             }
-            let mut v = Vec::new();
-            locator::list_file_metadata(
-                &sess.target,
-                path,
-                metadata_loader,
-                &mut v,
-                &sess.opts.unstable_opts.ls,
-                sess.cfg_version,
-            )
-            .unwrap();
             safe_println!("{}", String::from_utf8(v).unwrap());
         }
         Input::Str { .. } => {

@@ -213,7 +213,7 @@
 //! metadata::locator or metadata::creader for all the juicy details!
 
 use std::borrow::Cow;
-use std::io::{self, Result as IoResult, Write};
+use std::io::{self, Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt};
@@ -963,7 +963,10 @@ pub fn list_file_metadata(
     let flavor = get_flavor_from_path(path);
     match get_metadata_section(target, flavor, path, metadata_loader, cfg_version, None) {
         Ok(metadata) => metadata.list_crate_metadata(out, ls_kinds),
-        Err(msg) => write!(out, "{msg}\n"),
+        Err(msg) => {
+            let _ = write!(out, "{msg}");
+            Err(IoError::new(IoErrorKind::Other, msg.to_string()))
+        }
     }
 }
 
