@@ -1,5 +1,5 @@
 error[E0425]: cannot find type `DecoderError` in this scope
-  --> $DIR/issue-30589.rs:3:23
+  --> $DIR/impl-trait-for-undeclared-type.rs:6:23
    |
 LL | impl fmt::Display for DecoderError {
    |                       ^^^^^^^^^^^^ not found in this scope

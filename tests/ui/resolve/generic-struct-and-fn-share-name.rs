@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3149>.
+//! This wrongly emitted a duplicate definition of value error.
 //@ check-pass
+
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 

@@ -1,5 +1,5 @@
 error[E0609]: no field `trace` on type `&T`
-  --> $DIR/issue-31011.rs:5:17
+  --> $DIR/no-field-error-in-macro-expansion-for-generic.rs:7:17
    |
 LL |         if $ctx.trace {
    |                 ^^^^^ unknown field
