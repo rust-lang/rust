@@ -1,0 +1,35 @@
+error[E0038]: the trait `OneSubSub` is not dyn compatible
+  --> $DIR/conflicting-bounds-different-generics-transitive.rs:13:24
+   |
+LL | fn one_check<T, U>(_: &dyn OneSubSub<T, U>) {}
+   |                        ^^^^^^^^^^^^^^^^^^^ `OneSubSub` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/conflicting-bounds-different-generics-transitive.rs:8:10
+   |
+LL |     type Assoc;
+   |          ^^^^^ ...because it has conflicting associated item bounds for `Assoc` in supertraits
+...
+LL | trait OneSubSub<T, U>: OneSub<T, U> {}
+   |       --------- this trait is not dyn compatible...
+
+error[E0038]: the trait `TwoSubSub` is not dyn compatible
+  --> $DIR/conflicting-bounds-different-generics-transitive.rs:25:24
+   |
+LL | fn two_check<T, U>(_: &dyn TwoSubSub<T, U>) {}
+   |                        ^^^^^^^^^^^^^^^^^^^ `TwoSubSub` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/conflicting-bounds-different-generics-transitive.rs:20:10
+   |
+LL |     type Assoc;
+   |          ^^^^^ ...because it has conflicting associated item bounds for `Assoc` in supertraits
+...
+LL | trait TwoSubSub<T, U>: TwoSub<T> + TwoSuper<U, Assoc = u64> {}
+   |       --------- this trait is not dyn compatible...
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.
