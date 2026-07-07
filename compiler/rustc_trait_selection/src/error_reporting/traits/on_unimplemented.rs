@@ -72,7 +72,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): HIR is not present for RPITITs,
         // but I guess we could synthesize one here. We don't see any errors that rely on
         // that yet, though.
-        let item_context = self.describe_enclosure(obligation.cause.body_id).unwrap_or("");
+        let item_context = self.describe_enclosure(obligation.cause.body_def_id).unwrap_or("");
 
         let direct = match obligation.cause.code() {
             ObligationCauseCode::BuiltinDerived(..)

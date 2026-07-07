@@ -68,9 +68,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut deferred_cast_checks = self.root_ctxt.deferred_cast_checks.borrow_mut();
         debug!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
         for cast in deferred_cast_checks.drain(..) {
-            let body_id = std::mem::replace(&mut self.body_id, cast.body_id);
+            let body_def_id = std::mem::replace(&mut self.body_def_id, cast.body_def_id);
             cast.check(self);
-            self.body_id = body_id;
+            self.body_def_id = body_def_id;
         }
     }
 
@@ -346,7 +346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // in `execute_delegation_aware_arguments_check`.
             let checked_ty = self
                 .tcx
-                .hir_opt_delegation_info(self.body_id)
+                .hir_opt_delegation_info(self.body_def_id)
                 .and_then(|_| self.typeck_results.borrow().node_type_opt(provided_arg.hir_id))
                 .unwrap_or_else(|| self.check_expr_with_expectation(provided_arg, expectation));
 
@@ -1627,7 +1627,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let callee_ty = callee_ty.peel_refs();
             match *callee_ty.kind() {
                 ty::Param(param) => {
-                    let param = self.tcx.generics_of(self.body_id).type_param(param, self.tcx);
+                    let param = self.tcx.generics_of(self.body_def_id).type_param(param, self.tcx);
                     if param.kind.is_synthetic() {
                         // if it's `impl Fn() -> ..` then just fall down to the def-id based logic
                         def_id = param.def_id;
@@ -1636,7 +1636,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // and point at that.
                         let instantiated = self
                             .tcx
-                            .explicit_predicates_of(self.body_id)
+                            .explicit_predicates_of(self.body_def_id)
                             .instantiate_identity(self.tcx);
                         // FIXME(compiler-errors): This could be problematic if something has two
                         // fn-like predicates with different args, but callable types really never
