@@ -1992,6 +1992,7 @@ fn codegen_offload_preload_drop<'ll, 'tcx>(
     crate::builder::gpu_helper::generate_mapper_call(
         bx,
         geps,
+        offload_globals,
         offload_data.memtransfer_end,
         offload_globals.end_mapper,
         offload_globals.mapper_fn_ty,
@@ -2070,6 +2071,7 @@ fn codegen_offload_preload<'ll, 'tcx>(
     crate::builder::gpu_helper::generate_mapper_call(
         bx,
         geps,
+        offload_globals,
         offload_data.memtransfer_begin,
         offload_globals.nowait_begin_mapper,
         offload_globals.nowait_mapper_fn_ty,
