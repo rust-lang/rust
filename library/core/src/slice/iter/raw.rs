@@ -168,6 +168,278 @@ impl<T> ExactSizeIterator for IterRaw<'_, T> {
     }
 }
 
+impl<'a, T> IterRaw<'a, T> {
+    #[rustc_force_inline]
+    pub(crate) fn next(&mut self) -> Option<NonNull<T>> {
+        let ptr = self.ptr;
+
+        // SAFETY: See inner comments. (For some reason having multiple
+        // block breaks inlining this -- if you can fix that please do!)
+        unsafe {
+            match self.end_or_len.view_mut() {
+                End(end) => {
+                    if ptr == *end {
+                        return None;
+                    }
+
+                    // SAFETY: since it's not empty, per the check above, moving
+                    // forward one keeps us inside the slice, and this is valid.
+                    self.ptr = ptr.add(1);
+                }
+                Len(len) => {
+                    if *len == 0 {
+                        return None;
+                    }
+
+                    // SAFETY: just checked that it's not zero, so subtracting one
+                    // cannot wrap.  (Ideally this would be `checked_sub`, which
+                    // does the same thing internally, but as of 2025-02 that
+                    // doesn't optimize quite as small in MIR.)
+                    *len = len.unchecked_sub(1);
+                }
+            }
+
+            Some(ptr)
+        }
+    }
+
+    #[rustc_force_inline]
+    pub(crate) fn next_chunk<const N: usize>(
+        &mut self,
+    ) -> Result<[NonNull<T>; N], crate::array::IntoIter<NonNull<T>, N>> {
+        if T::IS_ZST || self.len() < N {
+            return crate::array::iter_next_chunk(self);
+        }
+
+        unsafe {
+            let r = self
+                // SAFETY: the check above ensures len >= N
+                .post_inc_start(N)
+                .cast_array::<N>() // NonNull<T> -> NonNull<[T; N]>
+                .each_nonnull(); // NonNull<[T; N]> -> [NonNull<T>; N]
+
+            Ok(r)
+        }
+    }
+
+    #[rustc_force_inline]
+    pub(crate) fn size_hint(&self) -> (usize, Option<usize>) {
+        let exact = self.len();
+        (exact, Some(exact))
+    }
+
+    #[rustc_force_inline]
+    pub(crate) fn count(self) -> usize {
+        self.len()
+    }
+
+    #[rustc_force_inline]
+    pub(crate) fn nth(&mut self, n: usize) -> Option<NonNull<T>> {
+        if n >= self.len() {
+            match self.end_or_len.view_mut() {
+                End(end) => self.ptr = *end,
+                Len(len) => *len = 0,
+            }
+            return None;
+        }
+
+        // SAFETY: We are in bounds. `post_inc_start` does the right thing even for ZSTs.
+        unsafe {
+            self.post_inc_start(n);
+            Some(self.post_inc_start(1))
+        }
+    }
+
+    #[rustc_force_inline]
+    pub(crate) fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        let advance = cmp::min(self.len(), n);
+        // SAFETY: By construction, `advance` does not exceed `self.len()`.
+        unsafe { self.post_inc_start(advance) };
+        NonZero::new(n - advance).map_or(Ok(()), Err)
+    }
+
+    #[rustc_force_inline]
+    pub(crate) fn last(mut self) -> Option<NonNull<T>> {
+        self.next_back()
+    }
+
+    #[rustc_force_inline]
+    pub(crate) fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        F: FnMut(B, NonNull<T>) -> B,
+    {
+        // this implementation consists of the following optimizations compared to the
+        // default implementation:
+        // - do-while loop, as is llvm's preferred loop shape,
+        //   see https://releases.llvm.org/16.0.0/docs/LoopTerminology.html#more-canonical-loops
+        // - bumps an index instead of a pointer since the latter case inhibits
+        //   some optimizations, see #111603
+        // - avoids Option wrapping/matching
+        if self.is_empty() {
+            return init;
+        }
+        let mut acc = init;
+        let mut i = 0usize;
+        let len = self.len();
+        loop {
+            // SAFETY: the loop iterates `i in 0..len`, which always is in bounds of
+            // the slice allocation
+            acc = f(acc, unsafe { self.ptr.add(i) });
+            // SAFETY: `i` can't overflow since it'll only reach usize::MAX if the
+            // slice had that length, in which case we'll break out of the loop
+            // after the increment
+            i = unsafe { i.unchecked_add(1) };
+            if i == len {
+                break;
+            }
+        }
+        acc
+    }
+
+    // We override the default implementation, which uses `try_fold`,
+    // because this simple implementation generates less LLVM IR and is
+    // faster to compile.
+    #[rustc_force_inline]
+    pub(crate) fn for_each<F>(mut self, mut f: F)
+    where
+        Self: Sized,
+        F: FnMut(NonNull<T>),
+    {
+        while let Some(x) = self.next() {
+            f(x);
+        }
+    }
+
+    // We override the default implementation, which uses `try_fold`,
+    // because this simple implementation generates less LLVM IR and is
+    // faster to compile.
+    #[rustc_force_inline]
+    pub(crate) fn all<F>(&mut self, mut f: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(NonNull<T>) -> bool,
+    {
+        while let Some(x) = self.next() {
+            if !f(x) {
+                return false;
+            }
+        }
+        true
+    }
+
+    // We override the default implementation, which uses `try_fold`,
+    // because this simple implementation generates less LLVM IR and is
+    // faster to compile.
+    #[rustc_force_inline]
+    pub(crate) fn any<F>(&mut self, mut f: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(NonNull<T>) -> bool,
+    {
+        while let Some(x) = self.next() {
+            if f(x) {
+                return true;
+            }
+        }
+        false
+    }
+
+    // We override the default implementation, which uses `try_fold`,
+    // because this simple implementation generates less LLVM IR and is
+    // faster to compile.
+    #[rustc_force_inline]
+    pub(crate) fn find<P>(&mut self, mut predicate: P) -> Option<NonNull<T>>
+    where
+        Self: Sized,
+        P: FnMut(&NonNull<T>) -> bool,
+    {
+        while let Some(x) = self.next() {
+            if predicate(&x) {
+                return Some(x);
+            }
+        }
+        None
+    }
+
+    // We override the default implementation, which uses `try_fold`,
+    // because this simple implementation generates less LLVM IR and is
+    // faster to compile.
+    #[rustc_force_inline]
+    pub(crate) fn find_map<B, F>(&mut self, mut f: F) -> Option<B>
+    where
+        Self: Sized,
+        F: FnMut(NonNull<T>) -> Option<B>,
+    {
+        while let Some(x) = self.next() {
+            if let Some(y) = f(x) {
+                return Some(y);
+            }
+        }
+        None
+    }
+
+    // We override the default implementation, which uses `try_fold`,
+    // because this simple implementation generates less LLVM IR and is
+    // faster to compile. Also, the `assume` avoids a bounds check.
+    #[rustc_force_inline]
+    pub(crate) fn position<P>(&mut self, mut predicate: P) -> Option<usize>
+    where
+        Self: Sized,
+        P: FnMut(NonNull<T>) -> bool,
+    {
+        let n = self.len();
+        let mut i = 0;
+        while let Some(x) = self.next() {
+            if predicate(x) {
+                // SAFETY: we are guaranteed to be in bounds by the loop invariant:
+                // when `i >= n`, `self.next()` returns `None` and the loop breaks.
+                unsafe { assert_unchecked(i < n) };
+                return Some(i);
+            }
+            i += 1;
+        }
+        None
+    }
+
+    // We override the default implementation, which uses `try_fold`,
+    // because this simple implementation generates less LLVM IR and is
+    // faster to compile. Also, the `assume` avoids a bounds check.
+    #[rustc_force_inline]
+    pub(crate) fn rposition<P>(&mut self, mut predicate: P) -> Option<usize>
+    where
+        P: FnMut(NonNull<T>) -> bool,
+        // Self: Sized + ExactSizeIterator + DoubleEndedIterator,
+    {
+        let n = self.len();
+        let mut i = n;
+        while let Some(x) = self.next_back() {
+            i -= 1;
+            if predicate(x) {
+                // SAFETY: `i` must be lower than `n` since it starts at `n`
+                // and is only decreasing.
+                unsafe { assert_unchecked(i < n) };
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    #[rustc_force_inline]
+    pub(crate) unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> NonNull<T> {
+        // SAFETY: the caller must guarantee that `i` is in bounds of
+        // the underlying slice, so `i` cannot overflow an `isize`, and
+        // the returned references is guaranteed to refer to an element
+        // of the slice and thus guaranteed to be valid.
+        //
+        // Also note that the caller also guarantees that we're never
+        // called with the same index again, and that no other methods
+        // that will access this subslice are called, so it is valid
+        // for the returned reference to be mutable in the case of
+        // `IterMut`
+        unsafe { self.ptr.add(idx) }
+    }
+}
+
 impl<'a, T> Iterator for IterRaw<'a, T> {
     type Item = NonNull<T>;
 
