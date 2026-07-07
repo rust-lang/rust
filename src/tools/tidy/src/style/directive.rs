@@ -273,7 +273,7 @@ impl Directives {
         }
     }
 
-    pub fn from_line(
+    pub fn from_str(
         path_str: &str,
         line_number: LineNumber,
         can_contain_directive_fastpath: bool,
@@ -296,8 +296,6 @@ impl Directives {
         res
     }
 
-    // Use a fixed size array in the return type to catch mistakes with changing `CONFIGURABLE_CHECKS`
-    // without changing the code in `check` easier.
     pub fn parse(line_number: LineNumber, contents: &str) -> Self {
         let mut directives = Self::default();
 
