@@ -9,7 +9,7 @@ pub fn page_size() -> usize {
 /// Returns the value for [`confstr(key, ...)`][posix_confstr].
 ///
 /// [posix_confstr]:
-///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
+///     https://pubs.opengroup.org/onlinepubs/9799919799/functions/confstr.html
 pub fn confstr(
     key: crate::ffi::c_int,
     size_hint: Option<usize>,
