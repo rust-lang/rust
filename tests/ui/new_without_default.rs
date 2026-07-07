@@ -355,3 +355,23 @@ pub mod issue16255 {
         }
     }
 }
+
+pub mod issue17361 {
+    //! This test ensures that attributes applied to the impl block
+    //! containing `fn new()` do not get mistakenly applied to the
+    //! newly generated `Default` trait impl. This has been the
+    //! case because the `Default` trait impl was inserted right
+    //! before the existing impl block, but after the attributes.
+
+    #![deny(clippy::unwrap_used, reason = "check that expect below stays put")]
+
+    pub struct S;
+
+    #[expect(clippy::unwrap_used, reason = "without it, new() fails to compile")]
+    impl S {
+        pub fn new() -> S {
+            //~^ new_without_default
+            std::hint::black_box(Some(S)).unwrap()
+        }
+    }
+}
