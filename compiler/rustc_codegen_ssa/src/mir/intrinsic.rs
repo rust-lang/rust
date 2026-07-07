@@ -273,14 +273,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 OperandValue::ZeroSized
             }
-            sym::volatile_store => {
+            sym::volatile_store | sym::unaligned_volatile_store => {
                 let dst = args[0].deref(bx.cx());
+                let dst = if name == sym::volatile_store { dst } else { dst.unaligned() };
                 args[1].val.volatile_store(bx, dst);
-                OperandValue::ZeroSized
-            }
-            sym::unaligned_volatile_store => {
-                let dst = args[0].deref(bx.cx());
-                args[1].val.unaligned_volatile_store(bx, dst);
                 OperandValue::ZeroSized
             }
             sym::disjoint_bitor => {
