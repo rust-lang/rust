@@ -719,6 +719,12 @@ pub fn source_span_for_markdown_range_inner(
                     // but we found a non-empty non-markdown line.
                     // This could be an attribute, and we don't want a diagnostic
                     // suggesting to delete that attribute, so we return None to be safe.
+                    //     1| /** doc */
+                    //     2 | #[inline]
+                    //          ^^^^^^^^^
+                    //          | this
+                    //     3| /** doc2 */
+                    //     4| fn foo() {}
                     return None;
                 } else {
                     end_bytes += source_line.len() + 1;
