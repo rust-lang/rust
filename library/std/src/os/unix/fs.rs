@@ -21,6 +21,11 @@ use crate::{io, sys};
 #[cfg(test)]
 mod tests;
 
+mod dirs;
+
+#[unstable(feature = "dir_discovery", issue = "157515")]
+pub use self::dirs::UserDirsExt;
+
 /// Unix-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
