@@ -131,3 +131,27 @@ fn bench_hash_path_long(b: &mut test::Bencher) {
 
     black_box(hasher.finish());
 }
+
+#[bench]
+fn bench_path_eq_identical(b: &mut test::Bencher) {
+    let s = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/file.rs";
+    // Use two distinct heap allocations so memcmp cannot short-circuit on pointer equality.
+    let p1 = PathBuf::from(s);
+    let p2 = PathBuf::from(s);
+    b.iter(|| black_box(p1.as_path()) == black_box(p2.as_path()));
+}
+
+#[bench]
+fn bench_path_eq_different_len(b: &mut test::Bencher) {
+    let a = Path::new("/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/short.rs");
+    let b_path =
+        Path::new("/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/longer_name.rs");
+    b.iter(|| black_box(a) == black_box(b_path));
+}
+
+#[bench]
+fn bench_path_eq_same_len_differ(b: &mut test::Bencher) {
+    let a = Path::new("/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/aaa.rs");
+    let b_path = Path::new("/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/zzz.rs");
+    b.iter(|| black_box(a) == black_box(b_path));
+}

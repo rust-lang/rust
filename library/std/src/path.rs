@@ -2245,7 +2245,9 @@ impl ToOwned for Path {
 impl PartialEq for PathBuf {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
-        self.components() == other.components()
+        // Identical byte sequences always produce identical component sequences,
+        // so skip the more expensive component-wise comparison in that case.
+        self.as_os_str() == other.as_os_str() || self.components() == other.components()
     }
 }
 
@@ -3754,7 +3756,9 @@ impl fmt::Display for Display<'_> {
 impl PartialEq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
-        self.components() == other.components()
+        // Identical byte sequences always produce identical component sequences,
+        // so skip the more expensive component-wise comparison in that case.
+        self.as_os_str() == other.as_os_str() || self.components() == other.components()
     }
 }
 
