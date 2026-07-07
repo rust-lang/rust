@@ -747,7 +747,7 @@ fn mk_attr(
 ) -> Attribute {
     mk_attr_from_item(
         g,
-        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args), tokens: None },
+        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args) },
         None,
         style,
         span,

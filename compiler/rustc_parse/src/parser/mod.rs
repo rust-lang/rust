@@ -1835,7 +1835,8 @@ pub enum ParseNtResult {
     Expr(Box<ast::Expr>, NtExprKind),
     Literal(Box<ast::Expr>),
     Ty(WithTokens<Box<ast::Ty>>),
-    Meta(Box<ast::AttrItem>),
+    // These tokens are for the attr item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
+    Meta(WithTokens<Box<ast::AttrItem>>),
     Path(WithTokens<Box<ast::Path>>),
     Vis(WithTokens<Box<ast::Visibility>>),
     Guard(Box<ast::Guard>),

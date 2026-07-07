@@ -189,9 +189,9 @@ impl<'a> Parser<'a> {
                     this.parse_path(PathStyle::Type).map(|path| WithTokens::new(Box::new(path)))
                 })?))
             }
-            NonterminalKind::Meta => {
-                Ok(ParseNtResult::Meta(Box::new(self.parse_attr_item(ForceCollect::Yes)?)))
-            }
+            NonterminalKind::Meta => Ok(ParseNtResult::Meta(
+                self.parse_attr_item(ForceCollect::Yes)?.map(|item| Box::new(item)),
+            )),
             NonterminalKind::Vis => {
                 Ok(ParseNtResult::Vis(self.collect_tokens_no_attrs(|this| {
                     this.parse_visibility(FollowedByType::Yes)

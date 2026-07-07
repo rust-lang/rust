@@ -362,7 +362,6 @@ mod llvm_enzyme {
             unsafety: ast::Safety::Default,
             path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
             args: rustc_ast::ast::AttrItemKind::Unparsed(ast::AttrArgs::Delimited(never_arg)),
-            tokens: None,
         };
         let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();

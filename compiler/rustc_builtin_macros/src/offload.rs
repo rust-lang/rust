@@ -119,7 +119,6 @@ pub(crate) fn expand_kernel(
         unsafety: ast::Safety::Unsafe(span),
         path: ast::Path::from_ident(Ident::new(sym::no_mangle, span)),
         args: ast::AttrItemKind::Unparsed(ast::AttrArgs::Empty),
-        tokens: None,
     };
 
     let no_mangle_attr = Box::new(ast::NormalAttr { item: unsafe_item, tokens: None });
@@ -184,7 +183,6 @@ pub(crate) fn expand_kernel(
         unsafety: ast::Safety::Default,
         path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
         args: rustc_ast::ast::AttrItemKind::Unparsed(ast::AttrArgs::Delimited(never_arg)),
-        tokens: None,
     };
     let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
 
