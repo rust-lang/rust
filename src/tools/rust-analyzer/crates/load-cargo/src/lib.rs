@@ -659,7 +659,7 @@ impl ProcMacroExpander for Expander {
 
                     let call_site_file = macro_call_loc.kind.file_id();
 
-                    let resolved = db.resolve_span(current_span);
+                    let resolved = hir_expand::resolve_span(db, current_span);
 
                     current_ctx = macro_call_loc.ctxt;
                     current_span = Span {
@@ -676,7 +676,7 @@ impl ProcMacroExpander for Expander {
                     }
                 }
 
-                let resolved = db.resolve_span(current_span);
+                let resolved = hir_expand::resolve_span(db, current_span);
 
                 Ok(SubResponse::SpanSourceResult {
                     file_id: resolved.file_id.span_file_id(db).as_u32(),
@@ -761,7 +761,7 @@ fn resolve_sub_span(
         anchor: SpanAnchor { file_id: editioned_file_id, ast_id },
         ctx: SyntaxContext::root(editioned_file_id.edition()),
     };
-    db.resolve_span(span)
+    hir_expand::resolve_span(db, span)
 }
 
 #[cfg(test)]

@@ -1,13 +1,12 @@
 //! Defines database & queries for macro expansion.
 
 use base_db::{Crate, SourceDatabase};
-use span::Span;
 use syntax::ast;
 
 use crate::{
     AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander,
-    EditionedFileId, FileRange, HirFileId, MacroDefId, MacroDefKind,
-    declarative::DeclarativeMacroExpander, proc_macro::CustomProcMacroExpander,
+    MacroDefId, MacroDefKind, declarative::DeclarativeMacroExpander,
+    proc_macro::CustomProcMacroExpander,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -29,9 +28,6 @@ pub enum TokenExpander<'db> {
 
 #[query_group::query_group]
 pub trait ExpandDatabase: SourceDatabase {
-    #[salsa::transparent]
-    fn resolve_span(&self, span: Span) -> FileRange;
-
     /// Fetches the expander for this macro.
     #[salsa::transparent]
     #[salsa::invoke(TokenExpander::macro_expander)]
@@ -45,13 +41,6 @@ pub trait ExpandDatabase: SourceDatabase {
         def_crate: Crate,
         id: AstId<ast::Macro>,
     ) -> &DeclarativeMacroExpander;
-}
-
-fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
-    let file_id = EditionedFileId::from_span_file_id(db, anchor.file_id);
-    let anchor_offset =
-        HirFileId::from(file_id).ast_id_map(db).get_erased(anchor.ast_id).text_range().start();
-    FileRange { file_id, range: range + anchor_offset }
 }
 
 impl<'db> TokenExpander<'db> {

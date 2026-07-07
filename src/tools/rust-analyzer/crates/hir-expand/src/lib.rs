@@ -1381,7 +1381,7 @@ impl<'db> ExpansionInfo<'db> {
         let span = self.exp_map.span_at(token.start());
         match &self.arg_map {
             SpanMap::RealSpanMap(_) => {
-                let range = db.resolve_span(span);
+                let range = resolve_span(db, span);
                 InFile { file_id: range.file_id.into(), value: smallvec::smallvec![range.range] }
             }
             SpanMap::ExpansionSpanMap(arg_map) => {
@@ -1435,7 +1435,7 @@ pub fn map_node_range_up_rooted(
         start = start.min(span.range.start());
         end = end.max(span.range.end());
     }
-    Some(db.resolve_span(Span { range: TextRange::new(start, end), anchor, ctx }))
+    Some(resolve_span(db, Span { range: TextRange::new(start, end), anchor, ctx }))
 }
 
 /// Maps up the text range out of the expansion hierarchy back into the original file its from.
@@ -1458,7 +1458,7 @@ pub fn map_node_range_up(
         start = start.min(span.range.start());
         end = end.max(span.range.end());
     }
-    Some((db.resolve_span(Span { range: TextRange::new(start, end), anchor, ctx }), ctx))
+    Some((resolve_span(db, Span { range: TextRange::new(start, end), anchor, ctx }), ctx))
 }
 
 /// Looks up the span at the given offset.
@@ -1468,7 +1468,17 @@ pub fn span_for_offset(
     offset: TextSize,
 ) -> (FileRange, SyntaxContext) {
     let span = exp_map.span_at(offset);
-    (db.resolve_span(span), span.ctx)
+    (resolve_span(db, span), span.ctx)
+}
+
+// FIXME: This is only public because of its use in `load_cargo` (which we should consider removing
+// by moving the implementations of the subrequests to `hir_expand`, and calling within `load-cargo`).
+// Avoid adding any more outside uses.
+pub fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
+    let file_id = EditionedFileId::from_span_file_id(db, anchor.file_id);
+    let anchor_offset =
+        HirFileId::from(file_id).ast_id_map(db).get_erased(anchor.ast_id).text_range().start();
+    FileRange { file_id, range: range + anchor_offset }
 }
 
 /// In Rust, macros expand token trees to token trees. When we want to turn a
