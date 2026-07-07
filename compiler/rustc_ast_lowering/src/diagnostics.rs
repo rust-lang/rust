@@ -569,3 +569,12 @@ pub(crate) struct DelegationInfersMismatch {
     pub expected: Symbol,
     pub actual: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag(
+    "attempted to lower target expression with definitions more than once while mapping argument"
+)]
+pub(crate) struct DelegationAttemptedBlockWithDefsRelowering {
+    #[primary_span]
+    pub span: Span,
+}
