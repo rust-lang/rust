@@ -1813,17 +1813,20 @@ pub(crate) fn notable_trait_badges(item: &clean::Item, cx: &Context<'_>) -> Vec<
             .map(Impl::inner_impl)
             .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
             .filter_map(|impl_| {
-                let path_ = impl_.trait_.as_ref()?;
-                let trait_did = path_.def_id();
-                if !cx.cache().traits.get(&trait_did)?.is_notable_trait(tcx) {
-                    return None;
+                if let Some(trait_) = &impl_.trait_
+                    && let trait_did = trait_.def_id()
+                    && let Some(trait_) = cx.cache().traits.get(&trait_did)
+                    && trait_.is_notable_trait(tcx)
+                {
+                    let name = tcx.item_name(trait_did).to_string();
+                    let (full_path, href) = match href(trait_did, cx) {
+                        Ok(info) => (join_path_syms(&info.rust_path), Some(info.url)),
+                        Err(_) => (tcx.def_path_str(trait_did), None),
+                    };
+                    Some((name.clone(), NotableTraitBadge { name, full_path, href }))
+                } else {
+                    None
                 }
-                let name = tcx.item_name(trait_did).to_string();
-                let (full_path, href) = match href(trait_did, cx) {
-                    Ok(info) => (join_path_syms(&info.rust_path), Some(info.url)),
-                    Err(_) => (tcx.def_path_str(trait_did), None),
-                };
-                Some((name.clone(), NotableTraitBadge { name, full_path, href }))
             })
             .collect::<BTreeMap<String, NotableTraitBadge>>()
             .into_values()
