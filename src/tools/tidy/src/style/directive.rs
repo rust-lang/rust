@@ -1,37 +1,58 @@
 use std::cell::Cell;
+use std::mem;
 use std::path::Path;
+use std::rc::Rc;
 
 use crate::diagnostics::RunningCheck;
 
 macro_rules! configurable_checks {
-        ($($name: ident => $field: expr),* $(,)?) => {
-        #[derive(Debug, Default)]
-        pub struct Directives<'a> {
+        (@parse_error_message doc = $doc:literal) => {
+            Some($doc)
+        };
+        (@parse_error_message dont_check_unused) => {
+            None
+        };
+
+        ($(#[$($doc: tt)*] $field: ident => $name: expr),* $(,)?) => {
+        #[derive(Debug)]
+        pub struct Directives {
             $(
-                pub $name: Directive<'a>
+                pub $field: NamedDirective
             ),*
         }
 
-        impl<'a> Directives<'a> {
-            pub fn iter(&self) -> impl Iterator<Item = (&'static str, &Directive<'a>)> {
+        impl Default for Directives {
+            fn default() -> Self {
+                Self {
+                    $($field: NamedDirective {
+                        directive: Default::default(),
+                        name: $name,
+                        error_message: configurable_checks!(@parse_error_message $($doc)*),
+                    }),*
+                }
+            }
+        }
+
+        impl Directives {
+            pub fn iter(&self) -> impl Iterator<Item = &NamedDirective> {
                 vec![
                     $(
-                        ($field, &self.$name)
+                        &self.$field
                     ),*
                 ].into_iter()
             }
 
-            pub fn iter_mut(&mut self) -> impl Iterator<Item = (&'static str, &mut Directive<'a>)> {
+            pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut NamedDirective> {
                 vec![
                     $(
-                        ($field, &mut self.$name)
+                        &mut self.$field
                     ),*
                 ].into_iter()
             }
 
-            pub fn create_child<'x>(&'x self, new: Directives<'x>) -> Directives<'x> {
+            pub fn create_child(&self, new: Directives, check: &mut RunningCheck, file: &Path) -> Directives {
                 Directives {
-                    $($name: self.$name.create_child(new.$name)),*
+                    $($field: self.$field.create_child(new.$field, check, file)),*
                 }
             }
         }
@@ -40,19 +61,144 @@ macro_rules! configurable_checks {
 
 const LINELENGTH_CHECK: &str = "linelength";
 configurable_checks!(
-    cr => "cr",
-    undocumented_unsafe => "undocumented-unsafe",
-    tab => "tab",
+
+    // We deliberately do not warn about this being unnecessary,
+    // that would just lead to annoying churn.
+    #[dont_check_unused]
     linelength => LINELENGTH_CHECK,
+
+    // We deliberately do not warn about this being unnecessary,
+    // that would just lead to annoying churn.
+    #[dont_check_unused]
     filelength => "filelength",
+
+    /// ignoring CR characters unnecessarily
+    cr => "cr",
+    /// ignoring undocumented unsafe unnecessarily
+    undocumented_unsafe => "undocumented-unsafe",
+    /// ignoring tab characters unnecessarily
+    tab => "tab",
+    /// ignoring trailing whitespace unnecessarily
     end_whitespace => "end-whitespace",
+    /// ignoring trailing newlines unnecessarily
     trailing_newlines => "trailing-newlines",
+    /// ignoring leading newlines unnecessarily
     leading_newlines => "leading-newlines",
+    /// ignoring leading newlines unnecessarily
     copyright => "copyright",
+    /// ignoring dbg usage unnecessarily
     dbg => "dbg",
+    /// ignoring odd backticks unnecessarily
     odd_backticks => "odd-backticks",
+    /// ignoring todo usage unnecessarily
     todo => "todo",
 );
+
+#[derive(Debug)]
+pub struct NamedDirective {
+    directive: Directive,
+    name: &'static str,
+    error_message: Option<&'static str>,
+}
+
+impl NamedDirective {
+    pub fn check_usage(&self, check: &mut RunningCheck, file: &Path) {
+        let Some(message) = self.error_message else {
+            self.force_discard_unsused_ignore();
+            return;
+        };
+
+        if let Err(line) = self.directive.is_ignore_unused_and_mark_checked() {
+            match line {
+                LineNumber::Line(line) => {
+                    check.error(format!("{}:{}: {}", file.display(), line, message));
+                }
+                LineNumber::WholeFile => {
+                    check.error(format!("{}: {}", file.display(), message));
+                }
+            }
+        }
+    }
+
+    fn create_child(&self, new: Self, check: &mut RunningCheck, file: &Path) -> Self {
+        let directive = match (&self.directive, &new.directive) {
+            // If both are deny, we don't care.
+            (Directive::Deny, Directive::Deny) => Directive::Deny,
+            // If (for example) ignored at the file level, but denied at the line level,
+            // keep the ignore as a derived. Deny is the default, so we care about the
+            // ignore.
+            (Directive::Ignore { used, line_number, inherited: _ }, Directive::Deny) => {
+                Directive::Ignore {
+                    used: Rc::clone(used),
+                    line_number: *line_number,
+                    inherited: true,
+                }
+            }
+            // If (for example) ignored at the line level, but not at the file level,
+            // copy in the line-level one verbatim.
+            (Directive::Deny, Directive::Ignore { .. }) => return new,
+            // If (for example) ignored at the file level, and also at the line level,
+            // keep the file-level one. It takes precedence. If a lint is ignored at
+            // a file level, the line-level ignore should be marked "unused".
+            (Directive::Ignore { used, line_number, inherited: _ }, Directive::Ignore { .. }) => {
+                new.check_usage(check, file);
+                Directive::Ignore {
+                    used: Rc::clone(used),
+                    line_number: *line_number,
+                    inherited: true,
+                }
+            }
+        };
+
+        Self { directive, name: self.name, error_message: self.error_message }
+    }
+
+    pub fn is_ignore_and_defuse(&self) -> bool {
+        if let Directive::Ignore { used, .. } = &self.directive {
+            used.set(DirectiveUsed::Checked);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn take(&mut self) -> Self {
+        mem::replace(
+            self,
+            Self {
+                directive: Default::default(),
+                name: self.name,
+                error_message: self.error_message,
+            },
+        )
+    }
+
+    /// Check whether we should error on this directive, or whether it was ignored.
+    pub fn check(&self) -> Result<(), ()> {
+        match &self.directive {
+            Directive::Deny => Err(()),
+            Directive::Ignore { used, .. } => {
+                used.set(DirectiveUsed::Yes);
+                Ok(())
+            }
+        }
+    }
+
+    /// Explicitly discard the fact that this directive may be ignored unnecessary.
+    fn force_discard_unsused_ignore(&self) {
+        self.is_ignore_and_defuse();
+    }
+}
+
+impl Drop for NamedDirective {
+    fn drop(&mut self) {
+        if let Directive::Ignore { used, inherited: false, .. } = &self.directive
+            && !matches!(used.get(), DirectiveUsed::Checked)
+        {
+            panic!("unchecked directive {} (call Directives::check_usage)", self.name);
+        }
+    }
+}
 
 /// When a directive is set to "ignore",  it means a normally-active
 /// tidy lint is now ignored. This can be bad, if it's ignored for no
@@ -72,7 +218,7 @@ pub enum DirectiveUsed {
 }
 
 #[derive(Debug, Default)]
-pub enum Directive<'a> {
+pub enum Directive {
     /// By default, tidy always warns against style issues.
     #[default]
     Deny,
@@ -83,142 +229,44 @@ pub enum Directive<'a> {
     Ignore {
         /// line on which the ignore was found
         line_number: LineNumber,
-        used: Cell<DirectiveUsed>,
+        used: Rc<Cell<DirectiveUsed>>,
+        /// If this ignore is inherited from some higher-level,
+        /// like from a file-level ignore, we only want to check whether
+        /// it was used or not (and run the drop bomb) at the end of the file.
+        inherited: bool,
     },
-
-    /// Some higher-level rule decides whether this directive is denied or ignored.
-    Derived(&'a Directive<'a>),
 }
 
-impl<'a> Drop for Directive<'a> {
-    fn drop(&mut self) {
-        if let Self::Ignore { used, .. } = self
-            && !matches!(used.get(), DirectiveUsed::Checked)
-        {
-            panic!("unchecked directive (call Directives::check_usage)");
-        }
-    }
-}
-
-impl<'a> Directive<'a> {
+impl Directive {
     pub fn set_ignore(&mut self, line_number: LineNumber) {
         if let Self::Ignore { used, .. } = self {
             used.set(DirectiveUsed::No);
         } else {
-            *self = Directive::Ignore { used: Cell::new(DirectiveUsed::No), line_number }
+            *self = Directive::Ignore {
+                used: Rc::new(Cell::new(DirectiveUsed::No)),
+                line_number,
+                inherited: false,
+            }
         }
     }
 
     /// Check whether this directive was ignored unnecessary.
-    fn is_ignore_unused(&self) -> Result<(), LineNumber> {
-        if let Self::Ignore { used, line_number } = self {
+    fn is_ignore_unused_and_mark_checked(&self) -> Result<(), LineNumber> {
+        // only if inherted = false, otherwise, we shouldn't set checked and shouldn't care about its value
+        if let Self::Ignore { used, line_number, inherited: false } = self {
             let used = used.replace(DirectiveUsed::Checked);
             if matches!(used, DirectiveUsed::No) { Err(*line_number) } else { Ok(()) }
         } else {
             Ok(())
         }
     }
-
-    pub fn is_ignore_and_defuse(&self) -> bool {
-        if let Self::Ignore { used, .. } = self {
-            used.set(DirectiveUsed::Checked);
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Explicitly discard the fact that this directive may be ignored unnecessary.
-    fn force_discard_unsused_ignore(&self) {
-        self.is_ignore_and_defuse();
-    }
-
-    pub fn create_child<'x>(&'x self, new: Directive<'x>) -> Directive<'x> {
-        match (self, new) {
-            // If both are deny, we don't care.
-            (Directive::Deny, Directive::Deny) => Directive::Deny,
-            // If (for example) ignored at the file level, but denied at the line level,
-            // keep the ignore as a derived. Deny is the default, so we care about the
-            // ignore.
-            (Directive::Ignore { .. }, Directive::Deny) => Directive::Derived(self),
-            // If (for example) ignored at the line level, but not at the file level,
-            // copy in the line-level one verbatim.
-            (Directive::Deny, new @ Directive::Ignore { .. }) => new,
-            // If (for example) ignored at the file level, and also at the line level,
-            // keep the line-level one. It takes precedence. If all lints are ignored
-            // per-line, the file-level ignore should be marked "unused".
-            (Directive::Ignore { .. }, new @ Directive::Ignore { .. }) => new,
-            // If self is already derived, shorten the path.
-            (Directive::Derived(parent), new) => parent.create_child(new),
-            // What are you even doing.
-            (_, Directive::Derived(_)) => {
-                unimplemented!()
-            }
-        }
-    }
-
-    /// Check whether we should error on this directive, or whether it was ignored.
-    pub fn check(&self) -> Result<(), ()> {
-        match self {
-            Self::Deny => Err(()),
-            Self::Ignore { used, .. } => {
-                used.set(DirectiveUsed::Yes);
-                Ok(())
-            }
-            Self::Derived(directive) => directive.check(),
-        }
-    }
 }
 
-impl<'a> Directives<'a> {
+impl Directives {
     pub fn check_usage(self, check: &mut RunningCheck, file: &Path) {
-        let Self {
-            cr,
-            undocumented_unsafe,
-            tab,
-            end_whitespace,
-            trailing_newlines,
-            leading_newlines,
-            copyright,
-            dbg,
-            odd_backticks,
-            todo,
-
-            linelength,
-            filelength,
-        } = self;
-
-        macro_rules! check {
-            ($e: expr, $fmt: literal $($args: tt)*) => {
-                if let Err(line) = $e.is_ignore_unused() {
-                    let msg = format_args!($fmt $($args)*);
-                    match line {
-                        LineNumber::Line(line) => {
-                            check.error(format!("{}:{}: {}", file.display(), line, msg));
-                        }
-                        LineNumber::WholeFile => {
-                            check.error(format!("{}: {}", file.display(), msg));
-                        }
-                    }
-                }
-            };
+        for i in self.iter() {
+            i.check_usage(check, file);
         }
-
-        check!(cr, "ignoring CR characters unnecessarily");
-        check!(tab, "ignoring tab characters unnecessarily");
-        check!(end_whitespace, "ignoring trailing whitespace unnecessarily");
-        check!(trailing_newlines, "ignoring trailing newlines unnecessarily");
-        check!(leading_newlines, "ignoring leading newlines unnecessarily");
-        check!(copyright, "ignoring copyright unnecessarily");
-        check!(todo, "ignoring todo usage unnecessarily");
-        check!(dbg, "ignoring dbg usage unnecessarily");
-        check!(odd_backticks, "ignoring odd backticks unnecessarily");
-        check!(undocumented_unsafe, "ignoring undocumented unsafe unnecessarily");
-
-        // We deliberately do not warn about these being unnecessary,
-        // that would just lead to annoying churn.
-        linelength.force_discard_unsused_ignore();
-        filelength.force_discard_unsused_ignore();
     }
 
     pub fn from_line(
@@ -238,7 +286,7 @@ impl<'a> Directives<'a> {
         let always_ignore_linelength = path_str.contains("rustdoc-json");
 
         if always_ignore_linelength {
-            res.linelength.set_ignore(line_number);
+            res.linelength.directive.set_ignore(line_number);
         }
 
         res
@@ -249,9 +297,13 @@ impl<'a> Directives<'a> {
     pub fn parse(line_number: LineNumber, contents: &str) -> Self {
         let mut directives = Self::default();
 
-        for (check, directive) in directives.iter_mut() {
-            if match_ignore(contents, matches!(line_number, LineNumber::WholeFile), Some(check)) {
-                directive.set_ignore(line_number);
+        for directive in directives.iter_mut() {
+            if match_ignore(
+                contents,
+                matches!(line_number, LineNumber::WholeFile),
+                Some(directive.name),
+            ) {
+                directive.directive.set_ignore(line_number);
             }
         }
 

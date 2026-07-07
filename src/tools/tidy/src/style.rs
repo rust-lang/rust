@@ -24,8 +24,8 @@ use std::sync::LazyLock;
 use regex::RegexSetBuilder;
 use rustc_hash::FxHashMap;
 
-use crate::diagnostics::{CheckId, TidyCtx};
-use crate::style::directive::{Directive, Directives, LineNumber, match_ignore};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
+use crate::style::directive::{Directives, LineNumber, NamedDirective, match_ignore};
 use crate::walk::{filter_dirs, walk};
 
 mod directive;
@@ -308,25 +308,32 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
         path.extension().is_some_and(|e| e == "css") && !is_in(path, "src", "librustdoc")
     }
 
-    // This creates a RegexSet as regex contains performance optimizations to be able to deal with these over
-    // 2000 needles efficiently. This runs over the entire source code, so performance matters.
-    let problematic_regex = RegexSetBuilder::new(PROBLEMATIC_CONSTS_STRINGS.as_slice())
+    walk(path, skip, &mut |entry, contents| {
+        let file = entry.path();
+        check_file_style(&mut check, file, contents);
+    });
+}
+
+// This creates a RegexSet as regex contains performance optimizations to be able to deal with these over
+// 2000 needles efficiently. This runs over the entire source code, so performance matters.
+static PROBLEMATIC_REGEX: LazyLock<regex::RegexSet> = LazyLock::new(|| {
+    RegexSetBuilder::new(PROBLEMATIC_CONSTS_STRINGS.as_slice())
         .case_insensitive(true)
         .build()
-        .unwrap();
+        .unwrap()
+});
 
+fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
     // In some cases, a style check would be triggered by its own implementation
     // or comments. A simple workaround is to just allowlist this file.
     let this_file = Path::new(file!());
     let codegen_file = Path::new("src/tools/tidy/src/codegen.rs");
 
-    walk(path, skip, &mut |entry, contents| {
-        let file = entry.path();
-        let path_str = file.to_string_lossy();
-        let filename = file.file_name().unwrap().to_string_lossy();
+    let path_str = file.to_string_lossy();
+    let filename = file.file_name().unwrap().to_string_lossy();
 
-        let is_css_file = filename.ends_with(".css");
-        let under_rustfmt = filename.ends_with(".rs") &&
+    let is_css_file = filename.ends_with(".css");
+    let under_rustfmt = filename.ends_with(".rs") &&
             // This list should ideally be sourced from rustfmt.toml but we don't want to add a toml
             // parser to tidy.
             !file.ancestors().any(|a| {
@@ -334,306 +341,245 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     a.ends_with("src/doc/book")
             });
 
-        if contents.is_empty() {
-            check.error(format!("{}: empty file", file.display()));
-        }
+    if contents.is_empty() {
+        check.error(format!("{}: empty file", file.display()));
+    }
 
-        let extension = file.extension().unwrap().to_string_lossy();
-        let is_error_code = extension == "md" && is_in(file, "src", "error_codes");
-        let is_goml_code = extension == "goml";
+    let extension = file.extension().unwrap().to_string_lossy();
+    let is_error_code = extension == "md" && is_in(file, "src", "error_codes");
+    let is_goml_code = extension == "goml";
 
-        let max_columns = if is_error_code {
-            ERROR_CODE_COLS
-        } else if is_goml_code {
-            GOML_COLS
-        } else {
-            COLS
-        };
+    let max_columns = if is_error_code {
+        ERROR_CODE_COLS
+    } else if is_goml_code {
+        GOML_COLS
+    } else {
+        COLS
+    };
 
-        // When you change this, also change the `directive_line_starts` variable below
-        let can_contain = match_ignore(contents, false, None) || match_ignore(contents, true, None);
+    // When you change this, also change the `directive_line_starts` variable below
+    let can_contain = match_ignore(contents, false, None) || match_ignore(contents, true, None);
 
-        // Enable testing ICE's that require specific (untidy)
-        // file formats easily eg. `issue-1234-ignore-tidy.rs`
-        if filename.contains("ignore-tidy") {
-            return;
-        }
-        // Shell completions are automatically generated
-        if let Some(p) = file.parent()
-            && p.ends_with(Path::new("src/etc/completions"))
-        {
-            return;
-        }
+    // Enable testing ICE's that require specific (untidy)
+    // file formats easily eg. `issue-1234-ignore-tidy.rs`
+    if filename.contains("ignore-tidy") {
+        return;
+    }
+    // Shell completions are automatically generated
+    if let Some(p) = file.parent()
+        && p.ends_with(Path::new("src/etc/completions"))
+    {
+        return;
+    }
 
-        let file_ignore =
-            Directives::from_line(&path_str, LineNumber::WholeFile, can_contain, contents);
-        // the ignores set in this line, meant for the next line
-        let mut next_line_ignore = Default::default();
+    let file_ignore =
+        Directives::from_line(&path_str, LineNumber::WholeFile, can_contain, contents);
+    // the ignores set in this line, meant for the next line
+    let mut next_line_ignore = Default::default();
 
-        let mut leading_new_lines = false;
-        let mut trailing_new_lines = 0;
-        let mut lines = 0;
-        let mut last_safety_comment = false;
-        let mut comment_block: Option<(usize, usize, Directive<'_>)> = None;
-        let is_test = file.components().any(|c| c.as_os_str() == "tests")
-            || file.file_stem().unwrap() == "tests";
-        let is_codegen_test = is_test && file.components().any(|c| c.as_os_str() == "codegen-llvm");
-        let is_this_file = file.ends_with(this_file) || this_file.ends_with(file);
-        let is_test_for_this_file =
-            is_test && file.parent().unwrap().ends_with(this_file.with_extension(""));
-        let is_codegen_tidy_file = file.ends_with(codegen_file);
-        // scanning the whole file for multiple needles at once is more efficient than
-        // executing lines times needles separate searches.
-        let any_problematic_line =
-            !is_this_file && !is_test_for_this_file && problematic_regex.is_match(contents);
-        for (i, line) in contents.split('\n').enumerate() {
-            if line.is_empty() {
-                if i == 0 {
-                    leading_new_lines = true;
-                }
-                trailing_new_lines += 1;
-                continue;
-            } else {
-                trailing_new_lines = 0;
+    let mut leading_new_lines = false;
+    let mut trailing_new_lines = 0;
+    let mut lines = 0;
+    let mut last_safety_comment = false;
+    let mut comment_block: Option<(usize, usize, NamedDirective)> = None;
+    let is_test =
+        file.components().any(|c| c.as_os_str() == "tests") || file.file_stem().unwrap() == "tests";
+    let is_codegen_test = is_test && file.components().any(|c| c.as_os_str() == "codegen-llvm");
+    let is_this_file = file.ends_with(this_file) || this_file.ends_with(file);
+    let is_test_for_this_file =
+        is_test && file.parent().unwrap().ends_with(this_file.with_extension(""));
+    let is_codegen_tidy_file = file.ends_with(codegen_file);
+    // scanning the whole file for multiple needles at once is more efficient than
+    // executing lines times needles separate searches.
+    let any_problematic_line =
+        !is_this_file && !is_test_for_this_file && PROBLEMATIC_REGEX.is_match(contents);
+    for (i, line) in contents.split('\n').enumerate() {
+        if line.is_empty() {
+            if i == 0 {
+                leading_new_lines = true;
             }
+            trailing_new_lines += 1;
+            continue;
+        } else {
+            trailing_new_lines = 0;
+        }
 
-            let line_number = i + 1;
+        let line_number = i + 1;
 
-            let mut ignore = file_ignore.create_child(mem::replace(
+        let mut ignore = file_ignore.create_child(
+            mem::replace(
                 &mut next_line_ignore,
                 Directives::from_line(&path_str, LineNumber::Line(line_number), can_contain, line),
-            ));
+            ),
+            check,
+            file,
+        );
 
-            let trimmed = line.trim();
+        let trimmed = line.trim();
 
-            if !trimmed.starts_with("//") {
-                lines += 1;
-            }
+        if !trimmed.starts_with("//") {
+            lines += 1;
+        }
 
-            let mut err = |msg: &str| {
-                check.error(format!("{}:{}: {msg}", file.display(), line_number));
-            };
+        let mut err = |msg: &str| {
+            check.error(format!("{}:{}: {msg}", file.display(), line_number));
+        };
 
-            if !is_this_file
-                && trimmed.contains("dbg!")
-                && !trimmed.starts_with("//")
-                && !file.ancestors().any(|a| {
-                    (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
-                        || a.ends_with("library/alloctests")
-                })
-                && filename != "tests.rs"
-            {
-                suppressible_tidy_err!(
-                    err,
-                    ignore.dbg,
-                    "`dbg!` macro is intended as a debugging tool. It should not be in version control."
-                )
-            }
+        if !is_this_file
+            && trimmed.contains("dbg!")
+            && !trimmed.starts_with("//")
+            && !file.ancestors().any(|a| {
+                (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
+                    || a.ends_with("library/alloctests")
+            })
+            && filename != "tests.rs"
+        {
+            suppressible_tidy_err!(
+                err,
+                ignore.dbg,
+                "`dbg!` macro is intended as a debugging tool. It should not be in version control."
+            )
+        }
 
-            if !is_this_file
-                && trimmed.contains("todo!")
-                && !trimmed.starts_with("//")
-                && !file.ancestors().any(|a| {
-                    (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
-                        || a.ends_with("library/alloctests")
-                })
-                && filename != "tests.rs"
-            {
-                suppressible_tidy_err!(
-                    err,
-                    ignore.todo,
-                    "the `todo!` macro is used for tasks that should be done before merging a PR. If you want to panic here, use `panic!`, `unimplemented!`, `unreachable!`, `rustc_middle::bug!` or an assertion"
-                )
-            }
+        if !is_this_file
+            && trimmed.contains("todo!")
+            && !trimmed.starts_with("//")
+            && !file.ancestors().any(|a| {
+                (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
+                    || a.ends_with("library/alloctests")
+            })
+            && filename != "tests.rs"
+        {
+            suppressible_tidy_err!(
+                err,
+                ignore.todo,
+                "the `todo!` macro is used for tasks that should be done before merging a PR. If you want to panic here, use `panic!`, `unimplemented!`, `unreachable!`, `rustc_middle::bug!` or an assertion"
+            )
+        }
 
-            if is_codegen_test && trimmed.contains("CHECK") && trimmed.ends_with(": br") {
-                err("`CHECK: br` and `CHECK-NOT: br` in codegen tests are fragile to false \
+        if is_codegen_test && trimmed.contains("CHECK") && trimmed.ends_with(": br") {
+            err("`CHECK: br` and `CHECK-NOT: br` in codegen tests are fragile to false \
                     positives in mangled symbols. Try using `br {{.*}}` instead.")
-            }
+        }
 
-            if !under_rustfmt
-                && line.chars().count() > max_columns
-                && !long_line_is_ok(&extension, is_error_code, max_columns, line)
-            {
-                suppressible_tidy_err!(
-                    err,
-                    ignore.linelength,
-                    "line longer than {max_columns} chars"
-                );
-            }
-            if !is_css_file && line.contains('\t') {
-                suppressible_tidy_err!(err, ignore.tab, "tab character");
-            }
-            if line.ends_with(' ') || line.ends_with('\t') {
-                suppressible_tidy_err!(err, ignore.end_whitespace, "trailing whitespace");
-            }
-            if is_css_file && line.starts_with(' ') {
-                err("CSS files use tabs for indent");
-            }
-            if line.contains('\r') {
-                suppressible_tidy_err!(err, ignore.cr, "CR character");
-            }
-            if !is_this_file && !is_codegen_tidy_file {
-                let directive_line_starts = ["// ", "# ", "/* ", "<!-- "];
-                let possible_line_start =
-                    directive_line_starts.into_iter().any(|s| line.starts_with(s));
-                let contains_potential_directive =
-                    possible_line_start && (line.contains("-tidy") || line.contains("tidy-"));
-                let has_recognized_ignore_directive = can_contain
-                    && (Directives::parse(LineNumber::Line(line_number), line)
+        if !under_rustfmt
+            && line.chars().count() > max_columns
+            && !long_line_is_ok(&extension, is_error_code, max_columns, line)
+        {
+            suppressible_tidy_err!(err, ignore.linelength, "line longer than {max_columns} chars");
+        }
+        if !is_css_file && line.contains('\t') {
+            suppressible_tidy_err!(err, ignore.tab, "tab character");
+        }
+        if line.ends_with(' ') || line.ends_with('\t') {
+            suppressible_tidy_err!(err, ignore.end_whitespace, "trailing whitespace");
+        }
+        if is_css_file && line.starts_with(' ') {
+            err("CSS files use tabs for indent");
+        }
+        if line.contains('\r') {
+            suppressible_tidy_err!(err, ignore.cr, "CR character");
+        }
+        if !is_this_file && !is_codegen_tidy_file {
+            let directive_line_starts = ["// ", "# ", "/* ", "<!-- "];
+            let possible_line_start =
+                directive_line_starts.into_iter().any(|s| line.starts_with(s));
+            let contains_potential_directive =
+                possible_line_start && (line.contains("-tidy") || line.contains("tidy-"));
+            let has_recognized_ignore_directive = can_contain
+                && (Directives::parse(LineNumber::Line(line_number), line)
+                    .iter()
+                    .any(|directive| directive.is_ignore_and_defuse())
+                    || Directives::parse(LineNumber::WholeFile, line)
                         .iter()
-                        .any(|(_, directive)| directive.is_ignore_and_defuse())
-                        || Directives::parse(LineNumber::WholeFile, line)
-                            .iter()
-                            .any(|(_, directive)| directive.is_ignore_and_defuse()));
-                let has_alphabetical_directive = line.contains("tidy-alphabetical-start")
-                    || line.contains("tidy-alphabetical-end");
-                let has_other_tidy_ignore_directive =
-                    line.contains("ignore-tidy-target-specific-tests");
-                let has_recognized_directive = has_recognized_ignore_directive
-                    || has_alphabetical_directive
-                    || has_other_tidy_ignore_directive;
-                if contains_potential_directive && (!has_recognized_directive) {
-                    err("Unrecognized tidy directive")
-                }
-                // Allow using TODO in diagnostic suggestions by marking the
-                // relevant line with `ignore-tidy-todo`.
-                if trimmed.contains("TODO") && !trimmed.contains("ignore-tidy-todo") {
-                    err(
-                        "TODO is used for tasks that should be done before merging a PR; If you want to leave a message in the codebase use FIXME",
-                    )
-                }
-                if trimmed.contains("//") && trimmed.contains(" XXX") {
-                    err("Instead of XXX use FIXME")
-                }
-                if any_problematic_line && contains_problematic_const(trimmed) {
-                    err("Don't use magic numbers that spell things (consider 0x12345678)");
-                }
+                        .any(|directive| directive.is_ignore_and_defuse()));
+            let has_alphabetical_directive =
+                line.contains("tidy-alphabetical-start") || line.contains("tidy-alphabetical-end");
+            let has_other_tidy_ignore_directive =
+                line.contains("ignore-tidy-target-specific-tests");
+            let has_recognized_directive = has_recognized_ignore_directive
+                || has_alphabetical_directive
+                || has_other_tidy_ignore_directive;
+            if contains_potential_directive && (!has_recognized_directive) {
+                err("Unrecognized tidy directive")
             }
-            // for now we just check libcore
-            if trimmed.contains("unsafe {")
-                && !trimmed.starts_with("//")
-                && !last_safety_comment
-                && file.components().any(|c| c.as_os_str() == "core")
-                && !is_test
+            // Allow using TODO in diagnostic suggestions by marking the
+            // relevant line with `ignore-tidy-todo`.
+            if trimmed.contains("TODO") && !trimmed.contains("ignore-tidy-todo") {
+                err(
+                    "TODO is used for tasks that should be done before merging a PR; If you want to leave a message in the codebase use FIXME",
+                )
+            }
+            if trimmed.contains("//") && trimmed.contains(" XXX") {
+                err("Instead of XXX use FIXME")
+            }
+            if any_problematic_line && contains_problematic_const(trimmed) {
+                err("Don't use magic numbers that spell things (consider 0x12345678)");
+            }
+        }
+        // for now we just check libcore
+        if trimmed.contains("unsafe {")
+            && !trimmed.starts_with("//")
+            && !last_safety_comment
+            && file.components().any(|c| c.as_os_str() == "core")
+            && !is_test
+        {
+            suppressible_tidy_err!(err, ignore.undocumented_unsafe, "undocumented unsafe");
+        }
+        if trimmed.contains("// SAFETY:") {
+            last_safety_comment = true;
+        } else if trimmed.starts_with("//") || trimmed.is_empty() {
+            // keep previous value
+        } else {
+            last_safety_comment = false;
+        }
+        if (line.starts_with("// Copyright")
+            || line.starts_with("# Copyright")
+            || line.starts_with("Copyright"))
+            && (trimmed.contains("Rust Developers") || trimmed.contains("Rust Project Developers"))
+        {
+            suppressible_tidy_err!(
+                err,
+                ignore.copyright,
+                "copyright notices attributed to the Rust Project Developers are deprecated"
+            );
+        }
+        if !file.components().any(|c| c.as_os_str() == "rustc_baked_icu_data")
+            && is_unexplained_ignore(&extension, line)
+        {
+            err(UNEXPLAINED_IGNORE_DOCTEST_INFO);
+        }
+
+        if filename.ends_with(".cpp") && line.contains("llvm_unreachable") {
+            err(LLVM_UNREACHABLE_INFO);
+        }
+
+        // For now only enforce in compiler
+        let is_compiler = || file.components().any(|c| c.as_os_str() == "compiler");
+
+        if is_compiler() {
+            if line.contains("//")
+                && line
+                    .chars()
+                    .collect::<Vec<_>>()
+                    .windows(4)
+                    .any(|cs| matches!(cs, ['.', ' ', ' ', last] if last.is_alphabetic()))
             {
-                suppressible_tidy_err!(err, ignore.undocumented_unsafe, "undocumented unsafe");
-            }
-            if trimmed.contains("// SAFETY:") {
-                last_safety_comment = true;
-            } else if trimmed.starts_with("//") || trimmed.is_empty() {
-                // keep previous value
-            } else {
-                last_safety_comment = false;
-            }
-            if (line.starts_with("// Copyright")
-                || line.starts_with("# Copyright")
-                || line.starts_with("Copyright"))
-                && (trimmed.contains("Rust Developers")
-                    || trimmed.contains("Rust Project Developers"))
-            {
-                suppressible_tidy_err!(
-                    err,
-                    ignore.copyright,
-                    "copyright notices attributed to the Rust Project Developers are deprecated"
-                );
-            }
-            if !file.components().any(|c| c.as_os_str() == "rustc_baked_icu_data")
-                && is_unexplained_ignore(&extension, line)
-            {
-                err(UNEXPLAINED_IGNORE_DOCTEST_INFO);
+                err(DOUBLE_SPACE_AFTER_DOT)
             }
 
-            if filename.ends_with(".cpp") && line.contains("llvm_unreachable") {
-                err(LLVM_UNREACHABLE_INFO);
-            }
-
-            // For now only enforce in compiler
-            let is_compiler = || file.components().any(|c| c.as_os_str() == "compiler");
-
-            if is_compiler() {
-                if line.contains("//")
-                    && line
-                        .chars()
-                        .collect::<Vec<_>>()
-                        .windows(4)
-                        .any(|cs| matches!(cs, ['.', ' ', ' ', last] if last.is_alphabetic()))
-                {
-                    err(DOUBLE_SPACE_AFTER_DOT)
+            // Heuristics for matching unbalanced backticks by trying to find comments and
+            // comment blocks. Technically, this can have false negatives (or false positives),
+            // but as a heuristic this is fine.
+            let likely_comment = |trimmed: &str| {
+                if trimmed.contains("ignore-tidy") {
+                    return false;
                 }
 
-                // Heuristics for matching unbalanced backticks by trying to find comments and
-                // comment blocks. Technically, this can have false negatives (or false positives),
-                // but as a heuristic this is fine.
-                let likely_comment = |trimmed: &str| {
-                    if trimmed.contains("ignore-tidy") {
-                        return false;
-                    }
-
-                    // Line comments, doc comments
-                    trimmed.contains("//")
+                // Line comments, doc comments
+                trimmed.contains("//")
                         // Also account for `#[cfg_attr(bootstrap, doc = "")]` cases.
                         || (trimmed.contains("cfg_attr") && trimmed.contains("doc"))
-                };
-
-                if likely_comment(trimmed) {
-                    let (start_line, mut backtick_count, directive) = comment_block
-                        .take()
-                        .unwrap_or((line_number, 0, mem::take(&mut ignore.odd_backticks)));
-                    let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
-
-                    // Try to split `//`-like comments or `#[cfg_attr(bootstrap), doc = ""]`-like
-                    // doc attributes. Fuzzy, but probably good enough.
-                    let comment_text = match trimmed.split("//").nth(1) {
-                        Some(text) => text,
-                        None => {
-                            // Fallback to try look for RHS of doc attr bits.
-                            let (_doc, rest) =
-                                trimmed.split_once("doc").expect("failed to find `doc` attribute");
-                            rest
-                        }
-                    };
-
-                    // If backticks on a given comment line is not balanced, add to backtick count.
-                    // This is to account for wrapped backticks and code blocks.
-                    if line_backticks % 2 == 1 {
-                        backtick_count += comment_text.chars().filter(|ch| *ch == '`').count();
-                    }
-                    comment_block = Some((start_line, backtick_count, directive));
-                } else if let Some((start_line, backtick_count, directive)) = comment_block.take()
-                    && backtick_count % 2 == 1
-                {
-                    let mut err = |msg: &str| {
-                        check.error(format!("{}:{start_line}: {msg}", file.display()));
-                    };
-                    let block_len = line_number - start_line;
-                    if block_len == 1 {
-                        suppressible_tidy_err!(
-                            err,
-                            // use the directives from when the block started
-                            directive,
-                            "comment with odd number of backticks"
-                        );
-                    } else {
-                        suppressible_tidy_err!(
-                            err,
-                            // use the directives from when the block started
-                            directive,
-                            "{block_len}-line comment block with odd number of backticks"
-                        );
-                    }
-
-                    let mut fake_directives = Directives::default();
-                    fake_directives.odd_backticks = directive;
-                    fake_directives.check_usage(&mut check, file);
-                }
-            }
-
-            ignore.check_usage(&mut check, file);
-        }
-        if leading_new_lines {
-            let mut err = |_| {
-                check.error(format!("{}: leading newline", file.display()));
             };
 
             if likely_comment(trimmed) {
@@ -685,40 +631,42 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 directive.check_usage(check, file);
             }
         }
-        let mut err = |msg: &str| {
-            check.error(format!("{}: {}", file.display(), msg));
-        };
-        match trailing_new_lines {
-            0 => suppressible_tidy_err!(
-                err,
-                file_ignore.trailing_newlines,
-                "missing trailing newline"
-            ),
-            1 => {}
-            n => suppressible_tidy_err!(
-                err,
-                file_ignore.trailing_newlines,
-                "too many trailing newlines ({n})"
-            ),
-        };
-        if lines > LINES {
-            let mut err = |_| {
-                check.error(format!(
-                    "{}: too many lines ({lines}) (add `// \
-                     ignore-tidy-file-filelength` to the file to suppress this error)",
-                    file.display(),
-                ));
-            };
-            suppressible_tidy_err!(err, file_ignore.filelength, "");
-        }
 
-        if let Some((_, _, directive)) = comment_block.take() {
-            let mut fake_directives = Directives::default();
-            fake_directives.odd_backticks = directive;
-            fake_directives.check_usage(&mut check, file);
-        }
-        drop(comment_block);
-        next_line_ignore.check_usage(&mut check, file);
-        file_ignore.check_usage(&mut check, file);
-    });
+        ignore.check_usage(check, file);
+    }
+    if leading_new_lines {
+        let mut err = |_| {
+            check.error(format!("{}: leading newline", file.display()));
+        };
+        suppressible_tidy_err!(err, file_ignore.leading_newlines, "missing leading newline");
+    }
+    let mut err = |msg: &str| {
+        check.error(format!("{}: {}", file.display(), msg));
+    };
+    match trailing_new_lines {
+        0 => suppressible_tidy_err!(err, file_ignore.trailing_newlines, "missing trailing newline"),
+        1 => {}
+        n => suppressible_tidy_err!(
+            err,
+            file_ignore.trailing_newlines,
+            "too many trailing newlines ({n})"
+        ),
+    };
+    if lines > LINES {
+        let mut err = |_| {
+            check.error(format!(
+                "{}: too many lines ({lines}) (add `// \
+                     ignore-tidy-file-filelength` to the file to suppress this error)",
+                file.display(),
+            ));
+        };
+        suppressible_tidy_err!(err, file_ignore.filelength, "");
+    }
+
+    if let Some((_, _, directive)) = comment_block.take() {
+        directive.check_usage(check, file);
+    }
+    drop(comment_block);
+    next_line_ignore.check_usage(check, file);
+    file_ignore.check_usage(check, file);
 }
