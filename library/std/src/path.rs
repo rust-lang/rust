@@ -2515,7 +2515,8 @@ impl ToOwned for Path {
 impl PartialEq for PathBuf {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
-        self.components() == other.components()
+        self.as_os_str() == other.as_os_str()
+            || Iterator::eq(self.components().rev(), other.components().rev())
     }
 }
 
@@ -4040,7 +4041,8 @@ impl fmt::Display for Display<'_> {
 impl PartialEq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
-        self.components() == other.components()
+        self.as_os_str() == other.as_os_str()
+            || Iterator::eq(self.components().rev(), other.components().rev())
     }
 }
 
