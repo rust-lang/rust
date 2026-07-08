@@ -850,13 +850,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stdarch-gen-hexagon-scalar"
-version = "0.1.0"
-dependencies = [
- "regex",
-]
-
-[[package]]
 name = "stdarch-gen-loongarch"
 version = "0.1.0"
 dependencies = [
@@ -869,7 +862,6 @@ version = "0.1.0"
 dependencies = [
  "assert-instr-macro",
  "cc",
- "cfg-if",
  "rustc-demangle",
  "simd-test-macro",
  "wasmprinter",
