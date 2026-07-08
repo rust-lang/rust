@@ -1459,6 +1459,12 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 self.print_view(fields);
             }
+            ast::TyKind::DirectConstArg(expr) => {
+                self.word_nbsp("core::direct_const_arg!");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose();
+            }
         }
         self.end(ib);
     }
