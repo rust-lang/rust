@@ -1016,6 +1016,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         res.unwrap_or(Res::Err)
     }
 
+    /// The common entry point to obtaining resolution information.
+    ///
+    /// ## Panics
+    ///
+    /// If the resolution still has unresolved segments, this function will panic.
+    /// So lowering paths always needs to go through `get_full_res`.
     fn expect_full_res(&self, id: NodeId) -> Res<NodeId> {
         self.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
