@@ -29,6 +29,13 @@ pub(crate) fn target() -> Target {
         crt_static_default: true,
         crt_static_allows_dylibs: true,
         main_needs_argc_argv: true,
+        // Emit the entry point under the wasm C-ABI name that Clang uses
+        // (`__main_argc_argv` for the argc/argv form) rather than a raw `main`.
+        // This is what emscripten's crt/libc references, and is required for
+        // entry paths such as `-sPROXY_TO_PTHREAD` whose `crt1_proxy_main`
+        // links against `__main_argc_argv`. A raw `main` only resolves on the
+        // JS-driven default entry path and fails to link on the proxied one.
+        entry_name: "__main_argc_argv".into(),
         panic_strategy: PanicStrategy::Unwind,
         no_default_libraries: false,
         families: cvs!["unix", "wasm"],
