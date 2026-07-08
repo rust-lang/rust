@@ -593,18 +593,7 @@ impl TtParser {
                     Success(self.nameize(matcher, matches))
                 }
                 [] => {
-                    track.failure(
-                        Token::new(
-                            token::Eof,
-                            if token.span.is_dummy() {
-                                token.span
-                            } else {
-                                token.span.shrink_to_hi()
-                            },
-                        ),
-                        parser.approx_token_stream_pos(),
-                        "missing tokens in macro arguments",
-                    );
+                    track.failure(parser);
                     Failure
                 }
                 _ => self.ambiguity_error(parser, matcher, track),
@@ -649,11 +638,7 @@ impl TtParser {
                 (0, 0) => {
                     // There are no possible next positions AND we aren't waiting for the black-box
                     // parser: syntax error.
-                    track.failure(
-                        parser.token,
-                        parser.approx_token_stream_pos(),
-                        "no rules expected this token in macro call",
-                    );
+                    track.failure(parser);
                     return Failure;
                 }
 

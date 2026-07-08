@@ -376,7 +376,7 @@ pub(super) trait Tracker<'matcher> {
     /// indicates that no rules in the arm expected the given token.
     ///
     /// The parser will return [`NamedParseResult::Failure`] after calling this.
-    fn failure(&mut self, token: Token, approx_position: u32, msg: &'static str);
+    fn failure(&mut self, parser: &Parser<'_>);
 
     /// An ambiguity error occurred.
     ///
@@ -413,7 +413,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
     fn after_arm(&mut self, _result: &NamedParseResult) {}
 
-    fn failure(&mut self, _token: Token, _approx_position: u32, _msg: &'static str) {}
+    fn failure(&mut self, _parser: &Parser<'_>) {}
 
     fn description() -> &'static str {
         "none"

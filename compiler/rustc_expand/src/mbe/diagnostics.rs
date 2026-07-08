@@ -225,9 +225,23 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         self.current = None;
     }
 
-    fn failure(&mut self, token: Token, approx_position: u32, msg: &'static str) {
+    fn failure(&mut self, parser: &Parser<'_>) {
         let Some(which_matcher) = self.current else {
             bug!("`Self::prepare()` was not called to initialize context");
+        };
+
+        let token = &parser.token;
+        let (token, approx_position, msg) = if *token == token::Eof {
+            (
+                Token::new(
+                    token::Eof,
+                    if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
+                ),
+                parser.approx_token_stream_pos(),
+                "missing tokens in macro arguments",
+            )
+        } else {
+            (*token, parser.approx_token_stream_pos(), "no rules expected this token in macro call")
         };
 
         debug!(?token, ?msg, "a new failure of an arm");
