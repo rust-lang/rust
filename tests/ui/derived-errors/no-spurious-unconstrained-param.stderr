@@ -1,5 +1,5 @@
 error[E0425]: cannot find type `Bar` in this scope
-  --> $DIR/issue-36836.rs:13:17
+  --> $DIR/no-spurious-unconstrained-param.rs:14:17
    |
 LL | impl<T> Foo for Bar<T> {}
    |                 ^^^ not found in this scope
