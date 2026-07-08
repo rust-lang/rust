@@ -3,8 +3,8 @@
 // it is currently unmitigated
 fn main(){
     let foo = 12;
-    let bar = foo{return;};//~ ERROR E0574
-    //~| HELP you might have meant to write a diverging block
+    let bar = foo{return;};
+    //~^ HELP you might have meant to write a diverging block
     //~| HELP escape `return` to use it as an identifier
     //~| ERROR expected identifier, found keyword `return`
 }
