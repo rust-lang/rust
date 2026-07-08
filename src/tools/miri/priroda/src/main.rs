@@ -382,64 +382,15 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
 
     fn get_local(&self, local: usize) -> Option<LocalDesc> {
-        let Some(frame) = self.ecx.active_thread_stack().last() else {
-            return None;
-        };
+        let frame = self.ecx.active_thread_stack().last()?;
 
-        let local = mir::Local::from_usize(local);
-        let Some(local_decl) = &frame.body().local_decls.get(local) else {
-            return None;
-        };
-
-        // Create LocalDesc for MIR local before processing debug info.
-        // Later debug-derived descriptions will be pushed back to LocalDesc list.
-        let mut local_desc = LocalDesc {
-            source_name: None,
-            source_projection: None,
-            local: Some(local),
-            storage_projection: Vec::new(),
-            ty: local_decl.ty.to_string(),
-            // FIXME: projection not handled yet.
-            value: "<unsupported>".to_string(),
-        };
-
-        if let Some(local) = local_desc.local {
-            if local_desc.storage_projection.is_empty() {
-                match &frame.locals[local].as_mplace_or_imm() {
-                    None => {
-                        local_desc.value = "<dead>".to_string();
-                    }
-                    Some(Either::Left(_)) => {
-                        local_desc.value = "<indirect>".to_string();
-                    }
-                    Some(Either::Right(imm)) => {
-                        match imm {
-                            Scalar(_) => {
-                                local_desc.value = "<immediate>".to_string();
-                            }
-                            ScalarPair(_, _) => {
-                                local_desc.value = "<immediate-pair>".to_string();
-                            }
-
-                            Uninit => {
-                                local_desc.value = "<uninit>".to_string();
-                            }
-                        };
-                    }
-                };
-            } else {
-                // FIXME: projection not handled yet.
-                local_desc.value = "<unsupported-projection>".to_string();
-            }
-        }
-
-        Some(local_desc)
+        self.make_mir_local_desc(frame, local)
     }
 
     /// Returns structured descriptions for locals in the innermost stack frame.
     ///
-    /// Starts from all MIR locals, enriches whole-local debug entries in place,
-    /// and appends extra rows for projected debug-info storage.
+    /// Starts from all MIR locals, then enriches them with source names from
+    /// `var_debug_info` when a debug entry maps directly to a whole local.
     fn list_locals(&self) -> Vec<LocalDesc> {
         let Some(frame) = self.ecx.active_thread_stack().last() else {
             return Vec::new();
@@ -452,7 +403,7 @@ impl<'tcx> PrirodaContext<'tcx> {
     fn render_source_projection(
         fragment: Option<&VarDebugInfoFragment<'tcx>>,
     ) -> Option<Vec<Symbol>> {
-        let Some(VarDebugInfoFragment { ty, projection }) = fragment else { return None };
+        let VarDebugInfoFragment { ty, projection } = fragment?;
 
         // Walk the source-side projection from the original
         // composite variable type. Each `Field` element stores the
@@ -460,7 +411,7 @@ impl<'tcx> PrirodaContext<'tcx> {
         // current base type before advancing to `field_ty`.
         let mut projection_ty = ty;
 
-        let source_projection = Some(
+        Some(
             projection
                 .iter()
                 .map(|elem| {
@@ -491,13 +442,12 @@ impl<'tcx> PrirodaContext<'tcx> {
                     }
                 })
                 .collect(),
-        );
-        source_projection
+        )
     }
 
     /// Render the MIR storage-side path that backs a debug-info local.
     fn render_storage_projection(projection: &[mir::PlaceElem<'tcx>]) -> Vec<StorageProj> {
-        let storage_proj = projection
+        projection
             .iter()
             .map(|projection_elem| {
                 match projection_elem {
@@ -509,8 +459,53 @@ impl<'tcx> PrirodaContext<'tcx> {
                     other => StorageProj::Unsupported(format!("{other:?}")),
                 }
             })
-            .collect();
-        storage_proj
+            .collect()
+    }
+
+    /// Builds the baseline debugger row for one MIR local without scanning debug info.
+    fn make_mir_local_desc(
+        &self,
+        frame: &Frame<'tcx, Provenance, FrameExtra<'tcx>>,
+        local: usize,
+    ) -> Option<LocalDesc> {
+        let local = mir::Local::from_usize(local);
+        let local_decl = frame.body().local_decls.get(local)?;
+
+        // Create LocalDesc for MIR local before processing debug info.
+        // Debug-info enrichment is layered on by build_local_descs.
+        let mut local_desc = LocalDesc {
+            source_name: None,
+            source_projection: None,
+            local: Some(local),
+            storage_projection: Vec::new(),
+            ty: local_decl.ty.to_string(),
+            value: "<unsupported>".to_string(),
+        };
+
+        match &frame.locals[local].as_mplace_or_imm() {
+            None => {
+                local_desc.value = "<dead>".to_string();
+            }
+            Some(Either::Left(_)) => {
+                local_desc.value = "<indirect>".to_string();
+            }
+            Some(Either::Right(imm)) => {
+                match imm {
+                    Scalar(_) => {
+                        local_desc.value = "<immediate>".to_string();
+                    }
+                    ScalarPair(_, _) => {
+                        local_desc.value = "<immediate-pair>".to_string();
+                    }
+
+                    Uninit => {
+                        local_desc.value = "<uninit>".to_string();
+                    }
+                };
+            }
+        };
+
+        Some(local_desc)
     }
 
     fn build_local_descs(
@@ -519,20 +514,11 @@ impl<'tcx> PrirodaContext<'tcx> {
     ) -> Vec<LocalDesc> {
         let local_decls = &frame.body().local_decls;
 
-        let mut locals: Vec<LocalDesc> = Vec::with_capacity(local_decls.len());
+        let mut local_descs: Vec<LocalDesc> = Vec::with_capacity(local_decls.len());
 
-        // Create LocalDesc for every MIR local before processing debug info.
-        // Later debug-derived descriptions will be pushed back to LocalDesc list.
-        for (local_idx, local_decl) in local_decls.iter_enumerated() {
-            locals.push(LocalDesc {
-                source_name: None,
-                source_projection: None,
-                local: Some(local_idx),
-                storage_projection: Vec::new(),
-                ty: local_decl.ty.to_string(),
-                // FIXME: projection not handled yet.
-                value: "<unsupported>".to_string(),
-            });
+        // Start with one baseline row for every MIR local, then layer debug info on top.
+        for (local_idx, _) in local_decls.iter_enumerated() {
+            local_descs.push(self.make_mir_local_desc(frame, local_idx.index()).unwrap());
         }
 
         // FIXME: Finish classifying `var_debug_info` by keeping the source path
@@ -570,63 +556,31 @@ impl<'tcx> PrirodaContext<'tcx> {
         for var_debug_info in &frame.body().var_debug_info {
             if let VarDebugInfoContents::Place(place) = &var_debug_info.value {
                 if let Some(local_idx) = place.as_local()
-                    && locals[local_idx.index()].source_name.is_none()
+                    && local_descs[local_idx.index()].source_name.is_none()
                 {
                     let local_idx = local_idx.index();
-                    locals[local_idx].source_projection =
+                    local_descs[local_idx].source_projection =
                         Self::render_source_projection(var_debug_info.composite.as_deref());
-                    locals[local_idx].source_name = Some(var_debug_info.name);
+                    local_descs[local_idx].source_name = Some(var_debug_info.name);
                 } else if !place.projection.is_empty() {
                     let storage_projection = Self::render_storage_projection(place.projection);
                     let source_projection =
                         Self::render_source_projection(var_debug_info.composite.as_deref());
 
-                    locals.push(LocalDesc {
+                    local_descs.push(LocalDesc {
                         source_name: Some(var_debug_info.name),
                         source_projection,
                         local: Some(place.local),
                         storage_projection,
                         ty: place.ty(local_decls, self.ecx.tcx.tcx).ty.to_string(),
                         // FIXME: projection not handled yet.
-                        value: "<unsupported>".to_string(),
+                        value: "<unsupported-projection>".to_string(),
                     });
                 }
             }
         }
 
-        for local_desc in &mut locals {
-            if let Some(local) = local_desc.local {
-                if local_desc.storage_projection.is_empty() {
-                    match &frame.locals[local].as_mplace_or_imm() {
-                        None => {
-                            local_desc.value = "<dead>".to_string();
-                        }
-                        Some(Either::Left(_)) => {
-                            local_desc.value = "<indirect>".to_string();
-                        }
-                        Some(Either::Right(imm)) => {
-                            match imm {
-                                Scalar(_) => {
-                                    local_desc.value = "<immediate>".to_string();
-                                }
-                                ScalarPair(_, _) => {
-                                    local_desc.value = "<immediate-pair>".to_string();
-                                }
-
-                                Uninit => {
-                                    local_desc.value = "<uninit>".to_string();
-                                }
-                            };
-                        }
-                    };
-                } else {
-                    // FIXME: projection not handled yet.
-                    local_desc.value = "<unsupported-projection>".to_string();
-                }
-            }
-        }
-
-        locals
+        local_descs
     }
 }
 
