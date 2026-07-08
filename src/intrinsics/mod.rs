@@ -276,6 +276,14 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     target: Option<BasicBlock>,
     source_info: mir::SourceInfo,
 ) -> Result<(), Instance<'tcx>> {
+    // When `-Zforce-intrinsic-fallback` is enabled, always use the fallback body if it exists,
+    if fx.tcx.sess.opts.unstable_opts.force_intrinsic_fallback
+        && let Some(def) = fx.tcx.intrinsic(instance.def_id())
+        && !def.must_be_overridden
+    {
+        return Err(Instance::new_raw(instance.def_id(), instance.args));
+    }
+
     let intrinsic = fx.tcx.item_name(instance.def_id());
     let instance_args = instance.args;
 
