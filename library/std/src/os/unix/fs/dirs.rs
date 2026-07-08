@@ -345,6 +345,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_vendor = "apple", ignore = "Apple OSes don't use xdg-user-dirs")]
     fn can_fetch_xdg_user_dirs() {
         let dirs = UserDirs::xdg_user().unwrap();
 
