@@ -1098,7 +1098,10 @@ pub fn sinf16(x: f16) -> f16 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn sinf32(x: f32) -> f32 {
-    libm::likely_available::sinf(x)
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => sinf64(x as f64) as f32,
+        _ => libm::likely_available::sinf(x),
+    }
 }
 /// Returns the sine of an `f64`.
 ///
@@ -1139,7 +1142,10 @@ pub fn cosf16(x: f16) -> f16 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn cosf32(x: f32) -> f32 {
-    libm::likely_available::cosf(x)
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => cosf64(x as f64) as f32,
+        _ => libm::likely_available::cosf(x),
+    }
 }
 /// Returns the cosine of an `f64`.
 ///
@@ -1180,7 +1186,10 @@ pub fn powf16(a: f16, x: f16) -> f16 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn powf32(a: f32, x: f32) -> f32 {
-    libm::likely_available::powf(a, x)
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => powf64(a as f64, x as f64) as f32,
+        _ => libm::likely_available::powf(a, x),
+    }
 }
 /// Raises an `f64` to an `f64` power.
 ///
@@ -1221,7 +1230,10 @@ pub fn expf16(x: f16) -> f16 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn expf32(x: f32) -> f32 {
-    libm::likely_available::expf(x)
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => expf64(x as f64) as f32,
+        _ => libm::likely_available::expf(x),
+    }
 }
 /// Returns the exponential of an `f64`.
 ///
@@ -1262,7 +1274,10 @@ pub fn exp2f16(x: f16) -> f16 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn exp2f32(x: f32) -> f32 {
-    libm::likely_available::exp2f(x)
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => exp2f64(x as f64) as f32,
+        _ => libm::likely_available::exp2f(x),
+    }
 }
 /// Returns 2 raised to the power of an `f64`.
 ///
@@ -1303,7 +1318,10 @@ pub fn logf16(x: f16) -> f16 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn logf32(x: f32) -> f32 {
-    libm::likely_available::logf(x)
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => logf64(x as f64) as f32,
+        _ => libm::likely_available::logf(x),
+    }
 }
 /// Returns the natural logarithm of an `f64`.
 ///
@@ -1344,7 +1362,10 @@ pub fn log10f16(x: f16) -> f16 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn log10f32(x: f32) -> f32 {
-    libm::likely_available::log10f(x)
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => log10f64(x as f64) as f32,
+        _ => libm::likely_available::log10f(x),
+    }
 }
 /// Returns the base 10 logarithm of an `f64`.
 ///
@@ -1385,7 +1406,10 @@ pub fn log2f16(x: f16) -> f16 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn log2f32(x: f32) -> f32 {
-    libm::likely_available::log2f(x)
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => log2f64(x as f64) as f32,
+        _ => libm::likely_available::log2f(x),
+    }
 }
 /// Returns the base 2 logarithm of an `f64`.
 ///
