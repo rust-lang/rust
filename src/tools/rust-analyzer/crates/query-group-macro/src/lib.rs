@@ -89,32 +89,16 @@ enum QueryKind {
 
 #[derive(Default, Debug, Clone)]
 struct Cycle {
-    cycle_fn: Option<(syn::Ident, Path)>,
-    cycle_initial: Option<(syn::Ident, Path)>,
     cycle_result: Option<(syn::Ident, Path)>,
 }
 
 impl Parse for Cycle {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let options = Punctuated::<Option, Token![,]>::parse_terminated(input)?;
-        let mut cycle_fn = None;
-        let mut cycle_initial = None;
         let mut cycle_result = None;
         for option in options {
             let name = option.name.to_string();
             match &*name {
-                "cycle_fn" => {
-                    if cycle_fn.is_some() {
-                        return Err(syn::Error::new_spanned(&option.name, "duplicate option"));
-                    }
-                    cycle_fn = Some((option.name, option.value));
-                }
-                "cycle_initial" => {
-                    if cycle_initial.is_some() {
-                        return Err(syn::Error::new_spanned(&option.name, "duplicate option"));
-                    }
-                    cycle_initial = Some((option.name, option.value));
-                }
                 "cycle_result" => {
                     if cycle_result.is_some() {
                         return Err(syn::Error::new_spanned(&option.name, "duplicate option"));
@@ -124,12 +108,12 @@ impl Parse for Cycle {
                 _ => {
                     return Err(syn::Error::new_spanned(
                         &option.name,
-                        "unknown cycle option. Accepted values: `cycle_result`, `cycle_fn`, `cycle_initial`",
+                        "unknown cycle option. Accepted values: `cycle_result`",
                     ));
                 }
             }
         }
-        return Ok(Self { cycle_fn, cycle_initial, cycle_result });
+        return Ok(Self { cycle_result });
 
         struct Option {
             name: syn::Ident,
