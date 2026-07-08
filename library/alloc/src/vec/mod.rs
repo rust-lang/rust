@@ -2938,8 +2938,26 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     unsafe fn append_elements(&mut self, other: *const [T]) {
+        self.reserve(other.len());
+        unsafe {
+            self.append_elements_unreserved(other);
+        }
+    }
+
+    /// Appends elements to `self` from other buffer, returning [`TryReserveError`] on OOM.
+    #[inline]
+    unsafe fn try_append_elements(&mut self, other: *const [T]) -> Result<(), TryReserveError> {
+        self.try_reserve(other.len())?;
+        unsafe {
+            self.append_elements_unreserved(other);
+        }
+        Ok(())
+    }
+
+    /// Appends elements to `self` from other buffer without reserving additional capacity.
+    #[inline]
+    unsafe fn append_elements_unreserved(&mut self, other: *const [T]) {
         let count = other.len();
-        self.reserve(count);
         let len = self.len();
         if count > 0 {
             unsafe {
@@ -3606,6 +3624,22 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
         unsafe {
             self.spec_extend_from_within(range);
         }
+    }
+}
+
+impl<A: Allocator> Vec<u8, A> {
+    #[cfg_attr(
+        not(no_global_oom_handling),
+        expect(
+            dead_code,
+            reason = "currently only used in IO module when global OOM handling is disabled"
+        )
+    )]
+    pub(crate) fn try_extend_from_slice_of_bytes(
+        &mut self,
+        other: &[u8],
+    ) -> Result<(), TryReserveError> {
+        unsafe { self.try_append_elements(other) }
     }
 }
 
