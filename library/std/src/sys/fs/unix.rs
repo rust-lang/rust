@@ -1508,18 +1508,6 @@ impl File {
         Err(io::const_error!(io::ErrorKind::Unsupported, "datasync not supported on QuRT"))
     }
 
-    #[cfg(any(
-        target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "hurd",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "cygwin",
-        target_os = "illumos",
-        target_os = "aix",
-        target_vendor = "apple",
-    ))]
     pub fn lock(&self) -> io::Result<()> {
         cfg_select! {
             any(

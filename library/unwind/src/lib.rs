@@ -31,6 +31,7 @@ cfg_select! {
         windows,
         target_os = "psp",
         target_os = "solid_asp3",
+        target_os = "qurt",
         all(target_vendor = "fortanix", target_env = "sgx"),
         all(target_os = "wasi", panic = "unwind"),
     ) => {

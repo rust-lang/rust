@@ -225,7 +225,7 @@ impl FileDesc {
     }
 
     #[cfg(target_os = "qurt")]
-    pub fn read_buf_at(&self, _cursor: BorrowedCursor<'_>, _offset: u64) -> io::Result<()> {
+    pub fn read_buf_at(&self, _cursor: BorrowedCursor<'_, u8>, _offset: u64) -> io::Result<()> {
         Err(io::const_error!(io::ErrorKind::Unsupported, "pread not supported on QuRT"))
     }
 
