@@ -72,6 +72,7 @@
 
 use std::borrow::Cow;
 use std::fmt::Display;
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 pub(crate) use NamedMatch::*;
@@ -473,11 +474,6 @@ impl TtParser {
             }
         }
 
-        if std::mem::take(&mut self.found_ambiguity) {
-            track.ambiguity(parser);
-            return Some(Ambiguity);
-        }
-
         // FIXME: Error messages here could be improved with links to original rules.
 
         if self.next_mps.is_empty() {
@@ -609,9 +605,10 @@ impl TtParser {
 
                 track.matched_one(parser, mp.idx);
 
-                if self.check_for_ambiguity(parser, matcher, track, checking_for_ambiguity) {
-                    // Let the caller handle the error.
-                    return None;
+                if let ControlFlow::Break(result) =
+                    self.check_for_ambiguity(parser, matcher, track, checking_for_ambiguity)
+                {
+                    return result;
                 }
 
                 // We use the span of the metavariable declaration to determine any
@@ -635,9 +632,10 @@ impl TtParser {
 
                 track.matched_one(parser, mp.idx);
 
-                if self.check_for_ambiguity(parser, matcher, track, checking_for_ambiguity) {
-                    // Let the caller handle the error.
-                    return None;
+                if let ControlFlow::Break(result) =
+                    self.check_for_ambiguity(parser, matcher, track, checking_for_ambiguity)
+                {
+                    return result;
                 }
 
                 let matches = Rc::unwrap_or_clone(mp.matches).into_iter();
@@ -650,19 +648,23 @@ impl TtParser {
 
     /// Look for ambiguity before parsing a non-terminal.
     ///
-    /// Sets [`Self::found_ambiguity`] and returns `true` if ambiguity is found.
-    fn check_for_ambiguity<'matcher, T: Tracker<'matcher>>(
+    /// - When `checking_for_ambiguity`: immediately an ambiguity error.
+    /// - Otherwise: eagerly consumes [`Self::cur_mps`] to check for ambiguity.
+    ///
+    /// If [`ControlFlow::Continue`] is returned, ambiguity has not been detected.
+    fn check_for_ambiguity<'matcher, R, T: Tracker<'matcher>>(
         &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
         checking_for_ambiguity: bool,
-    ) -> bool {
+    ) -> ControlFlow<Option<ParseResult<R>>> {
         if checking_for_ambiguity {
             // This was called in the context of a _different_ `MatcherLoc` that was about to be
-            // matched.
+            // matched. Prevent the caller from doing more work, but don't prepare the actual error
+            // yet; let the outer `check_for_ambiguity()` do that.
             self.found_ambiguity = true;
-            return true;
+            return ControlFlow::Break(None);
         }
 
         assert!(!self.found_ambiguity);
@@ -674,10 +676,12 @@ impl TtParser {
             assert!(result.is_none());
         }
 
-        if !self.next_mps.is_empty() {
-            self.found_ambiguity = true;
+        if std::mem::take(&mut self.found_ambiguity) || !self.next_mps.is_empty() {
+            track.ambiguity(parser);
+            ControlFlow::Break(Some(Ambiguity))
+        } else {
+            ControlFlow::Continue(())
         }
-        self.found_ambiguity
     }
 
     /// Match the token stream from `parser` against `matcher`.
