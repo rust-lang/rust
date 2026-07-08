@@ -739,12 +739,7 @@ impl<'db> SemanticsImpl<'db> {
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let macro_file = self.to_def(actual_macro_call)?;
-        hir_expand::db::expand_speculative(
-            self.db,
-            macro_file,
-            speculative_args.syntax(),
-            token_to_map,
-        )
+        self.speculative_expand_raw(macro_file, speculative_args.syntax(), token_to_map)
     }
 
     pub fn speculative_expand_raw(
@@ -753,7 +748,7 @@ impl<'db> SemanticsImpl<'db> {
         speculative_args: &SyntaxNode,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
-        hir_expand::db::expand_speculative(self.db, macro_file, speculative_args, token_to_map)
+        macro_file.expand_speculative(self.db, speculative_args, token_to_map)
     }
 
     /// Expand the macro call with a different item as the input, mapping the `token_to_map` down into the
@@ -766,12 +761,7 @@ impl<'db> SemanticsImpl<'db> {
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let macro_call = self.wrap_node_infile(actual_macro_call.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call.as_ref()))?;
-        hir_expand::db::expand_speculative(
-            self.db,
-            macro_call_id,
-            speculative_args.syntax(),
-            token_to_map,
-        )
+        self.speculative_expand_raw(macro_call_id, speculative_args.syntax(), token_to_map)
     }
 
     pub fn speculative_expand_derive_as_pseudo_attr_macro(
@@ -789,12 +779,7 @@ impl<'db> SemanticsImpl<'db> {
             )
             .map(|(_, it, _)| it)
         })?;
-        hir_expand::db::expand_speculative(
-            self.db,
-            macro_call_id,
-            speculative_args.syntax(),
-            token_to_map,
-        )
+        self.speculative_expand_raw(macro_call_id, speculative_args.syntax(), token_to_map)
     }
 
     /// Checks if renaming `renamed` to `new_name` may introduce conflicts with other locals,
@@ -1980,7 +1965,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_macro_call_arm(&self, macro_call: &ast::MacroCall) -> Option<u32> {
-        self.to_def(macro_call)?.parse_macro_expansion(self.db).value.1.matched_arm
+        self.to_def(macro_call)?.expansion_span_map(self.db).matched_arm
     }
 
     pub fn get_unsafe_ops(&self, def: ExpressionStoreOwner) -> FxHashSet<ExprOrPatSource> {

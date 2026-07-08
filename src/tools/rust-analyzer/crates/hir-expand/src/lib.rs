@@ -45,20 +45,20 @@ use syntax::{
     Parse, SyntaxError, SyntaxNode, SyntaxToken, T, TextRange, TextSize,
     ast::{self, AstNode},
 };
-use syntax_bridge::DocCommentDesugarMode;
+use syntax_bridge::{DocCommentDesugarMode, syntax_node_to_token_tree};
 
 use crate::{
     attrs::AttrId,
     builtin::{
         BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander,
-        include_input_to_file_id,
+        include_input_to_file_id, pseudo_derive_attr_expansion,
     },
     cfg_process::attr_macro_input_to_token_tree,
     db::ExpandDatabase,
     fixup::SyntaxFixupUndoInfo,
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
     proc_macro::{CustomProcMacroExpander, ProcMacroKind, ProcMacros},
-    span_map::{ExpansionSpanMap, SpanMap},
+    span_map::{ExpansionSpanMap, RealSpanMap, SpanMap},
 };
 
 pub use crate::{
@@ -775,6 +775,184 @@ impl MacroCallId {
     }
 }
 
+impl MacroCallId {
+    /// This expands the given macro call, but with different arguments. This is
+    /// used for completion, where we want to see what 'would happen' if we insert a
+    /// token. The `token_to_map` mapped down into the expansion, with the mapped
+    /// token(s) returned with their priority.
+    pub fn expand_speculative(
+        self,
+        db: &dyn ExpandDatabase,
+        speculative_args: &SyntaxNode,
+        token_to_map: SyntaxToken,
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
+        let loc = self.loc(db);
+        let (_, _, span) = *self.macro_arg_considering_derives(db, &loc.kind);
+
+        let span_map = RealSpanMap::absolute(span.anchor.file_id);
+        let span_map = SpanMap::RealSpanMap(&span_map);
+
+        // Build the subtree and token mapping for the speculative args
+        let (mut tt, undo_info) = match &loc.kind {
+            MacroCallKind::FnLike { .. } => (
+                syntax_bridge::syntax_node_to_token_tree(
+                    speculative_args,
+                    span_map,
+                    span,
+                    if loc.def.is_proc_macro() {
+                        DocCommentDesugarMode::ProcMacro
+                    } else {
+                        DocCommentDesugarMode::Mbe
+                    },
+                ),
+                SyntaxFixupUndoInfo::NONE,
+            ),
+            MacroCallKind::Attr { .. } if loc.def.is_attribute_derive() => (
+                syntax_bridge::syntax_node_to_token_tree(
+                    speculative_args,
+                    span_map,
+                    span,
+                    DocCommentDesugarMode::ProcMacro,
+                ),
+                SyntaxFixupUndoInfo::NONE,
+            ),
+            MacroCallKind::Derive { derive_macro_id, .. } => {
+                let MacroCallKind::Attr { censored_attr_ids: attr_ids, .. } =
+                    &derive_macro_id.loc(db).kind
+                else {
+                    unreachable!("`derive_macro_id` should be `MacroCallKind::Attr`");
+                };
+                attr_macro_input_to_token_tree(
+                    db,
+                    speculative_args,
+                    span_map,
+                    span,
+                    true,
+                    attr_ids,
+                    loc.krate,
+                )
+            }
+            MacroCallKind::Attr { censored_attr_ids: attr_ids, .. } => {
+                attr_macro_input_to_token_tree(
+                    db,
+                    speculative_args,
+                    span_map,
+                    span,
+                    false,
+                    attr_ids,
+                    loc.krate,
+                )
+            }
+        };
+
+        let attr_arg = match &loc.kind {
+            MacroCallKind::Attr { censored_attr_ids: attr_ids, .. } => {
+                if loc.def.is_attribute_derive() {
+                    // for pseudo-derive expansion we actually pass the attribute itself only
+                    ast::Attr::cast(speculative_args.clone())
+                        .and_then(|attr| {
+                            if let ast::Meta::TokenTreeMeta(meta) = attr.meta()? {
+                                meta.token_tree()
+                            } else {
+                                None
+                            }
+                        })
+                        .map(|token_tree| {
+                            let mut tree = syntax_node_to_token_tree(
+                                token_tree.syntax(),
+                                span_map,
+                                span,
+                                DocCommentDesugarMode::ProcMacro,
+                            );
+                            tree.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
+                            tree.set_top_subtree_delimiter_span(tt::DelimSpan::from_single(span));
+                            tree
+                        })
+                } else {
+                    // Attributes may have an input token tree, build the subtree and map for this as well
+                    // then try finding a token id for our token if it is inside this input subtree.
+                    let item = ast::Item::cast(speculative_args.clone())?;
+                    let (_, meta) = attr_ids
+                        .invoc_attr()
+                        .find_attr_range_with_source_opt(db, loc.krate, &item)?;
+                    if let ast::Meta::TokenTreeMeta(meta) = meta
+                        && let Some(tt) = meta.token_tree()
+                    {
+                        let mut attr_arg = syntax_bridge::syntax_node_to_token_tree(
+                            tt.syntax(),
+                            span_map,
+                            span,
+                            DocCommentDesugarMode::ProcMacro,
+                        );
+                        attr_arg.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
+                        Some(attr_arg)
+                    } else {
+                        None
+                    }
+                }
+            }
+            _ => None,
+        };
+
+        // Do the actual expansion, we need to directly expand the proc macro due to the attribute args
+        // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
+        let mut speculative_expansion = match loc.def.kind {
+            MacroDefKind::ProcMacro(ast, expander, _) => {
+                let span = proc_macro_span(db, ast);
+                tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
+                tt.set_top_subtree_delimiter_span(tt::DelimSpan::from_single(span));
+                expander.expand(
+                    db,
+                    loc.def.krate,
+                    loc.krate,
+                    &tt,
+                    attr_arg.as_ref(),
+                    span_with_def_site_ctxt(db, span, self.into(), loc.def.edition),
+                    span_with_call_site_ctxt(db, span, self.into(), loc.def.edition),
+                    span_with_mixed_site_ctxt(db, span, self.into(), loc.def.edition),
+                )
+            }
+            MacroDefKind::BuiltInAttr(_, it) if it.is_derive() => {
+                pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?, span)
+            }
+            MacroDefKind::Declarative(it, _) => db
+                .decl_macro_expander(loc.krate, it)
+                .expand_unhygienic(db, &tt, loc.kind.call_style(), span),
+            MacroDefKind::BuiltIn(_, it) => it.expand(db, self, &tt, span).map_err(Into::into),
+            MacroDefKind::BuiltInDerive(_, it) => {
+                it.expand(db, self, &tt, span).map_err(Into::into)
+            }
+            MacroDefKind::BuiltInEager(_, it) => it.expand(db, self, &tt, span).map_err(Into::into),
+            MacroDefKind::BuiltInAttr(_, it) => it.expand(db, self, &tt, span),
+            MacroDefKind::UnimplementedBuiltIn(_) => expand_unimplemented_builtin_macro(span),
+        };
+
+        let expand_to = loc.expand_to();
+
+        fixup::reverse_fixups(&mut speculative_expansion.value, &undo_info);
+        let (node, rev_tmap) =
+            token_tree_to_syntax_node(db, &speculative_expansion.value, expand_to);
+
+        let syntax_node = node.syntax_node();
+        let token = rev_tmap
+            .ranges_with_span(span_map.span_for_range(token_to_map.text_range()))
+            .filter_map(|(range, ctx)| {
+                syntax_node.covering_element(range).into_token().zip(Some(ctx))
+            })
+            .map(|(t, ctx)| {
+                // prefer tokens of the same kind and text, as well as non opaque marked ones
+                // Note the inversion of the score here, as we want to prefer the first token in case
+                // of all tokens having the same score
+                let ranking = ctx.is_opaque(db) as u8
+                    + 2 * (t.kind() != token_to_map.kind()) as u8
+                    + 4 * ((t.text() != token_to_map.text()) as u8);
+                (t, ranking)
+            })
+            .collect();
+        Some((node.syntax_node(), token))
+    }
+}
+
 fn expand_unimplemented_builtin_macro(span: Span) -> ExpandResult<tt::TopSubtree> {
     ExpandResult::new(
         tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
@@ -790,9 +968,9 @@ fn expand_unimplemented_builtin_macro(span: Span) -> ExpandResult<tt::TopSubtree
 fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
     #[salsa::tracked]
     fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>, _: ()) -> Span {
-        let root = ast.file_id.parse_or_expand(db);
+        let (parse, span_map) = ast.file_id.parse_with_map(db);
+        let root = parse.syntax_node();
         let ast_id_map = ast.file_id.ast_id_map(db);
-        let span_map = ast.file_id.span_map(db);
 
         let node = ast_id_map.get(ast.value).to_node(&root);
         let range = ast::HasName::name(&node)
