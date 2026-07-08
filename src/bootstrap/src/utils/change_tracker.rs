@@ -636,4 +636,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `rust.compress-debuginfo` allows configuring whether Rust and C/C++ debuginfo should be compressed.",
     },
+    ChangeInfo {
+        change_id: 999999,
+        severity: ChangeSeverity::Info,
+        summary: "New config section `pgo` was introduced, to configure PGO profiling options. The `--rust-profile-use`/`--rust-profile-generate`/`--llvm-profile-use`/`--llvm-profile-generate` flags and the `rust.profile-use`/`rust.profile-generate` config options have been deprecated.",
+    },
 ];
