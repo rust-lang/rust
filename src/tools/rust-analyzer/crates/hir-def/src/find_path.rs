@@ -57,9 +57,11 @@ pub fn find_path(
     if item_module.block(db).is_some() {
         prefix_kind = PrefixKind::Plain;
     }
-    cfg.prefer_no_std = cfg.prefer_no_std || db.crate_supports_no_std(from.krate(db));
 
     let from_def_map = from.def_map(db);
+
+    cfg.prefer_no_std = cfg.prefer_no_std || from_def_map.is_no_std();
+
     find_path_inner(
         &FindPathCtx {
             db,

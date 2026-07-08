@@ -5,8 +5,7 @@ use salsa::{Durability, Setter};
 use triomphe::Arc;
 
 use crate::{
-    AttrDefId, TraitId,
-    attrs::AttrFlags,
+    TraitId,
     item_tree::{ItemTree, file_item_tree},
     nameres::crate_def_map,
 };
@@ -21,9 +20,6 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(crate::lang_item::crate_notable_traits)]
     #[salsa::transparent]
     fn crate_notable_traits(&self, krate: Crate) -> Option<&[TraitId]>;
-
-    #[salsa::invoke(crate_supports_no_std)]
-    fn crate_supports_no_std(&self, crate_id: Crate) -> bool;
 
     #[salsa::invoke(include_macro_invoc)]
     fn include_macro_invoc(&self, crate_id: Crate) -> Arc<[(MacroCallId, EditionedFileId)]>;
@@ -60,10 +56,4 @@ fn include_macro_invoc(
         .flat_map(|m| m.scope.iter_macro_invoc())
         .filter_map(|(_, &invoc)| invoc.loc(db).include_file_id(db, invoc).map(|x| (invoc, x)))
         .collect()
-}
-
-fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: Crate) -> bool {
-    let root_module = crate_def_map(db, crate_id).root_module_id();
-    let attrs = AttrFlags::query(db, AttrDefId::ModuleId(root_module));
-    attrs.contains(AttrFlags::IS_NO_STD)
 }
