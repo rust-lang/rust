@@ -16,11 +16,11 @@ mod proc_macros;
 
 use std::{any::TypeId, iter, ops::Range, sync};
 
+use base_db::SourceDatabase;
 use expect_test::Expect;
 use hir_expand::{
     AstId, ExpansionInfo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroKind,
     builtin::quote::quote,
-    db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
     span_map::SpanMap,
 };
@@ -387,7 +387,7 @@ struct IdentityWhenValidProcMacroExpander;
 impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &base_db::Env,

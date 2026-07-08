@@ -61,13 +61,12 @@ mod test_db;
 
 use std::hash::{Hash, Hasher};
 
-use base_db::{Crate, impl_intern_key};
+use base_db::{Crate, SourceDatabase, impl_intern_key};
 use hir_expand::{
     AstId, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallStyles,
     MacroDefId, MacroDefKind,
     attrs::AttrId,
     builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
-    db::ExpandDatabase,
     eager::expand_eager_macro_input,
     impl_intern_lookup,
     mod_path::ModPath,
@@ -1312,7 +1311,7 @@ impl<T: AstIdNode> AstIdWithPath<T> {
 }
 
 pub fn macro_call_as_call_id(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     ast_id: AstId<ast::MacroCall>,
     path: &ModPath,
     call_site: SyntaxContext,

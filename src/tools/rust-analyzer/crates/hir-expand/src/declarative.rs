@@ -2,7 +2,7 @@
 
 use std::ops::ControlFlow;
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use span::{Edition, Span, SyntaxContext};
 use stdx::TupleExt;
 use syntax::{
@@ -15,7 +15,6 @@ use crate::{
     AstId, ExpandError, ExpandErrorKind, ExpandResult, HirFileId, Lookup, MacroCallId,
     MacroCallStyle,
     attrs::{AstKeyValueMetaExt, AstPathExt, expand_cfg_attr},
-    db::ExpandDatabase,
     hygiene::{Transparency, apply_mark},
     tt,
 };
@@ -31,7 +30,7 @@ pub struct DeclarativeMacroExpander {
 impl DeclarativeMacroExpander {
     pub fn expand(
         &self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         tt: &tt::TopSubtree,
         call_id: MacroCallId,
         span: Span,
@@ -60,7 +59,7 @@ impl DeclarativeMacroExpander {
 
     pub fn expand_unhygienic(
         &self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         tt: &tt::TopSubtree,
         call_style: MacroCallStyle,
         call_site: Span,
@@ -80,13 +79,15 @@ impl DeclarativeMacroExpander {
 }
 
 #[salsa::tracked]
-impl DeclarativeMacroExpander {
+impl AstId<ast::Macro> {
+    /// Fetches (and compiles) the expander of this decl macro.
     #[salsa::tracked(returns(ref))]
-    pub(crate) fn expander(
-        db: &dyn ExpandDatabase,
+    pub fn decl_macro_expander(
+        self,
+        db: &dyn SourceDatabase,
         def_crate: Crate,
-        id: AstId<ast::Macro>,
     ) -> DeclarativeMacroExpander {
+        let id = self;
         let (root, map) = id.file_id.parse_with_map(db);
 
         let root = root.syntax_node();

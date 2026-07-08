@@ -1,11 +1,12 @@
 //! Span maps for real files and macro expansions.
 
+use base_db::SourceDatabase;
 use span::Span;
 use syntax::{AstNode, TextRange, ast};
 
 pub use span::RealSpanMap;
 
-use crate::{HirFileId, MacroCallId, db::ExpandDatabase};
+use crate::{HirFileId, MacroCallId};
 
 pub type ExpansionSpanMap = span::SpanMap;
 
@@ -39,7 +40,7 @@ impl<'db> SpanMap<'db> {
 
 impl HirFileId {
     #[inline]
-    pub fn span_map<'db>(self, db: &'db dyn ExpandDatabase) -> SpanMap<'db> {
+    pub fn span_map<'db>(self, db: &'db dyn SourceDatabase) -> SpanMap<'db> {
         match self {
             HirFileId::FileId(file_id) => SpanMap::RealSpanMap(real_span_map(db, file_id)),
             HirFileId::MacroFile(m) => SpanMap::ExpansionSpanMap(m.expansion_span_map(db)),
@@ -51,7 +52,7 @@ impl HirFileId {
 /// `HirFileId::from(file_id).span_map(db)` instead of `real_span_map(db, file_id)`.
 #[salsa_macros::tracked(returns(ref))]
 pub(crate) fn real_span_map(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     editioned_file_id: base_db::EditionedFileId,
 ) -> RealSpanMap {
     use syntax::ast::HasModuleItem;
@@ -114,7 +115,7 @@ pub(crate) fn real_span_map(
 }
 
 impl MacroCallId {
-    pub fn expansion_span_map(self, db: &dyn ExpandDatabase) -> &ExpansionSpanMap {
+    pub fn expansion_span_map(self, db: &dyn SourceDatabase) -> &ExpansionSpanMap {
         &self.parse_macro_expansion(db).value.1
     }
 }

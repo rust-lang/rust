@@ -4,14 +4,14 @@ use core::fmt;
 use std::any::Any;
 use std::{panic::RefUnwindSafe, sync};
 
-use base_db::{Crate, CrateBuilderId, CratesIdMap, Env, ProcMacroLoadingError};
+use base_db::{Crate, CrateBuilderId, CratesIdMap, Env, ProcMacroLoadingError, SourceDatabase};
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use salsa::{Durability, Setter};
 use span::Span;
 use triomphe::Arc;
 
-use crate::{ExpandError, ExpandErrorKind, ExpandResult, db::ExpandDatabase, tt};
+use crate::{ExpandError, ExpandErrorKind, ExpandResult, tt};
 
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Debug, Hash)]
 pub enum ProcMacroKind {
@@ -26,7 +26,7 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe + Any {
     /// [`ProcMacroKind::Attr`]), environment variables, and span information.
     fn expand(
         &self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         subtree: &tt::TopSubtree,
         attrs: Option<&tt::TopSubtree>,
         env: &Env,
@@ -85,7 +85,7 @@ impl ProcMacrosBuilder {
     }
 
     /// Builds [`ProcMacros`] and adds id to `db`
-    pub(crate) fn build_in(self, db: &mut dyn ExpandDatabase, crates_id_map: &CratesIdMap) {
+    pub(crate) fn build_in(self, db: &mut dyn SourceDatabase, crates_id_map: &CratesIdMap) {
         let mut map = self
             .0
             .into_iter()
@@ -121,7 +121,7 @@ pub struct ProcMacros {
 }
 
 impl ProcMacros {
-    pub fn init_default(db: &dyn ExpandDatabase, durability: Durability) {
+    pub fn init_default(db: &dyn SourceDatabase, durability: Durability) {
         _ = Self::builder(Default::default()).durability(durability).new(db);
     }
 }
@@ -130,7 +130,7 @@ impl ProcMacros {
 impl ProcMacros {
     /// Incrementality query to prevent queries from directly depending on [`Self::get`].
     #[salsa::tracked(returns(as_ref))]
-    pub fn get_for_crate(db: &dyn ExpandDatabase, krate: Crate) -> Option<Arc<CrateProcMacros>> {
+    pub fn get_for_crate(db: &dyn SourceDatabase, krate: Crate) -> Option<Arc<CrateProcMacros>> {
         Self::get(db).by_crate(db).get(&krate).cloned()
     }
 }
@@ -273,7 +273,7 @@ impl CustomProcMacroExpander {
 
     pub fn expand(
         self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         def_crate: Crate,
         calling_crate: Crate,
         tt: &tt::TopSubtree,

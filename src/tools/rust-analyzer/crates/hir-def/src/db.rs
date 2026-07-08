@@ -2,7 +2,6 @@
 use base_db::{Crate, SourceDatabase};
 use hir_expand::{
     EditionedFileId, HirFileId, InFile, Lookup, MacroCallId, MacroDefId, MacroDefKind,
-    db::ExpandDatabase,
 };
 use salsa::{Durability, Setter};
 use triomphe::Arc;
@@ -16,7 +15,7 @@ use crate::{
 };
 
 #[query_group::query_group]
-pub trait DefDatabase: ExpandDatabase + SourceDatabase {
+pub trait DefDatabase: SourceDatabase {
     /// Computes an [`ItemTree`] for the given file or macro expansion.
     #[salsa::invoke(file_item_tree)]
     #[salsa::transparent]

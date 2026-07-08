@@ -891,7 +891,6 @@ dependencies = [
  "itertools 0.15.0",
  "mbe",
  "parser",
- "query-group-macro",
  "rustc-hash 2.1.2",
  "salsa",
  "salsa-macros",
