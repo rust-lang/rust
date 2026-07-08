@@ -7,9 +7,7 @@ use std::{env, io};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use rustc_data_structures::sync::{
-    AppendOnlyVec, DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock,
-};
+use rustc_data_structures::sync::{AppendOnlyVec, DynSend, DynSync, Lock};
 use rustc_data_structures::{Limit, flock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
@@ -340,8 +338,6 @@ pub struct Session {
 
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
-
-    incr_comp_session: RwLock<IncrCompSession>,
 
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
@@ -686,45 +682,6 @@ impl Session {
         } else {
             search_paths.collect()
         }
-    }
-
-    pub fn init_incr_comp_session(&self, session_dir: PathBuf, lock_file: flock::Lock) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::NotInitialized = *incr_comp_session {
-        } else {
-            panic!("Trying to initialize IncrCompSession `{:?}`", *incr_comp_session)
-        }
-
-        *incr_comp_session =
-            IncrCompSession::Active { session_directory: session_dir, _lock_file: lock_file };
-    }
-
-    pub fn finalize_incr_comp_session(&self) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::Active { .. } = *incr_comp_session {
-        } else {
-            panic!("trying to finalize `IncrCompSession` `{:?}`", *incr_comp_session);
-        }
-
-        // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::FinalizedOrRemoved;
-    }
-
-    pub fn incr_comp_session_dir(&self) -> MappedReadGuard<'_, PathBuf> {
-        let incr_comp_session = self.incr_comp_session.borrow();
-        ReadGuard::map(incr_comp_session, |incr_comp_session| match incr_comp_session {
-            IncrCompSession::NotInitialized | IncrCompSession::FinalizedOrRemoved => panic!(
-                "trying to get session directory from `IncrCompSession`: {:?}",
-                incr_comp_session,
-            ),
-            IncrCompSession::Active { session_directory, .. } => session_directory,
-        })
-    }
-
-    pub fn incr_comp_session_dir_opt(&self) -> Option<MappedReadGuard<'_, PathBuf>> {
-        self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
     }
 
     /// Is this edition 2015?
@@ -1355,7 +1312,6 @@ pub fn build_session(
         check_config: CheckCfg::default(),
         proc_macro_quoted_spans: Default::default(),
         io,
-        incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         timings,
         code_stats: Default::default(),
@@ -1689,20 +1645,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 }
 
 /// Holds data on the current incremental compilation session, if there is one.
-#[derive(Debug)]
-enum IncrCompSession {
-    /// This is the state the session will be in until the incr. comp. dir is
-    /// needed.
-    NotInitialized,
-    /// This is the state during which the session directory is private and can
-    /// be modified. `_lock_file` is never directly used, but its presence
+pub struct IncrCompSession {
+    /// The directory containing all cached data. Cached data from a previous
+    /// session can be read out of it and new data for the current session will
+    /// be written into it.
+    pub session_directory: PathBuf,
+    /// `_lock_file` is never directly used, but its presence
     /// alone has an effect, because the file will unlock when the session is
     /// dropped.
-    Active { session_directory: PathBuf, _lock_file: flock::Lock },
-    /// This is the state after the session directory has been finalized or
-    /// removed after errors. In this state, the contents of the directory must
-    /// not be modified any more.
-    FinalizedOrRemoved,
+    pub _lock_file: flock::Lock,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
