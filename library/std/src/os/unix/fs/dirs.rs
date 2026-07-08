@@ -18,7 +18,7 @@ impl Sealed for UserDirs {}
 ///
 /// The XDG conventions are written to be usable on any Unix-like filesystem,
 /// thus this extension being provided in `os::unix` rather than `os::linux`.
-/// However, while some tooling does use XDG convetions on macOS, note that
+/// However, while some tooling does use XDG conventions on macOS, note that
 /// macOS has its own separate conventions for user directories. Consider
 /// carefully what conventions your users will expect your application to
 /// follow along with any legacy path compatibility you might need to support.

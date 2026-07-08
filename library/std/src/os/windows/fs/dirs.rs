@@ -78,6 +78,7 @@ pub trait UserDirsExt: Sized + Sealed {
 }
 
 #[cfg(windows)]
+#[unstable(feature = "dir_discovery", issue = "157515")]
 impl UserDirsExt for UserDirs {
     fn known_folders() -> io::Result<Self> {
         let desktop = get_known_folder_path(&c::FOLDERID_Desktop)?;
@@ -91,14 +92,14 @@ impl UserDirsExt for UserDirs {
         let videos = get_known_folder_path(&c::FOLDERID_Videos)?;
 
         // AppData/Local -- system-local, doesn't make sense to sync to another
-        // AppData/Roaming -- data that makes sense to sync accross machines
+        // AppData/Roaming -- data that makes sense to sync across machines
 
         let mut dirs = UserDirs::new();
 
-        dirs.home.cache_home = Some(local_app_data.clone());
-        dirs.home.config_home = Some(roaming_app_data.clone());
-        dirs.home.data_home = Some(roaming_app_data);
-        dirs.home.state_home = Some(local_app_data);
+        dirs.home.cache = local_app_data.clone();
+        dirs.home.config = roaming_app_data.clone();
+        dirs.home.data = roaming_app_data;
+        dirs.home.state = local_app_data;
 
         dirs.media.desktop = desktop;
         dirs.media.documents = documents;
@@ -108,11 +109,11 @@ impl UserDirsExt for UserDirs {
         dirs.media.public_share = public;
         dirs.media.videos = videos;
 
-        dirs
+        Ok(dirs)
     }
 }
 
-/// Retreive a known folder path from the Windows API.
+/// Retrieve a known folder path from the Windows API.
 #[cfg(windows)]
 fn get_known_folder_path(id: &c::GUID) -> io::Result<Option<PathBuf>> {
     // Get the known folder path. hToken = NULL requests the current user
@@ -124,7 +125,7 @@ fn get_known_folder_path(id: &c::GUID) -> io::Result<Option<PathBuf>> {
     let hr = unsafe {
         c::SHGetKnownFolderPath(
             /* rfid */ id,
-            /* dwFlags */ c::KF_FLAG_DONT_VERIFY,
+            /* dwFlags */ c::KF_FLAG_DONT_VERIFY as _,
             /* hToken */ ptr::null_mut(),
             /* ppszPath */ &mut pszPath,
         )
@@ -157,7 +158,7 @@ fn get_known_folder_path(id: &c::GUID) -> io::Result<Option<PathBuf>> {
     //   succeeds or not.
     unsafe { c::CoTaskMemFree(pszPath.cast()) };
 
-    Ok(result)
+    result
 }
 
 #[cfg(test)]

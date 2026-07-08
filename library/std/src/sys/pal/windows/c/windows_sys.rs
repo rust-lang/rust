@@ -2390,6 +2390,7 @@ impl Default for EXCEPTION_RECORD {
 }
 pub const EXCEPTION_STACK_OVERFLOW: NTSTATUS = 0xC00000FD_u32 as _;
 pub const EXTENDED_STARTUPINFO_PRESENT: PROCESS_CREATION_FLAGS = 524288u32;
+pub const E_FAIL: HRESULT = 0x80004005_u32 as _;
 pub const E_INVALIDARG: HRESULT = 0x80070057_u32 as _;
 pub const E_NOTIMPL: HRESULT = 0x80004001_u32 as _;
 pub const ExceptionCollidedUnwind: EXCEPTION_DISPOSITION = 3i32;
@@ -2707,7 +2708,6 @@ pub const FOLDERID_Desktop: GUID = GUID::from_u128(0xb4bfcc3a_db2c_424c_b029_7fe
 pub const FOLDERID_Documents: GUID = GUID::from_u128(0xfdd39ad0_238f_46af_adb4_6c85480369c7);
 pub const FOLDERID_Downloads: GUID = GUID::from_u128(0x374de290_123f_4565_9164_39c4925e467b);
 pub const FOLDERID_LocalAppData: GUID = GUID::from_u128(0xf1b32785_6fba_4fcf_9d55_7b8e7f157091);
-pub const FOLDERID_LocalAppDataLow: GUID = GUID::from_u128(0xa520a1a4_1780_4ff6_bd18_167343c5af16);
 pub const FOLDERID_Music: GUID = GUID::from_u128(0x4bd8d571_6d19_48d3_be97_422220080e43);
 pub const FOLDERID_Pictures: GUID = GUID::from_u128(0x33e28130_4e1e_4676_835a_98395c3bc3bb);
 pub const FOLDERID_Public: GUID = GUID::from_u128(0xdfdf76a2_c82a_4d63_906a_5644ac457385);
