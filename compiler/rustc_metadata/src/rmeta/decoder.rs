@@ -1400,7 +1400,12 @@ impl CrateMetadata {
     fn get_associated_item(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
         let kind = match self.def_kind(id) {
             DefKind::AssocConst { is_type_const } => {
-                ty::AssocKind::Const { name: self.item_name(id), is_type_const }
+                let data = if self.root.tables.is_anon_assoc_const.get(self, id) {
+                    ty::AssocConstData::Anonymous
+                } else {
+                    ty::AssocConstData::Named(self.item_name(id))
+                };
+                ty::AssocKind::Const { data, is_type_const }
             }
             DefKind::AssocFn => ty::AssocKind::Fn {
                 name: self.item_name(id),
