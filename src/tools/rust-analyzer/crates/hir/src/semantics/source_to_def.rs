@@ -149,10 +149,10 @@ impl<'db> SourceToDefCache<'db> {
             return m;
         }
         self.included_file_cache.insert(file, None);
-        for &crate_id in relevant_crates(db, file.file_id(db)).iter() {
-            db.include_macro_invoc(crate_id).iter().for_each(|&(macro_call_id, file_id)| {
+        for &crate_id in relevant_crates(db, file.file_id(db)) {
+            for &(macro_call_id, file_id) in db.include_macro_invoc(crate_id).iter() {
                 self.included_file_cache.insert(file_id, Some(macro_call_id));
-            });
+            }
         }
         self.included_file_cache.get(&file).copied().flatten()
     }
@@ -184,7 +184,7 @@ impl SourceToDefCtx<'_, '_> {
         self.cache.file_to_def_cache.entry(file).or_insert_with(|| {
             let mut mods = SmallVec::new();
 
-            for &crate_id in relevant_crates(self.db, file).iter() {
+            for &crate_id in relevant_crates(self.db, file) {
                 // Note: `mod` declarations in block modules cannot be supported here
                 let crate_def_map = crate_def_map(self.db, crate_id);
                 let n_mods = mods.len();

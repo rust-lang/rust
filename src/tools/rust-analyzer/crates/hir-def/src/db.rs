@@ -72,7 +72,7 @@ fn include_macro_invoc(
         .modules
         .values()
         .flat_map(|m| m.scope.iter_macro_invoc())
-        .filter_map(|invoc| invoc.1.loc(db).include_file_id(db, *invoc.1).map(|x| (*invoc.1, x)))
+        .filter_map(|(_, &invoc)| invoc.loc(db).include_file_id(db, invoc).map(|x| (invoc, x)))
         .collect()
 }
 

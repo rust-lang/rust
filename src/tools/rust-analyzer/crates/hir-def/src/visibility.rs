@@ -318,7 +318,7 @@ pub fn visibility_from_ast(
     }
 }
 
-/// Resolve visibility of a type alias.
+/// Resolve visibility of an assoc item.
 pub(crate) fn assoc_visibility_query(db: &dyn DefDatabase, def: AssocItemId) -> Visibility {
     match def {
         AssocItemId::FunctionId(function_id) => {
