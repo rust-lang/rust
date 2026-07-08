@@ -24,7 +24,7 @@ use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, apply_pgo, crate_description,
 };
 use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
@@ -1288,37 +1288,7 @@ pub fn rustc_cargo(
         cargo.rustflag("-Clink-args=-Wl,--icf=all");
     }
 
-    let is_collecting = if let Some(path) = &builder.config.rust_pgo.generate_profile {
-        if build_compiler.stage == 1 {
-            cargo
-                .rustflag(&format!("-Cprofile-generate={}", path.to_str().expect("non-UTF8 path")));
-            // Apparently necessary to avoid overflowing the counters during
-            // a Cargo build profile
-            cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
-            true
-        } else {
-            false
-        }
-    } else if let Some(path) = &builder.config.rust_pgo.use_profile {
-        if build_compiler.stage == 1 {
-            cargo.rustflag(&format!("-Cprofile-use={}", path.to_str().expect("non-UTF8 path")));
-            if builder.is_verbose() {
-                cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
-            }
-            true
-        } else {
-            false
-        }
-    } else {
-        false
-    };
-    if is_collecting {
-        // Ensure paths to Rust sources are relative, not absolute.
-        cargo.rustflag(&format!(
-            "-Cllvm-args=-static-func-strip-dirname-prefix={}",
-            builder.config.src.components().count()
-        ));
-    }
+    apply_pgo(builder, cargo, *build_compiler, &builder.config.rust_pgo);
 
     // The stage0 compiler changes infrequently and does not directly depend on code
     // in the current working directory. Therefore, caching it with sccache should be
