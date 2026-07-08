@@ -1,6 +1,6 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::Layout;
 use crate::ptr;
 
 // The minimum alignment guaranteed by the architecture. This value is used to
@@ -47,21 +47,16 @@ const MIN_ALIGN: usize = if cfg!(any(
 };
 
 #[allow(dead_code)]
-unsafe fn realloc_fallback(
-    alloc: &System,
-    ptr: *mut u8,
-    old_layout: Layout,
-    new_size: usize,
-) -> *mut u8 {
+unsafe fn realloc_fallback(ptr: *mut u8, old_layout: Layout, new_size: usize) -> *mut u8 {
     // SAFETY: Docs for GlobalAlloc::realloc require this to be valid
     unsafe {
         let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
 
-        let new_ptr = GlobalAlloc::alloc(alloc, new_layout);
+        let new_ptr = alloc(new_layout);
         if !new_ptr.is_null() {
             let size = usize::min(old_layout.size(), new_size);
             ptr::copy_nonoverlapping(ptr, new_ptr, size);
-            GlobalAlloc::dealloc(alloc, ptr, old_layout);
+            dealloc(ptr, old_layout);
         }
 
         new_ptr
@@ -76,35 +71,69 @@ cfg_select! {
         target_os = "trusty",
     ) => {
         mod unix;
+        use unix as imp;
     }
     target_os = "windows" => {
         mod windows;
+        use windows as imp;
     }
     target_os = "hermit" => {
         mod hermit;
+        use hermit as imp;
     }
     target_os = "motor" => {
         mod motor;
+        use motor as imp;
     }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
+        use sgx as imp;
     }
     target_os = "solid_asp3" => {
         mod solid;
+        use solid as imp;
     }
     target_os = "uefi" => {
         mod uefi;
+        use uefi as imp;
     }
     target_os = "vexos" => {
         mod vexos;
+        use vexos as imp;
     }
     target_family = "wasm" => {
         mod wasm;
+        use wasm as imp;
     }
     target_os = "xous" => {
         mod xous;
+        use xous as imp;
     }
     target_os = "zkvm" => {
         mod zkvm;
+        use zkvm as imp;
+    }
+}
+
+pub use imp::{alloc, dealloc, realloc};
+
+cfg_select! {
+    any(
+        target_os = "hermit",
+        target_os = "solid_asp3",
+        target_os = "uefi",
+        target_os = "zkvm",
+    ) => {
+        #[inline]
+        pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+            let ptr = unsafe { alloc(layout) };
+            if !ptr.is_null() {
+                unsafe { ptr.write_bytes(0, layout.size()) };
+            }
+            ptr
+        }
+    }
+    _ => {
+        pub use imp::alloc_zeroed;
     }
 }
