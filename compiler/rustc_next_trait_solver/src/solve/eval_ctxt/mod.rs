@@ -870,7 +870,7 @@ where
             (
                 RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_),
                 TypingMode::PostAnalysis | TypingMode::Codegen,
-            ) => RerunDecision::No,
+            ) => RerunDecision::Yes,
             (
                 RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
                 TypingMode::Typeck { defining_opaque_types_and_generators: opaques },
