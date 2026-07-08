@@ -609,23 +609,10 @@ impl TtParser {
 
                 track.matched_one(parser, mp.idx);
 
-                if checking_for_ambiguity {
-                    // This was called in the context of a different `MatcherLoc` that was about to
-                    // be matched. An ambiguity error has occurred. Details have already been saved
-                    // by `track`. Note the error and stop.
-                    self.found_ambiguity = true;
-                    return None;
-                }
-
-                self.check_for_ambiguity(parser, matcher, track);
-
-                if self.found_ambiguity {
+                if self.check_for_ambiguity(parser, matcher, track, checking_for_ambiguity) {
                     // Let the caller handle the error.
                     return None;
                 }
-
-                assert!(self.cur_mps.is_empty());
-                assert!(self.next_mps.is_empty());
 
                 // We use the span of the metavariable declaration to determine any
                 // edition-specific matching behavior for non-terminals.
@@ -648,23 +635,10 @@ impl TtParser {
 
                 track.matched_one(parser, mp.idx);
 
-                if checking_for_ambiguity {
-                    // This was called in the context of a different `MatcherLoc` that was about to
-                    // be matched. An ambiguity error has occurred. Details have already been saved
-                    // by `track`. Note the error and stop.
-                    self.found_ambiguity = true;
-                    return None;
-                }
-
-                self.check_for_ambiguity(parser, matcher, track);
-
-                if self.found_ambiguity {
+                if self.check_for_ambiguity(parser, matcher, track, checking_for_ambiguity) {
                     // Let the caller handle the error.
                     return None;
                 }
-
-                assert!(self.cur_mps.is_empty());
-                assert!(self.next_mps.is_empty());
 
                 let matches = Rc::unwrap_or_clone(mp.matches).into_iter();
                 return Some(Success(self.nameize(matcher, matches)));
@@ -676,13 +650,21 @@ impl TtParser {
 
     /// Look for ambiguity before parsing a non-terminal.
     ///
-    /// Sets [`Self::found_ambiguity`] if ambiguity is found.
+    /// Sets [`Self::found_ambiguity`] and returns `true` if ambiguity is found.
     fn check_for_ambiguity<'matcher, T: Tracker<'matcher>>(
         &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
-    ) {
+        checking_for_ambiguity: bool,
+    ) -> bool {
+        if checking_for_ambiguity {
+            // This was called in the context of a _different_ `MatcherLoc` that was about to be
+            // matched.
+            self.found_ambiguity = true;
+            return true;
+        }
+
         assert!(!self.found_ambiguity);
 
         // Consume all pending mps at the current input position.
@@ -695,6 +677,7 @@ impl TtParser {
         if !self.next_mps.is_empty() {
             self.found_ambiguity = true;
         }
+        self.found_ambiguity
     }
 
     /// Match the token stream from `parser` against `matcher`.
