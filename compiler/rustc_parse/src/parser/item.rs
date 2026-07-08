@@ -3421,6 +3421,7 @@ impl<'a> Parser<'a> {
                 let (pat, colon) = this.parse_fn_param_pat_colon()?;
                 if !colon {
                     let mut err = this.unexpected().unwrap_err();
+                    let pat_span = pat.span;
                     return if let Some(ident) = this.parameter_without_type(
                         &mut err,
                         pat,
@@ -3429,7 +3430,9 @@ impl<'a> Parser<'a> {
                         fn_parse_mode,
                     ) {
                         let guar = err.emit();
-                        Ok((dummy_arg(ident, guar), Trailing::No, UsePreAttrPos::No))
+                        let mut arg = dummy_arg(ident, guar);
+                        arg.span = pat_span;
+                        Ok((arg, Trailing::No, UsePreAttrPos::No))
                     } else {
                         Err(err)
                     };
