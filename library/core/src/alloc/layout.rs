@@ -230,8 +230,7 @@ impl Layout {
     ///
     /// - If `T` is `Sized`, this function is always safe to call.
     /// - If the unsized tail of `T` is:
-    ///     - a [slice] `[U]` or `str`, then the length of the slice tail must be an initialized
-    ///       integer, and the size of the *entire value*
+    ///     - a [slice] `[U]`, `str`, or a [trait object] `dyn Trait`, then the size of the *entire value*
     ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
     ///       For the special case where the dynamic tail length is 0, this function
     ///       is safe to call.
@@ -239,10 +238,6 @@ impl Layout {
     //        then we would stop compilation as even the "statically known" part of the type would
     //        already be too big (or the call may be in dead code and optimized away, but then it
     //        doesn't matter).
-    ///     - a [trait object] `dyn Trait`, then the vtable part of the pointer must point
-    ///       to a valid vtable for `Trait`, and the size
-    ///       of the *entire value* (dynamic tail length + statically sized prefix)
-    ///       must fit in `isize`.
     ///     - No other kind of unsized tail currently exists that satisfies the trait bounds for this
     ///       function. If more kinds of unsized tails get introduced in the future, the documentation
     ///       of this function will have to be extended before it can be used for such types.
