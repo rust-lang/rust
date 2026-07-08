@@ -94,40 +94,31 @@ fn check_externally_implementable_item_linkage(sess: &Session, crate_info: &Crat
     // earlier EII pass still handles missing impls and duplicate explicit impls.
     for dependency_formats in crate_info.dependency_formats.values() {
         for (eii_index, eii) in crate_info.eii_linkage.iter().enumerate() {
-            let mut explicit_impls =
-                eii.impls.iter().enumerate().filter(|(_, imp)| !imp.is_default);
-            let Some((explicit_index, explicit_impl)) = explicit_impls.next() else {
+            let Some(explicit_impl) = eii.impls.first() else {
                 continue;
             };
             // If the explicit impl is already coming from a dylib, that dylib
             // has already resolved the default-vs-explicit choice.
-            if explicit_impls.next().is_some()
-                || matches!(
-                    dependency_formats.get(explicit_impl.impl_crate),
-                    Some(Linkage::Dynamic | Linkage::IncludedFromDylib)
-                )
-            {
+            if matches!(
+                dependency_formats.get(explicit_impl.impl_crate),
+                Some(Linkage::Dynamic | Linkage::IncludedFromDylib)
+            ) {
                 continue;
             }
 
-            let mut finalized_default_impls = eii.impls.iter().enumerate().filter(|(_, imp)| {
-                imp.is_default
-                    && matches!(
-                        dependency_formats.get(imp.impl_crate),
-                        Some(Linkage::Dynamic | Linkage::IncludedFromDylib)
-                    )
-            });
-            let Some((default_index, default_impl)) = finalized_default_impls.next() else {
+            let Some(default_impl) = &eii.default_impl else {
                 continue;
             };
-
-            if !emitted.insert((eii_index, explicit_index, default_index)) {
+            if !matches!(
+                dependency_formats.get(default_impl.impl_crate),
+                Some(Linkage::Dynamic | Linkage::IncludedFromDylib)
+            ) {
                 continue;
             }
 
-            let additional_crate_names = finalized_default_impls
-                .map(|(_, imp)| format!("`{}`", eii_impl_crate_name(crate_info, imp.impl_crate)))
-                .collect::<Vec<_>>();
+            if !emitted.insert(eii_index) {
+                continue;
+            }
 
             sess.dcx().emit_err(DuplicateEiiImpls {
                 name: eii.name,
@@ -136,9 +127,9 @@ fn check_externally_implementable_item_linkage(sess: &Session, crate_info: &Crat
                 second_span: default_impl.span,
                 second_crate: eii_impl_crate_name(crate_info, default_impl.impl_crate),
                 help: (),
-                additional_crates: (!additional_crate_names.is_empty()).then_some(()),
-                num_additional_crates: additional_crate_names.len(),
-                additional_crate_names: additional_crate_names.join(", "),
+                additional_crates: None,
+                num_additional_crates: 0,
+                additional_crate_names: String::new(),
             });
         }
     }

@@ -933,21 +933,31 @@ fn collect_eii_linkage(tcx: TyCtxt<'_>) -> Vec<EiiLinkageInfo> {
 
     eiis.into_iter()
         .filter_map(|(_, FoundEii { decl, impls })| {
-            let explicit_impl_count = impls.values().filter(|imp| !imp.imp.is_default).count();
-            let has_default_impl = impls.values().any(|imp| imp.imp.is_default);
+            let mut explicit_impls = Vec::new();
+            let mut default_impl = None;
+
+            for (impl_did, FoundImpl { imp, impl_crate }) in impls {
+                let impl_info = EiiLinkageImplInfo { span: tcx.def_span(impl_did), impl_crate };
+                if imp.is_default {
+                    default_impl = Some(impl_info);
+                } else {
+                    explicit_impls.push(impl_info);
+                }
+            }
+
             // Only this case needs the link-time check. Missing impls and
             // duplicate explicit impls are handled in `rustc_passes`.
-            (explicit_impl_count == 1 && has_default_impl).then(|| EiiLinkageInfo {
-                name: decl.name.name,
-                impls: impls
-                    .into_iter()
-                    .map(|(impl_did, FoundImpl { imp, impl_crate })| EiiLinkageImplInfo {
-                        span: tcx.def_span(impl_did),
-                        impl_crate,
-                        is_default: imp.is_default,
-                    })
-                    .collect(),
-            })
+            if explicit_impls.len() == 1
+                && let Some(default_impl) = default_impl
+            {
+                Some(EiiLinkageInfo {
+                    name: decl.name.name,
+                    impls: explicit_impls,
+                    default_impl: Some(default_impl),
+                })
+            } else {
+                None
+            }
         })
         .collect()
 }

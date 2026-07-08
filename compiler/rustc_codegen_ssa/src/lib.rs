@@ -259,13 +259,13 @@ impl SymbolExport {
 pub struct EiiLinkageImplInfo {
     pub span: Span,
     pub impl_crate: CrateNum,
-    pub is_default: bool,
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct EiiLinkageInfo {
     pub name: Symbol,
     pub impls: Vec<EiiLinkageImplInfo>,
+    pub default_impl: Option<EiiLinkageImplInfo>,
 }
 
 /// Misc info we load from metadata to persist beyond the tcx.
