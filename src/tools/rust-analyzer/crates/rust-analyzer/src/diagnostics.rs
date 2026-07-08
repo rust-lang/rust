@@ -60,7 +60,7 @@ pub(crate) struct DiagnosticCollection {
 #[derive(Debug, Clone)]
 pub(crate) struct Fix {
     // Fixes may be triggerable from multiple ranges.
-    pub(crate) ranges: SmallVec<[lsp_types::Range; 1]>,
+    pub(crate) ranges: SmallVec<[lsp_types::Range; 2]>,
     pub(crate) action: lsp_ext::CodeAction,
 }
 
@@ -181,11 +181,12 @@ impl DiagnosticCollection {
             }
         }
 
-        if let Some(fix) = fix {
+        if let Some(mut fix) = fix {
             let check_fixes = Arc::make_mut(&mut self.check_fixes);
             if check_fixes.len() <= flycheck_id {
                 check_fixes.resize_with(flycheck_id + 1, Default::default);
             }
+            fix.ranges.push(diagnostic.range);
             check_fixes[flycheck_id]
                 .entry(package_id.clone())
                 .or_default()
