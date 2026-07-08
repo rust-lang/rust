@@ -493,7 +493,7 @@ impl TtParser {
                     track.failure(parser);
                     Failure
                 }
-                _ => self.ambiguity_error(parser, matcher, track),
+                _ => self.ambiguity_error(parser, track),
             });
         }
 
@@ -535,7 +535,7 @@ impl TtParser {
 
             (_, _) => {
                 // Too many possibilities!
-                return Some(self.ambiguity_error(parser, matcher, track));
+                return Some(self.ambiguity_error(parser, track));
             }
         }
 
@@ -703,16 +703,9 @@ impl TtParser {
     fn ambiguity_error<'matcher, T: Tracker<'matcher>>(
         &mut self,
         parser: &Parser<'_>,
-        matcher: &'matcher [MatcherLoc],
         track: &mut T,
     ) -> NamedParseResult {
-        // Use a reasonable and deterministic ordering for data in the error message.
-        self.bb_mps.sort_unstable_by_key(|mp| mp.idx);
-        self.next_mps.sort_unstable_by_key(|mp| mp.idx);
-
-        let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
-        let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
-        track.ambiguity(parser, bb_locs, next_locs);
+        track.ambiguity(parser);
         Ambiguity
     }
 

@@ -389,12 +389,7 @@ pub(super) trait Tracker<'matcher> {
     /// An ambiguity error occurred.
     ///
     /// The parser will return [`NamedParseResult::Ambiguity`] after calling this.
-    fn ambiguity(
-        &mut self,
-        parser: &Parser<'_>,
-        bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-        next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-    );
+    fn ambiguity(&mut self, parser: &Parser<'_>);
 
     /// For tracing.
     fn description() -> &'static str;
@@ -413,13 +408,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
     fn matched_one(&mut self, _parser: &Parser<'_>, _loc_index: usize) {}
 
-    fn ambiguity(
-        &mut self,
-        _parser: &Parser<'_>,
-        _bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-        _next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-    ) {
-    }
+    fn ambiguity(&mut self, _parser: &Parser<'_>) {}
 
     fn after_arm(&mut self, _result: &NamedParseResult) {}
 

@@ -288,12 +288,28 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
-    fn ambiguity(
-        &mut self,
-        parser: &Parser<'_>,
-        bb_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-        next_locs: impl IntoIterator<Item = &'matcher MatcherLoc>,
-    ) {
+    fn ambiguity(&mut self, parser: &Parser<'_>) {
+        let Some((_, matcher)) = self.current else {
+            bug!("`Self::prepare()` was not called to initialize context");
+        };
+
+        #[expect(
+            rustc::potential_query_instability,
+            reason = "sorting the results deterministically afterwards"
+        )]
+        let (mut bb_locs, mut next_locs) = self
+            .matches
+            .iter()
+            .filter(|m| m.input_pos == parser.approx_token_stream_pos())
+            .partition::<Vec<&SuccessfulMatch>, _>(|m| {
+                let loc = &matcher[m.loc_index as usize];
+                matches!(loc, MatcherLoc::MetaVarDecl { .. })
+            });
+
+        // Use a reasonable and deterministic ordering for data in the error message.
+        bb_locs.sort_unstable_by_key(|m| m.loc_index);
+        next_locs.sort_unstable_by_key(|m| m.loc_index);
+
         let span = parser.token.span.substitute_dummy(self.root_span);
 
         if parser.token == token::Eof {
@@ -305,11 +321,10 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 
         let nts = bb_locs
             .into_iter()
-            .map(|loc| match loc {
-                MatcherLoc::MetaVarDecl { bind, kind, .. } => {
-                    format!("{kind} ('{bind}')")
-                }
-                _ => unreachable!(),
+            .map(|m| {
+                let loc = &matcher[m.loc_index as usize];
+                let MatcherLoc::MetaVarDecl { bind, kind, .. } = loc else { unreachable!() };
+                format!("{kind} ('{bind}')")
             })
             .collect::<Vec<String>>()
             .join(" or ");
@@ -317,7 +332,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         let msg = format!(
             "local ambiguity when calling macro `{}`: multiple parsing options: {}",
             self.macro_name,
-            match next_locs.into_iter().count() {
+            match next_locs.len() {
                 0 => format!("built-in NTs {nts}."),
                 n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
             }
