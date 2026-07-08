@@ -1,6 +1,6 @@
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::mcdc::{ConditionId, ConditionInfo, ConditionSpan, DecisionSpan};
-use rustc_middle::mir::coverage::BlockMarkerId;
+use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan};
 use rustc_middle::thir::LogicalOp;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -8,6 +8,11 @@ use tracing::instrument;
 
 use crate::builder::Builder;
 use crate::diagnostics::MCDCConditionNumberExceeded;
+
+enum FinishedDecision {
+    MCDCDecision(DecisionSpan, Vec<ConditionSpan>),
+    StandaloneBranch(BranchSpan),
+}
 
 /// This struct is responsible for tracking a visited decision, assigning
 /// [`ConditionId`]s to its conditions and building its BDD (Binary Decision
@@ -129,8 +134,18 @@ impl MCDCDecisionBuilder {
         span: Span,
         true_marker: BlockMarkerId,
         false_marker: BlockMarkerId,
-    ) -> Option<(DecisionSpan, Vec<ConditionSpan>)> {
-        let condition_info = self.bdd_node_stack.pop()?;
+    ) -> Option<FinishedDecision> {
+        let Some(condition_info) = self.bdd_node_stack.pop() else {
+            // If there's no existing node, it means we didn't encounter a
+            // boolean operator above this condition, so it must be a
+            // single condition decision.
+            return Some(FinishedDecision::StandaloneBranch(BranchSpan {
+                span,
+                true_marker,
+                false_marker,
+            }));
+        };
+
         let Some(decision) = self.decision.as_mut() else {
             bug!("decision should have been created by now");
         };
@@ -150,7 +165,9 @@ impl MCDCDecisionBuilder {
         if self.bdd_node_stack.is_empty() {
             // There is no more condition to the decision, return the resulting spans
             let conditions = std::mem::take(&mut self.conditions);
-            self.decision.take().map(|decision| (decision, conditions))
+            self.decision
+                .take()
+                .map(|decision| FinishedDecision::MCDCDecision(decision, conditions))
         } else {
             None
         }
@@ -183,11 +200,19 @@ pub(crate) struct MCDCInfoBuilder {
 
     /// The list of computed decisions so far.
     decisions: Vec<(DecisionSpan, Vec<ConditionSpan>)>,
+
+    /// The list of extra branch span, i.e. 1-condition decisions we'd rather
+    /// instrument via branch instrumentation since it is equivalent.
+    standalone_branches: Vec<BranchSpan>,
 }
 
 impl Default for MCDCInfoBuilder {
     fn default() -> Self {
-        Self { decision_builder_stack: vec![MCDCDecisionBuilder::default()], decisions: Vec::new() }
+        Self {
+            decision_builder_stack: vec![MCDCDecisionBuilder::default()],
+            decisions: Vec::new(),
+            standalone_branches: Vec::new(),
+        }
     }
 }
 
@@ -231,27 +256,41 @@ impl MCDCInfoBuilder {
             bug!("Unexpected empty decision builder stack")
         };
 
-        if let Some((decision, conditions)) =
-            decision_builder.try_finish_decision(span, true_marker, false_marker)
-        {
-            let num_conditions = conditions.len();
-            assert_eq!(
-                num_conditions, decision.num_conditions,
-                "decision.num_conditions should equal conditions.len()"
-            );
+        match decision_builder.try_finish_decision(span, true_marker, false_marker) {
+            // Decision was completed, save it.
+            Some(FinishedDecision::MCDCDecision(decision, conditions)) => {
+                let num_conditions = conditions.len();
+                assert_eq!(
+                    num_conditions, decision.num_conditions,
+                    "decision.num_conditions should equal conditions.len()"
+                );
 
-            match num_conditions {
-                1..=ConditionId::MAX_AS_USIZE => self.decisions.push((decision, conditions)),
+                match num_conditions {
+                    1..=ConditionId::MAX_AS_USIZE => self.decisions.push((decision, conditions)),
 
-                0 => bug!("decision has no condition"),
+                    0 => bug!("decision has no condition"),
 
-                // LLVM does not support decisions with more conditions.
-                _ => tcx.dcx().emit_warn(MCDCConditionNumberExceeded {
-                    span: decision.span,
-                    max_conditions: ConditionId::MAX_AS_USIZE,
-                    num_conditions,
-                }),
+                    // LLVM does not support decisions with more conditions.
+                    _ => {
+                        tcx.dcx().emit_warn(MCDCConditionNumberExceeded {
+                            span: decision.span,
+                            max_conditions: ConditionId::MAX_AS_USIZE,
+                            num_conditions,
+                        });
+
+                        // Upon error, decision_builder should be in a
+                        // sound state for the next decision.
+                        debug_assert!(decision_builder.is_empty())
+                    }
+                }
             }
+            // Decision is a simple condition without an operator,
+            // save it to instrument it with branch coverage.
+            Some(FinishedDecision::StandaloneBranch(branch_span)) => {
+                self.standalone_branches.push(branch_span)
+            }
+            // Decision isn't complete yet
+            None => {}
         }
     }
 
@@ -277,14 +316,14 @@ impl MCDCInfoBuilder {
 
     #[inline]
     #[instrument(level = "debug")]
-    pub(crate) fn into_done(self) -> Vec<(DecisionSpan, Vec<ConditionSpan>)> {
-        self.decisions
+    pub(crate) fn into_done(self) -> (Vec<(DecisionSpan, Vec<ConditionSpan>)>, Vec<BranchSpan>) {
+        (self.decisions, self.standalone_branches)
     }
 
     #[inline]
     #[instrument(level = "debug")]
-    pub(crate) fn as_done(&self) -> &[(DecisionSpan, Vec<ConditionSpan>)] {
-        self.decisions.as_slice()
+    pub(crate) fn as_done(&self) -> (&[(DecisionSpan, Vec<ConditionSpan>)], &[BranchSpan]) {
+        (self.decisions.as_slice(), self.standalone_branches.as_slice())
     }
 }
 

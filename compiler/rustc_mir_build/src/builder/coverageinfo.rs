@@ -168,10 +168,13 @@ impl CoverageInfoBuilder {
         let Self { nots: _, markers: BlockMarkerGen { num_block_markers }, branch_info, mcdc_info } =
             self;
 
-        let branch_spans =
+        let mut branch_spans =
             branch_info.map(|branch_info| branch_info.branch_spans).unwrap_or_default();
 
-        let mcdc_spans = mcdc_info.map(MCDCInfoBuilder::into_done).unwrap_or_default();
+        let (mcdc_spans, standalone_branches) =
+            mcdc_info.map(MCDCInfoBuilder::into_done).unwrap_or_default();
+
+        branch_spans.extend(standalone_branches);
 
         // For simplicity, always return an info struct (without Option), even
         // if there's nothing interesting in it.
@@ -186,14 +189,17 @@ impl CoverageInfoBuilder {
             ref mcdc_info,
         } = self;
 
-        let branch_spans = branch_info
+        let mut branch_spans = branch_info
             .as_ref()
             .map(|branch_info| branch_info.branch_spans.as_slice())
             .unwrap_or_default()
             .to_owned();
 
-        let mcdc_spans =
-            mcdc_info.as_ref().map(|mcdc_info| mcdc_info.as_done().to_vec()).unwrap_or_default();
+        let (mcdc_spans, standalone_branches) =
+            mcdc_info.as_ref().map(|mcdc_info| mcdc_info.as_done()).unwrap_or_default();
+
+        branch_spans.extend(standalone_branches.iter().cloned());
+        let mcdc_spans = mcdc_spans.to_vec();
 
         // For simplicity, always return an info struct (without Option), even
         // if there's nothing interesting in it.
