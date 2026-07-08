@@ -12,7 +12,7 @@ use crate::fs;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 #[cfg(not(any(
-    target_arch = "wasm32",
+    all(target_arch = "wasm32", not(target_os = "emscripten")),
     target_env = "sgx",
     target_os = "hermit",
     target_os = "trusty",
@@ -104,7 +104,7 @@ impl BorrowedFd<'_> {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
     #[cfg(not(any(
-        target_arch = "wasm32",
+        all(target_arch = "wasm32", not(target_os = "emscripten")),
         target_os = "hermit",
         target_os = "trusty",
         target_os = "motor"
@@ -131,7 +131,11 @@ impl BorrowedFd<'_> {
 
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
-    #[cfg(any(target_arch = "wasm32", target_os = "hermit", target_os = "trusty"))]
+    #[cfg(any(
+        all(target_arch = "wasm32", not(target_os = "emscripten")),
+        target_os = "hermit",
+        target_os = "trusty"
+    ))]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedFd> {
         Err(io::Error::UNSUPPORTED_PLATFORM)
