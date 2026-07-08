@@ -294,13 +294,13 @@ impl MatcherPos {
 
 /// Represents the possible results of an attempted parse.
 #[derive(Debug)]
-pub(crate) enum ParseResult<T, F> {
+pub(crate) enum ParseResult<T> {
     /// Parsed successfully.
     Success(T),
-    /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
-    /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
-    /// The usize is the approximate position of the token in the input token stream.
-    Failure(F),
+    /// Arm failed to match.
+    ///
+    /// [`Tracker::failure()`] will be called beforehand.
+    Failure,
     /// The input could be parsed in multiple distinct ways.
     ///
     /// [`Tracker::ambiguity()`] will be called beforehand.
@@ -311,7 +311,7 @@ pub(crate) enum ParseResult<T, F> {
 /// A `ParseResult` where the `Success` variant contains a mapping of
 /// `MacroRulesNormalizedIdent`s to `NamedMatch`es. This represents the mapping
 /// of metavars to the token trees they bind to.
-pub(crate) type NamedParseResult<F> = ParseResult<NamedMatches, F>;
+pub(crate) type NamedParseResult = ParseResult<NamedMatches>;
 
 /// Contains a mapping of `MacroRulesNormalizedIdent`s to `NamedMatch`es.
 /// This represents the mapping of metavars to the token trees they bind to.
@@ -467,7 +467,7 @@ impl TtParser {
         parser: &Parser<'_>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
-    ) -> Option<NamedParseResult<T::Failure>> {
+    ) -> Option<NamedParseResult> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
         // modified if `token == Eof`.
         let token = &parser.token;
@@ -592,14 +592,21 @@ impl TtParser {
                     let matches = Rc::try_unwrap(eof_mp.matches).unwrap().into_iter();
                     Success(self.nameize(matcher, matches))
                 }
-                [] => Failure(track.failure(
-                    Token::new(
-                        token::Eof,
-                        if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
-                    ),
-                    parser.approx_token_stream_pos(),
-                    "missing tokens in macro arguments",
-                )),
+                [] => {
+                    track.failure(
+                        Token::new(
+                            token::Eof,
+                            if token.span.is_dummy() {
+                                token.span
+                            } else {
+                                token.span.shrink_to_hi()
+                            },
+                        ),
+                        parser.approx_token_stream_pos(),
+                        "missing tokens in macro arguments",
+                    );
+                    Failure
+                }
                 _ => self.ambiguity_error(parser, matcher, track),
             })
         } else {
@@ -613,7 +620,7 @@ impl TtParser {
         parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
-    ) -> NamedParseResult<T::Failure> {
+    ) -> NamedParseResult {
         // A queue of possible matcher positions. We initialize it with the matcher position in
         // which the "dot" is before the first token of the first token tree in `matcher`.
         // `parse_tt_inner` then processes all of these possible matcher positions and produces
@@ -642,11 +649,12 @@ impl TtParser {
                 (0, 0) => {
                     // There are no possible next positions AND we aren't waiting for the black-box
                     // parser: syntax error.
-                    return Failure(track.failure(
+                    track.failure(
                         parser.token,
                         parser.approx_token_stream_pos(),
                         "no rules expected this token in macro call",
-                    ));
+                    );
+                    return Failure;
                 }
 
                 (_, 0) => {
@@ -686,7 +694,7 @@ impl TtParser {
         }
     }
 
-    fn nt_parsing_error<F>(&self, loc: &MatcherLoc, err: Diag<'_>) -> NamedParseResult<F> {
+    fn nt_parsing_error(&self, loc: &MatcherLoc, err: Diag<'_>) -> NamedParseResult {
         let &MatcherLoc::MetaVarDecl { span, kind, .. } = loc else { unreachable!() };
         let guarantee = err
             .with_span_label(
@@ -702,7 +710,7 @@ impl TtParser {
         parser: &Parser<'_>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
-    ) -> NamedParseResult<T::Failure> {
+    ) -> NamedParseResult {
         // Use a reasonable and deterministic ordering for data in the error message.
         self.bb_mps.sort_unstable_by_key(|mp| mp.idx);
         self.next_mps.sort_unstable_by_key(|mp| mp.idx);

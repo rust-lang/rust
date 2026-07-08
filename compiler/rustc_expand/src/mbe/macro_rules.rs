@@ -359,9 +359,6 @@ fn trace_macros_note(cx_expansions: &mut FxIndexMap<Span, Vec<String>>, sp: Span
 }
 
 pub(super) trait Tracker<'matcher> {
-    /// The contents of `ParseResult::Failure`.
-    type Failure;
-
     /// Provide context on the arm that's about to be matched.
     fn prepare(&mut self, which_matcher: WhichMatcher);
 
@@ -370,7 +367,7 @@ pub(super) trait Tracker<'matcher> {
 
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
-    fn after_arm(&mut self, result: &NamedParseResult<Self::Failure>);
+    fn after_arm(&mut self, result: &NamedParseResult);
 
     /// The arm could not be matched successfully.
     ///
@@ -379,7 +376,7 @@ pub(super) trait Tracker<'matcher> {
     /// indicates that no rules in the arm expected the given token.
     ///
     /// The parser will return [`NamedParseResult::Failure`] after calling this.
-    fn failure(&mut self, token: Token, approx_position: u32, msg: &'static str) -> Self::Failure;
+    fn failure(&mut self, token: Token, approx_position: u32, msg: &'static str);
 
     /// An ambiguity error occurred.
     ///
@@ -402,8 +399,6 @@ pub(super) trait Tracker<'matcher> {
 pub(super) struct NoopTracker;
 
 impl<'matcher> Tracker<'matcher> for NoopTracker {
-    type Failure = ();
-
     fn prepare(&mut self, _which_matcher: WhichMatcher) {}
 
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
@@ -416,15 +411,9 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
     ) {
     }
 
-    fn after_arm(&mut self, _result: &NamedParseResult<Self::Failure>) {}
+    fn after_arm(&mut self, _result: &NamedParseResult) {}
 
-    fn failure(
-        &mut self,
-        _token: Token,
-        _approx_position: u32,
-        _msg: &'static str,
-    ) -> Self::Failure {
-    }
+    fn failure(&mut self, _token: Token, _approx_position: u32, _msg: &'static str) {}
 
     fn description() -> &'static str {
         "none"
@@ -661,7 +650,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 
                 return Ok((i, rule, named_matches));
             }
-            Failure(_) => {
+            Failure => {
                 trace!("Failed to match arm, trying the next one");
                 // Try the next arm.
             }
@@ -712,7 +701,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
 
         let mut named_matches = match result {
             Success(named_matches) => named_matches,
-            Failure(_) => {
+            Failure => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut());
                 continue;
             }
@@ -731,7 +720,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
                 named_matches.extend(body_named_matches);
                 return Ok((i, rule, named_matches));
             }
-            Failure(_) => {
+            Failure => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
             }
             Ambiguity => return Err(CanRetry::Yes),
@@ -770,7 +759,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
                 psess.gated_spans.merge(gated_spans_snapshot);
                 return Ok((i, rule, named_matches));
             }
-            Failure(_) => {
+            Failure => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
             }
             Ambiguity => return Err(CanRetry::Yes),

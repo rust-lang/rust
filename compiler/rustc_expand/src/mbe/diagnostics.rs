@@ -183,8 +183,6 @@ impl BestFailure {
 }
 
 impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'matcher> {
-    type Failure = (Token, u32, &'static str);
-
     fn prepare(&mut self, which_matcher: WhichMatcher) {
         if self.current.is_some() {
             bug!("`Self::after_arm()` was not called to clean up context");
@@ -201,7 +199,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
-    fn after_arm(&mut self, result: &NamedParseResult<Self::Failure>) {
+    fn after_arm(&mut self, result: &NamedParseResult) {
         match *result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -211,7 +209,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     "should not collect detailed info for successful macro match",
                 );
             }
-            Failure(_) => {
+            Failure => {
                 if self.best_failure.is_none() {
                     bug!("A matching failure occurred but `Self::failure()` was not called");
                 }
@@ -227,7 +225,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         self.current = None;
     }
 
-    fn failure(&mut self, token: Token, approx_position: u32, msg: &'static str) -> Self::Failure {
+    fn failure(&mut self, token: Token, approx_position: u32, msg: &'static str) {
         let Some(which_matcher) = self.current else {
             bug!("`Self::prepare()` was not called to initialize context");
         };
@@ -250,8 +248,6 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     .clone(),
             })
         }
-
-        (token, approx_position, msg)
     }
 
     fn ambiguity(
