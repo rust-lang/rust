@@ -1,0 +1,14 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/derive-expect-issue-150553-7.rs:46:14
+   |
+LL |     #[expect(unexpected_cfgs)]
+   |              ^^^^^^^^^^^^^^^
+...
+LL | unfulfilled!();
+   | -------------- in this macro invocation
+   |
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+   = note: this warning originates in the macro `unfulfilled` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 1 warning emitted
+
