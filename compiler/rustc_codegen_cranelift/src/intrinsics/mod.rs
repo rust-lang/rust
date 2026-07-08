@@ -314,11 +314,11 @@ fn codegen_float_intrinsic_call<'tcx>(
     ret: CPlace<'tcx>,
 ) -> bool {
     let (name, arg_count, ty, clif_ty) = match intrinsic {
-        sym::expf16 => ("expf16", 1, fx.tcx.types.f16, types::F16),
+        sym::expf16 => return false, // has a fallback via f32
         sym::expf32 => ("expf", 1, fx.tcx.types.f32, types::F32),
         sym::expf64 => ("exp", 1, fx.tcx.types.f64, types::F64),
         sym::expf128 => ("expf128", 1, fx.tcx.types.f128, types::F128),
-        sym::exp2f16 => ("exp2f16", 1, fx.tcx.types.f16, types::F16),
+        sym::exp2f16 => return false, // has a fallback via f32
         sym::exp2f32 => ("exp2f", 1, fx.tcx.types.f32, types::F32),
         sym::exp2f64 => ("exp2", 1, fx.tcx.types.f64, types::F64),
         sym::exp2f128 => ("exp2f128", 1, fx.tcx.types.f128, types::F128),
@@ -330,19 +330,20 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::powif32 => ("__powisf2", 2, fx.tcx.types.f32, types::F32), // compiler-builtins
         sym::powif64 => ("__powidf2", 2, fx.tcx.types.f64, types::F64), // compiler-builtins
         sym::powif128 => ("__powitf2", 2, fx.tcx.types.f128, types::F128), // compiler-builtins
-        sym::powf16 => ("powf16", 2, fx.tcx.types.f16, types::F16),
+
+        sym::powf16 => return false, // has a fallback via f32
         sym::powf32 => ("powf", 2, fx.tcx.types.f32, types::F32),
         sym::powf64 => ("pow", 2, fx.tcx.types.f64, types::F64),
         sym::powf128 => ("powf128", 2, fx.tcx.types.f128, types::F128),
-        sym::logf16 => ("logf16", 1, fx.tcx.types.f16, types::F16),
+        sym::logf16 => return false, // has a fallback via f32
         sym::logf32 => ("logf", 1, fx.tcx.types.f32, types::F32),
         sym::logf64 => ("log", 1, fx.tcx.types.f64, types::F64),
         sym::logf128 => ("logf128", 1, fx.tcx.types.f128, types::F128),
-        sym::log2f16 => ("log2f16", 1, fx.tcx.types.f16, types::F16),
+        sym::log2f16 => return false, // has a fallback via f32
         sym::log2f32 => ("log2f", 1, fx.tcx.types.f32, types::F32),
         sym::log2f64 => ("log2", 1, fx.tcx.types.f64, types::F64),
         sym::log2f128 => ("log2f128", 1, fx.tcx.types.f128, types::F128),
-        sym::log10f16 => ("log10f16", 1, fx.tcx.types.f16, types::F16),
+        sym::log10f16 => return false, // has a fallback via f32
         sym::log10f32 => ("log10f", 1, fx.tcx.types.f32, types::F32),
         sym::log10f64 => ("log10", 1, fx.tcx.types.f64, types::F64),
         sym::log10f128 => ("log10f128", 1, fx.tcx.types.f128, types::F128),
