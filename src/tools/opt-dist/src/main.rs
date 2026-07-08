@@ -243,7 +243,12 @@ fn execute_pipeline(
         let rustc_profile_dir_root = env.artifact_dir().join("rustc-pgo");
 
         stage.section("Build PGO instrumented rustc and LLVM", |section| {
-            let mut builder = Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root);
+            // Rustc and rustdoc profiles are gathered together into the same directory, because
+            // they are executed together within a single rustc-perf invocation.
+            // Their profiles are then merged together into a single PGO profile.
+            let mut builder = Bootstrap::build(env)
+                .rustc_pgo_instrument(&rustc_profile_dir_root)
+                .rustdoc_pgo_instrument(&rustc_profile_dir_root);
 
             if env.supports_shared_llvm() {
                 // This first LLVM that we build will be thrown away after this stage, and it
@@ -261,7 +266,8 @@ fn execute_pipeline(
         print_free_disk_space()?;
 
         stage.section("Build PGO optimized rustc", |section| {
-            let mut cmd = Bootstrap::build(env).rustc_pgo_optimize(&profile);
+            let mut cmd =
+                Bootstrap::build(env).rustc_pgo_optimize(&profile).rustdoc_pgo_optimize(&profile);
             if env.use_bolt() {
                 cmd = cmd.with_rustc_bolt_ldflags();
             }
@@ -386,7 +392,8 @@ fn execute_pipeline(
 
     let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
-        .rustc_pgo_optimize(&rustc_pgo_profile);
+        .rustc_pgo_optimize(&rustc_pgo_profile)
+        .rustdoc_pgo_optimize(&rustc_pgo_profile);
 
     // if LLVM is not built we'll have PGO optimized rustc
     dist = if env.supports_shared_llvm() || !env.build_llvm() {

@@ -158,6 +158,14 @@ impl Bootstrap {
         self
     }
 
+    pub fn rustdoc_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.rustdoc.generate="{}""#, profile_dir.as_str()));
+        self
+    }
+
     pub fn without_llvm_lto(mut self) -> Self {
         self.cmd = self
             .cmd
@@ -173,6 +181,12 @@ impl Bootstrap {
             .cmd
             .arg("--set")
             .arg(format!(r#"pgo.rustc.use="{}""#, normalize_path(&profile.0).as_str()));
+        self
+    }
+
+    pub fn rustdoc_pgo_optimize(mut self, profile: &RustcPGOProfile) -> Self {
+        self.cmd =
+            self.cmd.arg("--set").arg(format!(r#"pgo.rustdoc.use="{}""#, profile.0.as_str()));
         self
     }
 
