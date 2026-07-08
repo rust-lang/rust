@@ -148,6 +148,12 @@ pub(super) fn failed_to_match_macro(
 struct CollectTrackerAndEmitter<'dcx, 'matcher> {
     macro_name: Ident,
     dcx: DiagCtxtHandle<'dcx>,
+
+    /// The matcher currently being parsed.
+    //
+    // FIXME: Factor out a per-arm `Tracker` so that the `Option` is unnecessary.
+    current: Option<WhichMatcher>,
+
     remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
     best_failure: Option<BestFailure>,
@@ -179,6 +185,14 @@ impl BestFailure {
 impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'matcher> {
     type Failure = (Token, u32, &'static str);
 
+    fn prepare(&mut self, which_matcher: WhichMatcher) {
+        if self.current.is_some() {
+            bug!("`Self::after_arm()` was not called to clean up context");
+        }
+
+        self.current = Some(which_matcher);
+    }
+
     fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
         (tok, position, msg)
     }
@@ -191,7 +205,11 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
-    fn after_arm(&mut self, which_matcher: WhichMatcher, result: &NamedParseResult<Self::Failure>) {
+    fn after_arm(&mut self, result: &NamedParseResult<Self::Failure>) {
+        let Some(which_matcher) = self.current else {
+            bug!("`Self::prepare()` was not called to initialize context");
+        };
+
         match *result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -226,6 +244,8 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             }
             ErrorReported(guar) => self.result = Some((self.root_span, guar)),
         }
+
+        self.current = None;
     }
 
     fn ambiguity(
@@ -281,6 +301,7 @@ impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
         Self {
             macro_name,
             dcx,
+            current: None,
             remaining_matcher: None,
             best_failure: None,
             root_span,

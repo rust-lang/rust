@@ -362,6 +362,9 @@ pub(super) trait Tracker<'matcher> {
     /// The contents of `ParseResult::Failure`.
     type Failure;
 
+    /// Provide context on the arm that's about to be matched.
+    fn prepare(&mut self, which_matcher: WhichMatcher);
+
     /// Arm failed to match. If the token is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
     /// The usize is the approximate position of the token in the input token stream.
@@ -372,7 +375,7 @@ pub(super) trait Tracker<'matcher> {
 
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
-    fn after_arm(&mut self, which_matcher: WhichMatcher, result: &NamedParseResult<Self::Failure>);
+    fn after_arm(&mut self, result: &NamedParseResult<Self::Failure>);
 
     /// An ambiguity error occurred.
     ///
@@ -397,6 +400,8 @@ pub(super) struct NoopTracker;
 impl<'matcher> Tracker<'matcher> for NoopTracker {
     type Failure = ();
 
+    fn prepare(&mut self, _which_matcher: WhichMatcher) {}
+
     fn build_failure(_tok: Token, _position: u32, _msg: &'static str) -> Self::Failure {}
 
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
@@ -409,12 +414,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
     ) {
     }
 
-    fn after_arm(
-        &mut self,
-        _which_matcher: WhichMatcher,
-        _result: &NamedParseResult<Self::Failure>,
-    ) {
-    }
+    fn after_arm(&mut self, _result: &NamedParseResult<Self::Failure>) {}
 
     fn description() -> &'static str {
         "none"
@@ -638,9 +638,9 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
+        track.prepare(WhichMatcher::FOR_FUNC);
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, track);
-
-        track.after_arm(WhichMatcher::FOR_FUNC, &result);
+        track.after_arm(&result);
 
         match result {
             Success(named_matches) => {
@@ -696,8 +696,9 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
 
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
+        track.prepare(WhichMatcher::Args);
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&args_parser), args, track);
-        track.after_arm(WhichMatcher::Args, &result);
+        track.after_arm(&result);
 
         let mut named_matches = match result {
             Success(named_matches) => named_matches,
@@ -709,8 +710,9 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         };
 
+        track.prepare(WhichMatcher::Body);
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
-        track.after_arm(WhichMatcher::Body, &result);
+        track.after_arm(&result);
 
         match result {
             Success(body_named_matches) => {
@@ -749,8 +751,9 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
 
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
+        track.prepare(WhichMatcher::FOR_DERIVE);
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
-        track.after_arm(WhichMatcher::FOR_DERIVE, &result);
+        track.after_arm(&result);
 
         match result {
             Success(named_matches) => {
