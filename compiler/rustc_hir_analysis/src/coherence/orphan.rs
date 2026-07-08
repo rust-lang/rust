@@ -163,7 +163,7 @@ pub(crate) fn orphan_check_impl(
         let (local_impl, nonlocal_impl) = match self_ty.kind() {
             // struct Struct<T>;
             // impl AutoTrait for Struct<Foo> {}
-            ty::Adt(self_def, _) => (
+            ty::Adt(self_def, _) | ty::View(self_def, _, _) | ty::ViewInfer(self_def, _, _) => (
                 LocalImpl::Allow,
                 if self_def.did().is_local() {
                     NonlocalImpl::Allow

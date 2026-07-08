@@ -437,7 +437,10 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Int(int_ty) => TyKind::RigidTy(RigidTy::Int(int_ty.stable(tables, cx))),
             ty::Uint(uint_ty) => TyKind::RigidTy(RigidTy::Uint(uint_ty.stable(tables, cx))),
             ty::Float(float_ty) => TyKind::RigidTy(RigidTy::Float(float_ty.stable(tables, cx))),
-            ty::Adt(adt_def, generic_args) => TyKind::RigidTy(RigidTy::Adt(
+            ty::Adt(adt_def, generic_args)
+            // FIXME(scrabsha): lower view types to their own `rustc_public` type.
+            | ty::View(adt_def, generic_args, _)
+            | ty::ViewInfer(adt_def, generic_args, _) => TyKind::RigidTy(RigidTy::Adt(
                 tables.adt_def(adt_def.did()),
                 generic_args.stable(tables, cx),
             )),

@@ -120,9 +120,13 @@ impl MappingFlags {
             }
 
             // FIXME: This should not treat aliases this way.
-            ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Alias(_, _) | ty::Param(_) => {
-                MappingFlags::TO
-            }
+            ty::Adt(_, _)
+            | ty::Tuple(_)
+            | ty::Array(_, _)
+            | ty::Alias(_, _)
+            | ty::Param(_)
+            | ty::View(_, _, _)
+            | ty::ViewInfer(_, _, _) => MappingFlags::TO,
 
             ty::RawPtr(_, Not) | ty::Ref(_, _, Not) => MappingFlags::TO,
 

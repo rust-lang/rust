@@ -763,16 +763,20 @@ where
                 });
             }
 
-            ty::Adt(def, args) if def.is_struct() => match def.struct_tail_ty(cx) {
-                None => Ty::new_unit(cx),
-                Some(tail_ty) => Ty::new_projection(
-                    cx,
-                    ty::IsRigid::No,
-                    metadata_def_id,
-                    [tail_ty.instantiate(cx, args).skip_norm_wip()],
-                ),
-            },
-            ty::Adt(_, _) => Ty::new_unit(cx),
+            ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _)
+                if def.is_struct() =>
+            {
+                match def.struct_tail_ty(cx) {
+                    None => Ty::new_unit(cx),
+                    Some(tail_ty) => Ty::new_projection(
+                        cx,
+                        ty::IsRigid::No,
+                        metadata_def_id,
+                        [tail_ty.instantiate(cx, args).skip_norm_wip()],
+                    ),
+                }
+            }
+            ty::Adt(_, _) | ty::View(_, _, _) | ty::ViewInfer(_, _, _) => Ty::new_unit(cx),
 
             ty::Tuple(elements) => match elements.last() {
                 None => Ty::new_unit(cx),
@@ -1001,6 +1005,8 @@ where
             | ty::Slice(_)
             | ty::Dynamic(_, _)
             | ty::Tuple(_)
+            | ty::View(..)
+            | ty::ViewInfer(..)
             | ty::Error(_) => self_ty.discriminant_ty(ecx.cx()),
 
             ty::UnsafeBinder(_) => {

@@ -197,6 +197,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Bound(_, _)
+            | ty::View(_, _, _)
+            | ty::ViewInfer(_, _, _)
             | ty::Placeholder(_)
             | ty::Infer(_)
             | ty::Error(_) => false,

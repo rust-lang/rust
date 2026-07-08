@@ -252,7 +252,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
                 let val = match ty.kind() {
                     // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
-                    ty::Adt(adt, _) => {
+                    ty::Adt(adt, _) | ty::View(adt, _, _) | ty::ViewInfer(adt, _, _) => {
                         ConstValue::from_target_usize(adt.variants().len() as u64, &tcx)
                     }
                     ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {

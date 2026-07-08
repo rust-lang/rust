@@ -547,7 +547,10 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
-            | ty::Coroutine(def_id, args) => {
+            | ty::Coroutine(def_id, args)
+            // FIXME(scrabsha): do we need some custom mangling for view types?
+            | ty::View(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args, _)
+            | ty::ViewInfer(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args, _) => {
                 self.print_def_path(def_id, args)?;
             }
 

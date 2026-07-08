@@ -380,6 +380,8 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
         | ty::Adt(_, _)
         | ty::Alias(_, _)
         | ty::Param(_)
+        | ty::View(_, _, _)
+        | ty::ViewInfer(_, _, _)
         | ty::Placeholder(..) => Err(EvaluationFailure::NoSolution),
 
         ty::Bound(..)
@@ -452,11 +454,15 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
 
     let const_conditions = match *self_ty.kind() {
         // `ManuallyDrop` is trivially `[const] Destruct` as we do not run any drop glue on it.
-        ty::Adt(adt_def, _) if adt_def.is_manually_drop() => thin_vec![],
+        ty::Adt(adt_def, _) | ty::View(adt_def, _, _) | ty::ViewInfer(adt_def, _, _)
+            if adt_def.is_manually_drop() =>
+        {
+            thin_vec![]
+        }
 
         // An ADT is `[const] Destruct` only if all of the fields are,
         // *and* if there is a `Drop` impl, that `Drop` impl is also `[const]`.
-        ty::Adt(adt_def, args) => {
+        ty::Adt(adt_def, args) | ty::View(adt_def, args, _) | ty::ViewInfer(adt_def, args, _) => {
             let mut const_conditions: ThinVec<_> = adt_def
                 .all_fields()
                 .map(|field| {

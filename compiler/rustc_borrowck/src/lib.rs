@@ -1913,7 +1913,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                         ));
                         return;
                     }
-                    ty::Adt(adt, _) => {
+                    ty::Adt(adt, _) | ty::View(adt, _, _) | ty::ViewInfer(adt, _, _) => {
                         if !adt.is_box() {
                             bug!("Adt should be a box type when Place is deref");
                         }
@@ -1948,7 +1948,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     }
                 },
                 ProjectionElem::Field(_, _) => match place_ty.ty.kind() {
-                    ty::Adt(adt, _) => {
+                    ty::Adt(adt, _) | ty::View(adt, _, _) | ty::ViewInfer(adt, _, _) => {
                         if adt.has_dtor(tcx) {
                             self.move_errors.push(MoveError::new(
                                 place,

@@ -1081,6 +1081,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::CoroutineWitness(..)
                         | ty::Never
                         | ty::Tuple(..)
+                        | ty::View(..)
+                        | ty::ViewInfer(..)
                         // Integers and floats always have `u8` as their discriminant.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
@@ -1139,7 +1141,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             | ty::Foreign(_)
                             // If returned by `struct_tail` this is a unit struct
                             // without any fields, or not a struct, and therefore is Sized.
-                            | ty::Adt(..)
+                            | ty::Adt(..) | ty::View(..) | ty::ViewInfer(_, _, _)
                             // If returned by `struct_tail` this is the empty tuple.
                             | ty::Tuple(..)
                             // Integers and floats are always Sized, and so have unit type metadata.

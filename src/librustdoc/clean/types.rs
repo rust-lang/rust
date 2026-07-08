@@ -1782,6 +1782,8 @@ impl PrimitiveType {
             | ty::Infer(..)
             | ty::Param(..)
             | ty::Placeholder(..)
+            | ty::View(..)
+            | ty::ViewInfer(..)
             | ty::UnsafeBinder(..) => None,
         }
     }

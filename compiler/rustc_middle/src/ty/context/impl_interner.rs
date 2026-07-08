@@ -3,6 +3,7 @@
 use std::ops::ControlFlow;
 use std::{debug_assert_matches, fmt};
 
+use rustc_abi::FieldIdx;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -107,6 +108,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Pat = Pattern<'tcx>;
     type PatList = &'tcx List<Pattern<'tcx>>;
     type Safety = hir::Safety;
+    type FieldSet = &'tcx List<Self::Field>;
+    type Field = FieldIdx;
     type Const = ty::Const<'tcx>;
     type Consts = &'tcx List<Self::Const>;
 
@@ -589,6 +592,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Coroutine(_, _)
             | ty::Never
             | ty::Tuple(_)
+            | ty::View(_, _, _)
+            | ty::ViewInfer(_, _, _)
             | ty::UnsafeBinder(_) => {
                 if let Some(simp) = ty::fast_reject::simplify_type(
                     tcx,

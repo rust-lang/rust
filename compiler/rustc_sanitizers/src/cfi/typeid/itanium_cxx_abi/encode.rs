@@ -447,7 +447,7 @@ pub(crate) fn encode_ty<'tcx>(
         }
 
         // User-defined types
-        ty::Adt(adt_def, args) => {
+        ty::Adt(adt_def, args) | ty::View(adt_def, args, _) | ty::ViewInfer(adt_def, args, _) => {
             let mut s = String::new();
             let def_id = adt_def.did();
             if let Some(encoding) = find_attr!(tcx, def_id, CfiEncoding { encoding } => encoding) {

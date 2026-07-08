@@ -527,7 +527,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ty::Pat(ty, ..) => is_very_trivially_sized(*ty),
 
                 // We don't want to do any queries, so there is not much we can do with ADTs.
-                ty::Adt(..) => false,
+                ty::Adt(..) | ty::View(..) | ty::ViewInfer(..) => false,
 
                 ty::UnsafeBinder(ty) => is_very_trivially_sized(ty.skip_binder()),
 

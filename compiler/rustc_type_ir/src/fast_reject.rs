@@ -102,7 +102,9 @@ pub fn simplify_type<I: Interner>(
         ty::Int(int_type) => Some(SimplifiedType::Int(int_type)),
         ty::Uint(uint_type) => Some(SimplifiedType::Uint(uint_type)),
         ty::Float(float_type) => Some(SimplifiedType::Float(float_type)),
-        ty::Adt(def, _) => Some(SimplifiedType::Adt(def.def_id().into())),
+        ty::Adt(def, _) | ty::View(def, _, _) | ty::ViewInfer(def, _, _) => {
+            Some(SimplifiedType::Adt(def.def_id().into()))
+        }
         ty::Str => Some(SimplifiedType::Str),
         ty::Array(..) => Some(SimplifiedType::Array),
         ty::Slice(..) => Some(SimplifiedType::Slice),
@@ -295,6 +297,8 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Foreign(_)
+            | ty::View(..)
+            | ty::ViewInfer(..)
             | ty::Placeholder(_)
             | ty::UnsafeBinder(_) => {}
         };
@@ -467,6 +471,31 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
                 // FIXME(pattern_types): take pattern into account
                 matches!(rhs.kind(), ty::Pat(rhs_ty, _) if self.types_may_unify_inner(lhs_ty, rhs_ty, depth))
             }
+
+            ty::View(lhs_def, lhs_args, lhs_fields) => match rhs.kind() {
+                ty::View(rhs_def, rhs_args, rhs_fields) => {
+                    lhs_def == rhs_def
+                        && self.args_may_unify_inner(lhs_args, rhs_args, depth)
+                        // FIXME(scrabsha): should we try harder here? and have a call to
+                        // `self.viewed_fields_may_unify_inner?`
+                        && lhs_fields == rhs_fields
+                }
+                ty::ViewInfer(rhs_def, rhs_args, _) => {
+                    lhs_def == rhs_def && self.args_may_unify_inner(lhs_args, rhs_args, depth)
+                    // FIXME(scrabsha): should we try harder here? and have a call to
+                    // `self.viewed_fields_may_unify_inner?`
+                }
+                _ => false,
+            },
+
+            ty::ViewInfer(lhs_def, lhs_args, _) => match rhs.kind() {
+                ty::View(rhs_def, rhs_args, _) | ty::ViewInfer(rhs_def, rhs_args, _) => {
+                    // FIXME(scrabsha): should we try harder here? and have a call to
+                    // `self.viewed_fields_may_unify_inner?`
+                    lhs_def == rhs_def && self.args_may_unify_inner(lhs_args, rhs_args, depth)
+                }
+                _ => false,
+            },
 
             ty::UnsafeBinder(lhs_ty) => match rhs.kind() {
                 ty::UnsafeBinder(rhs_ty) => {

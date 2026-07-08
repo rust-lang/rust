@@ -256,7 +256,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::Adt(def, args) => {
+            ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
                 self.add_constraints_from_args(current, def.did(), args, variance);
             }
 
