@@ -1088,7 +1088,7 @@ pub fn powif128(a: f128, x: i32) -> f128;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn sinf16(x: f16) -> f16 {
-    libm::likely_available::sinf(x as f32) as f16
+    sinf32(x as f32) as f16
 }
 /// Returns the sine of an `f32`.
 ///
@@ -1129,7 +1129,7 @@ pub fn sinf128(x: f128) -> f128 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn cosf16(x: f16) -> f16 {
-    libm::likely_available::cosf(x as f32) as f16
+    cosf32(x as f32) as f16
 }
 /// Returns the cosine of an `f32`.
 ///
@@ -1170,7 +1170,7 @@ pub fn cosf128(x: f128) -> f128 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn powf16(a: f16, x: f16) -> f16 {
-    libm::likely_available::powf(a as f32, x as f32) as f16
+    powf32(a as f32, x as f32) as f16
 }
 /// Raises an `f32` to an `f32` power.
 ///
@@ -1211,7 +1211,7 @@ pub fn powf128(a: f128, x: f128) -> f128 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn expf16(x: f16) -> f16 {
-    libm::likely_available::expf(x as f32) as f16
+    expf32(x as f32) as f16
 }
 /// Returns the exponential of an `f32`.
 ///
@@ -1252,7 +1252,7 @@ pub fn expf128(x: f128) -> f128 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn exp2f16(x: f16) -> f16 {
-    libm::likely_available::exp2f(x as f32) as f16
+    exp2f32(x as f32) as f16
 }
 /// Returns 2 raised to the power of an `f32`.
 ///
@@ -1293,7 +1293,7 @@ pub fn exp2f128(x: f128) -> f128 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn logf16(x: f16) -> f16 {
-    libm::likely_available::logf(x as f32) as f16
+    logf32(x as f32) as f16
 }
 /// Returns the natural logarithm of an `f32`.
 ///
@@ -1334,7 +1334,7 @@ pub fn logf128(x: f128) -> f128 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn log10f16(x: f16) -> f16 {
-    libm::likely_available::log10f(x as f32) as f16
+    log10f32(x as f32) as f16
 }
 /// Returns the base 10 logarithm of an `f32`.
 ///
@@ -1375,7 +1375,7 @@ pub fn log10f128(x: f128) -> f128 {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn log2f16(x: f16) -> f16 {
-    libm::likely_available::log2f(x as f32) as f16
+    log2f32(x as f32) as f16
 }
 /// Returns the base 2 logarithm of an `f32`.
 ///
