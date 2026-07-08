@@ -919,14 +919,14 @@ fn collect_eii_linkage(tcx: TyCtxt<'_>) -> Vec<EiiLinkageInfo> {
     let mut eiis = FxIndexMap::<DefId, FoundEii>::default();
 
     for &cnum in tcx.crates(()).iter().chain(iter::once(&LOCAL_CRATE)) {
-        for (did, (decl, impls)) in tcx.externally_implementable_items(cnum) {
-            eiis.entry(*did)
-                .or_insert_with(|| FoundEii { decl: *decl, impls: Default::default() })
+        for (&did, &(decl, ref impls)) in tcx.externally_implementable_items(cnum) {
+            eiis.entry(did)
+                .or_insert_with(|| FoundEii { decl, impls: Default::default() })
                 .impls
                 .extend(
                     impls
                         .into_iter()
-                        .map(|(did, imp)| (*did, FoundImpl { imp: *imp, impl_crate: cnum })),
+                        .map(|(&did, &imp)| (did, FoundImpl { imp, impl_crate: cnum })),
                 );
         }
     }
@@ -945,11 +945,9 @@ fn collect_eii_linkage(tcx: TyCtxt<'_>) -> Vec<EiiLinkageInfo> {
                 }
             }
 
-            // Only this case needs the link-time check. Missing impls and
-            // duplicate explicit impls are handled in `rustc_passes`.
-            if explicit_impls.len() == 1
-                && let Some(default_impl) = default_impl
-            {
+            // Link time check is only needed when there may be a default impl in a dylib.
+            // Other cases emit an error in `rustc_passes` already.
+            if let Some(default_impl) = default_impl {
                 Some(EiiLinkageInfo {
                     name: decl.name.name,
                     impls: explicit_impls,
