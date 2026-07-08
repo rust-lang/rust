@@ -158,14 +158,20 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     }
                 }
             }
-            BackendRepr::ScalarPair(scalar1, scalar2) => {
+            BackendRepr::ScalarPair { a: scalar1, b: scalar2, b_offset } => {
                 // Check that the underlying pair of fields matches.
                 let inner = skip_newtypes(cx, layout);
                 assert!(
-                    matches!(inner.layout.backend_repr(), BackendRepr::ScalarPair(..)),
+                    matches!(inner.layout.backend_repr(), BackendRepr::ScalarPair { .. }),
                     "`ScalarPair` type {} is newtype around non-`ScalarPair` type {}",
                     layout.ty,
                     inner.ty
+                );
+                // `a` is at memory offset zero, so to keep them from overlapping the offset
+                // to `b` must be at least as much as the size of `a`.
+                assert!(
+                    b_offset >= scalar1.size(cx),
+                    "`ScalarPair` scalars are overlapping in {layout:?}",
                 );
                 if matches!(inner.layout.variants(), Variants::Multiple { .. }) {
                     // FIXME: ScalarPair for enums is enormously complicated and it is very hard
@@ -233,6 +239,10 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 assert_eq!(
                     offset2, field2_offset,
                     "`ScalarPair` second field at bad offset in {inner:#?}",
+                );
+                assert_eq!(
+                    b_offset, field2_offset,
+                    "`ScalarPair` with inconsistent b_offset in {inner:#?}",
                 );
                 assert_eq!(
                     field2.size, size2,
@@ -325,8 +335,11 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 };
                 let abi_coherent = match (layout.backend_repr, variant.backend_repr) {
                     (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => scalar_coherent(s1, s2),
-                    (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
-                        scalar_coherent(a1, a2) && scalar_coherent(b1, b2)
+                    (
+                        BackendRepr::ScalarPair { a: a1, b: b1, b_offset: b1_offset },
+                        BackendRepr::ScalarPair { a: a2, b: b2, b_offset: b2_offset },
+                    ) => {
+                        scalar_coherent(a1, a2) && scalar_coherent(b1, b2) && b1_offset == b2_offset
                     }
                     (BackendRepr::Memory { .. }, _) => true,
                     _ => false,

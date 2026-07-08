@@ -95,7 +95,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // semantics regarding when assignment operators allow overlap of LHS and RHS.
                 if matches!(
                     cg_operand.layout.backend_repr,
-                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..),
+                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. },
                 ) {
                     debug_assert!(!matches!(cg_operand.val, OperandValue::Ref(..)));
                 }
@@ -386,9 +386,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             (
                 OperandValue::Pair(imm_a, imm_b),
-                abi::BackendRepr::ScalarPair(in_a, in_b),
-                abi::BackendRepr::ScalarPair(out_a, out_b),
-            ) if in_a.size(cx) == out_a.size(cx) && in_b.size(cx) == out_b.size(cx) => {
+                abi::BackendRepr::ScalarPair { a: in_a, b: in_b, b_offset: in_offset },
+                abi::BackendRepr::ScalarPair { a: out_a, b: out_b, b_offset: out_offset },
+            ) if in_a.size(cx) == out_a.size(cx)
+                && in_b.size(cx) == out_b.size(cx)
+                && in_offset == out_offset =>
+            {
                 OperandValue::Pair(
                     transmute_scalar(bx, imm_a, in_a, out_a),
                     transmute_scalar(bx, imm_b, in_b, out_b),
