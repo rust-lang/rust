@@ -214,6 +214,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             "synthetic HIR should have its `generics_of` explicitly fed"
         ),
 
+        Node::ConstArg(..) => {
+            // These can show up in mGCA when representing "direct" const arguments. The
+            // DefCollector cannot know whether an anon const will be represented by an actual HIR
+            // Node::AnonConst, or whether it will be represented directly, so it must generate a
+            // DefId. If it ends up being direct, this DefId is then attached to the top-level
+            // ConstArg, which is what we are seeing here.
+            debug_assert!(tcx.features().min_generic_const_args());
+            // Forward to the real parent.
+            Some(tcx.local_parent(def_id))
+        }
+
         _ => span_bug!(tcx.def_span(def_id), "generics_of: unexpected node kind {node:?}"),
     };
 
