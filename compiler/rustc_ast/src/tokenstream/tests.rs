@@ -9,5 +9,5 @@ fn test_token_stream_iter() {
     assert_eq!(ts.len(), 1);
 
     let iter = ts.iter();
-    assert_eq!(iter.size_hint(), (0, None));
+    assert_eq!(iter.size_hint(), (1, Some(1)));
 }

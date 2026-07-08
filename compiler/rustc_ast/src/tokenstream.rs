@@ -836,21 +836,18 @@ impl StableHash for TokenStream {
 }
 
 #[derive(Clone)]
-pub struct TokenStreamIter<'t> {
-    stream: &'t TokenStream,
-    index: usize,
-}
+pub struct TokenStreamIter<'t>(std::slice::Iter<'t, TokenTree>);
 
 impl<'t> TokenStreamIter<'t> {
     fn new(stream: &'t TokenStream) -> Self {
-        TokenStreamIter { stream, index: 0 }
+        TokenStreamIter(stream.0.as_slice().iter())
     }
 
     // Peeking could be done via `Peekable`, but most iterators need peeking,
     // and this is simple and avoids the need to use `peekable` and `Peekable`
     // at all the use sites.
     pub fn peek(&self) -> Option<&'t TokenTree> {
-        self.stream.0.get(self.index)
+        self.0.as_slice().first()
     }
 }
 
@@ -858,10 +855,11 @@ impl<'t> Iterator for TokenStreamIter<'t> {
     type Item = &'t TokenTree;
 
     fn next(&mut self) -> Option<&'t TokenTree> {
-        self.stream.0.get(self.index).map(|tree| {
-            self.index += 1;
-            tree
-        })
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 
