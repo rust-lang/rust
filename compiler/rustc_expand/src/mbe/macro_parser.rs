@@ -82,7 +82,6 @@ use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_middle::span_bug;
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
-use smallvec::SmallVec;
 
 use crate::mbe::macro_rules::Tracker;
 use crate::mbe::{KleeneOp, TokenTree};
@@ -468,12 +467,8 @@ impl TtParser {
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
     ) -> Option<NamedParseResult> {
-        // Matcher positions that would be valid if the macro invocation was over now. Only
-        // modified if `token == Eof`.
-        let mut eof_mps = SmallVec::<[MatcherPos; 1]>::new();
-
         while let Some(mp) = self.cur_mps.pop() {
-            if let Some(result) = self.match_one(parser, matcher, mp, track, &mut eof_mps, false) {
+            if let Some(result) = self.match_one(parser, matcher, mp, track, false) {
                 return Some(result);
             }
         }
@@ -481,26 +476,6 @@ impl TtParser {
         if std::mem::take(&mut self.found_ambiguity) {
             // Too many possibilities!
             return Some(self.ambiguity_error(parser, track));
-        }
-
-        // If we reached the end of input, check that there is EXACTLY ONE possible matcher.
-        // Otherwise, either the parse is ambiguous (which is an error) or there is a syntax error.
-        let token = &parser.token;
-        if *token == token::Eof {
-            assert!(self.next_mps.is_empty());
-
-            return Some(match *eof_mps {
-                [_] => {
-                    let eof_mp = eof_mps.pop().unwrap();
-                    let matches = Rc::unwrap_or_clone(eof_mp.matches).into_iter();
-                    Success(self.nameize(matcher, matches))
-                }
-                [] => {
-                    track.failure(parser);
-                    Failure
-                }
-                _ => self.ambiguity_error(parser, track),
-            });
         }
 
         // FIXME: Error messages here could be improved with links to original rules.
@@ -524,15 +499,14 @@ impl TtParser {
     /// If a meta-variable is encountered and `checking_for_ambiguity` is `false`, `cur_mps` will be
     /// drained to eagerly check for ambiguity, and `parser` will be modified.
     #[inline(always)] // must be inlined in `parse_tt_inner()`
-    fn match_one<'matcher, R, T: Tracker<'matcher>>(
+    fn match_one<'matcher, T: Tracker<'matcher>>(
         &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         mut mp: MatcherPos,
         track: &mut T,
-        eof_mps: &mut SmallVec<[MatcherPos; 1]>,
         checking_for_ambiguity: bool,
-    ) -> Option<ParseResult<R>> {
+    ) -> Option<NamedParseResult> {
         let matcher_loc = &matcher[mp.idx];
         track.before_match_loc(self, matcher_loc);
         let token = &parser.token;
@@ -631,12 +605,12 @@ impl TtParser {
                 }
 
                 // EOF tokens would cause unexpected processing in `match_one()`.
-                assert!(parser.token != token::Eof, "{kind:?}");
+                debug_assert!(parser.token != token::Eof, "{kind:?} should not accept EOF tokens");
 
                 track.matched_one(parser, mp.idx);
 
                 if checking_for_ambiguity {
-                    // This was called in the context of a different meta-variable that was about to
+                    // This was called in the context of a different `MatcherLoc` that was about to
                     // be matched. An ambiguity error has occurred. Details have already been saved
                     // by `track`. Note the error and stop.
                     self.found_ambiguity = true;
@@ -667,9 +641,33 @@ impl TtParser {
             MatcherLoc::Eof => {
                 // We are past the matcher's end, and not in a sequence. Try to end things.
                 debug_assert_eq!(mp.idx, matcher.len() - 1);
-                if *token == token::Eof {
-                    eof_mps.push(mp);
+
+                if *token != token::Eof {
+                    return None;
                 }
+
+                track.matched_one(parser, mp.idx);
+
+                if checking_for_ambiguity {
+                    // This was called in the context of a different `MatcherLoc` that was about to
+                    // be matched. An ambiguity error has occurred. Details have already been saved
+                    // by `track`. Note the error and stop.
+                    self.found_ambiguity = true;
+                    return None;
+                }
+
+                self.check_for_ambiguity(parser, matcher, track);
+
+                if self.found_ambiguity {
+                    // Let the caller handle the error.
+                    return None;
+                }
+
+                assert!(self.cur_mps.is_empty());
+                assert!(self.next_mps.is_empty());
+
+                let matches = Rc::unwrap_or_clone(mp.matches).into_iter();
+                return Some(Success(self.nameize(matcher, matches)));
             }
         }
 
@@ -687,21 +685,12 @@ impl TtParser {
     ) {
         assert!(!self.found_ambiguity);
 
-        // EOF tokens would cause unexpected processing in `match_one()`.
-        assert!(parser.token != token::Eof);
-
-        // NOTE: Dummy variable, will not be modified.
-        let mut eof_mps = SmallVec::<[MatcherPos; 1]>::new();
-
         // Consume all pending mps at the current input position.
         while let Some(mp) = self.cur_mps.pop() {
-            let result = self.match_one::<(), _>(parser, matcher, mp, track, &mut eof_mps, true);
-            // A result is only returned if non-terminal parsing fails, but non-terminal parsing
-            // is not performed when `check_for_ambiguity` is `true`.
+            let result = self.match_one(parser, matcher, mp, track, true);
+            // A result cannot be returned when `check_for_ambiguity` is `true`.
             assert!(result.is_none());
         }
-
-        assert!(eof_mps.is_empty());
 
         if !self.next_mps.is_empty() {
             self.found_ambiguity = true;
