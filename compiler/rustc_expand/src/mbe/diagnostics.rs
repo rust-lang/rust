@@ -152,7 +152,7 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
     /// The matcher currently being parsed.
     //
     // FIXME: Factor out a per-arm `Tracker` so that the `Option` is unnecessary.
-    current: Option<WhichMatcher>,
+    current: Option<(WhichMatcher, &'matcher [MatcherLoc])>,
 
     remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
@@ -183,12 +183,12 @@ impl BestFailure {
 }
 
 impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'matcher> {
-    fn prepare(&mut self, which_matcher: WhichMatcher) {
+    fn prepare(&mut self, which_matcher: WhichMatcher, matcher: &'matcher [MatcherLoc]) {
         if self.current.is_some() {
             bug!("`Self::after_arm()` was not called to clean up context");
         }
 
-        self.current = Some(which_matcher);
+        self.current = Some((which_matcher, matcher));
     }
 
     fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc) {
@@ -226,7 +226,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
     }
 
     fn failure(&mut self, parser: &Parser<'_>) {
-        let Some(which_matcher) = self.current else {
+        let Some((which_matcher, _)) = self.current else {
             bug!("`Self::prepare()` was not called to initialize context");
         };
 
