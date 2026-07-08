@@ -299,7 +299,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             self.param_env.caller_bounds().iter().filter_map(|clause| {
                 match clause.kind().skip_binder() {
                     ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
-                        Some((clause, span))
+                        Some((ty::set_aliases_to_non_rigid(tcx, clause).skip_norm_wip(), span))
                     }
                     _ => None,
                 }
