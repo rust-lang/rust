@@ -4417,6 +4417,7 @@ mod size_asserts {
     static_assert_size!(MetaItem, 88);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
+    static_assert_size!(NormalAttr, 88);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 80);
     static_assert_size!(PatKind, 56);
