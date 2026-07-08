@@ -474,8 +474,8 @@ impl TtParser {
         }
 
         if std::mem::take(&mut self.found_ambiguity) {
-            // Too many possibilities!
-            return Some(self.ambiguity_error(parser, track));
+            track.ambiguity(parser);
+            return Some(Ambiguity);
         }
 
         // FIXME: Error messages here could be improved with links to original rules.
@@ -717,15 +717,6 @@ impl TtParser {
             )
             .emit();
         ErrorReported(guarantee)
-    }
-
-    fn ambiguity_error<'matcher, R, T: Tracker<'matcher>>(
-        &mut self,
-        parser: &Parser<'_>,
-        track: &mut T,
-    ) -> ParseResult<R> {
-        track.ambiguity(parser);
-        Ambiguity
     }
 
     fn nameize<I: Iterator<Item = NamedMatch>>(
