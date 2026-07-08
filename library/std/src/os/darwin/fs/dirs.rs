@@ -89,10 +89,12 @@ pub trait UserDirsExt: Sized + Sealed {
     fn sysdir() -> io::Result<Self>;
 }
 
+#[unstable(feature = "dir_discovery", issue = "157515")]
 impl UserDirsExt for UserDirs {
     fn sysdir() -> io::Result<Self> {
         let mut dirs = UserDirs::new();
-        let home = dirs.home_dir().ok_or(const_error!(ErrorKind::NotFound, "no home directory"))?;
+        let home =
+            dirs.user_home().ok_or(const_error!(ErrorKind::NotFound, "no home directory"))?;
 
         let caches = unsafe { get_user_sysdir(&home, sys::SYSDIR_DIRECTORY_CACHES) }?;
         let application_support =
@@ -104,8 +106,6 @@ impl UserDirsExt for UserDirs {
         let music = unsafe { get_user_sysdir(&home, sys::SYSDIR_DIRECTORY_MUSIC) }?;
         let pictures = unsafe { get_user_sysdir(&home, sys::SYSDIR_DIRECTORY_PICTURES) }?;
         let public_share = unsafe { get_user_sysdir(&home, sys::SYSDIR_DIRECTORY_SHARED_PUBLIC) }?;
-
-        let mut dirs = UserDirs::empty();
 
         dirs.home.cache = caches;
         // Apple puts config/data/state all in Application Support
@@ -126,11 +126,7 @@ impl UserDirsExt for UserDirs {
 }
 
 /// Get the path for a system directory using `sysdir(3)`.
-///
-/// # Safety
-///
-/// `kind` must be a valid `sysdir_search_path_directory_t` value.
-unsafe fn get_user_sysdir(
+fn get_user_sysdir(
     home: &Path,
     kind: sys::sysdir_search_path_directory_t,
 ) -> io::Result<Option<PathBuf>> {
@@ -143,13 +139,13 @@ unsafe fn get_user_sysdir(
         return Ok(None);
     }
 
-    let mut path = [0 as c_char; sys::PATH_MAX];
-    // SAFETY: `state` comes from `sysdir_start_search_path_enumeration`
+    let mut path = [0 as c_char; sys::PATH_MAX as usize];
+    // SAFETY: `state` is nonzero and comes from `sysdir_start_search_path_enumeration`
     // SAFETY: sysdir_get_next_search_path_enumeration will write at most `PATH_MAX-1` bytes to `path`
     let state = unsafe { sys::sysdir_get_next_search_path_enumeration(state, path.as_mut_ptr()) };
     if state == 0 {
         // exactly 1 directory path produced
-        let Ok(path) = CStr::from_bytes_until_null(&path) else {
+        let Ok(path) = CStr::from_bytes_until_nul(&path) else {
             return Err(const_error!(
                 ErrorKind::InvalidData,
                 "standard user directory path too long",
@@ -163,7 +159,7 @@ unsafe fn get_user_sysdir(
             ));
         };
         // expand the `~` shorthand
-        if path == "~" {
+        return if path == "~" {
             Ok(Some(home.into()))
         } else if path.starts_with("~/") {
             Ok(Some(home.join(&path[2..])))
@@ -176,7 +172,7 @@ unsafe fn get_user_sysdir(
             Ok(Some(path.into()))
         } else {
             Err(const_error!(ErrorKind::InvalidData, "standard user directory path not absolute"))
-        }
+        };
     }
 
     // 2+ directory paths produced
@@ -195,7 +191,6 @@ mod sys {
     pub use libc::sysdir_search_path_domain_mask_t::*;
     pub use libc::{
         PATH_MAX, sysdir_get_next_search_path_enumeration, sysdir_search_path_directory_t,
-        sysdir_search_path_domain_mask_t, sysdir_search_path_enumeration_state,
         sysdir_start_search_path_enumeration,
     };
 }
