@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             })
             && let resolved_assoc_items = cx.tcx.associated_items(resolved_impl)
             // Only suggest if `clone_from`/`clone_into` is explicitly implemented
-            && resolved_assoc_items.in_definition_order().any(|assoc|
+            && resolved_assoc_items.named_items().any(|assoc|
                 match which_trait {
                     CloneTrait::Clone => assoc.name() == sym::clone_from,
                     CloneTrait::ToOwned => assoc.name() == sym::clone_into,
