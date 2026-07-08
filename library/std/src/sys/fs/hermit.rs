@@ -566,6 +566,10 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
     Err(Error::from_raw_os_error(22))
 }
 
+pub fn set_perm_nofollow(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
+    unsupported()
+}
+
 pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
     Err(Error::from_raw_os_error(22))
 }

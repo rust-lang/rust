@@ -1564,6 +1564,15 @@ pub fn set_perm(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
     }
 }
 
+pub fn set_perm_nofollow(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
+    let mut opts = OpenOptions::new();
+    opts.access_mode(c::FILE_WRITE_ATTRIBUTES);
+    // `FILE_FLAG_OPEN_REPARSE_POINT` for no_follow behavior
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
+    let file = File::open_native(p, &opts)?;
+    file.set_permissions(perm)
+}
+
 pub fn set_times(p: &WCStr, times: FileTimes) -> io::Result<()> {
     let mut opts = OpenOptions::new();
     opts.access_mode(c::FILE_WRITE_ATTRIBUTES);
