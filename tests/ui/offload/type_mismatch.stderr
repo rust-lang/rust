@@ -22,5 +22,17 @@ error: offload kernel return type mismatch: kernel returns `()`, but offload cal
 LL |     let _: f64 = core::intrinsics::offload::<_, _, f64>(kernel_0, [1, 1, 1], [1, 1, 1], 0, ());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: type mismatch in offload kernel argument 0: expected `f32`, found `f64`
+  --> $DIR/type_mismatch.rs:24:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(kernel_2, [1, 1, 1], [1, 1, 1], 0, (42.0f64, 42.0f64));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type mismatch in offload kernel argument 1: expected `f32`, found `f64`
+  --> $DIR/type_mismatch.rs:24:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(kernel_2, [1, 1, 1], [1, 1, 1], 0, (42.0f64, 42.0f64));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 
