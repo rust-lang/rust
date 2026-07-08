@@ -584,6 +584,9 @@ impl TtParser {
         // If we reached the end of input, check that there is EXACTLY ONE possible matcher.
         // Otherwise, either the parse is ambiguous (which is an error) or there is a syntax error.
         if *token == token::Eof {
+            assert!(self.next_mps.is_empty());
+            assert!(self.bb_mps.is_empty());
+
             Some(match *eof_mps {
                 [_] => {
                     let mut eof_mp = eof_mps.pop().unwrap();
