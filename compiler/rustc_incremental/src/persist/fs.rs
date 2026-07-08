@@ -322,8 +322,8 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
 
         let lock_file_path = lock_file_path(&*incr_comp_session_dir);
         delete_session_dir_lock_file(sess, &lock_file_path);
-        sess.mark_incr_comp_session_as_invalid();
-        let _ = garbage_collect_session_directories(sess);
+        sess.finalize_incr_comp_session();
+        let _ = garbage_collect_session_directories(sess, &incr_comp_session_dir);
         return;
     }
 
@@ -352,21 +352,19 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
     match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3) {
         Ok(_) => {
             debug!("finalize_session_directory() - directory renamed successfully");
-
-            // This unlocks the directory
-            sess.finalize_incr_comp_session(new_path);
         }
         Err(e) => {
             // Warn about the error. However, no need to abort compilation now.
             sess.dcx().emit_note(diagnostics::Finalize { path: &incr_comp_session_dir, err: e });
 
-            debug!("finalize_session_directory() - error, marking as invalid");
-            // Drop the file lock, so we can garage collect
-            sess.mark_incr_comp_session_as_invalid();
+            debug!("finalize_session_directory() - error");
         }
     }
 
-    let _ = garbage_collect_session_directories(sess);
+    // This unlocks the directory
+    sess.finalize_incr_comp_session();
+
+    let _ = garbage_collect_session_directories(sess, &new_path);
 }
 
 pub(crate) fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
@@ -604,10 +602,12 @@ fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
 }
 
 /// Runs garbage collection for the current session.
-pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
+pub(crate) fn garbage_collect_session_directories(
+    sess: &Session,
+    session_directory: &Path,
+) -> io::Result<()> {
     debug!("garbage_collect_session_directories() - begin");
 
-    let session_directory = sess.incr_comp_session_dir();
     debug!(
         "garbage_collect_session_directories() - session directory: {}",
         session_directory.display()
