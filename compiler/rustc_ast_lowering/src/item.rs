@@ -2013,8 +2013,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bounds,
             }) => {
                 let rbp = if bound_generic_params.is_empty()
-                    && let Some(res) =
-                        self.get_partial_res(bounded_ty.id).and_then(|r| r.full_res())
+                    && let Some(res) = self.get_full_res(bounded_ty.id)
                     && let Res::Def(DefKind::TyParam, def_id) = res
                     && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
                 {

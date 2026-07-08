@@ -812,6 +812,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
+    fn get_full_res(&self, id: NodeId) -> Option<Res<NodeId>> {
+        self.get_partial_res(id)?.full_res()
+    }
+
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
         match self.partial_res_overrides.get(&id) {
             Some(self_param_id) => Some(PartialRes::new(Res::Local(*self_param_id))),
@@ -1460,10 +1464,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     //
                     // FIXME: Should we be handling `(PATH_TO_CONST)`?
                     TyKind::Path(None, path) => {
-                        if let Some(res) = self
-                            .get_partial_res(ty.id)
-                            .and_then(|partial_res| partial_res.full_res())
-                        {
+                        if let Some(res) = self.get_full_res(ty.id) {
                             if !res.matches_ns(Namespace::TypeNS)
                                 && path.is_potential_trivial_const_arg()
                             {
@@ -1511,8 +1512,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // The other cases when a qpath should be opportunistically made a trait object are handled
         // by `ty_path`.
         if qself.is_none()
-            && let Some(partial_res) = self.get_partial_res(t.id)
-            && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = partial_res.full_res()
+            && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = self.get_full_res(t.id)
         {
             let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
                 let bound = this.lower_poly_trait_ref(
@@ -1877,9 +1877,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let [segment] = path.segments.as_slice() else {
                     panic!();
                 };
-                let res = self.get_partial_res(*id).map_or(Res::Err, |partial_res| {
-                    partial_res.full_res().expect("no partial res expected for precise capture arg")
-                });
+                let res = self.expect_full_res(*id);
                 hir::PreciseCapturingArg::Param(hir::PreciseCapturingNonLifetimeArg {
                     hir_id: self.lower_node_id(*id),
                     ident: self.lower_ident(segment.ident),
@@ -2890,8 +2888,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &anon.value
         };
 
-        let maybe_res =
-            self.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
+        let maybe_res = self.get_full_res(expr.id);
         if let ExprKind::Path(qself, path) = &expr.kind
             && path.is_potential_trivial_const_arg()
             && matches!(maybe_res, Some(Res::Def(DefKind::ConstParam, _)))
