@@ -1,0 +1,154 @@
+// MIR for `array::{closure#0}` 0 coroutine_drop_async
+
+fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context<'_>) -> Poll<()> {
+    debug _task_context => _26;
+    let mut _0: std::task::Poll<()>;
+    let _3: [AsyncInt; 2];
+    let mut _4: AsyncInt;
+    let mut _5: AsyncInt;
+    let mut _6: impl std::future::Future<Output = ()>;
+    let mut _7: std::future::ResumeTy;
+    let mut _8: std::task::Poll<()>;
+    let mut _9: isize;
+    let mut _10: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
+    let mut _11: &mut std::task::Context<'_>;
+    let mut _12: std::future::ResumeTy;
+    let mut _13: &mut impl std::future::Future<Output = ()>;
+    let mut _14: std::future::ResumeTy;
+    let mut _15: std::task::Poll<()>;
+    let mut _16: isize;
+    let mut _17: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
+    let mut _18: &mut std::task::Context<'_>;
+    let mut _19: std::future::ResumeTy;
+    let mut _20: &mut impl std::future::Future<Output = ()>;
+    let mut _21: std::pin::Pin<&mut [AsyncInt; 2]>;
+    let mut _22: &mut [AsyncInt; 2];
+    let mut _23: ();
+    let mut _24: u32;
+    let mut _25: &mut {async fn body of array()};
+    let mut _26: std::future::ResumeTy;
+    let mut _27: std::ptr::NonNull<std::task::Context<'_>>;
+    scope 1 {
+        debug array => (((*_25) as variant#4).1: [AsyncInt; 2]);
+    }
+
+    bb0: {
+        _27 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
+        _26 = std::future::ResumeTy(move _27);
+        _25 = copy (_1.0: &mut {async fn body of array()});
+        _24 = discriminant((*_25));
+        switchInt(move _24) -> [0: bb16, 2: bb21, 3: bb19, 4: bb20, otherwise: bb22];
+    }
+
+    bb1: {
+        nop;
+        goto -> bb2;
+    }
+
+    bb2: {
+        _0 = Poll::<()>::Ready(const ());
+        return;
+    }
+
+    bb3 (cleanup): {
+        nop;
+        goto -> bb4;
+    }
+
+    bb4 (cleanup): {
+        goto -> bb18;
+    }
+
+    bb5: {
+        nop;
+        goto -> bb1;
+    }
+
+    bb6 (cleanup): {
+        nop;
+        goto -> bb3;
+    }
+
+    bb7: {
+        _26 = move _7;
+        StorageDead(_7);
+        goto -> bb13;
+    }
+
+    bb8: {
+        StorageLive(_7);
+        _0 = Poll::<()>::Pending;
+        StorageDead(_7);
+        discriminant((*_25)) = 3;
+        return;
+    }
+
+    bb9: {
+        unreachable;
+    }
+
+    bb10: {
+        _9 = discriminant(_8);
+        switchInt(move _9) -> [0: bb5, 1: bb8, otherwise: bb9];
+    }
+
+    bb11: {
+        _8 = <impl Future<Output = ()> as Future>::poll(move _10, move _11) -> [return: bb10, unwind: bb6];
+    }
+
+    bb12: {
+        _12 = move _26;
+        _11 = copy (_12.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
+        goto -> bb11;
+    }
+
+    bb13: {
+        _13 = &mut (((*_25) as variant#4).2: impl std::future::Future<Output = ()>);
+        _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb12, unwind: bb6];
+    }
+
+    bb14: {
+        _26 = move _14;
+        StorageDead(_14);
+        goto -> bb13;
+    }
+
+    bb15: {
+        _0 = Poll::<()>::Ready(const ());
+        return;
+    }
+
+    bb16: {
+        goto -> bb17;
+    }
+
+    bb17: {
+        goto -> bb15;
+    }
+
+    bb18 (cleanup): {
+        discriminant((*_25)) = 2;
+        resume;
+    }
+
+    bb19: {
+        StorageLive(_7);
+        _7 = move _26;
+        goto -> bb7;
+    }
+
+    bb20: {
+        StorageLive(_14);
+        _14 = move _26;
+        goto -> bb14;
+    }
+
+    bb21: {
+        assert(const false, "`async fn` resumed after panicking") -> [success: bb21, unwind continue];
+    }
+
+    bb22: {
+        _0 = Poll::<()>::Ready(const ());
+        return;
+    }
+}
