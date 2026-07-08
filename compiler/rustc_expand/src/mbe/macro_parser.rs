@@ -464,7 +464,7 @@ impl TtParser {
     /// track of through the mps generated.
     fn parse_tt_inner<'matcher, T: Tracker<'matcher>>(
         &mut self,
-        parser: &Parser<'_>,
+        parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
     ) -> Option<NamedParseResult> {
@@ -483,7 +483,7 @@ impl TtParser {
             assert!(self.next_mps.is_empty());
             assert!(self.bb_mps.is_empty());
 
-            Some(match *eof_mps {
+            return Some(match *eof_mps {
                 [_] => {
                     let eof_mp = eof_mps.pop().unwrap();
                     let matches = Rc::unwrap_or_clone(eof_mp.matches).into_iter();
@@ -494,10 +494,52 @@ impl TtParser {
                     Failure
                 }
                 _ => self.ambiguity_error(parser, matcher, track),
-            })
-        } else {
-            None
+            });
         }
+
+        // FIXME: Error messages here could be improved with links to original rules.
+        match (self.next_mps.len(), self.bb_mps.len()) {
+            (0, 0) => {
+                // There are no possible next positions AND we aren't waiting for the black-box
+                // parser: syntax error.
+                track.failure(parser);
+                return Some(Failure);
+            }
+
+            (_, 0) => {
+                // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
+                // process the next token.
+                self.cur_mps.append(&mut self.next_mps);
+                parser.to_mut().bump();
+            }
+
+            (0, 1) => {
+                // We need to call the black-box parser to get some nonterminal.
+                let mut mp = self.bb_mps.pop().unwrap();
+                let loc = &matcher[mp.idx];
+                let MatcherLoc::MetaVarDecl { kind, next_metavar, seq_depth, .. } = *loc else {
+                    unreachable!()
+                };
+
+                // We use the span of the metavariable declaration to determine any
+                // edition-specific matching behavior for non-terminals.
+                let nt = match parser.to_mut().parse_nonterminal(kind) {
+                    Err(err) => return Some(self.nt_parsing_error(loc, err)),
+                    Ok(nt) => nt,
+                };
+                mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
+
+                mp.idx += 1;
+                self.cur_mps.push(mp);
+            }
+
+            (_, _) => {
+                // Too many possibilities!
+                return Some(self.ambiguity_error(parser, matcher, track));
+            }
+        }
+
+        None
     }
 
     /// Match a single [`MatcherPos`].
@@ -631,63 +673,16 @@ impl TtParser {
         self.cur_mps.push(MatcherPos { idx: 0, matches: Rc::clone(&self.empty_matches) });
 
         loop {
+            assert!(!self.cur_mps.is_empty());
             self.next_mps.clear();
             self.bb_mps.clear();
 
-            // Process `cur_mps` until either we have finished the input or we need to get some
-            // parsing from the black-box parser done.
+            // Parse all mps at the current input position, then progress the parser.
             let res = self.parse_tt_inner(parser, matcher, track);
 
             if let Some(res) = res {
                 return res;
             }
-
-            // `parse_tt_inner` handled all of `cur_mps`, so it's empty.
-            assert!(self.cur_mps.is_empty());
-
-            // Error messages here could be improved with links to original rules.
-            match (self.next_mps.len(), self.bb_mps.len()) {
-                (0, 0) => {
-                    // There are no possible next positions AND we aren't waiting for the black-box
-                    // parser: syntax error.
-                    track.failure(parser);
-                    return Failure;
-                }
-
-                (_, 0) => {
-                    // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
-                    // process the next token.
-                    self.cur_mps.append(&mut self.next_mps);
-                    parser.to_mut().bump();
-                }
-
-                (0, 1) => {
-                    // We need to call the black-box parser to get some nonterminal.
-                    let mut mp = self.bb_mps.pop().unwrap();
-                    let loc = &matcher[mp.idx];
-                    let MatcherLoc::MetaVarDecl { kind, next_metavar, seq_depth, .. } = *loc else {
-                        unreachable!()
-                    };
-
-                    // We use the span of the metavariable declaration to determine any
-                    // edition-specific matching behavior for non-terminals.
-                    let nt = match parser.to_mut().parse_nonterminal(kind) {
-                        Err(err) => return self.nt_parsing_error(loc, err),
-                        Ok(nt) => nt,
-                    };
-                    mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
-
-                    mp.idx += 1;
-                    self.cur_mps.push(mp);
-                }
-
-                (_, _) => {
-                    // Too many possibilities!
-                    return self.ambiguity_error(parser, matcher, track);
-                }
-            }
-
-            assert!(!self.cur_mps.is_empty());
         }
     }
 
