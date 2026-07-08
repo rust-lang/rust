@@ -200,13 +200,13 @@ pub(crate) fn compile_fn(
                 ));
             }
             Err(ModuleError::Compilation(CodegenError::Verifier(err))) => {
-                let raw_error = format!("{:?}", err);
+                dcx.err(format!("{err:?}"));
                 let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
                     &context.func,
                     Some(Box::new(&clif_comments)),
                     err,
                 );
-                dcx.fatal(format!("cranelift verify error:\n{raw_error}\n{pretty_error}"));
+                dcx.fatal(format!("cranelift verify error:\n{pretty_error}"));
             }
             Err(err) => {
                 let mut clif = format_clif_ir_header(module.isa(), &codegened_func.symbol_name);
