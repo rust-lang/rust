@@ -312,7 +312,7 @@ impl<'db> AssocItemCollector<'db> {
                         )
                         .0
                         .take_macros()
-                        .map(|it| self.db.macro_def(it))
+                        .map(|it| it.definition(self.db))
                 };
                 match macro_call_as_call_id(
                     self.db,

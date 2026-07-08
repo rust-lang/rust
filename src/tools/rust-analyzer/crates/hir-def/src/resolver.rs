@@ -519,7 +519,7 @@ impl<'db> Resolver<'db> {
         path: &ModPath,
         expected_macro_kind: Option<MacroSubNs>,
     ) -> Option<MacroDefId> {
-        self.resolve_path_as_macro(db, path, expected_macro_kind).map(|(it, _)| db.macro_def(it))
+        self.resolve_path_as_macro(db, path, expected_macro_kind).map(|(it, _)| it.definition(db))
     }
 
     pub fn resolve_lifetime(&self, lifetime: &LifetimeRef) -> Option<LifetimeNs> {

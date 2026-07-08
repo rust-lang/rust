@@ -1187,7 +1187,7 @@ fn emit_macro_def_diagnostics<'db>(
     acc: &mut Vec<AnyDiagnostic<'db>>,
     m: Macro,
 ) {
-    let id = db.macro_def(m.id);
+    let id = m.id.definition(db);
     let krate = id.krate;
     if let hir_expand::MacroDefKind::Declarative(ast, _) = id.kind
         && let expander = ast.decl_macro_expander(db, krate)

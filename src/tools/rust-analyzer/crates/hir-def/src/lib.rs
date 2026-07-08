@@ -657,6 +657,63 @@ impl MacroId {
     }
 }
 
+#[salsa::tracked]
+impl MacroId {
+    /// Turns a MacroId into a MacroDefId, describing the macro's definition post name resolution.
+    #[salsa::tracked]
+    pub fn definition(self, db: &dyn DefDatabase) -> MacroDefId {
+        let kind = |expander, file_id, m| {
+            let in_file = InFile::new(file_id, m);
+            match expander {
+                MacroExpander::Declarative { styles } => MacroDefKind::Declarative(in_file, styles),
+                MacroExpander::BuiltIn(it) => MacroDefKind::BuiltIn(in_file, it),
+                MacroExpander::BuiltInAttr(it) => MacroDefKind::BuiltInAttr(in_file, it),
+                MacroExpander::BuiltInDerive(it) => MacroDefKind::BuiltInDerive(in_file, it),
+                MacroExpander::BuiltInEager(it) => MacroDefKind::BuiltInEager(in_file, it),
+                MacroExpander::UnimplementedBuiltIn => MacroDefKind::UnimplementedBuiltIn(in_file),
+            }
+        };
+
+        match self {
+            MacroId::Macro2Id(it) => {
+                let loc = it.lookup(db);
+
+                MacroDefId {
+                    krate: loc.container.krate(db),
+                    kind: kind(loc.expander, loc.id.file_id, loc.id.value.upcast()),
+                    local_inner: false,
+                    allow_internal_unsafe: loc.allow_internal_unsafe,
+                    edition: loc.edition,
+                }
+            }
+            MacroId::MacroRulesId(it) => {
+                let loc = it.lookup(db);
+
+                MacroDefId {
+                    krate: loc.container.krate(db),
+                    kind: kind(loc.expander, loc.id.file_id, loc.id.value.upcast()),
+                    local_inner: loc.flags.contains(MacroRulesLocFlags::LOCAL_INNER),
+                    allow_internal_unsafe: loc
+                        .flags
+                        .contains(MacroRulesLocFlags::ALLOW_INTERNAL_UNSAFE),
+                    edition: loc.edition,
+                }
+            }
+            MacroId::ProcMacroId(it) => {
+                let loc = it.lookup(db);
+
+                MacroDefId {
+                    krate: loc.container.krate(db),
+                    kind: MacroDefKind::ProcMacro(loc.id, loc.expander, loc.kind),
+                    local_inner: false,
+                    allow_internal_unsafe: false,
+                    edition: loc.edition,
+                }
+            }
+        }
+    }
+}
+
 /// A generic param
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum GenericParamId {

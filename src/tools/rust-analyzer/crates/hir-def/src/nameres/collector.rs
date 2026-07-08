@@ -1336,7 +1336,7 @@ impl<'db> DefCollector<'db> {
                     BuiltinShadowMode::Module,
                     Some(subns),
                 );
-                resolved_res.resolved_def.take_macros().map(|it| (it, self.db.macro_def(it)))
+                resolved_res.resolved_def.take_macros().map(|it| (it, it.definition(self.db)))
             };
             let resolver_def_id = |path: &_| resolver(&self.def_map, path).map(|(_, it)| it);
 
@@ -1787,7 +1787,7 @@ impl<'db> DefCollector<'db> {
                                 BuiltinShadowMode::Module,
                                 Some(MacroSubNs::Bang),
                             );
-                            resolved_res.resolved_def.take_macros().map(|it| self.db.macro_def(it))
+                            resolved_res.resolved_def.take_macros().map(|it| it.definition(self.db))
                         },
                         &mut |_, _| (),
                     );
@@ -2702,7 +2702,7 @@ impl ModCollector<'_, '_> {
                         .or_else(|| def_map[self.module_id].scope.get(name).take_macros())
                         .or_else(|| Some(def_map.macro_use_prelude.get(name).copied()?.0))
                         .filter(|&id| sub_namespace_match(db, id, Some(MacroSubNs::Bang)))
-                        .map(|it| self.def_collector.db.macro_def(it))
+                        .map(|it| it.definition(self.def_collector.db))
                 })
             },
             &mut |ptr, call_id| eager_callback_buffer.push((ptr, call_id)),

@@ -2516,7 +2516,7 @@ impl<'db> ExprCollector<'db> {
             statements.push(Statement::Item(Item::Other));
             return;
         };
-        let macro_id = self.db.macro_def(macro_id);
+        let macro_id = macro_id.definition(self.db);
         statements.push(Statement::Item(Item::MacroDef(Box::new(macro_id))));
         self.label_ribs.push(LabelRib::new(RibKind::MacroDef(Box::new(macro_id))));
     }

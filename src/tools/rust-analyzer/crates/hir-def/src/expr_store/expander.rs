@@ -111,7 +111,7 @@ impl<'db> Expander<'db> {
                 call_site.ctx,
                 expands_to,
                 krate,
-                |path| resolver(path).map(|it| db.macro_def(it)),
+                |path| resolver(path).map(|it| it.definition(db)),
                 eager_callback,
             ) {
                 Ok(call_id) => call_id,

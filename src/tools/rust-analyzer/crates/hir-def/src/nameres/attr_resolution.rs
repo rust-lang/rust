@@ -73,7 +73,7 @@ impl DefMap {
             // replace their input, and derive macros are not allowed in this function.
             AttrMacroAttrIds::from_one(attr_id),
             self.krate,
-            db.macro_def(def),
+            def.definition(db),
         )))
     }
 
