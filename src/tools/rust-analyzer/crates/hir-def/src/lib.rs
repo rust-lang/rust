@@ -90,7 +90,9 @@ use crate::{
     signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
 };
 
-pub use crate::{find_path::FindPathConfig, hir::type_ref, signatures::LocalFieldId};
+pub use crate::{
+    find_path::FindPathConfig, hir::type_ref, item_tree::file_item_tree, signatures::LocalFieldId,
+};
 pub use hir_expand::{Intern, Lookup, tt};
 
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;

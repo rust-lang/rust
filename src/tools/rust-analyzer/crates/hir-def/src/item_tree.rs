@@ -120,7 +120,8 @@ fn lower_extra_crate_attrs<'a>(
     AttrsOrCfg::lower(db, &crate_attrs_as_src, cfg_options, span_map)
 }
 
-pub(crate) fn file_item_tree(db: &dyn DefDatabase, file_id: HirFileId, krate: Crate) -> &ItemTree {
+/// Computes an [`ItemTree`] for the given file or macro expansion.
+pub fn file_item_tree(db: &dyn DefDatabase, file_id: HirFileId, krate: Crate) -> &ItemTree {
     match file_item_tree_query(db, file_id, krate) {
         Some(item_tree) => item_tree,
         None => {

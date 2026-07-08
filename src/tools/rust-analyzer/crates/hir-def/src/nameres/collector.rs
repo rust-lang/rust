@@ -35,6 +35,7 @@ use crate::{
     ProcMacroLoc, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId,
     UseLoc,
     db::DefDatabase,
+    file_item_tree,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
         self, Attrs, AttrsOrCfg, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId,
@@ -279,7 +280,7 @@ impl<'db> DefCollector<'db> {
         let _p = tracing::info_span!("seed_with_top_level").entered();
 
         let file_id = self.def_map.krate.root_file_id(self.db);
-        let item_tree = self.db.file_item_tree(file_id.into(), self.def_map.krate);
+        let item_tree = file_item_tree(self.db, file_id.into(), self.def_map.krate);
         let attrs = match item_tree.top_level_attrs() {
             AttrsOrCfg::Enabled { attrs } => attrs.as_ref(),
             AttrsOrCfg::CfgDisabled(it) => it.1.as_ref(),
@@ -1715,7 +1716,7 @@ impl<'db> DefCollector<'db> {
         }
         let file_id = macro_call_id.into();
 
-        let item_tree = self.db.file_item_tree(file_id, self.def_map.krate);
+        let item_tree = file_item_tree(self.db, file_id, self.def_map.krate);
 
         // Derive helpers that are in scope for an item are also in scope for attribute macro expansions
         // of that item (but not derive or fn like macros).
@@ -2345,7 +2346,7 @@ impl ModCollector<'_, '_> {
                 ) {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
                         let item_tree =
-                            db.file_item_tree(file_id.into(), self.def_collector.def_map.krate);
+                            file_item_tree(db, file_id.into(), self.def_collector.def_map.krate);
                         match item_tree.top_level_attrs() {
                             AttrsOrCfg::CfgDisabled(cfg) => {
                                 self.emit_unconfigured_diagnostic(

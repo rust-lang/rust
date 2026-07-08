@@ -1,22 +1,13 @@
 //! Defines database & queries for name resolution.
 use base_db::{Crate, SourceDatabase};
-use hir_expand::{EditionedFileId, HirFileId, MacroCallId};
+use hir_expand::{EditionedFileId, MacroCallId};
 use salsa::{Durability, Setter};
 use triomphe::Arc;
 
-use crate::{
-    TraitId,
-    item_tree::{ItemTree, file_item_tree},
-    nameres::crate_def_map,
-};
+use crate::{TraitId, nameres::crate_def_map};
 
 #[query_group::query_group]
 pub trait DefDatabase: SourceDatabase {
-    /// Computes an [`ItemTree`] for the given file or macro expansion.
-    #[salsa::invoke(file_item_tree)]
-    #[salsa::transparent]
-    fn file_item_tree(&self, file_id: HirFileId, krate: Crate) -> &ItemTree;
-
     #[salsa::invoke(crate::lang_item::crate_notable_traits)]
     #[salsa::transparent]
     fn crate_notable_traits(&self, krate: Crate) -> Option<&[TraitId]>;
