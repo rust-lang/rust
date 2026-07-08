@@ -1,7 +1,8 @@
 error: compiler/rustc_mir_build/src/thir/cx/expr.rs:LL:CC: splatted FnPtr side-tables are not yet implemented
+  --> $DIR/splat-fn-ptr-ptr-tuple.rs:30:9
    |
-LL |     fn_ptr(1, 2);
-   |     ^^^^^^^^^^^^
+LL |         (*fn_pp)(1, 2);
+   |         ^^^^^^^^^^^^^^
 
 
 
@@ -17,7 +18,7 @@ note: rustc {version} running on {platform}
 query stack during panic:
 #0 [thir_body] building THIR for `main`
 #1 [check_unsafety] unsafety-checking `main`
-#2 [analysis] running analysis passes on crate `splat_fn_ptr_tuple`
+#2 [analysis] running analysis passes on crate `splat_fn_ptr_ptr_tuple`
 end of query stack
 error: aborting due to 1 previous error
 
