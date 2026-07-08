@@ -39,7 +39,7 @@ impl TcpStream {
         self.0
     }
 
-    pub fn read_buf(&self, _buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, _buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0
     }
 

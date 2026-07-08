@@ -450,6 +450,9 @@ impl WorkspaceBuildScripts {
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
                 cmd.args(&config.extra_args);
+                if let Some(config_path) = &config.config_path {
+                    cmd.arg("--config").arg(config_path);
+                }
 
                 cmd.arg("--manifest-path");
                 cmd.arg(manifest_path);
@@ -560,7 +563,7 @@ impl WorkspaceBuildScripts {
 
 // FIXME: Find a better way to know if it is a dylib.
 fn is_dylib(path: &Utf8Path) -> bool {
-    match path.extension().map(|e| e.to_owned().to_lowercase()) {
+    match path.extension().map(|e| e.to_ascii_lowercase()) {
         None => false,
         Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
     }

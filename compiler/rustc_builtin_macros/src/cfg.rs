@@ -16,7 +16,7 @@ use rustc_parse::exp;
 use rustc_parse::parser::Recovery;
 use rustc_span::{ErrorGuaranteed, Span, sym};
 
-use crate::errors;
+use crate::diagnostics;
 
 pub(crate) fn expand_cfg(
     cx: &mut ExtCtxt<'_>,
@@ -38,7 +38,7 @@ pub(crate) fn expand_cfg(
 fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry, ErrorGuaranteed> {
     let mut parser = cx.new_parser_from_tts(tts);
     if parser.token == token::Eof {
-        return Err(cx.dcx().emit_err(errors::RequiresCfgPattern { span }));
+        return Err(cx.dcx().emit_err(diagnostics::RequiresCfgPattern { span }));
     }
 
     let meta = MetaItemOrLitParser::parse_single(
@@ -70,7 +70,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
     let _ = parser.eat(exp!(Comma));
 
     if !parser.eat(exp!(Eof)) {
-        return Err(cx.dcx().emit_err(errors::OneCfgPattern { span }));
+        return Err(cx.dcx().emit_err(diagnostics::OneCfgPattern { span }));
     }
 
     Ok(cfg)

@@ -110,7 +110,7 @@ impl DefaultHasher {
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl const Default for DefaultHasher {
+const impl Default for DefaultHasher {
     /// Creates a new `DefaultHasher` using [`new`].
     /// See its documentation for more.
     ///

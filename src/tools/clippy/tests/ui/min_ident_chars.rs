@@ -1,7 +1,7 @@
 //@aux-build:proc_macros.rs
-#![allow(irrefutable_let_patterns, nonstandard_style, unused)]
-#![allow(clippy::struct_field_names)]
 #![warn(clippy::min_ident_chars)]
+#![expect(irrefutable_let_patterns, nonstandard_style)]
+#![allow(clippy::struct_field_names)]
 
 extern crate proc_macros;
 use proc_macros::{external, with_span};

@@ -99,13 +99,14 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         let tcx = self.tcx;
         let defining_opaque_types_and_generators = match self.typing_mode() {
-            ty::TypingMode::Analysis { defining_opaque_types_and_generators } => {
+            ty::TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
             ty::TypingMode::Coherence
-            | ty::TypingMode::Borrowck { .. }
-            | ty::TypingMode::PostBorrowckAnalysis { .. }
-            | ty::TypingMode::PostAnalysis => {
+            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostBorrowck { .. }
+            | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::Codegen => {
                 bug!()
             }
         };
@@ -162,13 +163,18 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                     if let Some(guar) = self.tainted_by_errors() {
                         guar
                     } else {
-                        report_item_does_not_constrain_error(self.tcx, self.body_id, def_id, None)
+                        report_item_does_not_constrain_error(
+                            self.tcx,
+                            self.body_def_id,
+                            def_id,
+                            None,
+                        )
                     }
                 }
                 UsageKind::NonDefiningUse(opaque_type_key, hidden_type) => {
                     report_item_does_not_constrain_error(
                         self.tcx,
-                        self.body_id,
+                        self.body_def_id,
                         def_id,
                         Some((opaque_type_key, hidden_type.span)),
                     )
@@ -185,7 +191,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                             .unwrap_or_else(|| hidden_type.ty.into());
                         self.err_ctxt()
                             .emit_inference_failure_err(
-                                self.body_id,
+                                self.body_def_id,
                                 hidden_type.span,
                                 infer_var,
                                 TypeAnnotationNeeded::E0282,
@@ -234,7 +240,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             return UsageKind::UnconstrainedHiddenType(hidden_type);
         }
 
-        let cause = ObligationCause::misc(hidden_type.span, self.body_id);
+        let cause = ObligationCause::misc(hidden_type.span, self.body_def_id);
         let at = self.at(&cause, self.param_env);
         let hidden_type = match solve::deeply_normalize(at, Unnormalized::new_wip(hidden_type)) {
             Ok(hidden_type) => hidden_type,

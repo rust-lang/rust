@@ -65,8 +65,8 @@ warning: `#[allow_internal_unstable]` attribute cannot be used on struct fields
 LL |     #[allow_internal_unstable]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: requested on the command line with `-W unused-attributes`
 
 warning: `#[allow_internal_unstable]` attribute cannot be used on match arms
@@ -75,8 +75,8 @@ warning: `#[allow_internal_unstable]` attribute cannot be used on match arms
 LL |         #[allow_internal_unstable]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 7 previous errors; 2 warnings emitted
 

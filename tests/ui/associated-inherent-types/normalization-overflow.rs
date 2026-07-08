@@ -13,7 +13,7 @@ struct T;
 impl T {
     type This = Self::This;
     //[current]~^ ERROR: overflow evaluating associated type `T::This`
-    //[next]~^^ ERROR: type mismatch resolving `T::This normalizes-to _`
+    //[next]~^^ ERROR: overflow evaluating the requirement `T::This == _`
 }
 
 fn main() {}

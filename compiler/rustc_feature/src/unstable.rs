@@ -173,7 +173,8 @@ macro_rules! declare_features {
             pub fn incomplete(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
+                        // Match guard to avoid duplicating `cannot find $feature in module sym` error.
+                        f if f == sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
                     )*
                     _ if self.enabled_features.contains(&feature) => {
                         // Accepted/removed features and library features aren't in this file but
@@ -189,7 +190,8 @@ macro_rules! declare_features {
             pub fn internal(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
+                       // Match guard to avoid duplicating `cannot find $feature in module sym` error.
+                       f if f == sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
                     )*
                     _ if self.enabled_features.contains(&feature) => {
                         // This could be accepted/removed, or a libs feature.
@@ -250,14 +252,14 @@ declare_features! (
     (internal, allow_internal_unstable, "1.0.0", None),
     /// Allows using anonymous lifetimes in argument-position impl-trait.
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
-    /// Allows access to the emscripten_wasm_eh config, used by panic_unwind and unwind
-    (internal, cfg_emscripten_wasm_eh, "1.86.0", None),
     /// Allows checking whether or not the backend correctly supports unstable float types.
     (internal, cfg_target_has_reliable_f16_f128, "1.88.0", None),
+    /// Allows checking whether or not the target might have thread support.
+    (internal, cfg_target_has_threads, "CURRENT_RUSTC_VERSION", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows skipping `ConstParamTy_` trait implementation checks
-    (internal, const_param_ty_unchecked, "CURRENT_RUSTC_VERSION", None),
+    (internal, const_param_ty_unchecked, "1.97.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
     /// Implementation details of externally implementable items
@@ -381,7 +383,7 @@ declare_features! (
     /// Allows `extern "riscv-interrupt-m" fn()` and `extern "riscv-interrupt-s" fn()`.
     (unstable, abi_riscv_interrupt, "1.73.0", Some(111889)),
     /// Allows `extern "Swift" fn()`.
-    (unstable, abi_swift, "CURRENT_RUSTC_VERSION", Some(156481)),
+    (unstable, abi_swift, "1.97.0", Some(156481)),
     /// Allows `extern "x86-interrupt" fn()`.
     (unstable, abi_x86_interrupt, "1.17.0", Some(40180)),
     /// Allows additional const parameter types, such as `[u8; 10]` or user defined types
@@ -426,7 +428,7 @@ declare_features! (
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows defining c-variadic functions on targets where this feature has not yet
     /// undergone sufficient testing for stabilization.
-    (unstable, c_variadic_experimental_arch, "CURRENT_RUSTC_VERSION", Some(155973)),
+    (unstable, c_variadic_experimental_arch, "1.97.0", Some(155973)),
     /// Allows defining c-variadic naked functions with any extern ABI that is allowed
     /// on c-variadic foreign functions.
     (unstable, c_variadic_naked_functions, "1.93.0", Some(148767)),
@@ -444,10 +446,8 @@ declare_features! (
     (unstable, cfg_target_compact, "1.63.0", Some(96901)),
     /// Allows `cfg(target_has_atomic_load_store = "...")`.
     (unstable, cfg_target_has_atomic, "1.60.0", Some(94039)),
-    /// Allows `cfg(target_has_atomic_equal_alignment = "...")`.
-    (unstable, cfg_target_has_atomic_equal_alignment, "1.60.0", Some(93822)),
     /// Allows `cfg(target_object_format = "...")`.
-    (unstable, cfg_target_object_format, "CURRENT_RUSTC_VERSION", Some(152586)),
+    (unstable, cfg_target_object_format, "1.97.0", Some(152586)),
     /// Allows `cfg(target_thread_local)`.
     (unstable, cfg_target_thread_local, "1.7.0", Some(29594)),
     /// Allows the use of `#[cfg(ub_checks)` to check if UB checks are enabled.
@@ -456,6 +456,8 @@ declare_features! (
     (unstable, cfg_version, "1.45.0", Some(64796)),
     /// Allows to use the `#[cfi_encoding = ""]` attribute.
     (unstable, cfi_encoding, "1.71.0", Some(89653)),
+    /// The `clflushopt` target feature on x86.
+    (unstable, clflushopt_target_feature, "CURRENT_RUSTC_VERSION", Some(157096)),
     /// Allows `for<...>` on closures and coroutines.
     (unstable, closure_lifetime_binder, "1.64.0", Some(97362)),
     /// Allows `#[track_caller]` on closures and coroutines.
@@ -512,10 +514,12 @@ declare_features! (
     (unstable, diagnostic_on_const, "1.93.0", Some(143874)),
     /// Allows giving on-move borrowck custom diagnostic messages for a type
     (unstable, diagnostic_on_move, "1.96.0", Some(154181)),
+    /// Allows giving custom types diagnostic messages on type errors
+    (unstable, diagnostic_on_type_error, "CURRENT_RUSTC_VERSION", Some(155382)),
     /// Allows giving unresolved imports a custom diagnostic message
     (unstable, diagnostic_on_unknown, "1.96.0", Some(152900)),
     /// Allows macros to customize macro argument matcher diagnostics.
-    (unstable, diagnostic_on_unmatch_args, "CURRENT_RUSTC_VERSION", Some(155642)),
+    (unstable, diagnostic_on_unmatched_args, "1.97.0", Some(155642)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
@@ -551,7 +555,7 @@ declare_features! (
     /// Allows marking trait functions as `final` to prevent overriding impls
     (unstable, final_associated_functions, "1.95.0", Some(131179)),
     /// fma4 target feature on x86.
-    (unstable, fma4_target_feature, "CURRENT_RUSTC_VERSION", Some(155233)),
+    (unstable, fma4_target_feature, "1.97.0", Some(155233)),
     /// Controlling the behavior of fmt::Debug
     (unstable, fmt_debug, "1.82.0", Some(129709)),
     /// Allows using `#[align(...)]` on function items
@@ -584,7 +588,7 @@ declare_features! (
     /// Target features on hexagon.
     (unstable, hexagon_target_feature, "1.27.0", Some(150250)),
     /// Allows `impl(crate) trait Foo` restrictions.
-    (unstable, impl_restriction, "CURRENT_RUSTC_VERSION", Some(105077)),
+    (unstable, impl_restriction, "1.97.0", Some(105077)),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
     /// Allows `impl Trait` in bindings (`let`).
@@ -595,6 +599,8 @@ declare_features! (
     (unstable, import_trait_associated_functions, "1.86.0", Some(134691)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
+    /// Enable #[instrument_fn] on function.
+    (unstable, instrument_fn, "CURRENT_RUSTC_VERSION", Some(157081)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
     /// lahfsahf target feature on x86.
@@ -608,6 +614,8 @@ declare_features! (
     (unstable, link_arg_attribute, "1.76.0", Some(99427)),
     /// Target features on loongarch.
     (unstable, loongarch_target_feature, "1.73.0", Some(150252)),
+    /// Allows use of loop optimization hints via attributes.
+    (unstable, loop_hints, "CURRENT_RUSTC_VERSION", Some(156874)),
     /// Allows fused `loop`/`match` for direct intraprocedural jumps.
     (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Target features on m68k.
@@ -641,7 +649,7 @@ declare_features! (
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// Allows `move(expr)` in closures.
-    (incomplete, move_expr, "CURRENT_RUSTC_VERSION", Some(155050)),
+    (incomplete, move_expr, "1.97.0", Some(155050)),
     /// The `movrs` target feature on x86.
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
     /// Allows the `multiple_supertrait_upcastable` lint.
@@ -650,6 +658,8 @@ declare_features! (
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "1.79.0", Some(123076)),
+    /// Allows `mut(crate) field: Type` restrictions.
+    (incomplete, mut_restriction, "CURRENT_RUSTC_VERSION", Some(105077)),
     /// Allows using `#[naked]` on `extern "Rust"` functions.
     (unstable, naked_functions_rustic_abi, "1.88.0", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
@@ -688,7 +698,7 @@ declare_features! (
     (unstable, powerpc_target_feature, "1.27.0", Some(150255)),
     /// The prfchw target feature on x86.
     (unstable, prfchw_target_feature, "1.78.0", Some(150256)),
-    /// Allows macro attributes on expressions, statements and non-inline modules.
+    /// Allows macro attributes on expressions and statements.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows the use of raw-dylibs on ELF platforms
     (incomplete, raw_dylib_elf, "1.87.0", Some(135694)),
@@ -709,6 +719,8 @@ declare_features! (
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows `extern "rust-preserve-none"`.
     (unstable, rust_preserve_none_cc, "1.95.0", Some(151401)),
+    /// Allows `extern "tail"`.
+    (unstable, rust_tail_cc, "CURRENT_RUSTC_VERSION", Some(157427)),
     /// Target features on s390x.
     (unstable, s390x_target_feature, "1.82.0", Some(150259)),
     /// Allows the use of the `sanitize` attribute.
@@ -719,6 +731,9 @@ declare_features! (
     (unstable, sparc_target_feature, "1.84.0", Some(132783)),
     /// Allows specialization of implementations (RFC 1210).
     (incomplete, specialization, "1.7.0", Some(31844)),
+    /// Experimental "splatting" of function call arguments at the call site.
+    /// e.g. `foo(a, b, c)` calls `#[splat] fn foo((a: A, b: B, c: C))`.
+    (incomplete, splat, "CURRENT_RUSTC_VERSION", Some(153629)),
     /// Allows using `#[rustc_align_static(...)]` on static items.
     (unstable, static_align, "1.91.0", Some(146177)),
     /// Allows attributes on expressions and non-item statements.
@@ -729,8 +744,6 @@ declare_features! (
     (unstable, super_let, "1.88.0", Some(139076)),
     /// Allows subtrait items to shadow supertrait items.
     (unstable, supertrait_item_shadowing, "1.86.0", Some(89151)),
-    /// Allows the use of target_feature when a function is marked inline(always).
-    (unstable, target_feature_inline_always, "1.91.0", Some(145574)),
     /// Allows using `#[thread_local]` on `static` items.
     (unstable, thread_local, "1.0.0", Some(29594)),
     /// Allows defining `trait X = A + B;` alias items.
@@ -750,6 +763,8 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
+    /// Allows using `_ = <range-or-int>` enum variants.
+    (incomplete, unnamed_enum_variants, "CURRENT_RUSTC_VERSION", Some(156628)),
     /// Allows using `unsafe<'a> &'a T` unsafe binder types.
     (incomplete, unsafe_binders, "1.85.0", Some(130516)),
     /// Allows declaring fields `unsafe`.
@@ -762,7 +777,7 @@ declare_features! (
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
     /// Allows view types.
-    (unstable, view_types, "CURRENT_RUSTC_VERSION", Some(155938)),
+    (unstable, view_types, "1.97.0", Some(155938)),
     /// Target features on wasm.
     (unstable, wasm_target_feature, "1.30.0", Some(150260)),
     /// Allows use of attributes in `where` clauses.
@@ -773,6 +788,8 @@ declare_features! (
     (unstable, x87_target_feature, "1.85.0", Some(150261)),
     /// Allows use of the `xop` target-feature
     (unstable, xop_target_feature, "1.81.0", Some(127208)),
+    /// Allows use of the Xtensa target-features
+    (unstable, xtensa_target_feature, "CURRENT_RUSTC_VERSION", Some(157063)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
     (unstable, yield_expr, "1.87.0", Some(43122)),

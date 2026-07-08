@@ -14,7 +14,10 @@ error[E0207]: the const parameter `N` is not constrained by the impl trait, self
   --> $DIR/issue-68366.rs:12:7
    |
 LL | impl <const N: usize> Collatz<{Some(N)}> {}
-   |       ^^^^^^^^^^^^^^ unconstrained const parameter
+   |      -^^^^^^^^^^^^^^-
+   |      ||
+   |      |unconstrained const parameter
+   |      help: remove the unused type parameter `N`
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
@@ -23,7 +26,10 @@ error[E0207]: the const parameter `N` is not constrained by the impl trait, self
   --> $DIR/issue-68366.rs:19:6
    |
 LL | impl<const N: usize> Foo {}
-   |      ^^^^^^^^^^^^^^ unconstrained const parameter
+   |     -^^^^^^^^^^^^^^-
+   |     ||
+   |     |unconstrained const parameter
+   |     help: remove the unused type parameter `N`
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported

@@ -1,49 +1,42 @@
-error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/attr-usage-repr.rs:3:8
+error: `#[repr(C)]` attribute cannot be used on functions
+  --> $DIR/attr-usage-repr.rs:3:1
    |
 LL | #[repr(C)]
-   |        ^
-LL | fn f() {}
-   | --------- not a struct, enum, or union
+   | ^^^^^^^^^^
+   |
+   = help: `#[repr(C)]` can only be applied to data types
 
-error[E0517]: attribute should be applied to an enum
-  --> $DIR/attr-usage-repr.rs:15:8
+error: `#[repr(i8)]` attribute cannot be used on structs
+  --> $DIR/attr-usage-repr.rs:15:1
    |
 LL | #[repr(i8)]
-   |        ^^
-LL | struct SInt(f64, f64);
-   | ---------------------- not an enum
-
-error[E0517]: attribute should be applied to a struct or union
-  --> $DIR/attr-usage-repr.rs:30:8
+   | ^^^^^^^^^^^
    |
-LL |   #[repr(packed)]
-   |          ^^^^^^
-LL | / enum EPacked {
-LL | |     A,
-LL | |     B,
-LL | | }
-   | |_- not a struct or union
+   = help: `#[repr(i8)]` can only be applied to enums
 
-error[E0517]: attribute should be applied to a struct
-  --> $DIR/attr-usage-repr.rs:36:8
+error: `#[repr(packed)]` attribute cannot be used on enums
+  --> $DIR/attr-usage-repr.rs:30:1
    |
-LL |   #[repr(simd)]
-   |          ^^^^
-LL | / enum ESimd {
-LL | |     A,
-LL | |     B,
-LL | | }
-   | |_- not a struct
+LL | #[repr(packed)]
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(packed)]` can be applied to structs and unions
 
-error[E0517]: attribute should be applied to a struct, enum, or union
+error: `#[repr(simd)]` attribute cannot be used on enums
+  --> $DIR/attr-usage-repr.rs:36:1
+   |
+LL | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+   |
+   = help: `#[repr(simd)]` can only be applied to structs
+
+error: `#[repr()]` attribute cannot be used on type aliases
   --> $DIR/attr-usage-repr.rs:48:1
    |
 LL | #[repr()]
    | ^^^^^^^^^
-LL |
-LL | type SirThisIsAType = i32;
-   | -------------------------- not a struct, enum, or union
+   |
+   = help: `#[repr()]` can only be applied to data types
 
 warning: unused attribute
   --> $DIR/attr-usage-repr.rs:48:1
@@ -64,4 +57,3 @@ LL | #[repr()]
 
 error: aborting due to 5 previous errors; 2 warnings emitted
 
-For more information about this error, try `rustc --explain E0517`.

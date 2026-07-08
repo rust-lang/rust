@@ -32,8 +32,8 @@ use crate::mir::interpret::{AllocRange, Scalar};
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{
-    self, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypeVisitableExt,
-    TypingEnv, UserTypeAnnotationIndex,
+    self, GenericArg, GenericArgsRef, Instance, InstanceKind, List, ShimKind, Ty, TyCtxt,
+    TypeVisitableExt, TypingEnv, UserTypeAnnotationIndex,
 };
 
 mod basic_blocks;
@@ -127,8 +127,8 @@ impl<'tcx> MirSource<'tcx> {
         MirSource { instance: InstanceKind::Item(def_id), promoted: None }
     }
 
-    pub fn from_instance(instance: InstanceKind<'tcx>) -> Self {
-        MirSource { instance, promoted: None }
+    pub fn from_shim(shim: ShimKind<'tcx>) -> Self {
+        MirSource { instance: InstanceKind::Shim(shim), promoted: None }
     }
 
     #[inline]
@@ -413,7 +413,7 @@ impl<'tcx> Body<'tcx> {
     }
 
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
-        if tcx.use_typing_mode_borrowck() {
+        if tcx.use_typing_mode_post_typeck_until_borrowck() {
             match self.phase {
                 MirPhase::Built if let Some(def_id) = self.source.def_id().as_local() => {
                     TypingEnv::new(
@@ -530,8 +530,8 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns the return type; it always return first element from `local_decls` array.
     #[inline]
-    pub fn bound_return_ty(&self) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
-        ty::EarlyBinder::bind(self.local_decls[RETURN_PLACE].ty)
+    pub fn bound_return_ty(&self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
+        ty::EarlyBinder::bind(tcx, self.local_decls[RETURN_PLACE].ty)
     }
 
     /// Gets the location of the terminator for the given block.
@@ -624,7 +624,7 @@ impl<'tcx> Body<'tcx> {
             let mono_literal = instance.instantiate_mir_and_normalize_erasing_regions(
                 tcx,
                 typing_env,
-                crate::ty::EarlyBinder::bind(constant.const_),
+                crate::ty::EarlyBinder::bind(tcx, constant.const_),
             );
             mono_literal.try_eval_bits(tcx, typing_env)
         };
@@ -1558,7 +1558,7 @@ impl UserTypeProjections {
 /// * `let (x, _): T = ...` -- here, the `projs` vector would contain
 ///   `field[0]` (aka `.0`), indicating that the type of `s` is
 ///   determined by finding the type of the `.0` field from `T`.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, StableHash, PartialEq)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash, PartialEq)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
@@ -1730,11 +1730,11 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 152);
+    static_assert_size!(BasicBlockData<'_>, 160);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 56);
-    static_assert_size!(Terminator<'_>, 96);
+    static_assert_size!(Terminator<'_>, 104);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end
 }

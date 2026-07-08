@@ -71,7 +71,6 @@
 //! ```
 
 use std::borrow::Cow;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Display;
 use std::rc::Rc;
 
@@ -79,10 +78,11 @@ pub(crate) use NamedMatch::*;
 pub(crate) use ParseResult::*;
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token, TokenKind};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::ErrorGuaranteed;
-use rustc_lint_defs::pluralize;
+use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_middle::span_bug;
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
+use smallvec::SmallVec;
 
 use crate::mbe::macro_rules::Tracker;
 use crate::mbe::{KleeneOp, TokenTree};
@@ -292,12 +292,6 @@ impl MatcherPos {
     }
 }
 
-enum EofMatcherPositions {
-    None,
-    One(MatcherPos),
-    Multiple,
-}
-
 /// Represents the possible results of an attempted parse.
 #[derive(Debug)]
 pub(crate) enum ParseResult<T, F> {
@@ -307,8 +301,8 @@ pub(crate) enum ParseResult<T, F> {
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
     /// The usize is the approximate position of the token in the input token stream.
     Failure(F),
-    /// Fatal error (malformed macro?). Abort compilation.
-    Error(rustc_span::Span, String),
+    /// The input could be parsed in multiple distinct ways.
+    Ambiguity,
     ErrorReported(ErrorGuaranteed),
 }
 
@@ -429,8 +423,6 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 // Note: the vectors could be created and dropped within `parse_tt`, but to avoid excess
 // allocations we have a single vector for each kind that is cleared and reused repeatedly.
 pub(crate) struct TtParser {
-    macro_name: Ident,
-
     /// The set of current mps to be processed. This should be empty by the end of a successful
     /// execution of `parse_tt_inner`.
     cur_mps: Vec<MatcherPos>,
@@ -448,9 +440,8 @@ pub(crate) struct TtParser {
 }
 
 impl TtParser {
-    pub(super) fn new(macro_name: Ident) -> TtParser {
+    pub(super) fn new() -> TtParser {
         TtParser {
-            macro_name,
             cur_mps: vec![],
             next_mps: vec![],
             bb_mps: vec![],
@@ -471,14 +462,14 @@ impl TtParser {
     /// track of through the mps generated.
     fn parse_tt_inner<'matcher, T: Tracker<'matcher>>(
         &mut self,
+        parser: &Parser<'_>,
         matcher: &'matcher [MatcherLoc],
-        token: &Token,
-        approx_position: u32,
         track: &mut T,
     ) -> Option<NamedParseResult<T::Failure>> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
         // modified if `token == Eof`.
-        let mut eof_mps = EofMatcherPositions::None;
+        let token = &parser.token;
+        let mut eof_mps = SmallVec::<[MatcherPos; 1]>::new();
 
         while let Some(mut mp) = self.cur_mps.pop() {
             let matcher_loc = &matcher[mp.idx];
@@ -582,12 +573,7 @@ impl TtParser {
                     // We are past the matcher's end, and not in a sequence. Try to end things.
                     debug_assert_eq!(mp.idx, matcher.len() - 1);
                     if *token == token::Eof {
-                        eof_mps = match eof_mps {
-                            EofMatcherPositions::None => EofMatcherPositions::One(mp),
-                            EofMatcherPositions::One(_) | EofMatcherPositions::Multiple => {
-                                EofMatcherPositions::Multiple
-                            }
-                        }
+                        eof_mps.push(mp);
                     }
                 }
             }
@@ -596,24 +582,23 @@ impl TtParser {
         // If we reached the end of input, check that there is EXACTLY ONE possible matcher.
         // Otherwise, either the parse is ambiguous (which is an error) or there is a syntax error.
         if *token == token::Eof {
-            Some(match eof_mps {
-                EofMatcherPositions::One(mut eof_mp) => {
+            Some(match *eof_mps {
+                [_] => {
+                    let mut eof_mp = eof_mps.pop().unwrap();
                     // Need to take ownership of the matches from within the `Rc`.
                     Rc::make_mut(&mut eof_mp.matches);
                     let matches = Rc::try_unwrap(eof_mp.matches).unwrap().into_iter();
-                    self.nameize(matcher, matches)
+                    Success(self.nameize(matcher, matches))
                 }
-                EofMatcherPositions::Multiple => {
-                    Error(token.span, "ambiguity: multiple successful parses".to_string())
-                }
-                EofMatcherPositions::None => Failure(T::build_failure(
+                [] => Failure(T::build_failure(
                     Token::new(
                         token::Eof,
                         if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
                     ),
-                    approx_position,
+                    parser.approx_token_stream_pos(),
                     "missing tokens in macro arguments",
                 )),
+                _ => self.ambiguity_error(parser, matcher, track),
             })
         } else {
             None
@@ -641,12 +626,7 @@ impl TtParser {
 
             // Process `cur_mps` until either we have finished the input or we need to get some
             // parsing from the black-box parser done.
-            let res = self.parse_tt_inner(
-                matcher,
-                &parser.token,
-                parser.approx_token_stream_pos(),
-                track,
-            );
+            let res = self.parse_tt_inner(parser, matcher, track);
 
             if let Some(res) = res {
                 return res;
@@ -678,36 +658,25 @@ impl TtParser {
                     // We need to call the black-box parser to get some nonterminal.
                     let mut mp = self.bb_mps.pop().unwrap();
                     let loc = &matcher[mp.idx];
-                    if let &MatcherLoc::MetaVarDecl {
-                        span, kind, next_metavar, seq_depth, ..
-                    } = loc
-                    {
-                        // We use the span of the metavariable declaration to determine any
-                        // edition-specific matching behavior for non-terminals.
-                        let nt = match parser.to_mut().parse_nonterminal(kind) {
-                            Err(err) => {
-                                let guarantee = err.with_span_label(
-                                    span,
-                                    format!(
-                                        "while parsing argument for this `{kind}` macro fragment"
-                                    ),
-                                )
-                                .emit();
-                                return ErrorReported(guarantee);
-                            }
-                            Ok(nt) => nt,
-                        };
-                        mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
-                        mp.idx += 1;
-                    } else {
+                    let MatcherLoc::MetaVarDecl { kind, next_metavar, seq_depth, .. } = *loc else {
                         unreachable!()
-                    }
+                    };
+
+                    // We use the span of the metavariable declaration to determine any
+                    // edition-specific matching behavior for non-terminals.
+                    let nt = match parser.to_mut().parse_nonterminal(kind) {
+                        Err(err) => return self.nt_parsing_error(loc, err),
+                        Ok(nt) => nt,
+                    };
+                    mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
+
+                    mp.idx += 1;
                     self.cur_mps.push(mp);
                 }
 
                 (_, _) => {
                     // Too many possibilities!
-                    return self.ambiguity_error(matcher, parser.token.span);
+                    return self.ambiguity_error(parser, matcher, track);
                 }
             }
 
@@ -715,54 +684,51 @@ impl TtParser {
         }
     }
 
-    fn ambiguity_error<F>(
-        &self,
-        matcher: &[MatcherLoc],
-        token_span: rustc_span::Span,
-    ) -> NamedParseResult<F> {
-        let nts = self
-            .bb_mps
-            .iter()
-            .map(|mp| match &matcher[mp.idx] {
-                MatcherLoc::MetaVarDecl { bind, kind, .. } => {
-                    format!("{kind} ('{bind}')")
-                }
-                _ => unreachable!(),
-            })
-            .collect::<Vec<String>>()
-            .join(" or ");
-
-        Error(
-            token_span,
-            format!(
-                "local ambiguity when calling macro `{}`: multiple parsing options: {}",
-                self.macro_name,
-                match self.next_mps.len() {
-                    0 => format!("built-in NTs {nts}."),
-                    n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
-                }
-            ),
-        )
+    fn nt_parsing_error<F>(&self, loc: &MatcherLoc, err: Diag<'_>) -> NamedParseResult<F> {
+        let &MatcherLoc::MetaVarDecl { span, kind, .. } = loc else { unreachable!() };
+        let guarantee = err
+            .with_span_label(
+                span,
+                format!("while parsing argument for this `{kind}` macro fragment"),
+            )
+            .emit();
+        ErrorReported(guarantee)
     }
 
-    fn nameize<I: Iterator<Item = NamedMatch>, F>(
+    fn ambiguity_error<'matcher, T: Tracker<'matcher>>(
+        &self,
+        parser: &Parser<'_>,
+        matcher: &'matcher [MatcherLoc],
+        track: &mut T,
+    ) -> NamedParseResult<T::Failure> {
+        let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
+        let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
+        track.ambiguity(parser, bb_locs, next_locs);
+        Ambiguity
+    }
+
+    fn nameize<I: Iterator<Item = NamedMatch>>(
         &self,
         matcher: &[MatcherLoc],
         mut res: I,
-    ) -> NamedParseResult<F> {
+    ) -> NamedMatches {
         // Make that each metavar has _exactly one_ binding. If so, insert the binding into the
         // `NamedParseResult`. Otherwise, it's an error.
         let mut ret_val = FxHashMap::default();
         for loc in matcher {
-            if let &MatcherLoc::MetaVarDecl { span, bind, .. } = loc {
-                match ret_val.entry(MacroRulesNormalizedIdent::new(bind)) {
-                    Vacant(spot) => spot.insert(res.next().unwrap()),
-                    Occupied(..) => {
-                        return Error(span, format!("duplicated bind name: {bind}"));
-                    }
-                };
+            if let &MatcherLoc::MetaVarDecl { span, bind, .. } = loc
+                && ret_val
+                    .insert(MacroRulesNormalizedIdent::new(bind), res.next().unwrap())
+                    .is_some()
+            {
+                // Duplicate binds are checked for when the macro definition is processed,
+                // and should have prevented the definition from ever being used.
+                span_bug!(
+                    span,
+                    "duplicate meta-variable binding went undetected at macro definition"
+                )
             }
         }
-        Success(ret_val)
+        ret_val
     }
 }

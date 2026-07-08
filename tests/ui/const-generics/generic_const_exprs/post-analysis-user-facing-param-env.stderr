@@ -24,7 +24,10 @@ error[E0207]: the const parameter `NUM` is not constrained by the impl trait, se
   --> $DIR/post-analysis-user-facing-param-env.rs:5:10
    |
 LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
-   |          ^^^^^^^^^^^^^^^^ unconstrained const parameter
+   |        --^^^^^^^^^^^^^^^^
+   |        | |
+   |        | unconstrained const parameter
+   |        help: remove the unused type parameter `NUM`
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported

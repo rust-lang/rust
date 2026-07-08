@@ -133,6 +133,12 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         submodules: &[],
     },
     WorkspaceInfo {
+        path: "library/stdarch",
+        exceptions: EXCEPTIONS_STDARCH,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
         path: "compiler/rustc_codegen_cranelift",
         exceptions: EXCEPTIONS_CRANELIFT,
         crates_and_deps: Some((
@@ -238,6 +244,10 @@ const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     // tidy-alphabetical-start
     ("inferno", "CDDL-1.0"),
     ("option-ext", "MPL-2.0"),
+    ("terminfo", "WTFPL"),
+    ("wasite", "Apache-2.0 OR BSL-1.0 OR MIT"),
+    ("wezterm-bidi", "MIT AND Unicode-DFS-2016"),
+    ("whoami", "Apache-2.0 OR BSL-1.0 OR MIT"),
     // tidy-alphabetical-end
 ];
 
@@ -253,6 +263,8 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
     ("mdbook-summary", "MPL-2.0"),
     // tidy-alphabetical-end
 ];
+
+const EXCEPTIONS_STDARCH: ExceptionList = &[];
 
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[];
 
@@ -589,6 +601,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "log",
     "mach2",
     "memchr",
+    "memmap2",
     "object",
     "proc-macro2",
     "quote",
@@ -683,6 +696,9 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
 
 /// Ensure the list of proc-macro crate transitive dependencies is up to date
 fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, check: &mut RunningCheck) {
+    if std::env::var("RUSTC").is_err() {
+        panic!("tidy must be run under bootstrap (./x test tidy), not as a standalone command");
+    }
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.cargo_path(cargo)
         .manifest_path(root.join("Cargo.toml"))

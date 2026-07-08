@@ -12,7 +12,7 @@ use span::Edition;
 use stdx::format_to;
 
 use crate::{
-    AssocItemId, AttrDefId, Complete, FxIndexMap, ModuleDefId, ModuleId, TraitId,
+    AdtId, AssocItemId, AttrDefId, Complete, EnumId, FxIndexMap, ModuleDefId, ModuleId, TraitId,
     attrs::AttrFlags,
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, ItemInNs},
@@ -208,7 +208,8 @@ impl ImportMap {
                         complete: do_not_complete,
                     };
 
-                    if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
+                    let module_def = item.as_module_def_id();
+                    if let Some(ModuleDefId::TraitId(tr)) = module_def {
                         Self::collect_trait_assoc_items(
                             db,
                             &mut map,
@@ -216,6 +217,8 @@ impl ImportMap {
                             matches!(item, ItemInNs::Types(_)),
                             &import_info,
                         );
+                    } else if let Some(ModuleDefId::AdtId(AdtId::EnumId(enum_))) = module_def {
+                        Self::collect_enum_variants(db, &mut map, enum_, &import_info);
                     }
 
                     let (infos, _) =
@@ -224,7 +227,7 @@ impl ImportMap {
                     infos.push(import_info);
 
                     // If we've just added a module, descend into it.
-                    if let Some(ModuleDefId::ModuleId(mod_id)) = item.as_module_def_id() {
+                    if let Some(ModuleDefId::ModuleId(mod_id)) = module_def {
                         worklist.push(mod_id);
                     }
                 }
@@ -232,6 +235,33 @@ impl ImportMap {
         }
         map.shrink_to_fit();
         map
+    }
+
+    fn collect_enum_variants(
+        db: &dyn DefDatabase,
+        map: &mut ImportMapIndex,
+        enum_: EnumId,
+        enum_import_info: &ImportInfo,
+    ) {
+        let _p = tracing::info_span!("collect_enum_variants").entered();
+        for (variant_name, &(variant, _)) in &enum_.enum_variants(db).variants {
+            let attr_id = variant.into();
+            let attrs = AttrFlags::query(db, attr_id);
+            let do_not_complete = Complete::extract(false, attrs);
+            let variant_info = ImportInfo {
+                container: enum_import_info.container,
+                name: variant_name.clone(),
+                is_doc_hidden: attrs.contains(AttrFlags::IS_DOC_HIDDEN),
+                is_unstable: attrs.contains(AttrFlags::IS_UNSTABLE),
+                complete: do_not_complete,
+            };
+
+            let (infos, _) = map
+                .entry(ItemInNs::Types(variant.into()))
+                .or_insert_with(|| (SmallVec::new(), IsTraitAssocItem::No));
+            infos.reserve_exact(1);
+            infos.push(variant_info);
+        }
     }
 
     fn collect_trait_assoc_items(

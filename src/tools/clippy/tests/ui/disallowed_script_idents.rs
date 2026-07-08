@@ -1,5 +1,4 @@
 #![deny(clippy::disallowed_script_idents)]
-#![allow(dead_code)]
 
 fn main() {
     // OK, latin is allowed.

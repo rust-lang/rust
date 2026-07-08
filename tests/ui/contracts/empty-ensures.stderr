@@ -1,4 +1,4 @@
-error[E0277]: expected a `Fn(&_)` closure, found `()`
+error[E0277]: expected an `Fn(&_)` closure, found `()`
   --> $DIR/empty-ensures.rs:8:1
    |
 LL | #[ensures()]

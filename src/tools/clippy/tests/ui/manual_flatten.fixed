@@ -1,5 +1,5 @@
 #![warn(clippy::manual_flatten)]
-#![allow(clippy::useless_vec, clippy::uninlined_format_args)]
+#![expect(clippy::uninlined_format_args, clippy::useless_vec)]
 
 fn main() {
     // Test for loop over implicitly adjusted `Iterator` with `if let` expression

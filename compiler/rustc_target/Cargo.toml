@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
+arrayvec = { version = "0.7", default-features = false }
 bitflags = "2.4.1"
 object = { version = "0.37.0", default-features = false, features = ["elf", "macho"] }
 rustc_abi = { path = "../rustc_abi" }

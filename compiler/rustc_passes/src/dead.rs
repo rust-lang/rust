@@ -5,6 +5,7 @@
 
 use std::mem;
 use std::ops::ControlFlow;
+use std::sync::atomic::Ordering;
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
@@ -22,10 +23,10 @@ use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
-use rustc_session::lint::{self, Lint, LintExpectationId};
+use rustc_session::lint::{self, Lint, StableLintExpectationId};
 use rustc_span::{Symbol, kw};
 
-use crate::errors::{
+use crate::diagnostics::{
     ChangeFields, DeadCodePubInBinaryNote, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
     UselessAssignment,
 };
@@ -184,15 +185,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn handle_res(&mut self, res: Res) {
         match res {
-            Res::Def(
-                DefKind::Const { .. }
-                | DefKind::AssocConst { .. }
-                | DefKind::AssocTy
-                | DefKind::TyAlias,
-                def_id,
-            ) => {
-                self.check_def_id(def_id);
-            }
             Res::PrimTy(..) | Res::SelfCtor(..) | Res::Local(..) => {}
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
                 // Using a variant in patterns should not make the variant live,
@@ -939,6 +931,21 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
         });
     }
 
+    // Under `--test`, what `main` resolves to is the would-be entry point of a normal build,
+    // so keep it live, unless a stripped user `#[rustc_main]` would have been the entry instead.
+    if tcx.sess.is_test_crate()
+        && !tcx.sess.removed_rustc_main_attr.load(Ordering::Relaxed)
+        && let Some(main_def) = tcx.resolutions(()).main_def
+        && let Some(def_id) = main_def.opt_fn_def_id()
+        && let Some(local_def_id) = def_id.as_local()
+    {
+        worklist.push(WorkItem {
+            id: local_def_id,
+            propagated: ComesFromAllowExpect::No,
+            own: ComesFromAllowExpect::No,
+        });
+    }
+
     for (id, effective_vis) in tcx.effective_visibilities(()).iter() {
         if effective_vis.is_public_at_level(Level::Reachable) {
             deferred_seeds.push(WorkItem {
@@ -1035,7 +1042,7 @@ fn mark_live_symbols_and_ignored_derived_traits(
 struct DeadItem {
     def_id: LocalDefId,
     name: Symbol,
-    level_plus: (lint::Level, Option<LintExpectationId>),
+    level_plus: (lint::Level, Option<StableLintExpectationId>),
 }
 
 struct DeadVisitor<'tcx> {
@@ -1082,7 +1089,10 @@ impl<'tcx> DeadVisitor<'tcx> {
         ShouldWarnAboutField::Yes
     }
 
-    fn def_lint_level_plus(&self, id: LocalDefId) -> (lint::Level, Option<LintExpectationId>) {
+    fn def_lint_level_plus(
+        &self,
+        id: LocalDefId,
+    ) -> (lint::Level, Option<StableLintExpectationId>) {
         let hir_id = self.tcx.local_def_id_to_hir_id(id);
         let level_spec = self.tcx.lint_level_spec_at_node(self.target_lint, hir_id);
         (level_spec.level(), level_spec.lint_id())
@@ -1223,7 +1233,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                             && let Some(variant) =
                                 maybe_enum.variants().iter().find(|i| i.name == dead_item.name)
                         {
-                            Some(crate::errors::EnumVariantSameName {
+                            Some(crate::diagnostics::EnumVariantSameName {
                                 dead_descr: tcx.def_descr(dead_item.def_id.to_def_id()),
                                 dead_name: dead_item.name,
                                 variant_span: tcx.def_span(variant.def_id),
@@ -1267,7 +1277,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             return;
         }
         // FIXME: `dead_codes` should probably be morally equivalent to
-        // `IndexMap<(Level, LintExpectationId), (DefId, Symbol)>`
+        // `IndexMap<(Level, StableLintExpectationId), (DefId, Symbol)>`
         dead_codes.sort_by_key(|v| v.level_plus.0);
         for group in dead_codes.chunk_by(|a, b| a.level_plus == b.level_plus) {
             self.lint_at_single_level(&group, participle, Some(def_id), report_on);

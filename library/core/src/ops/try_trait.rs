@@ -416,15 +416,21 @@ impl<T> NeverShortCircuit<T> {
     }
 
     #[inline]
-    pub(crate) fn wrap_mut_2<A, B>(mut f: impl FnMut(A, B) -> T) -> impl FnMut(A, B) -> Self {
-        move |a, b| NeverShortCircuit(f(a, b))
+    #[rustc_const_unstable(feature = "const_array", issue = "147606")]
+    pub(crate) const fn wrap_mut_2<A, B, F>(
+        mut f: F,
+    ) -> impl [const] FnMut(A, B) -> Self + [const] Destruct
+    where
+        F: [const] FnMut(A, B) -> T + [const] Destruct,
+    {
+        const move |a, b| NeverShortCircuit(f(a, b))
     }
 }
 
 pub(crate) enum NeverShortCircuitResidual {}
 
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-impl<T> const Try for NeverShortCircuit<T> {
+const impl<T> Try for NeverShortCircuit<T> {
     type Output = T;
     type Residual = NeverShortCircuitResidual;
 
@@ -439,14 +445,14 @@ impl<T> const Try for NeverShortCircuit<T> {
     }
 }
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-impl<T> const FromResidual for NeverShortCircuit<T> {
+const impl<T> FromResidual for NeverShortCircuit<T> {
     #[inline]
     fn from_residual(never: NeverShortCircuitResidual) -> Self {
         match never {}
     }
 }
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-impl<T: [const] Destruct> const Residual<T> for NeverShortCircuitResidual {
+const impl<T: [const] Destruct> Residual<T> for NeverShortCircuitResidual {
     type TryType = NeverShortCircuit<T>;
 }
 

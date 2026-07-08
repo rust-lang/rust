@@ -129,7 +129,7 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
 LL |     target_abi = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_abi` are: ``, `abi64`, `abiv2`, `abiv2hf`, `eabi`, `eabihf`, `elfv1`, `elfv2`, `fortanix`, `ilp32`, `ilp32e`, `llvm`, `macabi`, `sim`, `softfloat`, `spe`, `uwp`, `vec-extabi`, and `x32`
+   = note: expected values for `target_abi` are: ``, `abi64`, `abiv2`, `abiv2hf`, `eabi`, `eabihf`, `elfv1`, `elfv2`, `fortanix`, `ilp32`, `ilp32e`, `llvm`, `macabi`, `pauthtest`, `sim`, `softfloat`, `spe`, `uwp`, `vec-extabi`, and `x32`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -156,7 +156,7 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
 LL |     target_env = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_env` are: ``, `gnu`, `macabi`, `mlibc`, `msvc`, `musl`, `newlib`, `nto70`, `nto71`, `nto71_iosock`, `nto80`, `ohos`, `p1`, `p2`, `p3`, `relibc`, `sgx`, `sim`, `uclibc`, and `v5`
+   = note: expected values for `target_env` are: ``, `gnu`, `macabi`, `mlibc`, `msvc`, `musl`, `newlib`, `nto70`, `nto71`, `nto71_iosock`, `ohos`, `p1`, `p2`, `p3`, `relibc`, `sgx`, `sim`, `uclibc`, and `v5`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -180,15 +180,6 @@ LL |     target_has_atomic = "_UNEXPECTED_VALUE",
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:68:5
    |
-LL |     target_has_atomic_equal_alignment = "_UNEXPECTED_VALUE",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: expected values for `target_has_atomic_equal_alignment` are: (none), `128`, `16`, `32`, `64`, `8`, and `ptr`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-
-warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:70:5
-   |
 LL |     target_has_atomic_load_store = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -196,7 +187,27 @@ LL |     target_has_atomic_load_store = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
+  --> $DIR/well-known-values.rs:70:5
+   |
+LL |     target_has_atomic_primitive_alignment = "_UNEXPECTED_VALUE",
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_has_atomic_primitive_alignment` are: `128`, `16`, `32`, `64`, `8`, and `ptr`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:72:5
+   |
+LL |     target_has_threads = "_UNEXPECTED_VALUE",
+   |     ^^^^^^^^^^^^^^^^^^----------------------
+   |                       |
+   |                       help: remove the value
+   |
+   = note: no expected value for `target_has_threads`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
+  --> $DIR/well-known-values.rs:74:5
    |
 LL |     target_object_format = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -205,16 +216,16 @@ LL |     target_object_format = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:74:5
+  --> $DIR/well-known-values.rs:76:5
    |
 LL |     target_os = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, `solid_asp3`, `teeos`, `trusty`, `tvos`, `uefi`, `unknown`, `vexos`, `visionos`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`, and `zkvm`
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qnx`, `qurt`, `redox`, `rtems`, `solaris`, `solid_asp3`, `teeos`, `trusty`, `tvos`, `uefi`, `unknown`, `vexos`, `visionos`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`, and `zkvm`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:76:5
+  --> $DIR/well-known-values.rs:78:5
    |
 LL |     target_pointer_width = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -223,7 +234,7 @@ LL |     target_pointer_width = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:78:5
+  --> $DIR/well-known-values.rs:80:5
    |
 LL |     target_thread_local = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^----------------------
@@ -234,7 +245,7 @@ LL |     target_thread_local = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:80:5
+  --> $DIR/well-known-values.rs:82:5
    |
 LL |     target_vendor = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -243,7 +254,7 @@ LL |     target_vendor = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:82:5
+  --> $DIR/well-known-values.rs:84:5
    |
 LL |     ub_checks = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^----------------------
@@ -254,7 +265,7 @@ LL |     ub_checks = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:84:5
+  --> $DIR/well-known-values.rs:86:5
    |
 LL |     unix = "_UNEXPECTED_VALUE",
    |     ^^^^----------------------
@@ -265,7 +276,7 @@ LL |     unix = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:86:5
+  --> $DIR/well-known-values.rs:88:5
    |
 LL |     windows = "_UNEXPECTED_VALUE",
    |     ^^^^^^^----------------------
@@ -276,15 +287,15 @@ LL |     windows = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `linuz`
-  --> $DIR/well-known-values.rs:92:7
+  --> $DIR/well-known-values.rs:94:7
    |
 LL | #[cfg(target_os = "linuz")] // testing that we suggest `linux`
    |       ^^^^^^^^^^^^-------
    |                   |
    |                   help: there is a expected value with a similar name: `"linux"`
    |
-   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, `solid_asp3`, `teeos`, `trusty`, `tvos`, `uefi`, `unknown`, `vexos`, `visionos`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`, and `zkvm`
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qnx`, `qurt`, `redox`, `rtems`, `solaris`, `solid_asp3`, `teeos`, `trusty`, `tvos`, `uefi`, `unknown`, `vexos`, `visionos`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`, and `zkvm`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
-warning: 29 warnings emitted
+warning: 30 warnings emitted
 

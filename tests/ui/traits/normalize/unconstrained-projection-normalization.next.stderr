@@ -3,6 +3,15 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T: ?Sized> Every for Thing {
    |      ^ unconstrained type parameter
+   |
+help: use the type parameter `T` in the `Thing` type and use it in the type definition
+   |
+LL ~ struct Thing<T>;
+LL |
+...
+LL | }
+LL ~ impl<T: ?Sized> Every for Thing<T> {
+   |
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/unconstrained-projection-normalization.rs:15:18

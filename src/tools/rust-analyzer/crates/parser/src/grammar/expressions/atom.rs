@@ -320,6 +320,10 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         //     builtin#naked_asm("");
         // }
         parse_asm_expr(p, m)
+    } else if p.eat_contextual_kw(T![include_bytes]) {
+        // test include_bytes
+        // fn foo() { builtin # include_bytes }
+        Some(m.complete(p, INCLUDE_BYTES_EXPR))
     } else {
         m.abandon(p);
         None
@@ -351,6 +355,10 @@ pub(crate) fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedM
         }
 
         let op_n = p.start();
+        // test asm_piece_attr
+        // builtin # global_asm("", #[cfg(false)] options())
+        attributes::outer_attrs(p);
+
         // Parse clobber_abi
         if p.eat_contextual_kw(T![clobber_abi]) {
             parse_clobber_abi(p);

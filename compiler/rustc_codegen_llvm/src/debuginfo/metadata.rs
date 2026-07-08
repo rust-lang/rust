@@ -152,7 +152,20 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
         cx.size_and_align_of(Ty::new_mut_ptr(cx.tcx, pointee_type))
     );
 
-    let pointee_type_di_node = type_di_node(cx, pointee_type);
+    let pointee_type_di_node = match pointee_type.kind() {
+        // `&[T]` will look like `{ data_ptr: *const T, length: usize }`
+        ty::Slice(element_type) => type_di_node(cx, *element_type),
+        // `&str` will look like `{ data_ptr: *const u8, length: usize }`
+        ty::Str => type_di_node(cx, cx.tcx.types.u8),
+
+        // `&dyn K` will look like `{ pointer: _, vtable: _}`
+        // any Adt `Foo` containing an unsized type (eg `&[_]` or `&dyn _`)
+        //   will look like `{ data_ptr: *const Foo, length: usize }`
+        // and thin pointers `&Foo` will just look like `*const Foo`.
+        //
+        // in all those cases, we just use the pointee_type
+        _ => type_di_node(cx, pointee_type),
+    };
 
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
 
@@ -389,26 +402,11 @@ fn build_dyn_type_di_node<'ll, 'tcx>(
 }
 
 /// Create debuginfo for `[T]` and `str`. These are unsized.
-///
-/// NOTE: We currently emit just emit the debuginfo for the element type here
-/// (i.e. `T` for slices and `u8` for `str`), so that we end up with
-/// `*const T` for the `data_ptr` field of the corresponding wide-pointer
-/// debuginfo of `&[T]`.
-///
-/// It would be preferable and more accurate if we emitted a DIArray of T
-/// without an upper bound instead. That is, LLVM already supports emitting
-/// debuginfo of arrays of unknown size. But GDB currently seems to end up
-/// in an infinite loop when confronted with such a type.
-///
-/// As a side effect of the current encoding every instance of a type like
-/// `struct Foo { unsized_field: [u8] }` will look like
-/// `struct Foo { unsized_field: u8 }` in debuginfo. If the length of the
-/// slice is zero, then accessing `unsized_field` in the debugger would
-/// result in an out-of-bounds access.
 fn build_slice_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     slice_type: Ty<'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
+    span: Span,
 ) -> DINodeCreationResult<'ll> {
     let element_type = match slice_type.kind() {
         ty::Slice(element_type) => *element_type,
@@ -423,7 +421,20 @@ fn build_slice_type_di_node<'ll, 'tcx>(
 
     let element_type_di_node = type_di_node(cx, element_type);
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
-    DINodeCreationResult { di_node: element_type_di_node, already_stored_in_typemap: false }
+    let (size, align) = cx.spanned_size_and_align_of(slice_type, span);
+    let subrange = unsafe { llvm::LLVMDIBuilderGetOrCreateSubrange(DIB(cx), 0, -1) };
+    let subscripts = &[subrange];
+    let di_node = unsafe {
+        llvm::LLVMDIBuilderCreateArrayType(
+            DIB(cx),
+            size.bits(),
+            align.bits() as u32,
+            element_type_di_node,
+            subscripts.as_ptr(),
+            subscripts.len() as c_uint,
+        )
+    };
+    DINodeCreationResult { di_node, already_stored_in_typemap: false }
 }
 
 /// Get the debuginfo node for the given type.
@@ -454,7 +465,7 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
         }
         ty::Tuple(elements) if elements.is_empty() => build_basic_type_di_node(cx, t),
         ty::Array(..) => build_fixed_size_array_di_node(cx, unique_type_id, t, span),
-        ty::Slice(_) | ty::Str => build_slice_type_di_node(cx, t, unique_type_id),
+        ty::Slice(_) | ty::Str => build_slice_type_di_node(cx, t, unique_type_id, span),
         ty::Dynamic(..) => build_dyn_type_di_node(cx, t, unique_type_id),
         ty::Foreign(..) => build_foreign_type_di_node(cx, t, unique_type_id),
         ty::RawPtr(pointee_type, _) | ty::Ref(_, pointee_type, _) => {

@@ -1,5 +1,5 @@
 error: `#[target_feature]` attribute cannot be used on extern crates
-  --> $DIR/invalid-attribute.rs:11:1
+  --> $DIR/invalid-attribute.rs:12:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on use statements
-  --> $DIR/invalid-attribute.rs:15:1
+  --> $DIR/invalid-attribute.rs:16:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on foreign modules
-  --> $DIR/invalid-attribute.rs:19:1
+  --> $DIR/invalid-attribute.rs:20:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error[E0539]: malformed `target_feature` attribute input
-  --> $DIR/invalid-attribute.rs:23:1
+  --> $DIR/invalid-attribute.rs:24:1
    |
 LL | #[target_feature = "+sse2"]
    | ^^^^^^^^^^^^^^^^^---------^
@@ -37,7 +37,7 @@ LL + #[target_feature(enable = "feat1, feat2")]
    |
 
 error[E0539]: malformed `target_feature` attribute input
-  --> $DIR/invalid-attribute.rs:29:1
+  --> $DIR/invalid-attribute.rs:30:1
    |
 LL | #[target_feature(bar)]
    | ^^^^^^^^^^^^^^^^^---^^
@@ -51,7 +51,7 @@ LL + #[target_feature(enable = "feat1, feat2")]
    |
 
 error[E0539]: malformed `target_feature` attribute input
-  --> $DIR/invalid-attribute.rs:32:1
+  --> $DIR/invalid-attribute.rs:33:1
    |
 LL | #[target_feature(disable = "baz")]
    | ^^^^^^^^^^^^^^^^^-------^^^^^^^^^^
@@ -65,7 +65,7 @@ LL + #[target_feature(enable = "feat1, feat2")]
    |
 
 error: `#[target_feature]` attribute cannot be used on modules
-  --> $DIR/invalid-attribute.rs:37:1
+  --> $DIR/invalid-attribute.rs:38:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on constants
-  --> $DIR/invalid-attribute.rs:41:1
+  --> $DIR/invalid-attribute.rs:42:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -81,7 +81,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on structs
-  --> $DIR/invalid-attribute.rs:45:1
+  --> $DIR/invalid-attribute.rs:46:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on enums
-  --> $DIR/invalid-attribute.rs:49:1
+  --> $DIR/invalid-attribute.rs:50:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on unions
-  --> $DIR/invalid-attribute.rs:53:1
+  --> $DIR/invalid-attribute.rs:54:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -105,7 +105,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on type aliases
-  --> $DIR/invalid-attribute.rs:60:1
+  --> $DIR/invalid-attribute.rs:61:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -113,7 +113,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on traits
-  --> $DIR/invalid-attribute.rs:64:1
+  --> $DIR/invalid-attribute.rs:65:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -160,23 +160,21 @@ LL |     #[target_feature(enable = "sse2")]
    |
    = help: `#[target_feature]` can be applied to functions and methods
 
-error[E0658]: cannot use `#[inline(always)]` with `#[target_feature]`
-  --> $DIR/invalid-attribute.rs:68:1
+error: cannot use `#[inline(always)]` with `#[target_feature]`
+  --> $DIR/invalid-attribute.rs:69:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #145574 <https://github.com/rust-lang/rust/issues/145574> for more information
-   = help: add `#![feature(target_feature_inline_always)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: See this issue for full discussion: https://github.com/rust-lang/rust/issues/145574
 
 error: the feature named `foo` is not valid for this target
-  --> $DIR/invalid-attribute.rs:26:18
+  --> $DIR/invalid-attribute.rs:27:18
    |
 LL | #[target_feature(enable = "foo")]
    |                  ^^^^^^^^^^^^^^ `foo` is not valid for this target
    |
-   = help: valid names are: `fma`, `xop`, `adx`, `aes`, and `avx` and 75 more
+   = help: valid names are: `fma`, `xop`, `adx`, `aes`, and `avx` and X more
 
 error[E0046]: not all trait items implemented, missing: `foo`
   --> $DIR/invalid-attribute.rs:81:1
@@ -228,7 +226,7 @@ error: the feature named `sse5` is not valid for this target
 LL | #[target_feature(enable = "sse5")]
    |                  ^^^^^^^^^^^^^^^ `sse5` is not valid for this target
    |
-   = help: valid names are: `sse`, `sse2`, `sse3`, `sse4a`, and `ssse3` and 75 more
+   = help: valid names are: `sse`, `sse2`, `sse3`, `sse4a`, and `ssse3` and X more
 
 error: the feature named `avx512` is not valid for this target
   --> $DIR/invalid-attribute.rs:127:18
@@ -236,9 +234,9 @@ error: the feature named `avx512` is not valid for this target
 LL | #[target_feature(enable = "avx512")]
    |                  ^^^^^^^^^^^^^^^^^ `avx512` is not valid for this target
    |
-   = help: valid names are: `avx512f`, `avx2`, `avx512bw`, `avx512cd`, and `avx512dq` and 75 more
+   = help: valid names are: `avx512f`, `avx2`, `avx512bw`, `avx512cd`, and `avx512dq` and X more
 
 error: aborting due to 26 previous errors
 
-Some errors have detailed explanations: E0046, E0053, E0539, E0658.
+Some errors have detailed explanations: E0046, E0053, E0539.
 For more information about an error, try `rustc --explain E0046`.

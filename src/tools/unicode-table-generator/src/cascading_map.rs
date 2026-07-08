@@ -1,6 +1,7 @@
-use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::ops::Range;
+
+use rustc_hash::FxHashMap;
 
 use crate::fmt_list;
 use crate::raw_emitter::RawEmitter;
@@ -27,7 +28,7 @@ impl RawEmitter {
         println!("there are {} points", points.len());
 
         // how many distinct ranges need to be counted?
-        let mut codepoints_by_high_bytes = HashMap::<usize, Vec<u32>>::new();
+        let mut codepoints_by_high_bytes = FxHashMap::<usize, Vec<u32>>::default();
         for point in points {
             // assert that there is no whitespace over the 0x3000 range.
             assert!(point <= 0x3000, "the highest unicode whitespace value has changed");

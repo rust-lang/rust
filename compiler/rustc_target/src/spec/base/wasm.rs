@@ -118,6 +118,13 @@ pub(crate) fn options() -> TargetOptions {
         // with unwinding.
         llvm_args: cvs!["-wasm-use-legacy-eh=false"],
 
+        // WASI's `sys::args::init` function ignores its arguments; instead,
+        // `args::args()` makes the WASI API calls itself.
+        //
+        // Other Wasm targets make no use of `std::env` entirely.
+        // Emscripten enables it explicitly.
+        main_needs_argc_argv: false,
+
         ..Default::default()
     }
 }

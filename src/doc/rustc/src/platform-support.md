@@ -89,6 +89,7 @@ so Rustup may install the documentation for a similar tier 1 target instead.
 target | notes
 -------|-------
 [`aarch64-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | ARM64 MinGW (Windows 10+), LLVM ABI
+[`aarch64-unknown-freebsd`](platform-support/freebsd.md) | ARM64 FreeBSD
 [`aarch64-unknown-linux-musl`](platform-support/aarch64-unknown-linux-musl.md) | ARM64 Linux with musl 1.2.5
 [`aarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ARM64 OpenHarmony
 `arm-unknown-linux-gnueabi` | Armv6 Linux (kernel 3.2+, glibc 2.17)
@@ -174,6 +175,11 @@ target | std | notes
 [`armv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R
 [`armv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, hardfloat
 [`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * | Bare Armv8-R, hardfloat
+[`thumbv7a-none-eabi`](platform-support/armv7a-none-eabi.md) | * | Thumb-mode Bare Armv7-A
+[`thumbv7a-none-eabihf`](platform-support/armv7a-none-eabi.md) | * | Thumb-mode Bare Armv7-A, hardfloat
+[`thumbv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Thumb-mode Bare Armv7-R
+[`thumbv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Thumb-mode Bare Armv7-R, hardfloat
+[`thumbv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * | Thumb-mode Bare Armv8-R, hardfloat
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux (kernel 3.2+, glibc 2.17, original Pentium) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux (musl 1.2.5, original Pentium) [^x86_32-floats-x87]
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android ([Pentium 4 plus various extensions](https://developer.android.com/ndk/guides/abis.html#x86)) [^x86_32-floats-return-ABI]
@@ -261,17 +267,18 @@ target | std | host | notes
 -------|:---:|:----:|-------
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 [`aarch64-nintendo-switch-freestanding`](platform-support/aarch64-nintendo-switch-freestanding.md) | * |  | ARM64 Nintendo Switch, Horizon
-[`aarch64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | ARM64 FreeBSD
+[`aarch64-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | ARM64 OpenEmbedded/Yocto Linux (GNU)
 [`aarch64-unknown-helenos`](platform-support/helenos.md) | ✓ |  | ARM64 HelenOS
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
 [`aarch64-unknown-illumos`](platform-support/illumos.md) | ✓ | ✓ | ARM64 illumos
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
+[`aarch64-unknown-linux-pauthtest`](platform-support/aarch64-unknown-linux-pauthtest.md) | ✓ | ✓ | ARM64 PAC ELF ABI
 [`aarch64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | ARM64 Managarm
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
-[`aarch64-unknown-nto-qnx700`](platform-support/nto-qnx.md) | ? |  | ARM64 QNX Neutrino 7.0 RTOS |
-[`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS with default network stack (io-pkt) |
-[`aarch64-unknown-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS with new network stack (io-sock) |
-[`aarch64-unknown-nto-qnx800`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 8.0 RTOS |
+[`aarch64-unknown-nto-qnx700`](platform-support/nto-qnx.md) | ? |  | ARM64 QNX SDP 7.0 |
+[`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX SDP 7.1 with default network stack (io-pkt) |
+[`aarch64-unknown-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX SDP 7.1 with new network stack (io-sock) |
+[`aarch64-unknown-qnx`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX SDP 8.0+ |
 [`aarch64-unknown-nuttx`](platform-support/nuttx.md) | ✓ |  | ARM64 with NuttX
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
 [`aarch64-unknown-redox`](platform-support/redox.md) | ✓ |  | ARM64 Redox OS
@@ -304,6 +311,7 @@ target | std | host | notes
 [`armv6-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | Armv6 FreeBSD
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | Armv6 NetBSD w/hard-float
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | Armv6k Nintendo 3DS, Horizon (Requires devkitARM toolchain)
+[`armv7-oe-linux-gnueabihf`](platform-support/oe-linux-gnu.md) | ✓ |  | ARMv7 OpenEmbedded/Yocto Linux (GNU)
 [`armv7-rtems-eabihf`](platform-support/armv7-rtems-eabihf.md) | ? |  | RTEMS OS for ARM BSPs
 [`armv7-sony-vita-newlibeabihf`](platform-support/armv7-sony-vita-newlibeabihf.md) | ✓ |  | Armv7-A Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)
 [`armv7-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | Armv7-A FreeBSD
@@ -331,7 +339,8 @@ target | std | host | notes
 [`i586-unknown-netbsd`](platform-support/netbsd.md) | ✓ |  | 32-bit x86 (original Pentium) [^x86_32-floats-x87]
 [`i586-unknown-redox`](platform-support/redox.md) | ✓ |  | 32-bit x86 Redox OS (PentiumPro) [^x86_32-floats-x87]
 [`i686-apple-darwin`](platform-support/apple-darwin.md) | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+, Penryn) [^x86_32-floats-return-ABI]
-[`i686-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS (Pentium 4) [^x86_32-floats-return-ABI]
+[`i686-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | 32-bit x86 OpenEmbedded/Yocto Linux (GNU)
+[`i686-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX SDP 7.0 (Pentium 4) [^x86_32-floats-return-ABI]
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku (Pentium 4) [^x86_32-floats-return-ABI]
 [`i686-unknown-helenos`](platform-support/helenos.md) | ✓ |  | HelenOS IA-32 (see docs for pending issues)
 [`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd (Pentium 4) [^x86_32-floats-return-ABI]
@@ -347,23 +356,23 @@ target | std | host | notes
 [`loongarch32-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch32 Bare-metal (ILP32S ABI)
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 [`m68k-unknown-none-elf`](platform-support/m68k-unknown-none-elf.md) |  |  | Motorola 680x0
-`mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23)
-`mips-unknown-linux-musl` | ✓ |  | MIPS Linux with musl 1.2.5
-`mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
-[`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux musl 1.2.5
-`mips64-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 Linux, N64 ABI (kernel 4.4, glibc 2.23)
-[`mips64-unknown-linux-muslabi64`](platform-support/mips64-unknown-linux-muslabi64.md) | ✓ | ✓ | MIPS64 Linux, N64 ABI, musl 1.2.5
-`mips64el-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 (little endian) Linux, N64 ABI (kernel 4.4, glibc 2.23)
-`mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (little endian) Linux, N64 ABI, musl 1.2.5
-`mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
-[`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX)
-[`mipsel-unknown-linux-gnu`](platform-support/mipsel-unknown-linux-gnu.md) | ✓ | ✓ | MIPS (little endian) Linux (kernel 4.4, glibc 2.23)
-`mipsel-unknown-linux-musl` | ✓ |  | MIPS (little endian) Linux with musl 1.2.5
-`mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
-[`mipsel-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | 32-bit MIPS (LE), requires mips32 cpu support
-`mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat
-[`mips-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (BE) softfloat
-[`mipsel-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (LE) softfloat
+`mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23) [^snan-inverted]
+`mips-unknown-linux-musl` | ✓ |  | MIPS Linux with musl 1.2.5 [^snan-inverted]
+`mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc [^snan-inverted]
+[`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux musl 1.2.5 [^snan-inverted]
+`mips64-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 Linux, N64 ABI (kernel 4.4, glibc 2.23) [^snan-inverted]
+[`mips64-unknown-linux-muslabi64`](platform-support/mips64-unknown-linux-muslabi64.md) | ✓ | ✓ | MIPS64 Linux, N64 ABI, musl 1.2.5 [^snan-inverted]
+`mips64el-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 (little endian) Linux, N64 ABI (kernel 4.4, glibc 2.23) [^snan-inverted]
+`mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (little endian) Linux, N64 ABI, musl 1.2.5 [^snan-inverted]
+`mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP) [^snan-inverted]
+[`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX) [^snan-inverted]
+[`mipsel-unknown-linux-gnu`](platform-support/mipsel-unknown-linux-gnu.md) | ✓ | ✓ | MIPS (little endian) Linux (kernel 4.4, glibc 2.23) [^snan-inverted]
+`mipsel-unknown-linux-musl` | ✓ |  | MIPS (little endian) Linux with musl 1.2.5 [^snan-inverted]
+`mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc [^snan-inverted]
+[`mipsel-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | 32-bit MIPS (LE), requires mips32 cpu support [^snan-inverted]
+`mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat [^snan-inverted]
+[`mips-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (BE) softfloat [^snan-inverted]
+[`mipsel-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (LE) softfloat [^snan-inverted]
 [`mipsisa32r6-unknown-linux-gnu`](platform-support/mips-release-6.md) | ? |  | 32-bit MIPS Release 6 Big Endian
 [`mipsisa32r6el-unknown-linux-gnu`](platform-support/mips-release-6.md) | ? |  | 32-bit MIPS Release 6 Little Endian
 [`mipsisa64r6-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ? |  | 64-bit MIPS Release 6 Big Endian
@@ -380,6 +389,7 @@ target | std | host | notes
 [`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
 [`powerpc64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64 FreeBSD (ELFv2)
+[`powerpc64-unknown-linux-gnuelfv2`](platform-support/powerpc64-unknown-linux-gnuelfv2.md) | ✓ | ✓ | PPC64 Linux (ELFv2 ABI, kernel 3.2, glibc 2.17)
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
 [`powerpc64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc64le-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64LE FreeBSD
@@ -391,6 +401,7 @@ target | std | host | notes
 `riscv32gc-unknown-linux-musl` | ? |  | RISC-V Linux (kernel 5.4, musl 1.2.5)
 [`riscv32im-risc0-zkvm-elf`](platform-support/riscv32im-risc0-zkvm-elf.md) | ? |  | RISC Zero's zero-knowledge Virtual Machine (RV32IM ISA)
 [`riscv32ima-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IMA ISA)
+[`riscv32imfc-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IMFC ISA, hardware single-float, no atomics)
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imac-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 32bit with NuttX
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
@@ -399,6 +410,7 @@ target | std | host | notes
 [`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imc-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 32bit with NuttX
 [`riscv64-linux-android`](platform-support/android.md) | ? |  | RISC-V 64-bit Android
+[`riscv64-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | RISC-V OpenEmbedded/Yocto Linux (GNU)
 [`riscv64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 `riscv64gc-unknown-freebsd` | ? |  | RISC-V FreeBSD
 `riscv64gc-unknown-fuchsia` | ? |  | RISC-V Fuchsia
@@ -419,8 +431,6 @@ target | std | host | notes
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Thumb-mode Bare Armv5TE
 [`thumbv6-none-eabi`](platform-support/armv6-none-eabi.md) | * | | Thumb-mode Bare Armv6
 [`thumbv6m-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv6M with NuttX
-[`thumbv7a-none-eabi`](platform-support/armv7a-none-eabi.md) | * |  | Thumb-mode Bare Armv7-A
-[`thumbv7a-none-eabihf`](platform-support/armv7a-none-eabi.md) | * |  | Thumb-mode Bare Armv7-A, hardfloat
 [`thumbv7a-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX
 [`thumbv7a-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX, hardfloat
 `thumbv7a-pc-windows-msvc` |  |  |
@@ -429,22 +439,20 @@ target | std | host | notes
 [`thumbv7em-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7EM with NuttX, hardfloat
 [`thumbv7m-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7M with NuttX
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode Armv7-A Linux with NEON, musl 1.2.5
-[`thumbv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * |  | Thumb-mode Bare Armv7-R
-[`thumbv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * |  | Thumb-mode Bare Armv7-R, hardfloat
 [`thumbv8m.base-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv8M Baseline with NuttX
 [`thumbv8m.main-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX
 [`thumbv8m.main-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX, hardfloat
-[`thumbv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Thumb-mode Bare Armv8-R, hardfloat
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`wasm32-wali-linux-musl`](platform-support/wasm32-wali-linux.md) | ? |  | WebAssembly with [WALI](https://github.com/arjunr2/WALI)
 [`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ |  | WebAssembly with WASIp3
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-lynx-lynxos178`](platform-support/lynxos178.md) |  |  | x86_64 LynxOS-178
+[`x86_64-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | x86 64-bit OpenEmbedded/Yocto Linux (GNU)
 [`x86_64-pc-cygwin`](platform-support/x86_64-pc-cygwin.md) | ✓ |  | 64-bit x86 Cygwin |
-[`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS with default network stack (io-pkt) |
-[`x86_64-pc-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS with new network stack (io-sock) |
-[`x86_64-pc-nto-qnx800`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 8.0 RTOS |
+[`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX SDP 7.1 with default network stack (io-pkt) |
+[`x86_64-pc-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX SDP 7.1 with new network stack (io-sock) |
+[`x86_64-pc-qnx`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX SDP 8.0+ |
 [`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |  | 64-bit Unikraft with musl 1.2.5
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
@@ -472,3 +480,7 @@ target | std | host | notes
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets
 [the AMD GPU]: https://llvm.org/docs/AMDGPUUsage.html#processors
+
+[^snan-inverted]: On these targets, the treatment of floating-point NaN values is non-compliant. The bit representation for signaling NaNs is inverted compared to [what Rust expects](../std/primitive.f32.html). This means that operations that are expected to return a quiet NaN may return a signaling NaN. See [issue #68925][snan-issue].
+
+[snan-issue]: https://github.com/rust-lang/rust/issues/68925

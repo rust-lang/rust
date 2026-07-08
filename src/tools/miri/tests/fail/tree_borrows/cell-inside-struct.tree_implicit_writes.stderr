@@ -1,7 +1,7 @@
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   4..   8
-| Act | Act |    └─┬──<TAG=root of the allocation>
+| Unq | Unq |    └─┬──<TAG=root of the allocation>
 | Frz |?Cel |      └────<TAG=a>
 ──────────────────────────────────────────────────
 error: Undefined Behavior: write access through <TAG> (a) at ALLOC[0x0] is forbidden

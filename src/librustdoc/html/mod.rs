@@ -8,6 +8,7 @@ pub(crate) mod macro_expansion;
 pub mod markdown;
 pub(crate) mod render;
 pub(crate) mod sources;
+pub(crate) mod span_map;
 pub(crate) mod static_files;
 pub(crate) mod toc;
 mod url_parts_builder;

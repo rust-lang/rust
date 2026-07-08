@@ -31,7 +31,7 @@ pub const trait ConstDefault {
     fn value() -> Self;
 }
 
-impl const ConstDefault for i32 {
+const impl ConstDefault for i32 {
     fn value() -> i32 {
         101
     }
@@ -63,7 +63,7 @@ const fn foo() -> i32 {
     42
 }
 
-fn main () {
+fn main() {
     let x = Foo { .. };
     let y = Foo::default();
     let z = Foo { baz: 1, .. };
@@ -81,6 +81,7 @@ fn main () {
     assert!(matches!(Bar::Foo { bar: S, baz: 1 }, z));
 
     let x = Qux::<i32, 4, i32> { .. };
+    #[rustfmt::skip]
     assert!(matches!(
         Qux::<i32, 4, i32> {
             bar: S,

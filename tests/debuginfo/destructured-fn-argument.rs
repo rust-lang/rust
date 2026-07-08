@@ -178,7 +178,7 @@
 //@ lldb-command:v h
 //@ lldb-check:[...] 8
 //@ lldb-command:v i
-//@ lldb-check:[...] { a = 9 b = 10 }
+//@ lldb-check:[...] {a:9, b:10}
 //@ lldb-command:v j
 //@ lldb-check:[...] 11
 //@ lldb-command:continue
@@ -204,7 +204,7 @@
 //@ lldb-command:v q
 //@ lldb-check:[...] 20
 //@ lldb-command:v r
-//@ lldb-check:[...] { a = 21 b = 22 }
+//@ lldb-check:[...] {a:21, b:22}
 //@ lldb-command:continue
 
 //@ lldb-command:v s

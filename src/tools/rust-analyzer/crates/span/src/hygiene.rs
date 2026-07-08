@@ -19,7 +19,9 @@
 //! # The Call-site Hierarchy
 //!
 //! `ExpnData::call_site` in rustc, `MacroCallLoc::call_site` in rust-analyzer.
+#[cfg(feature = "salsa")]
 use crate::Edition;
+
 use std::fmt;
 
 /// A syntax context describes a hierarchy tracking order of macro definitions.
@@ -282,7 +284,7 @@ const _: () = {
                     let fields = SyntaxContext::ingredient(zalsa).data(zalsa, id);
                     fields.edition
                 }
-                None => Edition::from_u32(SyntaxContext::MAX_ID - self.into_u32()),
+                None => Edition::from_u32(SyntaxContext::MAX_ROOT_ID - self.into_u32()),
             }
         }
 
@@ -332,32 +334,9 @@ const _: () = {
     }
 };
 
-impl SyntaxContext {
-    #[inline]
-    pub fn is_root(self) -> bool {
-        (SyntaxContext::MAX_ID - Edition::LATEST as u32) <= self.into_u32()
-            && self.into_u32() <= (SyntaxContext::MAX_ID - Edition::Edition2015 as u32)
-    }
-
-    #[inline]
-    pub fn remove_root_edition(&mut self) {
-        if self.is_root() {
-            *self = Self::root(Edition::Edition2015);
-        }
-    }
-
-    /// The root context, which is the parent of all other contexts. All `FileId`s have this context.
-    #[inline]
-    pub const fn root(edition: Edition) -> Self {
-        let edition = edition as u32;
-        // SAFETY: Roots are valid `SyntaxContext`s
-        unsafe { SyntaxContext::from_u32(SyntaxContext::MAX_ID - edition) }
-    }
-}
-
 #[cfg(feature = "salsa")]
 impl<'db> SyntaxContext {
-    const MAX_ID: u32 = salsa::Id::MAX_U32 - 1;
+    const MAX_ROOT_ID: u32 = salsa::Id::MAX_U32 + Edition::LATEST as u32;
 
     #[inline]
     pub const fn into_u32(self) -> u32 {
@@ -378,7 +357,8 @@ impl<'db> SyntaxContext {
         if self.is_root() {
             None
         } else {
-            // SAFETY: By our invariant, this is either a root (which we verified it's not) or a valid `salsa::Id`.
+            // SAFETY: By our invariant, this is either a root (which we verified it's not) or a
+            // valid `salsa::Id` index.
             unsafe { Some(salsa::Id::from_index(self.0)) }
         }
     }
@@ -387,6 +367,27 @@ impl<'db> SyntaxContext {
     fn from_salsa_id(id: salsa::Id) -> Self {
         // SAFETY: This comes from a Salsa ID.
         unsafe { Self::from_u32(id.index()) }
+    }
+
+    #[inline]
+    pub fn is_root(self) -> bool {
+        (SyntaxContext::MAX_ROOT_ID - Edition::LATEST as u32) <= self.into_u32()
+            && self.into_u32() <= (SyntaxContext::MAX_ROOT_ID - Edition::Edition2015 as u32)
+    }
+
+    #[inline]
+    pub fn remove_root_edition(&mut self) {
+        if self.is_root() {
+            *self = Self::root(Edition::Edition2015);
+        }
+    }
+
+    /// The root context, which is the parent of all other contexts. All `FileId`s have this context.
+    #[inline]
+    pub const fn root(edition: Edition) -> Self {
+        let edition = edition as u32;
+        // SAFETY: Roots are valid `SyntaxContext`s
+        unsafe { SyntaxContext::from_u32(SyntaxContext::MAX_ROOT_ID - edition) }
     }
 
     #[inline]
@@ -447,15 +448,8 @@ impl<'db> SyntaxContext {
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct SyntaxContext(u32);
 
-#[allow(dead_code)]
-const SALSA_MAX_ID_MIRROR: u32 = u32::MAX - 0xFF;
-#[cfg(feature = "salsa")]
-const _: () = assert!(salsa::Id::MAX_U32 == SALSA_MAX_ID_MIRROR);
-
 #[cfg(not(feature = "salsa"))]
 impl SyntaxContext {
-    const MAX_ID: u32 = SALSA_MAX_ID_MIRROR - 1;
-
     pub const fn into_u32(self) -> u32 {
         self.0
     }
@@ -496,13 +490,25 @@ impl Transparency {
     }
 }
 
+#[cfg(feature = "salsa")]
 impl fmt::Display for SyntaxContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_root() {
-            write!(f, "ROOT{}", Edition::from_u32(SyntaxContext::MAX_ID - self.into_u32()).number())
+            write!(
+                f,
+                "ROOT{}",
+                Edition::from_u32(SyntaxContext::MAX_ROOT_ID - self.into_u32()).number()
+            )
         } else {
             write!(f, "{}", self.into_u32())
         }
+    }
+}
+
+#[cfg(not(feature = "salsa"))]
+impl fmt::Display for SyntaxContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.into_u32())
     }
 }
 
@@ -513,5 +519,71 @@ impl std::fmt::Debug for SyntaxContext {
         } else {
             f.debug_tuple("SyntaxContext").field(&self.0).finish()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_root_edition_is_root() {
+        for edition in Edition::iter() {
+            let ctx = SyntaxContext::root(edition);
+            assert!(ctx.is_root(), "{edition} root should be identified as root");
+        }
+    }
+
+    #[test]
+    fn test_root_edition_editions() {
+        let db = salsa::DatabaseImpl::new();
+        for edition in Edition::iter() {
+            let ctx = SyntaxContext::root(edition);
+            assert_eq!(edition, ctx.edition(&db), "{edition} root should have edition {edition}");
+        }
+    }
+
+    #[test]
+    fn test_roots_do_not_overlap_with_salsa_ids() {
+        for edition in Edition::iter() {
+            let root = SyntaxContext::root(edition);
+            let root_u32 = root.into_u32();
+            assert!(
+                root_u32 >= salsa::Id::MAX_U32,
+                "Root context for {:?} (value {}) must be >= salsa::Id::MAX_U32 ({}) to avoid collision",
+                edition,
+                root_u32,
+                salsa::Id::MAX_U32
+            );
+        }
+    }
+
+    #[test]
+    fn test_non_root_value_is_not_root() {
+        for edition in Edition::iter() {
+            // SAFETY: This is just for testing purposes
+            let ctx = unsafe { SyntaxContext::from_u32(edition as u32 + 1) };
+            assert!(!ctx.is_root(), "{edition} root should be identified as root");
+        }
+    }
+
+    #[test]
+    fn test_interned_context_round_trips_through_u32() {
+        let db = salsa::DatabaseImpl::new();
+        let root = SyntaxContext::root(Edition::Edition2015);
+        let ctx = SyntaxContext::new(
+            &db,
+            None,
+            Transparency::Opaque,
+            Edition::Edition2021,
+            root,
+            |_| root,
+            |_| root,
+        );
+
+        // SAFETY: The value was produced by `SyntaxContext::into_u32` above.
+        let round_tripped = unsafe { SyntaxContext::from_u32(ctx.into_u32()) };
+        assert_eq!(round_tripped.edition(&db), Edition::Edition2021);
+        assert_eq!(round_tripped.parent(&db), root);
     }
 }

@@ -1,14 +1,17 @@
+//! Context given to attribute parsers when parsing.
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
+#[cfg(debug_assertions)]
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use rustc_ast::{AttrStyle, MetaItemLit};
+use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
-use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
+use rustc_feature::AttributeStability;
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::AttributeKind;
 use rustc_parse::parser::Recovery;
@@ -29,9 +32,10 @@ use crate::attributes::deprecation::*;
 use crate::attributes::diagnostic::do_not_recommend::*;
 use crate::attributes::diagnostic::on_const::*;
 use crate::attributes::diagnostic::on_move::*;
+use crate::attributes::diagnostic::on_type_error::*;
 use crate::attributes::diagnostic::on_unimplemented::*;
 use crate::attributes::diagnostic::on_unknown::*;
-use crate::attributes::diagnostic::on_unmatch_args::*;
+use crate::attributes::diagnostic::on_unmatched_args::*;
 use crate::attributes::doc::*;
 use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
@@ -53,11 +57,13 @@ use crate::attributes::repr::*;
 use crate::attributes::rustc_allocator::*;
 use crate::attributes::rustc_dump::*;
 use crate::attributes::rustc_internal::*;
-use crate::attributes::semantics::*;
+use crate::attributes::semantics::{ComptimeParser, *};
+use crate::attributes::splat::*;
 use crate::attributes::stability::*;
 use crate::attributes::test_attrs::*;
 use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
+use crate::attributes::unroll::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, NameValueParser,
@@ -65,10 +71,10 @@ use crate::parser::{
 };
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
-    ParsedDescription,
+    ParsedDescription, UnusedDuplicate,
 };
 use crate::target_checking::AllowedTargets;
-use crate::{AttributeParser, EmitAttribute};
+use crate::{AttrSuggestionStyle, AttributeParser, AttributeTemplate, EmitAttribute};
 
 type GroupType = LazyLock<GroupTypeInner>;
 
@@ -79,8 +85,9 @@ pub(super) struct GroupTypeInner {
 pub(super) struct GroupTypeInnerAccept {
     pub(super) template: AttributeTemplate,
     pub(super) accept_fn: AcceptFn,
-    pub(super) allowed_targets: AllowedTargets,
+    pub(super) allowed_targets: AllowedTargets<'static>,
     pub(super) safety: AttributeSafety,
+    pub(super) stability: AttributeStability,
     pub(super) finalizer: FinalizeFn,
 }
 
@@ -100,7 +107,7 @@ macro_rules! attribute_parsers {
                         static STATE_OBJECT: RefCell<$names> = RefCell::new(<$names>::default());
                     };
 
-                    for (path, template, accept_fn) in <$names>::ATTRIBUTES {
+                    for (path, template, stability, accept_fn) in <$names>::ATTRIBUTES {
                         match accepters.entry(*path) {
                             Entry::Vacant(e) => {
                                 e.insert(GroupTypeInnerAccept {
@@ -111,6 +118,7 @@ macro_rules! attribute_parsers {
                                         })
                                     }),
                                     safety: <$names as crate::attributes::AttributeParser>::SAFETY,
+                                    stability: *stability,
                                     allowed_targets: <$names as crate::attributes::AttributeParser>::ALLOWED_TARGETS,
                                     finalizer: |cx| {
                                         let state = STATE_OBJECT.take();
@@ -139,9 +147,10 @@ attribute_parsers!(
         NakedParser,
         OnConstParser,
         OnMoveParser,
+        OnTypeErrorParser,
         OnUnimplementedParser,
         OnUnknownParser,
-        OnUnmatchArgsParser,
+        OnUnmatchedArgsParser,
         RustcAlignParser,
         RustcAlignStaticParser,
         RustcCguTestAttributeParser,
@@ -152,7 +161,7 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Combine<AllowInternalUnstableParser>,
         Combine<CrateTypeParser>,
-        Combine<DebuggerViualizerParser>,
+        Combine<DebuggerVisualizerParser>,
         Combine<FeatureParser>,
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,
@@ -180,6 +189,7 @@ attribute_parsers!(
         Single<IgnoreParser>,
         Single<InlineParser>,
         Single<InstructionSetParser>,
+        Single<InstrumentFnParser>,
         Single<LangParser>,
         Single<LinkNameParser>,
         Single<LinkOrdinalParser>,
@@ -224,11 +234,13 @@ attribute_parsers!(
         Single<ShouldPanicParser>,
         Single<TestRunnerParser>,
         Single<TypeLengthLimitParser>,
+        Single<UnrollParser>,
         Single<WindowsSubsystemParser>,
         Single<WithoutArgs<AllowInternalUnsafeParser>>,
         Single<WithoutArgs<AutomaticallyDerivedParser>>,
         Single<WithoutArgs<ColdParser>>,
         Single<WithoutArgs<CompilerBuiltinsParser>>,
+        Single<WithoutArgs<ComptimeParser>>,
         Single<WithoutArgs<ConstContinueParser>>,
         Single<WithoutArgs<CoroutineParser>>,
         Single<WithoutArgs<DefaultLibAllocatorParser>>,
@@ -271,6 +283,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcDenyExplicitImplParser>>,
         Single<WithoutArgs<RustcDoNotConstCheckParser>>,
         Single<WithoutArgs<RustcDumpDefParentsParser>>,
+        Single<WithoutArgs<RustcDumpGenericsParser>>,
         Single<WithoutArgs<RustcDumpHiddenTypeOfOpaquesParser>>,
         Single<WithoutArgs<RustcDumpInferredOutlivesParser>>,
         Single<WithoutArgs<RustcDumpItemBoundsParser>>,
@@ -317,6 +330,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcStrictCoherenceParser>>,
         Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
         Single<WithoutArgs<RustcUnsafeSpecializationMarkerParser>>,
+        Single<WithoutArgs<SplatParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
         // tidy-alphabetical-end
@@ -357,8 +371,15 @@ pub struct AcceptContext<'f, 'sess> {
     /// Used in reporting errors to give a hint to users what the attribute *should* look like.
     pub(crate) template: &'f AttributeTemplate,
 
+    /// The safety attribute (if any) applied to the attribute.
+    pub(crate) attr_safety: Safety,
+
     /// The name of the attribute we're currently accepting.
     pub(crate) attr_path: AttrPath,
+
+    /// Used for `AllowedTargets::ManuallyChecked`, to assert that the manual target check has been done
+    #[cfg(debug_assertions)]
+    pub(crate) has_target_been_checked: bool,
 }
 
 impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
@@ -402,6 +423,8 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
         kind: EmitAttribute,
         span: impl Into<MultiSpan>,
     ) {
+        #[cfg(debug_assertions)]
+        self.has_lint_been_emitted.store(true, Ordering::Relaxed);
         if !matches!(
             self.should_emit,
             ShouldEmit::ErrorsAndLints { .. } | ShouldEmit::EarlyFatal { also_emit_lints: true }
@@ -414,11 +437,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
         self.emit_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            rustc_errors::lints::UnusedDuplicate {
-                this: unused_span,
-                other: used_span,
-                warning: false,
-            },
+            UnusedDuplicate { this: unused_span, other: used_span, warning: false },
             unused_span,
         )
     }
@@ -430,11 +449,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     ) {
         self.emit_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            rustc_errors::lints::UnusedDuplicate {
-                this: unused_span,
-                other: used_span,
-                warning: true,
-            },
+            UnusedDuplicate { this: unused_span, other: used_span, warning: true },
             unused_span,
         )
     }
@@ -741,6 +756,11 @@ pub struct SharedContext<'p, 'sess> {
     pub(crate) target: rustc_hir::Target,
 
     pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
+
+    /// This atomic bool keeps track of whether any lint has been emitted.
+    /// This is used for the arguments-used check.
+    #[cfg(debug_assertions)]
+    pub(crate) has_lint_been_emitted: AtomicBool,
 }
 
 /// Context given to every attribute parser during finalization.
@@ -828,6 +848,9 @@ impl ShouldEmit {
     }
 }
 
+/// The interface for issuing argument parsing related diagnostics.
+///
+/// It can be obtained through the [`adcx`](AcceptContext::adcx) method on [`AcceptContext`].
 pub(crate) struct AttributeDiagnosticContext<'a, 'f, 'sess> {
     ctx: &'a mut AcceptContext<'f, 'sess>,
     custom_suggestions: Vec<Suggestion>,
@@ -873,7 +896,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
             ParsedDescription::Macro => AttrSuggestionStyle::Macro,
         };
 
-        self.template.suggestions(style, &self.attr_path)
+        self.template.suggestions(style, self.attr_safety, &self.attr_path)
     }
 }
 
@@ -1032,7 +1055,11 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         let valid_without_list = self.template.word;
         self.emit_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            crate::errors::EmptyAttributeList { attr_span: span, attr_path, valid_without_list },
+            crate::diagnostics::EmptyAttributeList {
+                attr_span: span,
+                attr_path,
+                valid_without_list,
+            },
             span,
         );
     }
@@ -1049,7 +1076,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         let span = self.attr_span;
         self.emit_lint(
             lint,
-            crate::errors::IllFormedAttributeInput::new(&suggestions, None, help.as_deref()),
+            crate::diagnostics::IllFormedAttributeInput::new(&suggestions, None, help.as_deref()),
             span,
         );
     }
@@ -1064,7 +1091,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
             ParsedDescription::Macro => AttrSuggestionStyle::Macro,
         };
 
-        self.template.suggestions(style, &self.attr_path)
+        self.template.suggestions(style, self.attr_safety, &self.attr_path)
     }
     /// Error that a string literal was expected.
     /// You can optionally give the literal you did find (which you found not to be a string literal)

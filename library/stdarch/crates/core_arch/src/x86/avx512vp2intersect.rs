@@ -110,7 +110,7 @@ pub unsafe fn _mm512_2intersect_epi64(
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.avx512.vp2intersect.d.128"]
     fn vp2intersectd_128(a: i32x4, b: i32x4) -> (u8, u8);
     #[link_name = "llvm.x86.avx512.vp2intersect.q.128"]

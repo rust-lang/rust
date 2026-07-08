@@ -8,6 +8,9 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: read
+
 jobs:
   sysroots:
     name: Build the sysroots

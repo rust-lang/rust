@@ -3,12 +3,12 @@ use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash;
-use rustc_type_ir::data_structures::{HashMap, HashSet};
+use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
-use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
+use rustc_type_ir::search_graph::{CandidateHeadUsages, LowerAvailableDepth, PathKind};
 use rustc_type_ir::solve::{
     AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
@@ -16,8 +16,8 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
-    OpaqueTypeKey, PredicateKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    OpaqueTypeKey, PredicateKind, TypeFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use tracing::{Level, debug, instrument, trace, warn};
 
@@ -28,6 +28,7 @@ use crate::canonical::{
 };
 use crate::coherence;
 use crate::delegate::SolverDelegate;
+use crate::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use crate::placeholder::BoundVarReplacer;
 use crate::resolve::eager_resolve_vars;
 use crate::solve::search_graph::SearchGraph;
@@ -35,8 +36,8 @@ use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT,
     Goal, GoalEvaluation, GoalSource, GoalStalledOn, HasChanged, MaybeCause,
-    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, VisibleForLeakCheck,
-    inspect,
+    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
+    VisibleForLeakCheck, inspect,
 };
 
 mod probe;
@@ -54,14 +55,20 @@ enum CurrentGoalKind {
     /// These are currently the only goals whose impl where-clauses are considered to be
     /// productive steps.
     CoinductiveTrait,
-    /// Unlike other goals, `NormalizesTo` goals act like functions with the expected term
-    /// always being fully unconstrained. This would weaken inference however, as the nested
-    /// goals never get the inference constraints from the actual normalized-to type.
+    // FIXME: Consider renaming `PredicateKind::NormalizesTo` to match with this
+    /// Unlike other goals, `NormalizesTo` goals aren't independent goals but just implementation
+    /// details for handling projections of associated terms. When we encounter a `Projection` goal
+    /// whose `projection_term` is an associated term, we create a `NormalizesTo` goal whose
+    /// expected term is fully unconstrained and evaluate it.
     ///
-    /// Because of this we return any ambiguous nested goals from `NormalizesTo` to the
-    /// caller when then adds these to its own context. The caller is always an `AliasRelate`
-    /// goal so this never leaks out of the solver.
-    NormalizesTo,
+    /// This would weaken inference however, as the nested goals of normalizes-to never get the
+    /// inference constraints from the actual expected term. We just gather candidates from the
+    /// normalizes-to goal and return any ambiguous nested goals of it to the caller (`Projection
+    /// goal`). The caller handle and evaluate them as if they were its own nested goals.
+    ///
+    /// Because of this, evaluating a normalizes-to goal is computing candidates for projection of
+    /// an associated term and it never leaks out of the solver.
+    ProjectionComputeAssocTermCandidate,
 }
 
 impl CurrentGoalKind {
@@ -74,7 +81,9 @@ impl CurrentGoalKind {
                     CurrentGoalKind::Misc
                 }
             }
-            ty::PredicateKind::NormalizesTo(_) => CurrentGoalKind::NormalizesTo,
+            ty::PredicateKind::NormalizesTo(_) => {
+                CurrentGoalKind::ProjectionComputeAssocTermCandidate
+            }
             _ => CurrentGoalKind::Misc,
         }
     }
@@ -276,6 +285,12 @@ where
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum RerunStalled {
+    WontMakeProgress(Certainty),
+    MayMakeProgress,
+}
+
 impl<'a, D, I> EvalCtxt<'a, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -315,7 +330,7 @@ where
                 //
                 // See tests/ui/traits/next-solver/cycles/normalizes-to-is-not-productive.rs
                 // for how this can go wrong.
-                CurrentGoalKind::NormalizesTo => PathKind::Inductive,
+                CurrentGoalKind::ProjectionComputeAssocTermCandidate => PathKind::Inductive,
                 // We probably want to make all traits coinductive in the future,
                 // so we treat cycles involving where-clauses of not-yet coinductive
                 // traits as ambiguous for now.
@@ -447,7 +462,7 @@ where
                 Ok(i) => Ok(i),
                 Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution)) => Err(NoSolution),
                 Err(NoSolutionOrRerunNonErased::RerunNonErased(_)) => {
-                    // check th t the opaque_accesses state mirrors the result we got.
+                    // Check that the opaque_accesses state mirrors the result we got.
                     assert!(opaque_accesses.should_bail().is_err());
                     Err(NoSolution)
                 }
@@ -469,16 +484,91 @@ where
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
         let (normalization_nested_goals, goal_evaluation) =
-            self.evaluate_goal_raw(source, goal, stalled_on)?;
+            self.evaluate_goal_raw(source, goal, stalled_on, LowerAvailableDepth::Yes)?;
         assert!(normalization_nested_goals.is_empty());
         Ok(goal_evaluation)
+    }
+
+    /// This is a fast path optimization:
+    /// If we have run this goal before, and it was stalled, check that any of the goal's
+    /// args have changed. This is a cheap way to determine that if we were to rerun this goal now,
+    /// it will remain stalled since it'll canonicalize the same way and evaluation is pure.
+    /// Therefore, we can skip this rerun
+    fn rerunning_stalled_goal_may_make_progress(
+        &self,
+        stalled_on: Option<&GoalStalledOn<I>>,
+    ) -> RerunStalled {
+        use RerunStalled::*;
+
+        // If fast paths are turned off, then we assume all goals can always make progress
+        if self.delegate.disable_trait_solver_fast_paths() {
+            return MayMakeProgress;
+        }
+
+        // If the goal isn't stalled, we should definitely run it.
+        let Some(&GoalStalledOn {
+            num_opaques,
+            ref stalled_vars,
+            ref sub_roots,
+            stalled_certainty,
+            ref previously_succeeded_in_erased,
+        }) = stalled_on
+        else {
+            return MayMakeProgress;
+        };
+
+        // If any of the stalled goal's generic arguments changed,
+        // rerunning might make progress so we should rerun.
+        if stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value)) {
+            return MayMakeProgress;
+        }
+
+        // If some inference took place in any of the sub roots,
+        // rerunning might make progress so we should rerun.
+        if sub_roots.iter().any(|&vid| self.delegate.sub_unification_table_root_var(vid) != vid) {
+            return MayMakeProgress;
+        }
+
+        // If any opaques changed in the opaque type storage,
+        // rerunning might make progress so we should rerun.
+        if self.delegate.opaque_types_storage_num_entries().needs_reevaluation(num_opaques) {
+            // Unless this goal previously succeeded in erased mode.
+            // If the stalled goal successfully evaluated while erasing opaque types,
+            // and the current state of the opaque type storage is not different in a way that is
+            // relevant, this stalled goal cannot make any progress and we set this variable to true.
+            let mut previous_erased_run_is_still_valid = false;
+
+            if let &SucceededInErased::Yes { accessed_opaques } = previously_succeeded_in_erased {
+                match self.should_rerun_after_erased_canonicalization(
+                    accessed_opaques,
+                    self.typing_mode(),
+                    &self.delegate.clone_opaque_types_lookup_table(),
+                ) {
+                    RerunDecision::Yes => {}
+                    RerunDecision::EagerlyPropagateToParent => {
+                        unreachable!("we never retry stalled queries if the parent was erased")
+                    }
+                    RerunDecision::No => {
+                        previous_erased_run_is_still_valid = true;
+                    }
+                }
+            }
+
+            if !previous_erased_run_is_still_valid {
+                return MayMakeProgress;
+            }
+        }
+
+        // Otherwise, we can be sure that this stalled goal cannot make any progress
+        // and we can exit early.
+        WontMakeProgress(stalled_certainty)
     }
 
     /// Recursively evaluates `goal`, returning the nested goals in case
     /// the nested goal is a `NormalizesTo` goal.
     ///
     /// As all other goal kinds do not return any nested goals and
-    /// `NormalizesTo` is only used by `AliasRelate`, all other callsites
+    /// `NormalizesTo` is only used by `Projection`, all other callsites
     /// should use [`EvalCtxt::evaluate_goal`] which discards that empty
     /// storage.
     pub(super) fn evaluate_goal_raw(
@@ -486,22 +576,10 @@ where
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
+        increase_depth_for_nested: LowerAvailableDepth,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
-        // If we have run this goal before, and it was stalled, check that any of the goal's
-        // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
-        // stalled, since it'll canonicalize the same way and evaluation is pure.
-        if let Some(GoalStalledOn {
-            num_opaques,
-            ref stalled_vars,
-            ref sub_roots,
-            stalled_certainty,
-        }) = stalled_on
-            && !self.delegate.disable_trait_solver_fast_paths()
-            && !stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
-            && !sub_roots
-                .iter()
-                .any(|&vid| self.delegate.sub_unification_table_root_var(vid) != vid)
-            && !self.delegate.opaque_types_storage_num_entries().needs_reevaluation(num_opaques)
+        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+            self.rerunning_stalled_goal_may_make_progress(stalled_on.as_ref())
         {
             return Ok((
                 NestedNormalizationGoals::empty(),
@@ -514,11 +592,22 @@ where
             ));
         }
 
+        self.evaluate_goal_cold(source, goal, increase_depth_for_nested)
+    }
+
+    #[cold]
+    #[inline(never)]
+    pub(super) fn evaluate_goal_cold(
+        &mut self,
+        source: GoalSource,
+        goal: Goal<I, I::Predicate>,
+        increase_depth_for_nested: LowerAvailableDepth,
+    ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-        let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
+        let (goal, opaque_types) = eager_resolve_vars(&**self.delegate, (goal, opaque_types));
         let typing_mode = self.typing_mode();
         let step_kind = self.step_kind_for_source(source);
 
@@ -531,7 +620,7 @@ where
         )
         .entered();
 
-        let (result, orig_values, canonical_goal) = 'retry_canonicalize: {
+        let (result, orig_values, canonical_goal, succeeded_in_erased) = 'retry_canonicalize: {
             let skip_erased_attempt = if typing_mode.is_coherence() {
                 true
             } else {
@@ -576,6 +665,7 @@ where
                     self.cx(),
                     canonical_goal,
                     step_kind,
+                    increase_depth_for_nested,
                     &mut inspect::ProofTreeBuilder::new_noop(),
                 );
 
@@ -587,11 +677,23 @@ where
                 match should_rerun {
                     RerunDecision::Yes => debug!("rerunning in original typing mode"),
                     RerunDecision::No => {
-                        break 'retry_canonicalize (canonical_result, orig_values, canonical_goal);
+                        break 'retry_canonicalize (
+                            canonical_result,
+                            orig_values,
+                            canonical_goal,
+                            SucceededInErased::Yes { accessed_opaques },
+                        );
                     }
                     RerunDecision::EagerlyPropagateToParent => {
                         self.opaque_accesses.update(accessed_opaques)?;
-                        break 'retry_canonicalize (canonical_result, orig_values, canonical_goal);
+                        break 'retry_canonicalize (
+                            canonical_result,
+                            orig_values,
+                            canonical_goal,
+                            // If we're propagating up, we should never retry the goal.
+                            // That means `No` is fine to return, it doesn't really matter.
+                            SucceededInErased::No,
+                        );
                     }
                 }
             }
@@ -603,6 +705,7 @@ where
                 self.cx(),
                 canonical_goal,
                 step_kind,
+                increase_depth_for_nested,
                 &mut inspect::ProofTreeBuilder::new_noop(),
             );
             assert!(
@@ -610,7 +713,7 @@ where
                 "we run without TypingMode::ErasedNotCoherence, so opaques are available, and we don't retry if the outer typing mode is ErasedNotCoherence: {accessed_opaques:?} after {goal:?}"
             );
 
-            (canonical_result, orig_values, canonical_goal)
+            (canonical_result, orig_values, canonical_goal, SucceededInErased::No)
         };
 
         debug!(?result);
@@ -630,29 +733,11 @@ where
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
-        // FIXME: We should revisit and consider removing this after
-        // *assumptions on binders* is available, like once we had done in the
-        // stabilization of `-Znext-solver=coherence`(#121848).
-        // We ignore constraints from the nested goals in leak check. This is to match
-        // with the old solver's behavior, which has separated evaluation and fulfillment,
-        // and the former doesn't consider outlives obligations from the later.
-        let vis = match goal.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(_)
-            | ty::PredicateKind::DynCompatible(_)
-            | ty::PredicateKind::Subtype(_)
-            | ty::PredicateKind::Coerce(_)
-            | ty::PredicateKind::ConstEquate(_, _)
-            | ty::PredicateKind::Ambiguous
-            | ty::PredicateKind::NormalizesTo(_) => VisibleForLeakCheck::No,
-            ty::PredicateKind::AliasRelate(_, _, _) => VisibleForLeakCheck::Yes,
-        };
-
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
             goal.param_env,
             &orig_values,
             response,
-            vis,
             self.origin_span,
         );
 
@@ -675,21 +760,9 @@ where
                 // to recompute this goal.
                 HasChanged::Yes => None,
                 HasChanged::No => {
-                    let mut stalled_vars = orig_values;
-
-                    // Remove the unconstrained RHS arg, which is expected to have changed.
-                    if let Some(normalizes_to) = goal.predicate.as_normalizes_to() {
-                        let normalizes_to = normalizes_to.skip_binder();
-                        let rhs_arg: I::GenericArg = normalizes_to.term.into();
-                        let idx = stalled_vars
-                            .iter()
-                            .rposition(|arg| *arg == rhs_arg)
-                            .expect("expected unconstrained arg");
-                        stalled_vars.swap_remove(idx);
-                    }
-
                     // Remove the canonicalized universal vars, since we only care about stalled existentials.
                     let mut sub_roots = Vec::new();
+                    let mut stalled_vars = orig_values;
                     stalled_vars.retain(|arg| match arg.kind() {
                         // Lifetimes can never stall goals.
                         ty::GenericArgKind::Lifetime(_) => false,
@@ -718,6 +791,7 @@ where
                         stalled_vars,
                         sub_roots,
                         stalled_certainty: certainty,
+                        previously_succeeded_in_erased: succeeded_in_erased,
                     })
                 }
             },
@@ -771,31 +845,35 @@ where
             // =============================
             (RerunCondition::Always, _) => RerunDecision::Yes,
             // =============================
-            (RerunCondition::OpaqueInStorage(..), TypingMode::PostAnalysis) => RerunDecision::Yes,
+            (
+                RerunCondition::OpaqueInStorage(..),
+                TypingMode::PostAnalysis | TypingMode::Codegen,
+            ) => RerunDecision::Yes,
             (
                 RerunCondition::OpaqueInStorage(defids),
-                TypingMode::PostBorrowckAnalysis { defined_opaque_types: opaques }
-                | TypingMode::Analysis { defining_opaque_types_and_generators: opaques }
-                | TypingMode::Borrowck { defining_opaque_types: opaques },
+                TypingMode::PostBorrowck { defined_opaque_types: opaques }
+                | TypingMode::Typeck { defining_opaque_types_and_generators: opaques }
+                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
             ) => opaque_in_storage(opaques, defids),
             // =============================
-            (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Analysis { .. }) => {
+            (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
                 any_opaque_has_infer_as_hidden()
             }
             (
                 RerunCondition::AnyOpaqueHasInferAsHidden,
-                TypingMode::PostBorrowckAnalysis { .. }
+                TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
-                | TypingMode::Borrowck { .. },
+                | TypingMode::Codegen
+                | TypingMode::PostTypeckUntilBorrowck { .. },
             ) => RerunDecision::No,
             // =============================
             (
                 RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_),
-                TypingMode::PostAnalysis,
+                TypingMode::PostAnalysis | TypingMode::Codegen,
             ) => RerunDecision::No,
             (
                 RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
-                TypingMode::Analysis { defining_opaque_types_and_generators: opaques },
+                TypingMode::Typeck { defining_opaque_types_and_generators: opaques },
             ) => {
                 if let RerunDecision::Yes = any_opaque_has_infer_as_hidden() {
                     RerunDecision::Yes
@@ -807,8 +885,8 @@ where
             }
             (
                 RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
-                TypingMode::PostBorrowckAnalysis { defined_opaque_types: opaques }
-                | TypingMode::Borrowck { defining_opaque_types: opaques },
+                TypingMode::PostBorrowck { defined_opaque_types: opaques }
+                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
             ) => opaque_in_storage(opaques, defids),
         };
 
@@ -869,11 +947,6 @@ where
                 ty::PredicateKind::NormalizesTo(predicate) => {
                     ecx.compute_normalizes_to_goal(Goal { param_env, predicate })?
                 }
-                ty::PredicateKind::AliasRelate(lhs, rhs, direction) => ecx
-                    .compute_alias_relate_goal(Goal {
-                        param_env,
-                        predicate: (lhs, rhs, direction),
-                    })?,
                 ty::PredicateKind::Ambiguous => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)?
                 }
@@ -908,10 +981,15 @@ where
     fn evaluate_added_goals_step(
         &mut self,
     ) -> Result<Option<Certainty>, NoSolutionOrRerunNonErased> {
-        let cx = self.cx();
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
         for (source, goal, stalled_on) in mem::take(&mut self.nested_goals) {
+            // We never handle `NormalizesTo` as a nested goal
+            debug_assert!(!matches!(
+                goal.predicate.kind().skip_binder(),
+                PredicateKind::NormalizesTo(_)
+            ));
+
             if !self.delegate.disable_trait_solver_fast_paths()
                 && let Some(certainty) =
                     self.delegate.compute_goal_fast_path(goal, self.origin_span)
@@ -926,92 +1004,17 @@ where
                 continue;
             }
 
-            // We treat normalizes-to goals specially here. In each iteration we take the
-            // RHS of the projection, replace it with a fresh inference variable, and only
-            // after evaluating that goal do we equate the fresh inference variable with the
-            // actual RHS of the predicate.
-            //
-            // This is both to improve caching, and to avoid using the RHS of the
-            // projection predicate to influence the normalizes-to candidate we select.
-            //
-            // Forgetting to replace the RHS with a fresh inference variable when we evaluate
-            // this goal results in an ICE.
-            if let Some(pred) = goal.predicate.as_normalizes_to() {
-                // We should never encounter higher-ranked normalizes-to goals.
-                let pred = pred.no_bound_vars().unwrap();
-                // Replace the goal with an unconstrained infer var, so the
-                // RHS does not affect projection candidate assembly.
-                let unconstrained_rhs = self.next_term_infer_of_kind(pred.term);
-                let unconstrained_goal =
-                    goal.with(cx, ty::NormalizesTo { alias: pred.alias, term: unconstrained_rhs });
+            let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
+                self.evaluate_goal(source, goal, stalled_on)?;
+            if has_changed == HasChanged::Yes {
+                unchanged_certainty = None;
+            }
 
-                let (
-                    NestedNormalizationGoals(nested_goals),
-                    GoalEvaluation { goal, certainty, stalled_on, has_changed: _ },
-                ) = self.evaluate_goal_raw(source, unconstrained_goal, stalled_on)?;
-                // Add the nested goals from normalization to our own nested goals.
-                trace!(?nested_goals);
-                self.nested_goals.extend(nested_goals.into_iter().map(|(s, g)| (s, g, None)));
-
-                // Finally, equate the goal's RHS with the unconstrained var.
-                //
-                // SUBTLE:
-                // We structurally relate aliases here. This is necessary
-                // as we otherwise emit a nested `AliasRelate` goal in case the
-                // returned term is a rigid alias, resulting in overflow.
-                //
-                // It is correct as both `goal.predicate.term` and `unconstrained_rhs`
-                // start out as an unconstrained inference variable so any aliases get
-                // fully normalized when instantiating it.
-                //
-                // FIXME: Strictly speaking this may be incomplete if the normalized-to
-                // type contains an ambiguous alias referencing bound regions. We should
-                // consider changing this to only use "shallow structural equality".
-                self.eq_structurally_relating_aliases(
-                    goal.param_env,
-                    pred.term,
-                    unconstrained_rhs,
-                )?;
-
-                // We only look at the `projection_ty` part here rather than
-                // looking at the "has changed" return from evaluate_goal,
-                // because we expect the `unconstrained_rhs` part of the predicate
-                // to have changed -- that means we actually normalized successfully!
-                // FIXME: Do we need to eagerly resolve here? Or should we check
-                // if the cache key has any changed vars?
-                let with_resolved_vars = self.resolve_vars_if_possible(goal);
-                if pred.alias
-                    != with_resolved_vars
-                        .predicate
-                        .as_normalizes_to()
-                        .unwrap()
-                        .no_bound_vars()
-                        .unwrap()
-                        .alias
-                {
-                    unchanged_certainty = None;
-                }
-
-                match certainty {
-                    Certainty::Yes => {}
-                    Certainty::Maybe { .. } => {
-                        self.nested_goals.push((source, with_resolved_vars, stalled_on));
-                        unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
-                    }
-                }
-            } else {
-                let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
-                    self.evaluate_goal(source, goal, stalled_on)?;
-                if has_changed == HasChanged::Yes {
-                    unchanged_certainty = None;
-                }
-
-                match certainty {
-                    Certainty::Yes => {}
-                    Certainty::Maybe { .. } => {
-                        self.nested_goals.push((source, goal, stalled_on));
-                        unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
-                    }
+            match certainty {
+                Certainty::Yes => {}
+                Certainty::Maybe { .. } => {
+                    self.nested_goals.push((source, goal, stalled_on));
+                    unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                 }
             }
         }
@@ -1029,11 +1032,19 @@ where
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn add_goal(&mut self, source: GoalSource, mut goal: Goal<I, I::Predicate>) {
-        goal.predicate =
-            goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(self, source, goal.param_env));
+    pub(super) fn add_goal(
+        &mut self,
+        source: GoalSource,
+        mut goal: Goal<I, I::Predicate>,
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
+        goal.predicate = self.normalize(
+            GoalSource::NormalizeGoal(self.step_kind_for_source(source)),
+            goal.param_env,
+            ty::Unnormalized::new_wip(goal.predicate),
+        )?;
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
         self.nested_goals.push((source, goal, None));
+        Ok(())
     }
 
     #[instrument(level = "trace", skip(self, goals))]
@@ -1041,10 +1052,11 @@ where
         &mut self,
         source: GoalSource,
         goals: impl IntoIterator<Item = Goal<I, I::Predicate>>,
-    ) {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         for goal in goals {
-            self.add_goal(source, goal);
+            self.add_goal(source, goal)?;
         }
+        Ok(())
     }
 
     pub(super) fn next_region_var(&mut self) -> I::Region {
@@ -1067,10 +1079,19 @@ where
 
     /// Returns a ty infer or a const infer depending on whether `kind` is a `Ty` or `Const`.
     /// If `kind` is an integer inference variable this will still return a ty infer var.
-    pub(super) fn next_term_infer_of_kind(&mut self, term: I::Term) -> I::Term {
-        match term.kind() {
-            ty::TermKind::Ty(_) => self.next_ty_infer().into(),
-            ty::TermKind::Const(_) => self.next_const_infer().into(),
+    pub(super) fn next_term_infer_of_alias_kind(
+        &mut self,
+        alias_term: ty::AliasTerm<I>,
+    ) -> I::Term {
+        match alias_term.kind {
+            ty::AliasTermKind::ProjectionTy { .. }
+            | ty::AliasTermKind::InherentTy { .. }
+            | ty::AliasTermKind::OpaqueTy { .. }
+            | ty::AliasTermKind::FreeTy { .. } => self.next_ty_infer().into(),
+            ty::AliasTermKind::FreeConst { .. }
+            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::AnonConst { .. }
+            | ty::AliasTermKind::ProjectionConst { .. } => self.next_const_infer().into(),
         }
     }
 
@@ -1207,69 +1228,8 @@ where
         param_env: I::ParamEnv,
         lhs: T,
         rhs: T,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         self.relate(param_env, lhs, ty::Variance::Invariant, rhs)
-    }
-
-    /// This should be used when relating a rigid alias with another type.
-    ///
-    /// Normally we emit a nested `AliasRelate` when equating an inference
-    /// variable and an alias. This causes us to instead constrain the inference
-    /// variable to the alias without emitting a nested alias relate goals.
-    #[instrument(level = "trace", skip(self, param_env), ret)]
-    pub(super) fn relate_rigid_alias_non_alias(
-        &mut self,
-        param_env: I::ParamEnv,
-        alias: ty::AliasTerm<I>,
-        variance: ty::Variance,
-        term: I::Term,
-    ) -> Result<(), NoSolution> {
-        // NOTE: this check is purely an optimization, the structural eq would
-        // always fail if the term is not an inference variable.
-        if term.is_infer() {
-            let cx = self.cx();
-            // We need to relate `alias` to `term` treating only the outermost
-            // constructor as rigid, relating any contained generic arguments as
-            // normal. We do this by first structurally equating the `term`
-            // with the alias constructor instantiated with unconstrained infer vars,
-            // and then relate this with the whole `alias`.
-            //
-            // Alternatively we could modify `Equate` for this case by adding another
-            // variant to `StructurallyRelateAliases`.
-            let identity_args = self.fresh_args_for_item(alias.def_id());
-            let rigid_ctor = alias.with_args(cx, identity_args);
-            let ctor_term = rigid_ctor.to_term(cx);
-            let obligations = self.delegate.eq_structurally_relating_aliases(
-                param_env,
-                term,
-                ctor_term,
-                self.origin_span,
-            )?;
-            debug_assert!(obligations.is_empty());
-            self.relate(param_env, alias, variance, rigid_ctor)
-        } else {
-            Err(NoSolution)
-        }
-    }
-
-    /// This should only be used when we're either instantiating a previously
-    /// unconstrained "return value" or when we're sure that all aliases in
-    /// the types are rigid.
-    #[instrument(level = "trace", skip(self, param_env), ret)]
-    pub(super) fn eq_structurally_relating_aliases<T: Relate<I>>(
-        &mut self,
-        param_env: I::ParamEnv,
-        lhs: T,
-        rhs: T,
-    ) -> Result<(), NoSolution> {
-        let result = self.delegate.eq_structurally_relating_aliases(
-            param_env,
-            lhs,
-            rhs,
-            self.origin_span,
-        )?;
-        assert_eq!(result, vec![]);
-        Ok(())
     }
 
     #[instrument(level = "trace", skip(self, param_env), ret)]
@@ -1278,7 +1238,7 @@ where
         param_env: I::ParamEnv,
         sub: T,
         sup: T,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         self.relate(param_env, sub, ty::Variance::Covariant, sup)
     }
 
@@ -1289,18 +1249,19 @@ where
         lhs: T,
         variance: ty::Variance,
         rhs: T,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
         for &goal in goals.iter() {
             let source = match goal.predicate.kind().skip_binder() {
-                ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {
+                ty::PredicateKind::Subtype { .. }
+                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
                     GoalSource::TypeRelating
                 }
                 // FIXME(-Znext-solver=coinductive): should these WF goals also be unproductive?
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => GoalSource::Misc,
                 p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
             };
-            self.add_goal(source, goal);
+            self.add_goal(source, goal)?;
         }
         Ok(())
     }
@@ -1327,8 +1288,8 @@ where
         self.delegate.instantiate_binder_with_infer(value)
     }
 
-    /// `enter_forall`, but takes `&mut self` and passes it back through the
-    /// callback since it can't be aliased during the call.
+    /// `enter_forall_with_assumptions`, but takes `&mut self` and passes it back through
+    /// the callback since it can't be aliased during the call.
     ///
     /// The `param_env` is used to *compute* the assumptions of the binder, not *as* the
     /// assumptions associated with the binder.
@@ -1340,7 +1301,7 @@ where
         param_env: I::ParamEnv,
         f: impl FnOnce(&mut Self, T) -> U,
     ) -> U {
-        self.delegate.enter_forall(value, |value| {
+        self.delegate.enter_forall_without_assumptions(value, |value| {
             let u = self.delegate.universe();
             let assumptions = if self.cx().assumptions_on_binders() {
                 self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
@@ -1441,7 +1402,7 @@ where
         opaque_args: I::GenericArgs,
         param_env: I::ParamEnv,
         hidden_ty: I::Ty,
-    ) {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         let mut goals = Vec::new();
         self.delegate.add_item_bounds_for_hidden_type(
             opaque_def_id,
@@ -1450,7 +1411,8 @@ where
             hidden_ty,
             &mut goals,
         );
-        self.add_goals(GoalSource::AliasWellFormed, goals);
+        self.add_goals(GoalSource::AliasWellFormed, goals)?;
+        Ok(())
     }
 
     // Try to evaluate a const, or return `None` if the const is too generic.
@@ -1459,23 +1421,25 @@ where
     pub(super) fn evaluate_const(
         &mut self,
         param_env: I::ParamEnv,
-        uv: ty::UnevaluatedConst<I>,
+        alias_const: ty::AliasConst<I>,
     ) -> Result<Option<I::Const>, RerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
-            self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)?;
+            match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
 
-        Ok(self.delegate.evaluate_const(param_env, uv))
+        Ok(self.delegate.evaluate_const(param_env, alias_const))
     }
 
-    pub(super) fn evaluate_const_and_instantiate_normalizes_to_term(
+    pub(super) fn evaluate_const_and_instantiate_projection_term(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
-        uv: ty::UnevaluatedConst<I>,
+        param_env: I::ParamEnv,
+        projection_term: ty::AliasTerm<I>,
+        expected_term: I::Term,
+        alias_const: ty::AliasConst<I>,
     ) -> QueryResultOrRerunNonErased<I> {
-        match self.evaluate_const(goal.param_env, uv)? {
+        match self.evaluate_const(param_env, alias_const)? {
             Some(evaluated) => {
-                self.instantiate_normalizes_to_term(goal, evaluated.into());
+                self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             None if self.cx().features().generic_const_args() => {
@@ -1486,16 +1450,20 @@ where
                 // Perhaps we could split EvaluateConstErr::HasGenericsOrInfers into HasGenerics and
                 // HasInfers or something, make evaluate_const return that, and make this branch be
                 // based on that, rather than checking `has_non_region_infer`.
-                if self.resolve_vars_if_possible(uv).has_non_region_infer() {
+                if self.resolve_vars_if_possible(alias_const).has_non_region_infer() {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 } else {
-                    // We do not instantiate to the `uv` passed in, but rather
-                    // `goal.predicate.alias`. The `uv` passed in might correspond to the `impl`
+                    // We do not instantiate to the `alias_const` passed in, but rather
+                    // `goal.predicate.alias`. The `alias_const` passed in might correspond to the `impl`
                     // form of a constant (with generic arguments corresponding to the impl block),
                     // however, we want to structurally instantiate to the original, non-rebased,
                     // trait `Self` form of the constant (with generic arguments being the trait
                     // `Self` type).
-                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    self.eq(
+                        param_env,
+                        projection_term.to_term(self.cx(), ty::IsRigid::Yes),
+                        expected_term,
+                    )?;
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
             }
@@ -1529,7 +1497,7 @@ where
         symbol: I::Symbol,
     ) -> Result<bool, RerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
-            self.opaque_accesses.rerun_always(RerunReason::MayUseUnstableFeature)?;
+            match self.opaque_accesses.rerun_always(RerunReason::MayUseUnstableFeature)? {}
         }
 
         Ok(may_use_unstable_feature(&**self.delegate, param_env, symbol))
@@ -1538,7 +1506,7 @@ where
     pub(crate) fn opaques_with_sub_unified_hidden_type(
         &self,
         self_ty: I::Ty,
-    ) -> Vec<ty::AliasTy<I>> {
+    ) -> Vec<ty::OpaqueAliasTy<I>> {
         if let ty::Infer(ty::TyVar(vid)) = self_ty.kind() {
             self.delegate.opaques_with_sub_unified_hidden_type(vid)
         } else {
@@ -1600,7 +1568,7 @@ where
                 // need to recompute the `NormalizesTo` goal afterwards to avoid repeatedly
                 // uplifting its nested goals. This is the case if the `shallow_certainty` is
                 // `Certainty::Yes`.
-                (CurrentGoalKind::NormalizesTo, Certainty::Yes) => {
+                (CurrentGoalKind::ProjectionComputeAssocTermCandidate, Certainty::Yes) => {
                     let goals = std::mem::take(&mut self.nested_goals);
                     // As we return all ambiguous nested goals, we can ignore the certainty
                     // returned by `self.try_evaluate_added_goals()`.
@@ -1645,7 +1613,7 @@ where
         let external_constraints =
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
         let (var_values, mut external_constraints) =
-            eager_resolve_vars(self.delegate, (self.var_values, external_constraints));
+            eager_resolve_vars(&**self.delegate, (self.var_values, external_constraints));
 
         // Remove any trivial or duplicated region constraints once we've resolved regions
         let mut unique = HashSet::default();
@@ -1731,112 +1699,39 @@ where
 
         ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
     }
-}
 
-/// Eagerly replace aliases with inference variables, emitting `AliasRelate`
-/// goals, used when adding goals to the `EvalCtxt`. We compute the
-/// `AliasRelate` goals before evaluating the actual goal to get all the
-/// constraints we can.
-///
-/// This is a performance optimization to more eagerly detect cycles during trait
-/// solving. See tests/ui/traits/next-solver/cycles/cycle-modulo-ambig-aliases.rs.
-///
-/// The emitted goals get evaluated in the context of the parent goal; by
-/// replacing aliases in nested goals we essentially pull the normalization out of
-/// the nested goal. We want to treat the goal as if the normalization still happens
-/// inside of the nested goal by inheriting the `step_kind` of the nested goal and
-/// storing it in the `GoalSource` of the emitted `AliasRelate` goals.
-/// This is necessary for tests/ui/sized/coinductive-1.rs to compile.
-struct ReplaceAliasWithInfer<'me, 'a, D, I>
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    ecx: &'me mut EvalCtxt<'a, D>,
-    param_env: I::ParamEnv,
-    normalization_goal_source: GoalSource,
-    cache: HashMap<I::Ty, I::Ty>,
-}
-
-impl<'me, 'a, D, I> ReplaceAliasWithInfer<'me, 'a, D, I>
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    fn new(
-        ecx: &'me mut EvalCtxt<'a, D>,
-        for_goal_source: GoalSource,
+    pub(super) fn normalize<T: TypeFoldable<I>>(
+        &mut self,
+        source: GoalSource,
         param_env: I::ParamEnv,
-    ) -> Self {
-        let step_kind = ecx.step_kind_for_source(for_goal_source);
-        ReplaceAliasWithInfer {
-            ecx,
-            param_env,
-            normalization_goal_source: GoalSource::NormalizeGoal(step_kind),
-            cache: Default::default(),
+        value: ty::Unnormalized<I, T>,
+    ) -> Result<T, NoSolutionOrRerunNonErased> {
+        let value = self.delegate.resolve_vars_if_possible(value.skip_normalization());
+
+        if !self.cx().renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
+            return Ok(value);
         }
-    }
-}
 
-impl<D, I> TypeFolder<I> for ReplaceAliasWithInfer<'_, '_, D, I>
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    fn cx(&self) -> I {
-        self.ecx.cx()
-    }
-
-    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-        match ty.kind() {
-            ty::Alias(..) if !ty.has_escaping_bound_vars() => {
-                let infer_ty = self.ecx.next_ty_infer();
-                let normalizes_to = ty::PredicateKind::AliasRelate(
-                    ty.into(),
-                    infer_ty.into(),
-                    ty::AliasRelationDirection::Equate,
-                );
-                self.ecx.add_goal(
-                    self.normalization_goal_source,
-                    Goal::new(self.cx(), self.param_env, normalizes_to),
-                );
-                infer_ty
-            }
-            _ => {
-                if !ty.has_aliases() {
-                    ty
-                } else if let Some(&entry) = self.cache.get(&ty) {
-                    return entry;
-                } else {
-                    let res = ty.super_fold_with(self);
-                    assert!(self.cache.insert(ty, res).is_none());
-                    res
+        // To drop the mutable borrow of self early.
+        let infcx = self.delegate.deref();
+        let mut folder = NormalizationFolder::new(infcx, vec![], |alias_term| {
+            let infer_term = self.next_term_infer_of_alias_kind(alias_term);
+            let pred = ty::ProjectionPredicate { projection_term: alias_term, term: infer_term };
+            let goal = Goal::new(self.cx(), param_env, pred);
+            self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
+            let GoalEvaluation { goal, certainty, has_changed: _, stalled_on } =
+                self.evaluate_goal(source, goal, None)?;
+            let normalization_was_ambiguous = match certainty {
+                Certainty::Yes => NormalizationWasAmbiguous::No,
+                Certainty::Maybe(_) => {
+                    self.nested_goals.push((source, goal, stalled_on));
+                    NormalizationWasAmbiguous::Yes
                 }
-            }
-        }
-    }
+            };
 
-    fn fold_const(&mut self, ct: I::Const) -> I::Const {
-        match ct.kind() {
-            ty::ConstKind::Unevaluated(..) if !ct.has_escaping_bound_vars() => {
-                let infer_ct = self.ecx.next_const_infer();
-                let normalizes_to = ty::PredicateKind::AliasRelate(
-                    ct.into(),
-                    infer_ct.into(),
-                    ty::AliasRelationDirection::Equate,
-                );
-                self.ecx.add_goal(
-                    self.normalization_goal_source,
-                    Goal::new(self.cx(), self.param_env, normalizes_to),
-                );
-                infer_ct
-            }
-            _ => ct.super_fold_with(self),
-        }
-    }
-
-    fn fold_predicate(&mut self, predicate: I::Predicate) -> I::Predicate {
-        if predicate.allow_normalization() { predicate.super_fold_with(self) } else { predicate }
+            Ok((self.resolve_vars_if_possible(infer_term), normalization_was_ambiguous))
+        });
+        value.try_fold_with(&mut folder)
     }
 }
 
@@ -1871,7 +1766,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     origin_span: I::Span,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
     let opaque_types = delegate.clone_opaque_types_lookup_table();
-    let (goal, opaque_types) = eager_resolve_vars(delegate, (goal, opaque_types));
+    let (goal, opaque_types) = eager_resolve_vars(&**delegate, (goal, opaque_types));
     let typing_mode = delegate.typing_mode_raw().assert_not_erased();
 
     let (orig_values, canonical_goal) =
@@ -1897,7 +1792,6 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         goal.param_env,
         &proof_tree.orig_values,
         response,
-        VisibleForLeakCheck::Yes,
         origin_span,
     );
 

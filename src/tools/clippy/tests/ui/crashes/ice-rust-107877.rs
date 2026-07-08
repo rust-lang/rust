@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![allow(dead_code)]
-
 struct Foo;
 
 #[allow(clippy::infallible_try_from)]

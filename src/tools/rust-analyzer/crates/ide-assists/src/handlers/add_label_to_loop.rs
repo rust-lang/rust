@@ -1,10 +1,8 @@
-use ide_db::{
-    source_change::SourceChangeBuilder, syntax_helpers::node_ext::for_each_break_and_continue_expr,
-};
+use ide_db::syntax_helpers::node_ext::for_each_break_and_continue_expr;
 use syntax::{
     SyntaxToken, T,
     ast::{self, AstNode, HasLoopBody},
-    syntax_editor::{Position, SyntaxEditor},
+    syntax_editor::{Position, SyntaxAnnotation, SyntaxEditor},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -24,8 +22,8 @@ use crate::{AssistContext, AssistId, Assists};
 // ->
 // ```
 // fn main() {
-//     ${1:'l}: loop {
-//         break ${2:'l};
+//     ${0:'l}: loop {
+//         break ${0:'l};
 //         continue ${0:'l};
 //     }
 // }
@@ -53,8 +51,11 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
             ];
             editor.insert_all(Position::before(&loop_kw), elements);
 
-            if let Some(cap) = ctx.config.snippet_cap {
-                editor.add_annotation(label.syntax(), builder.make_placeholder_snippet(cap));
+            let annotation =
+                ctx.config.snippet_cap.map(|cap| builder.make_placeholder_snippet(cap));
+
+            if let Some(annotation) = annotation {
+                editor.add_annotation(label.syntax(), annotation);
             }
 
             let loop_body = loop_expr.loop_body().and_then(|it| it.stmt_list());
@@ -64,13 +65,14 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
                     ast::Expr::ContinueExpr(continue_expr) => continue_expr.continue_token(),
                     _ => return,
                 };
-                if let Some(token) = token {
-                    insert_label_after_token(&editor, &token, ctx, builder);
+                if let Some(token) = token
+                    && let Some(annotation) = annotation
+                {
+                    insert_label_after_token(&editor, &token, annotation);
                 }
             });
 
             builder.add_file_edits(ctx.vfs_file_id(), editor);
-            builder.rename();
         },
     )
 }
@@ -86,17 +88,14 @@ fn loop_token(loop_expr: &ast::AnyHasLoopBody) -> Option<syntax::SyntaxToken> {
 fn insert_label_after_token(
     editor: &SyntaxEditor,
     token: &SyntaxToken,
-    ctx: &AssistContext<'_, '_>,
-    builder: &mut SourceChangeBuilder,
+    annotation: SyntaxAnnotation,
 ) {
     let make = editor.make();
     let label = make.lifetime("'l");
     let elements = vec![make.whitespace(" ").into(), label.syntax().clone().into()];
     editor.insert_all(Position::after(token), elements);
 
-    if let Some(cap) = ctx.config.snippet_cap {
-        editor.add_annotation(label.syntax(), builder.make_placeholder_snippet(cap));
-    }
+    editor.add_annotation(label.syntax(), annotation);
 }
 
 #[cfg(test)]
@@ -118,8 +117,8 @@ fn main() {
 }"#,
             r#"
 fn main() {
-    ${1:'l}: loop {
-        break ${2:'l};
+    ${0:'l}: loop {
+        break ${0:'l};
         continue ${0:'l};
     }
 }"#,
@@ -139,8 +138,8 @@ fn main() {
 }"#,
             r#"
 fn main() {
-    ${1:'l}: while true {
-        break ${2:'l};
+    ${0:'l}: while true {
+        break ${0:'l};
         continue ${0:'l};
     }
 }"#,
@@ -160,8 +159,8 @@ fn main() {
 }"#,
             r#"
 fn main() {
-    ${1:'l}: for _ in 0..5 {
-        break ${2:'l};
+    ${0:'l}: for _ in 0..5 {
+        break ${0:'l};
         continue ${0:'l};
     }
 }"#,
@@ -185,8 +184,8 @@ fn main() {
 }"#,
             r#"
 fn main() {
-    ${1:'l}: loop {
-        break ${2:'l};
+    ${0:'l}: loop {
+        break ${0:'l};
         continue ${0:'l};
         loop {
             break;
@@ -217,8 +216,8 @@ fn main() {
     loop {
         break;
         continue;
-        ${1:'l}: loop {
-            break ${2:'l};
+        ${0:'l}: loop {
+            break ${0:'l};
             continue ${0:'l};
         }
     }

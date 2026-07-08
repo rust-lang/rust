@@ -10,14 +10,14 @@ use rustc_errors::ColorConfig;
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_hir::attrs::{CollapseMacroDebuginfo, NativeLibKind};
 use rustc_session::config::{
-    AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CoverageLevel, CoverageOptions,
-    DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
-    FmtDebug, FunctionReturn, IncrementalStateAssertion, InliningThreshold, Input,
-    InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli,
-    MirIncludeSpans, NextSolverConfig, Offload, Options, OutFileName, OutputType, OutputTypes,
-    PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip,
-    SwitchWithOptPath, SymbolManglingVersion, WasiExecModel, build_configuration,
-    build_session_options, rustc_optgroups,
+    AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CodegenRetagOptions, CoverageLevel,
+    CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation,
+    Externs, FmtDebug, FunctionReturn, IncrementalStateAssertion, InliningThreshold, Input,
+    InstrumentCoverage, InstrumentMcount, InstrumentXRay, LinkSelfContained, LinkerPluginLto,
+    LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, Offload, Options, OutFileName,
+    OutputType, OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius,
+    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+    build_configuration, build_session_options, rustc_optgroups,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -25,7 +25,7 @@ use rustc_session::utils::{CanonicalizedPath, NativeLib};
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, getopts};
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
-use rustc_span::{FileName, SourceFileHashAlgorithm, sym};
+use rustc_span::{FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, sym};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel,
@@ -173,6 +173,33 @@ fn test_can_print_warnings() {
     sess_and_cfg(&["-Adead_code"], |sess, _cfg| {
         assert!(sess.dcx().can_emit_warnings());
     });
+}
+
+// `-Zremap-cwd-prefix` must not be merged into the tracked `remap_path_prefix` option:
+// storing the absolute cwd there invalidates the incremental cache across build
+// directories (see #132132). It must instead be applied via `file_path_mapping`.
+#[test]
+fn test_remap_cwd_prefix_not_in_remap_path_prefix() {
+    sess_and_cfg(
+        &["--remap-path-prefix=/explicit=mapped", "-Zremap-cwd-prefix=cwd-mapped"],
+        |sess, _cfg| {
+            // The tracked option holds only the explicit `--remap-path-prefix` entry.
+            assert_eq!(
+                sess.opts.remap_path_prefix,
+                vec![(PathBuf::from("/explicit"), PathBuf::from("mapped"))],
+            );
+
+            // ... but the cwd remapping is still applied via `file_path_mapping`.
+            let cwd = std::env::current_dir().unwrap();
+            let remapped = sess
+                .opts
+                .file_path_mapping()
+                .to_real_filename(&RealFileName::empty(), cwd.join("foo.rs"))
+                .path(RemapPathScopeComponents::DEBUGINFO)
+                .to_path_buf();
+            assert_eq!(remapped, PathBuf::from("cwd-mapped/foo.rs"));
+        },
+    );
 }
 
 #[test]
@@ -761,6 +788,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(annotate_moves, AnnotateMoves::Enabled(Some(1234)));
     tracked!(assume_incomplete_release, true);
     tracked!(autodiff, vec![AutoDiff::Enable, AutoDiff::NoTT]);
+    tracked!(autodiff_post_passes, Some("function(mem2reg,instsimplify,simplifycfg)".to_string()));
     tracked!(binary_dep_depinfo, true);
     tracked!(box_noalias, false);
     tracked!(
@@ -772,6 +800,7 @@ fn test_unstable_options_tracking_hash() {
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));
+    tracked!(codegen_emit_retag, Some(CodegenRetagOptions::default()));
     tracked!(
         coverage_options,
         CoverageOptions {
@@ -782,8 +811,8 @@ fn test_unstable_options_tracking_hash() {
     );
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
-    tracked!(debug_info_for_profiling, true);
     tracked!(debug_info_type_line_numbers, true);
+    tracked!(debuginfo_for_profiling, true);
     tracked!(default_visibility, Some(rustc_target::spec::SymbolVisibility::Hidden));
     tracked!(dep_info_omit_d_target, true);
     tracked!(direct_access_external_data, Some(true));
@@ -791,7 +820,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(dwarf_version, Some(5));
     tracked!(embed_metadata, false);
     tracked!(embed_source, true);
-    tracked!(emscripten_wasm_eh, false);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
     tracked!(fixed_x18, true);
@@ -807,7 +835,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
     tracked!(inline_mir_threshold, Some(123));
-    tracked!(instrument_mcount, true);
+    tracked!(instrument_mcount, InstrumentMcount::Mcount);
     tracked!(instrument_xray, Some(InstrumentXRay::default()));
     tracked!(link_directives, false);
     tracked!(link_only, true);
@@ -839,7 +867,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(panic_in_drop, PanicStrategy::Abort);
     tracked!(
         patchable_function_entry,
-        PatchableFunctionEntry::from_total_and_prefix_nops(10, 5)
+        PatchableFunctionEntry::from_parts(10, 5, None)
             .expect("total must be greater than or equal to prefix")
     );
     tracked!(plt, Some(true));
@@ -866,6 +894,8 @@ fn test_unstable_options_tracking_hash() {
     tracked!(split_lto_unit, Some(true));
     tracked!(src_hash_algorithm, Some(SourceFileHashAlgorithm::Sha1));
     tracked!(stack_protector, StackProtector::All);
+    tracked!(staticlib_hide_internal_symbols, true);
+    tracked!(staticlib_rename_internal_symbols, true);
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
     tracked!(tiny_const_eval_limit, true);

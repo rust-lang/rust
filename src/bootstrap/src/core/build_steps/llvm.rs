@@ -800,7 +800,7 @@ fn configure_cmake(
     // Needs `suppressed_compiler_flag_prefixes` to be gone, and hence
     // https://github.com/llvm/llvm-project/issues/88780 to be fixed.
     for flag in builder
-        .cc_handled_clags(target, CLang::C)
+        .cc_handled_cflags(target, CLang::C)
         .into_iter()
         .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::C))
         .filter(|flag| !suppressed_compiler_flag_prefixes.iter().any(|p| flag.starts_with(p)))
@@ -821,7 +821,7 @@ fn configure_cmake(
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags = ccflags.cxxflags.clone();
     for flag in builder
-        .cc_handled_clags(target, CLang::Cxx)
+        .cc_handled_cflags(target, CLang::Cxx)
         .into_iter()
         .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::Cxx))
         .filter(|flag| {

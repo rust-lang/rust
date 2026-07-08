@@ -56,7 +56,7 @@ fn codegen_field<'tcx>(
 }
 
 fn scalar_pair_calculate_b_offset(tcx: TyCtxt<'_>, a_scalar: Scalar, b_scalar: Scalar) -> Offset32 {
-    let b_offset = a_scalar.size(&tcx).align_to(b_scalar.align(&tcx).abi);
+    let b_offset = a_scalar.size(&tcx).align_to(b_scalar.default_align(&tcx).abi);
     Offset32::new(b_offset.bytes().try_into().unwrap())
 }
 
@@ -686,17 +686,14 @@ impl<'tcx> CPlace<'tcx> {
     ) -> CPlace<'tcx> {
         let layout = self.layout();
 
-        match self.inner {
-            CPlaceInner::VarPair(local, var1, var2) => {
-                let layout = layout.field(&*fx, field.index());
+        if let CPlaceInner::VarPair(local, var1, var2) = self.inner {
+            let layout = layout.field(&*fx, field.index());
 
-                match field.as_u32() {
-                    0 => return CPlace { inner: CPlaceInner::Var(local, var1), layout },
-                    1 => return CPlace { inner: CPlaceInner::Var(local, var2), layout },
-                    _ => unreachable!("field should be 0 or 1"),
-                }
+            match field.as_u32() {
+                0 => return CPlace { inner: CPlaceInner::Var(local, var1), layout },
+                1 => return CPlace { inner: CPlaceInner::Var(local, var2), layout },
+                _ => unreachable!("field should be 0 or 1"),
             }
-            _ => {}
         }
 
         let (base, extra) = match self.inner {

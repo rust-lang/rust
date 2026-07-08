@@ -327,4 +327,21 @@ fn it_works() {
         "#,
         );
     }
+
+    #[test]
+    fn unimplemented_builtin_macro() {
+        check_diagnostics(
+            r#"
+#[rustc_builtin_macro]
+macro_rules! unimplemented_builtin_macro {
+          // ^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: unimplemented built-in macro
+    () => {};
+}
+
+ #[unimplemented_builtin_macro]
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: this built-in macro is not implemented
+struct Foo;
+        "#,
+        );
+    }
 }

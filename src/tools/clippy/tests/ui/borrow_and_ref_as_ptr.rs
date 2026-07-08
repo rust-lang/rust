@@ -1,6 +1,7 @@
 // Make sure that `ref_as_ptr` is not emitted when `borrow_as_ptr` is.
 
-#![warn(clippy::ref_as_ptr, clippy::borrow_as_ptr)]
+#![warn(clippy::borrow_as_ptr)]
+#![deny(clippy::ref_as_ptr)]
 
 fn f<T>(_: T) {}
 

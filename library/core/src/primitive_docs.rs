@@ -1341,7 +1341,6 @@ mod prim_f16 {}
 /// For example:
 ///
 /// ```
-/// # #![feature(float_algebraic)]
 /// # #![allow(unused_assignments)]
 /// # let mut x: f32 = 0.0;
 /// # let a: f32 = 1.0;
@@ -1360,7 +1359,7 @@ mod prim_f16 {}
 /// # let b: f32 = 2.0;
 /// # let c: f32 = 3.0;
 /// # let d: f32 = 4.0;
-/// x = a + b + c + d; // As written
+/// x = ((a + b) + c) + d; // As written
 /// x = (a + c) + (b + d); // Reordered to shorten critical path and enable vectorization
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]

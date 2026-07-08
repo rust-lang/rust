@@ -34,7 +34,7 @@
 //! as we don't have bincode in Cargo.toml yet, lets stick with serde_json for
 //! the time being.
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(feature = "in-rust-tree")]
 use proc_macro_srv::TokenStream;
 
 use std::collections::VecDeque;
@@ -195,7 +195,7 @@ impl FlatTree {
     }
 }
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(feature = "in-rust-tree")]
 impl FlatTree {
     pub fn from_tokenstream(
         tokenstream: proc_macro_srv::TokenStream<Span>,
@@ -591,7 +591,7 @@ impl<'a, T: SpanTransformer, U> Writer<'a, '_, T, U> {
         T::token_id_of(self.span_data_table, span)
     }
 
-    #[cfg(feature = "sysroot-abi")]
+    #[cfg(feature = "in-rust-tree")]
     pub(crate) fn intern(&mut self, text: &'a str) -> u32 {
         let table = &mut self.text;
         *self.string_table.entry(text.into()).or_insert_with(|| {
@@ -611,7 +611,7 @@ impl<'a, T: SpanTransformer, U> Writer<'a, '_, T, U> {
     }
 }
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(feature = "in-rust-tree")]
 impl<'a, T: SpanTransformer>
     Writer<'a, '_, T, Option<proc_macro_srv::TokenStreamIter<'a, T::Span>>>
 {
@@ -852,7 +852,7 @@ impl<T: SpanTransformer<Span = span::Span>> Reader<'_, T> {
     }
 }
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(feature = "in-rust-tree")]
 impl<T: SpanTransformer> Reader<'_, T> {
     pub(crate) fn read_tokenstream(
         self,

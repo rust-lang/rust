@@ -60,6 +60,12 @@ impl LazyKey {
 
     #[inline]
     pub fn force(&'static self) -> Key {
+        if self.dtor.is_some() {
+            // Needs to be called on all threads where the key might have a non-null value!
+            // Otherwise, `run_dtors` might not be called on this thread.
+            guard::enable();
+        }
+
         match self.key.load(Acquire) {
             0 => unsafe { self.init() },
             key => key - 1,
@@ -88,6 +94,8 @@ impl LazyKey {
                 }
 
                 unsafe {
+                    // Add ourselves to the `DTORS` list, so that when `run_dtors` gets called,
+                    // our dtor is invoked.
                     register_dtor(self);
                 }
 
@@ -144,8 +152,6 @@ static DTORS: Atomic<*mut LazyKey> = AtomicPtr::new(ptr::null_mut());
 /// Should only be called once per key, otherwise loops or breaks may occur in
 /// the linked list.
 unsafe fn register_dtor(key: &'static LazyKey) {
-    guard::enable();
-
     let this = <*const LazyKey>::cast_mut(key);
     // Use acquire ordering to pass along the changes done by the previously
     // registered keys when we store the new head with release ordering.

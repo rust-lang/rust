@@ -83,5 +83,21 @@ note: using `let else` only matches on one variant (try using `match`)
 LL |     let Foo::A { .. } = f else { loop {} };
    |         ^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: match is not exhaustive
+  --> $DIR/must_match_exhaustively.rs:50:14
+   |
+LL | #[rustc_must_match_exhaustively]
+   | -------------------------------- required because of this attribute
+...
+LL |     matches!(f, Foo::A { .. });
+   |              ^
+   |
+   = help: explicitly list all variants of the enum in a `match`
+note: because of this wildcard pattern
+  --> $DIR/must_match_exhaustively.rs:50:5
+   |
+LL |     matches!(f, Foo::A { .. });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 

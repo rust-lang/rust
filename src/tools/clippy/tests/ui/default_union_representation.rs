@@ -1,6 +1,6 @@
 #![feature(transparent_unions)]
 #![warn(clippy::default_union_representation)]
-#![allow(clippy::repr_packed_without_abi)]
+#![expect(clippy::repr_packed_without_abi)]
 
 union NoAttribute {
     //~^ default_union_representation

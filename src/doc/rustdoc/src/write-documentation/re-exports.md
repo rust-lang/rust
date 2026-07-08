@@ -172,7 +172,7 @@ pub use self::private_mod::Second as Visible;
 ```
 
 In this case, `Visible` will have as documentation `First Second Third` and will also have as `cfg`:
-`#[cfg(a, b, c)]`.
+`#[cfg(a)]`, `#[cfg(b)]` and `#[cfg(c)]`.
 
 [Intra-doc links](./linking-to-items-by-name.md) are resolved relative to where the doc comment is
 defined.

@@ -125,7 +125,7 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Ord
 /// variant must also be specified. Only a single field is supported.
 #[unstable(feature = "field_projections", issue = "145383")]
 #[allow_internal_unstable(field_representing_type_raw, builtin_syntax)]
-#[diagnostic::on_unmatch_args(
+#[diagnostic::on_unmatched_args(
     note = "this macro expects a container type and a field path, like `field_of!(Type, field)` or `field_of!(Enum, Variant.field)`"
 )]
 // NOTE: when stabilizing this macro, we can never add new trait impls for `FieldRepresentingType`,

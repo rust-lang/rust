@@ -26,7 +26,7 @@ pub const trait Bar {
     fn fun();
 }
 #[stable(feature = "stable", since = "1.0.0")]
-impl const Bar for Foo {
+const impl Bar for Foo {
     // ok because all users must enable `const_trait_impl`
     fn fun() {}
 }

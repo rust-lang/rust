@@ -7,7 +7,7 @@ use rustc_macros::{Decodable, Encodable};
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, Symbol, sym};
 
-use crate::errors;
+use crate::diagnostics;
 
 pub(crate) const RAW_IDENT_ERR: &str = "`${concat(..)}` currently does not support raw identifiers";
 pub(crate) const UNSUPPORTED_CONCAT_ELEM_ERR: &str = "expected identifier or string literal";
@@ -51,15 +51,18 @@ impl MetaVarExpr {
                 Some(tt) => (Some(tt.span()), None),
                 None => (None, Some(ident.span.shrink_to_hi())),
             };
-            let err =
-                errors::MveMissingParen { ident_span: ident.span, unexpected_span, insert_span };
+            let err = diagnostics::MveMissingParen {
+                ident_span: ident.span,
+                unexpected_span,
+                insert_span,
+            };
             return Err(psess.dcx().create_err(err));
         };
 
         // Ensure there are no trailing tokens in the braces, e.g. `${foo() extra}`
         if iter.peek().is_some() {
             let span = iter_span(&iter).expect("checked is_some above");
-            let err = errors::MveExtraTokens {
+            let err = diagnostics::MveExtraTokens {
                 span,
                 ident_span: ident.span,
                 extra_count: iter.count(),
@@ -79,7 +82,7 @@ impl MetaVarExpr {
             sym::index => MetaVarExpr::Index(parse_depth(&mut iter, psess, ident.span)?),
             sym::len => MetaVarExpr::Len(parse_depth(&mut iter, psess, ident.span)?),
             _ => {
-                let err = errors::MveUnrecognizedExpr {
+                let err = diagnostics::MveUnrecognizedExpr {
                     span: ident.span,
                     valid_expr_list: "`count`, `ignore`, `index`, `len`, and `concat`",
                 };
@@ -129,7 +132,7 @@ fn check_trailing_tokens<'psess>(
         other => unreachable!("unknown MVEs should be rejected earlier (got `{other}`)"),
     };
 
-    let err = errors::MveExtraTokens {
+    let err = diagnostics::MveExtraTokens {
         span: iter_span(iter).expect("checked is_none above"),
         ident_span: ident.span,
         extra_count: iter.count(),

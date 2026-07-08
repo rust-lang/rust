@@ -1,6 +1,6 @@
 //@ compile-flags: -Zvalidate-mir
 
-#[repr(packed)] //~ ERROR: attribute should be applied to a struct
+#[repr(packed)] //~ ERROR: attribute cannot be used on
 #[repr(u32)]
 enum E {
     A,

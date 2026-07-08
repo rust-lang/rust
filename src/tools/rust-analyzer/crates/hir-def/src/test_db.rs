@@ -15,7 +15,6 @@ use triomphe::Arc;
 
 use crate::{
     Lookup, ModuleDefId, ModuleId,
-    db::DefDatabase,
     expr_store::{Body, scope::ExprScopes},
     nameres::{DefMap, ModuleSource, block_def_map, crate_def_map},
     src::HasSource,
@@ -48,7 +47,7 @@ impl Default for TestDB {
             crates_map: Default::default(),
             nonce: Nonce::new(),
         };
-        this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
+        crate::db::set_expand_proc_attr_macros(&mut this, true);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
         set_all_crates_with_durability(&mut this, std::iter::empty(), Durability::HIGH);
         _ = base_db::LibraryRoots::builder(Default::default())
@@ -122,7 +121,7 @@ impl SourceDatabase for TestDB {
     }
 
     fn file_source_root(&self, id: base_db::FileId) -> FileSourceRootInput {
-        self.files.file_source_root(id)
+        self.files.file_source_root(self, id)
     }
 
     fn set_file_source_root_with_durability(
@@ -141,6 +140,10 @@ impl SourceDatabase for TestDB {
 
     fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
         (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
+    }
+
+    fn line_column(&self, _file: FileId, _offset: syntax::TextSize) -> Result<(u32, u32), ()> {
+        Err(())
     }
 }
 

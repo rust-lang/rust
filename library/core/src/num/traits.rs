@@ -4,7 +4,7 @@
 /// Trait for types that this type can be truncated to
 #[unstable(feature = "num_internals", reason = "internal implementation detail", issue = "none")]
 #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
-pub const trait TruncateTarget<Target>: crate::sealed::Sealed {
+pub impl(self) const trait TruncateTarget<Target> {
     #[doc(hidden)]
     fn internal_truncate(self) -> Target;
 
@@ -18,7 +18,7 @@ pub const trait TruncateTarget<Target>: crate::sealed::Sealed {
 /// Trait for types that this type can be widened to
 #[unstable(feature = "num_internals", reason = "internal implementation detail", issue = "none")]
 #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
-pub const trait WidenTarget<Target>: crate::sealed::Sealed {
+pub impl(self) const trait WidenTarget<Target> {
     #[doc(hidden)]
     fn internal_widen(self) -> Target;
 }
@@ -41,7 +41,7 @@ macro_rules! impl_truncate {
 
         #[unstable(feature = "num_internals", reason = "internal implementation detail", issue = "none")]
         #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
-        impl const TruncateTarget<$to> for $from {
+        const impl TruncateTarget<$to> for $from {
             #[inline]
             fn internal_truncate(self) -> $to {
                 self as _
@@ -88,7 +88,7 @@ macro_rules! impl_widen {
 
         #[unstable(feature = "num_internals", reason = "internal implementation detail", issue = "none")]
         #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
-        impl const WidenTarget<$to> for $from {
+        const impl WidenTarget<$to> for $from {
             fn internal_widen(self) -> $to {
                 self as _
             }

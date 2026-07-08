@@ -185,7 +185,9 @@ let f = Foo {
 
 ## Unit literals
 
-Never break between the opening and closing parentheses of the `()` unit literal.
+Never break between the opening and closing parentheses of the `()` unit
+literal. This applies even when the closing parenthesis would fall past the
+maximum line width.
 
 ## Tuple literals
 
@@ -384,7 +386,8 @@ Prefer not to break a line in the callee expression.
 For a function call with no arguments (a nullary function call like `func()`),
 never break within the parentheses, and never put a space between the
 parentheses. Always write a nullary function call as a single-line call, never
-a multi-line call.
+a multi-line call. This applies even when the closing parenthesis would fall
+past the maximum line width.
 
 ### Single-line calls
 

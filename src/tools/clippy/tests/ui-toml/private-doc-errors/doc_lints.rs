@@ -1,7 +1,7 @@
 #![deny(
-    clippy::unnecessary_safety_doc,
     clippy::missing_errors_doc,
-    clippy::missing_panics_doc
+    clippy::missing_panics_doc,
+    clippy::unnecessary_safety_doc
 )]
 
 /// This is a private function, skip to match behavior with `missing_safety_doc`.

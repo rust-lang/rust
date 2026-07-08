@@ -1,7 +1,7 @@
 #![warn(clippy::incompatible_msrv)]
 #![feature(custom_inner_attributes)]
-#![allow(stable_features)]
-#![feature(strict_provenance)] // For use in test
+#![expect(stable_features)] // Because of the `#![feature]` below
+#![feature(strict_provenance)] // For use in `feature_enable_14425()`
 #![clippy::msrv = "1.3.0"]
 
 use std::cell::Cell;

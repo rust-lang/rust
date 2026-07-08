@@ -143,7 +143,7 @@ impl<'db> Generics<'db> {
         self.chain.iter()
     }
 
-    fn owner(&self) -> &SingleGenerics<'db> {
+    pub(crate) fn owner(&self) -> &SingleGenerics<'db> {
         self.chain.last().expect("must have an owner params")
     }
 

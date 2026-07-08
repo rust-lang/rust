@@ -35,7 +35,7 @@ use stdx::impl_from;
 use triomphe::Arc;
 
 use crate::{
-    Span, all_super_traits,
+    InferenceDiagnostic, Span, all_super_traits,
     db::HirDatabase,
     infer::{InferenceContext, unify::InferenceTable},
     lower::GenericPredicates,
@@ -148,7 +148,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         debug!("result = {:?}", result);
 
         if result.illegal_sized_bound {
-            // FIXME: Report an error.
+            self.push_diagnostic(InferenceDiagnostic::MethodCallIllegalSizedBound { call_expr });
         }
 
         self.write_expr_adj(receiver, result.adjustments);
@@ -728,7 +728,13 @@ impl TraitImpls {
                     {
                         continue;
                     }
+
                     let self_ty = trait_ref.self_ty();
+                    if self_ty_has_error_constructor(self_ty) {
+                        // If we see `impl Foo for NoSuchType`, just ignore it.
+                        continue;
+                    }
+
                     let interner = DbInterner::new_no_crate(db);
                     let entry = map.entry(trait_ref.def_id.0).or_default();
                     match simplify_type(interner, self_ty, TreatParams::InstantiateWithInfer) {
@@ -862,5 +868,24 @@ impl TraitImpls {
             for_each_block(trait_block, type_block).for_each(&mut *for_each);
             for_each_block(type_block, trait_block).for_each(for_each);
         }
+    }
+}
+
+fn self_ty_has_error_constructor<'db>(mut self_ty: Ty<'db>) -> bool {
+    if !self_ty.references_non_lt_error() {
+        return false;
+    }
+
+    loop {
+        self_ty = match self_ty.kind() {
+            TyKind::Error(_) => return true,
+            TyKind::Ref(_, inner, _)
+            | TyKind::RawPtr(inner, _)
+            | TyKind::Array(inner, _)
+            | TyKind::Slice(inner)
+            | TyKind::Pat(inner, _) => inner,
+            TyKind::UnsafeBinder(inner) => inner.skip_binder(),
+            _ => return false,
+        };
     }
 }

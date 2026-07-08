@@ -190,14 +190,14 @@ impl Rustc {
         self
     }
 
-    /// Specify path to the output file. Equivalent to `-o`` in rustc.
+    /// Specify path to the output file. Equivalent to `-o` in rustc.
     pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("-o");
         self.cmd.arg(path.as_ref());
         self
     }
 
-    /// Specify path to the output directory. Equivalent to `--out-dir`` in rustc.
+    /// Specify path to the output directory. Equivalent to `--out-dir` in rustc.
     pub fn out_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("--out-dir");
         self.cmd.arg(path.as_ref());

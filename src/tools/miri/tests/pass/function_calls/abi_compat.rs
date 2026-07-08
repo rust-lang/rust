@@ -151,4 +151,9 @@ fn main() {
     let rc = Rc::new(0);
     let rc_ptr: *mut i32 = unsafe { mem::transmute_copy(&rc) };
     test_abi_compat(rc, rc_ptr);
+
+    // Non-capturing closures are special because we rely on them being `PassMode::Ignore`.
+    // Make sure that does not break newtype wrapping for them.
+    let non_capturing_closure = || {};
+    test_abi_compat(non_capturing_closure.clone(), Wrapper(non_capturing_closure));
 }

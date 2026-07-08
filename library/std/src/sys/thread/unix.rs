@@ -12,7 +12,12 @@ use crate::mem::{self, DropGuard, ManuallyDrop};
 use crate::num::NonZero;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
-#[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
+#[cfg(any(
+    target_os = "solaris",
+    target_os = "illumos",
+    target_os = "nto",
+    target_os = "qnx",
+))]
 use crate::sys::weak::weak;
 use crate::thread::ThreadInit;
 use crate::time::Duration;
@@ -155,6 +160,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "aix",
             target_vendor = "apple",
             target_os = "cygwin",
+            target_os = "redox",
             target_os = "wasi",
         ) => {
             #[allow(unused_assignments)]
@@ -272,7 +278,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
 
             Ok(unsafe { NonZero::new_unchecked(cpus as usize) })
         }
-        target_os = "nto" => {
+        any(target_os = "nto", target_os = "qnx") => {
             unsafe {
                 use libc::_syspage_ptr;
                 if _syspage_ptr.is_null() {
@@ -316,7 +322,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
         }
         _ => {
-            // FIXME: implement on Redox, l4re
+            // FIXME: implement on l4re
             Err(io::const_error!(io::ErrorKind::Unsupported, "getting the number of hardware threads is not supported on the target platform"))
         }
     }
@@ -341,7 +347,7 @@ pub fn current_os_id() -> Option<u64> {
             let id: libc::pid_t = unsafe { gettid() };
             Some(id as u64)
         }
-        target_os = "nto" => {
+        any(target_os = "nto", target_os = "qnx") => {
             // SAFETY: FFI call with no preconditions.
             let id: libc::pid_t = unsafe { libc::gettid() };
             Some(id as u64)
@@ -386,11 +392,13 @@ pub fn current_os_id() -> Option<u64> {
 #[cfg(any(
     target_os = "linux",
     target_os = "nto",
+    target_os = "qnx",
     target_os = "solaris",
     target_os = "illumos",
     target_os = "vxworks",
     target_os = "cygwin",
     target_vendor = "apple",
+    target_os = "netbsd",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
     let mut result = [0; MAX_WITH_NUL];
@@ -462,7 +470,12 @@ pub fn set_name(name: &CStr) {
 
 #[cfg(target_os = "netbsd")]
 pub fn set_name(name: &CStr) {
+    // See https://github.com/NetBSD/src/blob/8d40872b4c550a802379f3b9c22a40212d5e149d/lib/libpthread/pthread.h#L281
+    // FIXME: move to libc.
+    const PTHREAD_MAX_NAMELEN_NP: usize = 32;
+
     unsafe {
+        let name = truncate_cstr::<{ PTHREAD_MAX_NAMELEN_NP }>(name);
         let res = libc::pthread_setname_np(
             libc::pthread_self(),
             c"%s".as_ptr(),
@@ -472,14 +485,14 @@ pub fn set_name(name: &CStr) {
     }
 }
 
-#[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
+#[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto", target_os = "qnx"))]
 pub fn set_name(name: &CStr) {
     weak!(
         fn pthread_setname_np(thread: libc::pthread_t, name: *const libc::c_char) -> libc::c_int;
     );
 
     if let Some(f) = pthread_setname_np.get() {
-        #[cfg(target_os = "nto")]
+        #[cfg(any(target_os = "nto", target_os = "qnx"))]
         const THREAD_NAME_MAX: usize = libc::_NTO_THREAD_NAME_MAX as usize;
         #[cfg(any(target_os = "solaris", target_os = "illumos"))]
         const THREAD_NAME_MAX: usize = 32;

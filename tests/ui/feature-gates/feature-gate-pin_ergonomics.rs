@@ -17,6 +17,14 @@ impl Drop for Foo {
     //~^ ERROR use of unstable library feature `pin_ergonomics` [E0658]
 }
 
+struct Sugar;
+
+impl Drop for Sugar {
+    //~^ ERROR not all trait items implemented, missing: `drop`
+    fn drop(&pin mut self) {} //~ ERROR pinned reference syntax is experimental
+    //~^ ERROR use of unstable library feature `pin_ergonomics` [E0658]
+}
+
 fn foo(mut x: Pin<&mut Foo>) {
     Foo::foo_sugar(x.as_mut());
     Foo::foo_sugar_const(x.as_ref());

@@ -25,7 +25,7 @@ note: cycle used when optimizing promoted MIR for `main`
    |
 LL |     assert_eq!(<() as Tr>::A, 0);
    |                ^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: aborting due to 1 previous error
 

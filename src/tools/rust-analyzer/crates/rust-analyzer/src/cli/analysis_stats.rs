@@ -14,14 +14,16 @@ use hir::{
     Adt, AssocItem, Crate, DefWithBody, FindPathConfig, GenericDef, HasCrate, HasSource,
     HirDisplay, ModuleDef, Name, Variant, crate_lang_items,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
-    next_solver::{DbInterner, GenericArgs},
 };
 use hir_def::{
     DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
     expr_store::{Body, BodySourceMap, ExpressionStore},
     hir::{ExprId, PatId, generics::GenericParams},
 };
-use hir_ty::InferenceResult;
+use hir_ty::{
+    InferenceResult,
+    next_solver::{DbInterner, GenericArgs},
+};
 use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RaFixtureConfig, RootDatabase,
@@ -415,7 +417,7 @@ impl flags::AnalysisStats {
                 hir_def::AdtId::from(a),
                 GenericArgs::empty(interner).store(),
                 hir_ty::ParamEnvAndCrate {
-                    param_env: db.trait_environment(GenericDefId::from(a).into()),
+                    param_env: db.trait_environment(a.into()),
                     krate: a.krate(db).into(),
                 }
                 .store(),

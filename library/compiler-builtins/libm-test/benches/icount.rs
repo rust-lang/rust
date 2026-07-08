@@ -132,6 +132,7 @@ library_benchmark_group!(
         icount_bench_fma,
         icount_bench_fmaf,
         icount_bench_fmaf128,
+        icount_bench_fmaf16,
         icount_bench_fmax,
         icount_bench_fmaxf,
         icount_bench_fmaxf128,

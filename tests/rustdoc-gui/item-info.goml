@@ -19,8 +19,8 @@ store-position: (
     "//*[@class='stab portability']//code[normalize-space()='Win32_System_Diagnostics']",
     {"x": second_line_x, "y": second_line_y},
 )
-assert: |first_line_x| != |second_line_x| && |first_line_x| == 521 && |second_line_x| == 277
-assert: |first_line_y| != |second_line_y| && |first_line_y| == 676 && |second_line_y| == 699
+assert: |first_line_x| != |second_line_x| && |first_line_x| == 509 && |second_line_x| == 277
+assert: |first_line_y| == |second_line_y| && |first_line_y| == 699
 
 // Now we ensure that they're not rendered on the same line.
 set-window-size: (1100, 800)

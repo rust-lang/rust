@@ -1,6 +1,5 @@
 //@aux-build:proc_macros.rs
 #![feature(custom_inner_attributes)]
-#![allow(unused)]
 #![warn(clippy::four_forward_slashes)]
 #![no_main]
 #![rustfmt::skip]
@@ -14,7 +13,6 @@ fn a() {}
 
 /// whoops
 //~^ four_forward_slashes
-#[allow(dead_code)]
 fn b() {}
 
 /// whoops
@@ -28,7 +26,6 @@ fn d() {}
 #[test]
 /// between attributes
 //~^ four_forward_slashes
-#[allow(dead_code)]
 fn g() {}
 
 /// not very start of contents

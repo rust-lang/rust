@@ -36,7 +36,7 @@ pub const trait Tr<T> {
 //@ has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/a[@class="trait"]' 'Fn'
 //@ !has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/span[@class="where"]' '[const]'
 //@ has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/div[@class="where"]' ': Fn'
-impl<T: /* [const] */ Fn() /* + [const] Destruct */> const Tr<T> for T
+const impl<T: /* [const] */ Fn() /* + [const] Destruct */> Tr<T> for T
 where
     Option<T>: /* [const] */ Fn() /* + [const] Destruct */,
 {

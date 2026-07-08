@@ -151,6 +151,16 @@ SOURCE_FILE
           L_PAREN "("
           R_PAREN ")"
       COMMA ","
+      WHITESPACE "\n    "
+      VARIANT
+        UNDERSCORE "_"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        CONST_ARG
+          RANGE_EXPR
+            DOT2 ".."
+      COMMA ","
       WHITESPACE "\n"
       R_CURLY "}"
   WHITESPACE "\n"

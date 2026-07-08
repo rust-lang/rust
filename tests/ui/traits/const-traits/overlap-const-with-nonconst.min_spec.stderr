@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `Foo` for type `(_,)`
   --> $DIR/overlap-const-with-nonconst.rs:20:1
    |
-LL | / impl<T> const Foo for T
+LL | / const impl<T> Foo for T
 LL | | where
 LL | |     T: [const] Bar,
    | |___________________- first implementation here

@@ -46,7 +46,7 @@ pub mod ratel {
 
     //@ has 'globuliferous/ratel/static.NUNCIATIVE.html'
     //@ count   - '//*[@class="stab portability"]' 1
-    //@ matches - '//*[@class="stab portability"]' 'crate features ratel and nunciative'
+    //@ matches - '//*[@class="stab portability"]' 'crate features nunciative and ratel'
     #[doc(cfg(feature = "nunciative"))]
     pub static NUNCIATIVE: () = ();
 
@@ -80,7 +80,7 @@ pub mod ratel {
 
     //@ has 'globuliferous/ratel/enum.Cosmotellurian.html'
     //@ count   - '//*[@class="stab portability"]' 10
-    //@ matches - '//*[@class="stab portability"]' 'crate features ratel and cosmotellurian'
+    //@ matches - '//*[@class="stab portability"]' 'crate features cosmotellurian and ratel'
     //@ matches - '//*[@class="stab portability"]' 'crate feature biotaxy'
     //@ matches - '//*[@class="stab portability"]' 'crate feature xiphopagus'
     //@ matches - '//*[@class="stab portability"]' 'crate feature juxtapositive'
@@ -158,7 +158,7 @@ pub mod ratel {
 
     //@ has 'globuliferous/ratel/trait.Aposiopesis.html'
     //@ count   - '//*[@class="stab portability"]' 4
-    //@ matches - '//*[@class="stab portability"]' 'crate features ratel and aposiopesis'
+    //@ matches - '//*[@class="stab portability"]' 'crate features aposiopesis and ratel'
     //@ matches - '//*[@class="stab portability"]' 'crate feature umbracious'
     //@ matches - '//*[@class="stab portability"]' 'crate feature uakari'
     //@ matches - '//*[@class="stab portability"]' 'crate feature rotograph'

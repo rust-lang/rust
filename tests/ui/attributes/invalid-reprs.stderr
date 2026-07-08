@@ -19,16 +19,17 @@ help: consider importing this function
 LL + use std::process::id;
    |
 
-error[E0552]: unrecognized representation hint
-  --> $DIR/invalid-reprs.rs:2:20
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/invalid-reprs.rs:2:13
    |
 LL |     let y = #[repr(uwu(4))]
-   |                    ^^^^^^
+   |             ^^^^^^^------^^
+   |                    |
+   |                    valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
-   = help: valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
-   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0425, E0552, E0658.
+Some errors have detailed explanations: E0425, E0539, E0658.
 For more information about an error, try `rustc --explain E0425`.

@@ -1,4 +1,4 @@
-#![allow(clippy::no_effect, clippy::op_ref, clippy::uninlined_format_args)]
+#![expect(clippy::op_ref)]
 #![warn(clippy::manual_inspect)]
 
 fn main() {

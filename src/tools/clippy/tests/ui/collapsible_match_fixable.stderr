@@ -64,5 +64,53 @@ LL |                 res = 1;
 LL ~             },
    |
 
-error: aborting due to 4 previous errors
+error: this `if` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match_fixable.rs:52:18
+   |
+LL |         0 | 1 => if false { println!("hello world"); },
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: collapse nested if block
+   |
+LL -         0 | 1 => if false { println!("hello world"); },
+LL +         0 | 1 if false => { println!("hello world"); },
+   |
+
+error: this `if` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match_fixable.rs:59:20
+   |
+LL |         Some(s) => if s == 1 { s } else { 1 }
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: collapse nested if block
+   |
+LL -         Some(s) => if s == 1 { s } else { 1 }
+LL +         Some(s) if s == 1 => { s }
+   |
+
+error: this `if` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match_fixable.rs:71:15
+   |
+LL |         13 => if a > b { 1 } else { 0 }, _ => 0,
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: collapse nested if block
+   |
+LL -         13 => if a > b { 1 } else { 0 }, _ => 0,
+LL +         13 if a > b => { 1 }, _ => 0,
+   |
+
+error: this `if` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match_fixable.rs:76:24
+   |
+LL |         11 => 0, 12 => if a == b { 1 } else { 0 }, _ => 0,
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: collapse nested if block
+   |
+LL -         11 => 0, 12 => if a == b { 1 } else { 0 }, _ => 0,
+LL +         11 => 0, 12 if a == b => { 1 }, _ => 0,
+   |
+
+error: aborting due to 8 previous errors
 

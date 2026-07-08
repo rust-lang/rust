@@ -106,7 +106,7 @@ where
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred));
-            ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
+            ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // We currently elaborate all supertrait outlives obligations from impls.
             // This can be removed when we actually do coinduction correctly, and prove
@@ -117,14 +117,15 @@ where
                     .iter_instantiated(cx, impl_args)
                     .map(Unnormalized::skip_norm_wip)
                     .map(|pred| goal.with(cx, pred)),
-            );
+            )?;
 
-            then(ecx, maximal_certainty).map_err(Into::into)
+            then(ecx, maximal_certainty)
         })
     }
 
     fn consider_error_guaranteed_candidate(
         ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
         _guar: I::ErrorGuaranteed,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
@@ -234,15 +235,15 @@ where
         // when merging candidates anyways.
         //
         // See tests/ui/impl-trait/auto-trait-leakage/avoid-query-cycle-via-item-bound.rs.
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
+        if let ty::Alias(is_rigid, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
             goal.predicate.self_ty().kind()
         {
+            debug_assert!(is_rigid == ty::IsRigid::Yes);
             if ecx.opaque_accesses.might_rerun() {
                 ecx.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage)?;
                 return Err(NoSolution.into());
             }
 
-            debug_assert!(ecx.opaque_type_is_rigid(def_id));
             for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {
                 if item_bound
                     .as_trait_clause()
@@ -286,7 +287,7 @@ where
             // `GoalSource::ImplWhereClause` here would be incorrect, as we also
             // impl them, which means we're "stepping out of the impl constructor"
             // again. To handle this, we treat these cycles as ambiguous for now.
-            ecx.add_goals(GoalSource::Misc, nested_obligations);
+            ecx.add_goals(GoalSource::Misc, nested_obligations)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -398,7 +399,6 @@ where
             pred,
             [(GoalSource::ImplWhereBound, goal.with(cx, output_is_sized_pred))],
         )
-        .map_err(Into::into)
     }
 
     fn consider_builtin_async_fn_trait_candidates(
@@ -449,7 +449,6 @@ where
                 .chain(nested_preds.into_iter().map(|pred| goal.with(cx, pred)))
                 .map(|goal| (GoalSource::ImplWhereBound, goal)),
         )
-        .map_err(Into::into)
     }
 
     fn consider_builtin_async_fn_kind_helper_candidate(
@@ -695,7 +694,7 @@ where
                     goal.predicate.trait_ref.args.type_at(1),
                     assume,
                 )?;
-                ecx.evaluate_added_goals_and_make_canonical_response(certainty).map_err(Into::into)
+                ecx.evaluate_added_goals_and_make_canonical_response(certainty)
             },
         )
     }
@@ -736,13 +735,13 @@ where
                         tys.iter().map(|elem_ty| {
                             goal.with(cx, ty::TraitRef::new(cx, goal.predicate.def_id(), [elem_ty]))
                         }),
-                    );
+                    )?;
                 }
                 ty::Array(elem_ty, _) => {
                     ecx.add_goal(
                         GoalSource::ImplWhereBound,
                         goal.with(cx, ty::TraitRef::new(cx, goal.predicate.def_id(), [elem_ty])),
-                    );
+                    )?;
                 }
 
                 // All other types implement `BikeshedGuaranteedNoDrop` only if
@@ -783,7 +782,7 @@ where
                                 [ty],
                             ),
                         ),
-                    );
+                    )?;
                 }
 
                 ty::Bound(..)
@@ -890,14 +889,16 @@ where
                         param_env: goal.param_env,
                         predicate: TraitRef::new(ecx.cx(), sized_trait, [base]).upcast(ecx.cx()),
                     },
-                );
+                )?;
                 ecx.add_goal(
                     GoalSource::ImplWhereBound,
                     Goal {
                         param_env: goal.param_env,
                         predicate: TraitRef::new(ecx.cx(), sized_trait, [ty]).upcast(ecx.cx()),
                     },
-                );
+                )?;
+                // FIXME(field_projections): This function does some questionable incomplete stuff by
+                // returning `Err(NoSolution)` on ambiguity.
                 ecx.try_evaluate_added_goals()? == Certainty::Yes
             }
             && match base.kind() {
@@ -1015,7 +1016,7 @@ where
             ecx.add_goals(
                 GoalSource::ImplWhereBound,
                 b_data.iter().map(|pred| goal.with(cx, pred.with_self_ty(cx, a_ty))),
-            );
+            )?;
 
             // The type must be `Sized` to be unsized.
             ecx.add_goal(
@@ -1028,10 +1029,10 @@ where
                         [a_ty],
                     ),
                 ),
-            );
+            )?;
 
             // The type must outlive the lifetime of the `dyn` we're unsizing into.
-            ecx.add_goal(GoalSource::Misc, goal.with(cx, ty::OutlivesPredicate(a_ty, b_region)));
+            ecx.add_goal(GoalSource::Misc, goal.with(cx, ty::OutlivesPredicate(a_ty, b_region)))?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -1082,7 +1083,6 @@ where
                                     ecx.try_evaluate_added_goals()
                                 },
                             )
-                            .map_err(Into::into)
                         })
                         .is_ok()
             };
@@ -1121,11 +1121,9 @@ where
                             return Err(NoSolution.into());
                         };
                         if matching_projections.next().is_some() {
-                            return ecx
-                                .evaluate_added_goals_and_make_canonical_response(
-                                    Certainty::AMBIGUOUS,
-                                )
-                                .map_err(Into::into);
+                            return ecx.evaluate_added_goals_and_make_canonical_response(
+                                Certainty::AMBIGUOUS,
+                            );
                         }
                         ecx.enter_forall_with_assumptions(
                             target_projection,
@@ -1151,9 +1149,9 @@ where
             ecx.add_goal(
                 GoalSource::ImplWhereBound,
                 Goal::new(ecx.cx(), param_env, ty::OutlivesPredicate(a_region, b_region)),
-            );
+            )?;
 
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes).map_err(Into::into)
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
 
@@ -1232,7 +1230,7 @@ where
                     [a_tail_ty, b_tail_ty],
                 ),
             ),
-        );
+        )?;
         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -1248,13 +1246,9 @@ where
         let self_ty = goal.predicate.self_ty();
         let check_impls = || {
             let mut disqualifying_impl = None;
-            self.cx().for_each_relevant_impl(
-                goal.predicate.def_id(),
-                goal.predicate.self_ty(),
-                |impl_def_id| {
-                    disqualifying_impl = Some(impl_def_id);
-                },
-            );
+            self.cx().for_each_relevant_impl(goal.predicate.trait_ref, |impl_def_id| {
+                disqualifying_impl = Some(impl_def_id);
+            });
             if let Some(def_id) = disqualifying_impl {
                 trace!(?def_id, ?goal, "disqualified auto-trait implementation");
                 // No need to actually consider the candidate here,
@@ -1284,13 +1278,14 @@ where
             ty::Dynamic(..)
             | ty::Param(..)
             | ty::Foreign(..)
-            | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Free { .. } | ty::Inherent { .. },
-                ..
-            })
+            | ty::Alias(
+                ty::IsRigid::Yes,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Free { .. } | ty::Inherent { .. },
+                    ..
+                },
+            )
             | ty::Placeholder(..) => Some(Err(NoSolution.into())),
-
-            ty::Infer(_) | ty::Bound(_, _) => panic!("unexpected type `{self_ty:?}`"),
 
             // Coroutines have one special built-in candidate, `Unpin`, which
             // takes precedence over the structural auto trait candidate being
@@ -1314,7 +1309,7 @@ where
             // okay to consider auto traits because that'll reveal its hidden type. For
             // non-opaque aliases, we will not assemble any candidates since there's no way
             // to further look into its type.
-            ty::Alias(..) => None,
+            ty::Alias(ty::IsRigid::Yes, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => None,
 
             // For rigid types, any possible implementation that could apply to
             // the type (even if after unification and processing nested goals
@@ -1344,6 +1339,10 @@ where
             | ty::Adt(_, _)
             | ty::UnsafeBinder(_) => check_impls(),
             ty::Error(_) => None,
+
+            ty::Infer(_) | ty::Alias(ty::IsRigid::No, _) | ty::Bound(_, _) => {
+                panic!("unexpected type `{self_ty:?}`")
+            }
         }
     }
 
@@ -1372,7 +1371,7 @@ where
                         .collect::<Vec<_>>()
                 },
             );
-            ecx.add_goals(GoalSource::ImplWhereBound, goals);
+            ecx.add_goals(GoalSource::ImplWhereBound, goals)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -1587,9 +1586,7 @@ where
     ) -> Option<Result<Candidate<I>, NoSolutionOrRerunNonErased>> {
         if let ty::Coroutine(def_id, _) = self_ty.kind() {
             match self.typing_mode() {
-                TypingMode::Analysis {
-                    defining_opaque_types_and_generators: stalled_generators,
-                } => {
+                TypingMode::Typeck { defining_opaque_types_and_generators: stalled_generators } => {
                     if def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
                     {
                         return Some(self.forced_ambiguity(MaybeInfo {
@@ -1609,8 +1606,9 @@ where
                 }
                 TypingMode::Coherence
                 | TypingMode::PostAnalysis
-                | TypingMode::Borrowck { defining_opaque_types: _ }
-                | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
+                | TypingMode::Codegen
+                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+                | TypingMode::PostBorrowck { defined_opaque_types: _ } => {}
             }
         }
 

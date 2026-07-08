@@ -68,7 +68,7 @@ where
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         Self::probe_and_match_goal_against_assumption(ecx, parent_source, goal, assumption, |ecx| {
             for (nested_source, goal) in requirements {
-                ecx.add_goal(nested_source, goal);
+                ecx.add_goal(nested_source, goal)?;
             }
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
@@ -113,7 +113,7 @@ where
                 bounds,
             ) {
                 Ok(requirements) => {
-                    ecx.add_goals(GoalSource::ImplWhereBound, requirements);
+                    ecx.add_goals(GoalSource::ImplWhereBound, requirements)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 Err(_) => {
@@ -224,6 +224,7 @@ where
     /// but prevents incorrect normalization while hiding any trait errors.
     fn consider_error_guaranteed_candidate(
         ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
         guar: I::ErrorGuaranteed,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
 
@@ -480,10 +481,11 @@ where
                 // See trait-system-refactor-initiative#226 for some ideas here.
                 let assemble_impls = match self.typing_mode() {
                     TypingMode::Coherence => true,
-                    TypingMode::Analysis { .. }
-                    | TypingMode::Borrowck { .. }
-                    | TypingMode::PostBorrowckAnalysis { .. }
+                    TypingMode::Typeck { .. }
+                    | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::PostBorrowck { .. }
                     | TypingMode::PostAnalysis
+                    | TypingMode::Codegen
                     | TypingMode::ErasedNotCoherence(MayBeErased) => !candidates.iter().any(|c| {
                         matches!(
                             c.source,
@@ -537,28 +539,24 @@ where
         candidates: &mut Vec<Candidate<I>>,
     ) -> Result<(), RerunNonErased> {
         let cx = self.cx();
-        cx.for_each_relevant_impl(
-            goal.predicate.trait_def_id(cx),
-            goal.predicate.self_ty(),
-            |impl_def_id| -> Result<_, _> {
-                // For every `default impl`, there's always a non-default `impl`
-                // that will *also* apply. There's no reason to register a candidate
-                // for this impl, since it is *not* proof that the trait goal holds.
-                if cx.impl_is_default(impl_def_id) {
-                    return Ok(());
-                }
-                match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
-                    ecx.evaluate_added_goals_and_make_canonical_response(certainty)
-                })
-                .map_err_to_rerun()?
-                {
-                    Ok(candidate) => candidates.push(candidate),
-                    Err(NoSolution) => {}
-                }
+        cx.for_each_relevant_impl(goal.predicate.trait_ref(cx), |impl_def_id| -> Result<_, _> {
+            // For every `default impl`, there's always a non-default `impl`
+            // that will *also* apply. There's no reason to register a candidate
+            // for this impl, since it is *not* proof that the trait goal holds.
+            if cx.impl_is_default(impl_def_id) {
+                return Ok(());
+            }
+            match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
+                ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+            })
+            .map_err_to_rerun()?
+            {
+                Ok(candidate) => candidates.push(candidate),
+                Err(NoSolution) => {}
+            }
 
-                Ok(())
-            },
-        )
+            Ok(())
+        })
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -577,8 +575,8 @@ where
         // Instead of adding the logic here, it's a better idea to add it in
         // `EvalCtxt::disqualify_auto_trait_candidate_due_to_possible_impl` in
         // `solve::trait_goals` instead.
-        let result = if let Err(guar) = goal.predicate.error_reported() {
-            G::consider_error_guaranteed_candidate(self, guar)
+        let result = if let ty::Error(guar) = goal.predicate.self_ty().kind() {
+            G::consider_error_guaranteed_candidate(self, goal, guar)
         } else if cx.trait_is_auto(trait_def_id) {
             G::consider_auto_trait_candidate(self, goal)
         } else if cx.trait_is_alias(trait_def_id) {
@@ -739,7 +737,7 @@ where
         candidates: &mut Vec<Candidate<I>>,
         consider_self_bounds: AliasBoundKind,
     ) -> Result<(), RerunNonErased> {
-        let alias_ty = match self_ty.kind() {
+        let (alias_ty, def_id) = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -788,9 +786,20 @@ where
             }
 
             ty::Alias(
-                alias_ty @ AliasTy { kind: ty::Projection { .. } | ty::Opaque { .. }, .. },
-            ) => alias_ty,
-            ty::Alias(AliasTy { kind: ty::Inherent { .. } | ty::Free { .. }, .. }) => {
+                ty::IsRigid::Yes,
+                alias_ty @ AliasTy { kind: ty::Projection { def_id }, .. },
+            ) => (alias_ty, def_id.into()),
+
+            ty::Alias(ty::IsRigid::Yes, alias_ty @ AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+                (alias_ty, def_id.into())
+            }
+
+            ty::Alias(ty::IsRigid::No, _) => unreachable!("non-rigid self type: {self_ty:?}"),
+
+            ty::Alias(
+                ty::IsRigid::Yes,
+                AliasTy { kind: ty::Inherent { .. } | ty::Free { .. }, .. },
+            ) => {
                 self.cx().delay_bug(format!("could not normalize {self_ty:?}, it is not WF"));
                 return Ok(());
             }
@@ -800,7 +809,7 @@ where
             AliasBoundKind::SelfBounds => {
                 for assumption in self
                     .cx()
-                    .item_self_bounds(alias_ty.kind.def_id())
+                    .item_self_bounds(def_id)
                     .iter_instantiated(self.cx(), alias_ty.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
@@ -816,7 +825,7 @@ where
             AliasBoundKind::NonSelfBounds => {
                 for assumption in self
                     .cx()
-                    .item_non_self_bounds(alias_ty.kind.def_id())
+                    .item_non_self_bounds(def_id)
                     .iter_instantiated(self.cx(), alias_ty.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
@@ -833,12 +842,12 @@ where
 
         candidates.extend(G::consider_additional_alias_assumptions(self, goal, alias_ty));
 
-        if !matches!(alias_ty.kind, ty::Projection { .. }) {
+        let Some(projection_ty) = alias_ty.try_to_projection() else {
             return Ok(());
-        }
+        };
 
         // Recurse on the self type of the projection.
-        match self.structurally_normalize_ty(goal.param_env, alias_ty.self_ty()) {
+        match self.structurally_normalize_ty(goal.param_env, projection_ty.projection_self_ty()) {
             Ok(next_self_ty) => self.assemble_alias_bound_candidates_recur(
                 next_self_ty,
                 goal,
@@ -966,7 +975,7 @@ where
                     elaborate::elaborate(cx, [predicate])
                         .skip(1)
                         .map(|predicate| goal.with(cx, predicate)),
-                );
+                )?;
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
         })
@@ -1052,11 +1061,12 @@ where
         let self_ty = goal.predicate.self_ty();
         // We only use this hack during HIR typeck.
         let opaque_types = match self.typing_mode() {
-            TypingMode::Analysis { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
+            TypingMode::Typeck { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
             TypingMode::Coherence
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => vec![],
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => vec![],
             TypingMode::ErasedNotCoherence(MayBeErased) => {
                 self.opaque_accesses
                     .rerun_if_any_opaque_has_infer_as_hidden_type(RerunReason::SelfTyInfer)?;
@@ -1069,12 +1079,12 @@ where
             return Ok(());
         }
 
-        for &alias_ty in &opaque_types {
-            debug!("self ty is sub unified with {alias_ty:?}");
+        for &opaque_ty in &opaque_types {
+            debug!("self ty is sub unified with {opaque_ty:?}");
 
             struct ReplaceOpaque<I: Interner> {
                 cx: I,
-                alias_ty: ty::AliasTy<I>,
+                opaque_ty: ty::OpaqueAliasTy<I>,
                 self_ty: I::Ty,
             }
             impl<I: Interner> TypeFolder<I> for ReplaceOpaque<I> {
@@ -1082,8 +1092,11 @@ where
                     self.cx
                 }
                 fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-                    if let ty::Alias(alias_ty) = ty.kind() {
-                        if alias_ty == self.alias_ty {
+                    if let ty::Alias(is_rigid, alias_ty) = ty.kind()
+                        && let Some(opaque_ty) = alias_ty.try_to_opaque()
+                    {
+                        debug_assert_eq!(is_rigid, ty::IsRigid::No);
+                        if opaque_ty == self.opaque_ty {
                             return self.self_ty;
                         }
                     }
@@ -1100,12 +1113,12 @@ where
             // in a `?x: Trait<u32>` alias-bound candidate.
             for item_bound in self
                 .cx()
-                .item_self_bounds(alias_ty.kind.def_id())
-                .iter_instantiated(self.cx(), alias_ty.args)
+                .item_self_bounds(opaque_ty.kind.into())
+                .iter_instantiated(self.cx(), opaque_ty.args)
                 .map(Unnormalized::skip_norm_wip)
             {
                 let assumption =
-                    item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), alias_ty, self_ty });
+                    item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), opaque_ty, self_ty });
                 candidates.extend(G::probe_and_match_goal_against_assumption(
                     self,
                     CandidateSource::AliasBound(AliasBoundKind::SelfBounds),

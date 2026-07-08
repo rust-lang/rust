@@ -35,7 +35,7 @@ impl<'tcx> TypeError<'tcx> {
         }
 
         match self {
-            TypeError::CyclicTy(_) => "cyclic type of infinite size".into(),
+            TypeError::CyclicTy(_) => "recursive type with infinite-size name".into(),
             TypeError::CyclicConst(_) => "encountered a self-referencing constant".into(),
             TypeError::Mismatch => "types differ".into(),
             TypeError::PolarityMismatch(values) => {
@@ -96,10 +96,24 @@ impl<'tcx> TypeError<'tcx> {
                 if values.found { "variadic" } else { "non-variadic" }
             )
             .into(),
+            TypeError::SplatMismatch(ref values) => format!(
+                "expected fn with {}, found fn with {}",
+                if let Some(index) = values.expected {
+                    format!("arg {index} splatted")
+                } else {
+                    "no splatted arg".to_string()
+                },
+                if let Some(index) = values.found {
+                    format!("arg {index} splatted")
+                } else {
+                    "no splatted arg".to_string()
+                }
+            )
+            .into(),
             TypeError::ProjectionMismatched(ref values) => format!(
                 "expected `{}`, found `{}`",
-                tcx.def_path_str(values.expected),
-                tcx.def_path_str(values.found)
+                tcx.alias_term_kind_def_path_str(values.expected),
+                tcx.alias_term_kind_def_path_str(values.found)
             )
             .into(),
             TypeError::ExistentialMismatch(ref values) => report_maybe_different(
@@ -148,11 +162,11 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::FreshTy(_)) => "fresh type".into(),
             ty::Infer(ty::FreshIntTy(_)) => "fresh integral type".into(),
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
-            ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
-            }) => "associated type".into(),
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. }) => {
+                "associated type".into()
+            }
             ty::Param(p) => format!("type parameter `{p}`").into(),
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                 if tcx.ty_is_opaque_future(self) { "future".into() } else { "opaque type".into() }
             }
             ty::Error(_) => "type error".into(),
@@ -207,12 +221,12 @@ impl<'tcx> Ty<'tcx> {
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),
-            ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
-            }) => "associated type".into(),
-            ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => "type alias".into(),
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. }) => {
+                "associated type".into()
+            }
+            ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) => "type alias".into(),
             ty::Param(_) => "type parameter".into(),
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => "opaque type".into(),
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => "opaque type".into(),
         }
     }
 }
@@ -307,6 +321,19 @@ impl<'tcx> TyCtxt<'tcx> {
         match write!(file, "{regular}\n") {
             Ok(_) => short,
             Err(_) => regular,
+        }
+    }
+
+    pub fn alias_term_kind_def_path_str(self, alias: ty::AliasTermKind<'tcx>) -> String {
+        match alias {
+            ty::AliasTermKind::ProjectionTy { def_id }
+            | ty::AliasTermKind::InherentTy { def_id }
+            | ty::AliasTermKind::OpaqueTy { def_id }
+            | ty::AliasTermKind::FreeTy { def_id }
+            | ty::AliasTermKind::AnonConst { def_id }
+            | ty::AliasTermKind::ProjectionConst { def_id }
+            | ty::AliasTermKind::FreeConst { def_id }
+            | ty::AliasTermKind::InherentConst { def_id } => self.def_path_str(def_id),
         }
     }
 }

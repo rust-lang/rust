@@ -291,7 +291,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Sets the last OS error and writes -1 to dest place.
-    fn set_last_error_and_return(
+    fn set_errno_and_return_neg1(
         &mut self,
         err: impl Into<IoError>,
         dest: &MPlaceTy<'tcx>,
@@ -303,7 +303,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Sets the last OS error and return `-1` as a `i32`-typed Scalar
-    fn set_last_error_and_return_i32(
+    fn set_errno_and_return_neg1_i32(
         &mut self,
         err: impl Into<IoError>,
     ) -> InterpResult<'tcx, Scalar> {
@@ -313,7 +313,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Sets the last OS error and return `-1` as a `i64`-typed Scalar
-    fn set_last_error_and_return_i64(
+    fn set_errno_and_return_neg1_i64(
         &mut self,
         err: impl Into<IoError>,
     ) -> InterpResult<'tcx, Scalar> {

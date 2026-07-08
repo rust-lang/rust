@@ -62,4 +62,16 @@ pub mod issue_6546 {
     }
 }
 
+pub mod issue_17070 {
+    pub async fn returns_unit_error_async() -> Result<u32, ()> {
+        //~^ result_unit_err
+
+        Err(())
+    }
+
+    async fn private_unit_errors_async() -> Result<String, ()> {
+        Err(())
+    }
+}
+
 fn main() {}

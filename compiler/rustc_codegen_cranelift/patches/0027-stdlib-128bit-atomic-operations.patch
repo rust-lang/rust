@@ -34,17 +34,17 @@ index a60f0799c0e..af056fbf41f 100644
  #[cfg(target_has_atomic_load_store = "8")]
  #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 diff --git a/library/core/src/sync/atomic.rs b/library/core/src/sync/atomic.rs
-index bf2b6d59f88..d5ccce03bbf 100644
+index 8a9a0b5..92ed9a6 100644
 --- a/library/core/src/sync/atomic.rs
 +++ b/library/core/src/sync/atomic.rs
-@@ -3585,42 +3585,6 @@ pub const fn as_ptr(&self) -> *mut $int_type {
+@@ -3762,42 +3757,6 @@ atomic_int! {
      8,
      u64 AtomicU64
  }
 -#[cfg(target_has_atomic_load_store = "128")]
 -atomic_int! {
 -    cfg(target_has_atomic = "128"),
--    cfg(target_has_atomic_equal_alignment = "128"),
+-    cfg(target_has_atomic_primitive_alignment = "128"),
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    unstable(feature = "integer_atomics", issue = "99069"),
@@ -62,7 +62,7 @@ index bf2b6d59f88..d5ccce03bbf 100644
 -#[cfg(target_has_atomic_load_store = "128")]
 -atomic_int! {
 -    cfg(target_has_atomic = "128"),
--    cfg(target_has_atomic_equal_alignment = "128"),
+-    cfg(target_has_atomic_primitive_alignment = "128"),
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    unstable(feature = "integer_atomics", issue = "99069"),

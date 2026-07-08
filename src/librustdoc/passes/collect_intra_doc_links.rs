@@ -31,7 +31,7 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, info, instrument, trace};
 
 use crate::clean::utils::find_nearest_parent_module;
-use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType};
+use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType, reexport_chain};
 use crate::core::DocContext;
 use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, markdown_links};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
@@ -117,9 +117,9 @@ impl Res {
             DefKind::Fn | DefKind::AssocFn => return Suggestion::Function,
             // FIXME: handle macros with multiple kinds, and attribute/derive macros that aren't
             // proc macros
-            DefKind::Macro(MacroKinds::BANG) => return Suggestion::Macro,
-
+            DefKind::Macro(MacroKinds::ATTR) => "attribute",
             DefKind::Macro(MacroKinds::DERIVE) => "derive",
+            DefKind::Macro(_) => return Suggestion::Macro,
             DefKind::Struct => "struct",
             DefKind::Enum => "enum",
             DefKind::Trait => "trait",
@@ -328,7 +328,12 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
                             })
                         }
                     }
-                    _ => unreachable!(),
+                    _ => Err(UnresolvedPath {
+                        item_id,
+                        module_id,
+                        partial_res: Some(Res::Def(DefKind::TyAlias, did)),
+                        unresolved: variant_name.to_string().into(),
+                    }),
                 }
             }
             _ => Err(UnresolvedPath {
@@ -542,7 +547,7 @@ fn ty_to_res<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Res> {
         ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
             Res::from_def_id(tcx, did)
         }
-        ty::Alias(..)
+        ty::Alias(_, ..)
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
@@ -1143,10 +1148,19 @@ impl LinkCollector<'_, '_> {
             // `use` statement, we need to use the `def_id` of the `use` statement, not the
             // inlined item.
             // <https://github.com/rust-lang/rust/pull/151120>
-            let item_id = if let Some(inline_stmt_id) = item.inline_stmt_id
-                && find_attr!(tcx, inline_stmt_id, Deprecated { span, ..} if span == depr_span)
-            {
-                inline_stmt_id.to_def_id()
+            let item_id = if let Some(inline_stmt_id) = item.inline_stmt_id {
+                let target_def_id = item.item_id.expect_def_id();
+                reexport_chain(tcx, inline_stmt_id, target_def_id)
+                    .iter()
+                    .flat_map(|reexport| reexport.id())
+                    .find(|&reexport_def_id| {
+                        find_attr!(
+                            tcx,
+                            reexport_def_id,
+                            Deprecated { span, .. } if span == depr_span
+                        )
+                    })
+                    .unwrap_or(target_def_id)
             } else {
                 item.item_id.expect_def_id()
             };

@@ -16,7 +16,7 @@ use std::fmt::Write;
 use stdx::{always, format_to, never};
 use syntax::{
     AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize,
-    ast::{self, HasArgList, make, prec::ExprPrecedence},
+    ast::{self, HasArgList, prec::ExprPrecedence},
 };
 
 use ide_db::text_edit::TextEdit;
@@ -121,6 +121,17 @@ pub(crate) fn prepare_rename(
 // | VS Code | <kbd>F2</kbd> |
 //
 // ![Rename](https://user-images.githubusercontent.com/48062697/113065582-055aae80-91b1-11eb-8ade-2b58e6d81883.gif)
+//
+// #### Magic Renames
+//
+// rust-analyzer supports some special renames that do additional magic:
+//
+//  - **Anonymous lifetime renames**. You can rename `'_` to any lifetime name (the new name must start with `'`),
+//    and rust-analyzer will automatically add the new lifetime to the list of generic parameters.
+//  - **`self` renames**. You can rename parameters to/from `self`. Renaming `self` into another name will update
+//    all callers using method syntax to call the function like an associated function. Renaming to `self` is only
+//    supported for the first parameter inside an `impl` and when the `Self` type matches the type of the parameter,
+//    and will update callers to use method call syntax.
 pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
@@ -522,11 +533,11 @@ fn rename_to_self(
     };
     let first_param_ty = first_param.ty();
     let impl_ty = impl_.self_ty(sema.db);
-    let (ty, self_param) = if impl_ty.remove_ref().is_some() {
+    let (ty, self_param) = if impl_ty.is_reference() {
         // if the impl is a ref to the type we can just match the `&T` with self directly
         (first_param_ty.clone(), "self")
     } else {
-        first_param_ty.remove_ref().map_or((first_param_ty.clone(), "self"), |ty| {
+        first_param_ty.as_reference_inner().map_or((first_param_ty.clone(), "self"), |ty| {
             (ty, if first_param_ty.is_mutable_reference() { "&mut self" } else { "&self" })
         })
     };
@@ -813,16 +824,17 @@ fn rename_elided_lifetime(
     new_name: &str,
 ) -> RenameResult<SourceChange> {
     let parent = lifetime_token.parent().unwrap();
-    let root = parent.ancestors().last().unwrap();
+    let root = parent.tree_top();
 
     let mut builder = SourceChangeBuilder::new(position.file_id);
 
     let editor = builder.make_editor(&root);
+    let make = editor.make();
 
-    editor.replace(lifetime_token, make::lifetime(new_name).syntax().clone());
+    editor.replace(lifetime_token, make.lifetime(new_name).syntax().clone());
 
     if let Some(has_generic_params) = parent.ancestors().find_map(ast::AnyHasGenericParams::cast) {
-        let lifetime_param = make::lifetime_param(make::lifetime(new_name));
+        let lifetime_param = make.lifetime_param(make.lifetime(new_name));
         editor.add_generic_param(&has_generic_params, lifetime_param.into());
     }
 

@@ -8,6 +8,7 @@ platform.
 ## Target maintainers
 
 [@kjetilkjeka](https://github.com/kjetilkjeka)
+[@kulst](https://github.com/kulst)
 
 ## Requirements
 

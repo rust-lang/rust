@@ -142,9 +142,7 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
         // - if the item is an enum variant, refer to it via the enum
         let loc = variant.lookup(ctx.db);
         if let Some(mut path) = find_path_inner(ctx, ItemInNs::Types(loc.parent.into()), max_len) {
-            path.push_segment(
-                loc.parent.enum_variants(ctx.db).variants[loc.index as usize].1.clone(),
-            );
+            path.push_segment(loc.name.clone());
             return Some(path);
         }
         // If this doesn't work, it seems we have no way of referring to the

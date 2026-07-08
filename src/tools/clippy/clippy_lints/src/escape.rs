@@ -2,12 +2,12 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir;
 use rustc_abi::ExternAbi;
 use rustc_hir::def::DefKind;
-use rustc_hir::{Body, FnDecl, HirId, HirIdSet, Node, Pat, PatKind, intravisit};
+use rustc_hir::{Body, FnDecl, HirId, HirIdSet, PatKind, intravisit};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -52,15 +52,16 @@ declare_clippy_lint! {
 
 impl_lint_pass!(BoxedLocal => [BOXED_LOCAL]);
 
-fn is_non_trait_box(ty: Ty<'_>) -> bool {
-    ty.boxed_ty().is_some_and(|boxed| !boxed.is_trait())
+/// Whether `ty` is a `Box<T>` where `T` is not a trait object and is small enough to live on the
+/// stack (large types are boxed to avoid stack overflows).
+fn is_small_non_trait_box<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, too_large_for_stack: u64) -> bool {
+    ty.boxed_ty().is_some_and(|boxed| {
+        !boxed.is_trait() && cx.layout_of(boxed).map_or(0, |l| l.size.bytes()) <= too_large_for_stack
+    })
 }
 
-struct EscapeDelegate<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
+struct EscapeDelegate {
     set: HirIdSet,
-    trait_self_ty: Option<Ty<'tcx>>,
-    too_large_for_stack: u64,
 }
 
 impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
@@ -73,6 +74,11 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         _: Span,
         fn_def_id: LocalDefId,
     ) {
+        // Skip closures
+        if matches!(fn_kind, intravisit::FnKind::Closure) {
+            return;
+        }
+
         if let Some(header) = fn_kind.header()
             && header.abi != ExternAbi::Rust
         {
@@ -97,12 +103,42 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             _ => {},
         }
 
-        let mut v = EscapeDelegate {
-            cx,
-            set: HirIdSet::default(),
-            trait_self_ty,
-            too_large_for_stack: self.too_large_for_stack,
-        };
+        let typeck_results = cx.tcx.typeck_body(body.id());
+
+        // Seed the set with the `Box` parameters that could be unboxed. The `ExprUseVisitor` walk
+        // below then removes any that escape by being moved or borrowed.
+        let set: HirIdSet = body
+            .params
+            .iter()
+            .filter_map(|param| {
+                // Only simple bindings (`x: Box<_>`) bind a local that the walk can track and report.
+                if !matches!(param.pat.kind, PatKind::Binding(..)) {
+                    return None;
+                }
+
+                let ty = typeck_results.pat_ty(param.pat);
+                if !is_small_non_trait_box(cx, ty, self.too_large_for_stack) {
+                    return None;
+                }
+
+                // skip `self` parameters whose type contains `Self` (i.e.: `self: Box<Self>`), see #4804
+                if let Some(trait_self_ty) = trait_self_ty
+                    && cx.tcx.hir_name(param.pat.hir_id) == kw::SelfLower
+                    && ty.contains(trait_self_ty)
+                {
+                    return None;
+                }
+
+                Some(param.pat.hir_id)
+            })
+            .collect();
+
+        // Without any candidate parameter, the expensive `ExprUseVisitor` walk can never lint.
+        if set.is_empty() {
+            return;
+        }
+
+        let mut v = EscapeDelegate { set };
 
         ExprUseVisitor::for_clippy(cx, fn_def_id, &mut v)
             .consume_body(body)
@@ -120,20 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
     }
 }
 
-// TODO: Replace with Map::is_argument(..) when it's fixed
-fn is_argument(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    match tcx.hir_node(id) {
-        Node::Pat(Pat {
-            kind: PatKind::Binding(..),
-            ..
-        }) => (),
-        _ => return false,
-    }
-
-    matches!(tcx.parent_hir_node(id), Node::Param(_))
-}
-
-impl<'tcx> Delegate<'tcx> for EscapeDelegate<'_, 'tcx> {
+impl<'tcx> Delegate<'tcx> for EscapeDelegate {
     fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         if cmt.place.projections.is_empty()
             && let PlaceBase::Local(lid) = cmt.place.base
@@ -154,39 +177,7 @@ impl<'tcx> Delegate<'tcx> for EscapeDelegate<'_, 'tcx> {
         }
     }
 
-    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
-        if cmt.place.projections.is_empty() && is_argument(self.cx.tcx, cmt.hir_id) {
-            // Skip closure arguments
-            let parent_id = self.cx.tcx.parent_hir_id(cmt.hir_id);
-            if let Node::Expr(..) = self.cx.tcx.parent_hir_node(parent_id) {
-                return;
-            }
-
-            // skip if there is a `self` parameter binding to a type
-            // that contains `Self` (i.e.: `self: Box<Self>`), see #4804
-            if let Some(trait_self_ty) = self.trait_self_ty
-                && self.cx.tcx.hir_name(cmt.hir_id) == kw::SelfLower
-                && cmt.place.ty().contains(trait_self_ty)
-            {
-                return;
-            }
-
-            if is_non_trait_box(cmt.place.ty()) && !self.is_large_box(cmt.place.ty()) {
-                self.set.insert(cmt.hir_id);
-            }
-        }
-    }
+    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
-}
-
-impl<'tcx> EscapeDelegate<'_, 'tcx> {
-    fn is_large_box(&self, ty: Ty<'tcx>) -> bool {
-        // Large types need to be boxed to avoid stack overflows.
-        if let Some(boxed_ty) = ty.boxed_ty() {
-            self.cx.layout_of(boxed_ty).map_or(0, |l| l.size.bytes()) > self.too_large_for_stack
-        } else {
-            false
-        }
-    }
 }

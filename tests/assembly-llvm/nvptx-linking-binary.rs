@@ -1,4 +1,4 @@
-//@ assembly-output: ptx-linker
+//@ assembly-output: emit-asm
 //@ compile-flags: --crate-type bin
 //@ only-nvptx64
 //@ ignore-nvptx64

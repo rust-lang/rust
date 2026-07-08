@@ -1,60 +1,48 @@
 use hir::HirId;
 use hir::def::{DefKind, Res};
 use rustc_ast::*;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::GenericParamDefKind;
+use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_span::symbol::kw;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, sym};
 
 use crate::LoweringContext;
+use crate::delegation::resolution::resolver::DelegationResolver;
+use crate::diagnostics::DelegationInfersMismatch;
 
-#[derive(Clone, Copy)]
-pub(super) enum DelegationGenericsKind {
-    /// User-specified args are present: `reuse foo::<String>;`.
-    UserSpecified,
-    /// The default case when no user-specified args are present: `reuse Trait::foo;`.
-    Default,
-    /// In free-to-trait reuse, when user specified args for trait `reuse Trait::<i32>::foo;`
-    /// in this case we need to both generate `Self` and process user args.
-    SelfAndUserSpecified,
-    /// In delegations from trait impl to other entities like free functions or trait functions,
-    /// we want to generate a function whose generics matches generics of signature function
-    /// in trait.
-    TraitImpl(bool /* Has user-specified args */),
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(super) enum GenericsPosition {
     Parent,
     Child,
 }
 
-pub(super) struct DelegationGenerics<T> {
-    generics: T,
-    kind: DelegationGenericsKind,
-    pos: GenericsPosition,
+#[derive(Debug)]
+pub(super) enum GenericArgSlot<T> {
+    UserSpecified,
+    Generate(T, Option<usize> /* Infer arg index from AST */),
 }
 
-impl<'hir> DelegationGenerics<&'hir [ty::GenericParamDef]> {
-    fn default(generics: &'hir [ty::GenericParamDef], pos: GenericsPosition) -> Self {
-        DelegationGenerics { generics, pos, kind: DelegationGenericsKind::Default }
-    }
+pub(super) struct DelegationGenerics<T> {
+    data: T,
+    pos: GenericsPosition,
+    trait_impl: bool,
+}
 
-    fn user_specified(generics: &'hir [ty::GenericParamDef], pos: GenericsPosition) -> Self {
-        DelegationGenerics { generics, pos, kind: DelegationGenericsKind::UserSpecified }
-    }
+type TyGenerics<'hir> = Vec<GenericArgSlot<&'hir ty::GenericParamDef>>;
 
-    fn trait_impl(
-        generics: &'hir [ty::GenericParamDef],
-        user_specified: bool,
+impl<'hir> DelegationGenerics<TyGenerics<'hir>> {
+    fn generate_all(
+        params: &'hir [ty::GenericParamDef],
         pos: GenericsPosition,
+        trait_impl: bool,
     ) -> Self {
         DelegationGenerics {
-            generics,
+            data: params.iter().map(|p| GenericArgSlot::Generate(p, None)).collect(),
             pos,
-            kind: DelegationGenericsKind::TraitImpl(user_specified),
+            trait_impl,
         }
     }
 }
@@ -70,123 +58,452 @@ impl<'hir> DelegationGenerics<&'hir [ty::GenericParamDef]> {
 /// (i.e., method call scenarios), in such a case this approach helps
 /// a lot as if `into_hir_generics` will not be called then uplifting will not happen.
 pub(super) enum HirOrTyGenerics<'hir> {
-    Ty(DelegationGenerics<&'hir [ty::GenericParamDef]>),
+    Ty(DelegationGenerics<TyGenerics<'hir>>),
     Hir(DelegationGenerics<&'hir hir::Generics<'hir>>),
 }
 
 pub(super) struct GenericsGenerationResult<'hir> {
     pub(super) generics: HirOrTyGenerics<'hir>,
-    pub(super) args_segment_id: Option<HirId>,
+    pub(super) args_segment_id: HirId,
+    pub(super) use_for_sig_inheritance: bool,
+}
+
+impl GenericsGenerationResult<'_> {
+    pub(super) fn segment_id_for_sig(&self) -> Option<HirId> {
+        self.use_for_sig_inheritance.then(|| self.args_segment_id)
+    }
 }
 
 pub(super) struct GenericsGenerationResults<'hir> {
     pub(super) parent: GenericsGenerationResult<'hir>,
     pub(super) child: GenericsGenerationResult<'hir>,
-    pub(super) self_ty_id: Option<HirId>,
-    pub(super) propagate_self_ty: bool,
+    pub(super) self_ty_propagation_kind: Option<hir::DelegationSelfTyPropagationKind>,
 }
 
-pub(super) struct GenericArgsPropagationDetails {
-    pub(super) should_propagate: bool,
-    pub(super) use_args_in_sig_inheritance: bool,
+pub(super) struct DelegationGenericArgsIterator<'hir> {
+    index: usize = Default::default(),
+    params: &'hir [hir::GenericParam<'hir>],
 }
 
-impl DelegationGenericsKind {
-    fn args_propagation_details(self) -> GenericArgsPropagationDetails {
-        match self {
-            DelegationGenericsKind::UserSpecified
-            | DelegationGenericsKind::SelfAndUserSpecified => GenericArgsPropagationDetails {
-                should_propagate: false,
-                use_args_in_sig_inheritance: true,
-            },
-            DelegationGenericsKind::TraitImpl(user_specified) => GenericArgsPropagationDetails {
-                should_propagate: !user_specified,
-                use_args_in_sig_inheritance: false,
-            },
-            DelegationGenericsKind::Default => GenericArgsPropagationDetails {
-                should_propagate: true,
-                use_args_in_sig_inheritance: false,
-            },
+/// During generic args propagation we need to create generic args
+/// (and their `HirId`s) on demand, as some of generic args can not be used
+/// and in this case an assert of an unseen `HirId` will be triggered. Moreover,
+/// when replacing infers with generated generic params we should reuse existing
+/// `HirId` of replaced infer, thus this iterator abstracts the way `HirId`s are
+/// created for new generic args.
+impl<'hir> DelegationGenericArgsIterator<'hir> {
+    pub(super) fn next(
+        &mut self,
+        ctx: &mut LoweringContext<'_, 'hir>,
+        hir_id_factory: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> HirId,
+    ) -> Option<hir::GenericArg<'hir>> {
+        let p = loop {
+            if self.index >= self.params.len() {
+                return None;
+            }
+
+            let p = self.params[self.index];
+            self.index += 1;
+
+            // Skip self generic arg, we do not need to propagate it.
+            if p.name.ident().name == kw::SelfUpper || p.is_impl_trait() {
+                continue;
+            }
+
+            break p;
+        };
+
+        let hir_id = hir_id_factory(ctx);
+
+        Some(match p.kind {
+            hir::GenericParamKind::Lifetime { .. } => {
+                hir::GenericArg::Lifetime(ctx.arena.alloc(hir::Lifetime {
+                    hir_id,
+                    ident: p.name.ident(),
+                    kind: hir::LifetimeKind::Param(p.def_id),
+                    source: hir::LifetimeSource::Path { angle_brackets: hir::AngleBrackets::Full },
+                    syntax: hir::LifetimeSyntax::ExplicitBound,
+                }))
+            }
+            hir::GenericParamKind::Type { .. } => hir::GenericArg::Type(ctx.arena.alloc(hir::Ty {
+                hir_id,
+                span: p.span,
+                kind: hir::TyKind::Path(ctx.create_generic_arg_path(&p)),
+            })),
+            hir::GenericParamKind::Const { .. } => {
+                hir::GenericArg::Const(ctx.arena.alloc(hir::ConstArg {
+                    hir_id,
+                    kind: hir::ConstArgKind::Path(ctx.create_generic_arg_path(&p)),
+                    span: p.span,
+                }))
+            }
+        })
+    }
+
+    pub(super) fn consume_all(
+        mut self,
+        ctx: &mut LoweringContext<'_, 'hir>,
+    ) -> Vec<hir::GenericArg<'hir>> {
+        let mut args = vec![];
+        while let Some(arg) = self.next(ctx, |ctx| ctx.next_id()) {
+            args.push(arg);
         }
+
+        args
     }
 }
 
 impl<'hir> HirOrTyGenerics<'hir> {
-    pub(super) fn into_hir_generics(
-        &mut self,
-        ctx: &mut LoweringContext<'_, 'hir>,
-        span: Span,
-    ) -> &mut HirOrTyGenerics<'hir> {
+    pub(super) fn into_hir_generics(&mut self, ctx: &mut LoweringContext<'_, 'hir>, span: Span) {
         if let HirOrTyGenerics::Ty(ty) = self {
-            let rename_self = matches!(ty.pos, GenericsPosition::Child);
-            let params = ctx.uplift_delegation_generic_params(span, ty.generics, rename_self);
+            let rename_self = ty.pos == GenericsPosition::Child;
+            let params = ctx.uplift_delegation_generic_params(span, &ty.data, rename_self);
 
             *self = HirOrTyGenerics::Hir(DelegationGenerics {
-                generics: params,
-                kind: ty.kind,
+                data: params,
                 pos: ty.pos,
+                trait_impl: ty.trait_impl,
             });
         }
-
-        self
     }
 
     fn hir_generics_or_empty(&self) -> &'hir hir::Generics<'hir> {
         match self {
             HirOrTyGenerics::Ty(_) => hir::Generics::empty(),
-            HirOrTyGenerics::Hir(hir) => hir.generics,
+            HirOrTyGenerics::Hir(hir) => hir.data,
         }
     }
 
-    pub(super) fn into_generic_args(
-        &self,
-        ctx: &mut LoweringContext<'_, 'hir>,
-        span: Span,
-    ) -> &'hir hir::GenericArgs<'hir> {
+    pub(super) fn create_args_iterator(&self) -> DelegationGenericArgsIterator<'hir> {
         match self {
             HirOrTyGenerics::Ty(_) => {
-                bug!("Attempting to get generic args before uplifting to HIR")
+                bug!("attempting to get generic args before uplifting to HIR")
             }
             HirOrTyGenerics::Hir(hir) => {
-                let add_lifetimes = matches!(hir.pos, GenericsPosition::Parent);
-                ctx.create_generics_args_from_params(hir.generics.params, add_lifetimes, span)
+                DelegationGenericArgsIterator { params: hir.data.params, .. }
             }
         }
     }
 
-    pub(super) fn args_propagation_details(&self) -> GenericArgsPropagationDetails {
+    pub(super) fn infer_indices(&self) -> FxHashSet<usize> {
         match self {
-            HirOrTyGenerics::Ty(ty) => ty.kind.args_propagation_details(),
-            HirOrTyGenerics::Hir(hir) => hir.kind.args_propagation_details(),
+            HirOrTyGenerics::Ty(ty) => ty
+                .data
+                .iter()
+                .flat_map(|slot| match slot {
+                    GenericArgSlot::Generate(_, Some(idx)) => Some(*idx),
+                    _ => None,
+                })
+                .collect(),
+            HirOrTyGenerics::Hir(_) => bug!("accessed infer indices on uplifted generics"),
+        }
+    }
+
+    pub(super) fn is_trait_impl(&self) -> bool {
+        match self {
+            HirOrTyGenerics::Ty(ty) => ty.trait_impl,
+            HirOrTyGenerics::Hir(hir) => hir.trait_impl,
+        }
+    }
+
+    pub(super) fn find_self_param(&self) -> &'hir hir::GenericParam<'hir> {
+        match self {
+            HirOrTyGenerics::Ty(_) => {
+                bug!("accessed ty-level generics while searching for uplifted `Self` param")
+            }
+            HirOrTyGenerics::Hir(hir) => hir
+                .data
+                .params
+                .iter()
+                .find(|p| p.name.ident().name == kw::SelfUpper)
+                .expect("`Self` generic param is not found while expected"),
+        }
+    }
+
+    pub(crate) fn pos(&self) -> GenericsPosition {
+        match self {
+            HirOrTyGenerics::Ty(ty) => ty.pos,
+            HirOrTyGenerics::Hir(hir) => hir.pos,
         }
     }
 }
 
 impl<'hir> GenericsGenerationResult<'hir> {
-    fn new(
-        generics: DelegationGenerics<&'hir [ty::GenericParamDef]>,
-    ) -> GenericsGenerationResult<'hir> {
-        GenericsGenerationResult { generics: HirOrTyGenerics::Ty(generics), args_segment_id: None }
+    fn new(generics: DelegationGenerics<TyGenerics<'hir>>) -> GenericsGenerationResult<'hir> {
+        GenericsGenerationResult {
+            generics: HirOrTyGenerics::Ty(generics),
+            args_segment_id: HirId::INVALID,
+            use_for_sig_inheritance: false,
+        }
+    }
+}
+
+enum ParentSegmentArgs<'a> {
+    /// Parent segment is valid and generic args are specified:
+    /// `reuse Trait::<'static, ()>::foo;`.
+    Specified(&'a AngleBracketedArgs),
+    /// Parent segment is valid and args are not specified:
+    /// `reuse Trait::foo;`.
+    NotSpecified,
+    /// Parent segment does not exist (`reuse foo`) or we can not
+    /// add generics to it:
+    /// ```rust
+    /// mod to_reuse {
+    ///     fn foo() {}
+    /// }
+    ///
+    /// // Can't add generic args to module.
+    /// reuse to_reuse::foo;
+    /// ```
+    Invalid,
+}
+
+struct GenericsResolution<'a, 'tcx> {
+    trait_impl: bool,
+
+    parent_args: ParentSegmentArgs<'a>,
+    child_args: Option<&'a AngleBracketedArgs>,
+
+    sig_parent_params: &'tcx [ty::GenericParamDef],
+    sig_child_params: &'tcx [ty::GenericParamDef],
+
+    free_to_trait_delegation: bool,
+    /// `reuse Trait::foo;`.
+    qself_is_none: bool,
+    /// `reuse <_ as Trait>::foo;`.
+    qself_is_infer: bool,
+    /// Whether we should generate `Self` generic param.
+    generate_self: bool,
+}
+
+impl<'hir> DelegationResolver<'_, 'hir> {
+    fn resolve_generics<'a>(
+        &self,
+        delegation: &'a Delegation,
+        sig_id: DefId,
+    ) -> Result<GenericsResolution<'a, 'hir>, ErrorGuaranteed> {
+        let tcx = self.tcx();
+        let delegation_parent_kind = tcx.def_kind(tcx.local_parent(self.owner_id()));
+
+        let delegation_in_free_ctx =
+            !matches!(delegation_parent_kind, DefKind::Trait | DefKind::Impl { .. });
+
+        let sig_parent = tcx.parent(sig_id);
+        let sig_in_trait = matches!(tcx.def_kind(sig_parent), DefKind::Trait);
+        let free_to_trait_delegation = delegation_in_free_ctx && sig_in_trait;
+
+        let mut sig_parent_params: &[ty::GenericParamDef] = &[];
+
+        let qself_is_infer =
+            delegation.qself.as_ref().is_some_and(|qself| qself.ty.is_maybe_parenthesised_infer());
+
+        let qself_is_none = delegation.qself.is_none();
+
+        let parent_args = if let [.., parent_segment, _] = &delegation.path.segments[..] {
+            let res = self.get_resolution_id(parent_segment.id)?;
+            if matches!(tcx.def_kind(res), DefKind::Trait | DefKind::TraitAlias) {
+                sig_parent_params = &tcx.generics_of(sig_parent).own_params;
+                self.get_user_args(parent_segment)
+                    .map(|args| ParentSegmentArgs::Specified(args))
+                    .unwrap_or(ParentSegmentArgs::NotSpecified)
+            } else {
+                ParentSegmentArgs::Invalid
+            }
+        } else {
+            ParentSegmentArgs::Invalid
+        };
+
+        Ok(GenericsResolution {
+            parent_args,
+            sig_parent_params,
+            qself_is_none,
+            qself_is_infer,
+            free_to_trait_delegation,
+            generate_self: free_to_trait_delegation && (qself_is_none || qself_is_infer),
+            trait_impl: matches!(delegation_parent_kind, DefKind::Impl { of_trait: true }),
+            sig_child_params: &tcx.generics_of(sig_id).own_params,
+            child_args: self.get_user_args(
+                delegation.path.segments.last().expect("must be at least one segment"),
+            ),
+        })
+    }
+
+    fn get_user_args<'a>(&self, segment: &'a PathSegment) -> Option<&'a AngleBracketedArgs> {
+        let Some(args) = &segment.args else { return None };
+        let GenericArgs::AngleBracketed(args) = args else {
+            self.tcx().dcx().span_delayed_bug(
+                segment.span(),
+                "expected angle-bracketed generic args in delegation segment",
+            );
+
+            return None;
+        };
+
+        // Treat empty args `reuse foo::<> as bar` as `reuse foo as bar`,
+        // the same logic applied when we call function `fn f<T>(t: T)`
+        // like that `f::<>(())`, in HIR no `<>` will be generated.
+        (!args.args.is_empty()).then(|| args)
+    }
+
+    pub(super) fn resolve_and_generate_generics(
+        &self,
+        delegation: &Delegation,
+        sig_id: DefId,
+    ) -> Result<GenericsGenerationResults<'hir>, ErrorGuaranteed> {
+        let res @ GenericsResolution {
+            trait_impl,
+            generate_self,
+            sig_child_params,
+            sig_parent_params,
+            ..
+        } = self.resolve_generics(delegation, sig_id)?;
+
+        // If we are in trait impl always generate function whose generics matches
+        // those that are defined in trait.
+        if trait_impl {
+            // Considering parent generics, during signature inheritance
+            // we will take those args that are in trait impl header trait ref.
+            let parent =
+                DelegationGenerics { data: vec![], pos: GenericsPosition::Child, trait_impl: true };
+
+            let parent = GenericsGenerationResult::new(parent);
+
+            let child =
+                DelegationGenerics::generate_all(sig_child_params, GenericsPosition::Child, true);
+
+            let child = GenericsGenerationResult::new(child);
+
+            return Ok(GenericsGenerationResults { parent, child, self_ty_propagation_kind: None });
+        }
+
+        let tcx = self.tcx();
+        let parent_generics = match res.parent_args {
+            ParentSegmentArgs::Specified(args) => DelegationGenerics {
+                data: Self::create_slots_from_args(
+                    tcx,
+                    args,
+                    &sig_parent_params[usize::from(!generate_self)..],
+                    generate_self,
+                ),
+                pos: GenericsPosition::Parent,
+                trait_impl,
+            },
+            ParentSegmentArgs::NotSpecified => DelegationGenerics::generate_all(
+                &sig_parent_params[usize::from(!generate_self)..],
+                GenericsPosition::Parent,
+                trait_impl,
+            ),
+            ParentSegmentArgs::Invalid => {
+                DelegationGenerics { data: vec![], pos: GenericsPosition::Parent, trait_impl }
+            }
+        };
+
+        let child_generics = if let Some(args) = res.child_args {
+            let synth_params_index = sig_child_params
+                .iter()
+                .position(|p| p.kind.is_synthetic())
+                .unwrap_or(sig_child_params.len());
+
+            let mut slots = Self::create_slots_from_args(
+                tcx,
+                args,
+                &sig_child_params[..synth_params_index],
+                trait_impl,
+            );
+
+            for synth_param in &sig_child_params[synth_params_index..] {
+                slots.push(GenericArgSlot::Generate(synth_param, None));
+            }
+
+            DelegationGenerics { data: slots, pos: GenericsPosition::Child, trait_impl }
+        } else {
+            DelegationGenerics::generate_all(sig_child_params, GenericsPosition::Child, trait_impl)
+        };
+
+        Ok(GenericsGenerationResults {
+            parent: GenericsGenerationResult::new(parent_generics),
+            child: GenericsGenerationResult::new(child_generics),
+            self_ty_propagation_kind: match res.free_to_trait_delegation {
+                true => Some(match res.qself_is_none {
+                    true => hir::DelegationSelfTyPropagationKind::SelfParam,
+                    false => match res.qself_is_infer {
+                        true => hir::DelegationSelfTyPropagationKind::SelfParam,
+                        // HirId is filled during generic args propagation.
+                        false => hir::DelegationSelfTyPropagationKind::SelfTy(HirId::INVALID),
+                    },
+                }),
+                false => None,
+            },
+        })
+    }
+
+    /// Generates generic argument slots for user-specified `args` and
+    /// generic `params` of the signature function. This function checks whether
+    /// there are infers (`kw::UnderscoreLifetime` or `kw::Underscore`) in
+    /// user-specified args, and if so we add `Generate` slot meaning we have to
+    /// generate generic param for delegation and propagate it instead of this infer.
+    /// We zip over user-specified args and signature generic params, so if there are more
+    /// infers than generic params then we will not process all infers thus not generating
+    /// more generic params then needed (anyway it is an error).
+    fn create_slots_from_args(
+        tcx: TyCtxt<'_>,
+        args: &AngleBracketedArgs,
+        params: &'hir [ty::GenericParamDef],
+        add_first_self: bool,
+    ) -> TyGenerics<'hir> {
+        let mut slots = vec![];
+        if add_first_self {
+            slots.push(GenericArgSlot::Generate(&params[0], None));
+        }
+
+        let params = &params[usize::from(add_first_self)..];
+        for (idx, (arg, param)) in args.args.iter().zip(params).enumerate() {
+            let AngleBracketedArg::Arg(arg) = arg else { continue };
+
+            let is_infer = match arg {
+                GenericArg::Lifetime(lt) => lt.ident.name == kw::UnderscoreLifetime,
+                GenericArg::Type(ty) => ty.is_maybe_parenthesised_infer(),
+                GenericArg::Const(_) => false,
+            };
+
+            // If `'_` is used instead of `_` (or vice versa) we emit a meaningful
+            // error instead of processing this infer or leaving it as is for signature
+            // inheritance.
+            if is_infer
+                && matches!(
+                    (arg, &param.kind),
+                    (
+                        GenericArg::Lifetime(_),
+                        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. }
+                    ) | (
+                        GenericArg::Type(_) | GenericArg::Const(_),
+                        GenericParamDefKind::Lifetime { .. }
+                    )
+                )
+            {
+                let (actual, expected) = if matches!(arg, GenericArg::Lifetime(..)) {
+                    (kw::UnderscoreLifetime, kw::Underscore)
+                } else {
+                    (kw::Underscore, kw::UnderscoreLifetime)
+                };
+
+                tcx.dcx().emit_err(DelegationInfersMismatch { span: arg.span(), actual, expected });
+            }
+
+            slots.push(match is_infer {
+                true => GenericArgSlot::Generate(param, Some(idx)),
+                false => GenericArgSlot::UserSpecified,
+            });
+        }
+
+        slots
     }
 }
 
 impl<'hir> GenericsGenerationResults<'hir> {
-    pub(super) fn all_params(
-        &mut self,
-        span: Span,
-        ctx: &mut LoweringContext<'_, 'hir>,
-    ) -> impl Iterator<Item = hir::GenericParam<'hir>> {
-        // Now we always call `into_hir_generics` both on child and parent,
-        // however in future we would not do that, when scenarios like
-        // method call will be supported (if HIR generics were not obtained
-        // then it means that we did not propagated them, thus we do not need
-        // to generate params).
-        let mut create_params = |result: &mut GenericsGenerationResult<'hir>| {
-            result.generics.into_hir_generics(ctx, span).hir_generics_or_empty().params
-        };
-
-        let parent = create_params(&mut self.parent);
-        let child = create_params(&mut self.child);
+    pub(super) fn all_params(&self) -> impl Iterator<Item = hir::GenericParam<'hir>> {
+        let parent = self.parent.generics.hir_generics_or_empty().params;
+        let child = self.child.generics.hir_generics_or_empty().params;
 
         // Order generics, first we have parent and child lifetimes,
         // then parent and child types and consts.
@@ -205,131 +522,27 @@ impl<'hir> GenericsGenerationResults<'hir> {
     /// and `generate_lifetime_predicate` functions) we need to add them to delegation generics.
     /// Those predicates will not affect resulting predicate inheritance and folding
     /// in `rustc_hir_analysis`, as we inherit all predicates from delegation signature.
-    pub(super) fn all_predicates(
-        &mut self,
-        span: Span,
-        ctx: &mut LoweringContext<'_, 'hir>,
-    ) -> impl Iterator<Item = hir::WherePredicate<'hir>> {
-        // Now we always call `into_hir_generics` both on child and parent,
-        // however in future we would not do that, when scenarios like
-        // method call will be supported (if HIR generics were not obtained
-        // then it means that we did not propagated them, thus we do not need
-        // to generate predicates).
-        let mut create_predicates = |result: &mut GenericsGenerationResult<'hir>| {
-            result.generics.into_hir_generics(ctx, span).hir_generics_or_empty().predicates
-        };
-
-        let parent = create_predicates(&mut self.parent);
-        let child = create_predicates(&mut self.child);
-
-        parent.into_iter().chain(child).copied()
+    pub(super) fn all_predicates(&self) -> impl Iterator<Item = hir::WherePredicate<'hir>> {
+        self.parent
+            .generics
+            .hir_generics_or_empty()
+            .predicates
+            .into_iter()
+            .chain(self.child.generics.hir_generics_or_empty().predicates)
+            .copied()
     }
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    pub(super) fn uplift_delegation_generics(
-        &mut self,
-        delegation: &Delegation,
-        sig_id: DefId,
-        is_method: bool,
-    ) -> GenericsGenerationResults<'hir> {
-        let delegation_parent_kind = self.tcx.def_kind(self.tcx.local_parent(self.owner.def_id));
-
-        let segments = &delegation.path.segments;
-        let len = segments.len();
-        let child_user_specified = segments[len - 1].args.is_some();
-
-        let sig_params = &self.tcx.generics_of(sig_id).own_params[..];
-
-        // If we are in trait impl always generate function whose generics matches
-        // those that are defined in trait.
-        if matches!(delegation_parent_kind, DefKind::Impl { of_trait: true }) {
-            // Considering parent generics, during signature inheritance
-            // we will take those args that are in trait impl header trait ref.
-            let parent = DelegationGenerics::trait_impl(&[], true, GenericsPosition::Parent);
-            let parent = GenericsGenerationResult::new(parent);
-
-            let child = DelegationGenerics::trait_impl(
-                sig_params,
-                child_user_specified,
-                GenericsPosition::Child,
-            );
-
-            let child = GenericsGenerationResult::new(child);
-
-            return GenericsGenerationResults {
-                parent,
-                child,
-                self_ty_id: None,
-                propagate_self_ty: false,
-            };
-        }
-
-        let delegation_in_free_ctx =
-            !matches!(delegation_parent_kind, DefKind::Trait | DefKind::Impl { .. });
-
-        let sig_parent = self.tcx.parent(sig_id);
-        let sig_in_trait = matches!(self.tcx.def_kind(sig_parent), DefKind::Trait);
-        let free_to_trait_delegation = delegation_in_free_ctx && sig_in_trait;
-        let generate_self = free_to_trait_delegation && is_method && delegation.qself.is_none();
-
-        let can_add_generics_to_parent = len >= 2
-            && self.get_resolution_id(segments[len - 2].id).is_some_and(|def_id| {
-                matches!(self.tcx.def_kind(def_id), DefKind::Trait | DefKind::TraitAlias)
-            });
-
-        let parent_generics = if can_add_generics_to_parent {
-            let sig_parent_params = &self.tcx.generics_of(sig_parent).own_params[..];
-
-            if segments[len - 2].args.is_some() {
-                if generate_self {
-                    // Take only first Self parameter, it is trait so Self must be present.
-                    DelegationGenerics {
-                        kind: DelegationGenericsKind::SelfAndUserSpecified,
-                        generics: &sig_parent_params[..1],
-                        pos: GenericsPosition::Parent,
-                    }
-                } else {
-                    DelegationGenerics::user_specified(&[], GenericsPosition::Parent)
-                }
-            } else {
-                let skip_self = usize::from(!generate_self);
-                DelegationGenerics::default(
-                    &sig_parent_params[skip_self..],
-                    GenericsPosition::Parent,
-                )
-            }
-        } else {
-            DelegationGenerics::default(&[], GenericsPosition::Parent)
-        };
-
-        let child_generics = if child_user_specified {
-            let synth_params_index =
-                sig_params.iter().position(|p| p.kind.is_synthetic()).unwrap_or(sig_params.len());
-
-            DelegationGenerics::user_specified(
-                &sig_params[synth_params_index..],
-                GenericsPosition::Child,
-            )
-        } else {
-            DelegationGenerics::default(sig_params, GenericsPosition::Child)
-        };
-
-        GenericsGenerationResults {
-            parent: GenericsGenerationResult::new(parent_generics),
-            child: GenericsGenerationResult::new(child_generics),
-            self_ty_id: None,
-            propagate_self_ty: free_to_trait_delegation && !generate_self,
-        }
-    }
-
     fn uplift_delegation_generic_params(
         &mut self,
         span: Span,
-        params: &'hir [ty::GenericParamDef],
+        params: &[GenericArgSlot<&ty::GenericParamDef>],
         rename_self: bool,
     ) -> &'hir hir::Generics<'hir> {
-        let params = self.arena.alloc_from_iter(params.iter().map(|p| {
+        let params = self.arena.alloc_from_iter(params.iter().flat_map(|p| {
+            let GenericArgSlot::Generate(p, _) = p else { return None };
+
             let def_kind = match p.kind {
                 GenericParamDefKind::Lifetime => DefKind::LifetimeParam,
                 GenericParamDefKind::Type { .. } => DefKind::TyParam,
@@ -377,7 +590,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // `lower_node_id` routine so param's id is added to `self.children`.
             let hir_id = self.lower_node_id(node_id);
 
-            hir::GenericParam {
+            Some(hir::GenericParam {
                 hir_id,
                 colon_span: Some(span),
                 def_id,
@@ -386,7 +599,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 pure_wrt_drop: p.pure_wrt_drop,
                 source: hir::GenericParamSource::Generics,
                 span,
-            }
+            })
         }));
 
         // HACK: for now we generate predicates such that all lifetimes are early bound,
@@ -436,77 +649,42 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn create_generics_args_from_params(
+    pub(super) fn create_generic_arg_path(
         &mut self,
-        params: &[hir::GenericParam<'hir>],
-        add_lifetimes: bool,
+        p: &hir::GenericParam<'hir>,
+    ) -> hir::QPath<'hir> {
+        let res = Res::Def(
+            match p.kind {
+                hir::GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
+                hir::GenericParamKind::Type { .. } => DefKind::TyParam,
+                hir::GenericParamKind::Const { .. } => DefKind::ConstParam,
+            },
+            p.def_id.to_def_id(),
+        );
+
+        self.create_resolved_path(res, p.name.ident(), p.span)
+    }
+
+    pub(super) fn create_resolved_path(
+        &mut self,
+        res: Res,
+        ident: Ident,
         span: Span,
-    ) -> &'hir hir::GenericArgs<'hir> {
-        self.arena.alloc(hir::GenericArgs {
-            args: self.arena.alloc_from_iter(params.iter().filter_map(|p| {
-                // Skip self generic arg, we do not need to propagate it.
-                if p.name.ident().name == kw::SelfUpper || p.is_impl_trait() {
-                    return None;
-                }
-
-                let create_path = |this: &mut Self| {
-                    let res = Res::Def(
-                        match p.kind {
-                            hir::GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
-                            hir::GenericParamKind::Type { .. } => DefKind::TyParam,
-                            hir::GenericParamKind::Const { .. } => DefKind::ConstParam,
-                        },
-                        p.def_id.to_def_id(),
-                    );
-
-                    hir::QPath::Resolved(
-                        None,
-                        self.arena.alloc(hir::Path {
-                            segments: this.arena.alloc_slice(&[hir::PathSegment {
-                                args: None,
-                                hir_id: this.next_id(),
-                                ident: p.name.ident(),
-                                infer_args: false,
-                                res,
-                            }]),
-                            res,
-                            span: p.span,
-                        }),
-                    )
-                };
-
-                match p.kind {
-                    hir::GenericParamKind::Lifetime { .. } => match add_lifetimes {
-                        true => Some(hir::GenericArg::Lifetime(self.arena.alloc(hir::Lifetime {
-                            hir_id: self.next_id(),
-                            ident: p.name.ident(),
-                            kind: hir::LifetimeKind::Param(p.def_id),
-                            source: hir::LifetimeSource::Path {
-                                angle_brackets: hir::AngleBrackets::Full,
-                            },
-                            syntax: hir::LifetimeSyntax::ExplicitBound,
-                        }))),
-                        false => None,
-                    },
-                    hir::GenericParamKind::Type { .. } => {
-                        Some(hir::GenericArg::Type(self.arena.alloc(hir::Ty {
-                            hir_id: self.next_id(),
-                            span: p.span,
-                            kind: hir::TyKind::Path(create_path(self)),
-                        })))
-                    }
-                    hir::GenericParamKind::Const { .. } => {
-                        Some(hir::GenericArg::Const(self.arena.alloc(hir::ConstArg {
-                            hir_id: self.next_id(),
-                            kind: hir::ConstArgKind::Path(create_path(self)),
-                            span: p.span,
-                        })))
-                    }
-                }
-            })),
-            constraints: &[],
-            parenthesized: hir::GenericArgsParentheses::No,
-            span_ext: span,
-        })
+    ) -> hir::QPath<'hir> {
+        hir::QPath::Resolved(
+            None,
+            self.arena.alloc(hir::Path {
+                segments: self.arena.alloc_slice(&[hir::PathSegment {
+                    args: None,
+                    hir_id: self.next_id(),
+                    ident,
+                    infer_args: false,
+                    res,
+                    delegation_child_segment: false,
+                }]),
+                res,
+                span,
+            }),
+        )
     }
 }

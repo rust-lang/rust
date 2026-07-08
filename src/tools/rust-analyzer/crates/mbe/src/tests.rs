@@ -74,7 +74,7 @@ fn check_(
         "{}",
         syntax_bridge::prettify_macro_expansion::prettify_macro_expansion(
             node.syntax_node(),
-            &mut |_| None,
+            &mut |_, _| None,
             |_| ()
         )
     );

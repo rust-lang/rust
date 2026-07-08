@@ -1,5 +1,5 @@
 use ast::StaticItem;
-use itertools::{Itertools, Position};
+use itertools::Itertools;
 use rustc_ast::{self as ast, EiiImpl, ModKind, Safety, TraitAlias};
 use rustc_span::Ident;
 
@@ -344,9 +344,9 @@ impl<'a> State<'a> {
                     let ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } =
                         *of_trait;
                     self.print_defaultness(defaultness);
+                    self.print_constness(*constness);
                     self.print_safety(safety);
                     impl_generics(self);
-                    self.print_constness(*constness);
                     if let ast::ImplPolarity::Negative(_) = polarity {
                         self.word("!");
                     }
@@ -511,6 +511,20 @@ impl<'a> State<'a> {
         }
     }
 
+    pub(crate) fn print_mut_restriction(&mut self, mut_restriction: &ast::MutRestriction) {
+        match &mut_restriction.kind {
+            ast::RestrictionKind::Restricted { path, shorthand, .. } => {
+                let path = Self::to_string(|s| s.print_path(path, false, 0));
+                if *shorthand {
+                    self.word_nbsp(format!("mut({path})"))
+                } else {
+                    self.word_nbsp(format!("mut(in {path})"))
+                }
+            }
+            ast::RestrictionKind::Unrestricted => {}
+        }
+    }
+
     fn print_defaultness(&mut self, defaultness: ast::Defaultness) {
         if let ast::Defaultness::Default(_) = defaultness {
             self.word_nbsp("default");
@@ -537,6 +551,7 @@ impl<'a> State<'a> {
                         s.maybe_print_comment(field.span.lo());
                         s.print_outer_attributes(&field.attrs);
                         s.print_visibility(&field.vis);
+                        s.print_mut_restriction(&field.mut_restriction);
                         s.print_type(&field.ty)
                     });
                     self.pclose();
@@ -562,6 +577,7 @@ impl<'a> State<'a> {
                         self.maybe_print_comment(field.span.lo());
                         self.print_outer_attributes(&field.attrs);
                         self.print_visibility(&field.vis);
+                        self.print_mut_restriction(&field.mut_restriction);
                         self.print_ident(field.ident.unwrap());
                         self.word_nbsp(":");
                         self.print_type(&field.ty);
@@ -853,14 +869,6 @@ impl<'a> State<'a> {
                     self.print_lifetime_bounds(bounds);
                 }
             }
-            ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate {
-                lhs_ty, rhs_ty, ..
-            }) => {
-                self.print_type(lhs_ty);
-                self.space();
-                self.word_space("=");
-                self.print_type(rhs_ty);
-            }
         }
     }
 
@@ -915,7 +923,7 @@ impl<'a> State<'a> {
                     self.zerobreak();
                     let ib = self.ibox(0);
                     for (pos, use_tree) in items.iter().with_position() {
-                        let is_last = matches!(pos, Position::Last | Position::Only);
+                        let is_last = pos.is_last();
                         self.print_use_tree(&use_tree.0);
                         if !is_last {
                             self.word(",");

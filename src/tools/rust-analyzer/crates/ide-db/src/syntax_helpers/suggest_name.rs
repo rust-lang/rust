@@ -412,7 +412,7 @@ fn from_type(
     edition: Edition,
 ) -> Option<SmolStr> {
     let ty = sema.type_of_expr(expr)?.adjusted();
-    let ty = ty.remove_ref().unwrap_or(ty);
+    let ty = ty.strip_reference();
 
     name_of_type(&ty, sema.db, edition)
 }
@@ -445,7 +445,7 @@ fn name_of_type<'db>(
             return None;
         }
         name
-    } else if let Some(inner_ty) = ty.remove_ref() {
+    } else if let Some((inner_ty, _)) = ty.as_reference() {
         return name_of_type(&inner_ty, db, edition);
     } else if let Some(inner_ty) = ty.as_slice() {
         return Some(sequence_name(Some(&inner_ty), db, edition));

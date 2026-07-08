@@ -19,7 +19,7 @@ fn main() -> () {
         StorageLive(_2);
         StorageLive(_3);
         _3 = ();
-        _2 = std::intrinsics::transmute::<(), Void>(move _3) -> bb4;
+        _2 = std::intrinsics::transmute::<(), Void>(move _3) -> [return: bb1, unwind: bb4];
     }
 
     bb1: {
@@ -29,7 +29,7 @@ fn main() -> () {
         StorageLive(_4);
         StorageLive(_5);
         _5 = move _2;
-        _4 = f(move _5) -> bb4;
+        _4 = f(move _5) -> [return: bb2, unwind: bb4];
     }
 
     bb2: {

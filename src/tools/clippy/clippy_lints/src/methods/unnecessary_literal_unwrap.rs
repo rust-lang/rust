@@ -92,7 +92,7 @@ pub(super) fn check(
             (sym::None, sym::unwrap_or_default, _) => {
                 let ty = cx.typeck_results().expr_ty(expr);
                 let default_ty_string = if let ty::Adt(def, ..) = ty.kind() {
-                    with_forced_trimmed_paths!(format!("{}", cx.tcx.def_path_str(def.did())))
+                    with_forced_trimmed_paths!(cx.tcx.def_path_str(def.did()))
                 } else {
                     "Default".to_string()
                 };

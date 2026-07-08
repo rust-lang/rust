@@ -51,6 +51,7 @@ pub(crate) struct CargoOptions {
     pub(crate) extra_args: Vec<String>,
     pub(crate) extra_test_bin_args: Vec<String>,
     pub(crate) extra_env: FxHashMap<String, Option<String>>,
+    pub(crate) config_path: Option<AbsPathBuf>,
     pub(crate) target_dir_config: TargetDirectoryConfig,
 }
 
@@ -63,7 +64,12 @@ pub(crate) enum Target {
 }
 
 impl CargoOptions {
-    pub(crate) fn apply_on_command(&self, cmd: &mut Command, ws_target_dir: Option<&Utf8Path>) {
+    pub(crate) fn apply_on_command(
+        &self,
+        cmd: &mut Command,
+        ws_target_dir: Option<&Utf8Path>,
+        package_repr: Option<&str>,
+    ) {
         for target in &self.target_tuples {
             cmd.args(["--target", target.as_str()]);
         }
@@ -83,9 +89,28 @@ impl CargoOptions {
                 cmd.arg("--no-default-features");
             }
             if !self.features.is_empty() {
+                // If we are scoped to a particular package, filter any features of the form
+                // `crate/feature` which target other packages.
+                let features = if let Some(name) = package_repr {
+                    let filtered = self
+                        .features
+                        .iter()
+                        .filter(|f| match f.split_once('/') {
+                            Some((c, _)) => c == name,
+                            None => true,
+                        })
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>();
+                    filtered.join(" ")
+                } else {
+                    self.features.join(" ")
+                };
                 cmd.arg("--features");
-                cmd.arg(self.features.join(" "));
+                cmd.arg(features);
             }
+        }
+        if let Some(config_path) = &self.config_path {
+            cmd.arg("--config").arg(config_path);
         }
         if let Some(target_dir) = self.target_dir_config.target_dir(ws_target_dir) {
             cmd.arg("--target-dir").arg(target_dir.as_ref());
@@ -890,12 +915,18 @@ impl FlycheckActor {
                 cmd.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
                 cmd.arg(&cargo_options.subcommand);
 
-                match scope {
-                    FlycheckScope::Workspace => cmd.arg("--workspace"),
+                let package_repr = match scope {
+                    FlycheckScope::Workspace => {
+                        cmd.arg("--workspace");
+                        None
+                    }
                     FlycheckScope::Package {
                         package: PackageSpecifier::Cargo { package_id },
                         ..
-                    } => cmd.arg("-p").arg(&package_id.repr),
+                    } => {
+                        cmd.arg("-p").arg(&package_id.repr);
+                        Some(package_id.repr.as_str())
+                    }
                     FlycheckScope::Package {
                         package: PackageSpecifier::BuildInfo { .. }, ..
                     } => {
@@ -935,6 +966,7 @@ impl FlycheckActor {
                 cargo_options.apply_on_command(
                     &mut cmd,
                     self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path),
+                    package_repr,
                 );
                 cmd.args(&cargo_options.extra_args);
                 Some((cmd, FlycheckCommandOrigin::Cargo))
@@ -1141,6 +1173,7 @@ mod tests {
                 extra_args: vec![],
                 extra_test_bin_args: vec![],
                 extra_env: FxHashMap::default(),
+                config_path: None,
                 target_dir_config: TargetDirectoryConfig::default(),
             },
             ansi_color_output: true,

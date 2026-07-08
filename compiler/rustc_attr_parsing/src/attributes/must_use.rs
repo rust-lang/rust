@@ -1,3 +1,5 @@
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 
 pub(crate) struct MustUseParser;
@@ -5,7 +7,7 @@ pub(crate) struct MustUseParser;
 impl SingleAttributeParser for MustUseParser {
     const PATH: &[Symbol] = &[sym::must_use];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Enum),
         Allow(Target::Struct),
@@ -24,6 +26,7 @@ impl SingleAttributeParser for MustUseParser {
         Word, NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::MustUse {

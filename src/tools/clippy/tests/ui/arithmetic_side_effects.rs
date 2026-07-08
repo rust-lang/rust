@@ -2,15 +2,13 @@
 
 #![feature(f128)]
 #![feature(f16)]
-#![allow(
+#![expect(
     clippy::assign_op_pattern,
     clippy::erasing_op,
     clippy::identity_op,
     clippy::no_effect,
     clippy::op_ref,
-    clippy::unnecessary_owned_empty_strings,
-    arithmetic_overflow,
-    unconditional_panic
+    clippy::unnecessary_owned_empty_strings
 )]
 #![warn(clippy::arithmetic_side_effects)]
 
@@ -740,6 +738,26 @@ pub fn type_conversion_does_not_escape_its_context() {
     }
     let _ = Duration::from_secs(86400 * shift(1));
     //~^ arithmetic_side_effects
+}
+
+pub fn issue_17005() {
+    fn id_u8() -> u8 {
+        0
+    }
+    fn id_u16() -> u16 {
+        0
+    }
+    fn id_u32() -> u32 {
+        0
+    }
+
+    // cast from a smaller unsigned type, sum cannot overflow
+    let _ = 1u32 + id_u8() as u32;
+    let _ = 1u32 + id_u16() as u32;
+    let _ = 1u64 + id_u8() as u64;
+    let _ = 1u64 + id_u16() as u64;
+    let _ = 1u64 + id_u32() as u64;
+    let _ = 0xf301_0000u32 + id_u16() as u32;
 }
 
 fn main() {}

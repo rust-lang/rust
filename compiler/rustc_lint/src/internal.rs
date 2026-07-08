@@ -369,7 +369,12 @@ declare_tool_lint! {
     report_in_external_macro: true
 }
 
-declare_lint_pass!(TypeIr => [DIRECT_USE_OF_RUSTC_TYPE_IR, NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_TRAITS]);
+declare_lint_pass!(TypeIr => [
+    DIRECT_USE_OF_RUSTC_TYPE_IR,
+    NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT,
+    USAGE_OF_TYPE_IR_INHERENT,
+    USAGE_OF_TYPE_IR_TRAITS
+]);
 
 impl<'tcx> LateLintPass<'tcx> for TypeIr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
@@ -561,8 +566,6 @@ fn is_span_ctxt_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
 declare_tool_lint! {
     /// The `symbol_intern_string_literal` detects `Symbol::intern` being called on a string literal
     pub rustc::SYMBOL_INTERN_STRING_LITERAL,
-    // rustc_driver crates out of the compiler can't/shouldn't add preinterned symbols;
-    // bootstrap will deny this manually
     Allow,
     "Forbid uses of string literals in `Symbol::intern`, suggesting preinterning instead",
     report_in_external_macro: true

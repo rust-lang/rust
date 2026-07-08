@@ -147,7 +147,16 @@ fn maybe_normalize_erasing_regions<'tcx>(
     cx: &LateContext<'tcx>,
     value: Unnormalized<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {
-    cx.tcx.try_normalize_erasing_regions(cx.typing_env(), value).unwrap_or(value.skip_norm_wip())
+    // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaque types since we're now
+    // past hir typeck. If we were to attempt to reveal more opaque types, dropping the
+    // `InferCtxt` would ICE (see #156352).
+    let typing_env = if let Some(body_id) = cx.enclosing_body {
+        let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
+        ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
+    } else {
+        cx.typing_env()
+    };
+    cx.tcx.try_normalize_erasing_regions(typing_env, value).unwrap_or(value.skip_norm_wip())
 }
 
 /// Check a variant of a non-exhaustive enum for improper ctypes
@@ -349,6 +358,8 @@ struct VisitorState {
     /// Flags describing both the immediate context in which the current Ty is,
     /// linked to how it relates to its parent Ty (or lack thereof).
     outer_ty_kind: OuterTyKind,
+    /// Type recursion depth, to prevent infinite recursion
+    depth: usize,
 }
 
 impl RootUseFlags {
@@ -376,6 +387,7 @@ impl VisitorState {
         VisitorState {
             root_use_flags: self.root_use_flags,
             outer_ty_kind: OuterTyKind::from_ty(current_ty),
+            depth: self.depth + 1,
         }
     }
 
@@ -390,6 +402,7 @@ impl VisitorState {
                 FnPos::Arg => RootUseFlags::ARGUMENT_TY_IN_FNPTR,
             },
             outer_ty_kind: OuterTyKind::from_ty(current_ty),
+            depth: self.depth + 1,
         }
     }
 
@@ -401,12 +414,16 @@ impl VisitorState {
             (CItemKind::Definition, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DEFINITION,
             (CItemKind::Declaration, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DECLARATION,
         };
-        VisitorState { root_use_flags: p_flags, outer_ty_kind: OuterTyKind::None }
+        VisitorState { root_use_flags: p_flags, outer_ty_kind: OuterTyKind::None, depth: 0 }
     }
 
     /// Get the proper visitor state for a static variable's type
     fn static_entry_point() -> Self {
-        VisitorState { root_use_flags: RootUseFlags::STATIC_TY, outer_ty_kind: OuterTyKind::None }
+        VisitorState {
+            root_use_flags: RootUseFlags::STATIC_TY,
+            outer_ty_kind: OuterTyKind::None,
+            depth: 0,
+        }
     }
 
     /// Whether the type is used in a function.
@@ -468,12 +485,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         base_ty: Unnormalized<'tcx, Ty<'tcx>>,
         base_fn_mode: CItemKind,
     ) -> Self {
-        ImproperCTypesVisitor {
-            cx,
-            base_ty: maybe_normalize_erasing_regions(cx, base_ty),
-            base_fn_mode,
-            cache: FxHashSet::default(),
-        }
+        // Skip normalization for opaques: even in `TypingMode::Borrowck` the body's own
+        // defining opaques still get revealed, leaving entries in `OpaqueTypeStorage` that
+        // ICE on `InferCtxt` drop (issue #156352).
+        let base_ty = if base_ty.skip_norm_wip().has_opaque_types() {
+            base_ty.skip_norm_wip()
+        } else {
+            maybe_normalize_erasing_regions(cx, base_ty)
+        };
+        ImproperCTypesVisitor { cx, base_ty, base_fn_mode, cache: FxHashSet::default() }
     }
 
     /// Checks if the given indirection (box,ref,pointer) is "ffi-safe".
@@ -725,9 +745,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         // Protect against infinite recursion, for example
         // `struct S(*mut S);`.
-        // FIXME: A recursion limit is necessary as well, for irregular
-        // recursive types.
-        if !self.cache.insert(ty) {
+        if !(self.cache.insert(ty) && self.cx.tcx.recursion_limit().value_within_limit(state.depth))
+        {
             return FfiSafe;
         }
 
@@ -877,16 +896,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             // While opaque types are checked for earlier, if a projection in a struct field
             // normalizes to an opaque type, then it will reach this branch.
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                 FfiUnsafe { ty, reason: msg!("opaque types have no C equivalent"), help: None }
             }
 
             // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
             //  so they are currently ignored for the purposes of this lint.
             ty::Param(..)
-            | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
-            }) if state.can_expect_ty_params() => FfiSafe,
+            | ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. })
+                if state.can_expect_ty_params() =>
+            {
+                FfiSafe
+            }
 
             ty::UnsafeBinder(_) => FfiUnsafe {
                 ty,
@@ -894,18 +915,30 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: None,
             },
 
+            // Safety net for when normalization reveals a body's own defining opaque
+            // (e.g. `async extern fn`'s `impl Future` → `Coroutine`); the nicer
+            // "opaque types have no C equivalent" message comes from `visit_for_opaque_ty`
+            // in `check_type` before normalization (issue #156352).
+            ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..) => FfiUnsafe {
+                ty,
+                reason: msg!("closures and coroutines are not FFI-safe"),
+                help: None,
+            },
+
             ty::Param(..)
-            | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
-                ..
-            })
+            | ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    ..
+                },
+            )
             | ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Placeholder(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }
@@ -921,7 +954,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     return ControlFlow::Continue(());
                 }
 
-                if let ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) = ty.kind() {
+                if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) = ty.kind() {
                     ControlFlow::Break(ty)
                 } else {
                     ty.super_visit_with(self)
@@ -941,6 +974,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         state: VisitorState,
         ty: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> FfiResult<'tcx> {
+        // Catch opaques before normalization so the new solver doesn't reveal them
+        // (e.g. `async extern fn` return → `Coroutine`) and we get the nicer
+        // "opaque types have no C equivalent" message.
+        if let Some(res) = self.visit_for_opaque_ty(ty.skip_norm_wip()) {
+            return res;
+        }
         let ty = maybe_normalize_erasing_regions(self.cx, ty);
         if let Some(res) = self.visit_for_opaque_ty(ty) {
             return res;
@@ -962,6 +1001,8 @@ impl<'tcx> ImproperCTypesLint {
         fn_mode: CItemKind,
     ) {
         struct FnPtrFinder<'tcx> {
+            current_depth: usize,
+            depths: Vec<usize>,
             spans: Vec<Span>,
             tys: Vec<Ty<'tcx>>,
         }
@@ -969,13 +1010,16 @@ impl<'tcx> ImproperCTypesLint {
         impl<'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'tcx> {
             fn visit_ty(&mut self, ty: &'_ hir::Ty<'_, AmbigArg>) {
                 debug!(?ty);
+                self.current_depth += 1;
                 if let hir::TyKind::FnPtr(hir::FnPtrTy { abi, .. }) = ty.kind
                     && !abi.is_rustic_abi()
                 {
+                    self.depths.push(self.current_depth);
                     self.spans.push(ty.span);
                 }
 
                 hir::intravisit::walk_ty(self, ty);
+                self.current_depth -= 1;
             }
         }
 
@@ -993,16 +1037,25 @@ impl<'tcx> ImproperCTypesLint {
             }
         }
 
-        let mut visitor = FnPtrFinder { spans: Vec::new(), tys: Vec::new() };
+        let mut visitor = FnPtrFinder {
+            spans: Vec::new(),
+            tys: Vec::new(),
+            depths: Vec::new(),
+            current_depth: 0,
+        };
         ty.visit_with(&mut visitor);
         visitor.visit_ty_unambig(hir_ty);
 
-        let all_types = iter::zip(visitor.tys.drain(..), visitor.spans.drain(..));
-        for (fn_ptr_ty, span) in all_types {
+        let all_types = iter::zip(
+            visitor.depths.drain(..),
+            iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)),
+        );
+        for (depth, (fn_ptr_ty, span)) in all_types {
             let fn_ptr_ty = Unnormalized::new_wip(fn_ptr_ty);
             let mut visitor = ImproperCTypesVisitor::new(cx, fn_ptr_ty, fn_mode);
+            let bridge_state = VisitorState { depth, ..state };
             // FIXME(ctypes): make a check_for_fnptr
-            let ffi_res = visitor.check_type(state, fn_ptr_ty);
+            let ffi_res = visitor.check_type(bridge_state, fn_ptr_ty);
 
             self.process_ffi_result(cx, span, ffi_res, fn_mode);
         }

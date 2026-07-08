@@ -1,45 +1,130 @@
-error[E0734]: stability attributes may not be used outside of the standard library
+error[E0658]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:7:1
    |
 LL | #![unstable()]
    | ^^^^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:10:1
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-unstable.rs:7:1
+   |
+LL | #![unstable()]
+   | ^^^^^^^^^^^^^^
+
+error[E0547]: missing 'issue'
+  --> $DIR/issue-43106-gating-of-unstable.rs:7:1
+   |
+LL | #![unstable()]
+   | ^^^^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:12:1
    |
 LL | #[unstable()]
    | ^^^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:14:9
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-unstable.rs:12:1
+   |
+LL | #[unstable()]
+   | ^^^^^^^^^^^^^
+
+error[E0547]: missing 'issue'
+  --> $DIR/issue-43106-gating-of-unstable.rs:12:1
+   |
+LL | #[unstable()]
+   | ^^^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:18:9
    |
 LL |         #![unstable()]
    |         ^^^^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:18:5
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-unstable.rs:18:9
+   |
+LL |         #![unstable()]
+   |         ^^^^^^^^^^^^^^
+
+error[E0547]: missing 'issue'
+  --> $DIR/issue-43106-gating-of-unstable.rs:18:9
+   |
+LL |         #![unstable()]
+   |         ^^^^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:24:5
    |
 LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:22:5
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-unstable.rs:24:5
    |
 LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:26:5
+error[E0547]: missing 'issue'
+  --> $DIR/issue-43106-gating-of-unstable.rs:24:5
    |
 LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
+error[E0658]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:30:5
    |
 LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-unstable.rs:30:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0734`.
+error[E0547]: missing 'issue'
+  --> $DIR/issue-43106-gating-of-unstable.rs:30:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:36:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-unstable.rs:36:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error[E0547]: missing 'issue'
+  --> $DIR/issue-43106-gating-of-unstable.rs:36:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:42:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error[E0546]: missing 'feature'
+  --> $DIR/issue-43106-gating-of-unstable.rs:42:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error[E0547]: missing 'issue'
+  --> $DIR/issue-43106-gating-of-unstable.rs:42:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 21 previous errors
+
+Some errors have detailed explanations: E0546, E0547, E0658.
+For more information about an error, try `rustc --explain E0546`.

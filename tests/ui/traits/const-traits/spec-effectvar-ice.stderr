@@ -1,7 +1,7 @@
 error: const `impl` for trait `Foo` which is not `const`
   --> $DIR/spec-effectvar-ice.rs:10:15
    |
-LL | impl<T> const Foo for T {}
+LL | const impl<T> Foo for T {}
    |               ^^^ this trait is not `const`
    |
    = note: marking a trait with `const` ensures all default method bodies are `const`
@@ -14,7 +14,7 @@ LL | const trait Foo {}
 error: const `impl` for trait `Foo` which is not `const`
   --> $DIR/spec-effectvar-ice.rs:13:15
    |
-LL | impl<T> const Foo for T where T: const Specialize {}
+LL | const impl<T> Foo for T where T: const Specialize {}
    |               ^^^ this trait is not `const`
    |
    = note: marking a trait with `const` ensures all default method bodies are `const`
@@ -27,7 +27,7 @@ LL | const trait Foo {}
 error: `const` can only be applied to `const` traits
   --> $DIR/spec-effectvar-ice.rs:13:34
    |
-LL | impl<T> const Foo for T where T: const Specialize {}
+LL | const impl<T> Foo for T where T: const Specialize {}
    |                                  ^^^^^ can't be applied to `Specialize`
    |
 help: mark `Specialize` as `const` to allow it to have `const` implementations
@@ -38,19 +38,19 @@ LL | const trait Specialize {}
 error: specialization impl does not specialize any associated items
   --> $DIR/spec-effectvar-ice.rs:13:1
    |
-LL | impl<T> const Foo for T where T: const Specialize {}
+LL | const impl<T> Foo for T where T: const Specialize {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: impl is a specialization of this impl
   --> $DIR/spec-effectvar-ice.rs:10:1
    |
-LL | impl<T> const Foo for T {}
+LL | const impl<T> Foo for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot specialize on trait `Specialize`
   --> $DIR/spec-effectvar-ice.rs:13:34
    |
-LL | impl<T> const Foo for T where T: const Specialize {}
+LL | const impl<T> Foo for T where T: const Specialize {}
    |                                  ^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors

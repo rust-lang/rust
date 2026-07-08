@@ -29,6 +29,7 @@ system
 system-unwind
 sysv64
 sysv64-unwind
+tail
 thiscall
 thiscall-unwind
 unadjusted

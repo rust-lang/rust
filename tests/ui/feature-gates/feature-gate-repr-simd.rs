@@ -7,11 +7,11 @@ struct Foo([u64; 2]);
 struct Bar([u64; 2]);
 
 #[repr(simd)] //~ ERROR: SIMD types are experimental
-//~^ ERROR: attribute should be applied to a struct
+//~^ ERROR: attribute cannot be used on
 union U {f: u32}
 
 #[repr(simd)] //~ ERROR: SIMD types are experimental
-//~^ error: attribute should be applied to a struct
+//~^ error: attribute cannot be used on
 enum E { X }
 
 fn main() {}

@@ -1,6 +1,6 @@
 //@compile-flags: --test
 #![warn(clippy::dbg_macro)]
-#![allow(clippy::unnecessary_operation, clippy::no_effect)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation)]
 
 fn foo(n: u32) -> u32 {
     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }

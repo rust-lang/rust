@@ -429,16 +429,23 @@ pub(crate) fn create_cycle_error<'tcx>(
         StackCount::Multiple { stack_bottom: stack_bottom.clone() }
     };
 
+    let mut prev = span;
     for i in 1..frames.len() {
         let frame = &frames[i];
         let span = frame.tagged_key.catch_default_span(tcx, frames[(i + 1) % frames.len()].span);
-        cycle_stack
-            .push(crate::error::CycleStack { span, desc: frame.tagged_key.catch_description(tcx) });
+        cycle_stack.push(crate::error::CycleStack {
+            span: if span == prev { DUMMY_SP } else { span },
+            desc: frame.tagged_key.catch_description(tcx),
+        });
+        prev = span;
     }
 
-    let cycle_usage = usage.as_ref().map(|usage| crate::error::CycleUsage {
-        span: usage.tagged_key.catch_default_span(tcx, usage.span),
-        usage: usage.tagged_key.catch_description(tcx),
+    let cycle_usage = usage.as_ref().map(|usage| {
+        let cycle_span = usage.tagged_key.catch_default_span(tcx, usage.span);
+        crate::error::CycleUsage {
+            span: if cycle_span != span { cycle_span } else { DUMMY_SP },
+            usage: usage.tagged_key.catch_description(tcx),
+        }
     });
 
     let is_all_def_kind = |def_kind| {

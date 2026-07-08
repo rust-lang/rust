@@ -18,7 +18,6 @@ fn main() -> Result<(), ()> {
         //~| NOTE: expected `()`, found integer
         //~| HELP: consider using a semicolon here
     }
-    //~^ HELP: consider using a semicolon here
 
     Ok(())
 }

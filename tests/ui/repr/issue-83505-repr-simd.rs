@@ -3,7 +3,7 @@
 #![crate_type="lib"]
 
 #[repr(simd)]
-//~^ ERROR: attribute should be applied to a struct [E0517]
+//~^ ERROR: attribute cannot be used on
 //~| ERROR: unsupported representation for zero-variant enum [E0084]
 //~| ERROR: SIMD types are experimental and possibly buggy [E0658]
 

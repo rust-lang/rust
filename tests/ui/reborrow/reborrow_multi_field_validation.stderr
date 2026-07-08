@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/reborrow_multi_field_validation.rs:10:5
+   |
+LL |     second: String,
+   |     ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

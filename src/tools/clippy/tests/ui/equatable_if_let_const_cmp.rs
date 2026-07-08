@@ -1,5 +1,4 @@
 #![warn(clippy::equatable_if_let)]
-#![allow(clippy::eq_op)]
 #![feature(const_trait_impl, const_cmp)]
 
 fn issue15376() {
@@ -7,7 +6,7 @@ fn issue15376() {
         A,
         B,
     }
-    impl const PartialEq for ConstEq {
+    const impl PartialEq for ConstEq {
         fn eq(&self, _other: &Self) -> bool {
             true
         }

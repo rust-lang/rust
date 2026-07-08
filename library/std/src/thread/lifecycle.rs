@@ -66,7 +66,7 @@ where
     let rust_start = move || {
         let f = f.into_inner();
         let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            crate::sys::backtrace::__rust_begin_short_backtrace(|| hooks.run());
+            crate::sys::backtrace::__rust_begin_short_backtrace(|| hooks.inherit_and_run());
             crate::sys::backtrace::__rust_begin_short_backtrace(f)
         }));
         // SAFETY: `their_packet` as been built just above and moved by the

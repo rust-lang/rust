@@ -7,10 +7,12 @@ use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::{self, DeprecatedSince, DocAttribute, DocInline, HideOrShow};
-use rustc_hir::def::CtorKind;
+use rustc_hir::attrs::{
+    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow,
+};
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HeaderSafety, Safety};
+use rustc_hir::{HeaderSafety, Safety, find_attr};
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, ty};
@@ -69,12 +71,41 @@ impl JsonRenderer<'_> {
             }
             _ => from_clean_item(item, self),
         };
+
+        // Rustdoc JSON keeps re-exports as `Use` items, so their stability describes
+        // the local `pub use` declaration. The imported target item's stability
+        // remains available through `inner.use.id`.
+        //
+        // We use raw stability attributes here instead of `clean::Item::stability()`,
+        // which is the effective stability rustdoc uses for rendering paths.
+        // For example, a stable `pub use` inside an unstable module is effectively unstable
+        // through that module path, but the `Use` declaration itself is still stable.
+        // In that example, `clean::Item::stability()` would return "unstable" as
+        // the effective stability, which is appropriate for HTML but makes JSON uses harder.
+        //
+        // JSON consumers already have to do path-based reasoning to reconstruct item reachability,
+        // names, and stability. Keeping component-wise stability allows them to easily reconstruct
+        // stability from the module, use item, and target item records.
+        let stability_def_id = if matches!(&item.kind, clean::ImportItem(_)) {
+            item.inline_stmt_id
+                .map(|def_id| def_id.to_def_id())
+                .or_else(|| item.item_id.as_def_id())
+        } else {
+            item.item_id.as_def_id()
+        };
+        let stability = stability_def_id.and_then(|def_id| self.tcx.lookup_stability(def_id));
+        let const_stability = item.item_id.as_def_id().and_then(|def_id| {
+            const_stability_for_def_id(self.tcx, def_id).map(|s| Box::new(s.into_json(self)))
+        });
+
         Some(Item {
             id,
             crate_id: item_id.krate().as_u32(),
             name: name.map(|sym| sym.to_string()),
             span: span.and_then(|span| span.into_json(self)),
             visibility: visibility.into_json(self),
+            stability: stability.map(|s| Box::new(s.into_json(self))),
+            const_stability,
             docs,
             attrs,
             deprecation: deprecation.into_json(self),
@@ -203,6 +234,54 @@ impl FromClean<attrs::Deprecation> for Deprecation {
     }
 }
 
+impl FromClean<hir::Stability> for Stability {
+    fn from_clean(stab: &hir::Stability, _renderer: &JsonRenderer<'_>) -> Self {
+        let feature = stab.feature.to_string();
+        let level = match stab.level {
+            hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
+                since: match since {
+                    hir::StableSince::Version(since) => Some(since.to_string()),
+                    hir::StableSince::Current => Some(hir::RustcVersion::CURRENT.to_string()),
+                    // Match rustdoc HTML: malformed stable-since values are omitted.
+                    hir::StableSince::Err(_) => None,
+                },
+            },
+            hir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
+        };
+        Stability { feature, level }
+    }
+}
+
+impl FromClean<hir::ConstStability> for Stability {
+    fn from_clean(stab: &hir::ConstStability, _renderer: &JsonRenderer<'_>) -> Self {
+        let feature = stab.feature.to_string();
+        let level = match stab.level {
+            hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
+                since: match since {
+                    hir::StableSince::Version(since) => Some(since.to_string()),
+                    hir::StableSince::Current => Some(hir::RustcVersion::CURRENT.to_string()),
+                    // Match rustdoc HTML: malformed stable-since values are omitted.
+                    hir::StableSince::Err(_) => None,
+                },
+            },
+            hir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
+        };
+        Stability { feature, level }
+    }
+}
+
+impl FromClean<hir::DefaultBodyStability> for Box<ProvidedDefaultUnstable> {
+    fn from_clean(stab: &hir::DefaultBodyStability, _renderer: &JsonRenderer<'_>) -> Self {
+        let hir::StabilityLevel::Unstable { .. } = stab.level else {
+            bug!(
+                "unexpected stable default-body stability, \
+                 there's no stable equivalent of `#[rustc_default_body_unstable]`"
+            )
+        };
+        Box::new(ProvidedDefaultUnstable { feature: stab.feature.to_string() })
+    }
+}
+
 impl FromClean<clean::GenericArgs> for Option<Box<GenericArgs>> {
     fn from_clean(generic_args: &clean::GenericArgs, renderer: &JsonRenderer<'_>) -> Self {
         use clean::GenericArgs::*;
@@ -286,18 +365,23 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
         VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
         FunctionItem(f) => {
-            ItemEnum::Function(from_clean_function(f, true, header.unwrap(), renderer))
+            ItemEnum::Function(from_clean_function(f, true, None, header.unwrap(), renderer))
         }
         ForeignFunctionItem(f, _) => {
-            ItemEnum::Function(from_clean_function(f, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_clean_function(f, false, None, header.unwrap(), renderer))
         }
         TraitItem(t) => ItemEnum::Trait(t.into_json(renderer)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        MethodItem(m, _) => {
-            ItemEnum::Function(from_clean_function(m, true, header.unwrap(), renderer))
-        }
+        MethodItem(m, _) => ItemEnum::Function(from_clean_function(
+            m,
+            true,
+            default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
+                .map(|stab| stab.into_json(renderer)),
+            header.unwrap(),
+            renderer,
+        )),
         RequiredMethodItem(m, _) => {
-            ItemEnum::Function(from_clean_function(m, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_clean_function(m, false, None, header.unwrap(), renderer))
         }
         ImplItem(i) => ItemEnum::Impl(i.into_json(renderer)),
         StaticItem(s) => ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer)),
@@ -309,7 +393,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             type_: ci.type_.into_json(renderer),
             const_: ci.kind.into_json(renderer),
         },
-        MacroItem(m) => ItemEnum::Macro(m.source.clone()),
+        MacroItem(m, _) => ItemEnum::Macro(m.source.clone()),
         ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_json(renderer)),
         PrimitiveItem(p) => {
             ItemEnum::Primitive(Primitive {
@@ -318,25 +402,44 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             })
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
-        RequiredAssocConstItem(_generics, ty) => {
-            ItemEnum::AssocConst { type_: ty.into_json(renderer), value: None }
-        }
+        RequiredAssocConstItem(_generics, ty) => ItemEnum::AssocConst {
+            type_: ty.into_json(renderer),
+            value: None,
+            default_unstable: None,
+        },
         // FIXME(generic_const_items): Add support for generic associated consts.
-        ProvidedAssocConstItem(ci) | ImplAssocConstItem(ci) => ItemEnum::AssocConst {
+        ProvidedAssocConstItem(ci) => ItemEnum::AssocConst {
             type_: ci.type_.into_json(renderer),
             value: Some(ci.kind.expr(renderer.tcx)),
+            default_unstable: default_body_stability_for_def_id(
+                renderer.tcx,
+                item.item_id.expect_def_id(),
+            )
+            .map(|stab| stab.into_json(renderer)),
+        },
+        ImplAssocConstItem(ci) => ItemEnum::AssocConst {
+            type_: ci.type_.into_json(renderer),
+            value: Some(ci.kind.expr(renderer.tcx)),
+            default_unstable: None,
         },
         RequiredAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: g.into_json(renderer),
             bounds: b.into_json(renderer),
             type_: None,
+            default_unstable: None,
         },
         AssocTypeItem(t, b) => ItemEnum::AssocType {
             generics: t.generics.into_json(renderer),
             bounds: b.into_json(renderer),
             type_: Some(t.item_type.as_ref().unwrap_or(&t.type_).into_json(renderer)),
+            default_unstable: default_body_stability_for_def_id(
+                renderer.tcx,
+                item.item_id.expect_def_id(),
+            )
+            .map(|stab| stab.into_json(renderer)),
         },
-        // `convert_item` early returns `None` for stripped items, keywords and attributes.
+        // `convert_item` early returns `None` for stripped items, keywords, attributes and
+        // "special" macro rules.
         KeywordItem | AttributeItem => unreachable!(),
         StrippedItem(inner) => {
             match inner.as_ref() {
@@ -409,7 +512,7 @@ impl FromClean<rustc_hir::FnHeader> for FunctionHeader {
         };
         FunctionHeader {
             is_async: header.is_async(),
-            is_const: header.is_const(),
+            is_const: matches!(header.constness, rustc_hir::Constness::Const { .. }),
             is_unsafe,
             abi: header.abi.into_json(renderer),
         }
@@ -496,7 +599,7 @@ impl FromClean<clean::WherePredicate> for WherePredicate {
                     })
                     .collect(),
             },
-            EqPredicate { lhs, rhs } => WherePredicate::EqPredicate {
+            ProjectionPredicate { lhs, rhs } => WherePredicate::EqPredicate {
                 // The LHS currently has type `Type` but it should be a `QualifiedPath` since it may
                 // refer to an associated const. However, `EqPredicate` shouldn't exist in the first
                 // place: <https://github.com/rust-lang/rust/141368>.
@@ -747,6 +850,7 @@ impl FromClean<clean::Impl> for Impl {
 pub(crate) fn from_clean_function(
     clean::Function { decl, generics }: &clean::Function,
     has_body: bool,
+    default_unstable: Option<Box<ProvidedDefaultUnstable>>,
     header: rustc_hir::FnHeader,
     renderer: &JsonRenderer<'_>,
 ) -> Function {
@@ -755,6 +859,7 @@ pub(crate) fn from_clean_function(
         generics: generics.into_json(renderer),
         header: header.into_json(renderer),
         has_body,
+        default_unstable,
     }
 }
 
@@ -898,9 +1003,69 @@ impl FromClean<ItemType> for ItemKind {
             Keyword => ItemKind::Keyword,
             Attribute => ItemKind::Attribute,
             TraitAlias => ItemKind::TraitAlias,
-            ProcAttribute => ItemKind::ProcAttribute,
-            ProcDerive => ItemKind::ProcDerive,
+            ProcAttribute | DeclMacroAttribute => ItemKind::ProcAttribute,
+            ProcDerive | DeclMacroDerive => ItemKind::ProcDerive,
         }
+    }
+}
+
+fn default_body_stability_for_def_id(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> Option<hir::DefaultBodyStability> {
+    let stability = tcx.lookup_default_body_stability(def_id)?;
+    match stability.level {
+        hir::StabilityLevel::Unstable { .. } => Some(stability),
+        hir::StabilityLevel::Stable { .. } => None,
+    }
+}
+
+fn const_stability_for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::ConstStability> {
+    if !tcx.is_conditionally_const(def_id) {
+        // The item cannot be conditionally-const. No const stability here.
+        //
+        // This includes associated consts, which are an interesting exception
+        // to the general rule that items inside `const impl` and `const trait` carry
+        // the const-stability of that block. Associated consts are already const, always.
+        return None;
+    }
+
+    let const_stability = tcx.lookup_const_stability(def_id)?;
+    if find_attr!(tcx, def_id, RustcConstStability { .. }) {
+        // Direct const-stability attribute on the item itself. Return it directly.
+        return Some(const_stability);
+    }
+
+    if const_stability.is_const_stable() {
+        // Items that are const-stable without an explicit attribute on their own item
+        // must be associated items inside `const trait` or `const impl`.
+        // We don't want to duplicate their parent item's const-stability attribute.
+        return None;
+    }
+
+    // We're dealing with an item that is const-unstable,
+    // but doesn't have an explicit const-stability attribute on it.
+    //
+    // Today, this means one of two cases:
+    // - The item is enclosed within a `#[rustc_const_unstable]` block,
+    //   like a `const trait` or `const impl`, in which case our query propagated the parent's
+    //   const-instability info. This const-instability is desirable to place into JSON
+    //   because *only some* associated items inside such a block are const-unstable.
+    //   Associated consts are the exception, and were handled earlier.
+    // - The item is `#[unstable]` which implies it's const-unstable under the same feature,
+    //   in which case we don't want to duplicate the existing stability attribute
+    //   which would already appear in an adjacent field in the JSON anyway.
+    if let Some(parent_def_id) = tcx.opt_parent(def_id)
+        && matches!(tcx.def_kind(parent_def_id), DefKind::Trait | DefKind::Impl { .. })
+        && tcx.lookup_const_stability(parent_def_id) == Some(const_stability)
+    {
+        Some(const_stability)
+    } else {
+        std::debug_assert_matches!(
+            tcx.lookup_stability(def_id).map(|s| s.level),
+            Some(hir::StabilityLevel::Unstable { .. })
+        );
+        None
     }
 }
 
@@ -921,6 +1086,10 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
 
     vec![match kind {
         AK::Deprecated { .. } => return Vec::new(), // Handled separately into Item::deprecation.
+        AK::Stability { .. } => return Vec::new(),  // Handled separately into Item::stability
+        AK::RustcConstStability { .. } => return Vec::new(), // Handled separately into Item::const_stability.
+        AK::RustcBodyStability { .. } => return Vec::new(), // Handled separately by `default_unstable`.
+
         AK::DocComment { .. } => unreachable!("doc comments stripped out earlier"),
 
         AK::MacroExport { .. } => Attribute::MacroExport,
@@ -1004,24 +1173,41 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
             for sub_cfg in cfg {
                 ret.push(Attribute::Other(format!("#[doc(cfg({sub_cfg}))]")));
             }
-            for (auto_cfg, _) in auto_cfg {
-                let kind = match auto_cfg.kind {
-                    HideOrShow::Hide => "hide",
-                    HideOrShow::Show => "show",
-                };
-                let mut out = format!("#[doc(auto_cfg({kind}(");
-                for (pos, value) in auto_cfg.values.iter().enumerate() {
-                    if pos > 0 {
+            if !auto_cfg.is_empty() {
+                let mut out = format!("#[doc(auto_cfg(");
+                for (index, (auto_cfg, _)) in auto_cfg.iter().enumerate() {
+                    let kind = match auto_cfg.kind {
+                        HideOrShow::Hide => "hide",
+                        HideOrShow::Show => "show",
+                    };
+                    if index > 0 {
                         out.push_str(", ");
                     }
-                    out.push_str(value.name.as_str());
-                    if let Some((value, _)) = value.value {
-                        // We use `as_str` and debug display to have characters escaped and `"`
-                        // characters surrounding the string.
-                        out.push_str(&format!(" = {:?}", value.as_str()));
+                    out.push_str(&format!("{kind}("));
+                    for (name, cfgs) in &auto_cfg.values {
+                        out.push_str(&format!("{name}, values("));
+                        match cfgs {
+                            DocCfgHideShow::Any(_) => {
+                                out.push_str("any()");
+                            }
+                            DocCfgHideShow::List(values) => {
+                                for (pos, value) in values.iter().enumerate() {
+                                    let separator = if pos > 0 { ", " } else { "" };
+                                    if let Some(value) = &value.value {
+                                        // We use `as_str` and debug display to have characters escaped
+                                        // and `"` characters surrounding the string.
+                                        out.push_str(&format!("{separator}{:?}", value.as_str()));
+                                    } else {
+                                        out.push_str(&format!("{separator}none()"));
+                                    }
+                                }
+                            }
+                        }
+                        out.push_str(")");
                     }
+                    out.push(')');
                 }
-                out.push_str(")))]");
+                out.push_str("))]");
                 ret.push(Attribute::Other(out));
             }
             for (change, _) in auto_cfg_change {

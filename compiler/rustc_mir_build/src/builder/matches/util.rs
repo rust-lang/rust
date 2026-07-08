@@ -26,7 +26,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TerminatorKind::FalseEdge { real_target, imaginary_target },
             );
         } else {
-            self.cfg.goto(from_block, source_info, real_target)
+            self.cfg.goto(from_block, source_info, real_target);
         }
     }
 }

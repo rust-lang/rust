@@ -2,6 +2,7 @@
 
 use std::marker::PhantomData;
 
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::IndexVec;
 use rustc_middle::ty;
 use rustc_span::DUMMY_SP;
@@ -21,7 +22,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
 
         blocks.push(mir::BasicBlockData::new_stmts(
             std::iter::repeat(&nop).cloned().take(n).collect(),
-            Some(mir::Terminator { source_info, kind }),
+            Some(mir::Terminator { source_info, kind, attributes: ThinVec::new() }),
             false,
         ))
     };

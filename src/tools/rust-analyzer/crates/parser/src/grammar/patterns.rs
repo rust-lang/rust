@@ -12,6 +12,7 @@ pub(super) const PATTERN_FIRST: TokenSet =
         T![_],
         T![-],
         T![.],
+        T![!],
     ]));
 
 const PAT_TOP_FIRST: TokenSet = PATTERN_FIRST.union(TokenSet::new(&[T![|]]));
@@ -256,6 +257,7 @@ fn atom_pat(p: &mut Parser<'_>, recovery_set: TokenSet) -> Option<CompletedMarke
         T![&] => ref_pat(p),
         T!['('] => tuple_pat(p),
         T!['['] => slice_pat(p),
+        T![!] => not_null_pat(p),
 
         _ => {
             p.err_recover("expected pattern", recovery_set);
@@ -433,6 +435,18 @@ fn ref_pat(p: &mut Parser<'_>) -> CompletedMarker {
     p.eat(T![mut]);
     pattern_single(p);
     m.complete(p, REF_PAT)
+}
+
+// test not_null_pat
+// fn main() {
+//     let (!a | !&0) = ();
+// }
+fn not_null_pat(p: &mut Parser<'_>) -> CompletedMarker {
+    assert!(p.at(T![!]));
+    let m = p.start();
+    p.bump(T![!]);
+    pattern_single(p);
+    m.complete(p, NOT_NULL)
 }
 
 // test tuple_pat

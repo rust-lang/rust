@@ -118,7 +118,7 @@ error: `_` cannot be a raw identifier
 LL | #[cfg_attr(r#_, cfg(r#_))]
    |                     ^^^
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:20:1
    |
 LL | #[cfg(crate)]
@@ -133,7 +133,7 @@ LL - #[cfg(crate)]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:22:1
    |
 LL | #[cfg(super)]
@@ -148,7 +148,7 @@ LL - #[cfg(super)]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:24:1
    |
 LL | #[cfg(self)]
@@ -163,7 +163,7 @@ LL - #[cfg(self)]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:26:1
    |
 LL | #[cfg(Self)]
@@ -178,7 +178,7 @@ LL - #[cfg(Self)]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg_attr` attribute input
+error[E0565]: malformed `cfg_attr` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:28:1
    |
 LL | #[cfg_attr(crate, path = "foo")]
@@ -193,7 +193,7 @@ LL - #[cfg_attr(crate, path = "foo")]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error[E0539]: malformed `cfg_attr` attribute input
+error[E0565]: malformed `cfg_attr` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:30:1
    |
 LL | #[cfg_attr(super, path = "foo")]
@@ -208,7 +208,7 @@ LL - #[cfg_attr(super, path = "foo")]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error[E0539]: malformed `cfg_attr` attribute input
+error[E0565]: malformed `cfg_attr` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:32:1
    |
 LL | #[cfg_attr(self, path = "foo")]
@@ -223,7 +223,7 @@ LL - #[cfg_attr(self, path = "foo")]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error[E0539]: malformed `cfg_attr` attribute input
+error[E0565]: malformed `cfg_attr` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:34:1
    |
 LL | #[cfg_attr(Self, path = "foo")]
@@ -238,7 +238,7 @@ LL - #[cfg_attr(Self, path = "foo")]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:36:18
    |
 LL | #[cfg_attr(true, cfg(crate))]
@@ -253,7 +253,7 @@ LL - #[cfg_attr(true, cfg(crate))]
 LL + #[cfg_attr(true, cfg(predicate))]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:38:18
    |
 LL | #[cfg_attr(true, cfg(super))]
@@ -268,7 +268,7 @@ LL - #[cfg_attr(true, cfg(super))]
 LL + #[cfg_attr(true, cfg(predicate))]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:40:18
    |
 LL | #[cfg_attr(true, cfg(self))]
@@ -283,7 +283,7 @@ LL - #[cfg_attr(true, cfg(self))]
 LL + #[cfg_attr(true, cfg(predicate))]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:42:18
    |
 LL | #[cfg_attr(true, cfg(Self))]
@@ -362,7 +362,7 @@ error: expected identifier, found reserved identifier `_`
 LL | #[cfg_attr(true, cfg(_))]
    |                      ^ expected identifier, found reserved identifier
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:90:1
    |
 LL | #[cfg(r#crate)]
@@ -377,7 +377,7 @@ LL - #[cfg(r#crate)]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:93:1
    |
 LL | #[cfg(r#super)]
@@ -392,7 +392,7 @@ LL - #[cfg(r#super)]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:96:1
    |
 LL | #[cfg(r#self)]
@@ -407,7 +407,7 @@ LL - #[cfg(r#self)]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:99:1
    |
 LL | #[cfg(r#Self)]
@@ -422,7 +422,7 @@ LL - #[cfg(r#Self)]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg_attr` attribute input
+error[E0565]: malformed `cfg_attr` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:102:1
    |
 LL | #[cfg_attr(r#crate, cfg(r#crate))]
@@ -437,7 +437,7 @@ LL - #[cfg_attr(r#crate, cfg(r#crate))]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error[E0539]: malformed `cfg_attr` attribute input
+error[E0565]: malformed `cfg_attr` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:106:1
    |
 LL | #[cfg_attr(r#super, cfg(r#super))]
@@ -452,7 +452,7 @@ LL - #[cfg_attr(r#super, cfg(r#super))]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error[E0539]: malformed `cfg_attr` attribute input
+error[E0565]: malformed `cfg_attr` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:110:1
    |
 LL | #[cfg_attr(r#self, cfg(r#self))]
@@ -467,7 +467,7 @@ LL - #[cfg_attr(r#self, cfg(r#self))]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error[E0539]: malformed `cfg_attr` attribute input
+error[E0565]: malformed `cfg_attr` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:114:1
    |
 LL | #[cfg_attr(r#Self, cfg(r#Self))]
@@ -482,7 +482,7 @@ LL - #[cfg_attr(r#Self, cfg(r#Self))]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:9:9
    |
 LL |         #[cfg($crate)]
@@ -501,7 +501,7 @@ LL -         #[cfg($crate)]
 LL +         #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg_attr` attribute input
+error[E0565]: malformed `cfg_attr` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:11:9
    |
 LL |         #[cfg_attr($crate, path = "foo")]
@@ -520,7 +520,7 @@ LL -         #[cfg_attr($crate, path = "foo")]
 LL +         #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/path-kw-as-cfg-pred.rs:13:26
    |
 LL |         #[cfg_attr(true, cfg($crate))]
@@ -539,7 +539,7 @@ LL -         #[cfg_attr(true, cfg($crate))]
 LL +         #[cfg_attr(true, cfg(predicate))]
    |
 
-error[E0539]: malformed `cfg` macro input
+error[E0565]: malformed `cfg` macro input
   --> $DIR/path-kw-as-cfg-pred.rs:16:9
    |
 LL |         cfg!($crate);
@@ -558,7 +558,7 @@ LL -         cfg!($crate);
 LL +         cfg!(predicate);
    |
 
-error[E0539]: malformed `cfg` macro input
+error[E0565]: malformed `cfg` macro input
   --> $DIR/path-kw-as-cfg-pred.rs:67:5
    |
 LL |     cfg!(crate);
@@ -573,7 +573,7 @@ LL -     cfg!(crate);
 LL +     cfg!(predicate);
    |
 
-error[E0539]: malformed `cfg` macro input
+error[E0565]: malformed `cfg` macro input
   --> $DIR/path-kw-as-cfg-pred.rs:68:5
    |
 LL |     cfg!(super);
@@ -588,7 +588,7 @@ LL -     cfg!(super);
 LL +     cfg!(predicate);
    |
 
-error[E0539]: malformed `cfg` macro input
+error[E0565]: malformed `cfg` macro input
   --> $DIR/path-kw-as-cfg-pred.rs:69:5
    |
 LL |     cfg!(self);
@@ -603,7 +603,7 @@ LL -     cfg!(self);
 LL +     cfg!(predicate);
    |
 
-error[E0539]: malformed `cfg` macro input
+error[E0565]: malformed `cfg` macro input
   --> $DIR/path-kw-as-cfg-pred.rs:70:5
    |
 LL |     cfg!(Self);
@@ -618,7 +618,7 @@ LL -     cfg!(Self);
 LL +     cfg!(predicate);
    |
 
-error[E0539]: malformed `cfg` macro input
+error[E0565]: malformed `cfg` macro input
   --> $DIR/path-kw-as-cfg-pred.rs:72:5
    |
 LL |     cfg!(r#crate);
@@ -633,7 +633,7 @@ LL -     cfg!(r#crate);
 LL +     cfg!(predicate);
    |
 
-error[E0539]: malformed `cfg` macro input
+error[E0565]: malformed `cfg` macro input
   --> $DIR/path-kw-as-cfg-pred.rs:74:5
    |
 LL |     cfg!(r#super);
@@ -648,7 +648,7 @@ LL -     cfg!(r#super);
 LL +     cfg!(predicate);
    |
 
-error[E0539]: malformed `cfg` macro input
+error[E0565]: malformed `cfg` macro input
   --> $DIR/path-kw-as-cfg-pred.rs:76:5
    |
 LL |     cfg!(r#self);
@@ -663,7 +663,7 @@ LL -     cfg!(r#self);
 LL +     cfg!(predicate);
    |
 
-error[E0539]: malformed `cfg` macro input
+error[E0565]: malformed `cfg` macro input
   --> $DIR/path-kw-as-cfg-pred.rs:78:5
    |
 LL |     cfg!(r#Self);
@@ -698,4 +698,4 @@ LL |     cfg!(_);
 
 error: aborting due to 64 previous errors
 
-For more information about this error, try `rustc --explain E0539`.
+For more information about this error, try `rustc --explain E0565`.

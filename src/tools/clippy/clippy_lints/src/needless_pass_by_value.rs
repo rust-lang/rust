@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::source::{SpanRangeExt, snippet};
+use clippy_utils::source::{SpanExt, snippet};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env_from_iter, is_copy};
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{is_self, peel_hir_ty_options, strip_pat_refs, sym};
@@ -121,10 +121,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         let meta_sized_trait = need!(cx.tcx.lang_items().meta_sized_trait());
 
         let preds = traits::elaborate(cx.tcx, cx.param_env.caller_bounds().iter())
-            .filter(|p| !p.is_global())
-            .filter_map(|pred| {
-                // Note that we do not want to deal with qualified predicates here.
-                match pred.kind().no_bound_vars() {
+            .filter(|c| !c.is_global())
+            .filter_map(|clause| {
+                // Note that we do not want to deal with qualified clauses here.
+                match clause.kind().no_bound_vars() {
                     Some(ty::ClauseKind::Trait(pred))
                         if pred.def_id() != sized_trait && pred.def_id() != meta_sized_trait =>
                     {
@@ -248,7 +248,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         for (span, suggestion) in clone_spans {
                             diag.span_suggestion(
                                 span,
-                                span.get_source_text(cx).map_or_else(
+                                span.get_text(cx).map_or_else(
                                     || "change the call to".to_owned(),
                                     |src| format!("change `{src}` to"),
                                 ),
@@ -275,7 +275,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         for (span, suggestion) in clone_spans {
                             diag.span_suggestion(
                                 span,
-                                span.get_source_text(cx).map_or_else(
+                                span.get_text(cx).map_or_else(
                                     || "change the call to".to_owned(),
                                     |src| format!("change `{src}` to"),
                                 ),

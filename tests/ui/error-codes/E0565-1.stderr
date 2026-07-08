@@ -5,6 +5,12 @@ LL | #[deprecated("since")]
    | ^^^^^^^^^^^^^-------^^
    |              |
    |              didn't expect a literal here
+   |
+help: try using `=` instead
+   |
+LL - #[deprecated("since")]
+LL + #[deprecated = "since"]
+   |
 
 error: aborting due to 1 previous error
 

@@ -9,11 +9,14 @@ const trait Foo {
 
 trait Bar {}
 
-impl const Foo for i32 {
+const impl Foo for i32 {
     fn foo() {}
 }
 
-impl<T> const Foo for T where T: Bar {
+const impl<T> Foo for T
+where
+    T: Bar,
+{
     fn foo() {}
 }
 

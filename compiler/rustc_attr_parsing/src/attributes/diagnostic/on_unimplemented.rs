@@ -1,9 +1,8 @@
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::diagnostic::Directive;
-use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::errors::DiagnosticOnUnimplementedOnlyForTraits;
 
 #[derive(Default)]
 pub(crate) struct OnUnimplementedParser {
@@ -15,15 +14,6 @@ impl OnUnimplementedParser {
     fn parse<'sess>(&mut self, cx: &mut AcceptContext<'_, 'sess>, args: &ArgParser, mode: Mode) {
         let span = cx.attr_span;
         self.span = Some(span);
-
-        if !matches!(cx.target, Target::Trait) {
-            cx.emit_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                DiagnosticOnUnimplementedOnlyForTraits,
-                span,
-            );
-            return;
-        }
 
         let Some(items) = parse_list(cx, args, mode) else { return };
 
@@ -38,6 +28,7 @@ impl AttributeParser for OnUnimplementedParser {
         (
             &[sym::diagnostic, sym::on_unimplemented],
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+            AttributeStability::Stable,
             |this, cx, args| {
                 this.parse(cx, args, Mode::DiagnosticOnUnimplemented);
             },
@@ -45,13 +36,17 @@ impl AttributeParser for OnUnimplementedParser {
         (
             &[sym::rustc_on_unimplemented],
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+            unstable!(
+                rustc_attrs,
+                "see `#[diagnostic::on_unimplemented]` for the stable equivalent of this attribute"
+            ),
             |this, cx, args| {
                 this.parse(cx, args, Mode::RustcOnUnimplemented);
             },
         ),
     ];
-    //FIXME attribute is not parsed for non-traits but diagnostics are issued in `check_attr.rs`
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Trait)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(_span) = self.span {

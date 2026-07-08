@@ -87,6 +87,8 @@ fn find_proc_macro_dylib(name: &str) -> PathBuf {
         "dylib"
     } else if cfg!(target_os = "windows") {
         "dll"
+    } else if cfg!(target_os = "aix") {
+        "a"
     } else {
         "so"
     };

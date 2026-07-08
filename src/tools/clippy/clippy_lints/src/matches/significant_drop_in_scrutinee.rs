@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::LateContext;
 use rustc_middle::ty::{GenericArgKind, RegionKind, Ty, TypeVisitableExt};
 use rustc_span::Span;
 
@@ -184,7 +184,6 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
     fn has_sig_drop_attr_impl(&mut self, ty: Ty<'tcx>) -> bool {
         if let Some(adt) = ty.ty_adt_def()
             && get_builtin_attr(
-                self.cx.sess(),
                 #[allow(deprecated)]
                 self.cx.tcx.get_all_attrs(adt.did()),
                 sym::has_significant_drop,

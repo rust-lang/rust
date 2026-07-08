@@ -607,6 +607,7 @@ impl Step for CI {
                 "clippy::single_char_add_str".into(),
                 "clippy::to_string_in_format_args".into(),
                 "clippy::unconditional_recursion".into(),
+                "clippy::mem_replace_with_default".into(),
             ],
             forbid: vec![],
         };

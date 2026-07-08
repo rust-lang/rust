@@ -1369,7 +1369,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                     .next_back()
                     .unwrap()
                     .1
-                    .get()
+                    .ty()
                     .instantiate(self.interner(), subst)
                     .skip_norm_wip();
                 let sized_part_size =

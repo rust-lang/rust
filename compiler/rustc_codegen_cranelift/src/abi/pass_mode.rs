@@ -7,6 +7,7 @@ use rustc_target::callconv::{
 };
 use smallvec::{SmallVec, smallvec};
 
+use super::ArgValue;
 use crate::prelude::*;
 use crate::value_and_place::assert_assignable;
 
@@ -44,9 +45,9 @@ fn apply_attrs_to_abi_param(param: AbiParam, arg_attrs: ArgAttributes) -> AbiPar
 
 fn cast_target_to_abi_params(cast: &CastTarget) -> SmallVec<[(Size, AbiParam); 2]> {
     if let Some(offset_from_start) = cast.rest_offset {
-        assert!(cast.prefix[1..].iter().all(|p| p.is_none()));
+        assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);
-        let first = cast.prefix[0].unwrap();
+        let first = cast.prefix[0];
         let second = cast.rest.unit;
         return smallvec![
             (Size::ZERO, reg_to_abi_param(first)),
@@ -71,7 +72,6 @@ fn cast_target_to_abi_params(cast: &CastTarget) -> SmallVec<[(Size, AbiParam); 2
     let args = cast
         .prefix
         .iter()
-        .flatten()
         .map(|&reg| reg_to_abi_param(reg))
         .chain((0..rest_count).map(|_| reg_to_abi_param(cast.rest.unit)));
 
@@ -286,7 +286,7 @@ pub(super) fn cvalue_for_param<'tcx>(
     local_field: Option<usize>,
     arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     block_params_iter: &mut impl Iterator<Item = Value>,
-) -> Option<CValue<'tcx>> {
+) -> Option<ArgValue<'tcx>> {
     let block_params = arg_abi
         .get_abi_param(fx.tcx)
         .into_iter()
@@ -307,30 +307,42 @@ pub(super) fn cvalue_for_param<'tcx>(
         arg_abi.layout,
     );
 
-    match arg_abi.mode {
-        PassMode::Ignore => None,
+    let value = match arg_abi.mode {
+        PassMode::Ignore => return None,
         PassMode::Direct(_) => {
             assert_eq!(block_params.len(), 1, "{:?}", block_params);
-            Some(CValue::by_val(block_params[0], arg_abi.layout))
+            CValue::by_val(block_params[0], arg_abi.layout)
         }
         PassMode::Pair(_, _) => {
             assert_eq!(block_params.len(), 2, "{:?}", block_params);
-            Some(CValue::by_val_pair(block_params[0], block_params[1], arg_abi.layout))
+            CValue::by_val_pair(block_params[0], block_params[1], arg_abi.layout)
         }
         PassMode::Cast { ref cast, .. } => {
-            Some(from_casted_value(fx, &block_params, arg_abi.layout, cast))
+            from_casted_value(fx, &block_params, arg_abi.layout, cast)
         }
-        PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
+        PassMode::Indirect { attrs, meta_attrs: None, on_stack: _ } => {
             assert_eq!(block_params.len(), 1, "{:?}", block_params);
-            Some(CValue::by_ref(Pointer::new(block_params[0]), arg_abi.layout))
+            if let Some(pointee_align) = attrs.pointee_align
+                && pointee_align < arg_abi.layout.align.abi
+                && arg_abi.layout.is_sized()
+                && arg_abi.layout.size != Size::ZERO
+            {
+                // Underaligned pointer: treat as `[u8; size]` and transmute-copy into the real type.
+                let bytes_ty = Ty::new_array(fx.tcx, fx.tcx.types.u8, arg_abi.layout.size.bytes());
+                let bytes_layout = fx.layout_of(bytes_ty);
+                return Some(ArgValue {
+                    value: CValue::by_ref(Pointer::new(block_params[0]), bytes_layout),
+                    is_underaligned_pointee: true,
+                });
+            } else {
+                CValue::by_ref(Pointer::new(block_params[0]), arg_abi.layout)
+            }
         }
         PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
             assert_eq!(block_params.len(), 2, "{:?}", block_params);
-            Some(CValue::by_ref_unsized(
-                Pointer::new(block_params[0]),
-                block_params[1],
-                arg_abi.layout,
-            ))
+            CValue::by_ref_unsized(Pointer::new(block_params[0]), block_params[1], arg_abi.layout)
         }
-    }
+    };
+
+    Some(ArgValue { value, is_underaligned_pointee: false })
 }

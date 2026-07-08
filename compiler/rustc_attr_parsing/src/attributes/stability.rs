@@ -1,7 +1,7 @@
 use std::num::NonZero;
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_feature::ACCEPTED_LANG_FEATURES;
+use rustc_feature::{ACCEPTED_LANG_FEATURES, AttributeStability};
 use rustc_hir::attrs::UnstableRemovedFeature;
 use rustc_hir::target::GenericParamKind;
 use rustc_hir::{
@@ -13,17 +13,7 @@ use super::prelude::*;
 use super::util::parse_version;
 use crate::session_diagnostics;
 
-macro_rules! reject_outside_std {
-    ($cx: ident) => {
-        // Emit errors for non-staged-api crates.
-        if !$cx.features().staged_api() {
-            $cx.emit_err(session_diagnostics::StabilityOutsideStd { span: $cx.attr_span });
-            return;
-        }
-    };
-}
-
-const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
     Allow(Target::Fn),
     Allow(Target::Struct),
     Allow(Target::Enum),
@@ -50,6 +40,7 @@ const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
     Allow(Target::Static),
     Allow(Target::ForeignFn),
     Allow(Target::ForeignStatic),
+    Allow(Target::ForeignTy),
     Allow(Target::ExternCrate),
 ]);
 
@@ -76,8 +67,8 @@ impl AttributeParser for StabilityParser {
         (
             &[sym::stable],
             template!(List: &[r#"feature = "name", since = "version""#]),
+            unstable!(staged_api),
             |this, cx, args| {
-                reject_outside_std!(cx);
                 if !this.check_duplicate(cx)
                     && let Some((feature, level)) = parse_stability(cx, args)
                 {
@@ -88,8 +79,8 @@ impl AttributeParser for StabilityParser {
         (
             &[sym::unstable],
             template!(List: &[r#"feature = "name", reason = "...", issue = "N""#]),
+            unstable!(staged_api),
             |this, cx, args| {
-                reject_outside_std!(cx);
                 if !this.check_duplicate(cx)
                     && let Some((feature, level)) = parse_unstability(cx, args)
                 {
@@ -100,8 +91,8 @@ impl AttributeParser for StabilityParser {
         (
             &[sym::rustc_allowed_through_unstable_modules],
             template!(NameValueStr: "deprecation message"),
+            unstable!(staged_api),
             |this, cx, args| {
-                reject_outside_std!(cx);
                 let Some(nv) = cx.expect_name_value(args, cx.attr_span, None) else {
                     return;
                 };
@@ -112,7 +103,7 @@ impl AttributeParser for StabilityParser {
             },
         ),
     ];
-    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = ALLOWED_TARGETS;
 
     fn finalize(mut self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(atum) = self.allowed_through_unstable_modules {
@@ -158,8 +149,8 @@ impl AttributeParser for BodyStabilityParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::rustc_default_body_unstable],
         template!(List: &[r#"feature = "name", reason = "...", issue = "N""#]),
+        unstable!(staged_api),
         |this, cx, args| {
-            reject_outside_std!(cx);
             if this.stability.is_some() {
                 cx.dcx()
                     .emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
@@ -168,7 +159,7 @@ impl AttributeParser for BodyStabilityParser {
             }
         },
     )];
-    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = ALLOWED_TARGETS;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         let (stability, span) = self.stability?;
@@ -181,10 +172,11 @@ pub(crate) struct RustcConstStableIndirectParser;
 impl NoArgsAttributeParser for RustcConstStableIndirectParser {
     const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Ignore;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcConstStableIndirect;
 }
 
@@ -211,9 +203,8 @@ impl AttributeParser for ConstStabilityParser {
         (
             &[sym::rustc_const_stable],
             template!(List: &[r#"feature = "name""#]),
+            unstable!(staged_api),
             |this, cx, args| {
-                reject_outside_std!(cx);
-
                 if !this.check_duplicate(cx)
                     && let Some((feature, level)) = parse_stability(cx, args)
                 {
@@ -227,8 +218,8 @@ impl AttributeParser for ConstStabilityParser {
         (
             &[sym::rustc_const_unstable],
             template!(List: &[r#"feature = "name""#]),
+            unstable!(staged_api),
             |this, cx, args| {
-                reject_outside_std!(cx);
                 if !this.check_duplicate(cx)
                     && let Some((feature, level)) = parse_unstability(cx, args)
                 {
@@ -239,12 +230,11 @@ impl AttributeParser for ConstStabilityParser {
                 }
             },
         ),
-        (&[sym::rustc_promotable], template!(Word), |this, cx, _| {
-            reject_outside_std!(cx);
+        (&[sym::rustc_promotable], template!(Word), unstable!(staged_api), |this, _cx, _| {
             this.promotable = true;
         }),
     ];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
@@ -471,9 +461,10 @@ pub(crate) struct UnstableRemovedParser;
 impl CombineAttributeParser for UnstableRemovedParser {
     type Item = UnstableRemovedFeature;
     const PATH: &[Symbol] = &[sym::unstable_removed];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate =
         template!(List: &[r#"feature = "name", reason = "...", link = "...", since = "version""#]);
+    const STABILITY: AttributeStability = unstable!(staged_api);
 
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::UnstableRemoved(items);
 
@@ -485,11 +476,6 @@ impl CombineAttributeParser for UnstableRemovedParser {
         let mut reason = None;
         let mut link = None;
         let mut since = None;
-
-        if !cx.features().staged_api() {
-            cx.emit_err(session_diagnostics::StabilityOutsideStd { span: cx.attr_span });
-            return None;
-        }
 
         let list = cx.expect_list(args, cx.attr_span)?;
 

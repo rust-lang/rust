@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use rustc_abi::{
     BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
 };
@@ -81,8 +82,7 @@ where
 {
     let dl = cx.data_layout();
     let size = arg.layout.size;
-    let mut prefix = [None; 8];
-    let mut prefix_index = 0;
+    let mut prefix = ArrayVec::new();
 
     // Detect need for padding
     let align = Ord::clamp(arg.layout.align.abi, dl.i64_align, dl.i128_align);
@@ -107,7 +107,7 @@ where
                 // doubles not part of another aggregate are passed as floats.
                 let mut last_offset = Size::ZERO;
 
-                for i in 0..arg.layout.fields.count() {
+                'outer: for i in 0..arg.layout.fields.count() {
                     let field = arg.layout.field(cx, i);
                     let offset = arg.layout.fields.offset(i);
 
@@ -117,19 +117,15 @@ where
                             if offset.is_aligned(dl.f64_align) {
                                 // Insert enough integers to cover [last_offset, offset)
                                 assert!(last_offset.is_aligned(dl.f64_align));
-                                for _ in 0..((offset - last_offset).bits() / 64)
-                                    .min((prefix.len() - prefix_index) as u64)
-                                {
-                                    prefix[prefix_index] = Some(Reg::i64());
-                                    prefix_index += 1;
+                                for _ in 0..((offset - last_offset).bits() / 64) {
+                                    if prefix.try_push(Reg::i64()).is_err() {
+                                        break 'outer;
+                                    }
                                 }
 
-                                if prefix_index == prefix.len() {
+                                if prefix.try_push(Reg::f64()).is_err() {
                                     break;
                                 }
-
-                                prefix[prefix_index] = Some(Reg::f64());
-                                prefix_index += 1;
                                 last_offset = offset + Reg::f64().size;
                             }
                         }
@@ -139,7 +135,7 @@ where
         };
 
         // Extract first 8 chunks as the prefix
-        let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
+        let rest_size = size - Size::from_bytes(8) * prefix.len() as u64;
         arg.cast_to_and_pad_i32(
             CastTarget::prefixed(prefix, Uniform::new(Reg::i64(), rest_size)),
             pad_i32,

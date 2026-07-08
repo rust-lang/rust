@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![allow(dead_code)]
-
 /// Issue: https://github.com/rust-lang/rust-clippy/issues/2596
 pub fn loop_on_block_condition(u: &mut isize) {
     while { *u < 0 } {

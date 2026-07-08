@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![allow(clippy::unit_arg)]
+#![expect(clippy::unit_arg)]
 
 struct One {
     x: i32,

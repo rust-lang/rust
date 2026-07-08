@@ -1,7 +1,7 @@
 use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::find_attr;
+use rustc_hir::{self as hir, find_attr};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -41,6 +41,12 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         // bodies even when the backend would implement something better, we stop
         // the MIR inliner from ever inlining an intrinsic.
         return true;
+    }
+
+    if let hir::Constness::Const { always: true } = tcx.constness(def_id) {
+        // Comptime functions only exist during const eval and can never be passed
+        // to codegen. The const eval MIR pipeline also doesn't inline anything at all.
+        return false;
     }
 
     // Obey source annotations first; this is important because it means we can use

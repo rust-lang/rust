@@ -1,4 +1,4 @@
-#![allow(clippy::question_mark)]
+#![expect(clippy::question_mark)]
 #![warn(clippy::filter_map_bool_then)]
 
 fn issue11617() {

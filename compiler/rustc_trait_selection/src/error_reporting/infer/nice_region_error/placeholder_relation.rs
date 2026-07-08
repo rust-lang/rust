@@ -3,8 +3,8 @@ use rustc_errors::Diag;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, RePlaceholder, Region};
 
+use crate::diagnostics::PlaceholderRelationLfNotSatisfied;
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::PlaceholderRelationLfNotSatisfied;
 use crate::infer::{RegionResolutionError, SubregionOrigin};
 
 impl<'tcx> NiceRegionError<'_, 'tcx> {

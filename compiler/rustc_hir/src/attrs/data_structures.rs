@@ -129,10 +129,26 @@ impl InlineAttr {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, PrintAttribute)]
+pub enum UnrollAttr {
+    Hint,
+    Full,
+    Never,
+    Count(u32),
+}
+
 #[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq, StableHash, PrintAttribute)]
 pub enum InstructionSetAttr {
     ArmA32,
     ArmT32,
+}
+
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, Eq, StableHash, PrintAttribute)]
+pub enum InstrumentFnAttr {
+    /// `#[instrument_fn = "on"]`
+    On,
+    /// `#[instrument_fn = "off"]`
+    Off,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, PrintAttribute)]
@@ -499,19 +515,66 @@ pub enum HideOrShow {
     Show,
 }
 
-#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
-pub struct CfgInfo {
-    pub name: Symbol,
-    pub name_span: Span,
-    pub value: Option<(Symbol, Span)>,
+#[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable, PrintAttribute, PartialEq)]
+pub struct DocCfgHideShowValue {
+    pub span: Span,
+    /// If `value` is `None`, then it's a `none()` value.
+    pub value: Option<Symbol>,
 }
 
-impl CfgInfo {
-    pub fn span_for_name_and_value(&self) -> Span {
-        if let Some((_, value_span)) = self.value {
-            self.name_span.with_hi(value_span.hi())
-        } else {
-            self.name_span
+impl DocCfgHideShowValue {
+    pub fn new(value: Symbol, span: Span) -> Self {
+        Self { span, value: Some(value) }
+    }
+
+    pub fn new_none(span: Span) -> Self {
+        Self { span, value: None }
+    }
+}
+
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute, PartialEq)]
+pub enum DocCfgHideShow {
+    Any(Span),
+    List(ThinVec<DocCfgHideShowValue>),
+}
+
+impl DocCfgHideShow {
+    pub fn new() -> Self {
+        Self::List(ThinVec::new())
+    }
+
+    pub fn new_with_only_key(span: Span) -> Self {
+        let mut values = ThinVec::with_capacity(1);
+        values.push(DocCfgHideShowValue { span, value: None });
+        Self::List(values)
+    }
+
+    pub fn push_none(&mut self, span: Span) {
+        if let Self::List(values) = self
+            && !values.iter().any(|v| v.value.is_none())
+        {
+            values.push(DocCfgHideShowValue { span, value: None });
+        }
+    }
+
+    pub fn merge_with(&mut self, other: &Self) {
+        match (self, other) {
+            (Self::Any(_), Self::Any(_) | Self::List(_)) => {
+                // Nothing to do.
+            }
+            (s, Self::Any(span)) => {
+                // We "upgrade" the list values to "all".
+                *s = Self::Any(*span);
+            }
+            (Self::List(values), Self::List(other_values)) => {
+                // Having duplicates is not an issue, we simply ignore them. Would be more
+                // convenient to have a `set` type though. T_T
+                for other in other_values {
+                    if !values.iter().any(|value| value.value == other.value) {
+                        values.push(*other);
+                    }
+                }
+            }
         }
     }
 }
@@ -519,7 +582,7 @@ impl CfgInfo {
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct CfgHideShow {
     pub kind: HideOrShow,
-    pub values: ThinVec<CfgInfo>,
+    pub values: FxIndexMap<Symbol, DocCfgHideShow>,
 }
 
 #[derive(Clone, Debug, Default, StableHash, Decodable, PrintAttribute)]
@@ -1060,6 +1123,9 @@ pub enum AttributeKind {
     /// Represents `#[instruction_set]`
     InstructionSet(InstructionSetAttr),
 
+    /// Represents `#[instrument_fn]`
+    InstrumentFn(InstrumentFnAttr),
+
     /// Represents `#[lang]`
     Lang(LangItem),
 
@@ -1173,6 +1239,12 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
+    /// Represents`#[diagnostic::on_type_error]`.
+    OnTypeError {
+        span: Span,
+        directive: Option<Box<Directive>>,
+    },
+
     /// Represents `#[rustc_on_unimplemented]` and `#[diagnostic::on_unimplemented]`.
     OnUnimplemented {
         /// None if the directive was malformed in some way.
@@ -1185,8 +1257,8 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
-    /// Represents `#[diagnostic::on_unmatch_args]`.
-    OnUnmatchArgs {
+    /// Represents `#[diagnostic::on_unmatched_args]`.
+    OnUnmatchedArgs {
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
     },
@@ -1199,8 +1271,9 @@ pub enum AttributeKind {
 
     /// Represents `#[patchable_function_entry]`
     PatchableFunctionEntry {
-        prefix: u8,
-        entry: u8,
+        prefix: Option<u8>,
+        entry: Option<u8>,
+        section: Option<Symbol>,
     },
 
     /// Represents `#[path]`
@@ -1311,6 +1384,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_coinductive]`.
     RustcCoinductive,
 
+    /// Represents `#[rustc_comptime]`
+    RustcComptime(Span),
+
     /// Represents `#[rustc_confusables]`.
     RustcConfusables {
         confusables: ThinVec<Symbol>,
@@ -1358,6 +1434,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_dump_def_path]`
     RustcDumpDefPath(Span),
+
+    /// Represents `#[rustc_dump_generics]`
+    RustcDumpGenerics,
 
     /// Represents `#[rustc_dump_hidden_type_of_opaques]`
     RustcDumpHiddenTypeOfOpaques,
@@ -1586,6 +1665,9 @@ pub enum AttributeKind {
         reason: Option<Symbol>,
     },
 
+    /// Represents `#[splat]`
+    Splat(Span),
+
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
         stability: Stability,
@@ -1614,6 +1696,9 @@ pub enum AttributeKind {
     TypeLengthLimit {
         limit: Limit,
     },
+
+    /// Represents `#[unroll]`
+    Unroll(UnrollAttr),
 
     /// Represents `#[unstable_feature_bound]`.
     UnstableFeatureBound(ThinVec<(Symbol, Span)>),

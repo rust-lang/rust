@@ -21,7 +21,6 @@ pub(crate) fn target() -> Target {
             vendor: "nvidia".into(),
             linker_flavor: LinkerFlavor::Llbc,
 
-            // With `ptx-linker` approach, it can be later overridden via link flags.
             cpu: "sm_70".into(),
 
             // No longer supported architectures

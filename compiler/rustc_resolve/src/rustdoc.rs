@@ -412,17 +412,16 @@ pub fn may_be_doc_link(link_type: LinkType) -> bool {
 pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<str>> {
     let (doc_fragments, other_attrs) =
         attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), false);
-    let mut doc =
-        prepare_to_doc_link_resolution(&doc_fragments).into_values().next().unwrap_or_default();
+    let doc = prepare_to_doc_link_resolution(&doc_fragments).into_values().next();
+    let mut links = doc.as_deref().map(parse_links).unwrap_or_default();
 
     for attr in other_attrs {
         if let Some(note) = attr.deprecation_note() {
-            doc += note.as_str();
-            doc += "\n";
+            links.extend(parse_links(note.as_str()));
         }
     }
 
-    parse_links(&doc)
+    links
 }
 
 /// Similar version of `markdown_links` from rustdoc.

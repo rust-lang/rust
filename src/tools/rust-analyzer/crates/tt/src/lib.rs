@@ -765,27 +765,24 @@ impl Subtree {
 
 pub fn pretty(tkns: TokenTreesView<'_>) -> String {
     return dispatch_ref! {
-        match tkns.repr => tt => pretty_impl(tt)
+        match tkns.repr => tt => pretty_impl(tkns, tt)
     };
 
     use crate::storage::TokenTree;
 
-    fn tokentree_to_text<S: SpanStorage>(tkn: &TokenTree<S>, tkns: &mut &[TokenTree<S>]) -> String {
+    fn tokentree_to_text<S: SpanStorage>(
+        tkns_view: TokenTreesView<'_>,
+        tkn: &TokenTree<S>,
+        tkns: &mut &[TokenTree<S>],
+    ) -> String {
         match tkn {
             TokenTree::Ident { sym, is_raw, .. } => format!("{}{}", is_raw.as_str(), sym),
-            &TokenTree::Literal { ref text_and_suffix, kind, suffix_len, span: _ } => {
+            &TokenTree::Literal { ref text_and_suffix, kind, suffix_len, span } => {
                 format!(
                     "{}",
                     Literal {
                         text_and_suffix: text_and_suffix.clone(),
-                        span: Span {
-                            range: TextRange::empty(TextSize::new(0)),
-                            anchor: span::SpanAnchor {
-                                file_id: span::EditionedFileId::from_raw(0),
-                                ast_id: span::FIXUP_ERASED_FILE_AST_ID_MARKER
-                            },
-                            ctx: span::SyntaxContext::root(span::Edition::Edition2015)
-                        },
+                        span: span.span(tkns_view.span_parts),
                         kind,
                         suffix_len
                     }
@@ -794,7 +791,7 @@ pub fn pretty(tkns: TokenTreesView<'_>) -> String {
             TokenTree::Punct { char, .. } => format!("{}", char),
             TokenTree::Subtree { len, delim_kind, .. } => {
                 let (subtree_content, rest) = tkns.split_at(*len as usize);
-                let content = pretty_impl(subtree_content);
+                let content = pretty_impl(tkns_view, subtree_content);
                 *tkns = rest;
                 let (open, close) = match *delim_kind {
                     DelimiterKind::Brace => ("{", "}"),
@@ -807,13 +804,16 @@ pub fn pretty(tkns: TokenTreesView<'_>) -> String {
         }
     }
 
-    fn pretty_impl<S: SpanStorage>(mut tkns: &[TokenTree<S>]) -> String {
+    fn pretty_impl<S: SpanStorage>(
+        tkns_view: TokenTreesView<'_>,
+        mut tkns: &[TokenTree<S>],
+    ) -> String {
         let mut last = String::new();
         let mut last_to_joint = true;
 
         while let Some((tkn, rest)) = tkns.split_first() {
             tkns = rest;
-            last = [last, tokentree_to_text(tkn, &mut tkns)].join(if last_to_joint {
+            last = [last, tokentree_to_text(tkns_view, tkn, &mut tkns)].join(if last_to_joint {
                 ""
             } else {
                 " "

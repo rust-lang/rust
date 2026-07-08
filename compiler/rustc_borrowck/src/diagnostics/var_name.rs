@@ -8,7 +8,7 @@ use tracing::debug;
 use crate::region_infer::RegionInferenceContext;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
-    /// Find the the name and span of the variable corresponding to the given region.
+    /// Find the name and span of the variable corresponding to the given region.
     /// The returned var will also be ensured to actually be used in `body`.
     pub(crate) fn get_var_name_and_span_for_region(
         &self,

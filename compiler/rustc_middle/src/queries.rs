@@ -66,7 +66,7 @@ use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModDefId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
+use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
@@ -75,12 +75,11 @@ use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolMangli
 use rustc_session::cstore::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
-use rustc_session::lint::LintExpectationId;
+use rustc_session::lint::StableLintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
-use crate::hir::Crate;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -180,10 +179,29 @@ rustc_queries! {
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering_raw(_: ()) -> (&'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
+    query resolver_for_lowering_raw(_: ()) -> (
+        // Those two fields are consumed by `index_ast`.
+        // We want them to be eventually dropped after lowering.
+        &'tcx Steal<ty::ResolverAstLowering<'tcx>>,
+        &'tcx Steal<ast::Crate>,
+        &'tcx ty::ResolverGlobalCtxt,
+    ) {
         eval_always
         no_hash
         desc { "getting the resolver for lowering" }
+    }
+
+    query index_ast(_: ()) -> &'tcx IndexVec<LocalDefId, Steal<(
+        // There is only a single `ResolverAstLowering` for all owners.
+        // We want to drop it once the whole HIR has been lowered.
+        // We rely on reference counting to know when all definitions have been stolen.
+        Arc<ty::ResolverAstLowering<'tcx>>,
+        ast::AstOwner,
+    )>> {
+        arena_cache
+        eval_always
+        no_hash
+        desc { "getting the AST for lowering" }
     }
 
     /// Return the span for a definition.
@@ -197,27 +215,14 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
-    /// Represents crate as a whole (as distinct from the top-level crate module).
-    ///
-    /// If you call `tcx.hir_crate(())` we will have to assume that any change
-    /// means that you need to be recompiled. This is because the `hir_crate`
-    /// query gives you access to all other items. To avoid this fate, do not
-    /// call `tcx.hir_crate(())`; instead, prefer wrappers like
-    /// [`TyCtxt::hir_visit_all_item_likes_in_crate`].
-    query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
-        arena_cache
+    query lower_to_hir(def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {
         eval_always
-        desc { "getting the crate HIR" }
+        desc { "lowering HIR for `{}`", tcx.def_path_str(def_id) }
     }
 
-    query lower_delayed_owner(def_id: LocalDefId) {
-        eval_always
-        desc { "lowering the delayed AST owner `{}`", tcx.def_path_str(def_id) }
-    }
-
-    query delayed_owner(def_id: LocalDefId) -> hir::MaybeOwner<'tcx>  {
+    query hir_owner(def_id: LocalDefId) -> rustc_middle::hir::ProjectedMaybeOwner<'tcx> {
+        desc { "getting owner for `{}`", tcx.def_path_str(def_id) }
         feedable
-        desc { "getting child of lowered delayed AST owner `{}`", tcx.def_path_str(def_id) }
     }
 
     /// All items in the crate.
@@ -237,27 +242,12 @@ rustc_queries! {
         cache_on_disk
     }
 
-    /// Returns HIR ID for the given `LocalDefId`.
-    query local_def_id_to_hir_id(key: LocalDefId) -> hir::HirId {
-        desc { "getting HIR ID of `{}`", tcx.def_path_str(key) }
-        feedable
-    }
-
     /// Gives access to the HIR node's parent for the HIR owner `key`.
     ///
     /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
     query hir_owner_parent_q(key: hir::OwnerId) -> hir::HirId {
         desc { "getting HIR parent of `{}`", tcx.def_path_str(key) }
-    }
-
-    /// Gives access to the HIR nodes and bodies inside `key` if it's a HIR owner.
-    ///
-    /// This can be conveniently accessed by `tcx.hir_*` methods.
-    /// Avoid calling this query directly.
-    query opt_hir_owner_nodes(key: LocalDefId) -> Option<&'tcx hir::OwnerNodes<'tcx>> {
-        desc { "getting HIR owner items in `{}`", tcx.def_path_str(key) }
-        feedable
     }
 
     /// Gives access to the HIR attributes inside the HIR owner `key`.
@@ -267,18 +257,6 @@ rustc_queries! {
     query hir_attr_map(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
         desc { "getting HIR owner attributes in `{}`", tcx.def_path_str(key) }
         feedable
-    }
-
-    /// Gives access to lints emitted during ast lowering.
-    ///
-    /// This can be conveniently accessed by `tcx.hir_*` methods.
-    /// Avoid calling this query directly.
-    query opt_ast_lowering_delayed_lints(key: hir::OwnerId) -> Option<&'tcx Steal<hir::lints::DelayedLints>> {
-        desc { "getting AST lowering delayed lints in `{}`", tcx.def_path_str(key) }
-        // This query has to be `no_hash` and `eval_always`,
-        // because it accesses `delayed_lints` which is not hashed as part of the HIR
-        no_hash
-        eval_always
     }
 
     /// Returns the *default* of the const pararameter given by `DefId`.
@@ -558,12 +536,12 @@ rustc_queries! {
         desc { "looking up lint levels for `{}`", tcx.def_path_str(key) }
     }
 
-    query lint_expectations(_: ()) -> &'tcx Vec<(LintExpectationId, LintExpectation)> {
+    query lint_expectations(_: ()) -> &'tcx Vec<(StableLintExpectationId, LintExpectation)> {
         arena_cache
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query lints_that_dont_need_to_run(_: ()) -> &'tcx UnordSet<LintId> {
+    query skippable_lints(_: ()) -> &'tcx UnordSet<LintId> {
         arena_cache
         // This depends on the lint store, which includes internal lints when the
         // untracked `-Zunstable-options` flag is set.
@@ -1140,7 +1118,7 @@ rustc_queries! {
     }
 
     /// Unsafety-check this `LocalDefId`.
-    query check_transmutes(key: LocalDefId) {
+    query check_transmutes(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "check transmute calls inside `{}`", tcx.def_path_str(key) }
     }
 
@@ -1422,10 +1400,10 @@ rustc_queries! {
     }
 
     /// Generates a MIR body for the shim.
-    query mir_shims(key: ty::InstanceKind<'tcx>) -> &'tcx mir::Body<'tcx> {
+    query mir_shims(key: ty::ShimKind<'tcx>) -> &'tcx mir::Body<'tcx> {
         arena_cache
         desc {
-            "generating MIR shim for `{}`, instance={:?}",
+            "generating MIR shim for `{}`, kind={:?}",
             tcx.def_path_str(key.def_id()),
             key
         }
@@ -1649,7 +1627,7 @@ rustc_queries! {
     /// Like `param_env`, but returns the `ParamEnv` after all opaque types have been
     /// replaced with their hidden type. This is used in the old trait solver
     /// when in `PostAnalysis` mode and should not be called directly.
-    query typing_env_normalized_for_post_analysis(def_id: DefId) -> ty::TypingEnv<'tcx> {
+    query param_env_normalized_for_post_analysis(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { "computing revealed normalized predicates of `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -1881,10 +1859,6 @@ rustc_queries! {
     query specializes(_: (DefId, DefId)) -> bool {
         desc { "computing whether impls specialize one another" }
     }
-    query in_scope_traits_map(_: hir::OwnerId)
-        -> Option<&'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>> {
-        desc { "getting traits in scope at a block" }
-    }
 
     /// Returns whether the impl or associated function has the `default` keyword.
     /// Note: This will ICE on inherent impl items. Consider using `AssocItem::defaultness`.
@@ -2091,6 +2065,10 @@ rustc_queries! {
         desc { "inheriting delegation signature" }
     }
 
+    query delegation_user_specified_args(def_id: LocalDefId) -> (&'tcx [GenericArg<'tcx>], &'tcx [GenericArg<'tcx>]) {
+        desc { "getting delegation user-specified args" }
+    }
+
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes` for details.
@@ -2183,6 +2161,15 @@ rustc_queries! {
         desc { "fetching what a crate is named" }
         separate_provide_extern
     }
+
+    /// Iterates over all named children of the given module,
+    /// including both proper items and reexports.
+    /// Module here is understood in name resolution sense - it can be a `mod` item,
+    /// or a crate root, or an enum, or a trait.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the provided `id` does not refer to a module.
     query module_children(def_id: DefId) -> &'tcx [ModChild] {
         desc { "collecting child items of module `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
@@ -2708,12 +2695,6 @@ rustc_queries! {
     /// monomorphized.
     query check_mono_item(key: ty::Instance<'tcx>) {
         desc { "monomorphization-time checking" }
-    }
-
-    /// Builds the set of functions that should be skipped for the move-size check.
-    query skip_move_check_fns(_: ()) -> &'tcx FxIndexSet<DefId> {
-        arena_cache
-        desc { "functions to skip for move-size check" }
     }
 
     query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> Result<(&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]), NormalizationErrorInMono> {

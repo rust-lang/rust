@@ -300,27 +300,25 @@
 //! represent the tagged pointer as an actual pointer and not a `usize`*. For instance:
 //!
 //! ```
-//! unsafe {
-//!     // A flag we want to pack into our pointer
-//!     static HAS_DATA: usize = 0x1;
-//!     static FLAG_MASK: usize = !HAS_DATA;
+//! // A flag we want to pack into our pointer
+//! static HAS_DATA: usize = 0x1;
+//! static FLAG_MASK: usize = !HAS_DATA;
 //!
-//!     // Our value, which must have enough alignment to have spare least-significant-bits.
-//!     let my_precious_data: u32 = 17;
-//!     assert!(align_of::<u32>() > 1);
+//! // Our value, which must have enough alignment to have spare least-significant-bits.
+//! let my_precious_data: u32 = 17;
+//! assert!(align_of::<u32>() > 1);
 //!
-//!     // Create a tagged pointer
-//!     let ptr = &my_precious_data as *const u32;
-//!     let tagged = ptr.map_addr(|addr| addr | HAS_DATA);
+//! // Create a tagged pointer
+//! let ptr = &my_precious_data as *const u32;
+//! let tagged = ptr.map_addr(|addr| addr | HAS_DATA);
 //!
-//!     // Check the flag:
-//!     if tagged.addr() & HAS_DATA != 0 {
-//!         // Untag and read the pointer
-//!         let data = *tagged.map_addr(|addr| addr & FLAG_MASK);
-//!         assert_eq!(data, 17);
-//!     } else {
-//!         unreachable!()
-//!     }
+//! // Check the flag:
+//! if tagged.addr() & HAS_DATA != 0 {
+//!     // Untag and read the pointer
+//!     let data = unsafe { *tagged.map_addr(|addr| addr & FLAG_MASK) };
+//!     assert_eq!(data, 17);
+//! } else {
+//!     unreachable!()
 //! }
 //! ```
 //!
@@ -1000,7 +998,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 #[stable(feature = "exposed_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
+#[allow(implicit_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub const fn with_exposed_provenance<T>(addr: usize) -> *const T {
     addr as *const T
 }
@@ -1041,7 +1039,7 @@ pub const fn with_exposed_provenance<T>(addr: usize) -> *const T {
 #[stable(feature = "exposed_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
+#[allow(implicit_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub const fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
     addr as *mut T
 }
@@ -1810,16 +1808,24 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 #[track_caller]
 #[rustc_diagnostic_item = "ptr_read_unaligned"]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
-    let mut tmp = MaybeUninit::<T>::uninit();
+    // Always true thanks to the repr, but to demonstrate
+    const {
+        assert!(mem::offset_of!(Packed::<T>, 0) == 0);
+        assert!(size_of::<T>() == size_of::<Packed<T>>());
+    }
+
+    let src = src.cast::<Packed<T>>();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
-    // `src` cannot overlap `tmp` because `tmp` was just allocated on
-    // the stack as a separate allocation.
+    // Reading it as `Packed<T>` instead of `T` reads those same bytes because
+    // it's the same size (thus zero offset), but with alignment 1 instead.
     //
-    // Also, since we just wrote a valid value into `tmp`, it is guaranteed
-    // to be properly initialized.
+    // Similarly, because it's the same bytes it's sound to transmute from the
+    // `Packed<T>` to `T`.  Transmute is a value-based (not a place-based)
+    // operation that doesn't care about alignment.
     unsafe {
-        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, size_of::<T>());
-        tmp.assume_init()
+        let packed = read(src);
+        // Can't just destructure because that's not allowed in const fn
+        mem::transmute_neo(packed)
     }
 }
 
@@ -2012,14 +2018,18 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 #[rustc_diagnostic_item = "ptr_write_unaligned"]
 #[track_caller]
 pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
-    // SAFETY: the caller must guarantee that `dst` is valid for writes.
-    // `dst` cannot overlap `src` because the caller has mutable access
-    // to `dst` while `src` is owned by this function.
-    unsafe {
-        copy_nonoverlapping((&raw const src) as *const u8, dst as *mut u8, size_of::<T>());
-        // We are calling the intrinsic directly to avoid function calls in the generated code.
-        intrinsics::forget(src);
+    // Always true thanks to the repr, but to demonstrate
+    const {
+        assert!(mem::offset_of!(Packed::<T>, 0) == 0);
+        assert!(size_of::<T>() == size_of::<Packed<T>>());
     }
+
+    let dst = dst.cast::<Packed<T>>();
+    let src = Packed(src);
+    // SAFETY: the caller must guarantee that `dst` is valid for writes.
+    // Writing it as `Packed<T>` instead of `T` writes those same bytes because
+    // it's the same size (thus zero offset), but with alignment 1 instead.
+    unsafe { write(dst, src) }
 }
 
 /// Performs a volatile read of the value from `src` without moving it.
@@ -2053,6 +2063,21 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// [allocation]: crate::ptr#allocated-object
 /// [atomic]: crate::sync::atomic#memory-model-for-atomic-accesses
+///
+/// # Load splitting
+///
+/// Exactly which hardware loads are performed by this function is, in general, highly target-dependent.
+///
+/// For a simple scalar, such as when `T` is a thin pointer, this will typically be one load assuming
+/// your target supports a load of exactly that size and alignment.
+///
+/// For anything else, it will be split into multiple loads in some unspecified way.
+/// This can happen even for scalars: notably, on many targets loading a `u128` will still need to be split,
+/// despite being "one" scalar.  On many targets loading anything larger than a pointer will need to be split.
+/// On all current targets a load larger than 64 bytes will need to be split.
+/// Any load whose size is not a power of two will also almost certainly need to be split.
+///
+/// There is no stability guarantee on how that splitting happens.  It may change at any point.
 ///
 /// # Safety
 ///
@@ -2146,6 +2171,21 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// [allocation]: crate::ptr#allocated-object
 /// [atomic]: crate::sync::atomic#memory-model-for-atomic-accesses
+///
+/// # Store splitting
+///
+/// Exactly which hardware stores are performed by this function is, in general, highly target-dependent.
+///
+/// For a simple scalar, such as when `T` is a thin pointer, this will typically be one store assuming
+/// your target supports a store of exactly that size and alignment.
+///
+/// For anything else, it will be split into multiple stores in some unspecified way.
+/// This can happen even for scalars: notably, on many targets storing a `u128` will still need to be split,
+/// despite being "one" scalar.  On many targets storing anything larger than a pointer will need to be split.
+/// On all current targets a store larger than 64 bytes will need to be split.
+/// Any store whose size is not a power of two will also almost certainly need to be split.
+///
+/// There is no stability guarantee on how that splitting happens.  It may change at any point.
 ///
 /// # Safety
 ///
@@ -2588,21 +2628,21 @@ impl<F: FnPtr> Ord for F {
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
 impl<F: FnPtr> hash::Hash for F {
     fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
-        state.write_usize(self.addr() as _)
+        state.write_usize(self.addr().addr())
     }
 }
 
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
 impl<F: FnPtr> fmt::Pointer for F {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::pointer_fmt_inner(self.addr() as _, f)
+        fmt::pointer_fmt_inner(self.addr().addr(), f)
     }
 }
 
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
 impl<F: FnPtr> fmt::Debug for F {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::pointer_fmt_inner(self.addr() as _, f)
+        fmt::pointer_fmt_inner(self.addr().addr(), f)
     }
 }
 
@@ -2779,3 +2819,6 @@ pub macro addr_of($place:expr) {
 pub macro addr_of_mut($place:expr) {
     &raw mut $place
 }
+
+#[repr(C, packed)]
+struct Packed<T>(T);

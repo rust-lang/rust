@@ -727,7 +727,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match wf::obligations(
                         self.infcx,
                         obligation.param_env,
-                        obligation.cause.body_id,
+                        obligation.cause.body_def_id,
                         obligation.recursion_depth + 1,
                         term,
                         obligation.cause.span,
@@ -758,7 +758,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if pred.0.has_free_regions()
                         || pred.0.has_bound_regions()
                         || pred.0.has_non_region_infer()
-                        || pred.0.has_non_region_infer()
+                        || pred.0.has_non_region_param()
                     {
                         Ok(EvaluatedToOkModuloRegions)
                     } else {
@@ -772,6 +772,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::DynCompatible(trait_def_id) => {
+                    // `DynCompatible` obligations are only emitted as
+                    // nested obligations of `WellFormed` goals. It is quite
+                    // rare, but possible, that we encounter them during
+                    // evaluation. See #158665 for more details here.
                     if self.tcx().is_dyn_compatible(trait_def_id) {
                         Ok(EvaluatedToOk)
                     } else {
@@ -852,10 +856,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(alias_const)) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.infcx,
-                        uv,
+                        alias_const,
                         obligation.param_env,
                         obligation.cause.span,
                     ) {
@@ -881,13 +885,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             c1, c2
                         );
 
-                        use rustc_hir::def::DefKind;
                         match (c1.kind(), c2.kind()) {
-                            (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
-                                if a.def == b.def
+                            (ty::ConstKind::Alias(_, a), ty::ConstKind::Alias(_, b))
+                                if a.kind == b.kind
                                     && matches!(
-                                        tcx.def_kind(a.def),
-                                        DefKind::AssocConst { .. }
+                                        a.kind,
+                                        ty::AliasConstKind::Projection { .. }
+                                            | ty::AliasConstKind::Inherent { .. }
                                     ) =>
                             {
                                 if let Ok(InferOk { obligations, value: () }) = self
@@ -897,8 +901,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     // `generic_const_exprs`
                                     .eq(
                                         DefineOpaqueTypes::Yes,
-                                        ty::AliasTerm::from_unevaluated_const(tcx, a),
-                                        ty::AliasTerm::from_unevaluated_const(tcx, b),
+                                        ty::AliasTerm::from(a),
+                                        ty::AliasTerm::from(b),
                                     )
                                 {
                                     return self.evaluate_predicates_recursively(
@@ -907,8 +911,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     );
                                 }
                             }
-                            (_, ty::ConstKind::Unevaluated(_))
-                            | (ty::ConstKind::Unevaluated(_), _) => (),
+                            (_, ty::ConstKind::Alias(_, _)) | (ty::ConstKind::Alias(_, _), _) => (),
                             (_, _) => {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
@@ -927,7 +930,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(_) = c.kind() {
+                        if let ty::ConstKind::Alias(_, _) = c.kind() {
                             match crate::traits::try_evaluate_const(
                                 self.infcx,
                                 c,
@@ -975,9 +978,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::NormalizesTo(..) => {
                     bug!("NormalizesTo is only used by the new solver")
                 }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used by the new solver")
-                }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     let ct = self.infcx.shallow_resolve_const(ct);
@@ -987,11 +987,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Unevaluated(uv) => self
-                            .tcx()
-                            .type_of(uv.def)
-                            .instantiate(self.tcx(), uv.args)
-                            .skip_norm_wip(),
+                        ty::ConstKind::Alias(_, alias_const) => {
+                            alias_const.type_of(self.tcx()).skip_norm_wip()
+                        }
                         // FIXME(generic_const_exprs): See comment in `fulfill.rs`
                         ty::ConstKind::Expr(_) => return Ok(EvaluatedToOk),
                         ty::ConstKind::Placeholder(_) => {
@@ -1485,10 +1483,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let obligation = &stack.obligation;
         match self.typing_mode() {
             TypingMode::Coherence => {}
-            TypingMode::Analysis { .. }
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => return Ok(()),
+            TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => return Ok(()),
         }
 
         debug!("is_knowable()");
@@ -1532,22 +1531,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // However, if we disqualify *all* goals from being cached, perf suffers.
             // This is likely fixed by better caching in general in the new solver.
             // See: <https://github.com/rust-lang/rust/issues/132064>.
-            TypingMode::Analysis {
-                defining_opaque_types_and_generators: defining_opaque_types,
-            }
-            | TypingMode::Borrowck { defining_opaque_types } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
                 defining_opaque_types.is_empty()
                     || (!pred.has_opaque_types() && !pred.has_coroutines())
             }
             // The hidden types of `defined_opaque_types` is not local to the current
             // inference context, so we can freely move this to the global cache.
-            TypingMode::PostBorrowckAnalysis { .. } => true,
+            TypingMode::PostBorrowck { .. } => true,
             // The global cache is only used if there are no opaque types in
             // the defining scope or we're outside of analysis.
             //
             // FIXME(#132279): This is still incorrect as we treat opaque types
             // and default associated items differently between these two modes.
-            TypingMode::PostAnalysis => true,
+            TypingMode::PostAnalysis | TypingMode::Codegen => true,
         }
     }
 
@@ -1663,6 +1660,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         loop {
             let (alias_ty, def_id) = match *self_ty.kind() {
                 ty::Alias(
+                    _,
                     alias_ty @ ty::AliasTy {
                         kind: ty::Projection { def_id } | ty::Opaque { def_id },
                         ..
@@ -1775,7 +1773,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         env_predicate: PolyProjectionPredicate<'tcx>,
         potentially_unnormalized_candidates: bool,
     ) -> ProjectionMatchesProjection {
-        debug_assert_eq!(obligation.predicate.def_id(), env_predicate.item_def_id());
+        let def_id = obligation.predicate.expect_projection_def_id();
+        debug_assert_eq!(def_id, env_predicate.item_def_id());
 
         let mut nested_obligations = PredicateObligations::new();
         let infer_predicate = self.infcx.instantiate_binder_with_fresh_vars(
@@ -1811,7 +1810,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             });
 
         if is_match {
-            let generics = self.tcx().generics_of(obligation.predicate.def_id());
+            let generics = self.tcx().generics_of(def_id);
             // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
             // If this type is a GAT, and of the GAT args resolve to something new,
             // that means that we must have newly inferred something about the GAT.
@@ -2352,10 +2351,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Param(..)
-            | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
-                ..
-            })
+            | ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    ..
+                },
+            )
             | ty::Bound(..)
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble constituent types of unexpected type: {:?}", t);
@@ -2424,7 +2426,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 assumptions: vec![],
             }),
 
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 if self.infcx.can_define_opaque_ty(def_id) {
                     unreachable!()
                 } else {
@@ -2555,7 +2557,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         let cause = ObligationCause::new(
             obligation.cause.span,
-            obligation.cause.body_id,
+            obligation.cause.body_def_id,
             ObligationCauseCode::MatchImpl(obligation.cause.clone(), impl_def_id),
         );
 
@@ -2595,10 +2597,15 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // supertraits.
         let a_auto_traits: FxIndexSet<DefId> = a_data
             .auto_traits()
-            .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
-                elaborate::supertrait_def_ids(tcx, principal_def_id)
-                    .filter(|def_id| tcx.trait_is_auto(*def_id))
-            }))
+            .chain(
+                a_data
+                    .principal_def_id()
+                    .map(|principal_def_id| {
+                        elaborate::supertrait_def_ids(tcx, principal_def_id)
+                            .filter(|def_id| tcx.trait_is_auto(*def_id))
+                    })
+                    .into_flat_iter(),
+            )
             .collect();
 
         let upcast_principal = normalize_with_depth_to(
@@ -2909,13 +2916,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
     pub(super) fn should_stall_coroutine(&self, def_id: DefId) -> bool {
         match self.typing_mode() {
-            TypingMode::Analysis { defining_opaque_types_and_generators: stalled_generators } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators: stalled_generators } => {
                 def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
             }
             TypingMode::Coherence
             | TypingMode::PostAnalysis
-            | TypingMode::Borrowck { defining_opaque_types: _ }
-            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => false,
+            | TypingMode::Codegen
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowck { defined_opaque_types: _ } => false,
         }
     }
 }

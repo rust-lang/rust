@@ -292,6 +292,7 @@ pub mod consts {
     pub const TAU: f64 = 6.28318530717958647692528676655900577_f64;
 
     /// The golden ratio (φ)
+    #[doc(alias = "phi")]
     #[stable(feature = "euler_gamma_golden_ratio", since = "1.94.0")]
     pub const GOLDEN_RATIO: f64 = 1.618033988749894848204586834365638118_f64;
 
@@ -1150,7 +1151,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     pub const fn midpoint(self, other: f64) -> f64 {
-        const HI: f64 = f64::MAX / 2.;
+        const HI: f64 = f64::MAX * 0.5;
 
         let (a, b) = (self, other);
         let abs_a = a.abs();
@@ -1158,9 +1159,9 @@ impl f64 {
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
-            (a + b) / 2.
+            (a + b) * 0.5
         } else {
-            (a / 2.) + (b / 2.)
+            (a * 0.5) + (b * 0.5)
         }
     }
 
@@ -1673,8 +1674,8 @@ impl f64 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[stable(feature = "float_algebraic", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_algebraic", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn algebraic_add(self, rhs: f64) -> f64 {
         intrinsics::fadd_algebraic(self, rhs)
@@ -1684,8 +1685,8 @@ impl f64 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[stable(feature = "float_algebraic", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_algebraic", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn algebraic_sub(self, rhs: f64) -> f64 {
         intrinsics::fsub_algebraic(self, rhs)
@@ -1695,8 +1696,8 @@ impl f64 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[stable(feature = "float_algebraic", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_algebraic", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn algebraic_mul(self, rhs: f64) -> f64 {
         intrinsics::fmul_algebraic(self, rhs)
@@ -1706,8 +1707,8 @@ impl f64 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[stable(feature = "float_algebraic", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_algebraic", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn algebraic_div(self, rhs: f64) -> f64 {
         intrinsics::fdiv_algebraic(self, rhs)
@@ -1717,8 +1718,8 @@ impl f64 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[stable(feature = "float_algebraic", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_algebraic", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn algebraic_rem(self, rhs: f64) -> f64 {
         intrinsics::frem_algebraic(self, rhs)

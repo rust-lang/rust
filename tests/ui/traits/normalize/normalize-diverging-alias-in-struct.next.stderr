@@ -1,18 +1,15 @@
-error[E0271]: type mismatch resolving `<u8 as Trait>::Diverges<u8> normalizes-to _`
+error[E0275]: overflow evaluating the requirement `<u8 as Trait>::Diverges<u8> == _`
   --> $DIR/normalize-diverging-alias-in-struct.rs:21:12
    |
 LL |     field: Box<<u8 as Trait>::Diverges<u8>>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0271]: type mismatch resolving `<u8 as Trait>::Diverges<u8> normalizes-to _`
+error[E0275]: overflow evaluating whether `Box<<u8 as Trait>::Diverges<u8>>` is well-formed
   --> $DIR/normalize-diverging-alias-in-struct.rs:21:12
    |
 LL |     field: Box<<u8 as Trait>::Diverges<u8>>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
-   |
-note: required by a bound in `Box`
-  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0275`.

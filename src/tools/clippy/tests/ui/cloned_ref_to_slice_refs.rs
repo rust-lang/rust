@@ -1,4 +1,3 @@
-#![allow(clippy::borrow_deref_ref)]
 #![warn(clippy::cloned_ref_to_slice_refs)]
 
 #[derive(Clone)]

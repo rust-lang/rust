@@ -78,6 +78,10 @@ pub enum Command {
         /// Build the program with the dependencies declared in `tests/deps/Cargo.toml`.
         #[arg(long)]
         dep: bool,
+        /// Compile and run the program natively instead of via Miri. Implies `--dep`.
+        /// All flags are passed to rustc; there is currently no way to pass flags to the program.
+        #[arg(long)]
+        native: bool,
         /// Hide build progress.
         #[arg(long, short)]
         quiet: bool,

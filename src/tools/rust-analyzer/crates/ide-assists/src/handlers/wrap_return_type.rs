@@ -92,7 +92,7 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
                     };
                     let semantic_ty = ty_constructor
                         .map(|ty_constructor| {
-                            hir::Adt::from(ty_constructor).ty_with_args(ctx.db(), [ty.clone()])
+                            hir::Adt::from(ty_constructor).ty(ctx.db()).instantiate([ty.clone()])
                         })
                         .unwrap_or_else(|| ty.clone());
                     (ast_ty, semantic_ty)
@@ -256,7 +256,7 @@ fn wrapper_alias<'db>(
             );
 
             let new_ty =
-                hir::Adt::from(enum_ty).ty_with_args(ctx.db(), [semantic_ret_type.clone()]);
+                hir::Adt::from(enum_ty).ty(ctx.db()).instantiate([semantic_ret_type.clone()]);
 
             Some((make.ty_path(path), new_ty))
         })

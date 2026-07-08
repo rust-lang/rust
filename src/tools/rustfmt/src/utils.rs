@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use rustc_ast::YieldKind;
 use rustc_ast::ast::{
-    self, Attribute, ImplRestriction, MetaItem, MetaItemInner, MetaItemKind, NodeId, Path,
-    RestrictionKind, Visibility, VisibilityKind,
+    self, Attribute, ImplRestriction, MetaItem, MetaItemInner, MetaItemKind, MutRestriction,
+    NodeId, Path, RestrictionKind, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_span::{BytePos, LocalExpnId, Span, Symbol, SyntaxContext, sym, symbol};
@@ -81,6 +81,13 @@ pub(crate) fn format_impl_restriction(
     format_restriction("impl", context, &impl_restriction.kind)
 }
 
+pub(crate) fn format_mut_restriction(
+    context: &RewriteContext<'_>,
+    mut_restriction: &MutRestriction,
+) -> String {
+    format_restriction("mut", context, &mut_restriction.kind)
+}
+
 fn format_restriction(
     kw: &'static str,
     context: &RewriteContext<'_>,
@@ -121,14 +128,6 @@ pub(crate) fn format_coro(coroutine_kind: &ast::CoroutineKind) -> &'static str {
 pub(crate) fn format_constness(constness: ast::Const) -> &'static str {
     match constness {
         ast::Const::Yes(..) => "const ",
-        ast::Const::No => "",
-    }
-}
-
-#[inline]
-pub(crate) fn format_constness_right(constness: ast::Const) -> &'static str {
-    match constness {
-        ast::Const::Yes(..) => " const",
         ast::Const::No => "",
     }
 }

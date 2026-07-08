@@ -282,7 +282,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     *c = sep;
                 }
             }
-            // If this starts with `//?/`, it was probably produced by `unix_to_windows`` and we
+            // If this starts with `//?/`, it was probably produced by `unix_to_windows` and we
             // remove the `//?` that got added to get the Unix path back out.
             if path.get(0..4) == Some(&[sep, sep, b'?'.into(), sep]) {
                 // Remove first 3 characters. It still starts with `/` so it is absolute on Unix.
@@ -346,7 +346,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             Cow::Owned(OsString::from_wide(&path))
         };
-        #[cfg(unix)]
+        #[cfg(not(windows))]
         return if *target_os == Os::Windows {
             // Windows target, Unix host.
             let mut path: Vec<u8> = os_str.into_owned().into_encoded_bytes();

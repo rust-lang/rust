@@ -13,7 +13,10 @@ use syntax::{
     syntax_editor::{Element, Position},
 };
 
-use crate::{AssistContext, AssistId, Assists, utils::is_body_const};
+use crate::{
+    AssistContext, AssistId, Assists,
+    utils::{cover_edit_range, is_body_const},
+};
 
 // Assist: extract_variable
 //
@@ -98,7 +101,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
         let last_descend = ctx.sema.descend_into_macros_single_exact(last.clone());
         let range = first_descend.text_range().cover(last_descend.text_range());
 
-        if first_descend.parent_ancestors().last() != last_descend.parent_ancestors().last() {
+        if first_descend.tree_top() != last_descend.tree_top() {
             return None;
         }
 
@@ -107,9 +110,10 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
             .skip_while(|it| !it.text_range().contains_range(range))
             .find_map(valid_target_expr(ctx))?;
         let original_range = ctx.sema.original_range(expr.syntax());
-        let (first, last) = extract_token_range_of(&node, original_range.range)?;
-        let to_extract = first.syntax_element()..=last.syntax_element();
-        (to_extract, expr)
+        if !node.text_range().contains_range(original_range.range) {
+            return None;
+        }
+        (cover_edit_range(&node, original_range.range), expr)
     } else {
         let expr = node
             .descendants()
@@ -197,13 +201,12 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
             |edit| {
                 let (var_name, expr_replace) = kind.get_name_and_expr(ctx, &analysis);
 
-                let to_replace =
-                    if expr_replace.ancestors().last() == to_replace.start().ancestors().last() {
-                        let element = expr_replace.clone().syntax_element();
-                        element.clone()..=element
-                    } else {
-                        to_replace.clone()
-                    };
+                let to_replace = if expr_replace.tree_top() == to_replace.start().tree_top() {
+                    let element = expr_replace.clone().syntax_element();
+                    element.clone()..=element
+                } else {
+                    to_replace.clone()
+                };
 
                 let editor = edit.make_editor(&place);
                 let make = editor.make();
@@ -3003,5 +3006,32 @@ fn main() {
 "#,
             "Extract into variable",
         );
+    }
+
+    #[test]
+    fn regression_22441() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+//- minicore: option, write
+fn main() {
+    let maybe_str = Some("world");
+    write!((), "Hello, {}!", $0maybe_str.unwrap()$0);
+}
+"#,
+            r#"
+fn main() {
+    let maybe_str = Some("world");
+    let $0var_name = maybe_str.unwrap();
+    write!((), "Hello, {}!", var_name);
+}
+"#,
+            "Extract into variable",
+        );
+    }
+
+    #[test]
+    fn repro_bad_range_unresolved_macro_paren() {
+        check_assist_not_applicable(extract_variable, "fn f() { m!$0($0 }");
     }
 }

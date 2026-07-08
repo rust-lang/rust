@@ -12,7 +12,7 @@ const trait Tr {
 
 struct S;
 
-impl const Tr for S {
+const impl Tr for S {
     fn req(&self) {}
 }
 

@@ -410,7 +410,16 @@ pub struct FromUtf8Error {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
-pub struct FromUtf16Error(());
+pub struct FromUtf16Error {
+    kind: FromUtf16ErrorKind,
+}
+
+#[cfg_attr(no_global_oom_handling, expect(dead_code))]
+#[derive(Clone, PartialEq, Eq, Debug)]
+enum FromUtf16ErrorKind {
+    LoneSurrogate,
+    OddBytes,
+}
 
 impl String {
     /// Creates a new empty `String`.
@@ -719,7 +728,7 @@ impl String {
         let mut ret = String::with_capacity(v.len());
         for c in char::decode_utf16(v.iter().cloned()) {
             let Ok(c) = c else {
-                return Err(FromUtf16Error(()));
+                return Err(FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate });
             };
             ret.push(c);
         }
@@ -766,7 +775,6 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(str_from_utf16_endian)]
     /// // 𝄞music
     /// let v = &[0x34, 0xD8, 0x1E, 0xDD, 0x6d, 0x00, 0x75, 0x00,
     ///           0x73, 0x00, 0x69, 0x00, 0x63, 0x00];
@@ -779,16 +787,16 @@ impl String {
     /// assert!(String::from_utf16le(v).is_err());
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
+    #[stable(feature = "str_from_utf16_endian", since = "CURRENT_RUSTC_VERSION")]
     pub fn from_utf16le(v: &[u8]) -> Result<String, FromUtf16Error> {
         let (chunks, []) = v.as_chunks::<2>() else {
-            return Err(FromUtf16Error(()));
+            return Err(FromUtf16Error { kind: FromUtf16ErrorKind::OddBytes });
         };
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
             _ => char::decode_utf16(chunks.iter().copied().map(u16::from_le_bytes))
                 .collect::<Result<_, _>>()
-                .map_err(|_| FromUtf16Error(())),
+                .map_err(|_| FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate }),
         }
     }
 
@@ -808,7 +816,6 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(str_from_utf16_endian)]
     /// // 𝄞mus<invalid>ic<invalid>
     /// let v = &[0x34, 0xD8, 0x1E, 0xDD, 0x6d, 0x00, 0x75, 0x00,
     ///           0x73, 0x00, 0x1E, 0xDD, 0x69, 0x00, 0x63, 0x00,
@@ -818,7 +825,7 @@ impl String {
     ///            String::from_utf16le_lossy(v));
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
+    #[stable(feature = "str_from_utf16_endian", since = "CURRENT_RUSTC_VERSION")]
     pub fn from_utf16le_lossy(v: &[u8]) -> String {
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16_lossy(v),
@@ -841,7 +848,6 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(str_from_utf16_endian)]
     /// // 𝄞music
     /// let v = &[0xD8, 0x34, 0xDD, 0x1E, 0x00, 0x6d, 0x00, 0x75,
     ///           0x00, 0x73, 0x00, 0x69, 0x00, 0x63];
@@ -854,16 +860,16 @@ impl String {
     /// assert!(String::from_utf16be(v).is_err());
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
+    #[stable(feature = "str_from_utf16_endian", since = "CURRENT_RUSTC_VERSION")]
     pub fn from_utf16be(v: &[u8]) -> Result<String, FromUtf16Error> {
         let (chunks, []) = v.as_chunks::<2>() else {
-            return Err(FromUtf16Error(()));
+            return Err(FromUtf16Error { kind: FromUtf16ErrorKind::OddBytes });
         };
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
             _ => char::decode_utf16(chunks.iter().copied().map(u16::from_be_bytes))
                 .collect::<Result<_, _>>()
-                .map_err(|_| FromUtf16Error(())),
+                .map_err(|_| FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate }),
         }
     }
 
@@ -883,7 +889,6 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(str_from_utf16_endian)]
     /// // 𝄞mus<invalid>ic<invalid>
     /// let v = &[0xD8, 0x34, 0xDD, 0x1E, 0x00, 0x6d, 0x00, 0x75,
     ///           0x00, 0x73, 0xDD, 0x1E, 0x00, 0x69, 0x00, 0x63,
@@ -893,7 +898,7 @@ impl String {
     ///            String::from_utf16be_lossy(v));
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
+    #[stable(feature = "str_from_utf16_endian", since = "CURRENT_RUSTC_VERSION")]
     pub fn from_utf16be_lossy(v: &[u8]) -> String {
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16_lossy(v),
@@ -2234,15 +2239,33 @@ impl FromUtf8Error {
     /// invalid sequences, and [`String::from_utf8_lossy_owned`] for the
     /// `String` function which corresponds to this function.
     ///
+    /// This is useful in conjunction with [`String::from_utf8`] when you need
+    /// to branch on whether the bytes are valid UTF-8, but still want to
+    /// recover a lossily converted `String` in the error case. Use
+    /// [`String::from_utf8_lossy_owned`] if you always need a lossily converted
+    /// `String`.
+    ///
+    /// Since the original [`String::from_utf8`] error records where validation
+    /// stopped, this method does not need to re-check the already valid prefix
+    /// of the byte sequence.
+    ///
     /// # Examples
     ///
     /// ```
     /// #![feature(string_from_utf8_lossy_owned)]
     /// // some invalid bytes
     /// let input: Vec<u8> = b"Hello \xF0\x90\x80World".into();
-    /// let output = String::from_utf8(input).unwrap_or_else(|e| e.into_utf8_lossy());
+    ///
+    /// let (output, had_invalid_utf8) = match String::from_utf8(input) {
+    ///     Ok(output) => (output, false),
+    ///     Err(error) => {
+    ///         // The bytes were not valid UTF-8, but we can still recover a string.
+    ///         (error.into_utf8_lossy(), true)
+    ///     }
+    /// };
     ///
     /// assert_eq!(String::from("Hello �World"), output);
+    /// assert!(had_invalid_utf8);
     /// ```
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
@@ -2335,7 +2358,11 @@ impl fmt::Display for FromUtf8Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
+        match self.kind {
+            FromUtf16ErrorKind::LoneSurrogate => "invalid utf-16: lone surrogate found",
+            FromUtf16ErrorKind::OddBytes => "invalid utf-16: odd number of bytes",
+        }
+        .fmt(f)
     }
 }
 
@@ -2654,7 +2681,7 @@ impl<'b> Pattern for &'b String {
 
     #[inline]
     fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
-        Some(Utf8Pattern::StringPattern(self.as_bytes()))
+        Some(Utf8Pattern::StringPattern(self.as_str()))
     }
 }
 
@@ -2697,7 +2724,7 @@ impl_eq! { Cow<'_, str>, String }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl const Default for String {
+const impl Default for String {
     /// Creates an empty `String`.
     #[inline]
     fn default() -> String {

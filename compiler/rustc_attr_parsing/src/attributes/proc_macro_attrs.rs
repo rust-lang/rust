@@ -1,32 +1,36 @@
+use rustc_feature::AttributeStability;
 use rustc_session::lint::builtin::AMBIGUOUS_DERIVE_HELPERS;
 
 use super::prelude::*;
 
-const PROC_MACRO_ALLOWED_TARGETS: AllowedTargets =
+const PROC_MACRO_ALLOWED_TARGETS: AllowedTargets<'_> =
     AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate), Warn(Target::MacroCall)]);
 
 pub(crate) struct ProcMacroParser;
 impl NoArgsAttributeParser for ProcMacroParser {
     const PATH: &[Symbol] = &[sym::proc_macro];
-    const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = PROC_MACRO_ALLOWED_TARGETS;
+    const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProcMacro;
 }
 
 pub(crate) struct ProcMacroAttributeParser;
 impl NoArgsAttributeParser for ProcMacroAttributeParser {
     const PATH: &[Symbol] = &[sym::proc_macro_attribute];
-    const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = PROC_MACRO_ALLOWED_TARGETS;
+    const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProcMacroAttribute;
 }
 
 pub(crate) struct ProcMacroDeriveParser;
 impl SingleAttributeParser for ProcMacroDeriveParser {
     const PATH: &[Symbol] = &[sym::proc_macro_derive];
-    const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = PROC_MACRO_ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(
         List: &["TraitName", "TraitName, attributes(name1, name2, ...)"],
         "https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let (trait_name, helper_attrs) = parse_derive_like(cx, args, true)?;
@@ -40,9 +44,11 @@ impl SingleAttributeParser for ProcMacroDeriveParser {
 pub(crate) struct RustcBuiltinMacroParser;
 impl SingleAttributeParser for RustcBuiltinMacroParser {
     const PATH: &[Symbol] = &[sym::rustc_builtin_macro];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =
         template!(List: &["TraitName", "TraitName, attributes(name1, name2, ...)"]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let (builtin_name, helper_attrs) = parse_derive_like(cx, args, false)?;
@@ -116,7 +122,7 @@ fn parse_derive_like(
             if rustc_feature::is_builtin_attr_name(ident.name) {
                 cx.emit_lint(
                     AMBIGUOUS_DERIVE_HELPERS,
-                    crate::errors::AmbiguousDeriveHelpers,
+                    crate::diagnostics::AmbiguousDeriveHelpers,
                     ident.span,
                 );
             }

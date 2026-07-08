@@ -6,12 +6,14 @@ struct S;
 const trait A {}
 const trait B {}
 
-impl const A for S {}
-impl const B for S {}
+const impl A for S {}
+const impl B for S {}
 
 impl S {
-    const fn a<T: [const] A>() where T: [const] B {
-
+    const fn a<T: [const] A>()
+    where
+        T: [const] B,
+    {
     }
 }
 

@@ -1272,7 +1272,14 @@ pub(crate) fn build_index(
         &cache.orphan_impl_items
     {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
-            let info = IndexItemInfo::new(tcx, cache, item, Some(parent), impl_generics.as_ref());
+            let info = IndexItemInfo::new(
+                tcx,
+                cache,
+                item,
+                Some(parent),
+                impl_generics.as_ref(),
+                item.type_(),
+            );
             search_index.push(IndexItem {
                 defid: item.item_id.as_def_id(),
                 name: item.name.unwrap(),
@@ -1780,7 +1787,7 @@ pub(crate) fn build_index(
                 RenderTypeId::Primitive(PrimitiveType::Array | PrimitiveType::Slice) => {
                     insert_into_map(
                         ItemType::Primitive,
-                        &[Symbol::intern("[]")],
+                        &[sym::empty_brackets],
                         None,
                         false,
                         serialized_index,
@@ -1791,7 +1798,7 @@ pub(crate) fn build_index(
                     // typeNameIdOfArrayOrSlice
                     insert_into_map(
                         ItemType::Primitive,
-                        &[Symbol::intern("()")],
+                        &[sym::empty_parens],
                         None,
                         false,
                         serialized_index,
@@ -1802,7 +1809,7 @@ pub(crate) fn build_index(
                 RenderTypeId::Primitive(PrimitiveType::Fn) => {
                     insert_into_map(
                         ItemType::Primitive,
-                        &[Symbol::intern("->")],
+                        &[sym::right_arrow],
                         None,
                         false,
                         serialized_index,
@@ -1816,7 +1823,7 @@ pub(crate) fn build_index(
                 {
                     insert_into_map(
                         ItemType::Primitive,
-                        &[Symbol::intern("->")],
+                        &[sym::right_arrow],
                         None,
                         false,
                         serialized_index,

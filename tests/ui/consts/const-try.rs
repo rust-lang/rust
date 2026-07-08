@@ -15,13 +15,13 @@ use std::ops::{ControlFlow, FromResidual, Residual, Try};
 struct TryMe;
 struct Error;
 
-impl const FromResidual<Error> for TryMe {
+const impl FromResidual<Error> for TryMe {
     fn from_residual(residual: Error) -> Self {
         TryMe
     }
 }
 
-impl const Try for TryMe {
+const impl Try for TryMe {
     type Output = ();
     type Residual = Error;
     fn from_output(output: Self::Output) -> Self {

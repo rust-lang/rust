@@ -1,7 +1,7 @@
 //@aux-build:proc_macros.rs
 
 #![warn(clippy::manual_rem_euclid)]
-#![allow(clippy::let_with_type_underscore)]
+#![expect(clippy::let_with_type_underscore)]
 
 extern crate proc_macros;
 use proc_macros::{external, inline_macros};

@@ -3153,6 +3153,35 @@ fn test_hover_layout_of_enum() {
 }
 
 #[test]
+fn test_hover_layout_nonzero_type_alias() {
+    check(
+        r#"//- minicore: non_zero
+use core::num;
+trait Trait { type Inner; }
+impl Trait for u8 { type Inner = num::NonZeroU8; }
+#[repr(transparent)]
+struct NonZero<T: Trait>(T::Inner);
+type NonZeroU8$0 = NonZero<u8>;
+"#,
+        expect![[r#"
+            *NonZeroU8*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type NonZeroU8 = NonZero<u8>
+            ```
+
+            ---
+
+            size = 1, align = 1, niches = 1, no Drop
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_layout_padding_info() {
     check(
         r#"struct $0Foo {
@@ -9383,6 +9412,27 @@ fn main(a$0: impl T) {}
 
             ```rust
             a: impl T + ?Sized
+            ```
+
+            ---
+
+            type param may need Drop
+        "#]],
+    );
+}
+
+#[test]
+fn hover_impl_trait_arg_with_anon_const_arg_does_not_recurse() {
+    check(
+        r#"
+trait Tr<const N: usize> {}
+pub fn f(x$0: impl Tr<{ 0 }>) {}
+"#,
+        expect![[r#"
+            *x*
+
+            ```rust
+            x: impl Tr<{const}> + ?Sized
             ```
 
             ---

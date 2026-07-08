@@ -84,71 +84,61 @@ static U64_DATA: LazyLock<[u64; 32 * 5]> = LazyLock::new(|| {
         .expect("u64 data incorrectly initialised")
 });
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_f32(vector: svfloat32_t, expected: svfloat32_t) {
-    let defined = svrdffr();
+fn assert_vector_matches_f32(vector: svfloat32_t, expected: svfloat32_t, defined: svbool_t) {
     assert!(svptest_first(svptrue_b32(), defined));
     let cmp = svcmpne_f32(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_f64(vector: svfloat64_t, expected: svfloat64_t) {
-    let defined = svrdffr();
+fn assert_vector_matches_f64(vector: svfloat64_t, expected: svfloat64_t, defined: svbool_t) {
     assert!(svptest_first(svptrue_b64(), defined));
     let cmp = svcmpne_f64(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_i8(vector: svint8_t, expected: svint8_t) {
-    let defined = svrdffr();
+fn assert_vector_matches_i8(vector: svint8_t, expected: svint8_t, defined: svbool_t) {
     assert!(svptest_first(svptrue_b8(), defined));
     let cmp = svcmpne_s8(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_i16(vector: svint16_t, expected: svint16_t) {
-    let defined = svrdffr();
+fn assert_vector_matches_i16(vector: svint16_t, expected: svint16_t, defined: svbool_t) {
     assert!(svptest_first(svptrue_b16(), defined));
     let cmp = svcmpne_s16(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_i32(vector: svint32_t, expected: svint32_t) {
-    let defined = svrdffr();
+fn assert_vector_matches_i32(vector: svint32_t, expected: svint32_t, defined: svbool_t) {
     assert!(svptest_first(svptrue_b32(), defined));
     let cmp = svcmpne_s32(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_i64(vector: svint64_t, expected: svint64_t) {
-    let defined = svrdffr();
+fn assert_vector_matches_i64(vector: svint64_t, expected: svint64_t, defined: svbool_t) {
     assert!(svptest_first(svptrue_b64(), defined));
     let cmp = svcmpne_s64(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_u8(vector: svuint8_t, expected: svuint8_t) {
-    let defined = svrdffr();
+fn assert_vector_matches_u8(vector: svuint8_t, expected: svuint8_t, defined: svbool_t) {
     assert!(svptest_first(svptrue_b8(), defined));
     let cmp = svcmpne_u8(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_u16(vector: svuint16_t, expected: svuint16_t) {
-    let defined = svrdffr();
+fn assert_vector_matches_u16(vector: svuint16_t, expected: svuint16_t, defined: svbool_t) {
     assert!(svptest_first(svptrue_b16(), defined));
     let cmp = svcmpne_u16(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_u32(vector: svuint32_t, expected: svuint32_t) {
-    let defined = svrdffr();
+fn assert_vector_matches_u32(vector: svuint32_t, expected: svuint32_t, defined: svbool_t) {
     assert!(svptest_first(svptrue_b32(), defined));
     let cmp = svcmpne_u32(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
 }
 #[target_feature(enable = "sve")]
-fn assert_vector_matches_u64(vector: svuint64_t, expected: svuint64_t) {
-    let defined = svrdffr();
+fn assert_vector_matches_u64(vector: svuint64_t, expected: svuint64_t, defined: svbool_t) {
     assert!(svptest_first(svptrue_b64(), defined));
     let cmp = svcmpne_u64(defined, vector, expected);
     assert!(!svptest_any(defined, cmp))
@@ -168,12 +158,14 @@ unsafe fn test_svldnt1_gather_s64index_f64_with_svstnt1_scatter_s64index_f64() {
     svsetffr();
     let loaded =
         svldnt1_gather_s64index_f64(svptrue_b64(), storage.as_ptr() as *const f64, indices);
+    let defined = svrdffr();
     assert_vector_matches_f64(
         loaded,
         svcvt_f64_s64_x(
             svptrue_b64(),
             svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
         ),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -188,9 +180,11 @@ unsafe fn test_svldnt1_gather_s64index_s64_with_svstnt1_scatter_s64index_s64() {
     svsetffr();
     let loaded =
         svldnt1_gather_s64index_s64(svptrue_b64(), storage.as_ptr() as *const i64, indices);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -205,9 +199,11 @@ unsafe fn test_svldnt1_gather_s64index_u64_with_svstnt1_scatter_s64index_u64() {
     svsetffr();
     let loaded =
         svldnt1_gather_s64index_u64(svptrue_b64(), storage.as_ptr() as *const u64, indices);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -225,12 +221,14 @@ unsafe fn test_svldnt1_gather_u64index_f64_with_svstnt1_scatter_u64index_f64() {
     svsetffr();
     let loaded =
         svldnt1_gather_u64index_f64(svptrue_b64(), storage.as_ptr() as *const f64, indices);
+    let defined = svrdffr();
     assert_vector_matches_f64(
         loaded,
         svcvt_f64_s64_x(
             svptrue_b64(),
             svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
         ),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -245,9 +243,11 @@ unsafe fn test_svldnt1_gather_u64index_s64_with_svstnt1_scatter_u64index_s64() {
     svsetffr();
     let loaded =
         svldnt1_gather_u64index_s64(svptrue_b64(), storage.as_ptr() as *const i64, indices);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -262,9 +262,11 @@ unsafe fn test_svldnt1_gather_u64index_u64_with_svstnt1_scatter_u64index_u64() {
     svsetffr();
     let loaded =
         svldnt1_gather_u64index_u64(svptrue_b64(), storage.as_ptr() as *const u64, indices);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -282,12 +284,14 @@ unsafe fn test_svldnt1_gather_s64offset_f64_with_svstnt1_scatter_s64offset_f64()
     svsetffr();
     let loaded =
         svldnt1_gather_s64offset_f64(svptrue_b64(), storage.as_ptr() as *const f64, offsets);
+    let defined = svrdffr();
     assert_vector_matches_f64(
         loaded,
         svcvt_f64_s64_x(
             svptrue_b64(),
             svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
         ),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -302,9 +306,11 @@ unsafe fn test_svldnt1_gather_s64offset_s64_with_svstnt1_scatter_s64offset_s64()
     svsetffr();
     let loaded =
         svldnt1_gather_s64offset_s64(svptrue_b64(), storage.as_ptr() as *const i64, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -319,9 +325,11 @@ unsafe fn test_svldnt1_gather_s64offset_u64_with_svstnt1_scatter_s64offset_u64()
     svsetffr();
     let loaded =
         svldnt1_gather_s64offset_u64(svptrue_b64(), storage.as_ptr() as *const u64, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -339,12 +347,14 @@ unsafe fn test_svldnt1_gather_u32offset_f32_with_svstnt1_scatter_u32offset_f32()
     svsetffr();
     let loaded =
         svldnt1_gather_u32offset_f32(svptrue_b32(), storage.as_ptr() as *const f32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_f32(
         loaded,
         svcvt_f32_s32_x(
             svptrue_b32(),
             svindex_s32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
         ),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -359,9 +369,11 @@ unsafe fn test_svldnt1_gather_u32offset_s32_with_svstnt1_scatter_u32offset_s32()
     svsetffr();
     let loaded =
         svldnt1_gather_u32offset_s32(svptrue_b32(), storage.as_ptr() as *const i32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -376,9 +388,11 @@ unsafe fn test_svldnt1_gather_u32offset_u32_with_svstnt1_scatter_u32offset_u32()
     svsetffr();
     let loaded =
         svldnt1_gather_u32offset_u32(svptrue_b32(), storage.as_ptr() as *const u32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -396,12 +410,14 @@ unsafe fn test_svldnt1_gather_u64offset_f64_with_svstnt1_scatter_u64offset_f64()
     svsetffr();
     let loaded =
         svldnt1_gather_u64offset_f64(svptrue_b64(), storage.as_ptr() as *const f64, offsets);
+    let defined = svrdffr();
     assert_vector_matches_f64(
         loaded,
         svcvt_f64_s64_x(
             svptrue_b64(),
             svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
         ),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -416,9 +432,11 @@ unsafe fn test_svldnt1_gather_u64offset_s64_with_svstnt1_scatter_u64offset_s64()
     svsetffr();
     let loaded =
         svldnt1_gather_u64offset_s64(svptrue_b64(), storage.as_ptr() as *const i64, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -433,9 +451,11 @@ unsafe fn test_svldnt1_gather_u64offset_u64_with_svstnt1_scatter_u64offset_u64()
     svsetffr();
     let loaded =
         svldnt1_gather_u64offset_u64(svptrue_b64(), storage.as_ptr() as *const u64, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -454,12 +474,14 @@ unsafe fn test_svldnt1_gather_u64base_f64_with_svstnt1_scatter_u64base_f64() {
     }
     svsetffr();
     let loaded = svldnt1_gather_u64base_f64(svptrue_b64(), bases);
+    let defined = svrdffr();
     assert_vector_matches_f64(
         loaded,
         svcvt_f64_s64_x(
             svptrue_b64(),
             svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
         ),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -475,9 +497,11 @@ unsafe fn test_svldnt1_gather_u64base_s64_with_svstnt1_scatter_u64base_s64() {
     }
     svsetffr();
     let loaded = svldnt1_gather_u64base_s64(svptrue_b64(), bases);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -493,9 +517,11 @@ unsafe fn test_svldnt1_gather_u64base_u64_with_svstnt1_scatter_u64base_u64() {
     }
     svsetffr();
     let loaded = svldnt1_gather_u64base_u64(svptrue_b64(), bases);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -521,12 +547,14 @@ unsafe fn test_svldnt1_gather_u32base_index_f32_with_svstnt1_scatter_u32base_ind
         bases,
         storage.as_ptr() as i64 / (4u32 as i64) + 1,
     );
+    let defined = svrdffr();
     assert_vector_matches_f32(
         loaded,
         svcvt_f32_s32_x(
             svptrue_b32(),
             svindex_s32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
         ),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -549,9 +577,11 @@ unsafe fn test_svldnt1_gather_u32base_index_s32_with_svstnt1_scatter_u32base_ind
         bases,
         storage.as_ptr() as i64 / (4u32 as i64) + 1,
     );
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -574,9 +604,11 @@ unsafe fn test_svldnt1_gather_u32base_index_u32_with_svstnt1_scatter_u32base_ind
         bases,
         storage.as_ptr() as i64 / (4u32 as i64) + 1,
     );
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -595,12 +627,14 @@ unsafe fn test_svldnt1_gather_u64base_index_f64_with_svstnt1_scatter_u64base_ind
     }
     svsetffr();
     let loaded = svldnt1_gather_u64base_index_f64(svptrue_b64(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_f64(
         loaded,
         svcvt_f64_s64_x(
             svptrue_b64(),
             svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
         ),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -616,9 +650,11 @@ unsafe fn test_svldnt1_gather_u64base_index_s64_with_svstnt1_scatter_u64base_ind
     }
     svsetffr();
     let loaded = svldnt1_gather_u64base_index_s64(svptrue_b64(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -634,9 +670,11 @@ unsafe fn test_svldnt1_gather_u64base_index_u64_with_svstnt1_scatter_u64base_ind
     }
     svsetffr();
     let loaded = svldnt1_gather_u64base_index_u64(svptrue_b64(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -662,12 +700,14 @@ unsafe fn test_svldnt1_gather_u32base_offset_f32_with_svstnt1_scatter_u32base_of
         bases,
         storage.as_ptr() as i64 + 4u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_f32(
         loaded,
         svcvt_f32_s32_x(
             svptrue_b32(),
             svindex_s32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
         ),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -690,9 +730,11 @@ unsafe fn test_svldnt1_gather_u32base_offset_s32_with_svstnt1_scatter_u32base_of
         bases,
         storage.as_ptr() as i64 + 4u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -715,9 +757,11 @@ unsafe fn test_svldnt1_gather_u32base_offset_u32_with_svstnt1_scatter_u32base_of
         bases,
         storage.as_ptr() as i64 + 4u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -736,12 +780,14 @@ unsafe fn test_svldnt1_gather_u64base_offset_f64_with_svstnt1_scatter_u64base_of
     }
     svsetffr();
     let loaded = svldnt1_gather_u64base_offset_f64(svptrue_b64(), bases, 8u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_f64(
         loaded,
         svcvt_f64_s64_x(
             svptrue_b64(),
             svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
         ),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -757,9 +803,11 @@ unsafe fn test_svldnt1_gather_u64base_offset_s64_with_svstnt1_scatter_u64base_of
     }
     svsetffr();
     let loaded = svldnt1_gather_u64base_offset_s64(svptrue_b64(), bases, 8u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -775,9 +823,11 @@ unsafe fn test_svldnt1_gather_u64base_offset_u64_with_svstnt1_scatter_u64base_of
     }
     svsetffr();
     let loaded = svldnt1_gather_u64base_offset_u64(svptrue_b64(), bases, 8u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -792,9 +842,11 @@ unsafe fn test_svldnt1sb_gather_s64offset_s64_with_svstnt1b_scatter_s64offset_s6
     svsetffr();
     let loaded =
         svldnt1sb_gather_s64offset_s64(svptrue_b8(), storage.as_ptr() as *const i8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -809,9 +861,11 @@ unsafe fn test_svldnt1sh_gather_s64offset_s64_with_svstnt1h_scatter_s64offset_s6
     svsetffr();
     let loaded =
         svldnt1sh_gather_s64offset_s64(svptrue_b16(), storage.as_ptr() as *const i16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -826,9 +880,11 @@ unsafe fn test_svldnt1sw_gather_s64offset_s64_with_svstnt1w_scatter_s64offset_s6
     svsetffr();
     let loaded =
         svldnt1sw_gather_s64offset_s64(svptrue_b32(), storage.as_ptr() as *const i32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -843,9 +899,11 @@ unsafe fn test_svldnt1sb_gather_s64offset_u64_with_svstnt1b_scatter_s64offset_u6
     svsetffr();
     let loaded =
         svldnt1sb_gather_s64offset_u64(svptrue_b8(), storage.as_ptr() as *const i8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -860,9 +918,11 @@ unsafe fn test_svldnt1sh_gather_s64offset_u64_with_svstnt1h_scatter_s64offset_u6
     svsetffr();
     let loaded =
         svldnt1sh_gather_s64offset_u64(svptrue_b16(), storage.as_ptr() as *const i16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -877,9 +937,11 @@ unsafe fn test_svldnt1sw_gather_s64offset_u64_with_svstnt1w_scatter_s64offset_u6
     svsetffr();
     let loaded =
         svldnt1sw_gather_s64offset_u64(svptrue_b32(), storage.as_ptr() as *const i32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -894,9 +956,11 @@ unsafe fn test_svldnt1sb_gather_u32offset_s32_with_svstnt1b_scatter_u32offset_s3
     svsetffr();
     let loaded =
         svldnt1sb_gather_u32offset_s32(svptrue_b8(), storage.as_ptr() as *const i8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -911,9 +975,11 @@ unsafe fn test_svldnt1sh_gather_u32offset_s32_with_svstnt1h_scatter_u32offset_s3
     svsetffr();
     let loaded =
         svldnt1sh_gather_u32offset_s32(svptrue_b16(), storage.as_ptr() as *const i16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -928,9 +994,11 @@ unsafe fn test_svldnt1sb_gather_u32offset_u32_with_svstnt1b_scatter_u32offset_u3
     svsetffr();
     let loaded =
         svldnt1sb_gather_u32offset_u32(svptrue_b8(), storage.as_ptr() as *const i8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -945,9 +1013,11 @@ unsafe fn test_svldnt1sh_gather_u32offset_u32_with_svstnt1h_scatter_u32offset_u3
     svsetffr();
     let loaded =
         svldnt1sh_gather_u32offset_u32(svptrue_b16(), storage.as_ptr() as *const i16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -962,9 +1032,11 @@ unsafe fn test_svldnt1sb_gather_u64offset_s64_with_svstnt1b_scatter_u64offset_s6
     svsetffr();
     let loaded =
         svldnt1sb_gather_u64offset_s64(svptrue_b8(), storage.as_ptr() as *const i8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -979,9 +1051,11 @@ unsafe fn test_svldnt1sh_gather_u64offset_s64_with_svstnt1h_scatter_u64offset_s6
     svsetffr();
     let loaded =
         svldnt1sh_gather_u64offset_s64(svptrue_b16(), storage.as_ptr() as *const i16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -996,9 +1070,11 @@ unsafe fn test_svldnt1sw_gather_u64offset_s64_with_svstnt1w_scatter_u64offset_s6
     svsetffr();
     let loaded =
         svldnt1sw_gather_u64offset_s64(svptrue_b32(), storage.as_ptr() as *const i32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1013,9 +1089,11 @@ unsafe fn test_svldnt1sb_gather_u64offset_u64_with_svstnt1b_scatter_u64offset_u6
     svsetffr();
     let loaded =
         svldnt1sb_gather_u64offset_u64(svptrue_b8(), storage.as_ptr() as *const i8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1030,9 +1108,11 @@ unsafe fn test_svldnt1sh_gather_u64offset_u64_with_svstnt1h_scatter_u64offset_u6
     svsetffr();
     let loaded =
         svldnt1sh_gather_u64offset_u64(svptrue_b16(), storage.as_ptr() as *const i16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1047,9 +1127,11 @@ unsafe fn test_svldnt1sw_gather_u64offset_u64_with_svstnt1w_scatter_u64offset_u6
     svsetffr();
     let loaded =
         svldnt1sw_gather_u64offset_u64(svptrue_b32(), storage.as_ptr() as *const i32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1072,9 +1154,11 @@ unsafe fn test_svldnt1sb_gather_u32base_offset_s32_with_svstnt1b_scatter_u32base
         bases,
         storage.as_ptr() as i64 + 1u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1097,9 +1181,11 @@ unsafe fn test_svldnt1sh_gather_u32base_offset_s32_with_svstnt1h_scatter_u32base
         bases,
         storage.as_ptr() as i64 + 2u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1122,9 +1208,11 @@ unsafe fn test_svldnt1sb_gather_u32base_offset_u32_with_svstnt1b_scatter_u32base
         bases,
         storage.as_ptr() as i64 + 1u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1147,9 +1235,11 @@ unsafe fn test_svldnt1sh_gather_u32base_offset_u32_with_svstnt1h_scatter_u32base
         bases,
         storage.as_ptr() as i64 + 2u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1165,9 +1255,11 @@ unsafe fn test_svldnt1sb_gather_u64base_offset_s64_with_svstnt1b_scatter_u64base
     }
     svsetffr();
     let loaded = svldnt1sb_gather_u64base_offset_s64(svptrue_b8(), bases, 1u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1184,9 +1276,11 @@ unsafe fn test_svldnt1sh_gather_u64base_offset_s64_with_svstnt1h_scatter_u64base
     svsetffr();
     let loaded =
         svldnt1sh_gather_u64base_offset_s64(svptrue_b16(), bases, 2u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1203,9 +1297,11 @@ unsafe fn test_svldnt1sw_gather_u64base_offset_s64_with_svstnt1w_scatter_u64base
     svsetffr();
     let loaded =
         svldnt1sw_gather_u64base_offset_s64(svptrue_b32(), bases, 4u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1221,9 +1317,11 @@ unsafe fn test_svldnt1sb_gather_u64base_offset_u64_with_svstnt1b_scatter_u64base
     }
     svsetffr();
     let loaded = svldnt1sb_gather_u64base_offset_u64(svptrue_b8(), bases, 1u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1240,9 +1338,11 @@ unsafe fn test_svldnt1sh_gather_u64base_offset_u64_with_svstnt1h_scatter_u64base
     svsetffr();
     let loaded =
         svldnt1sh_gather_u64base_offset_u64(svptrue_b16(), bases, 2u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1259,9 +1359,11 @@ unsafe fn test_svldnt1sw_gather_u64base_offset_u64_with_svstnt1w_scatter_u64base
     svsetffr();
     let loaded =
         svldnt1sw_gather_u64base_offset_u64(svptrue_b32(), bases, 4u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1277,9 +1379,11 @@ unsafe fn test_svldnt1sb_gather_u64base_s64_with_svstnt1b_scatter_u64base_s64() 
     }
     svsetffr();
     let loaded = svldnt1sb_gather_u64base_s64(svptrue_b8(), bases);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1295,9 +1399,11 @@ unsafe fn test_svldnt1sh_gather_u64base_s64_with_svstnt1h_scatter_u64base_s64() 
     }
     svsetffr();
     let loaded = svldnt1sh_gather_u64base_s64(svptrue_b16(), bases);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1313,9 +1419,11 @@ unsafe fn test_svldnt1sw_gather_u64base_s64_with_svstnt1w_scatter_u64base_s64() 
     }
     svsetffr();
     let loaded = svldnt1sw_gather_u64base_s64(svptrue_b32(), bases);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1331,9 +1439,11 @@ unsafe fn test_svldnt1sb_gather_u64base_u64_with_svstnt1b_scatter_u64base_u64() 
     }
     svsetffr();
     let loaded = svldnt1sb_gather_u64base_u64(svptrue_b8(), bases);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1349,9 +1459,11 @@ unsafe fn test_svldnt1sh_gather_u64base_u64_with_svstnt1h_scatter_u64base_u64() 
     }
     svsetffr();
     let loaded = svldnt1sh_gather_u64base_u64(svptrue_b16(), bases);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1367,9 +1479,11 @@ unsafe fn test_svldnt1sw_gather_u64base_u64_with_svstnt1w_scatter_u64base_u64() 
     }
     svsetffr();
     let loaded = svldnt1sw_gather_u64base_u64(svptrue_b32(), bases);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1384,9 +1498,11 @@ unsafe fn test_svldnt1sh_gather_s64index_s64_with_svstnt1h_scatter_s64index_s64(
     svsetffr();
     let loaded =
         svldnt1sh_gather_s64index_s64(svptrue_b16(), storage.as_ptr() as *const i16, indices);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1401,9 +1517,11 @@ unsafe fn test_svldnt1sw_gather_s64index_s64_with_svstnt1w_scatter_s64index_s64(
     svsetffr();
     let loaded =
         svldnt1sw_gather_s64index_s64(svptrue_b32(), storage.as_ptr() as *const i32, indices);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1418,9 +1536,11 @@ unsafe fn test_svldnt1sh_gather_s64index_u64_with_svstnt1h_scatter_s64index_u64(
     svsetffr();
     let loaded =
         svldnt1sh_gather_s64index_u64(svptrue_b16(), storage.as_ptr() as *const i16, indices);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1435,9 +1555,11 @@ unsafe fn test_svldnt1sw_gather_s64index_u64_with_svstnt1w_scatter_s64index_u64(
     svsetffr();
     let loaded =
         svldnt1sw_gather_s64index_u64(svptrue_b32(), storage.as_ptr() as *const i32, indices);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1452,9 +1574,11 @@ unsafe fn test_svldnt1sh_gather_u64index_s64_with_svstnt1h_scatter_u64index_s64(
     svsetffr();
     let loaded =
         svldnt1sh_gather_u64index_s64(svptrue_b16(), storage.as_ptr() as *const i16, indices);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1469,9 +1593,11 @@ unsafe fn test_svldnt1sw_gather_u64index_s64_with_svstnt1w_scatter_u64index_s64(
     svsetffr();
     let loaded =
         svldnt1sw_gather_u64index_s64(svptrue_b32(), storage.as_ptr() as *const i32, indices);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1486,9 +1612,11 @@ unsafe fn test_svldnt1sh_gather_u64index_u64_with_svstnt1h_scatter_u64index_u64(
     svsetffr();
     let loaded =
         svldnt1sh_gather_u64index_u64(svptrue_b16(), storage.as_ptr() as *const i16, indices);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1503,9 +1631,11 @@ unsafe fn test_svldnt1sw_gather_u64index_u64_with_svstnt1w_scatter_u64index_u64(
     svsetffr();
     let loaded =
         svldnt1sw_gather_u64index_u64(svptrue_b32(), storage.as_ptr() as *const i32, indices);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1528,9 +1658,11 @@ unsafe fn test_svldnt1sh_gather_u32base_index_s32_with_svstnt1h_scatter_u32base_
         bases,
         storage.as_ptr() as i64 / (2u32 as i64) + 1,
     );
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1553,9 +1685,11 @@ unsafe fn test_svldnt1sh_gather_u32base_index_u32_with_svstnt1h_scatter_u32base_
         bases,
         storage.as_ptr() as i64 / (2u32 as i64) + 1,
     );
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1571,9 +1705,11 @@ unsafe fn test_svldnt1sh_gather_u64base_index_s64_with_svstnt1h_scatter_u64base_
     }
     svsetffr();
     let loaded = svldnt1sh_gather_u64base_index_s64(svptrue_b16(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1589,9 +1725,11 @@ unsafe fn test_svldnt1sw_gather_u64base_index_s64_with_svstnt1w_scatter_u64base_
     }
     svsetffr();
     let loaded = svldnt1sw_gather_u64base_index_s64(svptrue_b32(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1607,9 +1745,11 @@ unsafe fn test_svldnt1sh_gather_u64base_index_u64_with_svstnt1h_scatter_u64base_
     }
     svsetffr();
     let loaded = svldnt1sh_gather_u64base_index_u64(svptrue_b16(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1625,9 +1765,11 @@ unsafe fn test_svldnt1sw_gather_u64base_index_u64_with_svstnt1w_scatter_u64base_
     }
     svsetffr();
     let loaded = svldnt1sw_gather_u64base_index_u64(svptrue_b32(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1642,9 +1784,11 @@ unsafe fn test_svldnt1ub_gather_s64offset_s64_with_svstnt1b_scatter_s64offset_s6
     svsetffr();
     let loaded =
         svldnt1ub_gather_s64offset_s64(svptrue_b8(), storage.as_ptr() as *const u8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1659,9 +1803,11 @@ unsafe fn test_svldnt1uh_gather_s64offset_s64_with_svstnt1h_scatter_s64offset_s6
     svsetffr();
     let loaded =
         svldnt1uh_gather_s64offset_s64(svptrue_b16(), storage.as_ptr() as *const u16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1676,9 +1822,11 @@ unsafe fn test_svldnt1uw_gather_s64offset_s64_with_svstnt1w_scatter_s64offset_s6
     svsetffr();
     let loaded =
         svldnt1uw_gather_s64offset_s64(svptrue_b32(), storage.as_ptr() as *const u32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1693,9 +1841,11 @@ unsafe fn test_svldnt1ub_gather_s64offset_u64_with_svstnt1b_scatter_s64offset_u6
     svsetffr();
     let loaded =
         svldnt1ub_gather_s64offset_u64(svptrue_b8(), storage.as_ptr() as *const u8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1710,9 +1860,11 @@ unsafe fn test_svldnt1uh_gather_s64offset_u64_with_svstnt1h_scatter_s64offset_u6
     svsetffr();
     let loaded =
         svldnt1uh_gather_s64offset_u64(svptrue_b16(), storage.as_ptr() as *const u16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1727,9 +1879,11 @@ unsafe fn test_svldnt1uw_gather_s64offset_u64_with_svstnt1w_scatter_s64offset_u6
     svsetffr();
     let loaded =
         svldnt1uw_gather_s64offset_u64(svptrue_b32(), storage.as_ptr() as *const u32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1744,9 +1898,11 @@ unsafe fn test_svldnt1ub_gather_u32offset_s32_with_svstnt1b_scatter_u32offset_s3
     svsetffr();
     let loaded =
         svldnt1ub_gather_u32offset_s32(svptrue_b8(), storage.as_ptr() as *const u8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1761,9 +1917,11 @@ unsafe fn test_svldnt1uh_gather_u32offset_s32_with_svstnt1h_scatter_u32offset_s3
     svsetffr();
     let loaded =
         svldnt1uh_gather_u32offset_s32(svptrue_b16(), storage.as_ptr() as *const u16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1778,9 +1936,11 @@ unsafe fn test_svldnt1ub_gather_u32offset_u32_with_svstnt1b_scatter_u32offset_u3
     svsetffr();
     let loaded =
         svldnt1ub_gather_u32offset_u32(svptrue_b8(), storage.as_ptr() as *const u8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1795,9 +1955,11 @@ unsafe fn test_svldnt1uh_gather_u32offset_u32_with_svstnt1h_scatter_u32offset_u3
     svsetffr();
     let loaded =
         svldnt1uh_gather_u32offset_u32(svptrue_b16(), storage.as_ptr() as *const u16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1812,9 +1974,11 @@ unsafe fn test_svldnt1ub_gather_u64offset_s64_with_svstnt1b_scatter_u64offset_s6
     svsetffr();
     let loaded =
         svldnt1ub_gather_u64offset_s64(svptrue_b8(), storage.as_ptr() as *const u8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1829,9 +1993,11 @@ unsafe fn test_svldnt1uh_gather_u64offset_s64_with_svstnt1h_scatter_u64offset_s6
     svsetffr();
     let loaded =
         svldnt1uh_gather_u64offset_s64(svptrue_b16(), storage.as_ptr() as *const u16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1846,9 +2012,11 @@ unsafe fn test_svldnt1uw_gather_u64offset_s64_with_svstnt1w_scatter_u64offset_s6
     svsetffr();
     let loaded =
         svldnt1uw_gather_u64offset_s64(svptrue_b32(), storage.as_ptr() as *const u32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1863,9 +2031,11 @@ unsafe fn test_svldnt1ub_gather_u64offset_u64_with_svstnt1b_scatter_u64offset_u6
     svsetffr();
     let loaded =
         svldnt1ub_gather_u64offset_u64(svptrue_b8(), storage.as_ptr() as *const u8, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1880,9 +2050,11 @@ unsafe fn test_svldnt1uh_gather_u64offset_u64_with_svstnt1h_scatter_u64offset_u6
     svsetffr();
     let loaded =
         svldnt1uh_gather_u64offset_u64(svptrue_b16(), storage.as_ptr() as *const u16, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1897,9 +2069,11 @@ unsafe fn test_svldnt1uw_gather_u64offset_u64_with_svstnt1w_scatter_u64offset_u6
     svsetffr();
     let loaded =
         svldnt1uw_gather_u64offset_u64(svptrue_b32(), storage.as_ptr() as *const u32, offsets);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1922,9 +2096,11 @@ unsafe fn test_svldnt1ub_gather_u32base_offset_s32_with_svstnt1b_scatter_u32base
         bases,
         storage.as_ptr() as i64 + 1u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1947,9 +2123,11 @@ unsafe fn test_svldnt1uh_gather_u32base_offset_s32_with_svstnt1h_scatter_u32base
         bases,
         storage.as_ptr() as i64 + 2u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1972,9 +2150,11 @@ unsafe fn test_svldnt1ub_gather_u32base_offset_u32_with_svstnt1b_scatter_u32base
         bases,
         storage.as_ptr() as i64 + 1u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -1997,9 +2177,11 @@ unsafe fn test_svldnt1uh_gather_u32base_offset_u32_with_svstnt1h_scatter_u32base
         bases,
         storage.as_ptr() as i64 + 2u32 as i64,
     );
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2015,9 +2197,11 @@ unsafe fn test_svldnt1ub_gather_u64base_offset_s64_with_svstnt1b_scatter_u64base
     }
     svsetffr();
     let loaded = svldnt1ub_gather_u64base_offset_s64(svptrue_b8(), bases, 1u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2034,9 +2218,11 @@ unsafe fn test_svldnt1uh_gather_u64base_offset_s64_with_svstnt1h_scatter_u64base
     svsetffr();
     let loaded =
         svldnt1uh_gather_u64base_offset_s64(svptrue_b16(), bases, 2u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2053,9 +2239,11 @@ unsafe fn test_svldnt1uw_gather_u64base_offset_s64_with_svstnt1w_scatter_u64base
     svsetffr();
     let loaded =
         svldnt1uw_gather_u64base_offset_s64(svptrue_b32(), bases, 4u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2071,9 +2259,11 @@ unsafe fn test_svldnt1ub_gather_u64base_offset_u64_with_svstnt1b_scatter_u64base
     }
     svsetffr();
     let loaded = svldnt1ub_gather_u64base_offset_u64(svptrue_b8(), bases, 1u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2090,9 +2280,11 @@ unsafe fn test_svldnt1uh_gather_u64base_offset_u64_with_svstnt1h_scatter_u64base
     svsetffr();
     let loaded =
         svldnt1uh_gather_u64base_offset_u64(svptrue_b16(), bases, 2u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2109,9 +2301,11 @@ unsafe fn test_svldnt1uw_gather_u64base_offset_u64_with_svstnt1w_scatter_u64base
     svsetffr();
     let loaded =
         svldnt1uw_gather_u64base_offset_u64(svptrue_b32(), bases, 4u32.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2127,9 +2321,11 @@ unsafe fn test_svldnt1ub_gather_u64base_s64_with_svstnt1b_scatter_u64base_s64() 
     }
     svsetffr();
     let loaded = svldnt1ub_gather_u64base_s64(svptrue_b8(), bases);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2145,9 +2341,11 @@ unsafe fn test_svldnt1uh_gather_u64base_s64_with_svstnt1h_scatter_u64base_s64() 
     }
     svsetffr();
     let loaded = svldnt1uh_gather_u64base_s64(svptrue_b16(), bases);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2163,9 +2361,11 @@ unsafe fn test_svldnt1uw_gather_u64base_s64_with_svstnt1w_scatter_u64base_s64() 
     }
     svsetffr();
     let loaded = svldnt1uw_gather_u64base_s64(svptrue_b32(), bases);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2181,9 +2381,11 @@ unsafe fn test_svldnt1ub_gather_u64base_u64_with_svstnt1b_scatter_u64base_u64() 
     }
     svsetffr();
     let loaded = svldnt1ub_gather_u64base_u64(svptrue_b8(), bases);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2199,9 +2401,11 @@ unsafe fn test_svldnt1uh_gather_u64base_u64_with_svstnt1h_scatter_u64base_u64() 
     }
     svsetffr();
     let loaded = svldnt1uh_gather_u64base_u64(svptrue_b16(), bases);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2217,9 +2421,11 @@ unsafe fn test_svldnt1uw_gather_u64base_u64_with_svstnt1w_scatter_u64base_u64() 
     }
     svsetffr();
     let loaded = svldnt1uw_gather_u64base_u64(svptrue_b32(), bases);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2234,9 +2440,11 @@ unsafe fn test_svldnt1uh_gather_s64index_s64_with_svstnt1h_scatter_s64index_s64(
     svsetffr();
     let loaded =
         svldnt1uh_gather_s64index_s64(svptrue_b16(), storage.as_ptr() as *const u16, indices);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2251,9 +2459,11 @@ unsafe fn test_svldnt1uw_gather_s64index_s64_with_svstnt1w_scatter_s64index_s64(
     svsetffr();
     let loaded =
         svldnt1uw_gather_s64index_s64(svptrue_b32(), storage.as_ptr() as *const u32, indices);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2268,9 +2478,11 @@ unsafe fn test_svldnt1uh_gather_s64index_u64_with_svstnt1h_scatter_s64index_u64(
     svsetffr();
     let loaded =
         svldnt1uh_gather_s64index_u64(svptrue_b16(), storage.as_ptr() as *const u16, indices);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2285,9 +2497,11 @@ unsafe fn test_svldnt1uw_gather_s64index_u64_with_svstnt1w_scatter_s64index_u64(
     svsetffr();
     let loaded =
         svldnt1uw_gather_s64index_u64(svptrue_b32(), storage.as_ptr() as *const u32, indices);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2302,9 +2516,11 @@ unsafe fn test_svldnt1uh_gather_u64index_s64_with_svstnt1h_scatter_u64index_s64(
     svsetffr();
     let loaded =
         svldnt1uh_gather_u64index_s64(svptrue_b16(), storage.as_ptr() as *const u16, indices);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2319,9 +2535,11 @@ unsafe fn test_svldnt1uw_gather_u64index_s64_with_svstnt1w_scatter_u64index_s64(
     svsetffr();
     let loaded =
         svldnt1uw_gather_u64index_s64(svptrue_b32(), storage.as_ptr() as *const u32, indices);
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2336,9 +2554,11 @@ unsafe fn test_svldnt1uh_gather_u64index_u64_with_svstnt1h_scatter_u64index_u64(
     svsetffr();
     let loaded =
         svldnt1uh_gather_u64index_u64(svptrue_b16(), storage.as_ptr() as *const u16, indices);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2353,9 +2573,11 @@ unsafe fn test_svldnt1uw_gather_u64index_u64_with_svstnt1w_scatter_u64index_u64(
     svsetffr();
     let loaded =
         svldnt1uw_gather_u64index_u64(svptrue_b32(), storage.as_ptr() as *const u32, indices);
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((0usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2378,9 +2600,11 @@ unsafe fn test_svldnt1uh_gather_u32base_index_s32_with_svstnt1h_scatter_u32base_
         bases,
         storage.as_ptr() as i64 / (2u32 as i64) + 1,
     );
+    let defined = svrdffr();
     assert_vector_matches_i32(
         loaded,
         svindex_s32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2403,9 +2627,11 @@ unsafe fn test_svldnt1uh_gather_u32base_index_u32_with_svstnt1h_scatter_u32base_
         bases,
         storage.as_ptr() as i64 / (2u32 as i64) + 1,
     );
+    let defined = svrdffr();
     assert_vector_matches_u32(
         loaded,
         svindex_u32((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2421,9 +2647,11 @@ unsafe fn test_svldnt1uh_gather_u64base_index_s64_with_svstnt1h_scatter_u64base_
     }
     svsetffr();
     let loaded = svldnt1uh_gather_u64base_index_s64(svptrue_b16(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2439,9 +2667,11 @@ unsafe fn test_svldnt1uw_gather_u64base_index_s64_with_svstnt1w_scatter_u64base_
     }
     svsetffr();
     let loaded = svldnt1uw_gather_u64base_index_s64(svptrue_b32(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_i64(
         loaded,
         svindex_s64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2457,9 +2687,11 @@ unsafe fn test_svldnt1uh_gather_u64base_index_u64_with_svstnt1h_scatter_u64base_
     }
     svsetffr();
     let loaded = svldnt1uh_gather_u64base_index_u64(svptrue_b16(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }
 #[simd_test(enable = "sve,sve2")]
@@ -2475,8 +2707,10 @@ unsafe fn test_svldnt1uw_gather_u64base_index_u64_with_svstnt1w_scatter_u64base_
     }
     svsetffr();
     let loaded = svldnt1uw_gather_u64base_index_u64(svptrue_b32(), bases, 1.try_into().unwrap());
+    let defined = svrdffr();
     assert_vector_matches_u64(
         loaded,
         svindex_u64((1usize).try_into().unwrap(), 1usize.try_into().unwrap()),
+        defined,
     );
 }

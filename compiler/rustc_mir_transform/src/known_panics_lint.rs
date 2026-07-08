@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt, 
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{AssertLint, AssertLintKind};
+use crate::diagnostics::{AssertLint, AssertLintKind};
 
 pub(super) struct KnownPanicsLint;
 
@@ -955,7 +955,9 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
             }
             MutatingUse(MutatingUseContext::Projection)
-            | NonMutatingUse(NonMutatingUseContext::Projection) => bug!("visit_place should not pass {context:?} for {local:?}"),
+            | NonMutatingUse(NonMutatingUseContext::Projection) => {
+                bug!("visit_place should not pass {context:?} for {local:?}")
+            }
         }
     }
 }

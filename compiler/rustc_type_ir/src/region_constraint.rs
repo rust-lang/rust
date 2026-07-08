@@ -52,9 +52,9 @@ use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::visit::TypeSuperVisitable;
 use crate::{
     AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, ConstKind, DebruijnIndex,
-    FallibleTypeFolder, InferCtxtLike, InferTy, Interner, OutlivesPredicate, RegionKind, TyKind,
-    TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex, Variance,
-    VisitorResult,
+    FallibleTypeFolder, InferCtxtLike, InferTy, Interner, IsRigid, OutlivesPredicate, RegionKind,
+    TyKind, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex,
+    Variance, VisitorResult, set_aliases_to_non_rigid,
 };
 
 #[derive_where(Clone, Debug; I: Interner)]
@@ -840,7 +840,15 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
                     escaping_outlives,
                     I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
                 );
-                candidates.push(RegionConstraint::AliasTyOutlivesViaEnv(bound_outlives));
+                let candidate = RegionConstraint::AliasTyOutlivesViaEnv(bound_outlives);
+                if max_universe(infcx, candidate.clone()) < u {
+                    candidates.push(candidate);
+                } else {
+                    // `PlaceholderReplacer` only folds regions. A non-lifetime binder can leave
+                    // a placeholder type in `u`, so this type-outlives constraint cannot be
+                    // handled by the region-outlives-only eager placeholder machinery.
+                    candidates.push(Ambiguity);
+                }
             }
 
             let assumptions = match assumptions {
@@ -885,12 +893,17 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
 
                 // while we did skip the binder, bound vars aren't in any universe so
                 // this can't be an escaping bound var
-                candidates.extend(
-                    regions_outliving(escaping_r, assumptions, infcx.cx())
-                        .filter(|r2| max_universe(infcx, *r2) < u)
-                        .map(|r2| AliasTyOutlivesViaEnv(bound_alias.map_bound(|alias| (alias, r2))))
-                        .collect::<Vec<_>>(),
-                );
+                for r2 in regions_outliving(escaping_r, assumptions, infcx.cx())
+                    .filter(|r2| max_universe(infcx, *r2) < u)
+                {
+                    let candidate =
+                        AliasTyOutlivesViaEnv(bound_alias.map_bound(|alias| (alias, r2)));
+                    if max_universe(infcx, candidate.clone()) < u {
+                        candidates.push(candidate);
+                    } else {
+                        candidates.push(Ambiguity);
+                    }
+                }
             }
 
             // I'm not convinced our handling here is *complete* so for now
@@ -898,11 +911,12 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
             // in coherence
             match infcx.typing_mode_raw() {
                 TypingMode::Coherence => candidates.push(RegionConstraint::Ambiguity),
-                TypingMode::Analysis { .. }
+                TypingMode::Typeck { .. }
                 | TypingMode::ErasedNotCoherence { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => (),
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostBorrowck { .. }
+                | TypingMode::PostAnalysis
+                | TypingMode::Codegen => (),
             };
 
             RegionConstraint::Or(candidates.into_boxed_slice())
@@ -977,11 +991,14 @@ pub fn regions_outlived_by_placeholder<I: Interner>(
 }
 
 /// The largest universe a variable or placeholder was from in `t`
-pub fn max_universe<Infcx: InferCtxtLike<Interner = I>, I: Interner, T: TypeVisitable<I>>(
+pub fn max_universe<Infcx: InferCtxtLike<Interner = I>, I: Interner, T: TypeFoldable<I>>(
     infcx: &Infcx,
     t: T,
 ) -> UniverseIndex {
     let mut visitor = MaxUniverse::new(infcx);
+    // `max_universe` is also used while rewriting constraints to lower universes,
+    // so do not rely on callers having already resolved non-region infer vars.
+    let t = infcx.resolve_vars_if_possible(t);
     t.visit_with(&mut visitor);
     visitor.max_universe()
 }
@@ -1035,11 +1052,17 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeVisitor<I>
     fn visit_region(&mut self, r: I::Region) {
         match r.kind() {
             RegionKind::RePlaceholder(p) => self.max_universe = self.max_universe.max(p.universe),
-            RegionKind::ReVar(var) => {
-                let u = self.infcx.universe_of_lt(var).unwrap();
-                debug!("var {var:?} in universe {u:?}");
-                self.max_universe = self.max_universe.max(u);
-            }
+            RegionKind::ReVar(var) => match self.infcx.opportunistic_resolve_lt_var(var).kind() {
+                RegionKind::RePlaceholder(p) => {
+                    self.max_universe = self.max_universe.max(p.universe)
+                }
+                RegionKind::ReVar(var) => {
+                    let u = self.infcx.universe_of_lt(var).unwrap();
+                    debug!("var {var:?} in universe {u:?}");
+                    self.max_universe = self.max_universe.max(u);
+                }
+                _ => (),
+            },
             _ => (),
         }
     }
@@ -1095,11 +1118,7 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
 
     let prev_universe = infcx.universe();
 
-    // FIXME(-Zassumptions-on-binders): Handle the assumptions on this binder
-    infcx.enter_forall(bound_outlives, |(alias, r)| {
-        let u = infcx.universe();
-        infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
-
+    infcx.enter_forall_with_empty_assumptions(bound_outlives, |(alias, r)| {
         for bound_type_outlives in assumptions.type_outlives.iter() {
             let OutlivesPredicate(alias2, r2) =
                 infcx.instantiate_binder_with_infer(*bound_type_outlives);
@@ -1109,7 +1128,12 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
                 region_constraints: vec![RegionConstraint::RegionOutlives(r2, r)],
             };
 
-            if let Ok(_) = relation.relate(alias.to_ty(infcx.cx()), alias2) {
+            // FIXME(#155345): Both sides should be rigid in the future.
+            // Currently we can't guarantee that.
+            if let Ok(_) = relation.relate(
+                alias.to_ty(infcx.cx(), IsRigid::No),
+                set_aliases_to_non_rigid(infcx.cx(), alias2).skip_norm_wip(),
+            ) {
                 candidates
                     .push(RegionConstraint::And(relation.region_constraints.into_boxed_slice()));
             }
@@ -1186,14 +1210,14 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
     where
         T: Relate<I>,
     {
-        self.infcx.enter_forall(a, |a| {
+        self.infcx.enter_forall_with_empty_assumptions(a, |a| {
             let u = self.infcx.universe();
             self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
             let b = self.infcx.instantiate_binder_with_infer(b);
             self.relate(a, b)
         })?;
 
-        self.infcx.enter_forall(b, |b| {
+        self.infcx.enter_forall_with_empty_assumptions(b, |b| {
             let u = self.infcx.universe();
             self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
             let a = self.infcx.instantiate_binder_with_infer(a);

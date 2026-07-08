@@ -17,7 +17,7 @@ LL | static B: () = A;
    | ^^^^^^^^^^^^
    = note: ...which again requires evaluating initializer of static `A`, completing the cycle
    = note: cycle used when running analysis passes on crate `recursive_zst_static`
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: aborting due to 2 previous errors
 

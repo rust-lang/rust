@@ -364,7 +364,7 @@ pub struct CoroutineClosureSignature<I: Interner> {
     // Like the `fn_sig_as_fn_ptr_ty` of a regular closure, these types
     // never actually differ. But we save them rather than recreating them
     // from scratch just for good measure.
-    /// Always safe, RustCall, non-c-variadic
+    /// Always safe, RustCall, non-c-variadic, non-splatted
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
     pub fn_sig_kind: FnSigKind<I>,
@@ -454,6 +454,15 @@ impl<I: Interner> CoroutineClosureSignature<I> {
         coroutine_captures_by_ref_ty: I::Ty,
         env_region: I::Region,
     ) -> I::Ty {
+        // If either of the tupled capture types are constrained to error
+        // (e.g. during typeck when the infcx is tainted), then just return
+        // the error type directly.
+        if let ty::Error(_) = tupled_inputs_ty.kind() {
+            return tupled_inputs_ty;
+        } else if let ty::Error(_) = coroutine_captures_by_ref_ty.kind() {
+            return coroutine_captures_by_ref_ty;
+        }
+
         match kind {
             ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
                 let ty::FnPtr(sig_tys, _) = coroutine_captures_by_ref_ty.kind() else {

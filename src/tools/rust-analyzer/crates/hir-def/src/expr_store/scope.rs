@@ -5,7 +5,7 @@ use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 use crate::{
     BlockId, DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
     db::DefDatabase,
-    expr_store::{Body, ExpressionStore, HygieneId},
+    expr_store::{Body, ExpressionStore, HygieneId, body::Param},
     hir::{
         Array, Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement,
         generics::GenericParams,
@@ -147,10 +147,10 @@ impl ExprScopes {
             ),
         };
         let mut root = scopes.root_scope();
-        if let Some(self_param) = body.self_param() {
+        if let Some(Param { formal: self_param, user_written: _ }) = body.self_param {
             scopes.add_bindings(body, root, self_param, body.binding_hygiene(self_param));
         }
-        scopes.add_params_bindings(body, root, &body.params);
+        body.params.iter().for_each(|param| scopes.add_pat_bindings(body, root, param.formal));
         compute_expr_scopes(body.root_expr(), body, &mut scopes, &mut { root }, &mut root);
         scopes
     }
@@ -246,10 +246,6 @@ impl ExprScopes {
         }
 
         pattern.walk_child_pats(|pat| self.add_pat_bindings(store, scope, pat));
-    }
-
-    fn add_params_bindings(&mut self, store: &ExpressionStore, scope: ScopeId, params: &[PatId]) {
-        params.iter().for_each(|pat| self.add_pat_bindings(store, scope, *pat));
     }
 
     fn set_scope(&mut self, node: ExprId, scope: ScopeId) {
@@ -350,13 +346,13 @@ fn compute_expr_scopes(
         Expr::Unsafe { id, statements, tail } => {
             handle_block(*id, statements, *tail, None, scopes, scope, const_scope);
         }
-        Expr::Loop { body: body_expr, label } => {
+        Expr::Loop { body: body_expr, label, source: _ } => {
             let mut scope = scopes.new_labeled_scope(*scope, make_label(*label));
             compute_expr_scopes(scopes, *body_expr, &mut scope, const_scope);
         }
         Expr::Closure { args, body: body_expr, .. } => {
             let mut scope = scopes.new_scope(*scope);
-            scopes.add_params_bindings(store, scope, args);
+            args.iter().for_each(|arg| scopes.add_pat_bindings(store, scope, *arg));
             compute_expr_scopes(scopes, *body_expr, &mut scope, const_scope);
         }
         Expr::Match { expr, arms } => {

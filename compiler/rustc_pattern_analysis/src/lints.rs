@@ -4,7 +4,9 @@ use tracing::instrument;
 
 use crate::MatchArm;
 use crate::constructor::Constructor;
-use crate::errors::{NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Uncovered};
+use crate::diagnostics::{
+    NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Uncovered,
+};
 use crate::pat_column::PatternColumn;
 use crate::rustc::{RevealedTy, RustcPatCtxt, WitnessPat};
 

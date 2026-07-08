@@ -56,11 +56,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
             StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(op)) => {
                 self.consume_operand(location, op);
             }
-            StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
-                src,
-                dst,
-                count,
-            })) => {
+            StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(
+                CopyNonOverlapping { src, dst, count },
+            )) => {
                 self.consume_operand(location, src);
                 self.consume_operand(location, dst);
                 self.consume_operand(location, count);
@@ -99,14 +97,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop {
-                place: drop_place,
-                target: _,
-                unwind: _,
-                replace,
-                drop: _,
-                async_fut: _,
-            } => {
+            TerminatorKind::Drop { place: drop_place, target: _, unwind: _, replace, drop: _ } => {
                 let write_kind =
                     if *replace { WriteKind::Replace } else { WriteKind::StorageDeadOrDrop };
                 self.access_place(

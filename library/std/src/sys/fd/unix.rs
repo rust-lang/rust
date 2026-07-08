@@ -38,7 +38,10 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 #[cfg(all(target_os = "android", target_pointer_width = "64"))]
 use crate::sys::pal::weak::syscall;
-#[cfg(any(all(target_os = "android", target_pointer_width = "32"), target_vendor = "apple"))]
+#[cfg(any(
+    all(target_os = "android", target_pointer_width = "32"),
+    all(target_vendor = "apple", not(all(target_os = "macos", target_arch = "aarch64")))
+))]
 use crate::sys::pal::weak::weak;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
 
@@ -76,6 +79,7 @@ const fn max_iov() -> usize {
     target_os = "emscripten",
     target_os = "linux",
     target_os = "nto",
+    target_os = "qnx",
 ))]
 const fn max_iov() -> usize {
     libc::UIO_MAXIOV as usize
@@ -91,6 +95,7 @@ const fn max_iov() -> usize {
     target_os = "netbsd",
     target_os = "nuttx",
     target_os = "nto",
+    target_os = "qnx",
     target_os = "openbsd",
     target_os = "horizon",
     target_os = "vita",
@@ -173,7 +178,7 @@ impl FileDesc {
         .map(|n| n as usize)
     }
 
-    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
         let ret = cvt(unsafe {
             libc::read(
@@ -190,7 +195,7 @@ impl FileDesc {
         Ok(())
     }
 
-    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
         let ret = cvt(unsafe {
             pread64(
@@ -219,6 +224,7 @@ impl FileDesc {
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd", // OpenBSD 2.7
+        all(target_os = "macos", target_arch = "aarch64"),
     ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         let ret = cvt(unsafe {
@@ -307,14 +313,15 @@ impl FileDesc {
 
     // We support old MacOS, iOS, watchOS, tvOS and visionOS. `preadv` was added in the following
     // Apple OS versions:
-    // ios 14.0
-    // tvos 14.0
-    // macos 11.0
-    // watchos 7.0
+    // iOS 14.0
+    // tvOS 14.0
+    // macOS 11.0
+    // watchOS 7.0
     //
-    // These versions may be newer than the minimum supported versions of OS's we support so we must
-    // use "weak" linking.
-    #[cfg(target_vendor = "apple")]
+    // Since macOS 11.0 is also the first version with AArch64 support, we can
+    // `preadv` unconditionally there. But on all other targets we must use
+    // "weak" linking.
+    #[cfg(all(target_vendor = "apple", not(all(target_os = "macos", target_arch = "aarch64"))))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn preadv(
@@ -426,6 +433,7 @@ impl FileDesc {
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd", // OpenBSD 2.7
+        all(target_os = "macos", target_arch = "aarch64"),
     ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         let ret = cvt(unsafe {
@@ -514,14 +522,15 @@ impl FileDesc {
 
     // We support old MacOS, iOS, watchOS, tvOS and visionOS. `pwritev` was added in the following
     // Apple OS versions:
-    // ios 14.0
-    // tvos 14.0
-    // macos 11.0
-    // watchos 7.0
+    // iOS 14.0
+    // tvOS 14.0
+    // macOS 11.0
+    // watchOS 7.0
     //
-    // These versions may be newer than the minimum supported versions of OS's we support so we must
-    // use "weak" linking.
-    #[cfg(target_vendor = "apple")]
+    // Since macOS 11.0 is also the first version with AArch64 support, we can
+    // `pwritev` unconditionally there. But on all other targets we must use
+    // "weak" linking.
+    #[cfg(all(target_vendor = "apple", not(all(target_os = "macos", target_arch = "aarch64")),))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn pwritev(
@@ -561,6 +570,7 @@ impl FileDesc {
         target_os = "redox",
         target_os = "vxworks",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "wasi",
     )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
@@ -585,6 +595,7 @@ impl FileDesc {
         target_os = "redox",
         target_os = "vxworks",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "wasi",
     ))]
     pub fn set_cloexec(&self) -> io::Result<()> {
@@ -640,7 +651,7 @@ impl<'a> Read for &'a FileDesc {
         (**self).read(buf)
     }
 
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (**self).read_buf(cursor)
     }
 

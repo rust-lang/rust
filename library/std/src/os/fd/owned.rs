@@ -199,7 +199,7 @@ impl Drop for OwnedFd {
         unsafe {
             // Note that errors are ignored when closing a file descriptor. According to POSIX 2024,
             // we can and indeed should retry `close` on `EINTR`
-            // (https://pubs.opengroup.org/onlinepubs/9799919799.2024edition/functions/close.html),
+            // (https://pubs.opengroup.org/onlinepubs/9799919799/functions/close.html),
             // but it is not clear yet how well widely-used implementations are conforming with this
             // mandate since older versions of POSIX left the state of the FD after an `EINTR`
             // unspecified. Ignoring errors is "fine" because some of the major Unices (in
@@ -237,9 +237,6 @@ impl fmt::Debug for OwnedFd {
 
 macro_rules! impl_is_terminal {
     ($($t:ty),*$(,)?) => {$(
-        #[unstable(feature = "sealed", issue = "none")]
-        impl crate::sealed::Sealed for $t {}
-
         #[stable(feature = "is_terminal", since = "1.70.0")]
         impl io::IsTerminal for $t {
             #[inline]
@@ -358,7 +355,7 @@ impl From<crate::net::TcpStream> for OwnedFd {
     /// Takes ownership of a [`TcpStream`](crate::net::TcpStream)'s socket file descriptor.
     #[inline]
     fn from(tcp_stream: crate::net::TcpStream) -> OwnedFd {
-        tcp_stream.into_inner().into_socket().into_inner().into_inner().into()
+        tcp_stream.into_inner().into_socket().into_inner().into_inner()
     }
 }
 
@@ -388,7 +385,7 @@ impl From<crate::net::TcpListener> for OwnedFd {
     /// Takes ownership of a [`TcpListener`](crate::net::TcpListener)'s socket file descriptor.
     #[inline]
     fn from(tcp_listener: crate::net::TcpListener) -> OwnedFd {
-        tcp_listener.into_inner().into_socket().into_inner().into_inner().into()
+        tcp_listener.into_inner().into_socket().into_inner().into_inner()
     }
 }
 
@@ -418,7 +415,7 @@ impl From<crate::net::UdpSocket> for OwnedFd {
     /// Takes ownership of a [`UdpSocket`](crate::net::UdpSocket)'s file descriptor.
     #[inline]
     fn from(udp_socket: crate::net::UdpSocket) -> OwnedFd {
-        udp_socket.into_inner().into_socket().into_inner().into_inner().into()
+        udp_socket.into_inner().into_socket().into_inner().into_inner()
     }
 }
 

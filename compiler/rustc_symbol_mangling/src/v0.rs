@@ -49,25 +49,31 @@ pub(super) fn mangle<'tcx>(
 
     // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
     let shim_kind = match instance.def {
-        ty::InstanceKind::ThreadLocalShim(_) => Some("tls"),
-        ty::InstanceKind::VTableShim(_) => Some("vtable"),
-        ty::InstanceKind::ReifyShim(_, None) => Some("reify"),
-        ty::InstanceKind::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify_fnptr"),
-        ty::InstanceKind::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify_vtable"),
+        ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(_)) => Some("tls"),
+        ty::InstanceKind::Shim(ty::ShimKind::VTable(_)) => Some("vtable"),
+        ty::InstanceKind::Shim(ty::ShimKind::Reify(_, None)) => Some("reify"),
+        ty::InstanceKind::Shim(ty::ShimKind::Reify(_, Some(ReifyReason::FnPtr))) => {
+            Some("reify_fnptr")
+        }
+        ty::InstanceKind::Shim(ty::ShimKind::Reify(_, Some(ReifyReason::Vtable))) => {
+            Some("reify_vtable")
+        }
 
         // FIXME(async_closures): This shouldn't be needed when we fix
         // `Instance::ty`/`Instance::def_id`.
-        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: true, .. } => {
-            Some("by_move")
-        }
-        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: false, .. } => {
-            Some("by_ref")
-        }
-        ty::InstanceKind::FutureDropPollShim(_, _, _) => Some("drop"),
+        ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure {
+            receiver_by_ref: true,
+            ..
+        }) => Some("by_move"),
+        ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure {
+            receiver_by_ref: false,
+            ..
+        }) => Some("by_ref"),
+        ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_, _, _)) => Some("drop"),
         _ => None,
     };
 
-    if let ty::InstanceKind::AsyncDropGlue(_, ty) = instance.def {
+    if let ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, ty)) = instance.def {
         let ty::Coroutine(_, cor_args) = ty.kind() else {
             bug!();
         };
@@ -548,7 +554,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
 
             // We may still encounter projections here due to the printing
             // logic sometimes passing identity-substituted impl headers.
-            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
                 self.print_def_path(def_id, args)?;
             }
 
@@ -646,9 +652,11 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 // could have different bound vars *anyways*.
                 match predicate.as_ref().skip_binder() {
                     ty::ExistentialPredicate::Trait(trait_ref) => {
-                        // Use a type that can't appear in defaults of type parameters.
-                        let dummy_self = Ty::new_fresh(p.tcx, 0);
-                        let trait_ref = trait_ref.with_self_ty(p.tcx, dummy_self);
+                        // Dummy Self is safe to use as it can't appear in generic param defaults
+                        // which is important later on for correctly eliding generic args that
+                        // coincide with their default.
+                        let trait_ref =
+                            trait_ref.with_self_ty(p.tcx, p.tcx.types.trait_object_dummy_self);
                         p.print_def_path(trait_ref.def_id, trait_ref.args)?;
                     }
                     ty::ExistentialPredicate::Projection(projection) => {
@@ -688,11 +696,16 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 return Ok(());
             }
 
-            // We may still encounter unevaluated consts due to the printing
+            // We may still encounter alias consts due to the printing
             // logic sometimes passing identity-substituted impl headers.
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args, .. }) => {
-                return self.print_def_path(def, args);
-            }
+            ty::ConstKind::Alias(_, ty::AliasConst { kind, args, .. }) => match kind {
+                ty::AliasConstKind::Projection { def_id }
+                | ty::AliasConstKind::Inherent { def_id }
+                | ty::AliasConstKind::Free { def_id }
+                | ty::AliasConstKind::Anon { def_id } => {
+                    return self.print_def_path(def_id, args);
+                }
+            },
 
             ty::ConstKind::Expr(_)
             | ty::ConstKind::Infer(_)

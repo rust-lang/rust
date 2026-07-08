@@ -1,15 +1,11 @@
 //@aux-build:proc_macros.rs
 
 #![warn(clippy::default_numeric_fallback)]
-#![allow(
-    unused,
-    clippy::never_loop,
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::branches_sharing_code,
-    clippy::match_single_binding,
+#![expect(
     clippy::let_unit_value,
-    clippy::let_with_type_underscore
+    clippy::let_with_type_underscore,
+    clippy::match_single_binding,
+    clippy::no_effect
 )]
 
 extern crate proc_macros;

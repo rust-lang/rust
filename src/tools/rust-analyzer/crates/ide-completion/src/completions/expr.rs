@@ -182,6 +182,9 @@ pub(crate) fn complete_expr_path(
                         }
                         _ => return,
                     };
+                    // Note: this is not *required* here, we do it to also find methods that require
+                    // the type to be instantiated with specific types.
+                    let ty = ty.instantiate_with_errors();
 
                     if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
                         cov_mark::hit!(completes_variant_through_alias);
@@ -317,12 +320,7 @@ pub(crate) fn complete_expr_path(
                 }
                 // synthetic names currently leak out as we lack synthetic hygiene, so filter them
                 // out here
-                ScopeDef::Local(_) =>
-                {
-                    #[expect(
-                        clippy::collapsible_match,
-                        reason = "this changes meaning, causing the next arm to be selected"
-                    )]
+                ScopeDef::Local(_) => {
                     if !name.as_str().starts_with('<') {
                         acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases)
                     }

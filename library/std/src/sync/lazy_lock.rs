@@ -376,7 +376,7 @@ impl<T, F: FnOnce() -> T> DerefMut for LazyLock<T, F> {
 
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T: Default> const Default for LazyLock<T> {
+const impl<T: Default> Default for LazyLock<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     #[inline]
     fn default() -> LazyLock<T> {

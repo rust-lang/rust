@@ -5,7 +5,7 @@ use crate::cmp::Ordering;
 use crate::intrinsics::unchecked_sub;
 use crate::slice::SliceIndex;
 use crate::ub_checks::assert_unsafe_precondition;
-use crate::{ops, ptr, range};
+use crate::{ops, range};
 
 /// Implements ordering of strings.
 ///
@@ -24,7 +24,7 @@ impl Ord for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const PartialEq for str {
+const impl PartialEq for str {
     #[inline]
     fn eq(&self, other: &str) -> bool {
         self.as_bytes() == other.as_bytes()
@@ -33,7 +33,7 @@ impl const PartialEq for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const Eq for str {}
+const impl Eq for str {}
 
 /// Implements comparison operations on strings.
 ///
@@ -52,7 +52,7 @@ impl PartialOrd for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-impl<I> const ops::Index<I> for str
+const impl<I> ops::Index<I> for str
 where
     I: [const] SliceIndex<str>,
 {
@@ -66,7 +66,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-impl<I> const ops::IndexMut<I> for str
+const impl<I> ops::IndexMut<I> for str
 where
     I: [const] SliceIndex<str>,
 {
@@ -90,7 +90,7 @@ where
 /// Equivalent to `&self[0 .. len]` or `&mut self[0 .. len]`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::RangeFull {
+const unsafe impl SliceIndex<str> for ops::RangeFull {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -115,6 +115,35 @@ unsafe impl const SliceIndex<str> for ops::RangeFull {
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
         slice
+    }
+}
+
+/// Check that a range is in bounds for slicing a string.
+/// If this returns true, it is safe to call `slice.get_unchecked(range)` or
+/// `slice.get_unchecked_mut(range)`.
+#[inline(always)]
+const fn check_range(slice: &str, range: crate::range::Range<usize>) -> bool {
+    let crate::range::Range { start, end } = range;
+    let bytes = slice.as_bytes();
+
+    if start > end || end > slice.len() {
+        return false;
+    }
+
+    if start == slice.len() {
+        // If `start == slice.len()`, then `end == slice.len()` must also be true.
+        return true;
+    }
+
+    // SAFETY:
+    // `start > end || end > slice.len()` is false, so `start <= end <= slice.len()` is true.
+    // `start == slice.len()` is false, so `start < slice.len()` is also true.
+    //
+    // No need to check for `end == 0`, because if `end == 0` is true then `start == slice.len()`
+    // would also be true, which is already handled above.
+    unsafe {
+        (start == 0 || bytes.as_ptr().add(start).read().is_utf8_char_boundary())
+            && (end == slice.len() || bytes.as_ptr().add(end).read().is_utf8_char_boundary())
     }
 }
 
@@ -155,34 +184,15 @@ unsafe impl const SliceIndex<str> for ops::RangeFull {
 /// ```
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::Range<usize> {
+const unsafe impl SliceIndex<str> for ops::Range<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if self.start <= self.end
-            && slice.is_char_boundary(self.start)
-            && slice.is_char_boundary(self.end)
-        {
-            // SAFETY: just checked that `start` and `end` are on a char boundary,
-            // and we are passing in a safe reference, so the return value will also be one.
-            // We also checked char boundaries, so this is valid UTF-8.
-            Some(unsafe { &*self.get_unchecked(slice) })
-        } else {
-            None
-        }
+        range::Range::from(self).get(slice)
     }
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if self.start <= self.end
-            && slice.is_char_boundary(self.start)
-            && slice.is_char_boundary(self.end)
-        {
-            // SAFETY: just checked that `start` and `end` are on a char boundary.
-            // We know the pointer is unique because we got it from `slice`.
-            Some(unsafe { &mut *self.get_unchecked_mut(slice) })
-        } else {
-            None
-        }
+        range::Range::from(self).get_mut(slice)
     }
     #[inline]
     #[track_caller]
@@ -209,7 +219,7 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
         // which satisfies all the conditions for `add`.
         unsafe {
             let new_len = unchecked_sub(self.end, self.start);
-            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), new_len) as *const str
+            slice.as_ptr().add(self.start).cast_slice(new_len) as *const str
         }
     }
     #[inline]
@@ -230,45 +240,27 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
         // SAFETY: see comments for `get_unchecked`.
         unsafe {
             let new_len = unchecked_sub(self.end, self.start);
-            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), new_len) as *mut str
+            slice.as_mut_ptr().add(self.start).cast_slice(new_len) as *mut str
         }
     }
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
-        let (start, end) = (self.start, self.end);
-        match self.get(slice) {
-            Some(s) => s,
-            None => super::slice_error_fail(slice, start, end),
-        }
+        range::Range::from(self).index(slice)
     }
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        // is_char_boundary checks that the index is in [0, .len()]
-        // cannot reuse `get` as above, because of NLL trouble
-        if self.start <= self.end
-            && slice.is_char_boundary(self.start)
-            && slice.is_char_boundary(self.end)
-        {
-            // SAFETY: just checked that `start` and `end` are on a char boundary,
-            // and we are passing in a safe reference, so the return value will also be one.
-            unsafe { &mut *self.get_unchecked_mut(slice) }
-        } else {
-            super::slice_error_fail(slice, self.start, self.end)
-        }
+        range::Range::from(self).index_mut(slice)
     }
 }
 
 #[stable(feature = "new_range_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for range::Range<usize> {
+const unsafe impl SliceIndex<str> for range::Range<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if self.start <= self.end
-            && slice.is_char_boundary(self.start)
-            && slice.is_char_boundary(self.end)
-        {
-            // SAFETY: just checked that `start` and `end` are on a char boundary,
+        if check_range(slice, self) {
+            // SAFETY: just checked that `self` is in bounds,
             // and we are passing in a safe reference, so the return value will also be one.
             // We also checked char boundaries, so this is valid UTF-8.
             Some(unsafe { &*self.get_unchecked(slice) })
@@ -278,11 +270,8 @@ unsafe impl const SliceIndex<str> for range::Range<usize> {
     }
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if self.start <= self.end
-            && slice.is_char_boundary(self.start)
-            && slice.is_char_boundary(self.end)
-        {
-            // SAFETY: just checked that `start` and `end` are on a char boundary.
+        if check_range(slice, self) {
+            // SAFETY: just checked that `self` is in bounds.
             // We know the pointer is unique because we got it from `slice`.
             Some(unsafe { &mut *self.get_unchecked_mut(slice) })
         } else {
@@ -314,7 +303,7 @@ unsafe impl const SliceIndex<str> for range::Range<usize> {
         // which satisfies all the conditions for `add`.
         unsafe {
             let new_len = unchecked_sub(self.end, self.start);
-            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), new_len) as *const str
+            slice.as_ptr().add(self.start).cast_slice(new_len) as *const str
         }
     }
     #[inline]
@@ -335,7 +324,7 @@ unsafe impl const SliceIndex<str> for range::Range<usize> {
         // SAFETY: see comments for `get_unchecked`.
         unsafe {
             let new_len = unchecked_sub(self.end, self.start);
-            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), new_len) as *mut str
+            slice.as_mut_ptr().add(self.start).cast_slice(new_len) as *mut str
         }
     }
     #[inline]
@@ -348,13 +337,9 @@ unsafe impl const SliceIndex<str> for range::Range<usize> {
     }
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        // is_char_boundary checks that the index is in [0, .len()]
         // cannot reuse `get` as above, because of NLL trouble
-        if self.start <= self.end
-            && slice.is_char_boundary(self.start)
-            && slice.is_char_boundary(self.end)
-        {
-            // SAFETY: just checked that `start` and `end` are on a char boundary,
+        if check_range(slice, self) {
+            // SAFETY: just checked that `self` is in bounds,
             // and we are passing in a safe reference, so the return value will also be one.
             unsafe { &mut *self.get_unchecked_mut(slice) }
         } else {
@@ -432,7 +417,7 @@ unsafe impl SliceIndex<str> for (ops::Bound<usize>, ops::Bound<usize>) {
 /// character (as defined by `is_char_boundary`), or if `end > len`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::RangeTo<usize> {
+const unsafe impl SliceIndex<str> for ops::RangeTo<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -501,7 +486,7 @@ unsafe impl const SliceIndex<str> for ops::RangeTo<usize> {
 /// a character (as defined by `is_char_boundary`), or if `begin > len`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::RangeFrom<usize> {
+const unsafe impl SliceIndex<str> for ops::RangeFrom<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -557,7 +542,7 @@ unsafe impl const SliceIndex<str> for ops::RangeFrom<usize> {
 
 #[stable(feature = "new_range_from_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for range::RangeFrom<usize> {
+const unsafe impl SliceIndex<str> for range::RangeFrom<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -629,7 +614,7 @@ unsafe impl const SliceIndex<str> for range::RangeFrom<usize> {
 /// byte offset or equal to `len`), if `begin > end`, or if `end >= len`.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
+const unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -687,7 +672,7 @@ unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
 
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
+const unsafe impl SliceIndex<str> for range::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -733,7 +718,7 @@ unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
 /// `is_char_boundary`, or equal to `len`), or if `end >= len`.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
+const unsafe impl SliceIndex<str> for ops::RangeToInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -779,7 +764,7 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// `is_char_boundary`, or equal to `len`), or if `last >= len`.
 #[stable(feature = "new_range_to_inclusive_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for range::RangeToInclusive<usize> {
+const unsafe impl SliceIndex<str> for range::RangeToInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {

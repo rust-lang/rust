@@ -15,8 +15,8 @@ struct Foo<'lt, T, const C: usize> {
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
             md module::
-            sp Self   Foo<'_, {unknown}, _>
-            st Foo<…> Foo<'_, {unknown}, _>
+            sp Self          Foo<'lt, T, C>
+            st Foo<…>        Foo<'lt, T, C>
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
@@ -44,8 +44,8 @@ struct Foo<'lt, T, const C: usize>(f$0);
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
             md module::
-            sp Self   Foo<'_, {unknown}, _>
-            st Foo<…> Foo<'_, {unknown}, _>
+            sp Self          Foo<'lt, T, C>
+            st Foo<…>        Foo<'lt, T, C>
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
@@ -409,7 +409,7 @@ const FOO: $0 = Foo(2);
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
             md module::
-            st Foo<…>        Foo<{unknown}>
+            st Foo<…>                Foo<T>
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
@@ -438,7 +438,7 @@ static FOO: $0 = Foo(2);
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
             md module::
-            st Foo<…>        Foo<{unknown}>
+            st Foo<…>                Foo<T>
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
@@ -629,7 +629,7 @@ fn foo<'lt, T, const C: usize>() {
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
             md module::
-            st Foo<…>        Foo<{unknown}>
+            st Foo<…>                Foo<T>
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit

@@ -8,7 +8,7 @@ use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use crate::mono::Visibility;
-use crate::ty::{InstanceKind, TyCtxt};
+use crate::ty::{InstanceKind, ShimKind, TyCtxt};
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn codegen_instance_attrs(
@@ -33,7 +33,7 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // A `ClosureOnceShim` with the track_caller attribute does not have a symbol,
         // and therefore can be skipped here.
-        if let InstanceKind::ReifyShim(_, _) = instance_kind
+        if let InstanceKind::Shim(ShimKind::Reify(_, _)) = instance_kind
             && attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
         {
             if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
@@ -51,6 +51,17 @@ impl<'tcx> TyCtxt<'tcx> {
             if attrs.symbol_name.is_some() {
                 attrs.to_mut().symbol_name = None;
             }
+        }
+
+        // Ensure closure shims have the optimization properties of their closure applied to them.
+        if let InstanceKind::Shim(ShimKind::ClosureOnce {
+            call_once: _,
+            closure,
+            track_caller: _,
+        }) = instance_kind
+        {
+            let closure_attrs = self.codegen_fn_attrs(closure);
+            attrs.to_mut().optimize = closure_attrs.optimize;
         }
 
         attrs
@@ -103,12 +114,30 @@ pub struct CodegenFnAttrs {
     // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     pub alignment: Option<Align>,
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
-    /// the function entry.
+    /// the function entry, or override default section to record entry location.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
     /// The `#[rustc_objc_class = "..."]` attribute.
     pub objc_class: Option<Symbol>,
     /// The `#[rustc_objc_selector = "..."]` attribute.
     pub objc_selector: Option<Symbol>,
+    /// The `#[instrument_fn]` attribute.
+    pub instrument_fn: InstrumentFnAttr,
+}
+
+#[derive(Copy, Clone, TyEncodable, TyDecodable, StableHash, Debug)]
+pub enum InstrumentFnAttr {
+    /// Always instrument function
+    On,
+    /// Never instrument function
+    Off,
+    /// Instrument based on command line options, if any.
+    Default,
+}
+
+const impl Default for InstrumentFnAttr {
+    fn default() -> Self {
+        InstrumentFnAttr::Default
+    }
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash, PartialEq, Eq)]
@@ -133,23 +162,32 @@ pub struct TargetFeature {
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct PatchableFunctionEntry {
     /// Nops to prepend to the function
-    prefix: u8,
+    prefix: Option<u8>,
     /// Nops after entry, but before body
-    entry: u8,
+    entry: Option<u8>,
+    /// Optional, specific section to record entry location in
+    section: Option<Symbol>,
 }
 
 impl PatchableFunctionEntry {
-    pub fn from_config(config: rustc_session::config::PatchableFunctionEntry) -> Self {
-        Self { prefix: config.prefix(), entry: config.entry() }
+    pub fn from_prefix_entry_and_section(
+        prefix: Option<u8>,
+        entry: Option<u8>,
+        section: Option<Symbol>,
+    ) -> Self {
+        Self { prefix, entry, section }
     }
     pub fn from_prefix_and_entry(prefix: u8, entry: u8) -> Self {
-        Self { prefix, entry }
+        Self { prefix: Some(prefix), entry: Some(entry), section: None }
     }
-    pub fn prefix(&self) -> u8 {
+    pub fn prefix(&self) -> Option<u8> {
         self.prefix
     }
-    pub fn entry(&self) -> u8 {
+    pub fn entry(&self) -> Option<u8> {
         self.entry
+    }
+    pub fn section(&self) -> Option<Symbol> {
+        self.section
     }
 }
 
@@ -236,6 +274,7 @@ impl CodegenFnAttrs {
             patchable_function_entry: None,
             objc_class: None,
             objc_selector: None,
+            instrument_fn: InstrumentFnAttr::default(),
         }
     }
 
@@ -272,7 +311,7 @@ pub struct SanitizerFnAttrs {
     pub rtsan_setting: RtsanSetting,
 }
 
-impl const Default for SanitizerFnAttrs {
+const impl Default for SanitizerFnAttrs {
     fn default() -> Self {
         Self { disabled: SanitizerSet::empty(), rtsan_setting: RtsanSetting::default() }
     }

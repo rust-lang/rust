@@ -109,7 +109,7 @@ impl Handle {
         }
     }
 
-    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let res =
             unsafe { self.synchronous_read(cursor.as_mut().as_mut_ptr(), cursor.capacity(), None) };
 
@@ -132,7 +132,7 @@ impl Handle {
         }
     }
 
-    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
         let read = unsafe {
             self.synchronous_read(cursor.as_mut().as_mut_ptr(), cursor.capacity(), Some(offset))
@@ -347,7 +347,7 @@ impl<'a> Read for &'a Handle {
         (**self).read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (**self).read_buf(buf)
     }
 

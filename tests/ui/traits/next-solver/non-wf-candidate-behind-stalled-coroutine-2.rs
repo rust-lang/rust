@@ -9,7 +9,7 @@
 // This previously caused an ICE due to a non–well-formed opaque type
 // in a coroutine witness failing the leak check in the next-solver.
 //
-// In `TypingMode::Analysis`, the problematic type is hidden behind a
+// In `TypingMode::Typeck`, the problematic type is hidden behind a
 // stalled coroutine candidate. However, in later passes (e.g. MIR
 // validation), we eagerly normalize it. The candidate that was
 // previously accepted as a solution then fails the leak check, resulting

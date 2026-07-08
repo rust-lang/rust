@@ -6,6 +6,7 @@ use std::num::NonZero;
 use rustc_index::bit_set::{self, DenseBitSet};
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use smallvec::SmallVec;
+use thin_vec::ThinVec;
 
 #[cfg(test)]
 mod tests;
@@ -408,6 +409,13 @@ where
     }
 }
 
+impl<T: StableHash> StableHash for ThinVec<T> {
+    #[inline]
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self[..].stable_hash(hcx, hasher);
+    }
+}
+
 impl<T: ?Sized + StableHash> StableHash for Box<T> {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
@@ -527,14 +535,14 @@ impl<T> StableHash for ::std::mem::Discriminant<T> {
     }
 }
 
-impl<T> StableHash for ::std::ops::RangeInclusive<T>
+impl<T> StableHash for ::std::range::RangeInclusive<T>
 where
     T: StableHash,
 {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.start().stable_hash(hcx, hasher);
-        self.end().stable_hash(hcx, hasher);
+        self.start.stable_hash(hcx, hasher);
+        self.last.stable_hash(hcx, hasher);
     }
 }
 

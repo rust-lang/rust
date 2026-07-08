@@ -32,7 +32,7 @@ use hir_expand::{
     name::AsName,
 };
 use hir_ty::{
-    InferBodyId, InferenceResult,
+    InferBodyId, InferenceResult, LoweringMode,
     db::AnonConstId,
     diagnostics::unsafe_operations,
     infer_query_with_inspect,
@@ -522,7 +522,7 @@ impl<'db> SemanticsImpl<'db> {
                         let file_id = declaration_tree_id.file_id();
                         let in_file = InFile::new(file_id, declaration);
                         let node = in_file.to_node(self.db);
-                        let root = find_root(node.syntax());
+                        let root = node.syntax().tree_top();
                         self.cache(root, file_id);
                         Some(in_file.with_value(node.syntax().clone()))
                     }
@@ -531,7 +531,7 @@ impl<'db> SemanticsImpl<'db> {
             }
             HirFileId::MacroFile(macro_file) => {
                 let node = macro_file.loc(self.db).to_node(self.db);
-                let root = find_root(&node.value);
+                let root = node.value.tree_top();
                 self.cache(root, node.file_id);
                 Some(node)
             }
@@ -544,7 +544,7 @@ impl<'db> SemanticsImpl<'db> {
         let def_map = module.id.def_map(self.db);
         let definition = def_map[module.id].origin.definition_source(self.db);
         let definition = definition.map(|it| it.node());
-        let root_node = find_root(&definition.value);
+        let root_node = definition.value.tree_top();
         self.cache(root_node, definition.file_id);
         definition
     }
@@ -1067,7 +1067,8 @@ impl<'db> SemanticsImpl<'db> {
                         && let Some(p) = first.parent()
                     {
                         let range = first.text_range().cover(last.text_range());
-                        let node = find_root(&p)
+                        let node = p
+                            .tree_top()
                             .covering_element(range)
                             .ancestors()
                             .take_while(|it| it.text_range() == range)
@@ -1088,7 +1089,12 @@ impl<'db> SemanticsImpl<'db> {
     /// That is, we strictly check if it lies inside the input of a macro call.
     pub fn is_inside_macro_call(&self, token @ InFile { value, .. }: InFile<&SyntaxToken>) -> bool {
         value.parent_ancestors().any(|ancestor| {
-            if ast::MacroCall::can_cast(ancestor.kind()) {
+            if let Some(macro_call) = ast::MacroCall::cast(ancestor.clone())
+                // If this is the *path* of a macro, it's not inside the call.
+                && macro_call.path().is_none_or(|path| {
+                    !path.syntax().text_range().contains_range(value.text_range())
+                })
+            {
                 return true;
             }
 
@@ -1323,7 +1329,7 @@ impl<'db> SemanticsImpl<'db> {
                             .map(|(call_id, item)| {
                                 let item_range = item.syntax().text_range();
                                 let loc = call_id.loc(db);
-                                let text_range = match loc.kind {
+                                let text_range = match &loc.kind {
                                     hir_expand::MacroCallKind::Attr {
                                         censored_attr_ids: attr_ids,
                                         ..
@@ -1572,7 +1578,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
         self.wrap_node_infile(node).original_ast_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
-                self.cache(find_root(value.syntax()), file_id.into());
+                self.cache(value.syntax().tree_top(), file_id.into());
                 value
             },
         )
@@ -1584,7 +1590,7 @@ impl<'db> SemanticsImpl<'db> {
         let InFile { file_id, .. } = self.find_file(node);
         InFile::new(file_id, node).original_syntax_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
-                self.cache(find_root(&value), file_id.into());
+                self.cache(value.tree_top(), file_id.into());
                 value
             },
         )
@@ -1740,11 +1746,7 @@ impl<'db> SemanticsImpl<'db> {
         analyzer.expr_adjustments(expr).map(|it| {
             it.iter()
                 .map(|adjust| {
-                    let target = Type::new_with_resolver(
-                        self.db,
-                        &analyzer.resolver,
-                        adjust.target.as_ref(),
-                    );
+                    let target = analyzer.ty(adjust.target.as_ref());
                     let kind = match adjust.kind {
                         hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
                         hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
@@ -1769,6 +1771,10 @@ impl<'db> SemanticsImpl<'db> {
                 })
                 .collect()
         })
+    }
+
+    pub fn expr_is_diverging(&self, expr: &ast::Expr) -> bool {
+        (|| self.analyze(expr.syntax())?.expr_is_diverging(self.db, expr))().unwrap_or(false)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<TypeInfo<'db>> {
@@ -1835,10 +1841,10 @@ impl<'db> SemanticsImpl<'db> {
         let substs =
             hir_ty::next_solver::GenericArgs::for_item(interner, trait_.id.into(), |_, id, _| {
                 assert!(matches!(id, hir_def::GenericParamId::TypeParamId(_)), "expected a type");
-                subst.next().expect("too few subst").ty.into()
+                subst.next().expect("too few subst").ty.skip_binder().into()
             });
         assert!(subst.next().is_none(), "too many subst");
-        Some(match self.db.lookup_impl_method(env.env, func, substs).0 {
+        Some(match self.db.lookup_impl_method(env.param_env(self.db), func, substs).0 {
             Either::Left(it) => it.into(),
             Either::Right((impl_, method)) => {
                 Function { id: AnyFunctionId::BuiltinDeriveImplMethod { method, impl_ } }
@@ -1944,6 +1950,15 @@ impl<'db> SemanticsImpl<'db> {
         field: &ast::RecordPatField,
     ) -> Option<(Field, Type<'db>, GenericSubstitution<'db>)> {
         self.analyze(field.syntax())?.resolve_record_pat_field(self.db, field)
+    }
+
+    // FIXME: Remove this from https://github.com/rust-lang/rust-analyzer/pull/22449#discussion_r3299763452
+    pub fn resolve_tuple_struct_pat_fields(
+        &self,
+        tuple_struct_pat: &ast::TupleStructPat,
+    ) -> Option<Vec<(Field, Type<'db>)>> {
+        self.analyze(tuple_struct_pat.syntax())?
+            .resolve_tuple_struct_pat_fields(self.db, tuple_struct_pat)
     }
 
     // FIXME: Replace this with `resolve_macro_call2`
@@ -2157,7 +2172,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn source<Def: HasSource>(&self, def: Def) -> Option<InFile<Def::Ast>> {
         // FIXME: source call should go through the parse cache
         let res = def.source(self.db)?;
-        self.cache(find_root(res.value.syntax()), res.file_id);
+        self.cache(res.value.syntax().tree_top(), res.file_id);
         Some(res)
     }
 
@@ -2361,7 +2376,7 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Wraps the node in a [`InFile`] with the file id it belongs to.
     fn find_file<'node>(&self, node: &'node SyntaxNode) -> InFile<&'node SyntaxNode> {
-        let root_node = find_root(node);
+        let root_node = node.tree_top();
         let file_id = self.lookup(&root_node).unwrap_or_else(|| {
             panic!(
                 "\n\nFailed to lookup {:?} in this Semantics.\n\
@@ -2436,7 +2451,7 @@ impl<'db> SemanticsImpl<'db> {
             AnyImplId::ImplId(id) => id,
             AnyImplId::BuiltinDeriveImplId(id) => return Some(id.loc(self.db).adt.into()),
         };
-        let source = hir_def::src::HasSource::ast_ptr(&id.loc(self.db), self.db);
+        let source = hir_def::src::HasSource::ast_ptr(id.loc(self.db), self.db);
         let mut file_id = source.file_id;
         let adt_ast_id = loop {
             let macro_call = file_id.macro_file()?;
@@ -2447,7 +2462,7 @@ impl<'db> SemanticsImpl<'db> {
             }
         };
         let adt_source = adt_ast_id.to_in_file_node(self.db);
-        self.cache(adt_source.value.syntax().ancestors().last().unwrap(), adt_source.file_id);
+        self.cache(adt_source.value.syntax().tree_top(), adt_source.file_id);
         ToDef::to_def(self, adt_source.as_ref())
     }
 
@@ -2550,6 +2565,20 @@ impl<'db> SemanticsImpl<'db> {
         Some(locals)
     }
 
+    pub fn evaluate_where_clause_at(
+        &self,
+        node: &SyntaxNode,
+        offset: TextSize,
+        where_clause: ast::WhereClause,
+    ) -> crate::PredicateEvaluationResult {
+        let Some(analyzer) = self.analyze_with_offset_no_infer(node, offset) else {
+            return crate::PredicateEvaluationResult::unsupported(
+                "predicate evaluation is only supported in files that belong to a crate",
+            );
+        };
+        analyzer.evaluate_where_clause(self.db, where_clause)
+    }
+
     pub fn get_failed_obligations(&self, token: SyntaxToken) -> Option<String> {
         let node = token.parent()?;
         let node = self.find_file(&node);
@@ -2573,6 +2602,7 @@ impl<'db> SemanticsImpl<'db> {
                             RESULT.with(|ctx| ctx.borrow_mut().push(data));
                         }
                     }),
+                    LoweringMode::Ide,
                 );
                 let data: Vec<ProofTreeData> =
                     RESULT.with(|data| data.borrow_mut().drain(..).collect());
@@ -2671,10 +2701,6 @@ impl ToDef for ast::IdentPat {
     fn to_def(sema: &SemanticsImpl<'_>, src: InFile<&Self>) -> Option<Self::Def> {
         sema.with_ctx(|ctx| ctx.bind_pat_to_def(src, sema))
     }
-}
-
-fn find_root(node: &SyntaxNode) -> SyntaxNode {
-    node.ancestors().last().unwrap()
 }
 
 /// `SemanticsScope` encapsulates the notion of a scope (the set of visible

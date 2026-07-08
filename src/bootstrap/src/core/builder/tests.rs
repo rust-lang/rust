@@ -1098,12 +1098,12 @@ mod snapshot {
             ctx
                 .config("dist")
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
@@ -1150,12 +1150,12 @@ mod snapshot {
                 .path("rustc-docs")
                 .args(&["--set", "build.compiler-docs=true"])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
@@ -1208,15 +1208,15 @@ mod snapshot {
                 "rust.lld=true",
             ])
             .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> LldWrapper 1 <host>
         [build] rustc 0 <host> -> WasmComponentLd 1 <host>
         [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
@@ -1284,18 +1284,18 @@ mod snapshot {
                 .hosts(&[&host_target()])
                 .targets(&[&host_target(), TEST_TRIPLE_1])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <host>
-        [doc] unstable-book (book) <target1>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [doc] unstable-book (book) <target1>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
-        [build] rustc 1 <host> -> std 1 <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
@@ -1360,12 +1360,13 @@ mod snapshot {
                 .hosts(&[&host_target(), TEST_TRIPLE_1])
                 .targets(&[&host_target()])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [build] rustc 1 <host> -> std 1 <target1>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
@@ -1377,7 +1378,6 @@ mod snapshot {
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [build] llvm <target1>
-        [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> error-index 2 <target1>
         [doc] rustc 1 <host> -> error-index 2 <target1>
@@ -1423,18 +1423,18 @@ mod snapshot {
                 .hosts(&[&host_target(), TEST_TRIPLE_1])
                 .targets(&[&host_target(), TEST_TRIPLE_1])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <host>
-        [doc] unstable-book (book) <target1>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [doc] unstable-book (book) <target1>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
-        [build] rustc 1 <host> -> std 1 <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
@@ -1508,12 +1508,12 @@ mod snapshot {
                 .hosts(&[])
                 .targets(&[TEST_TRIPLE_1])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <target1>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
@@ -1551,13 +1551,13 @@ mod snapshot {
                 .targets(&[TEST_TRIPLE_1])
                 .args(&["--set", "rust.channel=nightly", "--set", "build.extended=true"])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <target1>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> WasmComponentLd 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
@@ -1695,13 +1695,13 @@ mod snapshot {
                 .config("dist")
                 .args(&["--set", "rust.codegen-backends=['llvm', 'cranelift']"])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> rustc_codegen_cranelift 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
@@ -1778,12 +1778,12 @@ mod snapshot {
                 .config("dist")
                 .path("rustc-docs")
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
-        [build] rustc 0 <host> -> Rustbook 1 <host>
-        [doc] unstable-book (book) <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
         [doc] book (book) <host>
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
@@ -2424,6 +2424,19 @@ mod snapshot {
     }
 
     #[test]
+    fn test_library_tests_only_does_not_build_rustdoc() {
+        let ctx = TestCtx::new();
+        let host = TargetSelection::from_user(&host_target());
+        insta::assert_snapshot!(
+            ctx.config("test").args(&["--tests", "library/core"]).render_steps(),
+            @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustc 1 <host> -> std 1 <host>
+            ");
+    }
+
+    #[test]
     fn test_cargo_stage_1() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -2533,6 +2546,9 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("doc")
                 .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
@@ -2542,14 +2558,11 @@ mod snapshot {
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 0 <host>
         [doc] rustc 0 <host> -> standalone 1 <host>
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 0 <host> -> error-index 1 <host>
         [doc] rustc 0 <host> -> error-index 1 <host>
         [doc] nomicon (book) <host>
-        [build] rustc 1 <host> -> std 1 <host>
         [doc] rustc 1 <host> -> reference (book) 2 <host>
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
@@ -2901,10 +2914,10 @@ mod snapshot {
                 }), @r"
         [build] llvm <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> rustc 1 <x86_64-unknown-linux-gnu>
+        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> UnstableBookGen 1 <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> Rustbook 1 <x86_64-unknown-linux-gnu>
         [doc] unstable-book (book) <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [doc] book (book) <x86_64-unknown-linux-gnu>
         [doc] book/first-edition (book) <x86_64-unknown-linux-gnu>
         [doc] book/second-edition (book) <x86_64-unknown-linux-gnu>
@@ -2960,10 +2973,10 @@ mod snapshot {
                 }), @r"
         [build] llvm <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> rustc 1 <x86_64-unknown-linux-gnu>
+        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> UnstableBookGen 1 <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> Rustbook 1 <x86_64-unknown-linux-gnu>
         [doc] unstable-book (book) <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [doc] book (book) <x86_64-unknown-linux-gnu>
         [doc] book/first-edition (book) <x86_64-unknown-linux-gnu>
         [doc] book/second-edition (book) <x86_64-unknown-linux-gnu>
@@ -3048,10 +3061,10 @@ mod snapshot {
         [build] llvm <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> rustc 1 <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> WasmComponentLd 1 <x86_64-unknown-linux-gnu>
+        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> UnstableBookGen 1 <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> Rustbook 1 <x86_64-unknown-linux-gnu>
         [doc] unstable-book (book) <x86_64-unknown-linux-gnu>
-        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
         [doc] book (book) <x86_64-unknown-linux-gnu>
         [doc] book/first-edition (book) <x86_64-unknown-linux-gnu>
         [doc] book/second-edition (book) <x86_64-unknown-linux-gnu>
@@ -3335,4 +3348,27 @@ fn render_compiler(compiler: Compiler, config: &RenderConfig) -> String {
 
 fn host_target() -> String {
     get_host_target().to_string()
+}
+
+#[test]
+fn flags_env_prefers_plain_form_without_spaces() {
+    use super::cargo::flags_env;
+
+    // No flag value contains a space, so use the readable, copy-pasteable plain form
+    // rather than the `\x1f`-separated encoded form (rust-lang/rust#158749).
+    assert_eq!(
+        flags_env("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS", "--cfg=foo\u{1f}-Cdebuginfo=0"),
+        ("RUSTFLAGS", "--cfg=foo -Cdebuginfo=0".to_string()),
+    );
+
+    // A flag value contains a space (e.g. an `-L` path), which the whitespace-split plain
+    // form can't represent, so keep the encoded form.
+    assert_eq!(
+        flags_env(
+            "RUSTFLAGS",
+            "CARGO_ENCODED_RUSTFLAGS",
+            "-Clink-arg=-L/opt/my libs\u{1f}--cfg=foo"
+        ),
+        ("CARGO_ENCODED_RUSTFLAGS", "-Clink-arg=-L/opt/my libs\u{1f}--cfg=foo".to_string()),
+    );
 }

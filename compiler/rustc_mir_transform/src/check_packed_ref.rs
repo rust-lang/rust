@@ -3,7 +3,7 @@ use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 
-use crate::{errors, util};
+use crate::{diagnostics, util};
 
 pub(super) struct CheckPackedRef;
 
@@ -50,7 +50,7 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
                 // shouldn't do.
                 span_bug!(self.source_info.span, "builtin derive created an unaligned reference");
             } else {
-                self.tcx.dcx().emit_err(errors::UnalignedPackedRef {
+                self.tcx.dcx().emit_err(diagnostics::UnalignedPackedRef {
                     span: self.source_info.span,
                     ty_descr: adt.descr(),
                     align: pack.bytes(),

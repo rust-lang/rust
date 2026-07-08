@@ -75,46 +75,51 @@ impl LateLintPass<'_> for DbgMacro {
                 "the `dbg!` macro is intended as a debugging tool",
                 |diag| {
                     let mut applicability = Applicability::MachineApplicable;
-                    let (sugg_span, suggestion) = match is_async_move_desugar(expr)
-                        .unwrap_or(expr)
-                        .peel_drop_temps()
-                        .kind
-                    {
-                        // dbg!()
-                        ExprKind::Block(..) => {
-                            // If the `dbg!` macro is a "free" statement and not contained within other expressions,
-                            // remove the whole statement.
-                            if let Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id)
-                                && let Some(semi_span) = cx.sess().source_map().mac_call_stmt_semi_span(macro_call.span)
-                            {
-                                (macro_call.span.to(semi_span), String::new())
-                            } else {
-                                (macro_call.span, String::from("()"))
-                            }
-                        },
-                        ExprKind::Match(args, _, _) => {
-                            let suggestion = match args.kind {
-                                // dbg!(1) => 1
-                                ExprKind::Tup([val]) => {
-                                    snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability)
-                                        .to_string()
-                                },
-                                // dbg!(2, 3) => (2, 3)
-                                ExprKind::Tup([first, .., last]) => {
-                                    let snippet = snippet_with_applicability(
-                                        cx,
-                                        first.span.source_callsite().to(last.span.source_callsite()),
-                                        "..",
-                                        &mut applicability,
-                                    );
-                                    format!("({snippet})")
-                                },
-                                _ => unreachable!(),
-                            };
-                            (macro_call.span, suggestion)
-                        },
-                        _ => unreachable!(),
-                    };
+                    let (sugg_span, suggestion) =
+                        match is_async_move_desugar(expr).unwrap_or(expr).peel_drop_temps().kind {
+                            // dbg!()
+                            ExprKind::Block(..) => {
+                                // If the `dbg!` macro is a "free" statement and not contained within other expressions,
+                                // remove the whole statement.
+                                if let Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id)
+                                    && let Some(semi_span) =
+                                        cx.sess().source_map().mac_call_stmt_semi_span(macro_call.span)
+                                {
+                                    (macro_call.span.to(semi_span), String::new())
+                                } else {
+                                    (macro_call.span, String::from("()"))
+                                }
+                            },
+                            // dbg!(1)
+                            ExprKind::Match(val, ..) => (
+                                macro_call.span,
+                                snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability)
+                                    .to_string(),
+                            ),
+                            // dbg!(2, 3)
+                            ExprKind::Tup(
+                                [
+                                    Expr {
+                                        kind: ExprKind::Match(first, ..),
+                                        ..
+                                    },
+                                    ..,
+                                    Expr {
+                                        kind: ExprKind::Match(last, ..),
+                                        ..
+                                    },
+                                ],
+                            ) => {
+                                let snippet = snippet_with_applicability(
+                                    cx,
+                                    first.span.source_callsite().to(last.span.source_callsite()),
+                                    "..",
+                                    &mut applicability,
+                                );
+                                (macro_call.span, format!("({snippet})"))
+                            },
+                            _ => unreachable!(),
+                        };
 
                     diag.span_suggestion(
                         sugg_span,

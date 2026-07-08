@@ -1,8 +1,7 @@
 use std::fs;
 
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::par_join;
-use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{DepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::Encodable as RustcEncodable;
@@ -14,7 +13,7 @@ use super::data::*;
 use super::fs::*;
 use super::{clean, file_format, work_product};
 use crate::assert_dep_graph::assert_dep_graph;
-use crate::errors;
+use crate::diagnostics;
 
 /// Saves and writes the [`DepGraph`] to the file system.
 ///
@@ -46,7 +45,7 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
             move || {
                 sess.time("incr_comp_persist_dep_graph", || {
                     if let Err(err) = fs::rename(&staging_dep_graph_path, &dep_graph_path) {
-                        sess.dcx().emit_err(errors::MoveDepGraph {
+                        sess.dcx().emit_err(diagnostics::MoveDepGraph {
                             from: &staging_dep_graph_path,
                             to: &dep_graph_path,
                             err,
@@ -93,7 +92,7 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
 pub fn save_work_product_index(
     sess: &Session,
     dep_graph: &DepGraph,
-    new_work_products: FxIndexMap<WorkProductId, WorkProduct>,
+    new_work_products: WorkProductMap,
 ) {
     if sess.opts.incremental.is_none() {
         return;
@@ -126,18 +125,16 @@ pub fn save_work_product_index(
 
     // Check that we did not delete one of the current work-products:
     debug_assert!({
-        new_work_products.iter().all(|(_, wp)| {
+        new_work_products.items().all(|(_, wp)| {
             wp.saved_files.items().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
         })
     });
 }
 
-fn encode_work_product_index(
-    work_products: &FxIndexMap<WorkProductId, WorkProduct>,
-    encoder: &mut FileEncoder,
-) {
+fn encode_work_product_index(work_products: &WorkProductMap, encoder: &mut FileEncoder<'_>) {
     let serialized_products: Vec<_> = work_products
-        .iter()
+        .to_sorted_stable_ord()
+        .into_iter()
         .map(|(id, work_product)| SerializedWorkProduct {
             id: *id,
             work_product: work_product.clone(),

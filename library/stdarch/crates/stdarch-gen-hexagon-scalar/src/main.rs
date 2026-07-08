@@ -513,9 +513,11 @@ fn generate_functions(intrinsics: &[ScalarIntrinsic]) -> String {
         }
 
         // Attributes
-        output.push_str("#[inline(always)]\n");
         if let Some(tf_attr) = info.arch_guard.target_feature_attr() {
+            output.push_str("#[inline]\n"); // https://github.com/rust-lang/rust/issues/145574
             output.push_str(&format!("{}\n", tf_attr));
+        } else {
+            output.push_str("#[inline(always)]\n");
         }
 
         // Immediate parameters become const generics but are passed as positional
@@ -662,7 +664,11 @@ fn main() -> Result<(), String> {
     let intrinsics = parse_header(&header_content);
     println!("Parsed {} scalar intrinsics", intrinsics.len());
 
-    let hexagon_dir = crate_dir.join("../core_arch/src/hexagon");
+    let hexagon_dir = std::env::args()
+        .nth(1)
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| crate_dir.join("../core_arch/src/hexagon"));
+    std::fs::create_dir_all(&hexagon_dir).map_err(|e| e.to_string())?;
     let scalar_path = hexagon_dir.join("scalar.rs");
 
     generate_scalar_file(&intrinsics, &scalar_path)?;

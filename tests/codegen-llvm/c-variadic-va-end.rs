@@ -11,9 +11,6 @@ unsafe extern "C" {
 pub unsafe extern "C" fn f(mut args: ...) {
     // CHECK: call void @llvm.va_start
     unsafe { g(&raw mut args as *mut u8) }
-    // We expect one call to the LLVM va_end from our desugaring of `...`. The `Drop` implementation
-    // should only call the rust va_end intrinsic, which is a no-op.
-    //
-    // CHECK: call void @llvm.va_end
+    // We no longer call the LLVM va_end.
     // CHECK-NOT: call void @llvm.va_end
 }

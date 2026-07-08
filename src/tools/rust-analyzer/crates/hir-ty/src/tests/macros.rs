@@ -194,10 +194,8 @@ fn expr_macro_def_expanded_in_various_places() {
             !0..6 '1isize': isize
             !0..6 '1isize': isize
             !0..6 '1isize': isize
-            39..442 '{     ...!(); }': {unknown}
+            39..442 '{     ...!(); }': !
             73..94 'spam!(...am!())': {unknown}
-            100..119 'for _ ...!() {}': fn into_iter<isize>(isize) -> <isize as IntoIterator>::IntoIter
-            100..119 'for _ ...!() {}': <isize as IntoIterator>::IntoIter
             100..119 'for _ ...!() {}': !
             100..119 'for _ ...!() {}': {unknown}
             100..119 'for _ ...!() {}': &'? mut {unknown}
@@ -208,6 +206,8 @@ fn expr_macro_def_expanded_in_various_places() {
             100..119 'for _ ...!() {}': ()
             100..119 'for _ ...!() {}': ()
             104..105 '_': {unknown}
+            109..116 'spam!()': fn into_iter<isize>(isize) -> <isize as IntoIterator>::IntoIter
+            109..116 'spam!()': <isize as IntoIterator>::IntoIter
             117..119 '{}': ()
             124..134 '|| spam!()': impl Fn() -> isize
             140..156 'while ...!() {}': !
@@ -288,10 +288,8 @@ fn expr_macro_rules_expanded_in_various_places() {
             !0..6 '1isize': isize
             !0..6 '1isize': isize
             !0..6 '1isize': isize
-            53..456 '{     ...!(); }': {unknown}
+            53..456 '{     ...!(); }': !
             87..108 'spam!(...am!())': {unknown}
-            114..133 'for _ ...!() {}': fn into_iter<isize>(isize) -> <isize as IntoIterator>::IntoIter
-            114..133 'for _ ...!() {}': <isize as IntoIterator>::IntoIter
             114..133 'for _ ...!() {}': !
             114..133 'for _ ...!() {}': {unknown}
             114..133 'for _ ...!() {}': &'? mut {unknown}
@@ -302,6 +300,8 @@ fn expr_macro_rules_expanded_in_various_places() {
             114..133 'for _ ...!() {}': ()
             114..133 'for _ ...!() {}': ()
             118..119 '_': {unknown}
+            123..130 'spam!()': fn into_iter<isize>(isize) -> <isize as IntoIterator>::IntoIter
+            123..130 'spam!()': <isize as IntoIterator>::IntoIter
             131..133 '{}': ()
             138..148 '|| spam!()': impl Fn() -> isize
             154..170 'while ...!() {}': !
@@ -1493,7 +1493,7 @@ fn main() {
             !0..136 'builti...tack))': ()
             !0..449 'builti...urn),)': !
             10..1236 '{     ...   } }': ()
-            16..1234 'unsafe...     }': ()
+            16..1234 'unsafe...     }': !
             37..40 'foo': i32
             43..44 '1': i32
             58..63 'mut o': i32

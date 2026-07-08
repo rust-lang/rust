@@ -222,7 +222,7 @@ impl fmt::Display for CfgDiff {
             for (i, atom) in self.disable.iter().enumerate() {
                 let sep = match i {
                     0 => "",
-                    _ if i == self.enable.len() - 1 => " and ",
+                    _ if i == self.disable.len() - 1 => " and ",
                     _ => ", ",
                 };
                 f.write_str(sep)?;

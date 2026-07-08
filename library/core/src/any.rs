@@ -739,33 +739,10 @@ unsafe impl Sync for TypeId {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const PartialEq for TypeId {
+const impl PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        #[cfg(miri)]
-        return crate::intrinsics::type_id_eq(*self, *other);
-        #[cfg(not(miri))]
-        {
-            let this = self;
-            crate::intrinsics::const_eval_select!(
-                @capture { this: &TypeId, other: &TypeId } -> bool:
-                if const {
-                    crate::intrinsics::type_id_eq(*this, *other)
-                } else {
-                    // Ideally we would just invoke `type_id_eq` unconditionally here,
-                    // but since we do not MIR inline intrinsics, because backends
-                    // may want to override them (and miri does!), MIR opts do not
-                    // clean up this call sufficiently for LLVM to turn repeated calls
-                    // of `TypeId` comparisons against one specific `TypeId` into
-                    // a lookup table.
-                    // SAFETY: We know that at runtime none of the bits have provenance and all bits
-                    // are initialized. So we can just convert the whole thing to a `u128` and compare that.
-                    unsafe {
-                        crate::mem::transmute::<_, u128>(*this) == crate::mem::transmute::<_, u128>(*other)
-                    }
-                }
-            )
-        }
+        crate::intrinsics::type_id_eq(*self, *other)
     }
 }
 
@@ -808,9 +785,8 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    pub const fn trait_info_of<
-        T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static,
-    >(
+    #[rustc_comptime]
+    pub fn trait_info_of<T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static>(
         self,
     ) -> Option<TraitImpl<T>> {
         // SAFETY: The vtable was obtained for `T`, so it is guaranteed to be `DynMetadata<T>`.
@@ -835,7 +811,8 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    pub const fn trait_info_of_trait_type_id(
+    #[rustc_comptime]
+    pub fn trait_info_of_trait_type_id(
         self,
         trait_represented_by_type_id: TypeId,
     ) -> Option<TraitImpl<*const ()>> {
@@ -852,7 +829,7 @@ impl TypeId {
         }
     }
 
-    fn as_u128(self) -> u128 {
+    pub(crate) fn as_u128(self) -> u128 {
         let mut bytes = [0; 16];
 
         // This is a provenance-stripping memcpy.

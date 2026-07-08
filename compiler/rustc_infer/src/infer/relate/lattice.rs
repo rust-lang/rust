@@ -161,12 +161,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
             }
 
             (
-                &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
-                &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
+                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
+                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
             ) if a_def_id == b_def_id => super_combine_tys(infcx, self, a, b),
 
-            (&ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
-            | (_, &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
+            (&ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
+            | (_, &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
                 if def_id.is_local() && !infcx.next_trait_solver() =>
             {
                 self.register_goals(infcx.handle_opaque_type(
@@ -291,12 +291,8 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
         }))
     }
 
-    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
-        self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasRelate(
-            a.into(),
-            b.into(),
-            // FIXME(deferred_projection_equality): This isn't right, I think?
-            ty::AliasRelationDirection::Equate,
-        ))]);
+    fn ambient_variance(&self) -> ty::Variance {
+        // FIXME(deferred_projection_equality): This isn't right, I think?
+        ty::Variance::Invariant
     }
 }

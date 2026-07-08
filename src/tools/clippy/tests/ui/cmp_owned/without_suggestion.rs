@@ -1,6 +1,3 @@
-#![allow(clippy::unnecessary_operation)]
-#![allow(clippy::implicit_clone)]
-
 fn main() {
     let x = &Baz;
     let y = &Baz;

@@ -91,7 +91,7 @@ impl TcpStream {
         self.read_vectored(&mut [IoSliceMut::new(buf)])
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.socket().as_inner().read_buf(buf)
     }
 

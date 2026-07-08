@@ -22,7 +22,7 @@ impl Operation {
     /// and is alive for the entire duration of a blocking operation.
     #[inline]
     pub fn hook<T>(r: &mut T) -> Operation {
-        let val = r as *mut T as usize;
+        let val = (r as *mut T).addr();
         // Make sure that the pointer address doesn't equal the numerical representation of
         // `Selected::{Waiting, Aborted, Disconnected}`.
         assert!(val > 2);

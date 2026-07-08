@@ -111,9 +111,12 @@ impl RegionName {
             | RegionNameSource::NamedEarlyParamRegion(span) => {
                 diag.span_label(*span, format!("lifetime `{self}` defined here"));
             }
-            RegionNameSource::SynthesizedFreeEnvRegion(span, note) => {
+            RegionNameSource::SynthesizedFreeEnvRegion(span, closure_trait) => {
                 diag.span_label(*span, format!("lifetime `{self}` represents this closure's body"));
-                diag.note(*note);
+                diag.note(format!(
+                    "closure implements `{closure_trait}`, so references to captured variables \
+                     can't escape the closure"
+                ));
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::CannotMatchHirTy(
                 span,
@@ -280,7 +283,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// named variants.
     #[instrument(level = "trace", skip(self))]
     fn give_name_from_error_region(&self, fr: RegionVid) -> Option<RegionName> {
-        let error_region = self.to_error_region(fr)?;
+        let error_region = self.regioncx.to_error_region(fr)?;
 
         let tcx = self.infcx.tcx;
 
@@ -326,9 +329,15 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 ty::LateParamRegionKind::ClosureEnv => {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
-                    let closure_kind = match def_ty {
-                        DefiningTy::Closure(_, args) => args.as_closure().kind(),
-                        DefiningTy::CoroutineClosure(_, args) => args.as_coroutine_closure().kind(),
+                    let (is_lending_coroutine_closure, closure_kind) = match def_ty {
+                        DefiningTy::Closure(_, args) => (false, args.as_closure().kind()),
+                        DefiningTy::CoroutineClosure(_, args) => {
+                            let args = args.as_coroutine_closure();
+                            (
+                                !args.tupled_upvars_ty().is_ty_var() && args.has_self_borrows(),
+                                args.kind(),
+                            )
+                        }
                         _ => {
                             // Can't have BrEnv in functions, constants or coroutines.
                             bug!("BrEnv outside of closure.");
@@ -340,23 +349,19 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         bug!("Closure is not defined by a closure expr");
                     };
                     let region_name = self.synthesize_region_name();
-                    let note = match closure_kind {
-                        ty::ClosureKind::Fn => {
-                            "closure implements `Fn`, so references to captured variables \
-                             can't escape the closure"
-                        }
-                        ty::ClosureKind::FnMut => {
-                            "closure implements `FnMut`, so references to captured variables \
-                             can't escape the closure"
-                        }
-                        ty::ClosureKind::FnOnce => {
-                            bug!("BrEnv in a `FnOnce` closure");
-                        }
+                    let closure_trait = match (is_lending_coroutine_closure, closure_kind) {
+                        (false, kind) => kind.as_str(),
+                        (true, ty::ClosureKind::Fn) => "AsyncFn",
+                        (true, ty::ClosureKind::FnMut) => "AsyncFnMut",
+                        (true, ty::ClosureKind::FnOnce) => "AsyncFnOnce",
                     };
 
                     Some(RegionName {
                         name: region_name,
-                        source: RegionNameSource::SynthesizedFreeEnvRegion(fn_decl_span, note),
+                        source: RegionNameSource::SynthesizedFreeEnvRegion(
+                            fn_decl_span,
+                            closure_trait,
+                        ),
                     })
                 }
 
@@ -1010,7 +1015,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         &self,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        let ty::ReEarlyParam(region) = self.to_error_region(fr)?.kind() else {
+        let ty::ReEarlyParam(region) = self.regioncx.to_error_region(fr)?.kind() else {
             return None;
         };
         if region.is_named() {
@@ -1045,7 +1050,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         &self,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        let ty::ReEarlyParam(region) = self.to_error_region(fr)?.kind() else {
+        let ty::ReEarlyParam(region) = self.regioncx.to_error_region(fr)?.kind() else {
             return None;
         };
         if region.is_named() {

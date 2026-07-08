@@ -1,5 +1,4 @@
 #![warn(clippy::deref_by_slicing)]
-#![allow(clippy::borrow_deref_ref)]
 
 use std::io::Read;
 

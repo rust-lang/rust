@@ -44,7 +44,7 @@ use hir_def::{
     FunctionId, GenericDefId, GenericParamId, HasModule, LocalFieldId, Lookup, StaticId, TraitId,
     TupleFieldId, TupleId, VariantId,
     attrs::AttrFlags,
-    expr_store::{Body, ExpressionStore, HygieneId, path::Path},
+    expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
     hir::{BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::LangItems,
     layout::Integer,
@@ -91,7 +91,8 @@ use crate::{
         unify::resolve_completely::WriteBackCtxt,
     },
     lower::{
-        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, diagnostics::TyLoweringDiagnostic,
+        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, LoweringMode,
+        diagnostics::TyLoweringDiagnostic,
     },
     method_resolution::CandidateId,
     next_solver::{
@@ -116,13 +117,14 @@ use cast::{CastCheck, CastError};
 
 /// The entry point of type inference.
 fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
-    infer_query_with_inspect(db, def, None)
+    infer_query_with_inspect(db, def, None, LoweringMode::Analysis)
 }
 
 pub fn infer_query_with_inspect<'db>(
     db: &'db dyn HirDatabase,
     def: DefWithBodyId,
     inspect: Option<ObligationInspector<'db>>,
+    lowering_mode: LoweringMode,
 ) -> InferenceResult {
     let _p = tracing::info_span!("infer_query").entered();
     let resolver = def.resolver(db);
@@ -135,6 +137,7 @@ pub fn infer_query_with_inspect<'db>(
         &body.store,
         resolver,
         true,
+        lowering_mode,
     );
 
     if let Some(inspect) = inspect {
@@ -142,7 +145,9 @@ pub fn infer_query_with_inspect<'db>(
     }
 
     match def {
-        DefWithBodyId::FunctionId(f) => ctx.collect_fn(f, body.self_param(), &body.params),
+        DefWithBodyId::FunctionId(f) => {
+            ctx.collect_fn(f, body.self_param.map(|param| param.formal), &body.params)
+        }
         DefWithBodyId::ConstId(c) => ctx.collect_const(c, ConstSignature::of(db, c)),
         DefWithBodyId::StaticId(s) => ctx.collect_static(s, StaticSignature::of(db, s)),
         DefWithBodyId::VariantId(v) => {
@@ -202,6 +207,7 @@ fn infer_anon_const_query(db: &dyn HirDatabase, def: AnonConstId) -> InferenceRe
         store,
         resolver,
         loc.allow_using_generic_params,
+        LoweringMode::Analysis,
     );
 
     ctx.infer_expr(
@@ -297,10 +303,18 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         has_rest: bool,
     },
+    ArrayPatternWithoutFixedLength {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
     ExpectedArrayOrSlicePat {
         #[type_visitable(ignore)]
         pat: PatId,
         found: StoredTy,
+    },
+    InvalidRangePatType {
+        #[type_visitable(ignore)]
+        pat: PatId,
     },
     DuplicateField {
         #[type_visitable(ignore)]
@@ -361,6 +375,20 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         expr: ExprId,
     },
+    NonExhaustiveRecordPat {
+        #[type_visitable(ignore)]
+        pat: PatId,
+        #[type_visitable(ignore)]
+        variant: VariantId,
+    },
+    UnionPatMustHaveExactlyOneField {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
+    UnionPatHasRest {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
     FunctionalRecordUpdateOnNonStruct {
         #[type_visitable(ignore)]
         base_expr: ExprId,
@@ -384,6 +412,25 @@ pub enum InferenceDiagnostic {
     ExpectedFunction {
         #[type_visitable(ignore)]
         call_expr: ExprId,
+        found: StoredTy,
+    },
+    CannotBeDereferenced {
+        #[type_visitable(ignore)]
+        expr: ExprId,
+        found: StoredTy,
+    },
+    MutRefInImmRefPat {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
+    CannotImplicitlyDerefTraitObject {
+        #[type_visitable(ignore)]
+        pat: PatId,
+        found: StoredTy,
+    },
+    CannotIndexInto {
+        #[type_visitable(ignore)]
+        expr: ExprId,
         found: StoredTy,
     },
     TypedHole {
@@ -428,6 +475,10 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         def: GenericDefId,
     },
+    MethodCallIllegalSizedBound {
+        #[type_visitable(ignore)]
+        call_expr: ExprId,
+    },
     MethodCallIncorrectGenericsOrder {
         #[type_visitable(ignore)]
         expr: ExprId,
@@ -459,6 +510,24 @@ pub enum InferenceDiagnostic {
         found: StoredTy,
     },
     SolverDiagnostic(SolverDiagnostic),
+    ExplicitDropMethodUse {
+        #[type_visitable(ignore)]
+        kind: ExplicitDropMethodUseKind,
+    },
+    MutableRefBinding {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
+    YieldOutsideCoroutine {
+        #[type_visitable(ignore)]
+        expr: ExprId,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ExplicitDropMethodUseKind {
+    MethodCall(ExprId),
+    Path(ExprOrPatId),
 }
 
 /// Represents coercing a value to a different type of value.
@@ -1189,6 +1258,7 @@ pub(crate) struct InferenceContext<'body, 'db> {
     pub(crate) store_owner: ExpressionStoreOwnerId,
     pub(crate) generic_def: GenericDefId,
     pub(crate) store: &'body ExpressionStore,
+    pub(crate) lowering_mode: LoweringMode,
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
@@ -1288,8 +1358,9 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         store: &'body ExpressionStore,
         resolver: Resolver<'db>,
         allow_using_generic_params: bool,
+        lowering_mode: LoweringMode,
     ) -> Self {
-        let trait_env = db.trait_environment(store_owner);
+        let trait_env = db.trait_environment(generic_def);
         let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), store_owner);
         let types = crate::next_solver::default_types(db);
         InferenceContext {
@@ -1322,6 +1393,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             vars_emitted_type_must_be_known_for: FxHashSet::default(),
             deferred_call_resolutions: FxHashMap::default(),
             defined_anon_consts: RefCell::new(ThinVec::new()),
+            lowering_mode,
         }
     }
 
@@ -1637,7 +1709,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.return_ty = return_ty;
     }
 
-    fn collect_fn(&mut self, func: FunctionId, self_param: Option<BindingId>, params: &[PatId]) {
+    fn collect_fn(
+        &mut self,
+        func: FunctionId,
+        self_param: Option<BindingId>,
+        params: &[Param<PatId>],
+    ) {
         let data = FunctionSignature::of(self.db, func);
         let mut param_tys = self.with_ty_lowering(
             &data.store,
@@ -1676,7 +1753,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             let ty = param_tys.next().unwrap_or_else(|| self.table.next_ty_var(Span::Dummy));
             let ty = self.process_user_written_ty(ty);
 
-            self.infer_top_pat(*pat, ty, PatOrigin::Param);
+            self.infer_top_pat(pat.formal, ty, PatOrigin::Param);
         }
         self.return_ty = match data.ret_type {
             Some(return_ty) => {
@@ -1922,6 +1999,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             expected_ty,
             &|| self.generics(),
             Some(&mut |span| self.table.next_const_var(span)),
+            self.lowering_mode,
             (!(allow_using_generic_params && self.allow_using_generic_params)).then_some(0),
         );
 
@@ -1999,7 +2077,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                             .field_types(struct_id.into())
                             .values()
                             .next_back()
-                            .map(|it| it.get())
+                            .map(|it| it.ty())
                         {
                             Some(field) => {
                                 ty = field.instantiate(self.interner(), substs).skip_norm_wip();
@@ -2438,8 +2516,8 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 };
                 let args =
                     path_ctx.substs_from_path_segment(it.into(), true, None, false, node.into());
+                let interner = path_ctx.interner();
                 drop(ctx);
-                let interner = DbInterner::conjure();
                 let ty = self.db.ty(it.into()).instantiate(interner, args).skip_norm_wip();
                 let ty = self.insert_type_vars(ty);
 

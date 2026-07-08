@@ -115,14 +115,14 @@ use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{InnerSpan, Span, SyntaxContext};
-use source::{SpanRangeExt, walk_span_to_context};
+use source::{SpanExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::ast_utils::unordered_over;
-use crate::consts::{ConstEvalCtxt, Constant};
 use crate::higher::Range;
 use crate::msrvs::Msrv;
 use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use crate::source::HasSourceMap;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
@@ -242,7 +242,10 @@ pub fn is_inside_always_const_context(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
     };
     match ctx {
         ConstFn => false,
-        Static(_) | Const { inline: _ } => true,
+        Static(_)
+        | Const {
+            allow_const_fn_promotion: _,
+        } => true,
     }
 }
 
@@ -1030,7 +1033,7 @@ pub fn method_calls<'tcx>(expr: &'tcx Expr<'tcx>, max_depth: usize) -> (Vec<Symb
 /// Matches an `Expr` against a chain of methods, and return the matched `Expr`s.
 ///
 /// For example, if `expr` represents the `.baz()` in `foo.bar().baz()`,
-/// `method_chain_args(expr, &["bar", "baz"])` will return a `Vec`
+/// `method_chain_args(expr, &[sym::bar, sym::baz])` will return a `Vec`
 /// containing the `Expr`s for
 /// `.bar()` and `.baz()`
 pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[Symbol]) -> Option<Vec<(&'a Expr<'a>, &'a [Expr<'a>])>> {
@@ -1325,79 +1328,27 @@ pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     })
 }
 
-/// Checks whether the given `Expr` is a range equivalent to a `RangeFull`.
-///
-/// For the lower bound, this means that:
-/// - either there is none
-/// - or it is the smallest value that can be represented by the range's integer type
-///
-/// For the upper bound, this means that:
-/// - either there is none
-/// - or it is the largest value that can be represented by the range's integer type and is
-///   inclusive
-/// - or it is a call to some container's `len` method and is exclusive, and the range is passed to
-///   a method call on that same container (e.g. `v.drain(..v.len())`)
-///
-/// If the given `Expr` is not some kind of range, the function returns `false`.
-pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Option<&Path<'_>>) -> bool {
-    let ty = cx.typeck_results().expr_ty(expr);
+/// Checks whether the given `Expr` is a range over the entire container.
+pub fn is_full_collection_range(cx: &LateContext<'_>, container: Option<HirId>, expr: &Expr<'_>) -> bool {
     if let Some(Range { start, end, limits, .. }) = Range::hir(cx, expr) {
-        let start_is_none_or_min = start.is_none_or(|start| {
-            if let rustc_ty::Adt(_, subst) = ty.kind()
-                && let bnd_ty = subst.type_at(0)
-                && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
-            {
-                start_const.is_numeric_min(cx.tcx, bnd_ty)
-            } else {
-                false
-            }
-        });
-        let end_is_none_or_max = end.is_none_or(|end| match limits {
-            RangeLimits::Closed => {
-                if let rustc_ty::Adt(_, subst) = ty.kind()
-                    && let bnd_ty = subst.type_at(0)
-                    && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
+        start.is_none_or(|start| is_integer_literal(start, 0))
+            && end.is_none_or(|end| {
+                if limits == RangeLimits::HalfOpen
+                    && let Some(container) = container
+                    && let ExprKind::MethodCall(seg, recv, [], _) = end.kind
                 {
-                    end_const.is_numeric_max(cx.tcx, bnd_ty)
+                    seg.ident.name == sym::len && recv.res_local_id() == Some(container)
                 } else {
                     false
                 }
-            },
-            RangeLimits::HalfOpen => {
-                if let Some(container_path) = container_path
-                    && let ExprKind::MethodCall(name, self_arg, [], _) = end.kind
-                    && name.ident.name == sym::len
-                    && let ExprKind::Path(QPath::Resolved(None, path)) = self_arg.kind
-                {
-                    container_path.res == path.res
-                } else {
-                    false
-                }
-            },
-        });
-        return start_is_none_or_min && end_is_none_or_max;
+            })
+    } else {
+        false
     }
-    false
-}
-
-/// Checks whether the given expression is a constant integer of the given value.
-/// unlike `is_integer_literal`, this version does const folding
-pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool {
-    if is_integer_literal(e, value) {
-        return true;
-    }
-    let enclosing_body = cx.tcx.hir_enclosing_body_owner(e.hir_id);
-    if let Some(Constant::Int(v)) =
-        ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), cx.tcx.typeck(enclosing_body)).eval(e)
-    {
-        return value == v;
-    }
-    false
 }
 
 /// Checks whether the given expression is a constant literal of the given value.
 pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
-    // FIXME: use constant folding
     if let ExprKind::Lit(spanned) = expr.kind
         && let LitKind::Int(v, _) = spanned.node
     {
@@ -2892,8 +2843,8 @@ pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str, Inn
 
 /// Checks whether a given span has any comment token
 /// This checks for all types of comment: line "//", block "/**", doc "///" "//!"
-pub fn span_contains_comment(cx: &impl source::HasSession, span: Span) -> bool {
-    span.check_source_text(cx, |snippet| {
+pub fn span_contains_comment<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> bool {
+    span.check_text(sm, |snippet| {
         tokenize(snippet, FrontmatterAllowed::No).any(|token| {
             matches!(
                 token.kind,
@@ -2907,8 +2858,8 @@ pub fn span_contains_comment(cx: &impl source::HasSession, span: Span) -> bool {
 /// token, including comments unless `skip_comments` is set.
 /// This is useful to determine if there are any actual code tokens in the span that are omitted in
 /// the late pass, such as platform-specific code.
-pub fn span_contains_non_whitespace(cx: &impl source::HasSession, span: Span, skip_comments: bool) -> bool {
-    span.check_source_text(cx, |snippet| {
+pub fn span_contains_non_whitespace<'sm>(sm: impl HasSourceMap<'sm>, span: Span, skip_comments: bool) -> bool {
+    span.check_text(sm, |snippet| {
         tokenize_with_text(snippet).any(|(token, _, _)| match token {
             TokenKind::Whitespace => false,
             TokenKind::BlockComment { .. } | TokenKind::LineComment { .. } => !skip_comments,
@@ -2916,18 +2867,19 @@ pub fn span_contains_non_whitespace(cx: &impl source::HasSession, span: Span, sk
         })
     })
 }
+
 /// Returns all the comments a given span contains
 ///
 /// Comments are returned wrapped with their relevant delimiters
-pub fn span_extract_comment(cx: &impl source::HasSession, span: Span) -> String {
-    span_extract_comments(cx, span).join("\n")
+pub fn span_extract_comment<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> String {
+    span_extract_comments(sm, span).join("\n")
 }
 
 /// Returns all the comments a given span contains.
 ///
 /// Comments are returned wrapped with their relevant delimiters.
-pub fn span_extract_comments(cx: &impl source::HasSession, span: Span) -> Vec<String> {
-    span.with_source_text(cx, |snippet| {
+pub fn span_extract_comments<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Vec<String> {
+    span.with_source_text(sm, |snippet| {
         tokenize_with_text(snippet)
             .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
             .map(|(_, s, _)| s.to_string())
@@ -3305,7 +3257,7 @@ fn get_path_to_ty<'tcx>(tcx: TyCtxt<'tcx>, from: LocalDefId, ty: Ty<'tcx>, args:
         | rustc_ty::RawPtr(_, _)
         | rustc_ty::Ref(..)
         | rustc_ty::Slice(_)
-        | rustc_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(ty).instantiate(tcx, args).skip_norm_wip()),
+        | rustc_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(tcx, ty).instantiate(tcx, args).skip_norm_wip()),
         _ => ty.to_string(),
     }
 }

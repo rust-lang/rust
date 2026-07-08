@@ -5,7 +5,7 @@
 
 // computing different values with the same type const item should be fine
 
-type const ADD1<const N: usize>: usize = const { N + 1 };
+const ADD1<const N: usize>: usize = N + 1;
 
 trait Trait {}
 

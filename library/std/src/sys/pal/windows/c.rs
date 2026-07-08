@@ -5,7 +5,7 @@
 #![unstable(issue = "none", feature = "windows_c")]
 #![allow(clippy::style)]
 
-use core::ffi::{CStr, c_uint, c_ulong, c_ushort, c_void};
+use core::ffi::{CStr, c_int, c_uint, c_ulong, c_ushort, c_void};
 use core::ptr;
 
 mod windows_sys;
@@ -241,3 +241,7 @@ cfg_select! {
 // Only available starting with Windows 8.
 #[cfg(not(target_vendor = "win7"))]
 windows_link::link!("ws2_32.dll" "system" fn GetHostNameW(name : PWSTR, namelen : i32) -> i32);
+
+unsafe extern "C" {
+    pub fn atexit(cb: unsafe extern "C" fn()) -> c_int;
+}

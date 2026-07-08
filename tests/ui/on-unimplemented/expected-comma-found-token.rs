@@ -4,7 +4,7 @@
 #![feature(rustc_attrs)]
 
 #[rustc_on_unimplemented(
-    message="the message"
-    label="the label" //~ ERROR expected `,`, found `label`
+    message="the message" //~ ERROR attribute items not separated with `,`
+    label="the label"
 )]
 trait T {}

@@ -190,8 +190,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             UnaryOp(un_op, ref operand) => {
-                // The operand always has the same type as the result.
-                let val = self.read_immediate(&self.eval_operand(operand, Some(dest.layout))?)?;
+                let layout = util::unop_homogeneous(un_op).then_some(dest.layout);
+                let val = self.read_immediate(&self.eval_operand(operand, layout)?)?;
                 let result = self.unary_op(un_op, &val)?;
                 assert_eq!(result.layout, dest.layout, "layout mismatch for result of {un_op:?}");
                 self.write_immediate(*result, &dest)?;
@@ -230,9 +230,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 })?;
             }
 
-            Reborrow(_, _, place) => {
-                let op = self.eval_place_to_op(place, Some(dest.layout))?;
-                self.copy_op(&op, &dest)?;
+            Reborrow(_, mutability, place) => {
+                let op = self.eval_place_to_op(place, None)?;
+                if mutability.is_not() {
+                    // Shared generic reborrows use `CoerceShared`: a bitwise copy into a
+                    // distinct same-layout target ADT.
+                    self.copy_op_allow_transmute(&op, &dest)?;
+                } else {
+                    self.copy_op(&op, &dest)?;
+                }
             }
 
             RawPtr(kind, place) => {
@@ -546,16 +552,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
 
+                // Evaluation order consistent with assignment: destination first.
+                let dest_place = self.eval_place(destination)?;
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args, &destination)?;
 
-                let destination = self.eval_place(destination)?;
                 self.init_fn_call(
                     callee,
                     (fn_sig.abi(), fn_abi),
                     &args,
                     with_caller_location,
-                    &destination,
+                    &dest_place,
                     target,
                     if fn_abi.can_unwind { unwind } else { mir::UnwindAction::Unreachable },
                 )?;
@@ -590,9 +597,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            Drop { place, target, unwind, replace: _, drop, async_fut } => {
+            Drop { place, target, unwind, replace: _, drop } => {
                 assert!(
-                    async_fut.is_none() && drop.is_none(),
+                    drop.is_none(),
                     "Async Drop must be expanded or reset to sync in runtime MIR"
                 );
                 let place = self.eval_place(place)?;
@@ -601,7 +608,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         enter_trace_span!(M, resolve::resolve_drop_glue, ty = ?place.layout.ty);
                     Instance::resolve_drop_glue(*self.tcx, place.layout.ty)
                 };
-                if let ty::InstanceKind::DropGlue(_, None) = instance.def {
+                if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = instance.def {
                     // This is the branch we enter if and only if the dropped type has no drop glue
                     // whatsoever. This can happen as a result of monomorphizing a drop of a
                     // generic. In order to make sure that generic and non-generic code behaves

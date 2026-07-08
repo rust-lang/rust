@@ -17,7 +17,7 @@ use rustc_target::asm::{
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::FnCtxt;
-use crate::errors::RegisterTypeUnstable;
+use crate::diagnostics::RegisterTypeUnstable;
 
 pub(crate) struct InlineAsmCtxt<'a, 'tcx> {
     target_features: &'tcx FxIndexSet<Symbol>,
@@ -465,7 +465,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     if let InlineAsmRegClass::Err = reg_class {
                         continue;
                     }
-                    for &(_, feature) in reg_class.supported_types(asm_arch, allow_experimental_reg)
+                    for &(_, feature) in
+                        reg_class.supported_types(asm_arch, allow_experimental_reg).as_ref()
                     {
                         match feature {
                             Some(feature) => {

@@ -689,7 +689,7 @@ pub(crate) struct MissingInInForLoop {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sub: MissingInInForLoopSub,
+    pub sub: Option<MissingInInForLoopSub>,
 }
 
 #[derive(Subdiagnostic)]
@@ -1280,6 +1280,26 @@ pub(crate) struct IncorrectImplRestriction {
     #[primary_span]
     #[suggestion(
         "help: use `in` to restrict implementations to the path `{$inner_str}`",
+        code = "in {inner_str}",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+    pub inner_str: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("incorrect `mut` restriction")]
+#[help(
+    "some possible `mut` restrictions are:
+    `mut(crate)`: can only be mutated in the current crate
+    `mut(super)`: can only be mutated in the parent module
+    `mut(self)`: can only be mutated in current module
+    `mut(in path::to::module)`: can only be mutated in the specified path"
+)]
+pub(crate) struct IncorrectMutRestriction {
+    #[primary_span]
+    #[suggestion(
+        "help: use `in` to restrict mutations to the path `{$inner_str}`",
         code = "in {inner_str}",
         applicability = "machine-applicable"
     )]
@@ -3441,10 +3461,6 @@ pub(crate) struct UnexpectedExpressionInPattern {
     pub span: Span,
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
-    /// The unexpected expr's precedence. Not used directly in the error message, but needed for
-    /// the stashing of this error to work correctly. We store a `u32` rather than an
-    /// `ExprPrecedence` to avoid having to impl `IntoDiagArg` for `ExprPrecedence`.
-    pub expr_precedence: u32,
 }
 
 #[derive(Subdiagnostic)]
@@ -4618,4 +4634,59 @@ pub(crate) struct ReservedMultihashLint {
         applicability = "machine-applicable"
     )]
     pub suggestion: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "if you meant to write a path, use a double colon",
+    code = "::",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UseDoubleColonSuggestion {
+    #[primary_span]
+    pub colon: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "if you meant to create a regular struct, use curly braces",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UseRegularStructSuggestion {
+    #[suggestion_part(code = " {{ ")]
+    pub open: Span,
+    #[suggestion_part(code = " }}")]
+    pub close: Span,
+    #[suggestion_part(code = "")]
+    pub semicolon: Option<Span>,
+}
+#[derive(Diagnostic)]
+#[diag("expected type parameter, found path `{$path}`")]
+pub(crate) struct FoundPathInGenerics {
+    #[primary_span]
+    pub span: Span,
+    pub path: String,
+}
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "you might have meant to bind a type parameter to a trait",
+    applicability = "maybe-incorrect",
+    code = "T: "
+)]
+
+pub(crate) struct SuggestBindTypeParameter {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "alternatively, you might have meant to introduce type parameter",
+    applicability = "maybe-incorrect",
+    code = "{parameters}"
+)]
+pub(crate) struct SuggestIntroduceTypeParameter {
+    #[primary_span]
+    pub span: Span,
+    pub parameters: String,
 }

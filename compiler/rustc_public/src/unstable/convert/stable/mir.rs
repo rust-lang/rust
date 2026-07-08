@@ -74,7 +74,7 @@ impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
     ) -> Self::T {
         Statement {
             kind: self.kind.stable(tables, cx),
-            span: self.source_info.span.stable(tables, cx),
+            source_info: self.source_info.stable(tables, cx),
         }
     }
 }
@@ -559,6 +559,9 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
                 }
             }
             AssertKind::NullPointerDereference => crate::mir::AssertMessage::NullPointerDereference,
+            AssertKind::NullReferenceConstructed => {
+                crate::mir::AssertMessage::NullReferenceConstructed
+            }
             AssertKind::InvalidEnumConstruction(source) => {
                 crate::mir::AssertMessage::InvalidEnumConstruction(source.stable(tables, cx))
             }
@@ -695,7 +698,7 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
         use crate::mir::Terminator;
         Terminator {
             kind: self.kind.stable(tables, cx),
-            span: self.source_info.span.stable(tables, cx),
+            source_info: self.source_info.stable(tables, cx),
         }
     }
 }
@@ -726,18 +729,13 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
             mir::TerminatorKind::UnwindTerminate(_) => TerminatorKind::Abort,
             mir::TerminatorKind::Return => TerminatorKind::Return,
             mir::TerminatorKind::Unreachable => TerminatorKind::Unreachable,
-            mir::TerminatorKind::Drop {
-                place,
-                target,
-                unwind,
-                replace: _,
-                drop: _,
-                async_fut: _,
-            } => TerminatorKind::Drop {
-                place: place.stable(tables, cx),
-                target: target.as_usize(),
-                unwind: unwind.stable(tables, cx),
-            },
+            mir::TerminatorKind::Drop { place, target, unwind, replace: _, drop: _ } => {
+                TerminatorKind::Drop {
+                    place: place.stable(tables, cx),
+                    target: target.as_usize(),
+                    unwind: unwind.stable(tables, cx),
+                }
+            }
             mir::TerminatorKind::Call {
                 func,
                 args,

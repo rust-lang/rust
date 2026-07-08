@@ -1093,7 +1093,7 @@ fn download_http_with_retries(
                     ),
                 ]).run_capture_stdout(exec_ctx);
 
-                if powershell.is_failure() {
+                if powershell.is_success() {
                     return;
                 }
 

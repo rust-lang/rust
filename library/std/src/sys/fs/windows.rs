@@ -597,7 +597,7 @@ impl File {
                 (&raw mut info) as *mut c_void,
                 size as u32,
             ))?;
-            attr.file_size = info.AllocationSize as u64;
+            attr.file_size = info.EndOfFile as u64;
             attr.number_of_links = Some(info.NumberOfLinks);
             if attr.attributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
                 let mut attr_tag: c::FILE_ATTRIBUTE_TAG_INFO = mem::zeroed();
@@ -632,11 +632,11 @@ impl File {
         self.handle.read_at(buf, offset)
     }
 
-    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.handle.read_buf(cursor)
     }
 
-    pub fn read_buf_at(&self, cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    pub fn read_buf_at(&self, cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         self.handle.read_buf_at(cursor, offset)
     }
 

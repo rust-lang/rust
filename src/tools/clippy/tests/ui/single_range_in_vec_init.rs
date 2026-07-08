@@ -82,3 +82,10 @@ fn issue16044() {
     let input = vec![0..as_i32!(10)];
     //~^ single_range_in_vec_init
 }
+
+fn issue16508() {
+    [0..=10];
+    //~^ single_range_in_vec_init
+    vec![0..=10];
+    //~^ single_range_in_vec_init
+}

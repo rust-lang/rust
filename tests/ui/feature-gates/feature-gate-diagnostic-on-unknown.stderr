@@ -2,7 +2,9 @@ error[E0432]: unresolved import `std::vec::NotExisting`
   --> $DIR/feature-gate-diagnostic-on-unknown.rs:5:5
    |
 LL | use std::vec::NotExisting;
-   |     ^^^^^^^^^^^^^^^^^^^^^ no `NotExisting` in `vec`
+   |     ^^^^^^^^^^-----------
+   |               |
+   |               no `NotExisting` in `vec`
 
 error: unknown diagnostic attribute
   --> $DIR/feature-gate-diagnostic-on-unknown.rs:3:15

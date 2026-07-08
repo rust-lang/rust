@@ -178,7 +178,7 @@ pub const fn _mm_moveldup_ps(a: __m128) -> __m128 {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.sse3.ldu.dq"]
     fn lddqu(mem_addr: *const i8) -> i8x16;
 }

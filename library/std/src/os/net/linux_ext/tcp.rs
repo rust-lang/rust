@@ -2,7 +2,6 @@
 //!
 //! [`std::net`]: crate::net
 
-use crate::sealed::Sealed;
 use crate::sys::AsInner;
 #[cfg(target_os = "linux")]
 use crate::time::Duration;
@@ -12,7 +11,7 @@ use crate::{io, net};
 ///
 /// [`TcpStream`]: net::TcpStream
 #[stable(feature = "tcp_quickack", since = "1.89.0")]
-pub trait TcpStreamExt: Sealed {
+pub impl(self) trait TcpStreamExt {
     /// Enable or disable `TCP_QUICKACK`.
     ///
     /// This flag causes Linux to eagerly send ACKs rather than delaying them.
@@ -108,9 +107,6 @@ pub trait TcpStreamExt: Sealed {
     #[cfg(target_os = "linux")]
     fn deferaccept(&self) -> io::Result<Duration>;
 }
-
-#[stable(feature = "tcp_quickack", since = "1.89.0")]
-impl Sealed for net::TcpStream {}
 
 #[stable(feature = "tcp_quickack", since = "1.89.0")]
 impl TcpStreamExt for net::TcpStream {

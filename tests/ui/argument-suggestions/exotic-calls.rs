@@ -1,4 +1,4 @@
-//! Checks variations of E0057, which is the incorrect number of agruments passed into a closure
+//! Checks variations of E0057, which is the incorrect number of arguments passed into a closure
 
 //@ check-fail
 

@@ -1,5 +1,6 @@
-#![warn(clippy::needless_range_loop, clippy::manual_memcpy)]
-#![allow(clippy::redundant_slicing, clippy::identity_op)]
+#![warn(clippy::manual_memcpy)]
+#![deny(clippy::needless_range_loop)]
+#![allow(clippy::identity_op, clippy::redundant_slicing)]
 
 pub fn manual_copy_with_counters(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     let mut count = 0;
@@ -45,7 +46,7 @@ pub fn manual_copy_with_counters(src: &[i32], dst: &mut [i32], dst2: &mut [i32])
     // the position. For example, if the increment is at the top of the loop;
     // treating the loop counter as if it were initialized 1 greater than the original value.
     let mut count = 0;
-    #[allow(clippy::needless_range_loop)]
+    #[expect(clippy::needless_range_loop)]
     for i in 0..src.len() {
         count += 1;
         dst[i] = src[count];

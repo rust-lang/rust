@@ -1,7 +1,7 @@
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 
 use crate::HashIgnoredAttrId;
-use crate::hir::{AttributeMap, OwnerNodes};
+use crate::hir::{AttributeMap, OwnerInfo, OwnerNodes};
 
 // The following implementations of StableHash for `ItemId`, `TraitItemId`, and
 // `ImplItemId` deserve special attention. Normally we do not hash `NodeId`s within
@@ -12,13 +12,10 @@ use crate::hir::{AttributeMap, OwnerNodes};
 
 impl<'tcx> StableHash for OwnerNodes<'tcx> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        // We ignore the `nodes` and `bodies` fields since these refer to information included in
-        // `hash` which is hashed in the collector and used for the crate hash.
-        // `local_id_to_def_id` is also ignored because is dependent on the body, then just hashing
-        // the body satisfies the condition of two nodes being different have different
-        // `stable_hash` results.
-        let OwnerNodes { opt_hash_including_bodies, nodes: _, bodies: _ } = *self;
-        opt_hash_including_bodies.unwrap().stable_hash(hcx, hasher);
+        // We ignore the other fields since these refer to information included in
+        // `opt_hash` which is hashed in the collector and used for the crate hash.
+        let OwnerNodes { opt_hash, .. } = *self;
+        opt_hash.unwrap().stable_hash(hcx, hasher);
     }
 }
 
@@ -27,6 +24,15 @@ impl<'tcx> StableHash for AttributeMap<'tcx> {
         // We ignore the `map` since it refers to information included in `opt_hash` which is
         // hashed in the collector and used for the crate hash.
         let AttributeMap { opt_hash, define_opaque: _, map: _ } = *self;
+        opt_hash.unwrap().stable_hash(hcx, hasher);
+    }
+}
+
+impl<'tcx> StableHash for OwnerInfo<'tcx> {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        // We ignore the other fields since these refer to information included in
+        // `opt_hash` which is hashed in the collector and used for the crate hash.
+        let OwnerInfo { opt_hash, .. } = *self;
         opt_hash.unwrap().stable_hash(hcx, hasher);
     }
 }

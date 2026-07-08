@@ -4,7 +4,6 @@
 
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::def::DefKind;
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
@@ -204,7 +203,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
             return Ok(*ty);
         }
 
-        let &ty::Alias(data) = ty.kind() else {
+        let &ty::Alias(_, data) = ty.kind() else {
             let res = ty.try_super_fold_with(self)?;
             self.cache.insert(ty, res);
             return Ok(res);
@@ -217,11 +216,11 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.infcx.typing_mode_raw().assert_not_erased() {
                     TypingMode::Coherence
-                    | TypingMode::Analysis { .. }
-                    | TypingMode::Borrowck { .. }
-                    | TypingMode::PostBorrowckAnalysis { .. } => ty.try_super_fold_with(self)?,
+                    | TypingMode::Typeck { .. }
+                    | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::PostBorrowck { .. } => ty.try_super_fold_with(self)?,
 
-                    TypingMode::PostAnalysis => {
+                    TypingMode::PostAnalysis | TypingMode::Codegen => {
                         let args = data.args.try_fold_with(self)?;
                         let recursion_limit = self.cx().recursion_limit();
 
@@ -273,21 +272,19 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
             return Ok(constant);
         }
 
-        let uv = match constant.kind() {
-            ty::ConstKind::Unevaluated(uv) => uv,
+        let alias_const = match constant.kind() {
+            ty::ConstKind::Alias(_, alias_const) => alias_const,
             _ => return constant.try_super_fold_with(self),
         };
 
-        let constant = match self.cx().def_kind(uv.def) {
-            DefKind::AnonConst => crate::traits::with_replaced_escaping_bound_vars(
+        let constant = match alias_const.kind {
+            ty::AliasConstKind::Anon { .. } => crate::traits::with_replaced_escaping_bound_vars(
                 self.infcx,
                 &mut self.universes,
                 constant,
                 |constant| crate::traits::evaluate_const(&self.infcx, constant, self.param_env),
             ),
-            _ => self
-                .try_fold_free_or_assoc(ty::AliasTerm::from_unevaluated_const(self.cx(), uv))?
-                .expect_const(),
+            _ => self.try_fold_free_or_assoc(alias_const.into())?.expect_const(),
         };
         debug!(?constant, ?self.param_env);
         constant.try_super_fold_with(self)
@@ -328,7 +325,7 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
         let c_term = infcx.canonicalize_query(self.param_env.and(term), &mut orig_values);
         debug!("QueryNormalizer: c_term = {:#?}", c_term);
         debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
-        let result = match term.kind(tcx) {
+        let result = match term.kind {
             ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
                 tcx.normalize_canonicalized_projection(c_term)
             }
@@ -338,8 +335,7 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
             ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
                 tcx.normalize_canonicalized_inherent_projection(c_term)
             }
-            kind @ (ty::AliasTermKind::OpaqueTy { .. }
-            | ty::AliasTermKind::UnevaluatedConst { .. }) => {
+            kind @ (ty::AliasTermKind::OpaqueTy { .. } | ty::AliasTermKind::AnonConst { .. }) => {
                 unreachable!("did not expect {kind:?} due to match arm above")
             }
         }?;
@@ -375,14 +371,14 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
             result.normalized_term
         };
         // `tcx.normalize_canonicalized_projection` may normalize to a type that
-        // still has unevaluated consts, so keep normalizing here if that's the case.
+        // still has alias consts, so keep normalizing here if that's the case.
         // Similarly, `tcx.normalize_canonicalized_free_alias` will only unwrap one layer
         // of type/const and we need to continue folding it to reveal the TAIT behind it
-        // or further normalize nested unevaluated consts.
-        if res != term.to_term(tcx)
+        // or further normalize nested alias consts.
+        if res != term.to_term(tcx, ty::IsRigid::No)
             && (res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
                 || matches!(
-                    term.kind(tcx),
+                    term.kind,
                     ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. }
                 ))
         {

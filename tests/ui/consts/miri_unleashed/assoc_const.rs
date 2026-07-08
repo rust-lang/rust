@@ -4,6 +4,13 @@
 // a test demonstrating why we do need to run static const qualification on associated constants
 // instead of just checking the final constant
 
+
+struct NotConstDestruct;
+
+impl Drop for NotConstDestruct {
+    fn drop(&mut self) {}
+}
+
 trait Foo<T> {
     const X: T;
 }
@@ -15,18 +22,18 @@ trait Bar<T, U: Foo<T>> {
 impl Foo<u32> for () {
     const X: u32 = 42;
 }
-impl Foo<Vec<u32>> for String {
-    const X: Vec<u32> = Vec::new();
+impl Foo<NotConstDestruct> for NotConstDestruct {
+    const X: NotConstDestruct = NotConstDestruct;
 }
 
 impl Bar<u32, ()> for () {}
-impl Bar<Vec<u32>, String> for String {}
+impl Bar<NotConstDestruct, NotConstDestruct> for NotConstDestruct {}
 
 fn main() {
     // this is fine, but would have been forbidden by the static checks on `F`
     let x = <() as Bar<u32, ()>>::F;
     // this test only causes errors due to the line below, so post-monomorphization
-    let y = <String as Bar<Vec<u32>, String>>::F;
+    let y = <NotConstDestruct as Bar<NotConstDestruct, NotConstDestruct>>::F;
 }
 
 //~? WARN skipping const checks

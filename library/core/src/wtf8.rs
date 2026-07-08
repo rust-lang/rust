@@ -147,7 +147,7 @@ impl fmt::Debug for Wtf8 {
             use crate::fmt::Write as _;
             for c in s.chars().flat_map(|c| {
                 c.escape_debug_ext(EscapeDebugExtArgs {
-                    escape_grapheme_extended: true,
+                    escape_grapheme_extender: true,
                     escape_single_quote: false,
                     escape_double_quote: true,
                 })
@@ -454,23 +454,48 @@ impl Wtf8 {
     #[track_caller]
     #[inline]
     pub fn check_utf8_boundary(&self, index: usize) {
+        let Err(err) = self.try_check_utf8_boundary(index) else { return };
+        match err {
+            Utf8BoundaryError::NotABoundary => {
+                panic!("byte index {index} is not a codepoint boundary")
+            }
+            Utf8BoundaryError::OutOfBounds => panic!("byte index {index} is out of bounds"),
+            Utf8BoundaryError::BetweenSurrogates => {
+                panic!("byte index {index} lies between surrogate codepoints")
+            }
+        }
+    }
+
+    #[track_caller]
+    #[inline]
+    pub fn try_check_utf8_boundary(&self, index: usize) -> Result<(), Utf8BoundaryError> {
         if index == 0 {
-            return;
+            return Ok(());
         }
         match self.bytes.get(index) {
             Some(0xED) => (), // Might be a surrogate
-            Some(&b) if (b as i8) >= -0x40 => return,
-            Some(_) => panic!("byte index {index} is not a codepoint boundary"),
-            None if index == self.len() => return,
-            None => panic!("byte index {index} is out of bounds"),
+            Some(&b) if (b as i8) >= -0x40 => return Ok(()),
+            Some(_) => return Err(Utf8BoundaryError::NotABoundary),
+            None if index == self.len() => return Ok(()),
+            None => return Err(Utf8BoundaryError::OutOfBounds),
         }
         if self.bytes[index + 1] >= 0xA0 {
             // There's a surrogate after index. Now check before index.
             if index >= 3 && self.bytes[index - 3] == 0xED && self.bytes[index - 2] >= 0xA0 {
-                panic!("byte index {index} lies between surrogate codepoints");
+                return Err(Utf8BoundaryError::BetweenSurrogates);
             }
         }
+        Ok(())
     }
+}
+
+// This error type is only used temporarily to provide better panic messages
+// It does not implement Error.
+#[derive(Debug)]
+pub enum Utf8BoundaryError {
+    NotABoundary,
+    OutOfBounds,
+    BetweenSurrogates,
 }
 
 /// Copied from core::str::raw::slice_unchecked

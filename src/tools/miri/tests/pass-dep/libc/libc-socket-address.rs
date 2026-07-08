@@ -1,5 +1,6 @@
 //@ignore-target: windows # No libc socket on Windows
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;

@@ -10,7 +10,7 @@ note: cycle used when checking that `Foo` is well-formed
    |
 LL | trait Foo<X = Box<dyn Foo>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: aborting due to 1 previous error
 

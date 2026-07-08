@@ -23,7 +23,10 @@ use super::{
     AllowConstBlockItems, AttrWrapper, ExpKeywordPair, ExpTokenPair, FollowedByType, ForceCollect,
     Parser, PathStyle, Recovered, Trailing, UsePreAttrPos,
 };
-use crate::errors::{self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField};
+use crate::errors::{
+    self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField,
+    UseDoubleColonSuggestion, UseRegularStructSuggestion,
+};
 use crate::exp;
 
 impl<'a> Parser<'a> {
@@ -656,25 +659,29 @@ impl<'a> Parser<'a> {
         defaultness: Defaultness,
         is_reuse: bool,
     ) -> PResult<'a, ItemKind> {
-        let mut constness = self.parse_constness(Case::Sensitive);
+        let constness = self.parse_constness(Case::Sensitive);
         let safety = self.parse_safety(Case::Sensitive);
         self.expect_keyword(exp!(Impl))?;
-
+        let mut generics_snapshot = None;
         // First, parse generic parameters if necessary.
         let mut generics = if self.choose_generics_over_qpath(0) {
             self.parse_generics()?
         } else {
+            // We might be mistakenly trying to use a generic type as a generic parameter.
+            // impl<X<T>> Trait for Y<T> { ... }
+            if self.look_ahead(0, |t| t == &token::Lt)
+                && self.look_ahead(1, |t| t.is_ident())
+                && self.look_ahead(2, |t| t == &token::Lt)
+            {
+                generics_snapshot = Some(self.create_snapshot_for_diagnostic());
+            }
+
             let mut generics = Generics::default();
             // impl A for B {}
             //    /\ this is where `generics.span` should point when there are no type params.
             generics.span = self.prev_token.span.shrink_to_hi();
             generics
         };
-
-        if let Const::No = constness {
-            // FIXME(const_trait_impl): disallow `impl const Trait`
-            constness = self.parse_constness(Case::Sensitive);
-        }
 
         if let Const::Yes(span) = constness {
             self.psess.gated_spans.gate(sym::const_trait_impl, span);
@@ -700,9 +707,13 @@ impl<'a> Parser<'a> {
                 for_span: span.to(self.token.span),
             }));
         } else {
-            self.parse_ty_with_generics_recovery(&generics)?
+            self.parse_ty_with_generics_recovery(&generics).map_err(|e| {
+                let Some(mut snapshot) = generics_snapshot else {
+                    return e;
+                };
+                snapshot.maybe_type_in_generic_parameter(e)
+            })?
         };
-
         // If `for` is missing we try to recover.
         let has_for = self.eat_keyword(exp!(For));
         let missing_for_span = self.prev_token.span.between(self.token.span);
@@ -906,7 +917,7 @@ impl<'a> Parser<'a> {
                 ident,
                 rename,
                 body: self.parse_delegation_body()?,
-                from_glob: false,
+                source: DelegationSource::Single,
             }))
         })
     }
@@ -1137,7 +1148,7 @@ impl<'a> Parser<'a> {
         // Parse optional colon and supertrait bounds.
         let had_colon = self.eat(exp!(Colon));
         let span_at_colon = self.prev_token.span;
-        let bounds = if had_colon { self.parse_generic_bounds()? } else { Vec::new() };
+        let bounds = if had_colon { self.parse_generic_bounds()? } else { ThinVec::new() };
 
         let span_before_eq = self.prev_token.span;
         if self.eat(exp!(Eq)) {
@@ -1255,7 +1266,8 @@ impl<'a> Parser<'a> {
         let mut generics = self.parse_generics()?;
 
         // Parse optional colon and param bounds.
-        let bounds = if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { Vec::new() };
+        let bounds =
+            if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { ThinVec::new() };
         generics.where_clause = self.parse_where_clause()?;
 
         let ty = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
@@ -1912,6 +1924,10 @@ impl<'a> Parser<'a> {
                 None
             };
 
+            let span = vlo.to(this.prev_token.span);
+            if ident.name == kw::Underscore {
+                this.psess.gated_spans.gate(sym::unnamed_enum_variants, span);
+            }
             let vr = ast::Variant {
                 ident,
                 vis,
@@ -1919,7 +1935,7 @@ impl<'a> Parser<'a> {
                 attrs: variant_attrs,
                 data: struct_def,
                 disr_expr,
-                span: vlo.to(this.prev_token.span),
+                span,
                 is_placeholder: false,
             };
 
@@ -2084,10 +2100,11 @@ impl<'a> Parser<'a> {
             Safety::Default
         }
     }
-
+    /// This is the case where we find `struct Foo<T>(T) where T: Copy;`
+    /// Unit like structs are handled in parse_item_struct function
     pub(super) fn parse_tuple_struct_body(&mut self) -> PResult<'a, ThinVec<FieldDef>> {
-        // This is the case where we find `struct Foo<T>(T) where T: Copy;`
-        // Unit like structs are handled in parse_item_struct function
+        let openparen_span = self.token.span;
+        let mut encountered_colon = false;
         self.parse_paren_comma_seq(|p| {
             let attrs = p.parse_outer_attributes()?;
             p.collect_tokens(None, attrs, ForceCollect::No, |p, attrs| {
@@ -2108,6 +2125,9 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 };
+                let mut_restriction = p.parse_mut_restriction()?;
+                encountered_colon |=
+                    p.token.is_ident() && p.look_ahead(1, |tok| tok == &token::Colon);
                 // Unsafe fields are not supported in tuple structs, as doing so would result in a
                 // parsing ambiguity for `struct X(unsafe fn())`.
                 let ty = match p.parse_ty() {
@@ -2140,6 +2160,7 @@ impl<'a> Parser<'a> {
                     FieldDef {
                         span: lo.to(ty.span),
                         vis,
+                        mut_restriction,
                         safety: Safety::Default,
                         ident: None,
                         id: DUMMY_NODE_ID,
@@ -2154,6 +2175,21 @@ impl<'a> Parser<'a> {
             })
         })
         .map(|(r, _)| r)
+        .map_err(|mut error| {
+            if self.token == token::Colon {
+                error.subdiagnostic(UseDoubleColonSuggestion { colon: self.token.span });
+            }
+            if encountered_colon {
+                self.eat_to_tokens(&[exp!(CloseParen)]);
+                self.bump();
+                error.subdiagnostic(UseRegularStructSuggestion {
+                    open: openparen_span,
+                    close: self.prev_token.span,
+                    semicolon: if self.token == token::Semi { Some(self.token.span) } else { None },
+                });
+            }
+            error
+        })
     }
 
     /// Parses an element of a struct declaration.
@@ -2164,9 +2200,18 @@ impl<'a> Parser<'a> {
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
+            let mut_restriction = this.parse_mut_restriction()?;
             let safety = this.parse_unsafe_field();
-            this.parse_single_struct_field(adt_ty, lo, vis, safety, attrs, ident_span)
-                .map(|field| (field, Trailing::No, UsePreAttrPos::No))
+            this.parse_single_struct_field(
+                adt_ty,
+                lo,
+                vis,
+                mut_restriction,
+                safety,
+                attrs,
+                ident_span,
+            )
+            .map(|field| (field, Trailing::No, UsePreAttrPos::No))
         })
     }
 
@@ -2176,11 +2221,12 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
+        mut_restriction: MutRestriction,
         safety: Safety,
         attrs: AttrVec,
         ident_span: Span,
     ) -> PResult<'a, FieldDef> {
-        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, safety, attrs)?;
+        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, mut_restriction, safety, attrs)?;
         match self.token.kind {
             token::Comma => {
                 self.bump();
@@ -2299,6 +2345,7 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
+        mut_restriction: MutRestriction,
         safety: Safety,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
@@ -2337,6 +2384,7 @@ impl<'a> Parser<'a> {
             ident: Some(name),
             vis,
             safety,
+            mut_restriction,
             id: DUMMY_NODE_ID,
             ty,
             default,
@@ -2349,7 +2397,10 @@ impl<'a> Parser<'a> {
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(true)?;
-        if is_raw == IdentIsRaw::No && ident.is_reserved() {
+        if is_raw == IdentIsRaw::No
+            && ident.is_reserved()
+            && !(ident.name == kw::Underscore && adt_ty == "enum")
+        {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
                 let inherited_vis =

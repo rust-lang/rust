@@ -14,10 +14,10 @@
 
 //@ lldb-command:run
 //@ lldb-command:v u
-//@ lldb-check:[...] { a = ('\x02', '\x02') b = 514 }
+//@ lldb-check:[...] {a:('\x02', '\x02'), b:514}
 
 //@ lldb-command:print union_smoke::SU
-//@ lldb-check:[...] { a = ('\x01', '\x01') b = 257 }
+//@ lldb-check:[...] {a:('\x01', '\x01'), b:257}
 
 #![allow(unused)]
 

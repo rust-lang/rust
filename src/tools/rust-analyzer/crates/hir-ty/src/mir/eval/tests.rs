@@ -1,4 +1,4 @@
-use hir_def::{GenericDefId, HasModule, signatures::FunctionSignature};
+use hir_def::{HasModule, signatures::FunctionSignature};
 use hir_expand::EditionedFileId;
 use span::Edition;
 use syntax::{TextRange, TextSize};
@@ -41,7 +41,7 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
                 func_id.into(),
                 GenericArgs::empty(interner).store(),
                 crate::ParamEnvAndCrate {
-                    param_env: db.trait_environment(GenericDefId::from(func_id).into()),
+                    param_env: db.trait_environment(func_id.into()),
                     krate: func_id.krate(db),
                 }
                 .store(),
@@ -230,6 +230,28 @@ fn main() {
 }
 
 #[test]
+fn drop_glue_for_type_without_drop_impl_does_not_recurse() {
+    check_pass(
+        r#"
+//- minicore: drop, pin
+
+struct HasDrop;
+impl Drop for HasDrop {
+    fn drop(&mut self) {}
+}
+
+struct WithDropGlue {
+    field: HasDrop,
+}
+
+fn main() {
+    let _c = WithDropGlue { field: HasDrop };
+}
+    "#,
+    );
+}
+
+#[test]
 fn drop_if_let() {
     check_pass(
         r#"
@@ -355,6 +377,35 @@ fn main() {
     drop_in_place(p);
 }
     "#,
+    );
+}
+
+#[test]
+fn drop_glue_for_trait_object() {
+    check_panic(
+        r#"
+//- minicore: manually_drop, coerce_unsized, fmt, panic, drop, pin
+use core::mem::ManuallyDrop;
+use core::ptr::drop_in_place;
+
+struct X;
+impl Drop for X {
+    fn drop(&mut self) {
+        panic!("concrete drop ran");
+    }
+}
+
+trait T {}
+impl T for X {}
+
+fn main() {
+    let mut x = ManuallyDrop::new(X);
+    let p = &mut x as *mut ManuallyDrop<X> as *mut X;
+    let obj: &mut dyn T = unsafe { &mut *p };
+    drop_in_place(obj);
+}
+    "#,
+        "concrete drop ran",
     );
 }
 

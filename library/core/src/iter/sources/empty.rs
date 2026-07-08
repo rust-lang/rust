@@ -82,7 +82,7 @@ impl<T> Clone for Empty<T> {
 // which isn't necessary.
 #[stable(feature = "iter_empty", since = "1.2.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T> const Default for Empty<T> {
+const impl<T> Default for Empty<T> {
     fn default() -> Empty<T> {
         Empty(marker::PhantomData)
     }

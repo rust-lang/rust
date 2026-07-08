@@ -7,7 +7,7 @@ const trait ConstDefault {
     fn const_default() -> Self;
 }
 
-impl const ConstDefault for u8 {
+const impl ConstDefault for u8 {
     fn const_default() -> Self { 0 }
 }
 

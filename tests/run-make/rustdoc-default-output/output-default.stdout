@@ -125,6 +125,8 @@ Options:
                         Set the most restrictive lint level. More restrictive
                         lints are capped at this level. By default, it is at
                         `forbid` level.
+        --remap-path-prefix FROM=TO
+                        Remap source names in compiler messages
         --index-page PATH
                         Markdown file to be used as index page
         --enable-index-page 
@@ -158,8 +160,6 @@ Options:
                         Force all doctests to be compiled as a single binary,
                         instead of one binary per test. If merging fails,
                         rustdoc will emit a hard error.
-        --remap-path-prefix FROM=TO
-                        Remap source names in compiler messages
         --remap-path-scope [macro,diagnostics,debuginfo,coverage,object,all]
                         Defines which scopes of paths should be remapped by
                         `--remap-path-prefix`

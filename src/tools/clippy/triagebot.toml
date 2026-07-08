@@ -60,6 +60,11 @@ labels = ["S-waiting-on-concerns"]
 [view-all-comments-link]
 threshold = 20
 
+# Allows `merge` and `delegate` commands for merging a PR
+# Documentation at: https://forge.rust-lang.org/triagebot/merge.html
+[merge]
+type = "merge-queue"
+
 [notify-zulip."lint-nominated"]
 zulip_stream = 577190 # #clippy/fcp
 topic = "FCP rust-clippy#{number}: {title}"
@@ -94,13 +99,13 @@ users_on_vacation = [
     "Alexendoo",
     "y21",
     "blyxyas",
-    "dswij",
+    "ada4a"
 ]
 
 [assign.owners]
 "/.github" = ["@flip1995"]
 "/triagebot.toml" = ["@flip1995"]
-"/book" = ["@flip1995"]
+"/book" = ["@ada4a", "@samueltardieu"]
 "*" = [
     "@Manishearth",
     "@llogiq",
@@ -109,4 +114,5 @@ users_on_vacation = [
     "@Jarcho",
     "@y21",
     "@samueltardieu",
+    "@ada4a",
 ]

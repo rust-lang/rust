@@ -1,5 +1,5 @@
 error: calling `std::fs::create_dir` where there may be a better way
-  --> tests/ui/create_dir.rs:10:5
+  --> tests/ui/create_dir.rs:9:5
    |
 LL |     std::fs::create_dir("foo");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL |     std::fs::create_dir_all("foo");
    |                        ++++
 
 error: calling `std::fs::create_dir` where there may be a better way
-  --> tests/ui/create_dir.rs:12:5
+  --> tests/ui/create_dir.rs:11:5
    |
 LL |     std::fs::create_dir("bar").unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     std::fs::create_dir_all("bar").unwrap();
    |                        ++++
 
 error: calling `std::fs::create_dir` where there may be a better way
-  --> tests/ui/create_dir.rs:23:9
+  --> tests/ui/create_dir.rs:22:9
    |
 LL |         create_dir("some/dir").unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |         std::fs::create_dir_all("some/dir").unwrap();
    |         +++++++++          ++++
 
 error: calling `std::fs::create_dir` where there may be a better way
-  --> tests/ui/create_dir.rs:29:9
+  --> tests/ui/create_dir.rs:28:9
    |
 LL |         fs::create_dir("/some/dir").unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |         fs::create_dir_all("/some/dir").unwrap();
    |                       ++++
 
 error: calling `std::fs::create_dir` where there may be a better way
-  --> tests/ui/create_dir.rs:34:9
+  --> tests/ui/create_dir.rs:33:9
    |
 LL |         std::fs::create_dir("/some/dir").unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

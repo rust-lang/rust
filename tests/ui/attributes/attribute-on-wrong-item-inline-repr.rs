@@ -16,13 +16,13 @@ fn main() {
 
     #[repr(nothing)]
     let _x = 0;
-    //~^^ ERROR E0552
+    //~^^ ERROR malformed `repr` attribute input
 
     #[repr(something_not_real)]
     loop {
         ()
     };
-    //~^^^^ ERROR E0552
+    //~^^^^ ERROR malformed `repr` attribute input
 
     #[repr]
     let _y = "123";

@@ -530,7 +530,7 @@ pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) -> 
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::Result {
-    let Item { owner_id: _, kind, span: _, vis_span: _, has_delayed_lints: _, eii: _ } = item;
+    let Item { owner_id: _, kind, span: _, vis_span: _, eii: _ } = item;
     try_visit!(visitor.visit_id(item.hir_id()));
     match *kind {
         ItemKind::ExternCrate(orig_name, ident) => {
@@ -660,8 +660,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
     visitor: &mut V,
     foreign_item: &'v ForeignItem<'v>,
 ) -> V::Result {
-    let ForeignItem { ident, kind, owner_id: _, span: _, vis_span: _, has_delayed_lints: _ } =
-        foreign_item;
+    let ForeignItem { ident, kind, owner_id: _, span: _, vis_span: _ } = foreign_item;
     try_visit!(visitor.visit_id(foreign_item.hir_id()));
     try_visit!(visitor.visit_ident(*ident));
 
@@ -1089,7 +1088,7 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_id(*hir_id));
     match kind {
         ConstArgKind::Tup(exprs) => {
-            walk_list!(visitor, visit_const_arg, *exprs);
+            walk_list!(visitor, visit_const_arg_unambig, *exprs);
             V::Result::output()
         }
         ConstArgKind::Struct(qpath, field_exprs) => {
@@ -1200,10 +1199,6 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
             try_visit!(visitor.visit_lifetime(lifetime));
             walk_list!(visitor, visit_param_bound, bounds);
         }
-        WherePredicateKind::EqPredicate(WhereEqPredicate { ref lhs_ty, ref rhs_ty }) => {
-            try_visit!(visitor.visit_ty_unambig(lhs_ty));
-            try_visit!(visitor.visit_ty_unambig(rhs_ty));
-        }
     }
     V::Result::output()
 }
@@ -1262,22 +1257,14 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
     visitor: &mut V,
     trait_item: &'v TraitItem<'v>,
 ) -> V::Result {
-    let TraitItem {
-        ident,
-        generics,
-        ref defaultness,
-        ref kind,
-        span,
-        owner_id: _,
-        has_delayed_lints: _,
-    } = *trait_item;
+    let TraitItem { ident, generics, ref defaultness, ref kind, span, owner_id: _ } = *trait_item;
     let hir_id = trait_item.hir_id();
     try_visit!(visitor.visit_ident(ident));
     try_visit!(visitor.visit_generics(&generics));
     try_visit!(visitor.visit_defaultness(&defaultness));
     try_visit!(visitor.visit_id(hir_id));
     match *kind {
-        TraitItemKind::Const(ref ty, default, _) => {
+        TraitItemKind::Const(ref ty, default) => {
             try_visit!(visitor.visit_ty_unambig(ty));
             visit_opt!(visitor, visit_const_item_rhs, default);
         }
@@ -1312,15 +1299,8 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
     visitor: &mut V,
     impl_item: &'v ImplItem<'v>,
 ) -> V::Result {
-    let ImplItem {
-        owner_id: _,
-        ident,
-        ref generics,
-        ref impl_kind,
-        ref kind,
-        span: _,
-        has_delayed_lints: _,
-    } = *impl_item;
+    let ImplItem { owner_id: _, ident, ref generics, ref impl_kind, ref kind, span: _ } =
+        *impl_item;
 
     try_visit!(visitor.visit_ident(ident));
     try_visit!(visitor.visit_generics(generics));
@@ -1488,7 +1468,8 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(
     visitor: &mut V,
     segment: &'v PathSegment<'v>,
 ) -> V::Result {
-    let PathSegment { ident, hir_id, res: _, args, infer_args: _ } = segment;
+    let PathSegment { ident, hir_id, res: _, args, infer_args: _, delegation_child_segment: _ } =
+        segment;
     try_visit!(visitor.visit_ident(*ident));
     try_visit!(visitor.visit_id(*hir_id));
     visit_opt!(visitor, visit_generic_args, *args);

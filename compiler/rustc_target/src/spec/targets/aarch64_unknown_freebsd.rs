@@ -7,7 +7,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "aarch64-unknown-freebsd".into(),
         metadata: TargetMetadata {
             description: Some("ARM64 FreeBSD".into()),
-            tier: Some(3),
+            tier: Some(2),
             host_tools: Some(true),
             std: Some(true),
         },

@@ -18,8 +18,8 @@ fn smoke() {
         assert!(get(k2).is_null());
         set(k1, ptr::without_provenance_mut(1));
         set(k2, ptr::without_provenance_mut(2));
-        assert_eq!(get(k1) as usize, 1);
-        assert_eq!(get(k2) as usize, 2);
+        assert_eq!(get(k1).addr(), 1);
+        assert_eq!(get(k2).addr(), 2);
     }
 }
 

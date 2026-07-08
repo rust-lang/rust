@@ -7,7 +7,7 @@ use rustc_span::Span;
 
 use super::{LoweringContext, MoveExprInitializerFinder, MoveExprState};
 use crate::FnDeclKind;
-use crate::errors::{ClosureCannotBeStatic, CoroutineTooManyParameters};
+use crate::diagnostics::{ClosureCannotBeStatic, CoroutineTooManyParameters};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     // Entry point for `ExprKind::Closure`. Plain closures go through

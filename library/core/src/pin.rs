@@ -1680,7 +1680,7 @@ impl<T: ?Sized> Pin<&'static mut T> {
 
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<Ptr: [const] Deref> const Deref for Pin<Ptr> {
+const impl<Ptr: [const] Deref> Deref for Pin<Ptr> {
     type Target = Ptr::Target;
     fn deref(&self) -> &Ptr::Target {
         Pin::get_ref(Pin::as_ref(self))
@@ -1723,7 +1723,7 @@ mod helper {
 
     #[unstable(feature = "pin_derefmut_internals", issue = "none")]
     #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-    impl<Ptr: [const] super::DerefMut> const PinDerefMutHelper for PinHelper<Ptr>
+    const impl<Ptr: [const] super::DerefMut> PinDerefMutHelper for PinHelper<Ptr>
     where
         Ptr::Target: crate::marker::Unpin,
     {
@@ -1739,7 +1739,7 @@ mod helper {
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(not(doc))]
-impl<Ptr> const DerefMut for Pin<Ptr>
+const impl<Ptr> DerefMut for Pin<Ptr>
 where
     Ptr: [const] Deref,
     helper::PinHelper<Ptr>: [const] helper::PinDerefMutHelper<Target = Self::Target>,
@@ -1765,7 +1765,7 @@ where
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(doc)]
-impl<Ptr> const DerefMut for Pin<Ptr>
+const impl<Ptr> DerefMut for Pin<Ptr>
 where
     Ptr: [const] DerefMut,
     <Ptr as Deref>::Target: Unpin,

@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
@@ -173,6 +174,7 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
                         discr: parent_op,
                         targets: eq_targets,
                     },
+                    attributes: ThinVec::new(),
                 }),
                 bbs[parent].is_cleanup,
             );
@@ -231,6 +233,7 @@ fn evaluate_candidate<'tcx>(
     let Terminator {
         kind: TerminatorKind::SwitchInt { targets: child_targets, discr: child_discr },
         source_info,
+        attributes: _,
     } = bbs[child].terminator()
     else {
         return None;

@@ -2,13 +2,17 @@ error[E0432]: unresolved import `X`
   --> $DIR/underscore-bindings-disambiguators.rs:25:5
    |
 LL | use X as Y;
-   |     ^^^^^^ no `X` in the root
+   |     -^^^^^
+   |     |
+   |     no `X` in the root
 
 error[E0432]: unresolved import `Z`
   --> $DIR/underscore-bindings-disambiguators.rs:26:5
    |
 LL | use Z as W;
-   |     ^^^^^^ no `Z` in the root
+   |     -^^^^^
+   |     |
+   |     no `Z` in the root
 
 error[E0080]: evaluation panicked: not yet implemented
   --> $DIR/underscore-bindings-disambiguators.rs:19:19

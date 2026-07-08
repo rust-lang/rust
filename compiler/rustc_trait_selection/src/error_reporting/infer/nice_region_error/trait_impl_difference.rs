@@ -14,9 +14,9 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::{Ident, Span};
 use tracing::debug;
 
+use crate::diagnostics::{ConsiderBorrowingParamHelp, TraitImplDiff};
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlighted;
-use crate::errors::{ConsiderBorrowingParamHelp, TraitImplDiff};
 use crate::infer::{RegionResolutionError, ValuePairs};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {

@@ -148,7 +148,7 @@ LL | #[link(name = "...", cfg = "literal")]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
-error[E0539]: malformed `link` attribute input
+error[E0565]: malformed `link` attribute input
   --> $DIR/link-attr-validation-late.rs:25:1
    |
 LL | #[link(name = "...", cfg("literal"))]

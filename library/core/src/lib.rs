@@ -51,27 +51,16 @@
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut, duplicate_features)))
 )]
 #![doc(rust_logo)]
-#![doc(auto_cfg(hide(
-    no_fp_fmt_parse,
-    target_pointer_width = "16",
-    target_pointer_width = "32",
-    target_pointer_width = "64",
-    target_has_atomic = "8",
-    target_has_atomic = "16",
-    target_has_atomic = "32",
-    target_has_atomic = "64",
-    target_has_atomic = "ptr",
-    target_has_atomic_equal_alignment = "8",
-    target_has_atomic_equal_alignment = "16",
-    target_has_atomic_equal_alignment = "32",
-    target_has_atomic_equal_alignment = "64",
-    target_has_atomic_equal_alignment = "ptr",
-    target_has_atomic_load_store = "8",
-    target_has_atomic_load_store = "16",
-    target_has_atomic_load_store = "32",
-    target_has_atomic_load_store = "64",
-    target_has_atomic_load_store = "ptr",
-)))]
+#![doc(auto_cfg(
+    hide(no_fp_fmt_parse),
+    hide(target_pointer_width, values("16", "32", "64")),
+    hide(
+        target_has_atomic,
+        target_has_atomic_primitive_alignment,
+        target_has_atomic_load_store,
+        values("8", "16", "32", "64", "ptr"),
+    ),
+))]
 #![no_core]
 #![rustc_coherence_is_core]
 #![rustc_preserve_ub_checks]
@@ -79,7 +68,7 @@
 // Lints:
 #![deny(rust_2021_incompatible_or_patterns)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(fuzzy_provenance_casts)]
+#![deny(implicit_provenance_casts)]
 #![warn(deprecated_in_future)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
@@ -107,10 +96,10 @@
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(disjoint_bitor)]
+#![feature(io_const_error)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(pattern_type_macro)]
-#![feature(sealed)]
 #![feature(ub_checks)]
 // tidy-alphabetical-end
 //
@@ -123,7 +112,6 @@
 #![feature(auto_traits)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
-#![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_ub_checks)]
 #![feature(const_closures)]
 #![feature(const_precise_live_drops)]
@@ -132,16 +120,18 @@
 #![feature(deprecated_suggestion)]
 #![feature(derive_const)]
 #![feature(diagnostic_on_const)]
-#![feature(diagnostic_on_unmatch_args)]
+#![feature(diagnostic_on_unmatched_args)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(extern_types)]
 #![feature(f16)]
 #![feature(f128)]
 #![feature(field_projections)]
+#![feature(final_associated_functions)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(funnel_shifts)]
+#![feature(impl_restriction)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
@@ -167,7 +157,6 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
-#![feature(target_feature_inline_always)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
@@ -182,6 +171,7 @@
 #![feature(aarch64_unstable_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(avx10_target_feature)]
+#![feature(clflushopt_target_feature)]
 #![feature(hexagon_target_feature)]
 #![feature(loongarch_target_feature)]
 #![feature(mips_target_feature)]
@@ -220,14 +210,6 @@ pub mod from {
     pub use crate::macros::builtin::From;
 }
 
-mod sealed {
-    /// This trait being unreachable from outside the crate
-    /// prevents outside implementations of our extension traits.
-    /// This allows adding more trait methods in the future.
-    #[unstable(feature = "sealed", issue = "none")]
-    pub trait Sealed {}
-}
-
 // We don't export this through #[macro_export] for now, to avoid breakage.
 #[unstable(feature = "autodiff", issue = "124509")]
 #[doc = include_str!("../../core/src/autodiff.md")]
@@ -235,6 +217,10 @@ pub mod autodiff {
     #[unstable(feature = "autodiff", issue = "124509")]
     pub use crate::macros::builtin::{autodiff_forward, autodiff_reverse};
 }
+
+#[unstable(feature = "gpu_offload", issue = "131513")]
+#[doc = include_str!("../../core/src/offload.md")]
+pub mod offload;
 
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
@@ -353,6 +339,9 @@ mod bool;
 mod escape;
 mod tuple;
 mod unit;
+#[cfg_attr(feature = "nightly", not(bootstrap))]
+#[unstable(feature = "view_type_macro", issue = "155938")]
+pub mod view;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub mod primitive;
@@ -400,4 +389,17 @@ pub mod simd {
     pub use crate::core_simd::simd::*;
 }
 
+// Include private modules that exist solely to provide rustdoc
+// documentation for built-in attributes. Using `include!` because rustdoc
+// only looks for these modules at the crate level.
+include!("attribute_docs.rs");
+
+// Include a number of private modules that exist solely to provide
+// the rustdoc documentation for the existing keywords. Using `include!`
+// because rustdoc only looks for these modules at the crate level.
+include!("keyword_docs.rs");
+
+// Include a number of private modules that exist solely to provide
+// the rustdoc documentation for primitive types. Using `include!`
+// because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");

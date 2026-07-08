@@ -1018,12 +1018,13 @@ pub trait From<T>: Sized {
 ### Formatting
 
 The string literals are format strings that accept parameters wrapped in braces
-but positional and listed parameters and format specifiers are not accepted.
+but positional and listed parameters are not accepted.
 The following parameter names are valid:
 - `Self` and all generic parameters of the trait.
 - `This`: the name of the trait the attribute is on, without generics.
-- `Trait`: the name of the "sugared" trait.
-  See `TraitRefPrintSugared`.
+- `This:path`: the full path of the trait the attribute is on, with unresolved generics.
+- `This:resolved`: the full path of the trait the attribute is on, with resolved generics.
+Additionally, this will "sugar" the `Fn(...)` traits.
 - `ItemContext`: the kind of `hir::Node` we're in, things like `"an async block"`,
    `"a function"`, `"an async function"`, etc.
 

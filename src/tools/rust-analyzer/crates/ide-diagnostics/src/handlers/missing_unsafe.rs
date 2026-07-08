@@ -425,17 +425,20 @@ fn main() {
     fn raw_deref_on_union_field() {
         check_diagnostics(
             r#"
+//- minicore: index, slice
+#![allow(unused_variables)]
+
 fn main() {
 
     union U {
         a: u8
     }
-    let x = U { a: 3 };
+    let mut x = U { a: 3 };
 
     let a = &raw mut x.a;
 
     union U1 {
-        a: u8
+        a: usize
     }
     let x = U1 { a: 3 };
 

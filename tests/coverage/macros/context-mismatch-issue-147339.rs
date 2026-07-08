@@ -6,15 +6,26 @@
 //
 // Reported in <https://github.com/rust-lang/rust/issues/147339>.
 
-macro_rules! foo {
-    ($($m:ident $($f:ident $v:tt)+),*) => {
-        $($(macro_rules! $f { () => { $v } })+)*
-        $(macro_rules! $m { () => { $(fn $f() -> i32 { $v })+ } })*
-    }
+macro_rules! outer_macro {
+    (
+        $v:tt
+    ) => {
+        macro_rules! _other_macro_that_mentions_v {
+            () => {
+                $v
+            };
+        }
+        macro_rules! inner_macro {
+            () => {
+                fn _function() -> i32 {
+                    $v
+                }
+            };
+        }
+    };
 }
 
-foo!(m a 1 b 2, n c 3);
-m!();
-n!();
+outer_macro!(1);
+inner_macro!();
 
 fn main() {}

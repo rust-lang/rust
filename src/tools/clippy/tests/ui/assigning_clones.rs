@@ -1,9 +1,5 @@
-#![allow(unused)]
-#![allow(clippy::redundant_clone)]
-#![allow(clippy::ptr_arg)] // https://github.com/rust-lang/rust-clippy/issues/10612
-#![allow(clippy::needless_late_init)]
+#![expect(clippy::boxed_local, clippy::needless_late_init)]
 #![allow(clippy::box_collection)]
-#![allow(clippy::boxed_local)]
 #![warn(clippy::assigning_clones)]
 
 use std::borrow::ToOwned;

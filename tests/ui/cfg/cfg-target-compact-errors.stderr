@@ -1,4 +1,4 @@
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-target-compact-errors.rs:5:1
    |
 LL | #[cfg(target(o::o))]
@@ -73,7 +73,7 @@ LL - #[cfg(target(true))]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-target-compact-errors.rs:32:1
    |
 LL | #[cfg(target(clippy::os = "linux"))]
@@ -90,4 +90,5 @@ LL + #[cfg(predicate)]
 
 error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0539`.
+Some errors have detailed explanations: E0539, E0565.
+For more information about an error, try `rustc --explain E0539`.

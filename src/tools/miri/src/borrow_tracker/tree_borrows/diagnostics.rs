@@ -456,7 +456,7 @@ struct DisplayFmtWrapper {
 /// will show each permission line as
 /// ```text
 /// 0.. 1.. 2.. 3.. 4.. 5
-/// [Act|Res|Frz|Dis|___]
+/// [Unq|Res|Frz|Dis|___]
 /// ```
 struct DisplayFmtPermission {
     /// Text that starts the permission block.
@@ -467,7 +467,7 @@ struct DisplayFmtPermission {
     close: S,
     /// Text to show when a permission is not initialized.
     /// Should have the same width as a `Permission`'s `.short_name()`, i.e.
-    /// 3 if using the `Res/Act/Frz/Dis` notation.
+    /// 3 if using the `Res/Unq/Frz/Dis` notation.
     uninit: S,
     /// Text to separate the `start` and `end` values of a range.
     range_sep: S,
@@ -525,7 +525,7 @@ struct DisplayFmtPadding {
 /// ```
 /// will show states as
 /// ```text
-///  Act
+///  Unq
 /// ?Res
 /// ____
 /// ```
@@ -549,8 +549,8 @@ struct DisplayFmt {
 }
 impl DisplayFmt {
     /// Print the permission with the format
-    /// ` Res`/` Re*`/` Act`/` Frz`/` Dis` for accessed locations
-    /// and `?Res`/`?Re*`/`?Act`/`?Frz`/`?Dis` for unaccessed locations.
+    /// ` Res`/` Re*`/` Unq`/` Frz`/` Dis` for accessed locations
+    /// and `?Res`/`?Re*`/`?Unq`/`?Frz`/`?Dis` for unaccessed locations.
     fn print_perm(&self, perm: Option<LocationState>) -> String {
         if let Some(perm) = perm {
             format!(
@@ -801,7 +801,7 @@ impl DisplayRepr {
         ) {
             let mut line = String::new();
             // Format the permissions on each range.
-            // Looks like `| Act| Res| Res| Act|`.
+            // Looks like `| Unq| Res| Res| Unq|`.
             line.push_str(fmt.perm.open);
             for (i, (perm, &pad)) in tree.rperm.iter().zip(padding.iter()).enumerate() {
                 if i > 0 {

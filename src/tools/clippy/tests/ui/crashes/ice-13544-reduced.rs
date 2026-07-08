@@ -1,6 +1,6 @@
 //@ check-pass
 #![warn(clippy::significant_drop_tightening)]
-#![allow(unused, clippy::no_effect)]
+#![expect(clippy::no_effect)]
 
 use std::marker::PhantomData;
 

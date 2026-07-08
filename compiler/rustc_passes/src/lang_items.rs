@@ -18,15 +18,18 @@ use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::errors::{
-    DuplicateLangItem, IncorrectCrateType, IncorrectTarget, LangItemOnIncorrectTarget,
-};
+use crate::diagnostics::{DuplicateLangItem, IncorrectCrateType, IncorrectTarget};
 use crate::weak_lang_items;
 
 pub(crate) enum Duplicate {
     Plain,
     Crate,
     CrateDepends,
+}
+
+enum CollectWeak {
+    Allowed,
+    Ignore,
 }
 
 struct LanguageItemCollector<'ast, 'tcx> {
@@ -60,28 +63,30 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         attrs: &'ast [ast::Attribute],
         item_span: Span,
         generics: Option<&'ast ast::Generics>,
+        collect_weak: CollectWeak,
     ) {
         if let Some((name, attr_span)) = extract_ast(attrs) {
             match LangItem::from_name(name) {
-                // Known lang item with attribute on correct target.
-                Some(lang_item) if actual_target == lang_item.target() => {
-                    self.collect_item_extended(
-                        lang_item,
-                        def_id,
-                        item_span,
-                        attr_span,
-                        generics,
-                        actual_target,
-                    );
-                }
-                // Known lang item with attribute on incorrect target.
+                // Known lang item
                 Some(lang_item) => {
-                    self.tcx.dcx().emit_err(LangItemOnIncorrectTarget {
-                        span: attr_span,
-                        name,
-                        expected_target: lang_item.target(),
-                        actual_target,
-                    });
+                    if actual_target != lang_item.target() {
+                        self.tcx
+                            .dcx()
+                            .delayed_bug("lang item target is checked in attribute parser");
+                        return;
+                    }
+                    // Weak lang items are handled separately
+                    // Weak only lang items are always handled here
+                    if !lang_item.is_weak() || matches!(collect_weak, CollectWeak::Allowed) {
+                        self.collect_item_extended(
+                            lang_item,
+                            def_id,
+                            item_span,
+                            attr_span,
+                            generics,
+                            actual_target,
+                        );
+                    }
                 }
                 // Unknown lang item.
                 _ => {
@@ -246,8 +251,9 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
 
 /// Traverses and collects all the lang items in all crates.
 fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
-    let resolver = tcx.resolver_for_lowering().borrow();
-    let (resolver, krate) = &*resolver;
+    let (resolver, krate) = tcx.resolver_for_lowering();
+    let resolver = &*resolver.borrow();
+    let krate = &*krate.borrow();
 
     // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx, resolver);
@@ -299,11 +305,23 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             &i.attrs,
             i.span,
             i.opt_generics(),
+            CollectWeak::Allowed,
         );
 
         let parent_item = self.parent_item.replace(i);
         visit::walk_item(self, i);
         self.parent_item = parent_item;
+    }
+
+    fn visit_foreign_item(&mut self, i: &'ast ast::ForeignItem) {
+        self.check_for_lang(
+            Target::Fn,
+            self.resolver.owners[&i.id].def_id,
+            &i.attrs,
+            i.span,
+            None,
+            CollectWeak::Ignore,
+        );
     }
 
     fn visit_variant(&mut self, variant: &'ast ast::Variant) {
@@ -313,6 +331,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             &variant.attrs,
             variant.span,
             None,
+            CollectWeak::Allowed,
         );
     }
 
@@ -346,7 +365,14 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             }
         };
 
-        self.check_for_lang(target, self.resolver.owners[&i.id].def_id, &i.attrs, i.span, generics);
+        self.check_for_lang(
+            target,
+            self.resolver.owners[&i.id].def_id,
+            &i.attrs,
+            i.span,
+            generics,
+            CollectWeak::Allowed,
+        );
 
         visit::walk_assoc_item(self, i, ctxt);
     }

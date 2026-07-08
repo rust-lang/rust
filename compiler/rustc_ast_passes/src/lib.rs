@@ -6,8 +6,9 @@
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
+#![feature(option_into_flat_iter)]
 // tidy-alphabetical-end
 
 pub mod ast_validation;
-mod errors;
+mod diagnostics;
 pub mod feature_gate;

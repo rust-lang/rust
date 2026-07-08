@@ -21,7 +21,7 @@ use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_target::spec::{Arch, BinaryFormat, CfgAbi, Env, LinkSelfContainedComponents, Os};
 
-use crate::errors;
+use crate::diagnostics;
 
 /// The fallback directories are passed to linker, but not used when rustc does the search,
 /// because in the latter case the set of fallback directories cannot always be determined
@@ -62,12 +62,15 @@ pub fn walk_native_lib_search_dirs<R>(
         f(&sess.target_tlib_path.dir.join("self-contained"), false)?;
     }
 
+    let has_shared_llvm_apple_darwin =
+        sess.target.is_like_darwin && sess.target_tlib_path.dir.join("libLLVM.dylib").exists();
+
     // Toolchains for some targets may ship `libunwind.a`, but place it into the main sysroot
     // library directory instead of the self-contained directories.
     // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
     // The targets here should be in sync with `copy_third_party_objects` in bootstrap.
-    // Finally there is shared LLVM library, which unlike compiler libraries, is linked by the name,
-    // therefore requiring the search path for the linker.
+    // On Apple targets, shared LLVM is linked by name, so when `libLLVM.dylib` is
+    // present in the target libdir, add that directory to the linker search path.
     // FIXME: implement `-Clink-self-contained=+/-unwind,+/-sanitizers`, move the shipped libunwind
     // and sanitizers to self-contained directory, and stop adding this search path.
     // FIXME: On AIX this also has the side-effect of making the list of library search paths
@@ -77,7 +80,8 @@ pub fn walk_native_lib_search_dirs<R>(
         || sess.target.os == Os::Linux
         || sess.target.os == Os::Fuchsia
         || sess.target.is_like_aix
-        || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
+        || sess.target.is_like_darwin
+            && (!sess.sanitizers().is_empty() || has_shared_llvm_apple_darwin)
         || sess.target.os == Os::Windows
             && sess.target.env == Env::Gnu
             && sess.target.cfg_abi == CfgAbi::Llvm
@@ -159,8 +163,9 @@ pub fn try_find_native_dynamic_library(
 }
 
 pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) -> PathBuf {
-    try_find_native_static_library(sess, name, verbatim)
-        .unwrap_or_else(|| sess.dcx().emit_fatal(errors::MissingNativeLibrary::new(name, verbatim)))
+    try_find_native_static_library(sess, name, verbatim).unwrap_or_else(|| {
+        sess.dcx().emit_fatal(diagnostics::MissingNativeLibrary::new(name, verbatim))
+    })
 }
 
 fn find_bundled_library(
@@ -192,6 +197,31 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
         }
     }
     collector.process_command_line();
+    for lib in &mut collector.libs {
+        // FIXME(jchlanda) Pauthtest does not support static linking. It must be dynamically linked,
+        // with a dynamic linker acting as the ELF interpreter that can resolve pauth relocations
+        // and enforce pointer authentication constraints.
+        if tcx.sess.target.cfg_abi == CfgAbi::Pauthtest {
+            if let NativeLibKind::Static { .. } = lib.kind {
+                if !tcx.sess.opts.unstable_opts.ui_testing {
+                    let diag = if lib.foreign_module.is_none() {
+                        diagnostics::StaticLinkingNotSupported::UserRequested {
+                            lib_name: lib.name,
+                            target: tcx.sess.target.llvm_target.as_ref(),
+                        }
+                    } else {
+                        diagnostics::StaticLinkingNotSupported::FromDependency {
+                            lib_name: lib.name,
+                            target: tcx.sess.target.llvm_target.as_ref(),
+                        }
+                    };
+                    tcx.dcx().emit_warn(diag);
+                }
+
+                lib.kind = NativeLibKind::Dylib { as_needed: None };
+            }
+        }
+    }
     collector.libs
 }
 
@@ -218,9 +248,7 @@ impl<'tcx> Collector<'tcx> {
             return;
         }
 
-        for attr in
-            find_attr!(self.tcx, def_id, Link(links, _) => links).iter().map(|v| v.iter()).flatten()
-        {
+        for attr in find_attr!(self.tcx, def_id, Link(links, _) => links).into_flat_iter() {
             let dll_imports = match attr.kind {
                 NativeLibKind::RawDylib { .. } => foreign_items
                     .iter()
@@ -237,7 +265,7 @@ impl<'tcx> Collector<'tcx> {
                         if let Some(span) =
                             find_attr!(self.tcx, child_item, LinkOrdinal {span, ..} => *span)
                         {
-                            sess.dcx().emit_err(errors::LinkOrdinalRawDylib { span });
+                            sess.dcx().emit_err(diagnostics::LinkOrdinalRawDylib { span });
                         }
                     }
 
@@ -273,16 +301,18 @@ impl<'tcx> Collector<'tcx> {
                 && !self.tcx.sess.target.is_like_darwin
             {
                 // Cannot check this when parsing options because the target is not yet available.
-                self.tcx.dcx().emit_err(errors::LibFrameworkApple);
+                self.tcx.dcx().emit_err(diagnostics::LibFrameworkApple);
             }
             if let Some(ref new_name) = lib.new_name {
                 let any_duplicate = self.libs.iter().any(|n| n.name.as_str() == lib.name);
                 if new_name.is_empty() {
-                    self.tcx.dcx().emit_err(errors::EmptyRenamingTarget { lib_name: &lib.name });
+                    self.tcx
+                        .dcx()
+                        .emit_err(diagnostics::EmptyRenamingTarget { lib_name: &lib.name });
                 } else if !any_duplicate {
-                    self.tcx.dcx().emit_err(errors::RenamingNoLink { lib_name: &lib.name });
+                    self.tcx.dcx().emit_err(diagnostics::RenamingNoLink { lib_name: &lib.name });
                 } else if !renames.insert(&lib.name) {
-                    self.tcx.dcx().emit_err(errors::MultipleRenamings { lib_name: &lib.name });
+                    self.tcx.dcx().emit_err(diagnostics::MultipleRenamings { lib_name: &lib.name });
                 }
             }
         }
@@ -308,14 +338,14 @@ impl<'tcx> Collector<'tcx> {
                         if lib.has_modifiers() || passed_lib.has_modifiers() {
                             match lib.foreign_module {
                                 Some(def_id) => {
-                                    self.tcx.dcx().emit_err(errors::NoLinkModOverride {
+                                    self.tcx.dcx().emit_err(diagnostics::NoLinkModOverride {
                                         span: Some(self.tcx.def_span(def_id)),
                                     })
                                 }
                                 None => self
                                     .tcx
                                     .dcx()
-                                    .emit_err(errors::NoLinkModOverride { span: None }),
+                                    .emit_err(diagnostics::NoLinkModOverride { span: None }),
                             };
                         }
                         if passed_lib.kind != NativeLibKind::Unspecified {
@@ -430,7 +460,7 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::Vectorcall(self.i686_arg_list_size(item))
                 }
                 _ => {
-                    self.tcx.dcx().emit_fatal(errors::RawDylibUnsupportedAbi { span });
+                    self.tcx.dcx().emit_fatal(diagnostics::RawDylibUnsupportedAbi { span });
                 }
             }
         } else {
@@ -439,7 +469,7 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::C
                 }
                 _ => {
-                    self.tcx.dcx().emit_fatal(errors::RawDylibUnsupportedAbi { span });
+                    self.tcx.dcx().emit_fatal(diagnostics::RawDylibUnsupportedAbi { span });
                 }
             }
         };
@@ -454,11 +484,11 @@ impl<'tcx> Collector<'tcx> {
         if self.tcx.sess.target.binary_format == BinaryFormat::Elf {
             let name = name.as_str();
             if name.contains('\0') {
-                self.tcx.dcx().emit_err(errors::RawDylibMalformed { span });
+                self.tcx.dcx().emit_err(diagnostics::RawDylibMalformed { span });
             } else if let Some((left, right)) = name.split_once('@')
                 && (left.is_empty() || right.is_empty() || right.contains('@'))
             {
-                self.tcx.dcx().emit_err(errors::RawDylibMalformed { span });
+                self.tcx.dcx().emit_err(diagnostics::RawDylibMalformed { span });
             }
         }
 

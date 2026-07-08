@@ -179,6 +179,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
 
     let mut consider_ty = obligation.predicate.self_ty();
     while let ty::Alias(
+        _,
         alias_ty @ ty::AliasTy {
             kind: kind @ (ty::Projection { def_id } | ty::Opaque { def_id }),
             ..
@@ -218,7 +219,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
                     if candidate.is_some() {
                         return Err(EvaluationFailure::Ambiguous);
                     } else {
-                        candidate = Some((data, alias_ty));
+                        candidate = Some((data, alias_ty, def_id));
                     }
                 }
             }
@@ -231,12 +232,11 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
         consider_ty = alias_ty.self_ty();
     }
 
-    if let Some((data, alias_ty)) = candidate {
+    if let Some((data, alias_ty, def_id)) = candidate {
         Ok(match_candidate(selcx, obligation, data, true, |selcx, nested| {
             // An alias bound only holds if we also check the const conditions
             // of the alias, so we need to register those, too.
-            let const_conditions =
-                tcx.const_conditions(alias_ty.kind.def_id()).instantiate(tcx, alias_ty.args);
+            let const_conditions = tcx.const_conditions(def_id).instantiate(tcx, alias_ty.args);
             let const_conditions: Vec<_> = const_conditions
                 .into_iter()
                 .map(|(trait_ref, span)| {
@@ -275,6 +275,7 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
 
     let mut consider_ty = obligation.predicate.self_ty();
     while let ty::Alias(
+        _,
         alias_ty @ ty::AliasTy {
             kind: kind @ (ty::Projection { def_id } | ty::Opaque { def_id }),
             ..
@@ -377,7 +378,7 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
         | ty::Foreign(..)
         | ty::Ref(_, _, ty::Mutability::Mut)
         | ty::Adt(_, _)
-        | ty::Alias(_)
+        | ty::Alias(_, _)
         | ty::Param(_)
         | ty::Placeholder(..) => Err(EvaluationFailure::NoSolution),
 
@@ -463,10 +464,11 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
                 })
                 .collect();
             match adt_def.destructor(tcx).map(|dtor| tcx.constness(dtor.did)) {
+                Some(hir::Constness::Const { always: true }) => todo!("FIXME(comptime)"),
                 // `Drop` impl exists, but it's not const. Type cannot be `[const] Destruct`.
                 Some(hir::Constness::NotConst) => return Err(EvaluationFailure::NoSolution),
                 // `Drop` impl exists, and it's const. Require `Ty: [const] Drop` to hold.
-                Some(hir::Constness::Const) => {
+                Some(hir::Constness::Const { always: false }) => {
                     let drop_def_id = tcx.require_lang_item(LangItem::Drop, obligation.cause.span);
                     let drop_trait_ref = ty::TraitRef::new(tcx, drop_def_id, [self_ty]);
                     const_conditions.push(drop_trait_ref);
@@ -563,14 +565,16 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
     };
 
     match tcx.constness(def) {
-        hir::Constness::Const => Ok(tcx
+        // FIXME(comptime)
+        hir::Constness::Const { always: true } => Err(EvaluationFailure::NoSolution),
+        hir::Constness::Const { always: false } => Ok(tcx
             .const_conditions(def)
             .instantiate(tcx, args)
             .into_iter()
             .map(|(c, span)| {
                 let code = ObligationCauseCode::WhereClause(def, span);
                 let cause =
-                    ObligationCause::new(obligation.cause.span, obligation.cause.body_id, code);
+                    ObligationCause::new(obligation.cause.span, obligation.cause.body_def_id, code);
                 Obligation::new(
                     tcx,
                     cause,
@@ -594,8 +598,15 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
             Err(_) => Err(EvaluationFailure::NoSolution),
             Ok(Some(source)) => match source {
                 ImplSource::UserDefined(impl_) => {
-                    if tcx.impl_trait_header(impl_.impl_def_id).constness != hir::Constness::Const {
-                        return Err(EvaluationFailure::NoSolution);
+                    match tcx.impl_trait_header(impl_.impl_def_id).constness {
+                        rustc_hir::Constness::Const { always } => {
+                            if always {
+                                todo!()
+                            }
+                        }
+                        rustc_hir::Constness::NotConst => {
+                            return Err(EvaluationFailure::NoSolution);
+                        }
                     }
 
                     let mut nested = impl_.nested;

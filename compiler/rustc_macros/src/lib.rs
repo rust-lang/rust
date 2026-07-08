@@ -181,7 +181,6 @@ decl_derive!(
         note_once,
         warning,
         // field attributes
-        skip_arg,
         primary_span,
         label,
         subdiagnostic,
@@ -208,7 +207,6 @@ decl_derive!(
         multipart_suggestion_short,
         multipart_suggestion_hidden,
         // field attributes
-        skip_arg,
         primary_span,
         suggestion_part,
         applicability)] => diagnostics::subdiagnostic_derive

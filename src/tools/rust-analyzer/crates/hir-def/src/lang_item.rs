@@ -7,7 +7,7 @@ use intern::{Symbol, sym};
 use stdx::impl_from;
 
 use crate::{
-    AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId,
+    AdtId, AssocItemId, AttrDefId, ConstId, Crate, EnumId, EnumVariantId, FunctionId, ImplId,
     ItemContainerId, MacroId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
     attrs::AttrFlags,
     db::DefDatabase,
@@ -25,10 +25,12 @@ pub enum LangItemTarget {
     TypeAliasId(TypeAliasId),
     TraitId(TraitId),
     EnumVariantId(EnumVariantId),
+    ConstId(ConstId),
+    MacroId(MacroId),
 }
 
 impl_from!(
-    EnumId, FunctionId, ImplId, StaticId, StructId, UnionId, TypeAliasId, TraitId, EnumVariantId for LangItemTarget
+    EnumId, FunctionId, ImplId, StaticId, StructId, UnionId, TypeAliasId, TraitId, EnumVariantId, ConstId, MacroId for LangItemTarget
 );
 
 /// Salsa query. This will look for lang items in a specific crate.
@@ -51,7 +53,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
                 match assoc {
                     AssocItemId::FunctionId(f) => lang_items.collect_lang_item(db, f),
                     AssocItemId::TypeAliasId(t) => lang_items.collect_lang_item(db, t),
-                    AssocItemId::ConstId(_) => (),
+                    AssocItemId::ConstId(c) => lang_items.collect_lang_item(db, c),
                 }
             }
         }
@@ -68,13 +70,13 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
                             AssocItemId::TypeAliasId(alias) => {
                                 lang_items.collect_lang_item(db, alias)
                             }
-                            AssocItemId::ConstId(_) => {}
+                            AssocItemId::ConstId(c) => lang_items.collect_lang_item(db, c),
                         }
                     });
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     lang_items.collect_lang_item(db, e);
-                    e.enum_variants(db).variants.iter().for_each(|&(id, _, _)| {
+                    e.enum_variants(db).variants.values().for_each(|&(id, _)| {
                         lang_items.collect_lang_item(db, id);
                     });
                 }
@@ -93,6 +95,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
                 ModuleDefId::TypeAliasId(t) => {
                     lang_items.collect_lang_item(db, t);
                 }
+                ModuleDefId::ConstId(c) => lang_items.collect_lang_item(db, c),
                 _ => {}
             }
         }
@@ -274,7 +277,6 @@ impl LangItems {
             (self.BitXorAssign, &mut self.BitXorAssign_bitxor_assign, sym::bitxor_assign),
             (self.BitOrAssign, &mut self.BitOrAssign_bitor_assign, sym::bitor_assign),
             (self.BitAndAssign, &mut self.BitAndAssign_bitand_assign, sym::bitand_assign),
-            (self.Drop, &mut self.Drop_drop, sym::drop),
             (self.Debug, &mut self.Debug_fmt, sym::fmt),
             (self.Deref, &mut self.Deref_deref, sym::deref),
             (self.DerefMut, &mut self.DerefMut_deref_mut, sym::deref_mut),
@@ -302,6 +304,13 @@ impl LangItems {
                     (&mut self.PartialOrd_ge, sym::ge),
                     (&mut self.PartialOrd_gt, sym::gt),
                 ],
+            );
+            Some(())
+        })();
+        (|| {
+            methods(
+                self.Drop?,
+                &mut [(&mut self.Drop_drop, sym::drop), (&mut self.Drop_pin_drop, sym::pin_drop)],
             );
             Some(())
         })();
@@ -395,11 +404,15 @@ macro_rules! language_item_table {
         }
 
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        #[allow(non_camel_case_types)]
         pub enum LangItemEnum {
             $(
                 $(#[$attr])*
                 $lang_item,
             )*
+            $( $non_lang_trait, )*
+            $( $non_lang_macro_field, )*
+            $( $resolve_manually, )*
         }
 
         impl LangItemEnum {
@@ -407,6 +420,9 @@ macro_rules! language_item_table {
             pub fn from_lang_items(self, lang_items: &LangItems) -> Option<LangItemTarget> {
                 match self {
                     $( LangItemEnum::$lang_item => lang_items.$lang_item.map(Into::into), )*
+                    $( LangItemEnum::$non_lang_trait => lang_items.$non_lang_trait.map(Into::into), )*
+                    $( LangItemEnum::$non_lang_macro_field => lang_items.$non_lang_macro_field.map(Into::into), )*
+                    $( LangItemEnum::$resolve_manually => lang_items.$resolve_manually.map(Into::into), )*
                 }
             }
 
@@ -646,6 +662,10 @@ language_item_table! { LangItems =>
     FieldBase,               sym::field_base,          TypeAliasId;
     FieldType,               sym::field_type,          TypeAliasId;
 
+    RangeMin,                sym::RangeMin,            ConstId;
+    RangeMax,                sym::RangeMax,            ConstId;
+    RangeSub,                sym::RangeSub,            FunctionId;
+
     @non_lang_core_traits:
     core::default, Default;
     core::fmt, Debug;
@@ -710,6 +730,7 @@ language_item_table! { LangItems =>
     PartialOrd_ge,                 FunctionId;
     PartialOrd_gt,                 FunctionId;
     Drop_drop,                     FunctionId;
+    Drop_pin_drop,                     FunctionId;
     Debug_fmt,                     FunctionId;
     Deref_deref,                   FunctionId;
     DerefMut_deref_mut,            FunctionId;

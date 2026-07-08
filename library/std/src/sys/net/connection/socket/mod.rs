@@ -46,6 +46,7 @@ cfg_select! {
         target_os = "haiku",
         target_os = "l4re",
         target_os = "nto",
+        target_os = "qnx",
         target_os = "nuttx",
         target_vendor = "apple",
     ) => {
@@ -65,7 +66,8 @@ cfg_select! {
         target_os = "dragonfly", target_os = "freebsd",
         target_os = "openbsd", target_os = "netbsd",
         target_os = "solaris", target_os = "illumos",
-        target_os = "haiku", target_os = "nto",
+        target_os = "haiku",
+        target_os = "nto", target_os = "qnx",
         target_os = "cygwin",
     ) => {
         use libc::MSG_NOSIGNAL;
@@ -80,7 +82,7 @@ cfg_select! {
         target_os = "dragonfly", target_os = "freebsd",
         target_os = "openbsd", target_os = "netbsd",
         target_os = "solaris", target_os = "illumos",
-        target_os = "nto",
+        target_os = "nto", target_os = "qnx",
     ) => {
         use crate::ffi::c_uchar;
         type IpV4MultiCastType = c_uchar;
@@ -414,7 +416,7 @@ impl TcpStream {
         self.inner.read(buf)
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf(buf)
     }
 

@@ -60,6 +60,8 @@ impl AbiMap {
             Arch::Msp430 => ArchKind::Msp430,
             Arch::Nvptx64 => ArchKind::Nvptx,
             Arch::RiscV32 | Arch::RiscV64 => ArchKind::Riscv,
+            Arch::SpirV => ArchKind::Spirv,
+            Arch::Wasm32 | Arch::Wasm64 => ArchKind::Wasm,
             Arch::X86 => ArchKind::X86,
             Arch::X86_64 => ArchKind::X86_64,
             _ => ArchKind::Other,
@@ -100,8 +102,7 @@ impl AbiMap {
             (ExternAbi::RustCold, _) if self.os == OsKind::Windows => CanonAbi::Rust,
             (ExternAbi::RustCold, _) => CanonAbi::RustCold,
             (ExternAbi::RustPreserveNone, _) => CanonAbi::RustPreserveNone,
-
-            (ExternAbi::Custom, _) => CanonAbi::Custom,
+            (ExternAbi::RustTail, _) => CanonAbi::RustTail,
 
             (ExternAbi::Swift, _) => CanonAbi::Swift,
 
@@ -120,6 +121,9 @@ impl AbiMap {
             /* multi-platform */
             // always and forever
             (ExternAbi::RustInvalid, _) => return AbiMapping::Invalid,
+
+            (ExternAbi::Custom, ArchKind::Wasm | ArchKind::Spirv) => return AbiMapping::Invalid,
+            (ExternAbi::Custom, _) => CanonAbi::Custom,
 
             (ExternAbi::EfiApi, ArchKind::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
             (ExternAbi::EfiApi, ArchKind::X86_64) => CanonAbi::X86(X86Call::Win64),
@@ -220,6 +224,8 @@ enum ArchKind {
     Riscv,
     X86,
     X86_64,
+    Wasm,
+    Spirv,
     /// Architectures which don't need other considerations for ABI lowering
     Other,
 }

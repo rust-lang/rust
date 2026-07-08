@@ -129,7 +129,7 @@ pub enum TryReserveErrorKind {
 )]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[cfg(not(test))]
-impl const Clone for TryReserveErrorKind {
+const impl Clone for TryReserveErrorKind {
     fn clone(&self) -> Self {
         match self {
             TryReserveErrorKind::CapacityOverflow => TryReserveErrorKind::CapacityOverflow,
@@ -150,7 +150,7 @@ pub use realalloc::collections::TryReserveErrorKind;
 )]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(not(test))]
-impl const From<TryReserveErrorKind> for TryReserveError {
+const impl From<TryReserveErrorKind> for TryReserveError {
     #[inline]
     fn from(kind: TryReserveErrorKind) -> Self {
         Self { kind }
@@ -160,7 +160,7 @@ impl const From<TryReserveErrorKind> for TryReserveError {
 #[unstable(feature = "try_reserve_kind", issue = "48043")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(not(test))]
-impl const From<LayoutError> for TryReserveErrorKind {
+const impl From<LayoutError> for TryReserveErrorKind {
     /// Always evaluates to [`TryReserveErrorKind::CapacityOverflow`].
     #[inline]
     fn from(_: LayoutError) -> Self {

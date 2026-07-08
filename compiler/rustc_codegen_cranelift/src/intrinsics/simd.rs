@@ -371,7 +371,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             for i in 0..lane_count {
-                let ret_lane = ret.place_lane(fx, i.into());
+                let ret_lane = ret.place_lane(fx, i);
                 ret_lane.write_cvalue(fx, value);
             }
         }

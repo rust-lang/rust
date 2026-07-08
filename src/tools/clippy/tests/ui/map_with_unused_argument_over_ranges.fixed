@@ -1,10 +1,5 @@
-#![allow(
-    unused,
-    clippy::redundant_closure,
-    clippy::reversed_empty_ranges,
-    clippy::identity_op
-)]
 #![warn(clippy::map_with_unused_argument_over_ranges)]
+#![allow(clippy::identity_op, clippy::redundant_closure, clippy::reversed_empty_ranges)]
 
 fn do_something() -> usize {
     todo!()

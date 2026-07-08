@@ -11,7 +11,7 @@ use crate::deriving::generic::{
     combine_substructure,
 };
 use crate::deriving::pathvec_std;
-use crate::errors;
+use crate::diagnostics;
 
 /// Generate an implementation of the `From` trait, provided that `item`
 /// is a struct or a tuple struct with exactly one field.
@@ -38,7 +38,7 @@ pub(crate) fn expand_deriving_from(
             if let [field] = data.fields() {
                 Ok(field.clone())
             } else {
-                let guar = cx.dcx().emit_err(errors::DeriveFromWrongFieldCount {
+                let guar = cx.dcx().emit_err(diagnostics::DeriveFromWrongFieldCount {
                     span: err_span(),
                     multiple_fields: data.fields().len() > 1,
                 });
@@ -46,7 +46,7 @@ pub(crate) fn expand_deriving_from(
             }
         }
         ItemKind::Enum(_, _, _) | ItemKind::Union(_, _, _) => {
-            let guar = cx.dcx().emit_err(errors::DeriveFromWrongTarget {
+            let guar = cx.dcx().emit_err(diagnostics::DeriveFromWrongTarget {
                 span: err_span(),
                 kind: &format!("{} {}", item.kind.article(), item.kind.descr()),
             });

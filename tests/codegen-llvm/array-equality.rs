@@ -9,8 +9,8 @@
 #[no_mangle]
 pub fn array_eq_value(a: [u16; 3], b: [u16; 3]) -> bool {
     // CHECK-NEXT: start:
-    // CHECK-NEXT: %2 = icmp eq i48 %0, %1
-    // CHECK-NEXT: ret i1 %2
+    // CHECK-NEXT: %_0 = icmp eq i48 %0, %1
+    // CHECK-NEXT: ret i1 %_0
     a == b
 }
 

@@ -10,7 +10,7 @@
 // tidy-alphabetical-end
 
 mod build;
-mod errors;
+mod diagnostics;
 mod mbe;
 mod placeholders;
 mod proc_macro_server;

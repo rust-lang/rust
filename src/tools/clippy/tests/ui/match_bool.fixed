@@ -1,5 +1,5 @@
-#![deny(clippy::match_bool)]
-#![allow(clippy::nonminimal_bool, clippy::eq_op)]
+#![warn(clippy::match_bool)]
+#![expect(clippy::eq_op, clippy::nonminimal_bool)]
 
 fn match_bool() {
     let test: bool = true;

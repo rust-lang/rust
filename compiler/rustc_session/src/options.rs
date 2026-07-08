@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::str;
 
 use rustc_abi::Align;
+use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hash::StableHasher;
@@ -726,7 +727,25 @@ fn build_options<O: Default>(
                 }
                 if let Some(tmod) = *tmod {
                     let v = value.map_or(String::new(), ToOwned::to_owned);
-                    collected_options.target_modifiers.insert(tmod, v);
+
+                    // Accumulate all the -Zsanitizer flags into a single target modifier.
+                    match tmod {
+                        OptionsTargetModifiers::UnstableOptions(
+                            UnstableOptionsTargetModifiers::Sanitizer,
+                        ) => {
+                            collected_options
+                                .target_modifiers
+                                .entry(tmod)
+                                .and_modify(|existing| {
+                                    existing.push(',');
+                                    existing.push_str(&v);
+                                })
+                                .or_insert(v);
+                        }
+                        _ => {
+                            collected_options.target_modifiers.insert(tmod, v);
+                        }
+                    }
                 }
                 if let Some(mitigation) = mitigation {
                     collected_options.mitigations.reset_mitigation(*mitigation, index);
@@ -765,7 +784,7 @@ mod desc {
     pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
     pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
-    pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
+    pub(crate) const parse_patchable_function_entry: &str = "a comma separated list of (prefix_nops,total_nops,section_name), (prefix_nops,total_nops), or (total_nops). Where prefix_nops <= total_nops where 0 < total_nops <= 255 and prefix_nops <= total_nops";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
     pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
@@ -783,6 +802,10 @@ mod desc {
     pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub(crate) const parse_instrument_coverage: &str = parse_bool;
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
+    pub(crate) const parse_codegen_retag_options: &str =
+        "either no value or a comma-separated list of settings: `no-precise-im`, `no-precise-pin`";
+    pub(crate) const parse_instrument_mcount: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc), or `fentry` on supported targets.";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -844,6 +867,7 @@ mod desc {
         super::mitigation_coverage::DeniedPartialMitigationKind::KINDS;
     pub(crate) const parse_deny_partial_mitigations: &str =
         super::mitigation_coverage::DeniedPartialMitigationKind::KINDS;
+    pub(crate) const parse_rust_version: &str = "a rust version (`xx.yy.zz`)";
 }
 
 pub mod parse {
@@ -1182,20 +1206,24 @@ pub mod parse {
     ) -> bool {
         let mut total_nops = 0;
         let mut prefix_nops = 0;
+        let mut section = None;
 
         if !parse_number(&mut total_nops, v) {
-            let parts = v.and_then(|v| v.split_once(',')).unzip();
-            if !parse_number(&mut total_nops, parts.0) {
+            let parts: Vec<_> = v.unwrap_or("").split(',').collect();
+            if parts.len() < 2 || parts.len() > 3 {
                 return false;
             }
-            if !parse_number(&mut prefix_nops, parts.1) {
+
+            if !parse_number(&mut total_nops, Some(parts[0])) {
                 return false;
             }
+            if !parse_number(&mut prefix_nops, Some(parts[1])) {
+                return false;
+            }
+            section = parts.get(2).map(|x| x.to_string());
         }
 
-        if let Some(pfe) =
-            PatchableFunctionEntry::from_total_and_prefix_nops(total_nops, prefix_nops)
-        {
+        if let Some(pfe) = PatchableFunctionEntry::from_parts(total_nops, prefix_nops, section) {
             *slot = pfe;
             return true;
         }
@@ -1523,6 +1551,29 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_codegen_retag_options(
+        slot: &mut Option<CodegenRetagOptions>,
+        v: Option<&str>,
+    ) -> bool {
+        let mut no_precise_im = false;
+        let mut no_precise_pin = false;
+        if let Some(opt_list) = v.map(|s| s.split(',')) {
+            for opt in opt_list {
+                match opt {
+                    "no-precise-im" => {
+                        no_precise_im = true;
+                    }
+                    "no-precise-pin" => {
+                        no_precise_pin = true;
+                    }
+                    _ => return false,
+                }
+            }
+        }
+        *slot = Some(CodegenRetagOptions { no_precise_im, no_precise_pin });
+        true
+    }
+
     pub(crate) fn parse_coverage_options(slot: &mut CoverageOptions, v: Option<&str>) -> bool {
         let Some(v) = v else { return true };
 
@@ -1536,6 +1587,19 @@ pub mod parse {
             }
         }
         true
+    }
+
+    pub(crate) fn parse_instrument_mcount(slot: &mut InstrumentMcount, v: Option<&str>) -> bool {
+        let mut use_mcount = false;
+        if parse_bool(&mut use_mcount, v) {
+            *slot = if use_mcount { InstrumentMcount::Mcount } else { InstrumentMcount::Disabled };
+            true
+        } else if let Some("fentry") = v {
+            *slot = InstrumentMcount::Fentry;
+            true
+        } else {
+            false
+        }
     }
 
     pub(crate) fn parse_instrument_xray(
@@ -1557,7 +1621,7 @@ pub mod parse {
         let mut seen_instruction_threshold = false;
         let mut seen_skip_entry = false;
         let mut seen_skip_exit = false;
-        for option in v.into_iter().flat_map(|v| v.split(',')) {
+        for option in v.map(|v| v.split(',')).into_flat_iter() {
             match option {
                 "always" if !seen_always && !seen_never => {
                     options.always = true;
@@ -2029,6 +2093,18 @@ pub mod parse {
         };
         true
     }
+
+    pub(crate) fn parse_rust_version(slot: &mut Option<RustcVersion>, v: Option<&str>) -> bool {
+        let Some(v) = v else {
+            return false;
+        };
+        if let Some(version) = RustcVersion::parse_str_strict(v) {
+            *slot = Some(version);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 options! {
@@ -2222,6 +2298,8 @@ options! {
         `=LooseTypes`
         `=Inline`
         Multiple options can be combined with commas."),
+    autodiff_post_passes: Option<String> = (None, parse_opt_string, [TRACKED],
+        "set llvm passes to run after enzyme (no passes run when it is empty)"),
     #[rustc_lint_opt_deny_field_access("use `Session::binary_dep_depinfo` instead of this field")]
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info \
@@ -2242,6 +2320,8 @@ options! {
         "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
+    codegen_emit_retag: Option<CodegenRetagOptions> = (None, parse_codegen_retag_options, [TRACKED],
+        "emit retag function calls in generated code"),
     codegen_source_order: bool = (false, parse_bool, [UNTRACKED],
         "emit mono items in the order of spans in source files (default: no)"),
     contract_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2252,12 +2332,12 @@ options! {
         "inject the given attribute in the crate"),
     cross_crate_inline_threshold: InliningThreshold = (InliningThreshold::Sometimes(100), parse_inlining_threshold, [TRACKED],
         "threshold to allow cross crate inlining of functions"),
-    debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
-        "emit discriminators and other data necessary for AutoFDO"),
     debug_info_type_line_numbers: bool = (false, parse_bool, [TRACKED],
         "emit type and line information for additional data types (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
         "compress debug info sections (none, zlib, zstd, default: none)"),
+    debuginfo_for_profiling: bool = (false, parse_bool, [TRACKED],
+        "emit discriminators and other data necessary for AutoFDO"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
         "deduplicate identical diagnostics (default: yes)"),
     default_visibility: Option<SymbolVisibility> = (None, parse_opt_symbol_visibility, [TRACKED],
@@ -2271,6 +2351,10 @@ options! {
         "Direct or use GOT indirect to reference external data symbols"),
     disable_fast_paths: bool = (false, parse_bool, [TRACKED],
         "disable various performance optimizations in trait solving"),
+    disable_incr_comp_backend_caching: bool = (false, parse_bool, [TRACKED],
+        "disable caching of compiled objects by the codegen backend during incremental compilation"),
+    disable_param_env_normalization_hack: bool = (false, parse_bool, [TRACKED],
+        "do not treat all aliases in the environment as rigid with `-Znext-solver`"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -2315,8 +2399,6 @@ options! {
         "embed source text in DWARF debug sections (default: no)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
-    emscripten_wasm_eh: bool = (true, parse_bool, [TRACKED],
-        "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
         "enforce the type length limit when monomorphizing instances in codegen"),
     experimental_default_bounds: bool = (false, parse_bool, [TRACKED],
@@ -2339,6 +2421,9 @@ options! {
     fmt_debug: FmtDebug = (FmtDebug::Full, parse_fmt_debug, [TRACKED],
         "how detailed `#[derive(Debug)]` should be. `full` prints types recursively, \
         `shallow` prints only type names, `none` prints nothing and disables `{:?}`. (default: `full`)"),
+    force_intrinsic_fallback: bool = (false, parse_bool, [TRACKED],
+        "always use the fallback body of an intrinsic, if it has one, instead of lowering \
+        the intrinsic in the codegen backend (default: no)."),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
     function_return: FunctionReturn = (FunctionReturn::default(), parse_function_return, [TRACKED],
@@ -2359,6 +2444,8 @@ options! {
         "allow deducing higher-ranked outlives assumptions from coroutines when proving auto traits"),
     hint_mostly_unused: bool = (false, parse_bool, [TRACKED],
         "hint that most of this crate will go unused, to minimize work for uncalled functions"),
+    hint_msrv: Option<RustcVersion> = (None, parse_rust_version, [TRACKED],
+        "control the minimum rust version for lints"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
         "generate human-readable, predictable names for codegen units (default: no)"),
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
@@ -2392,7 +2479,7 @@ options! {
         "a default MIR inlining threshold (default: 50)"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about AST and HIR (default: no)"),
-    instrument_mcount: bool = (false, parse_bool, [TRACKED],
+    instrument_mcount: InstrumentMcount = (InstrumentMcount::Disabled, parse_instrument_mcount, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
         "insert function instrument code for XRay-based tracing (default: no)
@@ -2404,6 +2491,14 @@ options! {
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas."),
+    // The only purpose of this flag is to act as a deterrent:
+    // Marking a feature that's only meant for testing as internal might not preclude somebody from
+    // trying to use it in `core` or `std` as both enable various internal features and utilize them
+    // throughout. This is intentionally a flag not another internal feature as having to modify the
+    // build cfg in `bootstrap` is arguably scarier than just needing to add `#![feature]`. It also
+    // stands out a lot more during code review making it easier to get caught.
+    internal_testing_features: bool = (false, parse_bool, [TRACKED],
+        "allow certain internal language features to be enabled that help exercise & test the compiler"),
     large_data_threshold: Option<u64> = (None, parse_opt_number, [TRACKED],
         "set the threshold for objects to be stored in a \"large data\" section \
          (only effective with -Ccode-model=medium, default: 65536)"),
@@ -2566,6 +2661,7 @@ options! {
         "use the given `.prof` file for sampled profile-guided optimization (also known as AutoFDO)"),
     profiler_runtime: String = (String::from("profiler_builtins"), parse_string, [TRACKED],
         "name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)"),
+    ptrauth_elf_got: bool = (false, parse_bool, [TRACKED], "enable signing of ELF GOT entries"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
@@ -2585,6 +2681,8 @@ options! {
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),
+    renormalize_rigid_aliases: bool = (false, parse_bool, [TRACKED],
+        "do not skip rigid aliases in normalization for internal debugging"),
     retpoline: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: Retpoline },
         "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
     retpoline_external_thunk: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: RetpolineExternalThunk },
@@ -2661,6 +2759,10 @@ written to standard error output)"),
         "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
     staticlib_allow_rdylib_deps: bool = (false, parse_bool, [TRACKED],
         "allow staticlibs to have rust dylib dependencies"),
+    staticlib_hide_internal_symbols: bool = (false, parse_bool, [TRACKED],
+        "hide non-exported Rust symbols when building staticlibs by setting STV_HIDDEN"),
+    staticlib_rename_internal_symbols: bool = (false, parse_bool, [TRACKED],
+        "rename non-exported Rust symbols when building staticlibs to avoid conflicts"),
     staticlib_prefer_dynamic: bool = (false, parse_bool, [TRACKED],
         "prefer dynamic linking to static linking for staticlibs (default: no)"),
     strict_init_checks: bool = (false, parse_bool, [TRACKED],
@@ -2708,9 +2810,9 @@ written to standard error output)"),
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
-    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_borrowck` instead of this field")]
-    typing_mode_borrowck: bool = (false, parse_bool, [TRACKED],
-        "enable `TypingMode::Borrowck`, changing the way opaque types are handled during MIR borrowck"),
+    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_post_typeck` instead of this field")]
+    typing_mode_post_typeck_until_borrowck: bool = (false, parse_bool, [TRACKED],
+        "enable `TypingMode::PostTypeckUntilBorrowck`, changing the way opaque types are handled during MIR borrowck"),
     #[rustc_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
     ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for Undefined Behavior (default: -Cdebug-assertions)"),
@@ -2723,7 +2825,7 @@ written to standard error output)"),
         "take the brakes off const evaluation. NOTE: this is unsound (default: no)"),
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "present the input source, unstable (and less-pretty) variants;
-        `normal`, `identified`,
+        `normal`,
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
         `ast-tree` (raw AST before expansion),

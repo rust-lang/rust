@@ -21,8 +21,8 @@ use crate::debuginfo::metadata::{
     file_metadata_from_def_id, type_di_node, unknown_file_metadata,
 };
 use crate::debuginfo::utils::{DIB, create_DIArray, get_namespace_for_item};
-use crate::llvm;
 use crate::llvm::debuginfo::{DIFlags, DIType};
+use crate::llvm::{self, ToLlvmBool};
 
 mod cpp_like;
 mod native;
@@ -111,16 +111,23 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
     let (size, align) = cx.size_and_align_of(base_type);
 
     let enumerator_di_nodes: SmallVec<Option<&'ll DIType>> = enumerators
-        .map(|(name, value)| unsafe {
-            let value = [value as u64, (value >> 64) as u64];
-            Some(llvm::LLVMRustDIBuilderCreateEnumerator(
-                DIB(cx),
-                name.as_c_char_ptr(),
-                name.len(),
-                value.as_ptr(),
-                size.bits() as libc::c_uint,
-                is_unsigned,
-            ))
+        .map(|(name, value)| {
+            let value_words = [value as u64, (value >> 64) as u64];
+            let size_in_bits = size.bits();
+            // LLVM computes `NumWords = (SizeInBits + 63) / 64`.
+            assert!((size_in_bits + 63) / 64 <= value_words.len() as u64);
+
+            let enumerator = unsafe {
+                llvm::LLVMDIBuilderCreateEnumeratorOfArbitraryPrecision(
+                    DIB(cx),
+                    name.as_ptr(),
+                    name.len(),
+                    size_in_bits,
+                    value_words.as_ptr(),
+                    is_unsigned.to_llvm_bool(),
+                )
+            };
+            Some(enumerator)
         })
         .collect();
 
@@ -321,7 +328,8 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
                 .map(|field_index| {
                     let coroutine_saved_local = coroutine_layout.variant_fields[variant_index]
                         [FieldIdx::from_usize(field_index)];
-                    let field_name_maybe = coroutine_layout.field_names[coroutine_saved_local];
+                    let field_name_maybe =
+                        coroutine_layout.field_tys[coroutine_saved_local].debuginfo_name;
                     let field_name = field_name_maybe
                         .as_ref()
                         .map(|s| Cow::from(s.as_str()))
@@ -419,7 +427,7 @@ fn compute_discriminant_value<'ll, 'tcx>(
                 DiscrResult::Range(min, max)
             } else {
                 let value = (variant_index.as_u32() as u128)
-                    .wrapping_sub(niche_variants.start().as_u32() as u128)
+                    .wrapping_sub(niche_variants.start.as_u32() as u128)
                     .wrapping_add(niche_start);
                 let value = tag.size(cx).truncate(value);
                 DiscrResult::Value(value)

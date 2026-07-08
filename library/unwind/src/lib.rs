@@ -1,10 +1,9 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
-#![feature(cfg_emscripten_wasm_eh)]
 #![feature(link_cfg)]
 #![feature(staged_api)]
 #![cfg_attr(
-    all(target_family = "wasm", any(not(target_os = "emscripten"), emscripten_wasm_eh)),
+    target_family = "wasm",
     feature(link_llvm_intrinsics, simd_wasm64, asm_experimental_arch)
 )]
 #![allow(internal_features)]
@@ -194,7 +193,7 @@ unsafe extern "C" {}
 #[link(name = "unwind")]
 unsafe extern "C" {}
 
-#[cfg(target_os = "nto")]
+#[cfg(any(target_os = "nto", target_os = "qnx"))]
 cfg_select! {
     target_env = "nto70" => {
         #[link(name = "gcc")]

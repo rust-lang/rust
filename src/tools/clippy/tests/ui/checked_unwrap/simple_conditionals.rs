@@ -1,10 +1,10 @@
 //@no-rustfix: has placeholders
 #![warn(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
 #![expect(
-    clippy::if_same_then_else,
     clippy::branches_sharing_code,
-    clippy::unnecessary_literal_unwrap,
-    clippy::self_assignment
+    clippy::if_same_then_else,
+    clippy::self_assignment,
+    clippy::unnecessary_literal_unwrap
 )]
 
 macro_rules! m {

@@ -1,6 +1,6 @@
 #![feature(rustc_attrs, pattern_types, pattern_type_macro)]
 #![warn(clippy::eager_transmute)]
-#![allow(clippy::transmute_int_to_non_zero, clippy::missing_transmute_annotations)]
+#![expect(clippy::missing_transmute_annotations, clippy::transmute_int_to_non_zero)]
 
 use std::num::NonZero;
 use std::pat::pattern_type;

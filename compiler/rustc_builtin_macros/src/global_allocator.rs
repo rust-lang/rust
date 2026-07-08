@@ -9,7 +9,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::util::check_builtin_macro_attribute;
 
 pub(crate) fn expand(
@@ -34,13 +34,14 @@ pub(crate) fn expand(
     {
         (item, *ident, true, ecx.with_def_site_ctxt(ty.span))
     } else {
-        ecx.dcx().emit_err(errors::AllocMustStatics { span: item.span() });
+        ecx.dcx().emit_err(diagnostics::AllocMustStatics { span: item.span() });
         return vec![orig_item];
     };
 
     // Forbid `#[thread_local]` attributes on the item
     if let Some(attr) = item.attrs.iter().find(|x| x.has_name(sym::thread_local)) {
-        ecx.dcx().emit_err(errors::AllocCannotThreadLocal { span: item.span, attr: attr.span });
+        ecx.dcx()
+            .emit_err(diagnostics::AllocCannotThreadLocal { span: item.span, attr: attr.span });
         return vec![orig_item];
     }
 

@@ -484,16 +484,6 @@ impl Rewrite for ast::WherePredicate {
                 ref lifetime,
                 ref bounds,
             }) => rewrite_bounded_lifetime(lifetime, bounds, self.span, context, shape)?,
-            ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate {
-                ref lhs_ty,
-                ref rhs_ty,
-                ..
-            }) => {
-                let lhs_ty_str = lhs_ty
-                    .rewrite_result(context, shape)
-                    .map(|lhs| lhs + " =")?;
-                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)?
-            }
         };
 
         let mut result = String::with_capacity(attrs_str.len() + pred_str.len() + 1);
@@ -1025,11 +1015,6 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::CVarArgs => Ok("...".to_owned()),
             ast::TyKind::Dummy | ast::TyKind::Err(_) => Ok(context.snippet(self.span).to_owned()),
-            ast::TyKind::Pat(ref ty, ref pat) => {
-                let ty = ty.rewrite_result(context, shape)?;
-                let pat = pat.rewrite_result(context, shape)?;
-                Ok(format!("{ty} is {pat}"))
-            }
             ast::TyKind::FieldOf(ref ty, ref variant, ref field) => {
                 let ty = ty.rewrite_result(context, shape)?;
                 if let Some(variant) = variant {
@@ -1063,6 +1048,14 @@ impl Rewrite for ast::Ty {
                 let rewrite = binder.inner_ty.rewrite_result(context, inner_ty_shape)?;
                 result.push_str(&rewrite);
                 Ok(result)
+            }
+
+            ast::TyKind::Pat(..) | ast::TyKind::View(..) => {
+                // These don't normally occur in the AST because macros aren't expanded. However,
+                // rustfmt tries to parse macro arguments when formatting macros, so it's not
+                // totally impossible for rustfmt to come across these nodes when formatting a file.
+                // Also, rustfmt might get passed the output from `-Zunpretty=expanded`.
+                Err(RewriteError::Unknown)
             }
         }
     }

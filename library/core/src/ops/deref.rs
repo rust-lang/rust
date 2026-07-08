@@ -152,7 +152,7 @@ pub const trait Deref: PointeeSized {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: ?Sized> const Deref for &T {
+const impl<T: ?Sized> Deref for &T {
     type Target = T;
 
     #[rustc_diagnostic_item = "noop_method_deref"]
@@ -166,7 +166,7 @@ impl<T: ?Sized> !DerefMut for &T {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: ?Sized> const Deref for &mut T {
+const impl<T: ?Sized> Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -276,7 +276,7 @@ pub const trait DerefMut: [const] Deref + PointeeSized {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: ?Sized> const DerefMut for &mut T {
+const impl<T: ?Sized> DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T {
         self
     }

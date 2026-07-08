@@ -493,15 +493,16 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
+    /// let map: HashMap<&str, i32> = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
     ///     ("c", 3),
     /// ]);
     ///
-    /// for key in map.keys() {
-    ///     println!("{key}");
-    /// }
+    /// let mut values: Vec<_> = map.keys().copied().collect();
+    /// values.sort();
+    ///
+    /// assert_eq!(values, vec!["a", "b", "c"]);
     /// ```
     ///
     /// # Performance
@@ -555,15 +556,16 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
+    /// let map: HashMap<&str, i32> = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
     ///     ("c", 3),
     /// ]);
     ///
-    /// for val in map.values() {
-    ///     println!("{val}");
-    /// }
+    /// let mut values: Vec<_> = map.values().copied().collect();
+    /// values.sort();
+    ///
+    /// assert_eq!(values, vec![1, 2, 3]);
     /// ```
     ///
     /// # Performance
@@ -591,12 +593,12 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// ]);
     ///
     /// for val in map.values_mut() {
-    ///     *val = *val + 10;
+    ///     *val += 10;
     /// }
     ///
-    /// for val in map.values() {
-    ///     println!("{val}");
-    /// }
+    /// assert_eq!(map.get("a"), Some(&11));
+    /// assert_eq!(map.get("b"), Some(&12));
+    /// assert_eq!(map.get("c"), Some(&13));
     /// ```
     ///
     /// # Performance
@@ -656,9 +658,13 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///     ("c", 3),
     /// ]);
     ///
-    /// for (key, val) in map.iter() {
-    ///     println!("key: {key} val: {val}");
+    /// let mut count = 0;
+    ///
+    /// for (_key, _val) in map.iter() {
+    ///     count += 1;
     /// }
+    ///
+    /// assert_eq!(count, 3);
     /// ```
     ///
     /// # Performance
@@ -691,9 +697,9 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///     *val *= 2;
     /// }
     ///
-    /// for (key, val) in &map {
-    ///     println!("key: {key} val: {val}");
-    /// }
+    /// assert_eq!(map.get("a"), Some(&2));
+    /// assert_eq!(map.get("b"), Some(&4));
+    /// assert_eq!(map.get("c"), Some(&6));
     /// ```
     ///
     /// # Performance
@@ -1480,7 +1486,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<K, V, S> const Default for HashMap<K, V, S>
+const impl<K, V, S> Default for HashMap<K, V, S>
 where
     S: [const] Default,
 {
@@ -2532,9 +2538,42 @@ impl<'a, K, V, A: Allocator> Entry<'a, K, V, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+        self.or_try_insert_with(|| Result::<_, !>::Ok(default())).unwrap()
+    }
+
+    /// Ensures a value is in the entry by inserting the result of a fallible default function
+    /// if empty, and returns a mutable reference to the value in the entry.
+    ///
+    /// This method works identically to [`or_insert_with`] except that the default function
+    /// should return a `Result` and, in the case of an error, the error is propagated.
+    ///
+    /// [`or_insert_with`]: Self::or_insert_with
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_entry)]
+    /// # fn main() -> Result<(), std::num::ParseIntError> {
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<&str, usize> = HashMap::new();
+    /// let value = "42";
+    ///
+    /// map.entry("poneyland").or_try_insert_with(|| value.parse())?;
+    ///
+    /// assert_eq!(map["poneyland"], 42);
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "try_entry", issue = "157354")]
+    pub fn or_try_insert_with<F: FnOnce() -> Result<V, E>, E>(
+        self,
+        default: F,
+    ) -> Result<&'a mut V, E> {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default()),
+            Occupied(entry) => Ok(entry.into_mut()),
+            Vacant(entry) => Ok(entry.insert(default()?)),
         }
     }
 
@@ -2559,11 +2598,44 @@ impl<'a, K, V, A: Allocator> Entry<'a, K, V, A> {
     #[inline]
     #[stable(feature = "or_insert_with_key", since = "1.50.0")]
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
+        self.or_try_insert_with_key(|k| Result::<_, !>::Ok(default(k))).into_ok()
+    }
+
+    /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
+    /// This method allows for generating key-derived values for insertion by providing the default
+    /// function a reference to the key that was moved during the `entry(key)` method call.
+    ///
+    /// This method works identically to [`or_insert_with_key`] except that the default function
+    /// should return a `Result` and, in the case of an error, the error is propagated.
+    ///
+    /// [`or_insert_with_key`]: Self::or_insert_with_key
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_entry)]
+    /// # fn main() -> Result<(), std::num::ParseIntError> {
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<&str, usize> = HashMap::new();
+    ///
+    /// map.entry("42").or_try_insert_with_key(|key| key.parse())?;
+    ///
+    /// assert_eq!(map["42"], 42);
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "try_entry", issue = "157354")]
+    pub fn or_try_insert_with_key<F: FnOnce(&K) -> Result<V, E>, E>(
+        self,
+        default: F,
+    ) -> Result<&'a mut V, E> {
         match self {
-            Occupied(entry) => entry.into_mut(),
+            Occupied(entry) => Ok(entry.into_mut()),
             Vacant(entry) => {
-                let value = default(entry.key());
-                entry.insert(value)
+                let value = default(entry.key())?;
+                Ok(entry.insert(value))
             }
         }
     }

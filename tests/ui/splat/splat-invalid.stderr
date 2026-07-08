@@ -1,0 +1,106 @@
+error: multiple `#[splat]`s are not allowed in the same function
+  --> $DIR/splat-invalid.rs:7:19
+   |
+LL | fn multisplat_bad(#[splat] (_a, _b): (u32, i8), #[splat] (_c, _d): (u32, i8)) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `#[splat]` from all but one argument
+
+error: `...` and `#[splat]` are not allowed in the same function
+  --> $DIR/splat-invalid.rs:10:37
+   |
+LL | unsafe extern "C" fn splat_variadic(#[splat] (_a, _b): (u32, i8), varargs: ...) {}
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^
+   |
+   = help: remove `#[splat]` or remove `...`
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/splat-invalid.rs:13:38
+   |
+LL | unsafe extern "C" fn splat_variadic2(varargs: ..., #[splat] (_a, _b): (u32, i8)) {}
+   |                                      ^^^^^^^^^^^^
+
+error: `...` and `#[splat]` are not allowed in the same function
+  --> $DIR/splat-invalid.rs:13:38
+   |
+LL | unsafe extern "C" fn splat_variadic2(varargs: ..., #[splat] (_a, _b): (u32, i8)) {}
+   |                                      ^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `#[splat]` or remove `...`
+
+error: incorrect function inside `extern` block
+  --> $DIR/splat-invalid.rs:18:8
+   |
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL |     fn splat_variadic3(#[splat] (_a, _b): (u32, i8), ...) {}
+   |        ^^^^^^^^^^^^^^^ cannot have a body                 -- help: remove the invalid body: `;`
+   |
+   = help: you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `...` and `#[splat]` are not allowed in the same function
+  --> $DIR/splat-invalid.rs:18:24
+   |
+LL |     fn splat_variadic3(#[splat] (_a, _b): (u32, i8), ...) {}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^
+   |
+   = help: remove `#[splat]` or remove `...`
+
+error: incorrect function inside `extern` block
+  --> $DIR/splat-invalid.rs:22:8
+   |
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+...
+LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
+   |        ^^^^^^^^^^^^^^^ cannot have a body                 -- help: remove the invalid body: `;`
+   |
+   = help: you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/splat-invalid.rs:22:24
+   |
+LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
+   |                        ^^^
+
+error: `...` and `#[splat]` are not allowed in the same function
+  --> $DIR/splat-invalid.rs:22:24
+   |
+LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
+   |                        ^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `#[splat]` or remove `...`
+
+error[E0053]: method `has_splat` has an incompatible type for trait
+  --> $DIR/splat-invalid.rs:42:5
+   |
+LL |     fn has_splat(_: ()) {}
+   |     ^^^^^^^^^^^^^^^^^^^ expected fn with arg 0 splatted, found fn with no splatted arg
+   |
+note: type in trait
+  --> $DIR/splat-invalid.rs:34:5
+   |
+LL |     fn has_splat(#[splat] _: ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn(#[splat] ())`
+              found signature `fn(())`
+
+error[E0053]: method `no_splat` has an incompatible type for trait
+  --> $DIR/splat-invalid.rs:44:5
+   |
+LL |     fn no_splat(#[splat] _: (u32, f64)) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected fn with no splatted arg, found fn with arg 0 splatted
+   |
+note: type in trait
+  --> $DIR/splat-invalid.rs:36:5
+   |
+LL |     fn no_splat(_: (u32, f64));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn((_, _))`
+              found signature `fn(#[splat] (_, _))`
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

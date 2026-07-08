@@ -58,7 +58,7 @@
 
 // STACK BY REF
 //@ lldb-command:v *self
-//@ lldb-check:[...] { x = (8888, -8888) }
+//@ lldb-check:[...] {x:(8888, -8888)}
 //@ lldb-command:v arg1
 //@ lldb-check:[...] -1
 //@ lldb-command:v arg2
@@ -67,7 +67,7 @@
 
 // STACK BY VAL
 //@ lldb-command:v self
-//@ lldb-check:[...] { x = (8888, -8888) }
+//@ lldb-check:[...] {x:(8888, -8888)}
 //@ lldb-command:v arg1
 //@ lldb-check:[...] -3
 //@ lldb-command:v arg2
@@ -76,7 +76,7 @@
 
 // OWNED BY REF
 //@ lldb-command:v *self
-//@ lldb-check:[...] { x = 1234.5 }
+//@ lldb-check:[...] {x:1234.5}
 //@ lldb-command:v arg1
 //@ lldb-check:[...] -5
 //@ lldb-command:v arg2
@@ -85,7 +85,7 @@
 
 // OWNED BY VAL
 //@ lldb-command:v self
-//@ lldb-check:[...] { x = 1234.5 }
+//@ lldb-check:[...] {x:1234.5}
 //@ lldb-command:v arg1
 //@ lldb-check:[...] -7
 //@ lldb-command:v arg2
@@ -94,7 +94,7 @@
 
 // OWNED MOVED
 //@ lldb-command:v *self
-//@ lldb-check:[...] { x = 1234.5 }
+//@ lldb-check:[...] {x:1234.5}
 //@ lldb-command:v arg1
 //@ lldb-check:[...] -9
 //@ lldb-command:v arg2

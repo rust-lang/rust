@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 
+use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
@@ -100,47 +101,48 @@ pub enum Applicability {
 /// have that amount of lints listed. `u16` values should therefore suffice.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
 pub enum LintExpectationId {
-    /// Used for lints emitted during the `EarlyLintPass`. This id is not
-    /// hash stable and should not be cached.
-    Unstable { attr_id: AttrId, lint_index: Option<u16> },
-    /// The [`HirId`] that the lint expectation is attached to. This id is
-    /// stable and can be cached. The additional index ensures that nodes with
-    /// several expectations can correctly match diagnostics to the individual
-    /// expectation.
-    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
+    Unstable(UnstableLintExpectationId),
+    Stable(StableLintExpectationId),
 }
 
-impl LintExpectationId {
-    pub fn is_stable(&self) -> bool {
-        match self {
-            LintExpectationId::Unstable { .. } => false,
-            LintExpectationId::Stable { .. } => true,
-        }
-    }
+/// Used for lints emitted during the `EarlyLintPass`. This id is not hash
+/// stable and should not be cached.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
+pub struct UnstableLintExpectationId {
+    pub attr_id: AttrId,
+    pub lint_index: u16,
+}
 
-    pub fn set_lint_index(&mut self, new_lint_index: Option<u16>) {
-        let (LintExpectationId::Unstable { lint_index, .. }
-        | LintExpectationId::Stable { lint_index, .. }) = self;
-
-        *lint_index = new_lint_index
+impl From<UnstableLintExpectationId> for LintExpectationId {
+    fn from(id: UnstableLintExpectationId) -> LintExpectationId {
+        LintExpectationId::Unstable(id)
     }
 }
 
-impl StableHash for LintExpectationId {
+/// The [`HirId`] that the lint expectation is attached to. This id is stable
+/// and can be cached. The additional index ensures that nodes with several
+/// expectations can correctly match diagnostics to the individual expectation.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
+pub struct StableLintExpectationId {
+    pub hir_id: HirId,
+    pub attr_index: u16,
+    pub lint_index: u16,
+}
+
+impl StableHash for StableLintExpectationId {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                hir_id.stable_hash(hcx, hasher);
-                attr_index.stable_hash(hcx, hasher);
-                lint_index.stable_hash(hcx, hasher);
-            }
-            _ => {
-                unreachable!(
-                    "StableHash should only be called for filled and stable `LintExpectationId`"
-                )
-            }
-        }
+        let StableLintExpectationId { hir_id, attr_index, lint_index } = self;
+
+        hir_id.stable_hash(hcx, hasher);
+        attr_index.stable_hash(hcx, hasher);
+        lint_index.stable_hash(hcx, hasher);
+    }
+}
+
+impl From<StableLintExpectationId> for LintExpectationId {
+    fn from(id: StableLintExpectationId) -> LintExpectationId {
+        LintExpectationId::Stable(id)
     }
 }
 
@@ -304,6 +306,9 @@ pub struct Lint {
 
     /// `true` if this lint is unaffected by `-D warnings`
     pub ignore_deny_warnings: bool,
+
+    /// Used to avoid lints which would affect MSRV
+    pub rust_version: Option<RustcVersion>,
 }
 
 /// Extra information for a future incompatibility lint.
@@ -520,7 +525,40 @@ impl Lint {
             crate_level_only: false,
             eval_always: false,
             ignore_deny_warnings: false,
+            rust_version: None,
         }
+    }
+
+    // FIXME(const-hack): This is used so that `declare_lint` can declare an MSRV statically.
+    // `RustcVersion::parse_str_strict` should ideally be used instead.
+    pub const fn parse_rust_version(version: &str) -> RustcVersion {
+        const fn parse_part(input: &mut &[u8]) -> u16 {
+            let mut val = 0;
+            let mut idx = 0;
+            while idx < input.len() {
+                let v = input[idx];
+                match v {
+                    b'0'..=b'9' => {
+                        val = val * 10 + (v - b'0') as u16;
+                    }
+                    b'.' => {
+                        idx += 1;
+                        break;
+                    }
+                    _ => panic!("invalid character in version"),
+                }
+                idx += 1;
+            }
+            *input = input.split_at(idx).1;
+            val
+        }
+
+        let mut bytes = version.as_bytes();
+        let major = parse_part(&mut bytes);
+        let minor = parse_part(&mut bytes);
+        let patch = parse_part(&mut bytes);
+        assert!(bytes.is_empty());
+        RustcVersion { major, minor, patch }
     }
 
     /// Gets the lint's name, with ASCII letters converted to lowercase.
@@ -670,6 +708,7 @@ macro_rules! declare_lint {
         $($field:ident : $val:expr),* $(,)*
      }; )?
      $(@edition $lint_edition:ident => $edition_level:ident;)?
+     $(@msrv = $msrv:literal;)?
      $($v:ident),*) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
@@ -686,6 +725,7 @@ macro_rules! declare_lint {
             }),)?
             $(edition_lint_opts: Some(($crate::Edition::$lint_edition, $crate::$edition_level)),)?
             $(eval_always: $eval_always,)?
+            $(rust_version: Some($crate::Lint::parse_rust_version($msrv)),)?
             ..$crate::Lint::default_fields_for_macro()
         };
     );

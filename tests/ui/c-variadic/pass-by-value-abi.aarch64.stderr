@@ -27,7 +27,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
                    },
                    mode: Indirect {
                        attrs: ArgAttributes {
-                           regular: CapturesAddress | NoAlias | NonNull | NoUndef,
+                           regular: CapturesAddress | NoAlias | NonNull | NoUndef | NoFree,
                            arg_ext: None,
                            pointee_size: Size(32 bytes),
                            pointee_align: Some(

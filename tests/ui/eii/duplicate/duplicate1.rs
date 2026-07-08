@@ -1,4 +1,3 @@
-//@ no-prefer-dynamic
 //@ aux-build: impl1.rs
 //@ aux-build: impl2.rs
 //@ ignore-backends: gcc

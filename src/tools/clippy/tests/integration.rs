@@ -14,11 +14,6 @@ use std::env;
 use std::ffi::OsStr;
 use std::process::Command;
 
-#[cfg(not(windows))]
-const CARGO_CLIPPY: &str = "cargo-clippy";
-#[cfg(windows)]
-const CARGO_CLIPPY: &str = "cargo-clippy.exe";
-
 #[cfg_attr(feature = "integration", test)]
 fn integration_test() {
     let repo_name = env::var("INTEGRATION").expect("`INTEGRATION` var not set");
@@ -44,14 +39,9 @@ fn integration_test() {
         .expect("unable to run git");
     assert!(st.success());
 
-    let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let target_dir = std::path::Path::new(&root_dir).join("target");
-    let clippy_binary = target_dir.join(env!("PROFILE")).join(CARGO_CLIPPY);
-
-    let output = Command::new(clippy_binary)
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-clippy"))
         .current_dir(repo_dir)
         .env("RUST_BACKTRACE", "full")
-        .env("CARGO_TARGET_DIR", target_dir)
         .args([
             "clippy",
             "--all-targets",

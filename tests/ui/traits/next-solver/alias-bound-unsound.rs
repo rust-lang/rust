@@ -21,14 +21,13 @@ trait Foo {
 impl Foo for () {
     type Item = String where String: Copy;
     //~^ ERROR overflow evaluating the requirement `String: Copy`
+    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
 }
 
 fn main() {
     let x = String::from("hello, world");
     let _ = identity(<() as Foo>::copy_me(&x));
     //~^ ERROR: overflow evaluating the requirement `<() as Foo>::Item == String` [E0275]
-    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
-    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
     //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
     println!("{x}");
 }

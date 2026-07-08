@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![warn(clippy::mut_range_bound)]
 
 fn main() {}
 

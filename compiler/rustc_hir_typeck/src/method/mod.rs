@@ -2,7 +2,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir-typeck/method-lookup.html
 
-mod confirm;
+pub(crate) mod confirm;
 mod prelude_edition_lints;
 pub(crate) mod probe;
 mod suggest;

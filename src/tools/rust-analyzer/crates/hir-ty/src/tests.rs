@@ -460,7 +460,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                         AdtId::EnumId(id) => variants.extend(
                             id.enum_variants(&db)
                                 .variants
-                                .iter()
+                                .values()
                                 .map(|&(variant, ..)| (variant.into(), krate)),
                         ),
                     }
@@ -514,7 +514,8 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         for (def, krate) in defs {
             let (body, source_map) = Body::with_source_map(&db, def);
             let infer = InferenceResult::of(&db, def);
-            let self_param = body.self_param().map(|id| (id, source_map.self_param_syntax()));
+            let self_param =
+                body.self_param.map(|param| (param.formal, source_map.self_param_syntax()));
             infer_def(infer, body, source_map, self_param, krate);
         }
 
@@ -600,7 +601,7 @@ pub(crate) fn visit_module(
                     visit_body(db, body, cb);
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(it)) => {
-                    it.enum_variants(db).variants.iter().for_each(|&(it, _, _)| {
+                    it.enum_variants(db).variants.values().for_each(|&(it, _)| {
                         let body = Body::of(db, it.into());
                         cb(it.into());
                         visit_body(db, body, cb);

@@ -35,6 +35,7 @@ use crate::clone::TrivialClone;
 use crate::cmp::Ordering;
 use crate::marker::{Destruct, DiscriminantKind};
 use crate::panic::const_assert;
+use crate::ub_checks::assert_unsafe_precondition;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
 mod alignment;
@@ -371,6 +372,13 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[rustc_const_stable(feature = "const_mem_size_of", since = "1.24.0")]
 #[rustc_diagnostic_item = "mem_size_of"]
 pub const fn size_of<T>() -> usize {
+    // By making this a constant, we also guarantee that the constant can be successfully evaluated
+    // in any program execution that actually executes `size_of`. Which is relevant because the
+    // constant can fail to evaluate if the type is too big. Someone might do something cursed where
+    // soundness relies on a certain type not being too big, and they check that by just invoking
+    // size_of on the type to ensure it exists, so if we fully DCE'd size_of calls that would be
+    // considered unsound... but by making this a constant, it participates in the usual "required
+    // consts" system, and we are safe.
     <T as SizedTypeProperties>::SIZE
 }
 
@@ -506,7 +514,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::align_of_val(val) }
 }
 
-/// Returns the [ABI]-required minimum alignment of a type in bytes.
+/// Returns the [ABI]-required minimum alignment of a type, in bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -519,6 +527,11 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 /// assert_eq!(4, align_of::<i32>());
 /// ```
+///
+/// (Caution: [it is not guaranteed][type-layout] that the alignment of `i32` is `4`;
+/// that is, the above assertion does not pass on all platforms.)
+///
+/// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
 #[inline(always)]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -529,10 +542,12 @@ pub const fn align_of<T>() -> usize {
     <T as SizedTypeProperties>::ALIGN
 }
 
-/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to, in
 /// bytes.
 ///
-/// Every reference to a value of the type `T` must be a multiple of this number.
+/// This function is identical to [`align_of::<T>()`][align_of] whenever <code>T: [Sized]</code>,
+/// but also supports determining the alignment required by a `dyn Trait` value, which is the
+/// alignment of the underlying concrete type.
 ///
 /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
 ///
@@ -541,6 +556,22 @@ pub const fn align_of<T>() -> usize {
 /// ```
 /// assert_eq!(4, align_of_val(&5i32));
 /// ```
+///
+/// (Caution: [it is not guaranteed][type-layout] that the alignment of `i32` is `4`;
+/// that is, this example assertion does not pass on all platforms.)
+///
+/// `dyn` types may have different alignments for different values;
+/// `align_of_val` can be used to learn those alignments:
+///
+/// ```
+/// let a: &dyn ToString = &1234u16;
+/// let b: &dyn ToString = &String::from("abcd");
+///
+/// assert_eq!(align_of_val(a), align_of::<u16>());
+/// assert_eq!(align_of_val(b), align_of::<String>());
+/// ```
+///
+/// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -550,10 +581,12 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::align_of_val(val) }
 }
 
-/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to, in
 /// bytes.
 ///
-/// Every reference to a value of the type `T` must be a multiple of this number.
+/// This function is identical to [`align_of_val()`], except that it can be used with raw pointers
+/// in situations where it would be unsound or undesirable to convert them to
+/// [`&` references][primitive@reference] and impose the aliasing rules that come with that.
 ///
 /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
 ///
@@ -589,6 +622,11 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// assert_eq!(4, unsafe { mem::align_of_val_raw(&5i32) });
 /// ```
+///
+/// (Caution: [it is not guaranteed][type-layout] that the alignment of `i32` is `4`;
+/// that is, the above assertion does not pass on all platforms.)
+///
+/// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
 #[inline]
 #[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
@@ -1040,6 +1078,27 @@ pub const fn copy<T: Copy>(x: &T) -> T {
 ///
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
+/// If you have a raw pointer instead of a reference, you might be looking for
+/// `src.cast::<Dst>().`[`read_unaligned()`](pointer#method.read_unaligned) instead.
+///
+/// # Safety
+///
+/// - Requires `size_of_val::<Src>(src) >= size_of::<Dst>()`
+/// - The first `size_of::<Dst>()` bytes behind `src` must be *readable*
+/// - The first `size_of::<Dst>()` bytes behind `src` must be *[valid]*
+///   when interpreted as a `Dst`.
+///
+/// On top of that, remember that most types have additional invariants beyond merely
+/// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
+/// is considered initialized (under the current implementation; this does not constitute
+/// a stable guarantee) because the only requirement the compiler knows about it
+/// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
+/// *immediate* undefined behavior, but will cause undefined behavior with most
+/// safe operations (including dropping it).
+///
+/// [valid]: ../../reference/behavior-considered-undefined.html#r-undefined.validity
+/// [`Vec<T>`]: ../../std/vec/struct.Vec.html
+///
 /// # Examples
 ///
 /// ```
@@ -1064,20 +1123,32 @@ pub const fn copy<T: Copy>(x: &T) -> T {
 ///
 /// // The contents of 'foo_array' should not have changed
 /// assert_eq!(foo_array, [10]);
+///
+/// let bytes: &[u8] = &[1, 2, 3, 4, 5, 6, 7];
+/// assert_eq!(
+///     unsafe { mem::transmute_copy::<[u8], u32>(bytes) },
+///     u32::from_ne_bytes(*bytes.first_chunk().unwrap()),
+/// );
 /// ```
 #[inline]
 #[must_use]
 #[track_caller]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_transmute_copy", since = "1.74.0")]
-pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
-    assert!(
-        size_of::<Src>() >= size_of::<Dst>(),
-        "cannot transmute_copy if Dst is larger than Src"
+pub const unsafe fn transmute_copy<Src: ?Sized, Dst>(src: &Src) -> Dst {
+    // library UB because it's possible for the `Src` to be only a subset of the allocation
+    // and thus for a failure to not be immediate language UB
+    assert_unsafe_precondition!(
+        check_library_ub,
+        "cannot transmute_copy if Dst is larger than Src",
+        (
+            src_size: usize = size_of_val::<Src>(src),
+            dst_size: usize = Dst::SIZE,
+        ) => src_size >= dst_size
     );
 
     // If Dst has a higher alignment requirement, src might not be suitably aligned.
-    if align_of::<Dst>() > align_of::<Src>() {
+    if align_of::<Dst>() > align_of_val::<Src>(src) {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
         // The caller must guarantee that the actual transmutation is safe.
         unsafe { ptr::read_unaligned(src as *const Src as *const Dst) }
@@ -1159,6 +1230,9 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
 /// New version of `transmute`, exposed under this name so it can be iterated upon
 /// without risking breakage to uses of "real" transmute.
 ///
+/// Uses a `const`-`assert` to check the sizes instead of typeck hacks,
+/// but is semantially identical to `transmute` otherwise.
+///
 /// It will not be stabilized under this name.
 ///
 /// # Examples
@@ -1177,6 +1251,8 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
 /// unsafe { transmute_neo::<u32, u16>(123) };
 /// ```
 #[unstable(feature = "transmute_neo", issue = "155079")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[inline]
 pub const unsafe fn transmute_neo<Src, Dst>(src: Src) -> Dst {
     const { assert!(Src::SIZE == Dst::SIZE) };
 
@@ -1567,9 +1643,10 @@ impl<T> SizedTypeProperties for T {}
 /// [`offset_of_enum`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-enum.html
 /// [`offset_of_slice`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-slice.html
 #[stable(feature = "offset_of", since = "1.77.0")]
-#[diagnostic::on_unmatch_args(
+#[diagnostic::on_unmatched_args(
     note = "this macro expects a container type and a (nested) field path, like `offset_of!(Type, field)`"
 )]
+#[doc(alias = "memoffset")]
 #[allow_internal_unstable(builtin_syntax, core_intrinsics)]
 pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
     // The `{}` is for better error messages
@@ -1619,7 +1696,7 @@ pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
 #[rustc_const_unstable(feature = "mem_conjure_zst", issue = "95383")]
 pub const unsafe fn conjure_zst<T>() -> T {
     const_assert!(
-        size_of::<T>() == 0,
+        T::IS_ZST,
         "mem::conjure_zst invoked on a non-zero-sized type",
         "mem::conjure_zst invoked on type {name}, which is not zero-sized",
         name: &str = crate::any::type_name::<T>()

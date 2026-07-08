@@ -18,22 +18,34 @@ pub(super) fn check<'tcx>(
     right: &'tcx Expr<'_>,
     msrv: Msrv,
 ) {
+    let (maybe_add_expr, require_uint) =
+        if op == BinOpKind::Div && (is_integer_literal(right, 2) || is_float_literal(right, 2.0)) {
+            (left, false)
+        } else if op == BinOpKind::Mul && is_float_literal(left, 0.5) {
+            (right, false)
+        } else if op == BinOpKind::Mul && is_float_literal(right, 0.5) {
+            (left, false)
+        } else if op == BinOpKind::Shr && is_integer_literal(right, 1) {
+            (left, true)
+        } else {
+            return;
+        };
+
     if !left.span.from_expansion()
         && !right.span.from_expansion()
-        && op == BinOpKind::Div
-        && (is_integer_literal(right, 2) || is_float_literal(right, 2.0))
-        && let Some((ll_expr, lr_expr)) = add_operands(left)
-        && add_operands(ll_expr).is_none() && add_operands(lr_expr).is_none()
-        && let left_ty = cx.typeck_results().expr_ty_adjusted(ll_expr)
-        && let right_ty = cx.typeck_results().expr_ty_adjusted(lr_expr)
+        && let Some((add_l_expr, add_r_expr)) = add_operands(maybe_add_expr)
+        && add_operands(add_l_expr).is_none() && add_operands(add_r_expr).is_none()
+        && let left_ty = cx.typeck_results().expr_ty_adjusted(add_l_expr)
+        && let right_ty = cx.typeck_results().expr_ty_adjusted(add_r_expr)
         && left_ty == right_ty
+        && (!require_uint || matches!(left_ty.kind(), ty::Uint(_)))
         // Do not lint on `(_+1)/2` and `(1+_)/2`, it is likely a `div_ceil()` operation
-        && !is_integer_literal(ll_expr, 1) && !is_integer_literal(lr_expr, 1)
+        && !is_integer_literal(add_l_expr, 1) && !is_integer_literal(add_r_expr, 1)
         && is_midpoint_implemented(cx, left_ty, msrv)
     {
         let mut app = Applicability::MachineApplicable;
-        let left_sugg = Sugg::hir_with_context(cx, ll_expr, expr.span.ctxt(), "..", &mut app);
-        let right_sugg = Sugg::hir_with_context(cx, lr_expr, expr.span.ctxt(), "..", &mut app);
+        let left_sugg = Sugg::hir_with_context(cx, add_l_expr, expr.span.ctxt(), "..", &mut app);
+        let right_sugg = Sugg::hir_with_context(cx, add_r_expr, expr.span.ctxt(), "..", &mut app);
         let sugg = format!("{left_ty}::midpoint({left_sugg}, {right_sugg})");
         span_lint_and_sugg(
             cx,

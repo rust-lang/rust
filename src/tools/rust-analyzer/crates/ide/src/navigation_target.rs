@@ -50,7 +50,6 @@ pub struct NavigationTarget {
     pub kind: Option<SymbolKind>,
     pub container_name: Option<Symbol>,
     pub description: Option<String>,
-    // FIXME: Use the database lifetime here.
     pub docs: Option<Documentation<'static>>,
     /// In addition to a `name` field, a `NavigationTarget` may also be aliased
     /// In such cases we want a `NavigationTarget` to be accessible by its alias
@@ -964,7 +963,7 @@ pub(crate) fn orig_range_with_focus_r(
                             // *should* contain the name
                             _ => {
                                 let call = call();
-                                let kind = call.kind;
+                                let kind = &call.kind;
                                 let range = kind.clone().original_call_range_with_input(db);
                                 //If the focus range is in the attribute/derive body, we
                                 // need to point the call site to the entire body, if not, fall back

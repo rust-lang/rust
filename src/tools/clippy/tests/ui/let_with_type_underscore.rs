@@ -1,7 +1,6 @@
 //@aux-build: proc_macros.rs
-#![allow(unused)]
 #![warn(clippy::let_with_type_underscore)]
-#![allow(clippy::let_unit_value, clippy::needless_late_init)]
+#![allow(clippy::needless_late_init)]
 
 extern crate proc_macros;
 

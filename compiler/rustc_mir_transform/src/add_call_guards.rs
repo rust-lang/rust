@@ -15,6 +15,7 @@
 //!
 //! NOTE: Simplify CFG will happily undo most of the work this pass does.
 
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -86,7 +87,11 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
         let cur_len = body.basic_blocks.len();
         let mut new_block = |source_info: SourceInfo, is_cleanup: bool, target: BasicBlock| {
             let block = BasicBlockData::new(
-                Some(Terminator { source_info, kind: TerminatorKind::Goto { target } }),
+                Some(Terminator {
+                    source_info,
+                    kind: TerminatorKind::Goto { target },
+                    attributes: ThinVec::new(),
+                }),
                 is_cleanup,
             );
             let idx = cur_len + new_blocks.len();

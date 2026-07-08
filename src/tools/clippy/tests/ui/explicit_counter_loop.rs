@@ -1,5 +1,5 @@
 #![warn(clippy::explicit_counter_loop)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 //@no-rustfix: suggestion does not remove the `+= 1`
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
@@ -361,5 +361,26 @@ pub fn issue_16642() {
     for _ in 5..MAX {
         //~^ explicit_counter_loop
         base += 1;
+    }
+}
+
+fn issue_17014(v: Vec<u8>) {
+    let mut count = 0;
+    for item in &v {
+        let Some(_) = Some(0) else {
+            count += 1;
+            continue;
+        };
+    }
+
+    let mut count = 0;
+    for item in &v {
+        //~^ explicit_counter_loop
+        let Some(_) = ({
+            count += 1;
+            Some(0)
+        }) else {
+            continue;
+        };
     }
 }

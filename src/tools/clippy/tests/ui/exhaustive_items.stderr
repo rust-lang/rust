@@ -1,5 +1,5 @@
 error: exported enums should not be exhaustive
-  --> tests/ui/exhaustive_items.rs:10:5
+  --> tests/ui/exhaustive_items.rs:9:5
    |
 LL | /     pub enum Exhaustive {
 LL | |
@@ -10,11 +10,8 @@ LL | |         Quux(String),
 LL | |     }
    | |_____^
    |
-note: the lint level is defined here
-  --> tests/ui/exhaustive_items.rs:2:9
-   |
-LL | #![deny(clippy::exhaustive_enums, clippy::exhaustive_structs)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::exhaustive-enums` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::exhaustive_enums)]`
 help: try adding #[non_exhaustive]
    |
 LL ~     #[non_exhaustive]
@@ -22,7 +19,7 @@ LL ~     pub enum Exhaustive {
    |
 
 error: exported enums should not be exhaustive
-  --> tests/ui/exhaustive_items.rs:20:5
+  --> tests/ui/exhaustive_items.rs:19:5
    |
 LL | /     pub enum ExhaustiveWithAttrs {
 LL | |
@@ -40,7 +37,7 @@ LL ~     pub enum ExhaustiveWithAttrs {
    |
 
 error: exported structs should not be exhaustive
-  --> tests/ui/exhaustive_items.rs:56:5
+  --> tests/ui/exhaustive_items.rs:55:5
    |
 LL | /     pub struct Exhaustive {
 LL | |
@@ -49,11 +46,8 @@ LL | |         pub bar: String,
 LL | |     }
    | |_____^
    |
-note: the lint level is defined here
-  --> tests/ui/exhaustive_items.rs:2:35
-   |
-LL | #![deny(clippy::exhaustive_enums, clippy::exhaustive_structs)]
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::exhaustive-structs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::exhaustive_structs)]`
 help: try adding #[non_exhaustive]
    |
 LL ~     #[non_exhaustive]

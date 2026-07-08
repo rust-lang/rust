@@ -92,7 +92,7 @@ impl CfgPropagator<'_, '_> {
         }
         // We also need to merge an item attributes with its parent's in case it's a macro with
         // the `#[macro_export]` attribute, because it might not be defined at crate root.
-        else if matches!(item.kind, ItemKind::MacroItem(_))
+        else if matches!(item.kind, ItemKind::MacroItem(_, _))
             && item.inner.attrs.other_attrs.iter().any(|attr| {
                 matches!(
                     attr,

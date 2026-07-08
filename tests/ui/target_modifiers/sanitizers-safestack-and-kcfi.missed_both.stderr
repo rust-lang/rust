@@ -1,5 +1,5 @@
 error: mixing `-Zsanitizer` will cause an ABI mismatch in crate `sanitizers_safestack_and_kcfi`
-  --> $DIR/sanitizers-safestack-and-kcfi.rs:16:1
+  --> $DIR/sanitizers-safestack-and-kcfi.rs:18:1
    |
 LL | #![feature(no_core)]
    | ^

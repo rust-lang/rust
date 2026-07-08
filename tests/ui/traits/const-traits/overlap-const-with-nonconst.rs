@@ -5,12 +5,12 @@
 #![cfg_attr(min_spec, feature(min_specialization))]
 
 const trait Bar {}
-impl<T> const Bar for T {}
+const impl<T> Bar for T {}
 
 const trait Foo {
     fn method(&self);
 }
-impl<T> const Foo for T
+const impl<T> Foo for T
 where
     T: [const] Bar,
 {
@@ -18,7 +18,7 @@ where
 }
 // specializing impl:
 impl<T> Foo for (T,) {
-//~^ ERROR conflicting implementations
+    //~^ ERROR conflicting implementations
     fn method(&self) {
         println!("hi");
     }

@@ -2,17 +2,15 @@ FROM ubuntu:25.10
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   gcc \
-  g++ \
   ca-certificates \
   libc6-dev \
   libc6-dev-arm64-cross \
   qemu-user \
   make \
   file \
-  clang \
   curl \
   xz-utils \
-  lld
+  wget
 
 ENV TOOLCHAIN="arm-gnu-toolchain-14.3.rel1-x86_64-aarch64_be-none-linux-gnu"
 
@@ -21,8 +19,15 @@ RUN curl -L "https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/bin
 RUN tar -xvf "${TOOLCHAIN}.tar.xz"
 RUN mkdir /toolchains && mv "./${TOOLCHAIN}" /toolchains
 
+RUN wget https://mirrors.edge.kernel.org/pub/tools/llvm/files/llvm-22.1.4-x86_64.tar.gz -O llvm.tar.xz
+RUN mkdir llvm
+RUN tar -xvf llvm.tar.xz --strip-components=1 -C llvm
+
 ENV AARCH64_BE_TOOLCHAIN="/toolchains/${TOOLCHAIN}"
 ENV AARCH64_BE_LIBC="${AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc"
+
+ENV CLANG_PATH="/llvm/bin/clang"
+ENV GCC_PATH="${AARCH64_BE_TOOLCHAIN}/bin/aarch64_be-none-linux-gnu-gcc"
 
 ENV CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_LINKER="${AARCH64_BE_TOOLCHAIN}/bin/aarch64_be-none-linux-gnu-gcc"
 ENV CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64_be -cpu max -L ${AARCH64_BE_LIBC}"

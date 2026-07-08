@@ -1,7 +1,5 @@
 //@only-target: linux freebsd # these are Linux/FreeBSD-specific APIs
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-num-cpus=4
-#![feature(io_error_more)]
-#![feature(pointer_is_aligned_to)]
 
 use std::mem::{size_of, size_of_val};
 

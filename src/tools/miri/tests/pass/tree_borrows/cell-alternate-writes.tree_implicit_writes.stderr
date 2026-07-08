@@ -1,7 +1,7 @@
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
-| Act |    └─┬──<TAG=root of the allocation>
+| Unq |    └─┬──<TAG=root of the allocation>
 | ReIM|      └─┬──<TAG=data>
 |?Cel |        ├────<TAG=x>
 |?Cel |        └────<TAG=y>
@@ -9,8 +9,8 @@ Warning: this tree is indicative only. Some tags may have been hidden.
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
-| Act |    └─┬──<TAG=root of the allocation>
-| Act |      └─┬──<TAG=data>
+| Unq |    └─┬──<TAG=root of the allocation>
+| Unq |      └─┬──<TAG=data>
 | Cel |        ├────<TAG=x>
 | Cel |        └────<TAG=y>
 ──────────────────────────────────────────────────

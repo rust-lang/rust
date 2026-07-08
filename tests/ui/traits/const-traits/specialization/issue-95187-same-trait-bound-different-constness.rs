@@ -24,7 +24,7 @@ where
     default fn bar() {}
 }
 
-impl<T> const Bar for T
+const impl<T> Bar for T
 where
     T: [const] Foo,
     T: Specialize,
@@ -36,14 +36,14 @@ const trait Baz {
     fn baz();
 }
 
-impl<T> const Baz for T
+const impl<T> Baz for T
 where
     T: Foo,
 {
     default fn baz() {}
 }
 
-impl<T> const Baz for T
+const impl<T> Baz for T
 where
     T: [const] Foo,
     T: Specialize,

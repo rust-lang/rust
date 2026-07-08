@@ -1028,6 +1028,15 @@ fn test_into_iter_next_chunk() {
 }
 
 #[test]
+fn test_into_iter_next_chunk_back() {
+    let mut iter = b"lorem".to_vec().into_iter();
+
+    assert_eq!(iter.next_chunk_back().unwrap(), [b'e', b'm']); // N is inferred as 2
+    assert_eq!(iter.next_chunk_back().unwrap(), [b'l', b'o', b'r']); // N is inferred as 3
+    assert_eq!(iter.next_chunk_back::<4>().unwrap_err().as_slice(), &[]); // N is explicitly 4
+}
+
+#[test]
 fn test_into_iter_clone() {
     fn iter_equal<I: Iterator<Item = i32>>(it: I, slice: &[i32]) {
         let v: Vec<i32> = it.collect();
@@ -1110,7 +1119,7 @@ fn test_into_iter_zst() {
     struct AlignedZstWithDrop([u64; 0]);
     impl Drop for AlignedZstWithDrop {
         fn drop(&mut self) {
-            let addr = self as *mut _ as usize;
+            let addr = (self as *mut Self).addr();
             assert!(hint::black_box(addr) % align_of::<u64>() == 0);
         }
     }
@@ -1130,6 +1139,14 @@ fn test_into_iter_zst() {
 
     let mut it = vec![C, C].into_iter();
     it.next_chunk::<4>().unwrap_err();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk_back::<1>().unwrap();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk_back::<4>().unwrap_err();
     drop(it);
 }
 
@@ -1356,10 +1373,10 @@ fn overaligned_allocations() {
     for i in 0..0x1000 {
         v.reserve_exact(i);
         assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert!(v.as_ptr().addr() & 0xff == 0);
         v.shrink_to_fit();
         assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert!(v.as_ptr().addr() & 0xff == 0);
     }
 }
 
@@ -2569,12 +2586,12 @@ fn test_box_zero_allocator() {
             } else {
                 unsafe { std::alloc::alloc(layout) }
             };
-            Ok(NonNull::slice_from_raw_parts(NonNull::new(ptr).ok_or(AllocError)?, layout.size()))
+            Ok(NonNull::new(ptr).ok_or(AllocError)?.cast_slice(layout.size()))
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             if layout.size() == 0 {
-                let addr = ptr.as_ptr() as usize;
+                let addr = ptr.as_ptr().addr();
                 let mut state = self.state.borrow_mut();
                 std::println!("freeing {addr}");
                 assert!(state.0.remove(&addr), "ZST free that wasn't allocated");

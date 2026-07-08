@@ -78,7 +78,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut err = match cause {
             OverflowCause::DeeplyNormalize(alias_term) => {
                 let alias_term = self.resolve_vars_if_possible(alias_term);
-                let kind = alias_term.kind(self.tcx).descr();
+                let kind = alias_term.kind.descr();
                 let alias_str = with_short_path(self.tcx, alias_term);
                 struct_span_code_err!(
                     self.dcx(),
@@ -150,7 +150,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             suggest_increasing_limit,
             |err| {
                 self.note_obligation_cause_code(
-                    obligation.cause.body_id,
+                    obligation.cause.body_def_id,
                     err,
                     predicate,
                     obligation.param_env,

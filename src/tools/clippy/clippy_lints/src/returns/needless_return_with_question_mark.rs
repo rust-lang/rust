@@ -27,7 +27,7 @@ pub(super) fn check_stmt<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         && let ExprKind::Block(block, _) = peel_async_body(block).kind
         && !is_inside_let_else(cx.tcx, expr)
         && let [.., final_stmt] = block.stmts
-        && final_stmt.hir_id != stmt.hir_id
+        && (block.expr.is_some() || final_stmt.hir_id != stmt.hir_id)
         && !is_from_proc_macro(cx, expr)
         && !stmt_needs_never_type(cx, stmt.hir_id)
     {

@@ -7,15 +7,16 @@ pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint};
-use rustc_abi::{self as abi, Align, Size, WrappingRange};
+use rustc_abi::{self as abi, Align, CanonAbi, Size, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::attrs::{AttributeKind, UnrollAttr};
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature, TargetFeatureKind};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
     TyAndLayout,
@@ -25,7 +26,7 @@ use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::callconv::{FnAbi, PassMode};
-use rustc_target::spec::{Arch, HasTargetSpec, SanitizerSet, Target};
+use rustc_target::spec::{Arch, HasTargetSpec, LlvmAbi, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -336,6 +337,51 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn br_with_attrs(&mut self, dest: &'ll BasicBlock, attributes: &[AttributeKind]) {
+        unsafe {
+            let val = llvm::LLVMBuildBr(self.llbuilder, dest);
+
+            let mut nodes = Vec::new();
+
+            for attribute in attributes {
+                let AttributeKind::Unroll(unroll) = attribute else {
+                    continue;
+                };
+                // UnrollAttr::Count needs a second operand, the provided count, but the other
+                // unroll hints do not.
+                let md_node = if let UnrollAttr::Count(count) = unroll {
+                    let unroll_meta = self.create_metadata("llvm.loop.unroll.count".as_bytes());
+                    let count = llvm::LLVMValueAsMetadata(self.get_const_i32(u64::from(*count)));
+                    self.md_node_in_context(&[unroll_meta, count])
+                } else {
+                    let metadata_str = match unroll {
+                        UnrollAttr::Hint => "llvm.loop.unroll.enable",
+                        UnrollAttr::Full => "llvm.loop.unroll.full",
+                        UnrollAttr::Never => "llvm.loop.unroll.disable",
+                        UnrollAttr::Count(_) => unreachable!(),
+                    };
+                    let unroll_meta = self.create_metadata(metadata_str.as_bytes());
+                    self.md_node_in_context(&[unroll_meta])
+                };
+                nodes.push(md_node);
+            }
+
+            if let [first, ..] = nodes[..] {
+                nodes.insert(0, first);
+
+                // Create the loop metadata node
+                let loop_meta_mdnode = self.set_metadata_node(val, llvm::MD_loop, &nodes);
+
+                // Look up the metadata node as a value
+                let loop_meta_val = llvm::LLVMGetMetadata(val, llvm::MD_loop).unwrap();
+
+                // Replace the first entry with a reference to itself
+                // This is required by LLVM. See the LangRef page for llvm.loop metadata.
+                llvm::LLVMReplaceMDNodeOperandWith(loop_meta_val, 0, loop_meta_mdnode);
+            }
+        }
+    }
+
     fn cond_br(
         &mut self,
         cond: &'ll Value,
@@ -427,6 +473,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, instance, llfn);
         if let Some(kcfi_bundle) = kcfi_bundle.as_ref().map(|b| b.as_ref()) {
             bundles.push(kcfi_bundle);
+        }
+
+        let pauth = self.ptrauth_operand_bundle(llfn, fn_abi);
+        if let Some(p) = pauth.as_ref().map(|b| b.as_ref()) {
+            bundles.push(p);
         }
 
         let invoke = unsafe {
@@ -636,9 +687,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn volatile_load(&mut self, ty: &'ll Type, ptr: &'ll Value) -> &'ll Value {
+    fn volatile_load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
         unsafe {
-            let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
+            let load = self.load(ty, ptr, align);
             llvm::LLVMSetVolatile(load, llvm::TRUE);
             load
         }
@@ -743,7 +794,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             });
             OperandValue::Immediate(llval)
         } else if let abi::BackendRepr::ScalarPair(a, b) = place.layout.backend_repr {
-            let b_offset = a.size(self).align_to(b.align(self).abi);
+            let b_offset = a.size(self).align_to(b.default_align(self).abi);
 
             let mut load = |i, scalar: abi::Scalar, layout, align, offset| {
                 let llptr = if i == 0 {
@@ -853,6 +904,22 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     let one = llvm::LLVMValueAsMetadata(self.cx.const_i32(1));
                     self.set_metadata_node(store, llvm::MD_nontemporal, &[one]);
                 }
+            }
+            if flags.contains(MemFlags::CAPTURES_READ_ONLY)
+                && crate::llvm_util::get_version() >= (22, 0, 0)
+            {
+                assert!(
+                    self.type_kind(self.val_ty(val)) == TypeKind::Pointer,
+                    "CAPTURED_READ_ONLY is only supported on pointer stores"
+                );
+                let args = [
+                    self.cx.create_metadata(b"address"),
+                    self.cx.create_metadata(b"read_provenance"),
+                ];
+                // FIXME: Switch this to use MD_captures once LLVM 22 is the minimum.
+                let id = self.get_md_kind_id("captures");
+                let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, args.as_ptr(), args.len());
+                self.set_metadata(store, id, md);
             }
             store
         }
@@ -1113,7 +1180,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // vs. copying a struct with mixed types requires different derivative handling.
         // The TypeTree tells Enzyme exactly what memory layout to expect.
         if let Some(tt) = tt {
-            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, memcpy, tt);
+            crate::typetree::add_tt(self, memcpy, tt);
         }
     }
 
@@ -1162,6 +1229,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 is_volatile,
             );
         }
+    }
+
+    fn vscale(&mut self, ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMRustBuildVScale(self.llbuilder, ty) }
     }
 
     fn select(
@@ -1406,6 +1477,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             bundles.push(kcfi_bundle);
         }
 
+        let pauth = self.ptrauth_operand_bundle(llfn, fn_abi);
+        if let Some(p) = pauth.as_ref().map(|b| b.as_ref()) {
+            bundles.push(p);
+        }
+
         let call = unsafe {
             llvm::LLVMBuildCallWithOperandBundles(
                 self.llbuilder,
@@ -1422,20 +1498,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         if let Some(callee_instance) = callee_instance {
             // Attributes on the function definition being called
             let callee_attrs = self.cx.tcx.codegen_fn_attrs(callee_instance.def_id());
-            if let Some(caller_attrs) = caller_attrs
-                // If there is an inline attribute and a target feature that matches
-                // we will add the attribute to the callsite otherwise we'll omit
-                // this and not add the attribute to prevent soundness issues.
-                && let Some(inlining_rule) = attributes::inline_attr(&self.cx, self.cx.tcx, callee_instance)
-                && self.cx.tcx.is_target_feature_call_safe(
-                    &callee_attrs.target_features,
-                    &caller_attrs.target_features.iter().cloned().chain(
-                        self.cx.tcx.sess.target_features.iter().map(|feat| TargetFeature {
-                            name: *feat,
-                            kind: TargetFeatureKind::Implied,
-                        })
-                    ).collect::<Vec<_>>(),
-                )
+
+            if let Some(inlining_rule) =
+                attributes::inline_attr(&self.cx, self.cx.tcx, callee_instance, callee_attrs)
             {
                 attributes::apply_to_callsite(
                     call,
@@ -1847,6 +1912,11 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             bundles.push(kcfi_bundle);
         }
 
+        let pauth = self.ptrauth_operand_bundle(llfn, fn_abi);
+        if let Some(p) = pauth.as_ref().map(|b| b.as_ref()) {
+            bundles.push(p);
+        }
+
         let callbr = unsafe {
             llvm::LLVMBuildCallBr(
                 self.llbuilder,
@@ -1964,6 +2034,40 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             None
         };
         kcfi_bundle
+    }
+
+    // Emits pauth operand bundle.
+    fn ptrauth_operand_bundle(
+        &mut self,
+        llfn: &'ll Value,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+    ) -> Option<llvm::OperandBundleBox<'ll>> {
+        if self.sess().target.llvm_abiname != LlvmAbi::Pauthtest {
+            return None;
+        }
+        // Pointer authentication support is currently limited to extern "C" calls; filter out other
+        // ABIs.
+        if fn_abi?.conv != CanonAbi::C {
+            return None;
+        }
+        // Filter out LLVM intrinsics.
+        if llvm::get_value_name(llfn).starts_with(b"llvm.") {
+            return None;
+        }
+
+        // FIXME(jchlanda) Operand bundles should only be attached to indirect function calls.
+        // However, function pointer signing is currently performed in `get_fn_addr`, which causes
+        // the logic to be applied too broadly, including to function values (not just pointers).
+        // As a result, direct calls using signed function values must also receive operand
+        // bundles.
+        // Once this is resolved, we should analyze each call and skip direct calls. See the
+        // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
+        let key: u32 = 0;
+        let discriminator: u64 = 0;
+        Some(llvm::OperandBundleBox::new(
+            "ptrauth",
+            &[self.const_u32(key), self.const_u64(discriminator)],
+        ))
     }
 
     /// Emits a call to `llvm.instrprof.increment`. Used by coverage instrumentation.

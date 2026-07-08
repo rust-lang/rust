@@ -1,15 +1,15 @@
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
-| Act |    └─┬──<TAG=root of the allocation>
-| Act |      └─┬──<TAG=parent>
-| Act |        └────<TAG=x>
+| Unq |    └─┬──<TAG=root of the allocation>
+| Unq |      └─┬──<TAG=parent>
+| Unq |        └────<TAG=x>
 ──────────────────────────────────────────────────
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
-| Act |    └─┬──<TAG=root of the allocation>
-| Act |      └─┬──<TAG=parent>
+| Unq |    └─┬──<TAG=root of the allocation>
+| Unq |      └─┬──<TAG=parent>
 | Frz |        ├────<TAG=x>
 | Res |        └────<TAG=y>
 ──────────────────────────────────────────────────

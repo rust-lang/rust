@@ -107,7 +107,9 @@ fn dist_server(
 ) -> anyhow::Result<()> {
     let _e = sh.push_env("CFG_RELEASE", release);
     let _e = sh.push_env("CARGO_PROFILE_RELEASE_LTO", "thin");
+    let _e = sh.push_env("CARGO_PROFILE_RELEASE_CODEGEN_UNITS", "1");
     let _e = sh.push_env("CARGO_PROFILE_DEV_REL_LTO", "thin");
+    let _e = sh.push_env("CARGO_PROFILE_DEV_REL_CODEGEN_UNITS", "1");
 
     // Uncomment to enable debug info for releases. Note that:
     //   * debug info is split on windows and macs, so it does nothing for those platforms,

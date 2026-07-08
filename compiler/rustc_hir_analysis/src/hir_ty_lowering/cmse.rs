@@ -6,7 +6,7 @@ use rustc_middle::ty::layout::{LayoutCx, LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
-use crate::errors;
+use crate::diagnostics;
 
 /// Check conditions on inputs and outputs that the cmse ABIs impose: arguments and results MUST be
 /// returned via registers (i.e. MUST NOT spill to the stack). LLVM will also validate these
@@ -59,13 +59,13 @@ pub(crate) fn validate_cmse_abi<'tcx>(
 
     if let Err((span, layout_err)) = is_valid_cmse_inputs(tcx, dcx, fn_sig, fn_decl, abi) {
         if should_emit_layout_error(abi, layout_err) {
-            dcx.emit_err(errors::CmseGeneric { span, abi });
+            dcx.emit_err(diagnostics::CmseGeneric { span, abi });
         }
     }
 
     if let Err(layout_err) = is_valid_cmse_output(tcx, dcx, fn_sig, fn_decl, abi) {
         if should_emit_layout_error(abi, layout_err) {
-            dcx.emit_err(errors::CmseGeneric { span: fn_decl.output.span(), abi });
+            dcx.emit_err(diagnostics::CmseGeneric { span: fn_decl.output.span(), abi });
         }
     }
 }
@@ -110,7 +110,7 @@ fn is_valid_cmse_inputs<'tcx>(
     if !excess_argument_spans.is_empty() {
         // fn f(x: u32, y: u32, z: u32, w: u16, q: u16) -> u32,
         //                                      ^^^^^^
-        dcx.emit_err(errors::CmseInputsStackSpill { spans: excess_argument_spans, abi });
+        dcx.emit_err(diagnostics::CmseInputsStackSpill { spans: excess_argument_spans, abi });
     }
 
     Ok(())
@@ -139,7 +139,7 @@ fn is_valid_cmse_output<'tcx>(
     //
     // see also https://github.com/rust-lang/rust/issues/147242.
     if abi == ExternAbi::CmseNonSecureEntry && return_type.has_opaque_types() {
-        dcx.emit_err(errors::CmseImplTrait { span: fn_decl.output.span(), abi });
+        dcx.emit_err(diagnostics::CmseImplTrait { span: fn_decl.output.span(), abi });
         return Ok(());
     }
 
@@ -153,7 +153,7 @@ fn is_valid_cmse_output<'tcx>(
     let layout_cx = LayoutCx::new(tcx, typing_env);
 
     if !is_valid_cmse_output_layout(layout_cx, layout) {
-        dcx.emit_err(errors::CmseOutputStackSpill { span: fn_decl.output.span(), abi });
+        dcx.emit_err(diagnostics::CmseOutputStackSpill { span: fn_decl.output.span(), abi });
     }
 
     Ok(())

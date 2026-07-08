@@ -418,3 +418,34 @@ fn test_simplify_with() {
         assert_eq!(foobar.simplify_with(&foobarbaz), None);
     });
 }
+
+#[test]
+fn test_sort_for_rendering() {
+    create_default_session_globals_then(|| {
+        let mut cfg = cfg_any(thin_vec![
+            name_value_cfg_e("feature", "sync"),
+            name_value_cfg_e("target_os", "linux"),
+            cfg_all_e(thin_vec![word_cfg_e("unix")]),
+            name_value_cfg_e("target_feature", "sse2"),
+            name_value_cfg_e("target_os", "android"),
+            name_value_cfg_e("feature", "alloc"),
+        ]);
+
+        cfg.sort_for_rendering();
+
+        let expected = cfg_any(thin_vec![
+            // Category 0: Targets (Sorted Alphabetically: Android -> Linux)
+            name_value_cfg_e("target_os", "android"),
+            name_value_cfg_e("target_os", "linux"),
+            // Category 1: Target Features
+            name_value_cfg_e("target_feature", "sse2"),
+            // Category 2: Crate Features (Sorted Alphabetically: alloc -> sync)
+            name_value_cfg_e("feature", "alloc"),
+            name_value_cfg_e("feature", "sync"),
+            // Category 3: Nested logic pushed to the end
+            cfg_all_e(thin_vec![word_cfg_e("unix")]),
+        ]);
+
+        assert_eq!(cfg, expected);
+    });
+}

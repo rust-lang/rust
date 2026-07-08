@@ -6,8 +6,8 @@
 struct S;
 trait T {}
 
-impl const S {}
+const impl S {}
 
-impl const dyn T {}
+const impl dyn T {}
 
 fn main() {}

@@ -32,7 +32,7 @@ pub(crate) fn render_record_lit(
             if let Some(local) = ctx.locals.get(&field_name)
                 && local
                     .ty(ctx.db)
-                    .could_unify_with_deeply(ctx.db, &field.ty(ctx.db).to_type(ctx.db))
+                    .could_unify_with_deeply(ctx.db, &ctx.rebase_ty(&field.ty(ctx.db)))
             {
                 f(&format_args!("{}{tab}", field_name.display(ctx.db, ctx.edition)))
             } else {

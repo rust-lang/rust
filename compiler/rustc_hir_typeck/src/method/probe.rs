@@ -511,7 +511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && !self.tcx.features().arbitrary_self_types();
 
                         let mut err = self.err_ctxt().emit_inference_failure_err(
-                            self.body_id,
+                            self.body_def_id,
                             err_span,
                             ty.into(),
                             TypeAnnotationNeeded::E0282,
@@ -810,9 +810,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn push_candidate(&mut self, candidate: Candidate<'tcx>, is_inherent: bool) {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
-            let hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
+            let container_id = item.container_id(self.tcx);
             let def_scope =
-                self.tcx.adjust_ident_and_get_scope(name, item.container_id(self.tcx), hir_id).1;
+                self.tcx.adjust_ident_and_get_scope(name, container_id, self.body_def_id).1;
             item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
         } else {
             true
@@ -995,12 +995,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // We use `DeepRejectCtxt` here which may return false positive on where clauses
         // with alias self types. We need to later on reject these as inherent candidates
         // in `consider_probe`.
-        let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
-            let bound_predicate = predicate.kind();
-            match bound_predicate.skip_binder() {
+        let bounds = self.param_env.caller_bounds().iter().filter_map(|clause| {
+            let bound_clause = clause.kind();
+            match bound_clause.skip_binder() {
                 ty::ClauseKind::Trait(trait_predicate) => DeepRejectCtxt::relate_rigid_rigid(tcx)
                     .types_may_unify(param_ty, trait_predicate.trait_ref.self_ty())
-                    .then(|| bound_predicate.rebind(trait_predicate.trait_ref)),
+                    .then(|| bound_clause.rebind(trait_predicate.trait_ref)),
                 ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::TypeOutlives(_)
                 | ty::ClauseKind::Projection(_)
@@ -2050,7 +2050,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         // HACK: opaque types will match anything for which their bounds hold.
                         // Thus we need to prevent them from trying to match the `&_` autoref
                         // candidates that get created for `&self` trait methods.
-                        &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. })
+                        &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. })
                             if !self.next_trait_solver()
                                 && self.infcx.can_define_opaque_ty(def_id)
                                 && !xform_self_ty.is_ty_var() =>
@@ -2358,6 +2358,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// Much like `collapse_candidates_to_trait_pick`, this method allows us to collapse
     /// multiple conflicting picks if there is one pick whose trait container is a subtrait
     /// of the trait containers of all of the other picks.
+    ///
+    /// This is the method-probe analogue of
+    /// `rustc_hir_analysis::hir_ty_lowering::HirTyLowerer::collapse_candidates_to_subtrait_pick`;
+    /// keep both implementations in sync.
     ///
     /// This implements RFC #3624.
     fn collapse_candidates_to_subtrait_pick(

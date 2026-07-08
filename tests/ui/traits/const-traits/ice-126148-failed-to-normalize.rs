@@ -5,16 +5,16 @@ use std::ops::{FromResidual, Residual, Try};
 struct TryMe;
 struct Error;
 
-impl const FromResidual<Error> for TryMe {}
+const impl FromResidual<Error> for TryMe {}
 //~^ ERROR not all trait items implemented
 
-impl const Try for TryMe {
+const impl Try for TryMe {
     //~^ ERROR not all trait items implemented
     type Output = ();
     type Residual = Error;
 }
 
-impl const Residual<()> for Error {
+const impl Residual<()> for Error {
     type TryType = TryMe;
 }
 

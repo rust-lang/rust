@@ -102,7 +102,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
                 loop {
                     if libc::loadquery(
                         libc::L_GETINFO,
-                        buffer.as_mut_ptr() as *mut u8,
+                        buffer.as_mut_ptr() as *mut libc::c_void,
                         (size_of::<libc::ld_info>() * buffer.len()) as u32,
                     ) >= 0
                     {

@@ -994,6 +994,10 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             })
         })
     }
+
+    pub(crate) fn interner(&self) -> DbInterner<'db> {
+        self.ctx.interner
+    }
 }
 
 /// A const that were parsed like a type.

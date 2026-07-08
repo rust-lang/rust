@@ -7,7 +7,7 @@ LL | struct ConstImplWithDropGlue(NonTrivialDrop);
 note: required for this `Drop` impl
   --> $DIR/const-drop-fail.rs:22:1
    |
-LL | impl const Drop for ConstImplWithDropGlue {
+LL | const impl Drop for ConstImplWithDropGlue {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `NonTrivialDrop: const Destruct` is not satisfied

@@ -76,15 +76,14 @@ If we can't make progress in an iteration, this represents a compile error.
            an AST, which may produce parse errors.
          - During expansion, we create [`SyntaxContext`]s (hierarchy 2) (see
            [Hygiene][hybelow] below).
-         - These three passes happen one after another on every AST fragment
+         - These two passes happen one after another on every AST fragment
            freshly expanded from a macro:
            - [`NodeId`]s are assigned by [`InvocationCollector`].
              This also collects new macro calls from this new AST piece and
              adds them to the queue.
-           - ["Def paths"][defpath] are created and [`DefId`]s are
-             assigned to them by [`DefCollector`].
-           - Names are put into modules (from the resolver's point of
-             view) by [`BuildReducedGraphVisitor`].
+           - [`DefCollector`] creates ["Def paths"][defpath], assigns the
+             corresponding [`DefId`]s, and also builds the reduced graph
+             (putting names into modules from the resolver's point of view).
       3. After expanding a single macro and integrating its output, continue
          to the next iteration of [`fully_expand_fragment`][fef].
    5. If it's not resolved:
@@ -92,7 +91,6 @@ If we can't make progress in an iteration, this represents a compile error.
       2. Continue to next iteration...
 
 [`AstFragment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/enum.AstFragment.html
-[`BuildReducedGraphVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/build_reduced_graph/struct.BuildReducedGraphVisitor.html
 [`DefCollector`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/def_collector/struct.DefCollector.html
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [`ExpnId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnId.html

@@ -246,7 +246,8 @@ fn eager_macro_recur(
             | MacroDefKind::BuiltIn(..)
             | MacroDefKind::BuiltInAttr(..)
             | MacroDefKind::BuiltInDerive(..)
-            | MacroDefKind::ProcMacro(..) => {
+            | MacroDefKind::ProcMacro(..)
+            | MacroDefKind::UnimplementedBuiltIn(..) => {
                 let ExpandResult { value: (parse, tm), err } = lazy_expand(
                     db,
                     &def,

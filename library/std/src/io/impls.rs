@@ -3,7 +3,7 @@ mod tests;
 
 use crate::alloc::Allocator;
 use crate::collections::VecDeque;
-use crate::io::{self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use crate::io::{self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Write};
 use crate::sync::Arc;
 use crate::{cmp, fmt, mem, str};
 
@@ -18,7 +18,7 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (**self).read_buf(cursor)
     }
 
@@ -48,7 +48,7 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
-    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (**self).read_buf_exact(cursor)
     }
 }
@@ -87,33 +87,6 @@ impl<W: Write + ?Sized> Write for &mut W {
     #[inline]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (**self).write_fmt(fmt)
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<S: Seek + ?Sized> Seek for &mut S {
-    #[inline]
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        (**self).seek(pos)
-    }
-
-    #[inline]
-    fn rewind(&mut self) -> io::Result<()> {
-        (**self).rewind()
-    }
-
-    #[inline]
-    fn stream_len(&mut self) -> io::Result<u64> {
-        (**self).stream_len()
-    }
-
-    #[inline]
-    fn stream_position(&mut self) -> io::Result<u64> {
-        (**self).stream_position()
-    }
-
-    #[inline]
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
-        (**self).seek_relative(offset)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -157,7 +130,7 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (**self).read_buf(cursor)
     }
 
@@ -187,7 +160,7 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
-    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (**self).read_buf_exact(cursor)
     }
 }
@@ -226,33 +199,6 @@ impl<W: Write + ?Sized> Write for Box<W> {
     #[inline]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (**self).write_fmt(fmt)
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<S: Seek + ?Sized> Seek for Box<S> {
-    #[inline]
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        (**self).seek(pos)
-    }
-
-    #[inline]
-    fn rewind(&mut self) -> io::Result<()> {
-        (**self).rewind()
-    }
-
-    #[inline]
-    fn stream_len(&mut self) -> io::Result<u64> {
-        (**self).stream_len()
-    }
-
-    #[inline]
-    fn stream_position(&mut self) -> io::Result<u64> {
-        (**self).stream_position()
-    }
-
-    #[inline]
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
-        (**self).seek_relative(offset)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -316,7 +262,7 @@ impl Read for &[u8] {
     }
 
     #[inline]
-    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let amt = cmp::min(cursor.capacity(), self.len());
         let (a, b) = self.split_at(amt);
 
@@ -368,7 +314,7 @@ impl Read for &[u8] {
     }
 
     #[inline]
-    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         if cursor.capacity() > self.len() {
             // Append everything we can to the cursor.
             cursor.append(*self);
@@ -557,7 +503,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
     }
 
     #[inline]
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let (ref mut front, _) = self.as_slices();
         let n = cmp::min(cursor.capacity(), front.len());
         Read::read_buf(front, cursor)?;
@@ -566,7 +512,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
     }
 
     #[inline]
-    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let len = cursor.capacity();
         let (front, back) = self.as_slices();
 
@@ -670,7 +616,7 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
 }
 
 #[unstable(feature = "read_buf", issue = "78485")]
-impl<'a> io::Write for core::io::BorrowedCursor<'a> {
+impl<'a> io::Write for core::io::BorrowedCursor<'a, u8> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let amt = cmp::min(buf.len(), self.capacity());
@@ -729,7 +675,7 @@ where
     }
 
     #[inline]
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (&**self).read_buf(cursor)
     }
 
@@ -759,7 +705,7 @@ where
     }
 
     #[inline]
-    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (&**self).read_buf_exact(cursor)
     }
 }
@@ -802,36 +748,5 @@ where
     #[inline]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (&**self).write_fmt(fmt)
-    }
-}
-#[stable(feature = "io_traits_arc", since = "1.73.0")]
-impl<S: Seek + ?Sized> Seek for Arc<S>
-where
-    for<'a> &'a S: Seek,
-    S: crate::io::IoHandle,
-{
-    #[inline]
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        (&**self).seek(pos)
-    }
-
-    #[inline]
-    fn rewind(&mut self) -> io::Result<()> {
-        (&**self).rewind()
-    }
-
-    #[inline]
-    fn stream_len(&mut self) -> io::Result<u64> {
-        (&**self).stream_len()
-    }
-
-    #[inline]
-    fn stream_position(&mut self) -> io::Result<u64> {
-        (&**self).stream_position()
-    }
-
-    #[inline]
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
-        (&**self).seek_relative(offset)
     }
 }

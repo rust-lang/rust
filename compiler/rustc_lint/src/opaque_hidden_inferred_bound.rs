@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 let Some(proj_term) = proj.term.as_type() else { return };
 
                 // HACK: `impl Trait<Assoc = impl Trait2>` from an RPIT is "ok"...
-                if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: opaque_def_id }, .. }) =
+                if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: opaque_def_id }, .. }) =
                     *proj_term.kind()
                     && cx.tcx.parent(opaque_def_id) == def_id
                     && matches!(
@@ -130,11 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     return;
                 }
 
-                let proj_ty = Ty::new_projection_from_args(
-                    cx.tcx,
-                    proj.projection_term.def_id(),
-                    proj.projection_term.args,
-                );
+                let proj_ty = proj.projection_term.expect_ty().to_ty(cx.tcx,ty::IsRigid::No);
                 // For every instance of the projection type in the bounds,
                 // replace them with the term we're assigning to the associated
                 // type in our opaque type.
@@ -149,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // with `impl Send: OtherTrait`.
                 for (assoc_pred, assoc_pred_span) in cx
                     .tcx
-                    .explicit_item_bounds(proj.projection_term.def_id())
+                    .explicit_item_bounds(proj.def_id())
                     .iter_instantiated_copied(cx.tcx, proj.projection_term.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
@@ -181,7 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                         // then we can emit a suggestion to add the bound.
                         let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
                             (
-                                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }),
+                                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }),
                                 ty::ClauseKind::Trait(trait_pred),
                             ) => Some(AddBound {
                                 suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
@@ -196,6 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                             OpaqueHiddenInferredBoundLint {
                                 ty: Ty::new_opaque(
                                     cx.tcx,
+                                    ty::IsRigid::No,
                                     def_id,
                                     ty::GenericArgs::identity_for_item(cx.tcx, def_id),
                                 ),
@@ -232,6 +229,5 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
 struct AddBound<'tcx> {
     #[primary_span]
     suggest_span: Span,
-    #[skip_arg]
     trait_ref: TraitPredPrintModifiersAndPath<'tcx>,
 }

@@ -3,6 +3,7 @@ Thir {
     body_type: Fn(
         fn(),
     ),
+    attributes: {},
     arms: [],
     blocks: [
         Block {

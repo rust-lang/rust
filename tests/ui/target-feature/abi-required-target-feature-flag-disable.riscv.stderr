@@ -1,6 +1,6 @@
 warning: unstable feature specified for `-Ctarget-feature`: `d`
    |
-   = note: this feature is not stably supported; its behavior can change in the future
+   = note: this feature is allowed in cfg but unstable otherwise; its behavior can change in the future
 
 warning: target feature `d` must be enabled to ensure that the ABI of the current target can be implemented correctly
    |

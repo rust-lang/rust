@@ -93,7 +93,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // extended variant, `struct _umtx_time`, as the `uaddr2` argument of _umtx_op().
                     // They are distinguished by the `uaddr` value, which must be equal
                     // to the size of the structure pointed to by `uaddr2`, casted to uintptr_t.
-                    let timeout = if this.ptr_is_null(uaddr2)? {
+                    let deadline = if this.ptr_is_null(uaddr2)? {
                         // no timeout parameter
                         None
                     } else {
@@ -102,16 +102,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let umtx_time_place = this.ptr_to_mplace(uaddr2, umtx_time_layout);
 
                             let Some(umtx_time) = this.read_umtx_time(&umtx_time_place)? else {
-                                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+                                return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                             };
 
-                            let anchor = if umtx_time.abs_time {
-                                TimeoutAnchor::Absolute
+                            let style = if umtx_time.abs_time {
+                                TimeoutStyle::Absolute
                             } else {
-                                TimeoutAnchor::Relative
+                                TimeoutStyle::Relative
                             };
 
-                            Some((umtx_time.timeout_clock, anchor, umtx_time.timeout))
+                            Some(this.machine.timeout(
+                                umtx_time.timeout_clock,
+                                style,
+                                umtx_time.timeout,
+                            ))
                         } else if uaddr == timespec_layout.size.bytes() {
                             // RealTime clock can't be used in isolation mode.
                             this.check_no_isolation("`_umtx_op` with `timespec` timeout")?;
@@ -119,7 +123,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // `uaddr2` points to a `struct timespec`.
                             let timespec = this.ptr_to_mplace(uaddr2, timespec_layout);
                             let Some(duration) = this.read_timespec(&timespec)? else {
-                                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+                                return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                             };
 
                             // FreeBSD does not seem to document which clock is used when the timeout
@@ -127,9 +131,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // code (umtx_copyin_umtx_time() in kern_umtx.c), it seems to default to CLOCK_REALTIME,
                             // so that's what we also do.
                             // Discussion in golang: https://github.com/golang/go/issues/17168#issuecomment-250235271
-                            Some((TimeoutClock::RealTime, TimeoutAnchor::Relative, duration))
+                            Some(this.machine.timeout(
+                                TimeoutClock::RealTime,
+                                TimeoutStyle::Relative,
+                                duration,
+                            ))
                         } else {
-                            return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+                            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                         }
                     };
 
@@ -137,7 +145,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.futex_wait(
                         futex_ref,
                         u32::MAX, // we set the bitset to include all bits
-                        timeout,
+                        deadline,
                         callback!(
                             @capture<'tcx> {
                                 dest: MPlaceTy<'tcx>,
@@ -150,7 +158,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                     ecx.write_int(0, &dest)
                                 }
                                 UnblockKind::TimedOut => {
-                                    ecx.set_last_error_and_return(LibcError("ETIMEDOUT"), &dest)
+                                    ecx.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest)
                                 }
                             }
                         ),
@@ -174,7 +182,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Return an error code. (That seems nicer than silently doing something non-intuitive.)
                     // This means that if an address gets reused by a new allocation,
                     // we'll use an independent futex queue for this... that seems acceptable.
-                    return this.set_last_error_and_return(LibcError("EFAULT"), dest);
+                    return this.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
                 };
                 let futex_ref = futex_ref.futex.clone();
 

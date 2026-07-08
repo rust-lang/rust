@@ -9,7 +9,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::errors::{DuplicateEiiImpls, EiiWithoutImpl};
+use crate::diagnostics::{DuplicateEiiImpls, EiiWithoutImpl};
 
 #[derive(Clone, Copy, Debug)]
 enum CheckingMode {
@@ -18,8 +18,8 @@ enum CheckingMode {
 }
 
 fn get_checking_mode(tcx: TyCtxt<'_>) -> CheckingMode {
-    // if any of the crate types is not rlib or dylib, we must check for existence.
-    if tcx.crate_types().iter().any(|i| !matches!(i, CrateType::Rlib | CrateType::Dylib)) {
+    // if any of the crate types is not rlib, we must check for existence.
+    if tcx.crate_types().iter().any(|i| !matches!(i, CrateType::Rlib)) {
         CheckingMode::CheckExistence
     } else {
         CheckingMode::CheckDuplicates
@@ -141,6 +141,7 @@ pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): 
                         decl_crate_name: tcx.crate_name(decl_crate),
                         // FIXME: shouldn't call `item_name`
                         name: decl.name.name,
+                        kind: tcx.def_kind(decl.foreign_item).descr(decl.foreign_item),
                         span: decl.name.span,
                         help: (),
                     });

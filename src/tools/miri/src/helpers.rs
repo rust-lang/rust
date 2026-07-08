@@ -1,6 +1,5 @@
 use std::num::NonZero;
 use std::sync::Mutex;
-use std::time::Duration;
 use std::{cmp, iter};
 
 use rand::Rng;
@@ -130,7 +129,13 @@ pub fn iter_exported_symbols<'tcx>(
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         };
-        if exported {
+        // FIXME: `#[no_mangle]` makes no sense on a generic item, but still causes it to be
+        // considered "extern". Remove this once `no_mangle_generic_items` is a hard error.
+        let exported_mono = exported && {
+            let generics = tcx.generics_of(def_id);
+            !generics.requires_monomorphization(tcx)
+        };
+        if exported_mono {
             f(LOCAL_CRATE, def_id.into())?;
         }
     }
@@ -407,6 +412,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let sig = this.tcx.mk_fn_sig(
             args.iter().map(|a| a.layout.ty),
             dest.layout.ty,
+            // FIXME(splat): Do we need to set splatted here?
+            // (Currently this also ignores c_variadic)
             FnSigKind::default().set_abi(caller_abi).set_safety(rustc_hir::Safety::Safe),
         );
         let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
@@ -712,31 +719,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let value_place = this.deref_pointer_and_offset(op, offset, base_layout, value_layout)?;
         this.write_scalar(value, &value_place)
-    }
-
-    /// Parse a `timespec` struct and return it as a `std::time::Duration`. It returns `None`
-    /// if the value in the `timespec` struct is invalid. Some libc functions will return
-    /// `EINVAL` in this case.
-    fn read_timespec(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
-        let this = self.eval_context_mut();
-        let seconds_place = this.project_field(tp, FieldIdx::ZERO)?;
-        let seconds_scalar = this.read_scalar(&seconds_place)?;
-        let seconds = seconds_scalar.to_target_isize(this)?;
-        let nanoseconds_place = this.project_field(tp, FieldIdx::ONE)?;
-        let nanoseconds_scalar = this.read_scalar(&nanoseconds_place)?;
-        let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
-
-        interp_ok(try {
-            // tv_sec must be non-negative.
-            let seconds: u64 = seconds.try_into().ok()?;
-            // tv_nsec must be non-negative.
-            let nanoseconds: u32 = nanoseconds.try_into().ok()?;
-            if nanoseconds >= 1_000_000_000 {
-                // tv_nsec must not be greater than 999,999,999.
-                None?
-            }
-            Duration::new(seconds, nanoseconds)
-        })
     }
 
     /// Read bytes from a byte slice.
@@ -1083,6 +1065,11 @@ pub(crate) fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
         // required to hold the string and its terminating null character.
         u32::try_from(len).unwrap()
     }
+}
+
+/// Check whether the local crate has the `#![no_core]` attribute.
+pub fn is_no_core(tcx: TyCtxt<'_>) -> bool {
+    rustc_hir::find_attr!(tcx, crate, NoCore)
 }
 
 /// We don't support 16-bit systems, so let's have ergonomic conversion from `u32` to `usize`.

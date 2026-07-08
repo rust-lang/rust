@@ -105,18 +105,18 @@ pub(crate) fn write_diff(expected: &str, actual: &str, context_size: usize) -> S
     output
 }
 
-pub(crate) fn diff_by_lines(expected: &str, actual: &str) -> String {
+pub(crate) fn diff_by_lines(expected: &[String], actual: &[String]) -> String {
     use std::collections::HashMap;
     use std::fmt::Write;
     let mut output = String::new();
     let mut expected_counts: HashMap<&str, usize> = HashMap::new();
     let mut actual_counts: HashMap<&str, usize> = HashMap::new();
 
-    for line in expected.lines() {
-        *expected_counts.entry(line).or_insert(0) += 1;
+    for line in expected {
+        *expected_counts.entry(line.as_str()).or_insert(0) += 1;
     }
-    for line in actual.lines() {
-        *actual_counts.entry(line).or_insert(0) += 1;
+    for line in actual {
+        *actual_counts.entry(line.as_str()).or_insert(0) += 1;
     }
 
     fn write_expected_only_lines(

@@ -11,7 +11,7 @@ impl A {
 }
 
 // See #59021
-// EMIT_MIR unusual_item_types.Test-X-{constructor#0}.built.after.mir
+// EMIT_MIR unusual_item_types.Test-X-{constructor#0}.runtime-optimized.after.mir
 enum Test {
     X(usize),
     Y { a: usize },

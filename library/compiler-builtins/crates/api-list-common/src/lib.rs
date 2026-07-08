@@ -1082,6 +1082,16 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         scope: OpScope::LibmPublic,
     },
     NestedOp {
+        // `(f16, f16, f16) -> f16`
+        rust_sig: Signature {
+            args: &[Ty::F16, Ty::F16, Ty::F16],
+            returns: &[Ty::F16],
+        },
+        c_sig: None,
+        fn_list: &["fmaf16"],
+        scope: OpScope::LibmPublic,
+    },
+    NestedOp {
         // `(f32, f32, f32) -> f32`
         rust_sig: Signature {
             args: &[Ty::F32, Ty::F32, Ty::F32],

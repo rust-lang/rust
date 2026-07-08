@@ -1,4 +1,5 @@
 use rustc_abi::{Scalar, Size, TagEncoding, Variants, WrappingRange};
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
@@ -61,6 +62,7 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                             basic_blocks[block].terminator = Some(Terminator {
                                 source_info,
                                 kind: TerminatorKind::Goto { target: new_block },
+                                attributes: ThinVec::new(),
                             });
                         }
                         EnumCheckType::Direct { source_op, discr, op_size, valid_discrs } => {
@@ -395,6 +397,7 @@ fn insert_direct_enum_check<'tcx>(
                 invalid_discr_block,
             ),
         },
+        attributes: ThinVec::new(),
     });
 
     // Abort in case of an invalid enum discriminant.
@@ -414,6 +417,7 @@ fn insert_direct_enum_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
+        attributes: ThinVec::new(),
     });
 }
 
@@ -459,6 +463,7 @@ fn insert_uninhabited_enum_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
+        attributes: ThinVec::new(),
     });
 }
 
@@ -536,5 +541,6 @@ fn insert_niche_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
+        attributes: ThinVec::new(),
     });
 }

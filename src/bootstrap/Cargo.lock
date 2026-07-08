@@ -71,6 +71,7 @@ dependencies = [
  "tracing-subscriber",
  "walkdir",
  "windows 0.61.1",
+ "windows-registry",
  "xz2",
 ]
 
@@ -742,9 +743,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.39.0"
+version = "0.39.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd9f9fe3d2b7b75cf4f2805e5b9926e8ac47146667b16b86298c4a8bf08cc469"
+checksum = "14311e7e9a03114cd4b65eedd54e8fed2945e17f08586ae97ef53bc0669f9581"
 dependencies = [
  "libc",
  "memchr",
@@ -1093,6 +1094,17 @@ checksum = "6e2e40844ac143cdb44aead537bbf727de9b044e107a0f1220392177d15b0f26"
 dependencies = [
  "windows-core 0.62.2",
  "windows-link 0.2.1",
+]
+
+[[package]]
+name = "windows-registry"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02752bf7fbdcce7f2a27a742f798510f3e5ad88dbe84871e5168e2120c3d5720"
+dependencies = [
+ "windows-link 0.2.1",
+ "windows-result 0.4.1",
+ "windows-strings 0.5.1",
 ]
 
 [[package]]

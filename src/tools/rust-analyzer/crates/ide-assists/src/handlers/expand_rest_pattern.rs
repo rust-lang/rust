@@ -137,13 +137,7 @@ fn expand_tuple_struct_rest_pattern(
                 pat.fields()
                     .take(prefix_count)
                     .chain(fields[prefix_count..fields.len() - suffix_count].iter().map(|f| {
-                        gen_unnamed_pat(
-                            ctx,
-                            make,
-                            &mut name_gen,
-                            &f.ty(ctx.db()).to_type(ctx.sema.db),
-                            f.index(),
-                        )
+                        gen_unnamed_pat(ctx, make, &mut name_gen, &f.ty(ctx.db()), f.index())
                     }))
                     .chain(pat.fields().skip(prefix_count + 1)),
             );

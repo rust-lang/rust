@@ -172,13 +172,14 @@ where
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
         let stalled_coroutines = match infcx.typing_mode_raw().assert_not_erased() {
-            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
             TypingMode::Coherence
-            | TypingMode::Borrowck { defining_opaque_types: _ }
-            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
-            | TypingMode::PostAnalysis => return Default::default(),
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowck { defined_opaque_types: _ }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => return Default::default(),
         };
 
         if stalled_coroutines.is_empty() {
@@ -460,11 +461,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::NormalizesTo(..) => {
                     bug!("NormalizesTo is only used by the new solver")
                 }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used by the new solver")
-                }
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {
-                   unreachable!("unexpected higher ranked `UnstableFeature` goal")
+                    unreachable!("unexpected higher ranked `UnstableFeature` goal")
                 }
             },
             Some(pred) => match pred {
@@ -534,9 +532,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::NormalizesTo(..) => {
                     bug!("NormalizesTo is only used by the new solver")
                 }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used by the new solver")
-                }
                 // Compute `ConstArgHasType` above the overflow check below.
                 // This is because this is not ever a useful obligation to report
                 // as the cause of an overflow.
@@ -558,11 +553,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             return ProcessResult::Changed(PendingPredicateObligations::new());
                         }
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Unevaluated(uv) => infcx
-                            .tcx
-                            .type_of(uv.def)
-                            .instantiate(infcx.tcx, uv.args)
-                            .skip_norm_wip(),
+                        ty::ConstKind::Alias(_, alias_const) => {
+                            alias_const.type_of(infcx.tcx).skip_norm_wip()
+                        }
                         // FIXME(generic_const_exprs): we should construct an alias like
                         // `<lhs_ty as Add<rhs_ty>>::Output` when this is an `Expr` representing
                         // `lhs + rhs`.
@@ -618,7 +611,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     match wf::obligations(
                         self.selcx.infcx,
                         obligation.param_env,
-                        obligation.cause.body_id,
+                        obligation.cause.body_def_id,
                         obligation.recursion_depth + 1,
                         term,
                         obligation.cause.span,
@@ -680,10 +673,10 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(alias_const)) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.selcx.infcx,
-                        uv,
+                        alias_const,
                         obligation.param_env,
                         obligation.cause.span,
                     ) {
@@ -691,7 +684,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         Err(NotConstEvaluatable::MentionsInfer) => {
                             pending_obligation.stalled_on.clear();
                             pending_obligation.stalled_on.extend(
-                                uv.walk().filter_map(TyOrConstInferVar::maybe_from_generic_arg),
+                                alias_const
+                                    .walk()
+                                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
                             );
                             ProcessResult::Unchanged
                         }
@@ -719,13 +714,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         let c2 = tcx.expand_abstract_consts(c2);
                         debug!("equating consts:\nc1= {:?}\nc2= {:?}", c1, c2);
 
-                        use rustc_hir::def::DefKind;
                         match (c1.kind(), c2.kind()) {
-                            (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
-                                if a.def == b.def
+                            (ty::ConstKind::Alias(_, a), ty::ConstKind::Alias(_, b))
+                                if a.kind == b.kind
                                     && matches!(
-                                        tcx.def_kind(a.def),
-                                        DefKind::AssocConst { .. }
+                                        a.kind,
+                                        ty::AliasConstKind::Projection { .. }
+                                            | ty::AliasConstKind::Inherent { .. }
                                     ) =>
                             {
                                 if let Ok(new_obligations) = infcx
@@ -734,8 +729,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     // `generic_const_exprs`
                                     .eq(
                                         DefineOpaqueTypes::Yes,
-                                        ty::AliasTerm::from_unevaluated_const(tcx, a),
-                                        ty::AliasTerm::from_unevaluated_const(tcx, b),
+                                        ty::AliasTerm::from(a),
+                                        ty::AliasTerm::from(b),
                                     )
                                 {
                                     return ProcessResult::Changed(mk_pending(
@@ -744,8 +739,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     ));
                                 }
                             }
-                            (_, ty::ConstKind::Unevaluated(_))
-                            | (ty::ConstKind::Unevaluated(_), _) => (),
+                            (_, ty::ConstKind::Alias(_, _)) | (ty::ConstKind::Alias(_, _), _) => (),
                             (_, _) => {
                                 if let Ok(new_obligations) = infcx
                                     .at(&obligation.cause, obligation.param_env)
@@ -765,7 +759,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     let stalled_on = &mut pending_obligation.stalled_on;
 
                     let mut evaluate = |c: Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
+                        if let ty::ConstKind::Alias(_, alias_const) = c.kind() {
                             match super::try_evaluate_const(
                                 self.selcx.infcx,
                                 c,
@@ -774,7 +768,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 Ok(val) => Ok(val),
                                 e @ Err(EvaluateConstErr::HasGenericsOrInfers) => {
                                     stalled_on.extend(
-                                        unevaluated
+                                        alias_const
                                             .args
                                             .iter()
                                             .filter_map(TyOrConstInferVar::maybe_from_generic_arg),

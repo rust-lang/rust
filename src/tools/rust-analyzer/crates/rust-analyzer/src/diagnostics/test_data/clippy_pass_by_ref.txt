@@ -55,6 +55,7 @@
                 "clippy",
             ),
             message: "this argument is passed by reference, but would be more efficient if passed by value\n#[warn(clippy::trivially_copy_pass_by_ref)] implied by #[warn(clippy::all)]\nfor further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref",
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -111,7 +112,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,
@@ -172,6 +172,7 @@
                 "clippy",
             ),
             message: "lint level defined here",
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -202,7 +203,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,
@@ -263,6 +263,7 @@
                 "clippy",
             ),
             message: "consider passing by value instead: `self`",
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -293,7 +294,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,

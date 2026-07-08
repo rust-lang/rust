@@ -27,7 +27,7 @@ note: trait defined here, with 1 generic parameter: `T`
    |
 LL | pub trait Trait<T> {
    |           ^^^^^ -
-help: replace the generic bound with the associated type
+help: turn the generic argument into an associated item binding
    |
 LL | fn func<T: Trait<u32, Assoc = String>>(t: T) -> impl Trait<(), i32> {
    |                       +++++++
@@ -43,7 +43,7 @@ note: trait defined here, with 1 generic parameter: `T`
    |
 LL | pub trait Trait<T> {
    |           ^^^^^ -
-help: replace the generic bound with the associated type
+help: turn the generic argument into an associated item binding
    |
 LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), Assoc = i32> {
    |                                                        +++++++
@@ -59,7 +59,7 @@ note: trait defined here, with 1 generic parameter: `T`
    |
 LL | pub trait Trait<T> {
    |           ^^^^^ -
-help: replace the generic bound with the associated type
+help: turn the generic argument into an associated item binding
    |
 LL | struct Struct<T: Trait<u32, Assoc = String>> {
    |                             +++++++
@@ -75,7 +75,7 @@ note: trait defined here, with 1 generic parameter: `T`
    |
 LL | pub trait Trait<T> {
    |           ^^^^^ -
-help: replace the generic bound with the associated type
+help: turn the generic argument into an associated item binding
    |
 LL | trait AnotherTrait<T: Trait<T, Assoc = i32>> {}
    |                                +++++++
@@ -91,7 +91,7 @@ note: trait defined here, with 1 generic parameter: `T`
    |
 LL | pub trait Trait<T> {
    |           ^^^^^ -
-help: replace the generic bound with the associated type
+help: turn the generic argument into an associated item binding
    |
 LL | impl<T: Trait<u32, Assoc = String>> Struct<T> {}
    |                    +++++++
@@ -122,7 +122,7 @@ note: trait defined here, with 1 generic parameter: `T`
 LL | pub trait Trait<T> {
    |           ^^^^^ -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: replace the generic bound with the associated type
+help: turn the generic argument into an associated item binding
    |
 LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), Assoc = i32> {
    |                                                        +++++++

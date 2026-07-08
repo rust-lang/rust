@@ -2,7 +2,7 @@
 
 pub struct Int(i32);
 
-impl const std::ops::Add for i32 {
+const impl std::ops::Add for i32 {
     //~^ ERROR only traits defined in the current crate can be implemented for primitive types
     type Output = Self;
 
@@ -19,7 +19,7 @@ impl std::ops::Add for Int {
     }
 }
 
-impl const std::ops::Add for Int {
+const impl std::ops::Add for Int {
     //~^ ERROR conflicting implementations of trait
     type Output = Self;
 

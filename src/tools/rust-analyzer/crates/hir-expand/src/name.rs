@@ -201,8 +201,13 @@ impl Name {
 
     #[inline]
     pub fn is_generated(&self) -> bool {
-        self.as_str().starts_with("<ra@gennew>")
+        is_generated(self.as_str())
     }
+}
+
+#[inline]
+pub fn is_generated(name: &str) -> bool {
+    name.starts_with("<ra@gennew>")
 }
 
 struct Display<'a> {

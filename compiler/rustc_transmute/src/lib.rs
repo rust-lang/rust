@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(test, feature(test))]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 // tidy-alphabetical-end
 
 pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};

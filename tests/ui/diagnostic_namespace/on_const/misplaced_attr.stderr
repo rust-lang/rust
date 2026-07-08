@@ -4,7 +4,7 @@ error: `#[diagnostic::on_const]` can only be applied to non-const trait implemen
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
-LL | impl const PartialEq for Foo {
+LL | const impl PartialEq for Foo {
    | ---------------------------- this is a const trait implementation
    |
 note: the lint level is defined here
@@ -13,38 +13,29 @@ note: the lint level is defined here
 LL | #![deny(misplaced_diagnostic_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
+error: `#[diagnostic::on_const]` attribute cannot be used on structs
   --> $DIR/misplaced_attr.rs:4:1
    |
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | pub struct Foo;
-   | --------------- not a trait implementation
+   |
+   = help: `#[diagnostic::on_const]` can only be applied to trait impl blocks
 
-error: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
+error: `#[diagnostic::on_const]` attribute cannot be used on inherent impl blocks
   --> $DIR/misplaced_attr.rs:16:1
    |
-LL |   #[diagnostic::on_const(message = "tadaa", note = "boing")]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / impl Foo {
-LL | |     fn eq(&self, _other: &Foo) -> bool {
-LL | |         true
-LL | |     }
-LL | | }
-   | |_- not a trait implementation
+LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[diagnostic::on_const]` can only be applied to trait impl blocks
 
-error: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
+error: `#[diagnostic::on_const]` attribute cannot be used on trait methods in impl blocks
   --> $DIR/misplaced_attr.rs:25:5
    |
-LL |       #[diagnostic::on_const(message = "tadaa", note = "boing")]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | /     fn partial_cmp(&self, other: &Foo) -> Option<std::cmp::Ordering> {
-LL | |         None
-LL | |     }
-   | |_____- not a trait implementation
+LL |     #[diagnostic::on_const(message = "tadaa", note = "boing")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[diagnostic::on_const]` can only be applied to trait impl blocks
 
 error: aborting due to 4 previous errors
 

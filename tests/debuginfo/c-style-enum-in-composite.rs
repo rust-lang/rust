@@ -41,13 +41,13 @@
 //@ lldb-check:[...] (OneThousand, MountainView, OneMillion, Vienna)
 
 //@ lldb-command:v padded_struct
-//@ lldb-check:[...] { a = 3 b = OneMillion c = 4 d = Toronto e = 5 }
+//@ lldb-check:[...] {a:3, b:OneMillion, c:4, d:Toronto, e:5}
 
 //@ lldb-command:v packed_struct
-//@ lldb-check:[...] { a = 6 b = OneHundred c = 7 d = Vienna e = 8 }
+//@ lldb-check:[...] {a:6, b:OneHundred, c:7, d:Vienna, e:8}
 
 //@ lldb-command:v non_padded_struct
-//@ lldb-check:[...] { a = OneMillion b = MountainView c = OneThousand d = Toronto }
+//@ lldb-check:[...] {a:OneMillion, b:MountainView, c:OneThousand, d:Toronto}
 
 //@ lldb-command:v struct_with_drop
 //@ lldb-check:[...] ({a:OneHundred, b:Vienna}, 9)

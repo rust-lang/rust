@@ -1,16 +1,10 @@
 //@aux-build: proc_macros.rs
 
-// We also check the out_of_bounds_indexing lint here, because it lints similar things and
-// we want to avoid false positives.
-#![warn(clippy::out_of_bounds_indexing)]
-#![allow(
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::useless_vec,
-    unused_must_use,
-    unused
-)]
 #![warn(clippy::indexing_slicing)]
+// We also check the out_of_bounds_indexing lint here, because it lints similar things and
+// we want to avoid false positives. This needs to be cleaned up after <https://github.com/rust-lang/rust-clippy/issues/17117> is fixed.
+#![deny(clippy::out_of_bounds_indexing)]
+#![expect(clippy::no_effect, clippy::unnecessary_operation, clippy::useless_vec)]
 
 extern crate proc_macros;
 use proc_macros::with_span;

@@ -8,9 +8,8 @@ const trait Tr {
 
 struct S;
 
-impl const Tr for u16 {
+const impl Tr for u16 {
     fn default() {}
 } //~^^ ERROR not all trait items implemented
-
 
 fn main() {}

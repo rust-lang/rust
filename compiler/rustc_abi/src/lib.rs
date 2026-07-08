@@ -36,11 +36,13 @@ even other Rust compilers, such as rust-analyzer!
 
 */
 
+use std::cmp::min;
 use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
-use std::ops::{Add, AddAssign, Deref, Mul, RangeFull, RangeInclusive, Sub};
+use std::ops::{Add, AddAssign, Deref, Mul, RangeFull, Sub};
+use std::range::RangeInclusive;
 use std::str::FromStr;
 
 use bitflags::bitflags;
@@ -791,7 +793,7 @@ impl FromStr for Endian {
 }
 
 /// Size of a type in bytes.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
 pub struct Size {
     raw: u64,
@@ -1059,14 +1061,8 @@ impl Align {
     /// Either `1 << (pointer_bits - 1)` or [`Align::MAX`], whichever is smaller.
     #[inline]
     pub fn max_for_target(tdl: &TargetDataLayout) -> Align {
-        let pointer_bits = tdl.pointer_size().bits();
-        if let Ok(pointer_bits) = u8::try_from(pointer_bits)
-            && pointer_bits <= Align::MAX.pow2
-        {
-            Align { pow2: pointer_bits - 1 }
-        } else {
-            Align::MAX
-        }
+        let pointer_bits = u8::try_from(tdl.pointer_size().bits()).unwrap();
+        min(Align { pow2: pointer_bits - 1 }, Align::MAX)
     }
 
     #[inline]
@@ -1403,7 +1399,11 @@ impl Primitive {
         }
     }
 
-    pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
+    /// The *platform-specific* ABI alignment of this primitive.
+    ///
+    /// This is the type alignment for the corresponding built-in.
+    /// In other contexts it might have different alignment.
+    pub fn default_align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
         use Primitive::*;
         let dl = cx.data_layout();
 
@@ -1578,8 +1578,12 @@ impl Scalar {
         }
     }
 
-    pub fn align(self, cx: &impl HasDataLayout) -> AbiAlign {
-        self.primitive().align(cx)
+    /// The *platform-specific* ABI alignment of this scalar.
+    ///
+    /// This is the type alignment for the corresponding built-in.
+    /// This is *not* necessarily the correct alignment for a type that has this `BackendRepr::Scalar`!
+    pub fn default_align(self, cx: &impl HasDataLayout) -> AbiAlign {
+        self.primitive().default_align(cx)
     }
 
     pub fn size(self, cx: &impl HasDataLayout) -> Size {
@@ -1791,6 +1795,14 @@ impl IntoDiagArg for NumScalableVectors {
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum BackendRepr {
     Scalar(Scalar),
+    /// The data contained in this type can be entirely represented by two scalars.
+    /// The two scalars are listed in *memory* order, so the first is at offset zero
+    /// and the second at a non-zero offset.
+    /// These need not be `FieldIdx(0)` and `FieldIdx(1)`.
+    ///
+    /// As of June 2026 the offset to the second scalar is the size of the first
+    /// scalar rounded up to the platform alignment of the second scalar.
+    /// That may soon change, however; see MCP#1007.
     ScalarPair(Scalar, Scalar),
     SimdScalableVector {
         element: Scalar,
@@ -1856,10 +1868,16 @@ impl BackendRepr {
     /// The psABI alignment for a `Scalar` or `ScalarPair`
     ///
     /// `None` for other variants.
-    pub fn scalar_align<C: HasDataLayout>(&self, cx: &C) -> Option<Align> {
+    ///
+    /// It's unclear whether this is a meaningful operation, and MCP#1007 proposes changes.
+    /// You should generally be using the alignment of the place or the type,
+    /// not calculating something from the `Scalar`s.
+    pub fn scalar_platform_align<C: HasDataLayout>(&self, cx: &C) -> Option<Align> {
         match *self {
-            BackendRepr::Scalar(s) => Some(s.align(cx).abi),
-            BackendRepr::ScalarPair(s1, s2) => Some(s1.align(cx).max(s2.align(cx)).abi),
+            BackendRepr::Scalar(s) => Some(s.default_align(cx).abi),
+            BackendRepr::ScalarPair(s1, s2) => {
+                Some(s1.default_align(cx).max(s2.default_align(cx)).abi)
+            }
             // The align of a Vector can vary in surprising ways
             BackendRepr::SimdVector { .. }
             | BackendRepr::Memory { .. }
@@ -1876,9 +1894,9 @@ impl BackendRepr {
             BackendRepr::Scalar(s) => Some(s.size(cx)),
             // May have some padding between the pair.
             BackendRepr::ScalarPair(s1, s2) => {
-                let field2_offset = s1.size(cx).align_to(s2.align(cx).abi);
+                let field2_offset = s1.size(cx).align_to(s2.default_align(cx).abi);
                 let size = (field2_offset + s2.size(cx)).align_to(
-                    self.scalar_align(cx)
+                    self.scalar_platform_align(cx)
                         // We absolutely must have an answer here or everything is FUBAR.
                         .unwrap(),
                 );
@@ -1953,12 +1971,12 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
         tag: Scalar,
         tag_encoding: TagEncoding<VariantIdx>,
         tag_field: FieldIdx,
-        variants: IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>,
+        variants: IndexVec<VariantIdx, VariantLayout<FieldIdx>>,
     },
 }
 
 // NOTE: This struct is generic over the VariantIdx for rust-analyzer usage.
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum TagEncoding<VariantIdx: Idx> {
     /// The tag directly stores the discriminant, but possibly with a smaller layout
@@ -2318,4 +2336,41 @@ pub enum AbiFromStrErr {
     Unknown,
     /// no "-unwind" variant can be used here
     NoExplicitUnwind,
+}
+
+// NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
+pub struct VariantLayout<FieldIdx: Idx> {
+    pub size: Size,
+    pub backend_repr: BackendRepr,
+    pub field_offsets: IndexVec<FieldIdx, Size>,
+    fields_in_memory_order: IndexVec<u32, FieldIdx>,
+    largest_niche: Option<Niche>,
+    uninhabited: bool,
+}
+
+impl<FieldIdx: Idx> VariantLayout<FieldIdx> {
+    pub fn from_layout(layout: LayoutData<FieldIdx, impl Idx>) -> Self {
+        let FieldsShape::Arbitrary { offsets, in_memory_order } = layout.fields else {
+            panic!("Layout of fields should be Arbitrary for variants");
+        };
+
+        Self {
+            size: layout.size,
+            backend_repr: layout.backend_repr,
+            field_offsets: offsets,
+            fields_in_memory_order: in_memory_order,
+            largest_niche: layout.largest_niche,
+            uninhabited: layout.uninhabited,
+        }
+    }
+
+    pub fn is_uninhabited(&self) -> bool {
+        self.uninhabited
+    }
+
+    pub fn has_fields(&self) -> bool {
+        self.field_offsets.len() > 0
+    }
 }

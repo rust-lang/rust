@@ -21,6 +21,24 @@ mod tests {
     use crate::tests::check_diagnostics;
 
     #[test]
+    fn ident_pattern_allowed() {
+        check_diagnostics(
+            r#"
+unsafe extern { fn foo(a: i32); }
+            "#,
+        );
+    }
+
+    #[test]
+    fn wildcard_pattern_allowed() {
+        check_diagnostics(
+            r#"
+unsafe extern { fn foo(_: i32); }
+            "#,
+        );
+    }
+
+    #[test]
     fn tuple_pattern() {
         check_diagnostics(
             r#"

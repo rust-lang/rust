@@ -476,9 +476,8 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             .borrow_set
             .local_map
             .get(&place.local)
-            .into_iter()
-            .flat_map(|bs| bs.iter())
-            .copied();
+            .map(|bs| bs.iter().copied())
+            .into_flat_iter();
 
         // If the borrowed place is a local with no projections, all other borrows of this
         // local must conflict. This is purely an optimization so we don't have to call

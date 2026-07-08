@@ -7,6 +7,7 @@ use std::range::{
     RangeFrom,
     RangeFromIter,
     Range,
+    legacy,
 };
 
 fn range_inclusive(mut r: RangeInclusive<usize>) {
@@ -59,9 +60,5 @@ fn range(mut r: Range<usize>) {
     // Left unstable
     i.remainder(); //~ ERROR unstable
 }
-
-// Unstable module
-
-use std::range::legacy; //~ ERROR unstable
 
 fn main() {}

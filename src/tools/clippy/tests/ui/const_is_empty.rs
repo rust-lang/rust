@@ -1,5 +1,5 @@
 #![warn(clippy::const_is_empty)]
-#![allow(clippy::needless_late_init, unused_must_use)]
+#![expect(clippy::needless_late_init)]
 
 fn test_literal() {
     if "".is_empty() {

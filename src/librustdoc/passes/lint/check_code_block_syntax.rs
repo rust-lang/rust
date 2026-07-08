@@ -21,7 +21,7 @@ use crate::html::markdown::{self, RustCodeBlock};
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &clean::Item, dox: &str) {
     if let Some(def_id) = item.item_id.as_local_def_id() {
         let sp = item.attr_span(cx.tcx);
-        let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, def_id, sp);
+        let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, def_id, sp, None);
         for code_block in markdown::rust_code_blocks(dox, &extra) {
             check_rust_syntax(cx, item, dox, code_block);
         }

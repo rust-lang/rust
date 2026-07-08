@@ -26,7 +26,7 @@ use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
 
-use crate::errors::NonPrimitiveSimdType;
+use crate::diagnostics::NonPrimitiveSimdType;
 
 mod invariant;
 
@@ -39,37 +39,62 @@ fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
-    let PseudoCanonicalInput { typing_env, value: ty } = query;
-    debug!(?ty);
+    let PseudoCanonicalInput { typing_env: original_typing_env, value: original_ty } = query;
+    debug!(?original_ty);
 
     // Optimization: We convert to TypingMode::PostAnalysis and convert opaque types in
     // the where bounds to their hidden types. This reduces overall uncached invocations
     // of `layout_of` and is thus a small performance improvement.
-    let typing_env = typing_env.with_post_analysis_normalized(tcx);
-    let unnormalized_ty = ty;
+    let typing_env = original_typing_env.with_post_analysis_normalized(tcx);
+    // Switching to `PostAnalysis` typing mode will reveal opaque types that's marked
+    // as rigid in the original typing env.
+    let unnormalized_ty = if typing_env != original_typing_env {
+        ty::set_aliases_to_non_rigid(tcx, original_ty)
+    } else {
+        ty::Unnormalized::new_wip(original_ty)
+    };
 
     // FIXME: We might want to have two different versions of `layout_of`:
     // One that can be called after typecheck has completed and can use
     // `normalize_erasing_regions` here and another one that can be called
     // before typecheck has completed and uses `try_normalize_erasing_regions`.
-    let ty = match tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)) {
+    let normalized_ty = match tcx.try_normalize_erasing_regions(typing_env, unnormalized_ty) {
         Ok(t) => t,
         Err(normalization_error) => {
-            return Err(tcx
-                .arena
-                .alloc(LayoutError::NormalizationFailure(ty, normalization_error)));
+            return Err(tcx.arena.alloc(LayoutError::NormalizationFailure(
+                unnormalized_ty.skip_normalization(),
+                normalization_error,
+            )));
         }
     };
 
-    if ty != unnormalized_ty {
+    if normalized_ty != original_ty {
         // Ensure this layout is also cached for the normalized type.
-        return tcx.layout_of(typing_env.as_query_input(ty));
+        return tcx.layout_of(typing_env.as_query_input(normalized_ty));
+    }
+
+    match typing_env.typing_mode() {
+        ty::TypingMode::Codegen => {
+            let with_postanalysis =
+                ty::TypingEnv::new(typing_env.param_env, ty::TypingMode::PostAnalysis);
+            let res = tcx.layout_of(with_postanalysis.as_query_input(normalized_ty));
+            match res {
+                Err(LayoutError::TooGeneric(_)) => {}
+                _ => return res,
+            };
+        }
+        ty::TypingMode::Coherence
+        | ty::TypingMode::Typeck { .. }
+        | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+        | ty::TypingMode::PostBorrowck { .. }
+        | ty::TypingMode::ErasedNotCoherence(_)
+        | ty::TypingMode::PostAnalysis => {}
     }
 
     let cx = LayoutCx::new(tcx, typing_env);
 
-    let layout = layout_of_uncached(&cx, ty)?;
-    let layout = TyAndLayout { ty, layout };
+    let layout = layout_of_uncached(&cx, normalized_ty)?;
+    let layout = TyAndLayout { ty: normalized_ty, layout };
 
     // If we are running with `-Zprint-type-sizes`, maybe record layouts
     // for dumping later.
@@ -152,7 +177,7 @@ fn extract_const_value<'tcx>(
             }
             Err(error(cx, LayoutError::TooGeneric(ty)))
         }
-        ty::ConstKind::Unevaluated(_) => {
+        ty::ConstKind::Alias(_, _) => {
             let err = if ct.has_param() {
                 LayoutError::TooGeneric(ty)
             } else {
@@ -419,7 +444,8 @@ fn layout_of_uncached<'tcx>(
             }
 
             let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
-                let pointee_metadata = Ty::new_projection(tcx, metadata_def_id, [pointee]);
+                let pointee_metadata =
+                    Ty::new_projection(tcx, ty::IsRigid::No, metadata_def_id, [pointee]);
                 let metadata_ty = match tcx.try_normalize_erasing_regions(
                     cx.typing_env,
                     Unnormalized::new_wip(pointee_metadata),
@@ -519,6 +545,18 @@ fn layout_of_uncached<'tcx>(
         }
 
         ty::Coroutine(def_id, args) => {
+            match cx.typing_env.typing_mode() {
+                ty::TypingMode::Codegen => {}
+                ty::TypingMode::Coherence
+                | ty::TypingMode::Typeck { .. }
+                | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                | ty::TypingMode::PostBorrowck { .. }
+                | ty::TypingMode::ErasedNotCoherence(_)
+                | ty::TypingMode::PostAnalysis => {
+                    return Err(error(cx, LayoutError::TooGeneric(ty)));
+                }
+            }
+
             use rustc_middle::ty::layout::PrimitiveExt as _;
 
             let info = tcx.coroutine_layout(def_id, args)?;
@@ -527,7 +565,7 @@ fn layout_of_uncached<'tcx>(
                 .field_tys
                 .iter()
                 .map(|local| {
-                    let field_ty = EarlyBinder::bind(local.ty);
+                    let field_ty = EarlyBinder::bind(tcx, local.ty);
                     let uninit_ty =
                         Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args).skip_norm_wip());
                     cx.spanned_layout_of(uninit_ty, local.source_info.span)
@@ -680,13 +718,15 @@ fn layout_of_uncached<'tcx>(
             let discriminants_iter = || {
                 def.is_enum()
                     .then(|| def.discriminants(tcx).map(|(v, d)| (v, d.val as i128)))
-                    .into_iter()
-                    .flatten()
+                    .into_flat_iter()
             };
 
             let maybe_unsized = def.is_struct()
                 && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
-                    let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
+                    let typing_env = ty::TypingEnv::new(
+                        tcx.param_env_normalized_for_post_analysis(def.did()),
+                        cx.typing_env.typing_mode(),
+                    );
                     !tcx.type_of(last_field.did)
                         .instantiate_identity()
                         .skip_norm_wip()
@@ -968,7 +1008,7 @@ fn variant_info_for_coroutine<'tcx>(
                 .iter()
                 .enumerate()
                 .map(|(field_idx, local)| {
-                    let field_name = coroutine.field_names[*local];
+                    let field_name = coroutine.field_tys[*local].debuginfo_name;
                     let field_layout = variant_layout.field(cx, field_idx);
                     let offset = variant_layout.fields.offset(field_idx);
                     // The struct is as large as the last field's end

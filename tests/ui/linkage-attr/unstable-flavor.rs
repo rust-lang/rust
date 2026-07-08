@@ -2,14 +2,14 @@
 // unique codepath checking all unstable options (see `LinkerFlavorCli::is_unstable` and its
 // caller). If it passes, all the other unstable options are rejected as well.
 //
-//@ revisions: bpf ptx
+//@ revisions: bpf llbc
 //@ [bpf] compile-flags: --target=bpfel-unknown-none -C linker-flavor=bpf --crate-type=rlib
 //@ [bpf] needs-llvm-components: bpf
-//@ [ptx] compile-flags: --target=nvptx64-nvidia-cuda -C linker-flavor=ptx --crate-type=rlib
-//@ [ptx] needs-llvm-components: nvptx
+//@ [llbc] compile-flags: --target=nvptx64-nvidia-cuda -C linker-flavor=llbc --crate-type=rlib
+//@ [llbc] needs-llvm-components: nvptx
 
 #![feature(no_core)]
 #![no_core]
 
 //[bpf]~? ERROR the linker flavor `bpf` is unstable
-//[ptx]~? ERROR the linker flavor `ptx` is unstable
+//[llbc]~? ERROR the linker flavor `llbc` is unstable

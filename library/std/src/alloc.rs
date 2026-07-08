@@ -142,7 +142,7 @@ impl System {
     #[inline]
     fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
-            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
+            0 => Ok(layout.dangling_ptr().cast_slice(0)),
             // SAFETY: `layout` is non-zero in size,
             size => unsafe {
                 let raw_ptr = if zeroed {
@@ -151,7 +151,7 @@ impl System {
                     GlobalAlloc::alloc(self, layout)
                 };
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                Ok(NonNull::slice_from_raw_parts(ptr, size))
+                Ok(ptr.cast_slice(size))
             },
         }
     }
@@ -187,7 +187,7 @@ impl System {
                 if zeroed {
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
                 }
-                Ok(NonNull::slice_from_raw_parts(ptr, new_size))
+                Ok(ptr.cast_slice(new_size))
             },
 
             // SAFETY: because `new_layout.size()` must be greater than or equal to `old_size`,
@@ -266,7 +266,7 @@ unsafe impl Allocator for System {
             // SAFETY: conditions must be upheld by the caller
             0 => unsafe {
                 Allocator::deallocate(self, ptr, old_layout);
-                Ok(NonNull::slice_from_raw_parts(new_layout.dangling_ptr(), 0))
+                Ok(new_layout.dangling_ptr().cast_slice(0))
             },
 
             // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
@@ -276,7 +276,7 @@ unsafe impl Allocator for System {
 
                 let raw_ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                Ok(NonNull::slice_from_raw_parts(ptr, new_size))
+                Ok(ptr.cast_slice(new_size))
             },
 
             // SAFETY: because `new_size` must be smaller than or equal to `old_layout.size()`,

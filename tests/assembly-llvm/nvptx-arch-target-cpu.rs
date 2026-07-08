@@ -1,4 +1,4 @@
-//@ assembly-output: ptx-linker
+//@ assembly-output: emit-asm
 //@ compile-flags: --crate-type cdylib -C target-cpu=sm_87
 //@ only-nvptx64
 

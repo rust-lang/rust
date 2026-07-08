@@ -4,10 +4,7 @@ const trait Bar {}
 
 const trait Foo = Bar;
 
-impl const Bar for () {}
-
-// const impl gets reformatted to impl const.. for now
-impl const Bar for u8 {}
+const impl Bar for () {}
 
 struct X;
 

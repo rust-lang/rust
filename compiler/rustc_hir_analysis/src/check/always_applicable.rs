@@ -16,7 +16,7 @@ use rustc_span::sym;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::hir::def_id::{DefId, LocalDefId};
 
 /// This function confirms that the `Drop` implementation identified by
@@ -42,12 +42,12 @@ pub(crate) fn check_drop_impl(
     match tcx.impl_polarity(drop_impl_did) {
         ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
-            return Err(tcx.dcx().emit_err(errors::DropImplPolarity::Negative {
+            return Err(tcx.dcx().emit_err(diagnostics::DropImplPolarity::Negative {
                 span: tcx.def_span(drop_impl_did),
             }));
         }
         ty::ImplPolarity::Reservation => {
-            return Err(tcx.dcx().emit_err(errors::DropImplPolarity::Reservation {
+            return Err(tcx.dcx().emit_err(diagnostics::DropImplPolarity::Reservation {
                 span: tcx.def_span(drop_impl_did),
             }));
         }
@@ -192,8 +192,9 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let impl_span = tcx.def_span(impl_def_id.to_def_id());
-    let env =
-        ty::EarlyBinder::bind(tcx.param_env(impl_def_id)).instantiate_identity().skip_norm_wip();
+    let env = ty::EarlyBinder::bind(tcx, tcx.param_env(impl_def_id))
+        .instantiate_identity()
+        .skip_norm_wip();
     let args = ty::GenericArgs::identity_for_item(tcx, impl_def_id);
     let destruct_trait = tcx.lang_items().destruct_trait().unwrap();
     for field in tcx.adt_def(adt_def_id).all_fields() {
@@ -281,7 +282,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // reference the params from the ADT instead of from the impl which is bad UX. To resolve
     // this we "rename" the ADT's params to be the impl's params which should not affect behaviour.
     let impl_adt_ty = Ty::new_adt(tcx, tcx.adt_def(adt_def_id), adt_to_impl_args);
-    let adt_env = ty::EarlyBinder::bind(tcx.param_env(adt_def_id))
+    let adt_env = ty::EarlyBinder::bind(tcx, tcx.param_env(adt_def_id))
         .instantiate(tcx, adt_to_impl_args)
         .skip_norm_wip();
 
@@ -393,7 +394,7 @@ fn check_drop_xor_pin_drop<'tcx>(
     match (drop_span, pin_drop_span) {
         (None, None) => {
             if tcx.features().pin_ergonomics() {
-                return Err(tcx.dcx().emit_err(crate::errors::MissingOneOfTraitItem {
+                return Err(tcx.dcx().emit_err(crate::diagnostics::MissingOneOfTraitItem {
                     span: tcx.def_span(drop_impl_did),
                     note: None,
                     missing_items_msg: "drop`, `pin_drop".to_string(),
@@ -408,7 +409,7 @@ fn check_drop_xor_pin_drop<'tcx>(
             if tcx.adt_def(adt_def_id).is_pin_project() {
                 let pin_v2_span = rustc_hir::find_attr!(tcx, adt_def_id, PinV2(attr) => *attr);
                 let adt_name = tcx.item_name(adt_def_id);
-                return Err(tcx.dcx().emit_err(crate::errors::PinV2WithoutPinDrop {
+                return Err(tcx.dcx().emit_err(crate::diagnostics::PinV2WithoutPinDrop {
                     span,
                     pin_v2_span,
                     adt_name,
@@ -424,7 +425,7 @@ fn check_drop_xor_pin_drop<'tcx>(
             }
         }
         (Some(drop_span), Some(pin_drop_span)) => {
-            return Err(tcx.dcx().emit_err(crate::errors::ConflictImplDropAndPinDrop {
+            return Err(tcx.dcx().emit_err(crate::diagnostics::ConflictImplDropAndPinDrop {
                 span: tcx.def_span(drop_impl_did),
                 drop_span,
                 pin_drop_span,

@@ -3,6 +3,7 @@ use syntax::{
     NodeOrToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, T, WalkEvent,
+    ast::syntax_factory::SyntaxFactory,
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -21,7 +22,7 @@ pub enum PrettifyWsKind {
 #[deprecated = "use `hir_expand::prettify_macro_expansion()` instead"]
 pub fn prettify_macro_expansion(
     syn: SyntaxNode,
-    dollar_crate_replacement: &mut dyn FnMut(&SyntaxToken) -> Option<SyntaxToken>,
+    dollar_crate_replacement: &mut dyn FnMut(&SyntaxToken, &SyntaxFactory) -> Option<SyntaxToken>,
     inspect_mods: impl FnOnce(&[(Position, PrettifyWsKind)]),
 ) -> SyntaxNode {
     let mut indent = 0;
@@ -66,7 +67,7 @@ pub fn prettify_macro_expansion(
         };
         if token.kind() == SyntaxKind::IDENT
             && token.text() == "$crate"
-            && let Some(replacement) = dollar_crate_replacement(&token)
+            && let Some(replacement) = dollar_crate_replacement(&token, editor.make())
         {
             dollar_crate_replacements.push((token.clone(), replacement));
         }
@@ -191,7 +192,7 @@ mod tests {
         let source_file = syntax::ast::SourceFile::parse(&ra_fixture, span::Edition::CURRENT);
         let syn = remove_whitespaces(&source_file.syntax_node());
 
-        let pretty = prettify_macro_expansion(syn, &mut |_| None, |_| ());
+        let pretty = prettify_macro_expansion(syn, &mut |_, _| None, |_| ());
         let mut pretty = pretty.to_string();
         if pretty.contains('\n') {
             pretty.push('\n');

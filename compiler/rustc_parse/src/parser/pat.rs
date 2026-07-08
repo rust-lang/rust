@@ -497,18 +497,14 @@ impl<'a> Parser<'a> {
                 && self.look_ahead(1, Token::is_range_separator);
 
         let span = expr.span;
+        let mut diag = self.dcx().create_err(UnexpectedExpressionInPattern { span, is_bound });
+        // The unexpected expr's precedence. Not used directly in the error message, but
+        // needed for the stashing of this error to work correctly. We store a `u32` rather
+        // than an `ExprPrecedence` to avoid having to impl `IntoDiagArg` for
+        // `ExprPrecedence`.
+        diag.arg("expr_precedence", expr.precedence() as u32);
 
-        Some((
-            self.dcx()
-                .create_err(UnexpectedExpressionInPattern {
-                    span,
-                    is_bound,
-                    expr_precedence: expr.precedence() as u32,
-                })
-                .stash(span, StashKey::ExprInPat)
-                .unwrap(),
-            span,
-        ))
+        Some((diag.stash(span, StashKey::ExprInPat).unwrap(), span))
     }
 
     /// Called by [`Parser::parse_stmt_without_recovery`], used to add statement-aware subdiagnostics to the errors stashed

@@ -519,12 +519,8 @@ impl DefMap {
                     // enum variant
                     cov_mark::hit!(can_import_enum_variant);
 
-                    let res = e
-                        .enum_variants(db)
-                        .variants
-                        .iter()
-                        .find(|(_, name, _)| name == segment)
-                        .map(|&(variant, _, shape)| match shape {
+                    let res = e.enum_variants(db).variants.get(segment).map(|&(variant, shape)| {
+                        match shape {
                             FieldsShape::Record => {
                                 PerNs::types(variant.into(), Visibility::Public, None)
                             }
@@ -534,7 +530,8 @@ impl DefMap {
                                 Visibility::Public,
                                 None,
                             ),
-                        });
+                        }
+                    });
                     // FIXME: Need to filter visibility here and below? Not sure.
                     return match res {
                         Some(res) => {

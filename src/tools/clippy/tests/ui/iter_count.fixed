@@ -1,14 +1,8 @@
 //@aux-build:option_helpers.rs
 
 #![warn(clippy::iter_count)]
-#![allow(
-    unused_variables,
-    array_into_iter,
-    unused_mut,
-    clippy::into_iter_on_ref,
-    clippy::unnecessary_operation,
-    clippy::useless_vec
-)]
+#![allow(clippy::into_iter_on_ref, clippy::useless_vec)]
+#![expect(clippy::unnecessary_operation)]
 
 extern crate option_helpers;
 
@@ -33,7 +27,6 @@ impl HasIter {
     }
 }
 
-#[allow(unused_must_use)]
 fn main() {
     let mut vec = vec![0, 1, 2, 3];
     let mut boxed_slice: Box<[u8]> = Box::new([0, 1, 2, 3]);

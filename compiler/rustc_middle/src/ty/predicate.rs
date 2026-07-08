@@ -155,6 +155,16 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Clause<'tcx> {
     }
 }
 
+impl<'tcx> rustc_type_ir::Flags for Clause<'tcx> {
+    fn flags(&self) -> TypeFlags {
+        self.0.flags
+    }
+
+    fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
+        self.0.outer_exclusive_binder
+    }
+}
+
 impl<'tcx> Clause<'tcx> {
     pub fn as_predicate(self) -> Predicate<'tcx> {
         Predicate(self.0)
@@ -419,7 +429,7 @@ impl<'tcx> Clause<'tcx> {
         let shifted_pred =
             tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
         // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder::bind(shifted_pred)
+        let new = EarlyBinder::bind(tcx, shifted_pred)
             .instantiate(tcx, trait_ref.skip_binder().args)
             .skip_norm_wip();
         // 3) ['x] + ['b] -> ['x, 'b]

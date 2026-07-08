@@ -201,7 +201,7 @@ impl OnDiskCache {
 
     /// Serialize the current-session data that will be loaded by [`OnDiskCache`]
     /// in a subsequent incremental compilation session.
-    pub fn serialize(tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
+    pub fn serialize(tcx: TyCtxt<'_>, encoder: FileEncoder<'static>) -> FileEncodeResult {
         // Serializing the `DepGraph` should not modify it.
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
@@ -779,7 +779,7 @@ impl_ref_decoder! {<'tcx>
 /// An encoder that can write to the incremental compilation cache.
 pub struct CacheEncoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    encoder: FileEncoder,
+    encoder: FileEncoder<'static>,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
     interpret_allocs: FxIndexSet<interpret::AllocId>,

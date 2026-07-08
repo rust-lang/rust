@@ -25,7 +25,7 @@ impl Mutex {
         // A pthread mutex initialized with PTHREAD_MUTEX_INITIALIZER will have
         // a type of PTHREAD_MUTEX_DEFAULT, which has undefined behavior if you
         // try to re-lock it from the same thread when you already hold a lock
-        // (https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_mutex_init.html).
+        // (https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_mutex_init.html).
         // This is the case even if PTHREAD_MUTEX_DEFAULT == PTHREAD_MUTEX_NORMAL
         // (https://github.com/rust-lang/rust/issues/33770#issuecomment-220847521) -- in that
         // case, `pthread_mutexattr_settype(PTHREAD_MUTEX_DEFAULT)` will of course be the same

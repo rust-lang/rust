@@ -172,5 +172,29 @@ LL -     let input = vec![0..as_i32!(10)];
 LL +     let input = (0..as_i32!(10)).collect::<std::vec::Vec<i32>>();
    |
 
-error: aborting due to 11 previous errors
+error: an array of `RangeInclusive` that is only one element
+  --> tests/ui/single_range_in_vec_init.rs:87:5
+   |
+LL |     [0..=10];
+   |     ^^^^^^^^
+   |
+help: if you wanted a `Vec` that contains the entire range, try
+   |
+LL -     [0..=10];
+LL +     (0..=10).collect::<std::vec::Vec<i32>>();
+   |
+
+error: a `Vec` of `RangeInclusive` that is only one element
+  --> tests/ui/single_range_in_vec_init.rs:89:5
+   |
+LL |     vec![0..=10];
+   |     ^^^^^^^^^^^^
+   |
+help: if you wanted a `Vec` that contains the entire range, try
+   |
+LL -     vec![0..=10];
+LL +     (0..=10).collect::<std::vec::Vec<i32>>();
+   |
+
+error: aborting due to 13 previous errors
 

@@ -3,7 +3,7 @@
 use crate::{
     AstToken, Direction, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
     algo::neighbor,
-    ast::{self, AstNode, HasGenericParams, HasName, edit::IndentLevel, make},
+    ast::{self, AstNode, HasGenericParams, HasName, edit::IndentLevel},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -207,6 +207,7 @@ impl ast::AssocItemList {
     /// Attention! This function does align the first line of `item` with respect to `self`,
     /// but it does _not_ change indentation of other lines (if any).
     pub fn add_items(&self, editor: &SyntaxEditor, items: Vec<ast::AssocItem>) {
+        let make = editor.make();
         let (indent, position, whitespace) = match self.assoc_items().last() {
             Some(last_item) => (
                 IndentLevel::from_node(last_item.syntax()),
@@ -228,7 +229,7 @@ impl ast::AssocItemList {
             .flat_map(|(i, item)| {
                 let whitespace = if i != 0 { "\n\n" } else { whitespace };
                 vec![
-                    make::tokens::whitespace(&format!("{whitespace}{indent}")).into(),
+                    make.whitespace(&format!("{whitespace}{indent}")).into(),
                     item.syntax().clone().into(),
                 ]
             })
@@ -390,10 +391,11 @@ impl ast::VariantList {
 
 impl ast::Fn {
     pub fn replace_or_insert_body(&self, editor: &SyntaxEditor, body: ast::BlockExpr) {
+        let make = editor.make();
         if let Some(old_body) = self.body() {
             editor.replace(old_body.syntax(), body.syntax());
         } else {
-            let single_space = make::tokens::single_space();
+            let single_space = make.whitespace(" ");
             let elements = vec![single_space.into(), body.syntax().clone().into()];
 
             if let Some(semicolon) = self.semicolon_token() {
@@ -457,11 +459,33 @@ impl Removable for ast::Use {
         if let Some(next_ws) = next_ws {
             let ws_text = next_ws.syntax().text();
             if let Some(rest) = ws_text.strip_prefix('\n') {
-                if rest.is_empty() {
+                let next_use_removed = next_ws
+                    .syntax()
+                    .next_sibling_or_token()
+                    .and_then(|it| it.into_node())
+                    .and_then(ast::Use::cast)
+                    .and_then(|use_| use_.use_tree())
+                    .is_some_and(|use_tree| editor.deleted(use_tree.syntax()));
+                if rest.is_empty() || next_use_removed {
                     editor.delete(next_ws.syntax());
                 } else {
                     editor.replace(next_ws.syntax(), make.whitespace(rest));
                 }
+            }
+        }
+        let prev_ws = self
+            .syntax()
+            .prev_sibling_or_token()
+            .and_then(|it| it.into_token())
+            .and_then(ast::Whitespace::cast);
+        if let Some(prev_ws) = prev_ws {
+            let ws_text = prev_ws.syntax().text();
+            let prev_newline = ws_text.rfind('\n').map(|x| x + 1).unwrap_or(0);
+            let rest = &ws_text[0..prev_newline];
+            if rest.is_empty() {
+                editor.delete(prev_ws.syntax());
+            } else {
+                editor.replace(prev_ws.syntax(), make.whitespace(rest));
             }
         }
 

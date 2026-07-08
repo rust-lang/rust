@@ -1,10 +1,7 @@
 use super::{BorrowedBuf, Cursor, SeekFrom, repeat};
 use crate::cmp::{self, min};
-use crate::io::{
-    self, BufRead, BufReader, DEFAULT_BUF_SIZE, IoSlice, IoSliceMut, Read, Seek, Write,
-};
+use crate::io::{self, BufRead, BufReader, DEFAULT_BUF_SIZE, IoSlice, Read, Seek, Write};
 use crate::mem::MaybeUninit;
-use crate::ops::Deref;
 
 #[test]
 fn read_until() {
@@ -190,7 +187,7 @@ fn read_exact_slice() {
 #[test]
 fn read_buf_exact() {
     let buf: &mut [_] = &mut [0; 4];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     let mut c = Cursor::new(&b""[..]);
     assert_eq!(c.read_buf_exact(buf.unfilled()).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
@@ -565,104 +562,6 @@ fn test_read_to_end_capacity() -> io::Result<()> {
     Ok(())
 }
 
-#[test]
-fn io_slice_mut_advance_slices() {
-    let mut buf1 = [1; 8];
-    let mut buf2 = [2; 16];
-    let mut buf3 = [3; 8];
-    let mut bufs = &mut [
-        IoSliceMut::new(&mut buf1),
-        IoSliceMut::new(&mut buf2),
-        IoSliceMut::new(&mut buf3),
-    ][..];
-
-    // Only in a single buffer..
-    IoSliceMut::advance_slices(&mut bufs, 1);
-    assert_eq!(bufs[0].deref(), [1; 7].as_ref());
-    assert_eq!(bufs[1].deref(), [2; 16].as_ref());
-    assert_eq!(bufs[2].deref(), [3; 8].as_ref());
-
-    // Removing a buffer, leaving others as is.
-    IoSliceMut::advance_slices(&mut bufs, 7);
-    assert_eq!(bufs[0].deref(), [2; 16].as_ref());
-    assert_eq!(bufs[1].deref(), [3; 8].as_ref());
-
-    // Removing a buffer and removing from the next buffer.
-    IoSliceMut::advance_slices(&mut bufs, 18);
-    assert_eq!(bufs[0].deref(), [3; 6].as_ref());
-}
-
-#[test]
-#[should_panic]
-fn io_slice_mut_advance_slices_empty_slice() {
-    let mut empty_bufs = &mut [][..];
-    IoSliceMut::advance_slices(&mut empty_bufs, 1);
-}
-
-#[test]
-#[should_panic]
-fn io_slice_mut_advance_slices_beyond_total_length() {
-    let mut buf1 = [1; 8];
-    let mut bufs = &mut [IoSliceMut::new(&mut buf1)][..];
-
-    IoSliceMut::advance_slices(&mut bufs, 9);
-    assert!(bufs.is_empty());
-}
-
-#[test]
-fn io_slice_advance_slices() {
-    let buf1 = [1; 8];
-    let buf2 = [2; 16];
-    let buf3 = [3; 8];
-    let mut bufs = &mut [IoSlice::new(&buf1), IoSlice::new(&buf2), IoSlice::new(&buf3)][..];
-
-    // Only in a single buffer..
-    IoSlice::advance_slices(&mut bufs, 1);
-    assert_eq!(bufs[0].deref(), [1; 7].as_ref());
-    assert_eq!(bufs[1].deref(), [2; 16].as_ref());
-    assert_eq!(bufs[2].deref(), [3; 8].as_ref());
-
-    // Removing a buffer, leaving others as is.
-    IoSlice::advance_slices(&mut bufs, 7);
-    assert_eq!(bufs[0].deref(), [2; 16].as_ref());
-    assert_eq!(bufs[1].deref(), [3; 8].as_ref());
-
-    // Removing a buffer and removing from the next buffer.
-    IoSlice::advance_slices(&mut bufs, 18);
-    assert_eq!(bufs[0].deref(), [3; 6].as_ref());
-}
-
-#[test]
-#[should_panic]
-fn io_slice_advance_slices_empty_slice() {
-    let mut empty_bufs = &mut [][..];
-    IoSlice::advance_slices(&mut empty_bufs, 1);
-}
-
-#[test]
-#[should_panic]
-fn io_slice_advance_slices_beyond_total_length() {
-    let buf1 = [1; 8];
-    let mut bufs = &mut [IoSlice::new(&buf1)][..];
-
-    IoSlice::advance_slices(&mut bufs, 9);
-    assert!(bufs.is_empty());
-}
-
-#[test]
-fn io_slice_as_slice() {
-    let buf = [1; 8];
-    let slice = IoSlice::new(&buf).as_slice();
-    assert_eq!(slice, buf);
-}
-
-#[test]
-fn io_slice_into_slice() {
-    let mut buf = [1; 8];
-    let slice = IoSliceMut::new(&mut buf).into_slice();
-    assert_eq!(slice, [1; 8]);
-}
-
 /// Creates a new writer that reads from at most `n_bufs` and reads
 /// `per_call` bytes (in total) per call to write.
 fn test_writer(n_bufs: usize, per_call: usize) -> TestWriter {
@@ -832,7 +731,7 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
     b.iter(|| {
         let buf: &mut [_] = &mut [MaybeUninit::uninit(); 64];
 
-        let mut buf: BorrowedBuf<'_> = buf.into();
+        let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
         [255; 128].take(64).read_buf(buf.unfilled()).unwrap();
     });
@@ -874,7 +773,7 @@ impl Read for DataAndErrorReader {
         panic!("We want tests to use `read_buf`")
     }
 
-    fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: io::BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0.read_buf(buf).unwrap();
         Err(io::Error::other("error"))
     }

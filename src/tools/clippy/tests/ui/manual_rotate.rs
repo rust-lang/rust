@@ -1,5 +1,4 @@
 #![warn(clippy::manual_rotate)]
-#![allow(unused)]
 fn main() {
     let (x_u8, x_u16, x_u32, x_u64) = (1u8, 1u16, 1u32, 1u64);
     let (x_i8, x_i16, x_i32, x_i64) = (1i8, 1i16, 1i32, 1i64);

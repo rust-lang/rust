@@ -4,11 +4,11 @@ use hir_expand::{
     EditionedFileId, HirFileId, InFile, Lookup, MacroCallId, MacroDefId, MacroDefKind,
     db::ExpandDatabase,
 };
+use salsa::{Durability, Setter};
 use triomphe::Arc;
 
 use crate::{
-    AssocItemId, AttrDefId, Macro2Loc, MacroExpander, MacroId, MacroRulesLoc, MacroRulesLocFlags,
-    TraitId,
+    AssocItemId, AttrDefId, MacroExpander, MacroId, MacroRulesLocFlags, TraitId,
     attrs::AttrFlags,
     item_tree::{ItemTree, file_item_tree},
     nameres::crate_def_map,
@@ -17,10 +17,6 @@ use crate::{
 
 #[query_group::query_group]
 pub trait DefDatabase: ExpandDatabase + SourceDatabase {
-    /// Whether to expand procedural macros during name resolution.
-    #[salsa::input]
-    fn expand_proc_attr_macros(&self) -> bool;
-
     /// Computes an [`ItemTree`] for the given file or macro expansion.
     #[salsa::invoke(file_item_tree)]
     #[salsa::transparent]
@@ -46,6 +42,26 @@ pub trait DefDatabase: ExpandDatabase + SourceDatabase {
 
     #[salsa::invoke(include_macro_invoc)]
     fn include_macro_invoc(&self, crate_id: Crate) -> Arc<[(MacroCallId, EditionedFileId)]>;
+}
+
+/// Whether to expand procedural macros during name resolution.
+///
+/// Note: this struct shouldn't be exposed to ide crates -- consider using
+/// [`set_expand_proc_attr_macros`] instead, if possible.
+#[salsa::input(singleton, debug)]
+pub(crate) struct ExpandProcAttrMacros {
+    #[returns(copy)]
+    pub(crate) enabled: bool,
+}
+
+pub fn set_expand_proc_attr_macros(db: &mut dyn DefDatabase, enabled: bool) {
+    if let Some(expand_proc_attr_macros) = ExpandProcAttrMacros::try_get(db) {
+        if expand_proc_attr_macros.enabled(db) != enabled {
+            expand_proc_attr_macros.set_enabled(db).with_durability(Durability::HIGH).to(enabled);
+        }
+    } else {
+        _ = ExpandProcAttrMacros::builder(enabled).durability(Durability::HIGH).new(db);
+    }
 }
 
 // return: macro call id and include file id
@@ -76,12 +92,13 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             MacroExpander::BuiltInAttr(it) => MacroDefKind::BuiltInAttr(in_file, it),
             MacroExpander::BuiltInDerive(it) => MacroDefKind::BuiltInDerive(in_file, it),
             MacroExpander::BuiltInEager(it) => MacroDefKind::BuiltInEager(in_file, it),
+            MacroExpander::UnimplementedBuiltIn => MacroDefKind::UnimplementedBuiltIn(in_file),
         }
     };
 
     match id {
         MacroId::Macro2Id(it) => {
-            let loc: Macro2Loc = it.lookup(db);
+            let loc = it.lookup(db);
 
             MacroDefId {
                 krate: loc.container.krate(db),
@@ -92,7 +109,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             }
         }
         MacroId::MacroRulesId(it) => {
-            let loc: MacroRulesLoc = it.lookup(db);
+            let loc = it.lookup(db);
 
             MacroDefId {
                 krate: loc.container.krate(db),

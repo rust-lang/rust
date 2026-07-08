@@ -29,6 +29,8 @@ mod env;
 pub use env::CommandEnvs;
 #[unstable(feature = "command_resolved_envs", issue = "149070")]
 pub use env::CommandResolvedEnvs;
+#[cfg(target_os = "linux")]
+pub use imp::PidFd;
 #[cfg(target_family = "unix")]
 pub use imp::getppid;
 pub use imp::{

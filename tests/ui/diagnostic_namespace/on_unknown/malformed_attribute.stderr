@@ -2,7 +2,9 @@ error[E0432]: Foo
   --> $DIR/malformed_attribute.rs:16:5
    |
 LL | use std::str::NotExisting;
-   |     ^^^^^^^^^^^^^^^^^^^^^ no `NotExisting` in `str`
+   |     ^^^^^^^^^^-----------
+   |               |
+   |               no `NotExisting` in `str`
    |
    = note: unresolved import `std::str::NotExisting`
 

@@ -22,7 +22,7 @@ use tracing::debug;
 use super::FnCtxt;
 use super::method::MethodCallee;
 use crate::method::TreatNotYetDefinedOpaques;
-use crate::{Expectation, errors};
+use crate::{Expectation, diagnostics};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
@@ -313,6 +313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
+
                 method.sig.output()
             }
             // error types are considered "builtin"
@@ -347,7 +348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // used instead of `==` in a let-chain
             Op::AssignOp(assign_op) => {
                 if let Err(e) =
-                    errors::maybe_emit_plus_equals_diagnostic(&self, assign_op, lhs_expr)
+                    diagnostics::maybe_emit_plus_equals_diagnostic(&self, assign_op, lhs_expr)
                 {
                     (e, None)
                 } else {
@@ -516,7 +517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 &mut err,
                                 trait_pred,
                                 output_associated_item,
-                                self.body_id,
+                                self.body_def_id,
                             );
                         }
                     }
@@ -1003,7 +1004,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 &mut err,
                                 pred,
                                 None,
-                                self.body_id,
+                                self.body_def_id,
                             );
                         }
                     }

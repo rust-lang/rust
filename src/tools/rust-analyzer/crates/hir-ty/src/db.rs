@@ -6,8 +6,8 @@ use base_db::{Crate, target::TargetLoadError};
 use either::Either;
 use hir_def::{
     AdtId, BuiltinDeriveImplId, CallableDefId, ConstId, ConstParamId, EnumVariantId,
-    ExpressionStoreOwnerId, FunctionId, GenericDefId, HasModule, ImplId, LifetimeParamId,
-    LocalFieldId, ModuleId, StaticId, TraitId, TypeAliasId, VariantId,
+    ExpressionStoreOwnerId, FunctionId, GenericDefId, HasModule, ImplId, LocalFieldId, ModuleId,
+    StaticId, TraitId, TypeAliasId, VariantId,
     builtin_derive::BuiltinDeriveImplMethod,
     db::DefDatabase,
     expr_store::ExpressionStore,
@@ -22,12 +22,12 @@ use stdx::impl_from;
 use triomphe::Arc;
 
 use crate::{
-    GenericDefaultsRef, GenericPredicates, ImplTraitId, InferBodyId, TyDefId, TyLoweringResult,
-    ValueTyDefId,
+    FieldType, GenericDefaultsRef, GenericPredicates, ImplTraitId, InferBodyId, TyDefId,
+    TyLoweringResult, ValueTyDefId,
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
-    lower::{GenericDefaults, TypeAliasBounds},
+    lower::{GenericDefaults, TrackedStructToken, TypeAliasBounds},
     mir::{BorrowckResult, MirBody, MirLowerError},
     next_solver::{
         Allocation, Clause, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredClauses,
@@ -225,11 +225,11 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn field_types_with_diagnostics(
         &self,
         var: VariantId,
-    ) -> &TyLoweringResult<ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>>;
+    ) -> &TyLoweringResult<ArenaMap<LocalFieldId, FieldType>>;
 
     #[salsa::invoke(crate::lower::field_types_query)]
     #[salsa::transparent]
-    fn field_types(&self, var: VariantId) -> &ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>;
+    fn field_types(&self, var: VariantId) -> &ArenaMap<LocalFieldId, FieldType>;
 
     #[salsa::invoke(crate::lower::callable_item_signature)]
     #[salsa::transparent]
@@ -247,7 +247,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::trait_environment)]
     #[salsa::transparent]
-    fn trait_environment<'db>(&'db self, def: ExpressionStoreOwnerId) -> ParamEnv<'db>;
+    fn trait_environment<'db>(&'db self, def: GenericDefId) -> ParamEnv<'db>;
 
     #[salsa::invoke(crate::lower::generic_defaults_with_diagnostics)]
     #[salsa::transparent]
@@ -292,19 +292,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 #[test]
 fn hir_database_is_dyn_compatible() {
     fn _assert_dyn_compatible(_: &dyn HirDatabase) {}
-}
-
-#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
-#[derive(PartialOrd, Ord)]
-pub struct InternedLifetimeParamId {
-    /// This stores the param and its index.
-    pub loc: (LifetimeParamId, u32),
-}
-
-#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
-#[derive(PartialOrd, Ord)]
-pub struct InternedConstParamId {
-    pub loc: ConstParamId,
 }
 
 #[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
@@ -421,11 +408,18 @@ pub struct AnonConstLoc {
     pub(crate) allow_using_generic_params: bool,
 }
 
-#[salsa_macros::interned(debug, no_lifetime, revisions = usize::MAX)]
+#[salsa_macros::interned(debug, no_lifetime, revisions = usize::MAX, constructor = new_)]
 #[derive(PartialOrd, Ord)]
 pub struct AnonConstId {
     #[returns(ref)]
     pub loc: AnonConstLoc,
+}
+
+impl AnonConstId {
+    pub(crate) fn new(db: &dyn DefDatabase, loc: AnonConstLoc, token: TrackedStructToken) -> Self {
+        _ = token;
+        AnonConstId::new_(db, loc)
+    }
 }
 
 impl HasModule for AnonConstId {

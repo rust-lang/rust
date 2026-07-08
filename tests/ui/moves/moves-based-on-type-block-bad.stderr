@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `hellothere.x` as enum variant `Bar` which is behind a shared reference
-  --> $DIR/moves-based-on-type-block-bad.rs:22:19
+  --> $DIR/moves-based-on-type-block-bad.rs:24:19
    |
 LL |             match hellothere.x {
    |                   ^^^^^^^^^^^^
@@ -7,10 +7,10 @@ LL |                 box E::Foo(_) => {}
 LL |                 box E::Bar(x) => println!("{}", x.to_string()),
    |                            - data moved here because `x` has type `Box<isize>`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider borrowing the pattern binding
    |
-LL |             match &hellothere.x {
-   |                   +
+LL |                 box E::Bar(ref x) => println!("{}", x.to_string()),
+   |                            +++
 
 error: aborting due to 1 previous error
 

@@ -69,7 +69,7 @@ fn test_metrics_dump() {
         let expected = serde_json::json!(
             {
                 "lib_features":[{"symbol":"ascii_char", "timestamp":null}],
-                "lang_features":[{"symbol":"box_patterns","since":null, "timestamp":null}]
+                "lang_features":[{"symbol":"test_unstable_lint","since":null, "timestamp":null}]
             }
         );
 

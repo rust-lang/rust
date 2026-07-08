@@ -29,16 +29,16 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    Arch, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
-    SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
-    TargetTuple, TlsModel, apple,
+    Arch, CfgAbi, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel,
+    SanitizerSet, SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility,
+    Target, TargetTuple, TlsModel, apple,
 };
 
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType,
-    FunctionReturn, Input, InstrumentCoverage, OptLevel, OutFileName, OutputType,
+    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, OptLevel, OutFileName, OutputType,
     SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
@@ -164,6 +164,9 @@ pub struct Session {
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
     pub replaced_intrinsics: FxHashSet<Symbol>,
+    /// The names of intrinsics that the current codegen backend does *not* replace
+    /// with its own implementations.
+    pub fallback_intrinsics: FxHashSet<Symbol>,
 
     /// Does the codegen backend support ThinLTO?
     pub thin_lto_supported: bool,
@@ -181,6 +184,9 @@ pub struct Session {
 
     /// Frontend stats collected for JSON output.
     pub frontend_stats: Lock<Vec<(String, usize)>>,
+    /// Whether the test harness removed a user-written `#[rustc_main]` attribute
+    /// while generating the synthetic test entry point.
+    pub removed_rustc_main_attr: AtomicBool,
 }
 
 #[derive(Clone, Copy)]
@@ -416,10 +422,6 @@ impl Session {
         self.target.debuginfo_kind == DebuginfoKind::Dwarf
     }
 
-    pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
-        format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.as_u64())
-    }
-
     pub fn target_filesearch(&self) -> &filesearch::FileSearch {
         &self.target_filesearch
     }
@@ -553,6 +555,8 @@ impl Session {
         // HWAddressSanitizer and KernelHWAddressSanitizer will use lifetimes to detect use after
         // scope bugs in the future.
         || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
+        // Lifetimes are necessary for retagging semantics.
+        || self.opts.unstable_opts.codegen_emit_retag.is_some()
     }
 
     pub fn diagnostic_width(&self) -> usize {
@@ -1034,6 +1038,10 @@ pub fn build_session(
         dcx = dcx.with_ice_file(ice_file);
     }
 
+    if let Some(msrv) = sopts.unstable_opts.hint_msrv {
+        dcx = dcx.with_msrv(msrv);
+    }
+
     let host_triple = TargetTuple::from_tuple(config::host_tuple());
     let (host, target_warnings) =
         Target::search(&host_triple, sopts.sysroot.path(), sopts.unstable_opts.unstable_options)
@@ -1127,15 +1135,21 @@ pub fn build_session(
         target_filesearch,
         host_filesearch,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
+        fallback_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         used_features: Lock::default(),
         frontend_stats: Lock::default(),
+        removed_rustc_main_attr: AtomicBool::new(false),
     };
 
     validate_commandline_args_with_session_available(&sess);
 
     sess
+}
+
+pub fn generate_proc_macro_decls_symbol(stable_crate_id: StableCrateId) -> String {
+    format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.as_u64())
 }
 
 /// Validate command line arguments with a `Session`.
@@ -1216,6 +1230,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && !sess.target.is_like_msvc
     {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticLinux);
+    }
+
+    // FIXME(jchlanda) Pauthtest does not support static linking. It must be dynamically linked,
+    // with a dynamic linker acting as the ELF interpreter that can resolve pauth relocations and
+    // enforce pointer authentication constraints.
+    if sess.crt_static(None) && sess.target.cfg_abi == CfgAbi::Pauthtest {
+        sess.dcx().emit_err(errors::CannotEnableCrtStaticPointerAuth);
     }
 
     // LLVM CFI requires LTO.
@@ -1327,6 +1348,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if sess.opts.debuginfo == DebugInfo::None {
             sess.dcx().emit_warn(errors::EmbedSourceRequiresDebugInfo);
         }
+    }
+
+    if sess.opts.unstable_opts.instrument_mcount == InstrumentMcount::Fentry
+        && !sess.target.options.supports_fentry
+    {
+        sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "fentry".to_string() });
     }
 
     if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {

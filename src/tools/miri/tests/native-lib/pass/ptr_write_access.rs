@@ -3,8 +3,6 @@
 //@[trace] compile-flags: -Zmiri-native-lib-enable-tracing
 //@compile-flags: -Zmiri-permissive-provenance
 
-#![feature(box_as_ptr)]
-
 use std::mem::MaybeUninit;
 use std::ptr;
 

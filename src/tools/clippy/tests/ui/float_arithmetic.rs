@@ -1,12 +1,6 @@
-#![warn(clippy::arithmetic_side_effects, clippy::float_arithmetic)]
-#![allow(
-    unused,
-    clippy::shadow_reuse,
-    clippy::shadow_unrelated,
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::op_ref
-)]
+#![warn(clippy::float_arithmetic)]
+#![deny(clippy::arithmetic_side_effects)]
+#![expect(clippy::no_effect, clippy::op_ref)]
 
 #[rustfmt::skip]
 fn main() {

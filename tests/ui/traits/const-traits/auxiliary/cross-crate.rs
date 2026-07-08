@@ -9,15 +9,11 @@ pub const trait MyTrait {
 pub struct NonConst;
 
 impl MyTrait for NonConst {
-    fn func(self) {
-
-    }
+    fn func(self) {}
 }
 
 pub struct Const;
 
-impl const MyTrait for Const {
-    fn func(self) {
-
-    }
+const impl MyTrait for Const {
+    fn func(self) {}
 }

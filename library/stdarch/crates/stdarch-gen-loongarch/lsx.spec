@@ -228,21 +228,25 @@ asm-fmts = vd, vj, ui6
 data-types = V2DI, V2DI, UQI
 
 /// lsx_vbitclr_b
+impl = portable
 name = lsx_vbitclr_b
 asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vbitclr_h
+impl = portable
 name = lsx_vbitclr_h
 asm-fmts = vd, vj, vk
 data-types = UV8HI, UV8HI, UV8HI
 
 /// lsx_vbitclr_w
+impl = portable
 name = lsx_vbitclr_w
 asm-fmts = vd, vj, vk
 data-types = UV4SI, UV4SI, UV4SI
 
 /// lsx_vbitclr_d
+impl = portable
 name = lsx_vbitclr_d
 asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI
@@ -268,21 +272,25 @@ asm-fmts = vd, vj, ui6
 data-types = UV2DI, UV2DI, UQI
 
 /// lsx_vbitset_b
+impl = portable
 name = lsx_vbitset_b
 asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vbitset_h
+impl = portable
 name = lsx_vbitset_h
 asm-fmts = vd, vj, vk
 data-types = UV8HI, UV8HI, UV8HI
 
 /// lsx_vbitset_w
+impl = portable
 name = lsx_vbitset_w
 asm-fmts = vd, vj, vk
 data-types = UV4SI, UV4SI, UV4SI
 
 /// lsx_vbitset_d
+impl = portable
 name = lsx_vbitset_d
 asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI
@@ -308,21 +316,25 @@ asm-fmts = vd, vj, ui6
 data-types = UV2DI, UV2DI, UQI
 
 /// lsx_vbitrev_b
+impl = portable
 name = lsx_vbitrev_b
 asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vbitrev_h
+impl = portable
 name = lsx_vbitrev_h
 asm-fmts = vd, vj, vk
 data-types = UV8HI, UV8HI, UV8HI
 
 /// lsx_vbitrev_w
+impl = portable
 name = lsx_vbitrev_w
 asm-fmts = vd, vj, vk
 data-types = UV4SI, UV4SI, UV4SI
 
 /// lsx_vbitrev_d
+impl = portable
 name = lsx_vbitrev_d
 asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI
@@ -912,61 +924,73 @@ asm-fmts = vd, vj, ui6
 data-types = UV2DI, UV2DI, UQI
 
 /// lsx_vadda_b
+impl = portable
 name = lsx_vadda_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vadda_h
+impl = portable
 name = lsx_vadda_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vadda_w
+impl = portable
 name = lsx_vadda_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vadda_d
+impl = portable
 name = lsx_vadda_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vsadd_b
+impl = portable
 name = lsx_vsadd_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vsadd_h
+impl = portable
 name = lsx_vsadd_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vsadd_w
+impl = portable
 name = lsx_vsadd_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vsadd_d
+impl = portable
 name = lsx_vsadd_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vsadd_bu
+impl = portable
 name = lsx_vsadd_bu
 asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vsadd_hu
+impl = portable
 name = lsx_vsadd_hu
 asm-fmts = vd, vj, vk
 data-types = UV8HI, UV8HI, UV8HI
 
 /// lsx_vsadd_wu
+impl = portable
 name = lsx_vsadd_wu
 asm-fmts = vd, vj, vk
 data-types = UV4SI, UV4SI, UV4SI
 
 /// lsx_vsadd_du
+impl = portable
 name = lsx_vsadd_du
 asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI
@@ -1052,81 +1076,97 @@ asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI
 
 /// lsx_vssub_b
+impl = portable
 name = lsx_vssub_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vssub_h
+impl = portable
 name = lsx_vssub_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vssub_w
+impl = portable
 name = lsx_vssub_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vssub_d
+impl = portable
 name = lsx_vssub_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vssub_bu
+impl = portable
 name = lsx_vssub_bu
 asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vssub_hu
+impl = portable
 name = lsx_vssub_hu
 asm-fmts = vd, vj, vk
 data-types = UV8HI, UV8HI, UV8HI
 
 /// lsx_vssub_wu
+impl = portable
 name = lsx_vssub_wu
 asm-fmts = vd, vj, vk
 data-types = UV4SI, UV4SI, UV4SI
 
 /// lsx_vssub_du
+impl = portable
 name = lsx_vssub_du
 asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI
 
 /// lsx_vabsd_b
+impl = portable
 name = lsx_vabsd_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vabsd_h
+impl = portable
 name = lsx_vabsd_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vabsd_w
+impl = portable
 name = lsx_vabsd_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vabsd_d
+impl = portable
 name = lsx_vabsd_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vabsd_bu
+impl = portable
 name = lsx_vabsd_bu
 asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vabsd_hu
+impl = portable
 name = lsx_vabsd_hu
 asm-fmts = vd, vj, vk
 data-types = UV8HI, UV8HI, UV8HI
 
 /// lsx_vabsd_wu
+impl = portable
 name = lsx_vabsd_wu
 asm-fmts = vd, vj, vk
 data-types = UV4SI, UV4SI, UV4SI
 
 /// lsx_vabsd_du
+impl = portable
 name = lsx_vabsd_du
 asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI
@@ -1380,141 +1420,169 @@ asm-fmts = vd, vj, rk
 data-types = V2DI, V2DI, SI
 
 /// lsx_vreplvei_b
+impl = portable
 name = lsx_vreplvei_b
 asm-fmts = vd, vj, ui4
 data-types = V16QI, V16QI, UQI
 
 /// lsx_vreplvei_h
+impl = portable
 name = lsx_vreplvei_h
 asm-fmts = vd, vj, ui3
 data-types = V8HI, V8HI, UQI
 
 /// lsx_vreplvei_w
+impl = portable
 name = lsx_vreplvei_w
 asm-fmts = vd, vj, ui2
 data-types = V4SI, V4SI, UQI
 
 /// lsx_vreplvei_d
+impl = portable
 name = lsx_vreplvei_d
 asm-fmts = vd, vj, ui1
 data-types = V2DI, V2DI, UQI
 
 /// lsx_vpickev_b
+impl = portable
 name = lsx_vpickev_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vpickev_h
+impl = portable
 name = lsx_vpickev_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vpickev_w
+impl = portable
 name = lsx_vpickev_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vpickev_d
+impl = portable
 name = lsx_vpickev_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vpickod_b
+impl = portable
 name = lsx_vpickod_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vpickod_h
+impl = portable
 name = lsx_vpickod_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vpickod_w
+impl = portable
 name = lsx_vpickod_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vpickod_d
+impl = portable
 name = lsx_vpickod_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vilvh_b
+impl = portable
 name = lsx_vilvh_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vilvh_h
+impl = portable
 name = lsx_vilvh_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vilvh_w
+impl = portable
 name = lsx_vilvh_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vilvh_d
+impl = portable
 name = lsx_vilvh_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vilvl_b
+impl = portable
 name = lsx_vilvl_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vilvl_h
+impl = portable
 name = lsx_vilvl_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vilvl_w
+impl = portable
 name = lsx_vilvl_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vilvl_d
+impl = portable
 name = lsx_vilvl_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vpackev_b
+impl = portable
 name = lsx_vpackev_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vpackev_h
+impl = portable
 name = lsx_vpackev_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vpackev_w
+impl = portable
 name = lsx_vpackev_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vpackev_d
+impl = portable
 name = lsx_vpackev_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vpackod_b
+impl = portable
 name = lsx_vpackod_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vpackod_h
+impl = portable
 name = lsx_vpackod_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vpackod_w
+impl = portable
 name = lsx_vpackod_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vpackod_d
+impl = portable
 name = lsx_vpackod_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
@@ -1589,16 +1657,19 @@ asm-fmts = vd, vj, ui8
 data-types = UV16QI, UV16QI, UV16QI, USI
 
 /// lsx_vshuf4i_b
+impl = portable
 name = lsx_vshuf4i_b
 asm-fmts = vd, vj, ui8
 data-types = V16QI, V16QI, USI
 
 /// lsx_vshuf4i_h
+impl = portable
 name = lsx_vshuf4i_h
 asm-fmts = vd, vj, ui8
 data-types = V8HI, V8HI, USI
 
 /// lsx_vshuf4i_w
+impl = portable
 name = lsx_vshuf4i_w
 asm-fmts = vd, vj, ui8
 data-types = V4SI, V4SI, USI
@@ -2298,6 +2369,7 @@ asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI, V8HI
 
 /// lsx_vshuf4i_d
+impl = portable
 name = lsx_vshuf4i_d
 asm-fmts = vd, vj, ui8
 data-types = V2DI, V2DI, V2DI, USI

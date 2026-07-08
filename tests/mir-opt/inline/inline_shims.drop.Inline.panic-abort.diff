@@ -36,24 +36,28 @@
 +                         }
 +                     }
 +                 }
-+                 scope 13 (inlined slice_from_raw_parts_mut::<A>) {
-+                     scope 14 (inlined std::ptr::from_raw_parts_mut::<[A], A>) {
++                 scope 13 (inlined std::ptr::mut_ptr::<impl *mut A>::cast_slice) {
++                     scope 14 (inlined slice_from_raw_parts_mut::<A>) {
++                         scope 15 (inlined std::ptr::from_raw_parts_mut::<[A], A>) {
++                         }
 +                     }
 +                 }
-+                 scope 15 (inlined drop_in_place::<[A]>) {
-+                     let mut _13: &mut [A];
-+                     scope 16 (inlined std::ptr::drop_glue::<[A]> - shim(Some([A]))) {
-+                         let mut _14: usize;
-+                         let mut _15: *mut A;
-+                         let mut _16: bool;
++                 scope 16 (inlined std::ptr::mut_ptr::<impl *mut [A]>::drop_in_place) {
++                     scope 17 (inlined drop_in_place::<[A]>) {
++                         let mut _13: &mut [A];
++                         scope 18 (inlined std::ptr::drop_glue::<[A]> - shim(Some([A]))) {
++                             let mut _14: usize;
++                             let mut _15: *mut A;
++                             let mut _16: bool;
++                         }
 +                     }
 +                 }
 +             }
 +         }
 +     }
-+     scope 17 (inlined drop_in_place::<Option<B>>) {
++     scope 19 (inlined drop_in_place::<Option<B>>) {
 +         let mut _17: &mut std::option::Option<B>;
-+         scope 18 (inlined std::ptr::drop_glue::<Option<B>> - shim(Some(Option<B>))) {
++         scope 20 (inlined std::ptr::drop_glue::<Option<B>> - shim(Some(Option<B>))) {
 +             let mut _18: isize;
 +             let mut _19: isize;
 +         }

@@ -5,7 +5,7 @@ use crate::os::windows::io::{
 use crate::path::Path;
 use crate::sys::api::{UnicodeStrRef, WinError};
 use crate::sys::fs::windows::debug_path_handle;
-use crate::sys::fs::{File, OpenOptions};
+use crate::sys::fs::{File, FileAttr, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::path::{WCStr, with_native_path};
 use crate::sys::{AsInner, FromInner, IntoInner, IoResult, c, to_u16s};
@@ -100,6 +100,16 @@ impl Dir {
             ..c::OBJECT_ATTRIBUTES::with_length()
         };
         unsafe { nt_create_file(opts, &object_attributes, c::FILE_NON_DIRECTORY_FILE) }
+    }
+
+    pub fn metadata(&self) -> io::Result<FileAttr> {
+        // Reuse the implementation for files, which should work for all handles.
+        let handle = self.handle.as_raw_handle();
+        let f = core::mem::ManuallyDrop::new(File {
+            // SAFETY: we borrowed `self` so the handle will not be closed while this function runs.
+            handle: unsafe { Handle::from_raw_handle(handle) },
+        });
+        f.file_attr()
     }
 }
 

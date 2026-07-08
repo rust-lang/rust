@@ -1,6 +1,5 @@
 use std::ffi::{OsStr, OsString};
-use std::fs::File;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use std::process::{Command, Output, Stdio};
 
 use camino::Utf8Path;
@@ -9,6 +8,7 @@ use tracing::debug;
 use super::debugger::DebuggerCommands;
 use super::{Debugger, Emit, ProcRes, TestCx, Truncated, WillExecute};
 use crate::debuggers::extract_gdb_version;
+use crate::util::ArgFileCommand;
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {
@@ -260,6 +260,19 @@ impl TestCx<'_> {
                             "add-auto-load-safe-path {}\n",
                             self.output_base_dir().as_str().replace(r"\", r"\\")
                         ));
+
+                        // GDB visualizer scripts aren't properly embedded on `*-windows-gnu`
+                        // at the moment (see: issue #156687), so we need to load them in
+                        // manually.
+                        #[cfg(target_os = "windows")]
+                        {
+                            script_str.push_str(&format!(
+                                "source {}\n",
+                                self.config
+                                    .src_root
+                                    .join("src/etc/gdb_load_rust_pretty_printers.py")
+                            ));
+                        }
                     }
                 }
                 _ => {
@@ -407,9 +420,7 @@ impl TestCx<'_> {
             "command script import {}/lldb_lookup.py\n",
             rust_pp_module_abs_path
         ));
-        File::open(rust_pp_module_abs_path.join("lldb_commands"))
-            .and_then(|mut file| file.read_to_string(&mut script_str))
-            .expect("Failed to read lldb_commands");
+        script_str.push_str("script print(lldb_lookup.FEATURE_FLAGS)\n");
 
         // Set breakpoints on every line that contains the string "#break"
         let source_file_name = self.testpaths.file.file_name().unwrap();
@@ -458,7 +469,7 @@ impl TestCx<'_> {
         // make sure `PATH` points to all the dlls necessary to run the debugee
         let path = prepend_to_path(&self.config.target_run_lib_path);
 
-        let mut cmd = Command::new(lldb);
+        let mut cmd = ArgFileCommand::new(lldb);
         cmd.arg("--one-line")
             .arg("script --language python -- import lldb_batchmode; lldb_batchmode.main()")
             .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
@@ -467,7 +478,7 @@ impl TestCx<'_> {
             .env("PYTHONPATH", pythonpath)
             .env("PATH", path);
 
-        self.run_command_to_procres(&mut cmd)
+        self.run_command_to_procres(cmd)
     }
 }
 

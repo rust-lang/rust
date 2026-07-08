@@ -5,7 +5,9 @@ use gccjit::{Block, CType, Context, Function, FunctionType, LValue, Location, RV
 use rustc_abi::{Align, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
-use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods};
+use rustc_codegen_ssa::traits::{
+    BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods, PacMetadata,
+};
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::interpret::Allocation;
@@ -19,7 +21,7 @@ use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 #[cfg(feature = "master")]
 use rustc_session::config::DebugInfo;
-use rustc_span::{DUMMY_SP, Span, respan};
+use rustc_span::{DUMMY_SP, Span, Symbol, respan};
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, TlsModel, X86Abi};
 
 #[cfg(feature = "master")]
@@ -398,7 +400,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
+    fn get_fn_addr(&self, instance: Instance<'tcx>, _pac: Option<PacMetadata>) -> RValue<'gcc> {
         let func_name = self.tcx.symbol_name(instance).name;
 
         let func = if let Some(variable) = self.get_declared_value(func_name) {
@@ -486,16 +488,20 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if !self.functions.borrow().contains_key(entry_name) {
-            #[cfg(feature = "master")]
-            let conv = conv_to_fn_attribute(self.sess().target.entry_abi, &self.sess().target.arch);
-            #[cfg(not(feature = "master"))]
-            let conv = None;
+            let conv = cfg_select! {
+                feature = "master" => conv_to_fn_attribute(self.sess(), self.sess().target.entry_abi),
+                _ => None,
+            };
             Some(self.declare_entry_fn(entry_name, fn_type, conv))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
             None
         }
+    }
+
+    fn intrinsic_call_expects_place_always(&self, _name: Symbol) -> bool {
+        true
     }
 }
 

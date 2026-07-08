@@ -8,7 +8,7 @@ use rustc_session::Session;
 use rustc_session::config::{CrateType, OutFileName, OutputType};
 use rustc_session::output::filename_for_metadata;
 
-use crate::errors::{
+use crate::diagnostics::{
     BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
     FailedCreateTempdir, FailedWriteError,
 };

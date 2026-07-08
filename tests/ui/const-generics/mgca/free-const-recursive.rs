@@ -5,8 +5,8 @@
 #![expect(incomplete_features)]
 
 type const A: () = A;
-//~^ ERROR type mismatch resolving `A normalizes-to _`
-//~| ERROR the constant `A` is not of type `()`
+//~^ ERROR: overflow evaluating the requirement `A == _`
+//~| ERROR: overflow evaluating the requirement `the constant `A` has type `()``
 
 fn main() {
     A;

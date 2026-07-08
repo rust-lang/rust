@@ -293,7 +293,7 @@ pub(crate) fn relevance_score(
         if let Some(ty) = ty {
             if ty == *expected {
                 score = 100000;
-            } else if ty.could_unify_with(ctx.db(), expected) {
+            } else if ty.could_unify_with(ctx.db(), &expected.instantiate_with_errors()) {
                 score = 10000;
             }
         }
@@ -2035,6 +2035,62 @@ fn baz() {
 }
         "#,
             "Import `foo::Ext` without `as _`",
+        );
+    }
+
+    #[test]
+    fn local_enum_variant() {
+        check_assist(
+            auto_import,
+            r#"
+mod foo {
+    pub enum ControlFlow {
+        Continue,
+    }
+}
+
+fn main() {
+    Continue$0;
+}
+        "#,
+            r#"
+use foo::ControlFlow::Continue;
+
+mod foo {
+    pub enum ControlFlow {
+        Continue,
+    }
+}
+
+fn main() {
+    Continue;
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn foreign_enum_variant() {
+        check_assist(
+            auto_import,
+            r#"
+//- /foo.rs crate:foo
+pub enum ControlFlow {
+    Continue,
+}
+
+//- /main.rs crate:main deps:foo
+fn main() {
+    Continue$0;
+}
+        "#,
+            r#"
+use foo::ControlFlow::Continue;
+
+fn main() {
+    Continue;
+}
+        "#,
         );
     }
 }

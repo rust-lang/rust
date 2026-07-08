@@ -28,7 +28,7 @@ LL - #[macro_use = 5]
 LL + #[macro_use]
    |
 
-error[E0539]: malformed `macro_use` attribute input
+error[E0565]: malformed `macro_use` attribute input
   --> $DIR/invalid-macro-use.rs:10:1
    |
 LL | #[macro_use(5)]
@@ -82,7 +82,7 @@ LL - #[macro_use(a(b))]
 LL + #[macro_use]
    |
 
-error[E0539]: malformed `macro_use` attribute input
+error[E0565]: malformed `macro_use` attribute input
   --> $DIR/invalid-macro-use.rs:28:1
    |
 LL | #[macro_use(a::b)]

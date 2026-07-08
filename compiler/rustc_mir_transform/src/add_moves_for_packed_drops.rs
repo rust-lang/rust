@@ -1,3 +1,4 @@
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::debug;
@@ -83,9 +84,7 @@ fn add_move_for_packed_drop<'tcx>(
     is_cleanup: bool,
 ) {
     debug!("add_move_for_packed_drop({:?} @ {:?})", terminator, loc);
-    let TerminatorKind::Drop { ref place, target, unwind, replace, drop, async_fut } =
-        terminator.kind
-    else {
+    let TerminatorKind::Drop { ref place, target, unwind, replace, drop } = terminator.kind else {
         unreachable!();
     };
 
@@ -95,7 +94,11 @@ fn add_move_for_packed_drop<'tcx>(
 
     let storage_dead_block = patch.new_block(BasicBlockData::new_stmts(
         vec![Statement::new(source_info, StatementKind::StorageDead(temp))],
-        Some(Terminator { source_info, kind: TerminatorKind::Goto { target } }),
+        Some(Terminator {
+            source_info,
+            kind: TerminatorKind::Goto { target },
+            attributes: ThinVec::new(),
+        }),
         is_cleanup,
     ));
 
@@ -109,7 +112,6 @@ fn add_move_for_packed_drop<'tcx>(
             unwind,
             replace,
             drop,
-            async_fut,
         },
     );
 }

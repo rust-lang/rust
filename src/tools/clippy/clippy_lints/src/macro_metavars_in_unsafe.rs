@@ -251,8 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
             .flatten()
             .copied()
             .inspect(|&unsafe_block| {
-                let level_spec =
-                    cx.tcx.lint_level_spec_at_node(MACRO_METAVARS_IN_UNSAFE, unsafe_block);
+                let level_spec = cx.tcx.lint_level_spec_at_node(MACRO_METAVARS_IN_UNSAFE, unsafe_block);
                 if level_spec.is_expect() {
                     // Since we're going to deduplicate expanded unsafe blocks by its enclosing macro definition soon,
                     // which would lead to unfulfilled `#[expect()]`s in all other unsafe blocks that are filtered out

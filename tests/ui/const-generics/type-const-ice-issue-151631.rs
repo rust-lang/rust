@@ -14,5 +14,5 @@ impl Trait for () { //~ ERROR: the trait bound `(): SuperTrait` is not satisfied
 fn check(_: impl Trait<K = 0>) {}
 
 fn main() {
-    check(()); //~ ERROR: the trait bound `(): SuperTrait` is not satisfied
+    check(()); //~ ERROR: type mismatch resolving `<() as Trait>::K == 0`
 }

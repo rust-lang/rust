@@ -53,7 +53,7 @@ pub(crate) fn codegen_tls_ref<'tcx>(
 ) -> CValue<'tcx> {
     let tls_ptr = if !def_id.is_local() && fx.tcx.needs_thread_local_shim(def_id) {
         let instance = ty::Instance {
-            def: ty::InstanceKind::ThreadLocalShim(def_id),
+            def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(def_id)),
             args: ty::GenericArgs::empty(),
         };
         let func_ref = fx.get_function_ref(instance);
@@ -455,7 +455,8 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             } else {
                 ("", section_name.as_str())
             };
-            data.set_segment_section(segment_name, section_name);
+            // FIXME pass correct section flags on Mach-O
+            data.set_segment_section(segment_name, section_name, 0);
         }
 
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();

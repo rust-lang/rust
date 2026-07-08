@@ -24,6 +24,7 @@ use rustc_target::spec::{CfgAbi, LlvmAbi, Os, RelocModel, Target, ef_avr_arch};
 use tracing::debug;
 
 use super::apple;
+use crate::errors;
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
@@ -36,7 +37,7 @@ use super::apple;
 /// <dd>The metadata can be found in the `.rustc` section of the shared library.</dd>
 /// </dl>
 #[derive(Debug)]
-pub(crate) struct DefaultMetadataLoader;
+pub struct DefaultMetadataLoader;
 
 static AIX_METADATA_SYMBOL_NAME: &'static str = "__aix_rust_metadata";
 
@@ -370,7 +371,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             if let Some(ref cpu) = sess.opts.cg.target_cpu {
                 ef_avr_arch(cpu)
             } else {
-                bug!("AVR CPU not explicitly specified")
+                sess.dcx().emit_fatal(errors::CpuRequired)
             }
         }
         Architecture::Csky => {

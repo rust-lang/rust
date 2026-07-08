@@ -1,6 +1,7 @@
 //@ignore-target: windows # No libc pipe on Windows
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
+//@run-native
 use std::thread;
 
 #[path = "../../utils/libc.rs"]
@@ -39,7 +40,7 @@ fn test_pipe() {
     let data = b"123";
     write_all(fds[1], data).unwrap();
     let mut buf4: [u8; 5] = [0; 5];
-    let (part1, rest) = read_split_slice(fds[0], &mut buf4).unwrap();
+    let (part1, rest) = read_partial(fds[0], &mut buf4).unwrap();
     assert_eq!(part1[..], data[..part1.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
     write_all(fds[1], b"34").unwrap();
@@ -68,7 +69,7 @@ fn test_pipe_threaded() {
     thread2.join().unwrap();
 }
 
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+// FIXME(static_mut_refs): use raw pointers instead of references
 #[allow(static_mut_refs)]
 fn test_race() {
     static mut VAL: u8 = 0;

@@ -1,9 +1,5 @@
-#![allow(
-    dangerous_implicit_autorefs,
-    clippy::explicit_auto_deref,
-    clippy::return_self_not_must_use,
-    clippy::useless_vec
-)]
+#![allow(dangerous_implicit_autorefs)]
+#![expect(clippy::explicit_auto_deref)]
 #![warn(clippy::deref_addrof)]
 
 fn get_number() -> usize {

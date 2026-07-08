@@ -1,0 +1,53 @@
+error[E0507]: cannot move out of `foos`, a captured variable in an `Fn` closure
+  --> $DIR/fn-closure-move-capture-no-reborrow-sugg.rs:31:18
+   |
+LL | pub fn fn_closure(foos: &mut [&mut Foo]) -> Result<(), ()> {
+   |                   ----  --------------- move occurs because `foos` has type `&mut [&mut Foo]`, which does not implement the `Copy` trait
+   |                   |
+   |                   captured outer variable
+LL |     in_fn(|| {
+   |           -- captured by this `Fn` closure
+LL |         for _ in foos {
+   |                  ^^^^
+   |                  |
+   |                  `foos` moved due to this implicit call to `.into_iter()`
+   |                  `foos` is moved here
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/fn-closure-move-capture-no-reborrow-sugg.rs:20:17
+   |
+LL | pub fn in_fn<F: Fn() -> Result<(), ()>>(f: F) -> Result<(), ()> {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
+note: `into_iter` takes ownership of the receiver `self`, which moves `foos`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+
+error[E0507]: cannot move out of `foos`, a captured variable in an `FnMut` closure
+  --> $DIR/fn-closure-move-capture-no-reborrow-sugg.rs:41:18
+   |
+LL | pub fn fn_mut_closure(foos: &mut [&mut Foo]) -> Result<(), ()> {
+   |                       ----  --------------- move occurs because `foos` has type `&mut [&mut Foo]`, which does not implement the `Copy` trait
+   |                       |
+   |                       captured outer variable
+LL |     in_fn_mut(|| {
+   |               -- captured by this `FnMut` closure
+LL |         for _ in foos {
+   |                  ^^^^
+   |                  |
+   |                  `foos` moved due to this implicit call to `.into_iter()`
+   |                  `foos` is moved here
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/fn-closure-move-capture-no-reborrow-sugg.rs:24:21
+   |
+LL | pub fn in_fn_mut<F: FnMut() -> Result<(), ()>>(mut f: F) -> Result<(), ()> {
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `into_iter` takes ownership of the receiver `self`, which moves `foos`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: consider creating a fresh reborrow of `foos` here
+   |
+LL |         for _ in &mut *foos {
+   |                  ++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

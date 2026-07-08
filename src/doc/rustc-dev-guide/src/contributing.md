@@ -255,6 +255,9 @@ It is also perfectly fine
 (and even encouraged!) to use the CI to test your changes if it can help your productivity.
 In particular, we don't recommend running the full `./x test` suite locally,
 since it takes a very long time to execute.
+See the [Testing with CI] chapter for using Rust's CI to test your changes.
+
+[Testing with CI]: tests/ci.md#testing-with-ci
 
 ### r+
 
@@ -422,7 +425,7 @@ Just a few things to keep in mind:
 
 - When contributing text to the guide, please contextualize the information with some time period
   and/or a reason so that the reader knows how much to trust the information.
-  Aim to provide a reasonable amount of context, possibly including but not limited to:
+  Aim to provide a reasonable amount of context, and consider including:
 
   - A reason for why the text may be out of date other than "change",
     as change is a constant across the project.
@@ -441,29 +444,29 @@ Just a few things to keep in mind:
     For the action to pick the date, add a special annotation before specifying the date:
 
     ```md
-    <!-- date-check --> Nov 2025
+    <!-- date-check --> Jul 2026
     ```
 
     Example:
 
     ```md
-    As of <!-- date-check --> Nov 2025, the foo did the bar.
+    As of <!-- date-check --> Jul 2026, the foo did the bar.
     ```
 
     For cases where the date should not be part of the visible rendered output,
     use the following instead:
 
     ```md
-    <!-- date-check: Nov 2025 -->
+    <!-- date-check: Jul 2026 -->
     ```
 
   - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide
     further explanation for the change process or a way to verify that the information is not
     outdated.
 
-- If a text grows rather long (more than a few page scrolls) or complicated (more than four
-  subsections), it might benefit from having a Table of Contents at the beginning,
-  which you can auto-generate by including the `<!-- toc -->` marker at the top.
+- Use sentence case for chapter and sections titles.
+
+- Use dashes (`-`) to separate words file names.
 
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 

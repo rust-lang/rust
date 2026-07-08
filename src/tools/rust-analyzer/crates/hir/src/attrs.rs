@@ -26,8 +26,8 @@ use stdx::never;
 
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, EnumVariant,
-    ExternCrateDecl, Field, Function, GenericParam, HasCrate, Impl, LangItem, LifetimeParam, Macro,
-    Module, ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant,
+    ExternCrateDecl, Field, Function, GenericParam, Impl, LangItem, LifetimeParam, Macro, Module,
+    ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -487,27 +487,28 @@ fn resolve_impl_trait_item<'db>(
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
     let krate = ty.krate(db);
-    let environment = crate::param_env_from_resolver(db, &resolver);
+    let param_env = ty.param_env(db);
     let traits_in_scope = resolver.traits_in_scope(db);
 
     // `ty.iterate_path_candidates()` require a scope, which is not available when resolving
     // attributes here. Use path resolution directly instead.
     //
     // FIXME: resolve type aliases (which are not yielded by iterate_path_candidates)
-    let interner = DbInterner::new_with(db, environment.krate);
+    let interner = DbInterner::new_with(db, param_env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let features = resolver.top_level_def_map().features();
     let ctx = MethodResolutionContext {
         infcx: &infcx,
         resolver: &resolver,
-        param_env: environment.param_env,
+        param_env: param_env.param_env,
         traits_in_scope: &traits_in_scope,
-        edition: krate.edition(db),
+        edition: krate.data(db).edition,
         features,
         call_span: hir_ty::Span::Dummy,
         receiver_span: hir_ty::Span::Dummy,
     };
-    let resolution = ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), ty.ty);
+    let resolution =
+        ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), ty.ty.skip_binder());
     let resolution = match resolution {
         Ok(resolution) => resolution.item,
         Err(MethodError::PrivateMatch(resolution)) => resolution.item,

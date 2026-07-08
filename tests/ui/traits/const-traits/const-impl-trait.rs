@@ -20,7 +20,7 @@ const trait Foo {
     fn huh() -> impl [const] PartialEq + [const] Destruct + Copy;
 }
 
-impl const Foo for () {
+const impl Foo for () {
     fn huh() -> impl [const] PartialEq + [const] Destruct + Copy {
         123
     }
@@ -37,7 +37,7 @@ const _: () = {
 
 const trait T {}
 struct S;
-impl const T for S {}
+const impl T for S {}
 
 const fn rpit() -> impl [const] T {
     S

@@ -5,6 +5,7 @@ use core::ops::Try;
 use core::{array, fmt, ptr};
 
 use super::VecDeque;
+use super::index::WrappedIndex;
 use crate::alloc::{Allocator, Global};
 
 /// An owning iterator over the elements of a `VecDeque`.
@@ -86,7 +87,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         impl<'a, T, A: Allocator> Drop for Guard<'a, T, A> {
             fn drop(&mut self) {
                 self.deque.len -= self.consumed;
-                self.deque.head = self.deque.to_physical_idx(self.consumed);
+                self.deque.head = self.deque.to_wrapped_index(self.consumed);
             }
         }
 
@@ -140,7 +141,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
             // SAFETY: By manually adjusting the head and length of the deque, we effectively
             // make it forget the first `N` elements, so taking ownership of them is safe.
             unsafe { ptr::copy_nonoverlapping(head.as_ptr(), raw_arr_ptr, N) };
-            self.inner.head = self.inner.to_physical_idx(N);
+            self.inner.head = self.inner.to_wrapped_index(N);
             self.inner.len -= N;
             // SAFETY: We initialized the entire array with items from `head`
             return Ok(unsafe { raw_arr.transpose().assume_init() });
@@ -155,7 +156,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
             unsafe {
                 ptr::copy_nonoverlapping(tail.as_ptr(), raw_arr_ptr.add(head.len()), remaining)
             };
-            self.inner.head = self.inner.to_physical_idx(N);
+            self.inner.head = self.inner.to_wrapped_index(N);
             self.inner.len -= N;
             // SAFETY: We initialized the entire array with items from `head` and `tail`
             Ok(unsafe { raw_arr.transpose().assume_init() })
@@ -166,7 +167,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
             };
             let init = head.len() + tail.len();
             // We completely drained all the deques elements.
-            self.inner.head = 0;
+            self.inner.head = WrappedIndex::zero();
             self.inner.len = 0;
             // SAFETY: We copied all elements from both slices to the beginning of the array, so
             // the given range is initialized.

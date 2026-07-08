@@ -54,11 +54,12 @@
 //!     iterators: iterator, fn
 //!     manually_drop: drop
 //!     matches:
-//!     non_null:
-//!     non_zero:
+//!     non_null: pat
+//!     non_zero: pat, transmute, option
 //!     option: panic
 //!     ord: eq, option
 //!     panic: fmt
+//!     pat: panic
 //!     phantom_data:
 //!     pin:
 //!     pointee: copy, send, sync, ord, hash, unpin, phantom_data
@@ -538,10 +539,10 @@ pub mod ptr {
 
     // endregion:pointee
     // region:non_null
-    #[rustc_layout_scalar_valid_range_start(1)]
     #[rustc_nonnull_optimization_guaranteed]
+    #[repr(transparent)]
     pub struct NonNull<T: crate::marker::PointeeSized> {
-        pointer: *const T,
+        pointer: crate::pattern_type!(*const T is !null),
     }
     // region:coerce_unsized
     impl<T: crate::marker::PointeeSized, U: crate::marker::PointeeSized>
@@ -654,6 +655,10 @@ pub mod ops {
     #[lang = "drop"]
     pub trait Drop {
         fn drop(&mut self);
+
+        // region:pin
+        fn pin_drop(self: crate::pin::Pin<&mut Self>) {}
+        // endregion:pin
     }
     // endregion:drop
 
@@ -1713,6 +1718,43 @@ pub mod result {
         #[lang = "Err"]
         Err(E),
     }
+    impl<T, E> Result<T, E> {
+        pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F> {
+            match self {
+                Ok(v) => Ok(v),
+                Err(_) => res,
+            }
+        }
+
+        pub const fn unwrap_or(self, default: T) -> T {
+            match self {
+                Ok(t) => t,
+                Err(_) => default,
+            }
+        }
+
+        // region:fn
+        pub const fn or_else<F, O>(self, op: O) -> Result<T, F>
+        where
+            O: FnOnce(E) -> Result<T, F>,
+        {
+            match self {
+                Ok(t) => Ok(t),
+                Err(e) => op(e),
+            }
+        }
+
+        pub const fn unwrap_or_else<F>(self, op: F) -> T
+        where
+            F: FnOnce(E) -> T,
+        {
+            match self {
+                Ok(t) => t,
+                Err(e) => op(e),
+            }
+        }
+        // endregion:fn
+    }
 }
 // endregion:result
 
@@ -2278,12 +2320,73 @@ mod macros {
     // endregion:deref_pat
 }
 
+// region:pat
+pub mod pat {
+    #[macro_export]
+    #[rustc_builtin_macro(pattern_type)]
+    macro_rules! pattern_type {
+        ($($arg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
+
+    pub const trait RangePattern {
+        #[lang = "RangeMin"]
+        const MIN: Self;
+
+        #[lang = "RangeMax"]
+        const MAX: Self;
+
+        #[lang = "RangeSub"]
+        fn sub_one(self) -> Self;
+    }
+
+    impl const RangePattern for u8 {
+        const MIN: u8 = 0;
+        const MAX: u8 = 0xFF;
+        fn sub_one(self) -> Self {
+            if self == Self::MIN {
+                panic!("exclusive range end at minimum value of type")
+            } else {
+                self - 1
+            }
+        }
+    }
+
+    impl const RangePattern for i32 {
+        const MIN: i32 = 0x80_00_00_00;
+        const MAX: i32 = 0x7F_FF_FF_FF;
+        fn sub_one(self) -> Self {
+            if self == Self::MIN {
+                panic!("exclusive range end at minimum value of type")
+            } else {
+                self - 1
+            }
+        }
+    }
+
+    // region:coerce_unsized
+    impl<T: crate::marker::PointeeSized, U: crate::marker::PointeeSized>
+        crate::ops::CoerceUnsized<pattern_type!(*const U is !null)> for pattern_type!(*const T is !null)
+    where
+        T: crate::marker::Unsize<U>,
+    {
+    }
+    // endregion:coerce_unsized
+
+    // region:dispatch_from_dyn
+    impl<T: crate::ops::DispatchFromDyn<U>, U>
+        crate::ops::DispatchFromDyn<pattern_type!(U is !null)> for pattern_type!(T is !null)
+    {
+    }
+    // endregion:dispatch_from_dyn
+}
+// endregion:pat
+
 // region:non_zero
 pub mod num {
     #[repr(transparent)]
-    #[rustc_layout_scalar_valid_range_start(1)]
-    #[rustc_nonnull_optimization_guaranteed]
-    pub struct NonZeroU8(u8);
+    pub struct NonZeroU8(crate::pattern_type!(u8 is 1..));
 }
 // endregion:non_zero
 
@@ -2392,6 +2495,7 @@ pub mod prelude {
             hash::derive::Hash,                           // :hash, derive
             iter::{FromIterator, IntoIterator, Iterator}, // :iterator
             macros::builtin::{derive, derive_const},      // :derive
+            macros::deref,                                // :deref_pat
             marker::Copy,                                 // :copy
             marker::Send,                                 // :send
             marker::Sized,                                // :sized
@@ -2405,7 +2509,6 @@ pub mod prelude {
             panic,                                        // :panic
             result::Result::{self, Err, Ok},              // :result
             str::FromStr,                                 // :str
-            macros::deref,                                // :deref_pat
         };
     }
 

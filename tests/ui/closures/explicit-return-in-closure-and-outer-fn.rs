@@ -1,0 +1,12 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/22346
+
+//@ run-pass
+#![allow(dead_code)]
+
+// This used to cause an ICE because the retslot for the "return" had the wrong type
+fn testcase<'a>() -> Box<dyn Iterator<Item=usize> + 'a> {
+    return Box::new((0..3).map(|i| { return i; }));
+}
+
+fn main() {
+}

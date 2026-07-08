@@ -1,14 +1,14 @@
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
-| Act |    └─┬──<TAG=root of the allocation>
+| Unq |    └─┬──<TAG=root of the allocation>
 | Res |      └─┬──<TAG=data>
 | Res |        └────<TAG=x>
 ──────────────────────────────────────────────────
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
-| Act |    └─┬──<TAG=root of the allocation>
+| Unq |    └─┬──<TAG=root of the allocation>
 | Res |      └─┬──<TAG=data>
 | Res |        └─┬──<TAG=x>
 | Res |          └─┬──<TAG=caller:x>
@@ -17,7 +17,7 @@ Warning: this tree is indicative only. Some tags may have been hidden.
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
-| Act |    └─┬──<TAG=root of the allocation>
+| Unq |    └─┬──<TAG=root of the allocation>
 | Res |      └─┬──<TAG=data>
 | Res |        ├─┬──<TAG=x>
 | Res |        │ └─┬──<TAG=caller:x>
@@ -27,10 +27,10 @@ Warning: this tree is indicative only. Some tags may have been hidden.
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
-| Act |    └─┬──<TAG=root of the allocation>
-| Act |      └─┬──<TAG=data>
+| Unq |    └─┬──<TAG=root of the allocation>
+| Unq |      └─┬──<TAG=data>
 | Dis |        ├─┬──<TAG=x>
 | Dis |        │ └─┬──<TAG=caller:x>
 | Dis |        │   └────<TAG=callee:x>
-| Act |        └────<TAG=y>
+| Unq |        └────<TAG=y>
 ──────────────────────────────────────────────────

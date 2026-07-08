@@ -41,9 +41,9 @@ pub trait DebugWithContext<C>: Eq + fmt::Debug {
 }
 
 /// Implements `fmt::Debug` by deferring to `<T as DebugWithContext<C>>::fmt_with`.
-pub struct DebugWithAdapter<'a, T, C> {
-    pub this: T,
-    pub ctxt: &'a C,
+pub(crate) struct DebugWithAdapter<'a, T, C> {
+    pub(crate) this: T,
+    pub(crate) ctxt: &'a C,
 }
 
 impl<T, C> fmt::Debug for DebugWithAdapter<'_, T, C>
@@ -56,10 +56,10 @@ where
 }
 
 /// Implements `fmt::Debug` by deferring to `<T as DebugWithContext<C>>::fmt_diff_with`.
-pub struct DebugDiffWithAdapter<'a, T, C> {
-    pub new: T,
-    pub old: T,
-    pub ctxt: &'a C,
+pub(crate) struct DebugDiffWithAdapter<'a, T, C> {
+    pub(crate) new: T,
+    pub(crate) old: T,
+    pub(crate) ctxt: &'a C,
 }
 
 impl<T, C> fmt::Debug for DebugDiffWithAdapter<'_, T, C>

@@ -994,7 +994,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
 
     // let offset_next_corrected = offset_corrected + slot_size;
     // va_ndx = offset_next_corrected;
-    let offset_next_corrected = bx.add(offset_next, bx.const_i32(slot_size));
+    let offset_next_corrected = bx.add(offset_corrected, bx.const_i32(slot_size));
     // update va_ndx
     bx.store(offset_next_corrected, offset_ptr, ptr_align_abi);
 

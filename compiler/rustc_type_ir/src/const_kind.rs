@@ -9,7 +9,7 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
-use crate::{self as ty, BoundVarIndexKind, Interner};
+use crate::{self as ty, AliasConst, BoundVarIndexKind, Interner};
 
 /// Represents a constant in Rust.
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
@@ -34,7 +34,7 @@ pub enum ConstKind<I: Interner> {
     /// An unnormalized const item such as an anon const or assoc const or free const item.
     /// Right now anything other than anon consts does not actually work properly but this
     /// should
-    Unevaluated(ty::UnevaluatedConst<I>),
+    Alias(ty::IsRigid, ty::AliasConst<I>),
 
     /// Used to hold computed value.
     Value(I::ValueConst),
@@ -43,7 +43,7 @@ pub enum ConstKind<I: Interner> {
     /// propagated to avoid useless error messages.
     Error(I::ErrorGuaranteed),
 
-    /// Unevaluated non-const-item, used by `feature(generic_const_exprs)` to represent
+    /// A non-const-item expression awaiting evaluation, used by `feature(generic_const_exprs)` to represent
     /// const arguments such as `N + 1` or `foo(N)`
     Expr(I::ExprConst),
 }
@@ -59,7 +59,9 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
             Infer(var) => write!(f, "{var:?}"),
             Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
-            Unevaluated(uv) => write!(f, "{uv:?}"),
+            Alias(is_rigid, alias_const) => {
+                write!(f, "AliasConst({is_rigid:?}, {alias_const:?})")
+            }
             Value(val) => write!(f, "{val:?}"),
             Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{expr:?}"),
@@ -67,24 +69,82 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
     }
 }
 
-/// An unevaluated (potentially generic) constant used in the type-system.
-#[derive_where(Clone, Copy, Debug, Hash, PartialEq; I: Interner)]
+impl<I: Interner> AliasConst<I> {
+    #[inline]
+    pub fn new(interner: I, kind: AliasConstKind<I>, args: I::GenericArgs) -> AliasConst<I> {
+        if cfg!(debug_assertions) {
+            let def_id = match kind {
+                ty::AliasConstKind::Projection { def_id } => def_id.into(),
+                ty::AliasConstKind::Inherent { def_id } => def_id.into(),
+                ty::AliasConstKind::Free { def_id } => def_id.into(),
+                ty::AliasConstKind::Anon { def_id } => def_id.into(),
+            };
+            interner.debug_assert_args_compatible(def_id, args);
+        }
+        AliasConst { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn type_of(self, interner: I) -> ty::Unnormalized<I, I::Ty> {
+        let def_id = match self.kind {
+            ty::AliasConstKind::Projection { def_id } => def_id.into(),
+            ty::AliasConstKind::Inherent { def_id } => def_id.into(),
+            ty::AliasConstKind::Free { def_id } => def_id.into(),
+            ty::AliasConstKind::Anon { def_id } => def_id.into(),
+        };
+        interner.type_of(def_id).instantiate(interner, self.args)
+    }
+}
+
+/// AliasConstKind is extremely similar to AliasTyKind, and likely should be reasoned about
+/// and handled in very similar ways. The documentation for AliasTyKind/etc. may be helpful when
+/// learning about AliasConstKind.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
-pub struct UnevaluatedConst<I: Interner> {
-    pub def: I::UnevaluatedConstId,
-    pub args: I::GenericArgs,
+pub enum AliasConstKind<I: Interner> {
+    /// A projection `<Type as Trait>::AssocConst`
+    Projection { def_id: I::TraitAssocConstId },
+    /// An associated constant in an inherent `impl`
+    Inherent { def_id: I::InherentAssocConstId },
+    /// A free constant, outside an impl block.
+    Free { def_id: I::FreeConstAliasId },
+    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`.
+    Anon { def_id: I::AnonConstId },
 }
 
-impl<I: Interner> Eq for UnevaluatedConst<I> {}
+impl<I: Interner> AliasConstKind<I> {
+    pub fn new_from_def_id(interner: I, def_id: I::DefId) -> Self {
+        interner.alias_const_kind_from_def_id(def_id)
+    }
 
-impl<I: Interner> UnevaluatedConst<I> {
-    #[inline]
-    pub fn new(def: I::UnevaluatedConstId, args: I::GenericArgs) -> UnevaluatedConst<I> {
-        UnevaluatedConst { def, args }
+    pub fn is_type_const(self, interner: I) -> bool {
+        match self {
+            AliasConstKind::Projection { def_id } => interner.is_type_const(def_id.into()),
+            AliasConstKind::Inherent { def_id } => interner.is_type_const(def_id.into()),
+            AliasConstKind::Free { def_id } => interner.is_type_const(def_id.into()),
+            AliasConstKind::Anon { def_id } => interner.is_type_const(def_id.into()),
+        }
+    }
+
+    pub fn def_span(self, interner: I) -> I::Span {
+        match self {
+            AliasConstKind::Projection { def_id } => interner.def_span(def_id.into()),
+            AliasConstKind::Inherent { def_id } => interner.def_span(def_id.into()),
+            AliasConstKind::Free { def_id } => interner.def_span(def_id.into()),
+            AliasConstKind::Anon { def_id } => interner.def_span(def_id.into()),
+        }
+    }
+
+    pub fn opt_def_id(self) -> Option<I::DefId> {
+        match self {
+            AliasConstKind::Projection { def_id } => Some(def_id.into()),
+            AliasConstKind::Inherent { def_id } => Some(def_id.into()),
+            AliasConstKind::Free { def_id } => Some(def_id.into()),
+            AliasConstKind::Anon { def_id } => Some(def_id.into()),
+        }
     }
 }
 
@@ -207,9 +267,6 @@ pub enum AnonConstKind {
     GCE,
     /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
     MCG,
-    /// `feature(generic_const_args)` anon consts are allowed to use arbitrary
-    /// generic parameters in scope, but only if they syntactically reference them.
-    GCA,
     /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters
     /// but must not depend on the actual instantiation. See #76200 for more information
     RepeatExprCount,

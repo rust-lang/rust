@@ -13,8 +13,8 @@ use std::{env, fs};
 
 use object::read::archive::ArchiveFile;
 use object::{
-    Architecture, BinaryFormat, Endianness, File as ObjFile, Object, ObjectSection, ObjectSymbol,
-    Result as ObjResult, SectionFlags, Symbol, SymbolKind, SymbolScope, U32, elf,
+    Architecture, BinaryFormat, Endianness, File as ObjFile, FileFlags, Object, ObjectSection,
+    ObjectSymbol, Result as ObjResult, SectionFlags, Symbol, SymbolKind, SymbolScope, U32, elf,
 };
 use regex::Regex;
 use serde_json::Value;
@@ -526,12 +526,15 @@ fn check_elf_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
         return Ok(());
     }
 
+    let FileFlags::Elf { e_flags, .. } = obj.flags() else {
+        unreachable!("only elf files are being checked");
+    };
+
     // If there is no `.note.GNU-stack` and no executable sections, behavior differs by platform.
     match obj.architecture() {
         // PPC64 doesn't set `.note.GNU-stack` since GNU nested functions don't need a trampoline,
-        // <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=21098>. From experimentation, it seems
-        // like this only applies to big endian.
-        Architecture::PowerPc64 if obj.endianness() == Endianness::Big => Ok(()),
+        // <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=21098>. This only applies to ELFv1.
+        Architecture::PowerPc64 if e_flags & elf::EF_PPC64_ABI != 2 => Ok(()),
 
         _ => Err(ExeStack::MissingGnuStackSec),
     }

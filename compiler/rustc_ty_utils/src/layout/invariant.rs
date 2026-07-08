@@ -84,7 +84,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
 
     fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
         // Verify the ABI-mandated alignment and size for scalars.
-        let align = layout.backend_repr.scalar_align(cx);
+        let align = layout.backend_repr.scalar_platform_align(cx);
         let size = layout.backend_repr.scalar_size(cx);
         if let Some(align) = align {
             assert_eq!(
@@ -208,9 +208,9 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 };
                 // The fields should be at the right offset, and match the `scalar` layout.
                 let size1 = scalar1.size(cx);
-                let align1 = scalar1.align(cx).abi;
+                let align1 = scalar1.default_align(cx).abi;
                 let size2 = scalar2.size(cx);
-                let align2 = scalar2.align(cx).abi;
+                let align2 = scalar2.default_align(cx).abi;
                 assert_eq!(
                     offset1,
                     Size::ZERO,
@@ -251,7 +251,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             BackendRepr::SimdVector { element, count } => {
                 let align = layout.align.abi;
                 let size = layout.size;
-                let element_align = element.align(cx).abi;
+                let element_align = element.default_align(cx).abi;
                 let element_size = element.size(cx);
                 // Currently, vectors must always be aligned to at least their elements:
                 assert!(align >= element_align);
@@ -302,10 +302,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 }
             }
             for variant in variants.iter() {
-                // No nested "multiple".
-                assert_matches!(variant.variants, Variants::Single { .. });
-                // Variants should have the same or a smaller size as the full thing,
-                // and same for alignment.
+                // Variants should have the same or a smaller size as the full thing.
                 if variant.size > layout.size {
                     bug!(
                         "Type with size {} bytes has variant with size {} bytes: {layout:#?}",
@@ -313,18 +310,8 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                         variant.size.bytes(),
                     )
                 }
-                if variant.align.abi > layout.align.abi {
-                    bug!(
-                        "Type with alignment {} bytes has variant with alignment {} bytes: {layout:#?}",
-                        layout.align.bytes(),
-                        variant.align.bytes(),
-                    )
-                }
                 // Skip empty variants.
-                if variant.size == Size::ZERO
-                    || variant.fields.count() == 0
-                    || variant.is_uninhabited()
-                {
+                if variant.size == Size::ZERO || !variant.has_fields() || variant.is_uninhabited() {
                     // These are never actually accessed anyway, so we can skip the coherence check
                     // for them. They also fail that check, since they may have
                     // a different ABI even when the main type is
@@ -334,7 +321,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 }
                 // The top-level ABI and the ABI of the variants should be coherent.
                 let scalar_coherent = |s1: Scalar, s2: Scalar| {
-                    s1.size(cx) == s2.size(cx) && s1.align(cx) == s2.align(cx)
+                    s1.size(cx) == s2.size(cx) && s1.default_align(cx) == s2.default_align(cx)
                 };
                 let abi_coherent = match (layout.backend_repr, variant.backend_repr) {
                     (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => scalar_coherent(s1, s2),

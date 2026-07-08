@@ -9,7 +9,7 @@ LL | |
 LL | |         if false { yield None.unwrap(); }
 LL | |         None.unwrap()
 LL | |     })
-   | |_____^ cyclic type of infinite size
+   | |_____^ recursive type with infinite-size name
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,
@@ -34,7 +34,7 @@ LL | |
 LL | |         if false { yield None.unwrap(); }
 LL | |         None.unwrap()
 LL | |     })
-   | |_____^ cyclic type of infinite size
+   | |_____^ recursive type with infinite-size name
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,

@@ -106,6 +106,7 @@ features! {
     /// * `"xsaves"`
     /// * `"xsavec"`
     /// * `"cmpxchg16b"`
+    /// * `"clflushopt"`
     /// * `"kl"`
     /// * `"widekl"`
     /// * `"adx"`
@@ -261,6 +262,8 @@ features! {
     /// XSAVEC (Save Processor Extended States Compacted)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] cmpxchg16b: "cmpxchg16b";
     /// CMPXCH16B (16-byte compare-and-swap instruction)
+    @FEATURE: #[unstable(feature = "clflushopt_target_feature", issue = "157096")] clflushopt: "clflushopt";
+    /// CLFLUSHOPT (Cache Line Flush Optimized)
     @FEATURE: #[stable(feature = "keylocker_x86", since = "1.89.0")] kl: "kl";
     /// Intel Key Locker
     @FEATURE: #[stable(feature = "keylocker_x86", since = "1.89.0")] widekl: "widekl";

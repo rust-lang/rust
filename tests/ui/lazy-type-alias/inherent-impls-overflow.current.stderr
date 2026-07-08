@@ -23,7 +23,7 @@ LL | type Poly0<T> = Poly1<(T,)>;
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
 error[E0275]: overflow normalizing the type alias `Poly1<(((((((...,),),),),),),)>`
-  --> $DIR/inherent-impls-overflow.rs:21:1
+  --> $DIR/inherent-impls-overflow.rs:20:1
    |
 LL | type Poly1<T> = Poly0<(T,)>;
    | ^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL | type Poly1<T> = Poly0<(T,)>;
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
 error[E0275]: overflow normalizing the type alias `Poly1<(((((((...,),),),),),),)>`
-  --> $DIR/inherent-impls-overflow.rs:26:1
+  --> $DIR/inherent-impls-overflow.rs:24:1
    |
 LL | impl Poly0<()> {}
    | ^^^^^^^^^^^^^^^^^

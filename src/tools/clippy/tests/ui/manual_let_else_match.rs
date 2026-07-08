@@ -1,12 +1,8 @@
-#![allow(unused_braces, unused_variables, dead_code, irrefutable_let_patterns)]
-#![allow(
-    clippy::collapsible_else_if,
-    clippy::let_unit_value,
-    clippy::redundant_at_rest_pattern
-)]
 #![warn(clippy::manual_let_else)]
 // Ensure that we don't conflict with match -> if let lints
-#![warn(clippy::single_match_else, clippy::single_match)]
+#![deny(clippy::single_match, clippy::single_match_else)]
+#![allow(irrefutable_let_patterns)]
+#![expect(clippy::let_unit_value, clippy::redundant_at_rest_pattern)]
 
 fn f() -> Result<u32, u32> {
     Ok(0)

@@ -347,27 +347,27 @@ macro_rules! make_mir_visitor {
                         ty::InstanceKind::Item(_def_id) => {}
 
                         ty::InstanceKind::Intrinsic(_def_id)
-                        | ty::InstanceKind::VTableShim(_def_id)
-                        | ty::InstanceKind::ReifyShim(_def_id, _)
+                        | ty::InstanceKind::Shim(ty::ShimKind::VTable(_def_id))
+                        | ty::InstanceKind::Shim(ty::ShimKind::Reify(_def_id, _))
                         | ty::InstanceKind::Virtual(_def_id, _)
-                        | ty::InstanceKind::ThreadLocalShim(_def_id)
-                        | ty::InstanceKind::ClosureOnceShim { call_once: _def_id, track_caller: _ }
-                        | ty::InstanceKind::ConstructCoroutineInClosureShim {
+                        | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(_def_id))
+                        | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnce { call_once: _def_id, closure: _, track_caller: _ })
+                        | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,
-                        }
-                        | ty::InstanceKind::DropGlue(_def_id, None) => {}
+                        })
+                        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_def_id, None)) => {}
 
-                        ty::InstanceKind::FnPtrShim(_def_id, ty)
-                        | ty::InstanceKind::DropGlue(_def_id, Some(ty))
-                        | ty::InstanceKind::CloneShim(_def_id, ty)
-                        | ty::InstanceKind::FnPtrAddrShim(_def_id, ty)
-                        | ty::InstanceKind::AsyncDropGlue(_def_id, ty)
-                        | ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, ty) => {
+                        ty::InstanceKind::Shim(ty::ShimKind::FnPtr(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_def_id, Some(ty)))
+                        | ty::InstanceKind::Shim(ty::ShimKind::Clone(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_def_id, ty)) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }
-                        ty::InstanceKind::FutureDropPollShim(_def_id, proxy_ty, impl_ty) => {
+                        ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_def_id, proxy_ty, impl_ty)) => {
                             self.visit_ty($(& $mutability)? *proxy_ty, TyContext::Location(location));
                             self.visit_ty($(& $mutability)? *impl_ty, TyContext::Location(location));
                         }
@@ -516,7 +516,7 @@ macro_rules! make_mir_visitor {
                 terminator: &$($mutability)? Terminator<'tcx>,
                 location: Location
             ) {
-                let Terminator { source_info, kind } = terminator;
+                let Terminator { source_info, kind, attributes: _ } = terminator;
 
                 self.visit_source_info(source_info);
                 match kind {
@@ -555,20 +555,12 @@ macro_rules! make_mir_visitor {
                         unwind: _,
                         replace: _,
                         drop: _,
-                        async_fut,
                     } => {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
                             location
                         );
-                        if let Some(async_fut) = async_fut {
-                            self.visit_local(
-                                $(&$mutability)? *async_fut,
-                                PlaceContext::MutatingUse(MutatingUseContext::Borrow),
-                                location
-                            );
-                        }
                     }
 
                     TerminatorKind::Call {
@@ -676,7 +668,7 @@ macro_rules! make_mir_visitor {
                     OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) | InvalidEnumConstruction(op) => {
                         self.visit_operand(op, location);
                     }
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference | ResumedAfterDrop(_) => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference | NullReferenceConstructed | ResumedAfterDrop(_) => {
                         // Nothing to visit
                     }
                     MisalignedPointerDereference { required, found } => {

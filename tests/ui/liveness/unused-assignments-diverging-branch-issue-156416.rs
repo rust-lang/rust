@@ -1,4 +1,5 @@
 //@ run-pass
+
 #![allow(dead_code)]
 #![warn(unused_assignments)]
 

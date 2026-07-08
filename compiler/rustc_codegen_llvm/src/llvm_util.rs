@@ -66,7 +66,10 @@ unsafe fn configure_llvm(sess: &Session) {
 
     let cg_opts = sess.opts.cg.llvm_args.iter().map(AsRef::as_ref);
     let tg_opts = sess.target.llvm_args.iter().map(AsRef::as_ref);
-    let sess_args = cg_opts.chain(tg_opts);
+    // Target-spec args are passed to LLVM before user `-Cllvm-args`. LLVM's
+    // `cl::opt` parser is last-wins, so this lets `-Cllvm-args=...` override
+    // a value already set in the target spec (e.g. `-wasm-use-legacy-eh`).
+    let sess_args = tg_opts.chain(cg_opts);
 
     let user_specified_args: FxHashSet<_> =
         sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| !s.is_empty()).collect();
@@ -104,13 +107,6 @@ unsafe fn configure_llvm(sess: &Session) {
 
         if wants_wasm_eh(sess) {
             add("-wasm-enable-eh", false);
-        }
-
-        if sess.target.os == Os::Emscripten
-            && !sess.opts.unstable_opts.emscripten_wasm_eh
-            && sess.panic_strategy().unwinds()
-        {
-            add("-enable-emscripten-cxx-exceptions", false);
         }
 
         // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes

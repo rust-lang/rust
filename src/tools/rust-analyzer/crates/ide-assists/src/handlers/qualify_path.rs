@@ -52,8 +52,8 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Op
         ImportCandidate::Path(candidate) if !candidate.qualifier.is_empty() => {
             cov_mark::hit!(qualify_path_qualifier_start);
             let path = ast::Path::cast(syntax_under_caret.clone())?;
-            let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
-            QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
+            let first_seg_generics = path.segments().next()?.generic_arg_list();
+            QualifyCandidate::QualifierStart(path, first_seg_generics)
         }
         ImportCandidate::Path(_) => {
             cov_mark::hit!(qualify_path_unqualified_name);
@@ -113,7 +113,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Op
     Some(())
 }
 pub(crate) enum QualifyCandidate<'db> {
-    QualifierStart(ast::PathSegment, Option<ast::GenericArgList>),
+    QualifierStart(ast::Path, Option<ast::GenericArgList>),
     UnqualifiedName(Option<ast::GenericArgList>),
     TraitAssocItem(ast::Path, ast::PathSegment),
     TraitMethod(&'db RootDatabase, ast::MethodCallExpr),
@@ -131,9 +131,11 @@ impl QualifyCandidate<'_> {
     ) {
         let import = mod_path_to_ast_with_factory(editor.make(), import, edition);
         match self {
-            QualifyCandidate::QualifierStart(segment, generics) => {
+            QualifyCandidate::QualifierStart(path, generics) => {
                 let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);
-                replacer(format!("{import}{generics}::{segment}"));
+                let suffix =
+                    path.segments().skip(1).map(|s| s.to_string()).collect::<Vec<_>>().join("::");
+                replacer(format!("{import}{generics}::{suffix}"));
             }
             QualifyCandidate::UnqualifiedName(generics) => {
                 let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);
@@ -280,6 +282,76 @@ mod std {
 use std::fmt;
 
 fmt::Formatter
+"#,
+        );
+    }
+
+    #[test]
+    fn applicable_when_multiple_segments() {
+        check_assist(
+            qualify_path,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+b::c::foo$0
+"#,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+a::b::c::foo
+"#,
+        );
+        check_assist(
+            qualify_path,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+b::c$0::foo
+"#,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+a::b::c::foo
+"#,
+        );
+        check_assist(
+            qualify_path,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+b$0::c::foo
+"#,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+a::b::c::foo
+"#,
+        );
+    }
+
+    #[test]
+    fn applicable_when_multiple_segments_with_generics() {
+        check_assist(
+            qualify_path,
+            r#"
+mod a {
+    pub mod b {
+        pub struct TestStruct<T>(T);
+        impl<T> TestStruct<T> {
+            pub const TEST_CONST: u8 = 42;
+        }
+    }
+}
+fn main() {
+    b::TestStruct::<()>::TEST_CONST$0;
+}
+"#,
+            r#"
+mod a {
+    pub mod b {
+        pub struct TestStruct<T>(T);
+        impl<T> TestStruct<T> {
+            pub const TEST_CONST: u8 = 42;
+        }
+    }
+}
+fn main() {
+    a::b::TestStruct::<()>::TEST_CONST;
+}
 "#,
         );
     }

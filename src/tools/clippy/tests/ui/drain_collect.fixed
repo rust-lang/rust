@@ -1,5 +1,4 @@
 #![deny(clippy::drain_collect)]
-#![allow(dead_code)]
 
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 

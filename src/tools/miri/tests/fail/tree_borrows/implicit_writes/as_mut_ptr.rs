@@ -1,5 +1,4 @@
-// This code no longer works using implicit writes in tree borrows.
-// This code tests that. The passing version is in `pass/tree_borrows/implicit_writes/as_mut_ptr.rs`.
+// This code works in Tree Borrows without implicit writes, but is expected to fail with implicit writes.
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 
 fn main() {

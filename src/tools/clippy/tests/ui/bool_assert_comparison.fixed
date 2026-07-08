@@ -1,4 +1,5 @@
-#![allow(unused, clippy::assertions_on_constants, clippy::const_is_empty)]
+#![allow(clippy::assertions_on_constants)]
+#![expect(clippy::const_is_empty)]
 #![warn(clippy::bool_assert_comparison)]
 
 use std::ops::{Add, Not};

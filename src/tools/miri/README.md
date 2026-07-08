@@ -1,5 +1,9 @@
 # Miri
 
+<img src="miri-sticker.png" align="right" width="200px"
+ alt="Corro, the Unsafe Rusturchin, drinking from a juice bottle labeled 'Miri - 100% safe'"
+ title="Art by Paige Losare-Lusby, Creative Commons Attribute-ShareAlike">
+
 Miri is an [Undefined Behavior][reference-ub] detection tool for Rust. It can run binaries and test
 suites of cargo projects and detect unsafe code that fails to uphold its safety requirements. For
 instance:
@@ -167,6 +171,38 @@ available (which affects `cfg(target_feature)`), and it tells Miri to consider t
 that the interpreted program runs on as having the feature available (meaning the code is allowed to
 invoke the corresponding intrinsics).
 
+### Nextest integration
+
+Miri can be combined with [`cargo-nextest`](https://nexte.st):
+
+```
+cargo install --locked cargo-nextest
+cargo miri nextest run
+```
+
+Nextest spawns a separate instance of Miri for each test, which has several advantages:
+- Tests can run in parallel. Miri itself only uses a single thread per interpreter so this can
+  give a massive speedup (but see the caveat below).
+- Tests do not stop when a single problem is found. Miri aborts execution when it encounters
+  Undefined Behavior or an unsupported operation (there is often not really any way to continue),
+  so once a single test fails, the remaining tests cannot be executed. Nextest's process-per-test
+  model means that you end up with a full list of which tests worked in Miri and which tests had a
+  problem.
+
+However, there is also a big caveat: Miri will [re-compile the test crate every time it is
+invoked](https://github.com/rust-lang/miri/issues/5013), which means a crate with N tests will be
+compiled N+1 times. If the test crate takes a long time to build, this can outweigh the benefits of
+parallelization.
+
+For more information about nextest, see the [`cargo-nextest` Miri
+documentation](https://nexte.st/book/miri.html).
+
+Note: Nextest's one-test-per-process model means that `cargo miri test` is able to detect data
+races where two tests race on a shared resource, but `cargo miri nextest run` will not detect
+such races.
+
+Note: `cargo-nextest` [does not support doctests](https://github.com/nextest-rs/nextest/issues/16).
+
 ### Testing multiple different executions
 
 Certain parts of the execution are picked randomly by Miri, such as the exact base address
@@ -180,6 +216,7 @@ MIRIFLAGS="-Zmiri-many-seeds" cargo miri test # tries the seeds in 0..64
 MIRIFLAGS="-Zmiri-many-seeds=0..16" cargo miri test
 ```
 
+Miri will test the given range of seeds with parallel interpreter instances.
 The default of 64 different seeds can be quite slow, so you often want to specify a smaller range.
 
 ### Running Miri on CI
@@ -238,26 +275,6 @@ degree documented below):
 However, even for targets that we do support, the degree of support for accessing platform APIs
 (such as the file system) differs between targets: generally, Linux targets have the best support,
 and macOS targets are usually on par. Windows is supported less well.
-
-### Running tests in parallel
-
-Though it implements Rust threading, Miri itself is a single-threaded interpreter
-(it works like a multi-threaded OS on a single-core CPU).
-This means that when running `cargo miri test`, you will probably see a dramatic
-increase in the amount of time it takes to run your whole test suite due to the
-inherent interpreter slowdown and a loss of parallelism.
-
-You can get your test suite's parallelism back by running `cargo miri nextest run -jN`
-(note that you will need [`cargo-nextest`](https://nexte.st) installed).
-This works because `cargo-nextest` collects a list of all tests then launches a
-separate `cargo miri run` for each test. For more information about nextest, see the
-[`cargo-nextest` Miri documentation](https://nexte.st/book/miri.html).
-
-Note: This one-test-per-process model means that `cargo miri test` is able to detect data
-races where two tests race on a shared resource, but `cargo miri nextest run` will not detect
-such races.
-
-Note: `cargo-nextest` does not support doctests, see https://github.com/nextest-rs/nextest/issues/16
 
 ### Directly invoking the `miri` driver
 
@@ -517,6 +534,10 @@ to Miri failing to detect cases of undefined behavior in a program.
   track interior mutable data on the level of references instead of on the
   byte-level as is done by default.  Therefore, with this flag, Tree
   Borrows will be more permissive.
+* `-Zmiri-tree-borrows-relax-custom-allocator-uniqueness` disables uniqueness assumptions for
+  `Box<T, A>` where `A` is not `Global`. The exact aliasing rules for such custom allocators are
+  still up in the air, and by default Miri is conservative and rejects some allocator
+  implementations that incur relevant aliasing between the allocation and the allocator.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
 

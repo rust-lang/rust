@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 async fn sink1<'a>(_: &'a str) {} // lint
 //~^ needless_lifetimes
 

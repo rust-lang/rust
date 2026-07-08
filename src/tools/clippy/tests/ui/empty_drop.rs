@@ -1,5 +1,4 @@
 #![warn(clippy::empty_drop)]
-#![allow(unused)]
 
 // should cause an error
 struct Foo;

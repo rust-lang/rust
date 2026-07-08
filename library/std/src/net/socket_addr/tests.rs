@@ -1,4 +1,4 @@
-use crate::net::test::{sa4, sa6, tsa};
+use crate::net::tests::{sa4, sa6, tsa};
 use crate::net::*;
 
 #[test]

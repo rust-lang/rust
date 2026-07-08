@@ -30,6 +30,7 @@ use tracing::{instrument, span};
 
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
+use crate::core::build_steps::test::failed_tests::collect_previously_failed_tests;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::core::config::target_selection::TargetSelectionList;
@@ -48,8 +49,8 @@ use crate::core::config::toml::target::{
     DefaultLinuxLinkerOverride, Target, TomlTarget, default_linux_linker_overrides,
 };
 use crate::core::config::{
-    CompilerBuiltins, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt,
-    RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
+    CompilerBuiltins, CompressDebuginfo, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge,
+    ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
 };
 use crate::core::download::{
     DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
@@ -125,6 +126,7 @@ pub struct Config {
     pub stage0_metadata: build_helper::stage0_parser::Stage0,
     pub android_ndk: Option<PathBuf>,
     pub optimized_compiler_builtins: CompilerBuiltins,
+    pub record_failed_tests_path: PathBuf,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -208,6 +210,7 @@ pub struct Config {
     pub rust_debuginfo_level_std: DebuginfoLevel,
     pub rust_debuginfo_level_tools: DebuginfoLevel,
     pub rust_debuginfo_level_tests: DebuginfoLevel,
+    pub rust_compress_debuginfo: CompressDebuginfo,
     pub rust_rpath: bool,
     pub rust_strip: bool,
     pub rust_frame_pointers: bool,
@@ -507,6 +510,7 @@ impl Config {
             dist_stage: build_dist_stage,
             bench_stage: build_bench_stage,
             patch_binaries_for_nix: build_patch_binaries_for_nix,
+            record_failed_tests_path: build_record_failed_tests_path,
             // This field is only used by bootstrap.py
             metrics: _,
             android_ndk: build_android_ndk,
@@ -547,6 +551,7 @@ impl Config {
             debuginfo_level_std: rust_debuginfo_level_std,
             debuginfo_level_tools: rust_debuginfo_level_tools,
             debuginfo_level_tests: rust_debuginfo_level_tests,
+            compress_debuginfo: rust_compress_debuginfo,
             backtrace: rust_backtrace,
             incremental: rust_incremental,
             randomize_layout: rust_randomize_layout,
@@ -1203,7 +1208,9 @@ impl Config {
                 | Subcommand::Install => {
                     assert_eq!(
                         stage, 2,
-                        "x.py should be run with `--stage 2` on CI, but was run with `--stage {stage}`",
+                        "\
+x.py was run under CI with an implicit `--stage {stage}`. This is probably wrong and you want stage 2.
+NOTE: Please add `--stage 2` to your command line, or if you're sure you want to run stage {stage} then add `--stage {stage}` explicitly"
                     );
                 }
                 Subcommand::Clean { .. }
@@ -1304,6 +1311,19 @@ impl Config {
                 && src.join(".cargo/config.toml").exists(),
         );
         let verbose_tests = rust_verbose_tests.unwrap_or(exec_ctx.is_verbose());
+
+        let record_failed_tests_path =
+            out.join(build_record_failed_tests_path.unwrap_or_else(|| "failed-tests".to_string()));
+
+        let paths = {
+            let mut paths = Vec::new();
+            if flags_cmd.rerun() {
+                paths = collect_previously_failed_tests(&record_failed_tests_path);
+            } else {
+                paths.extend(flags_paths);
+            }
+            paths
+        };
 
         Config {
             // tidy-alphabetical-start
@@ -1435,13 +1455,14 @@ impl Config {
             out,
             patch_binaries_for_nix: build_patch_binaries_for_nix,
             path_modification_cache,
-            paths: flags_paths,
+            paths,
             prefix: install_prefix.map(PathBuf::from),
             print_step_rusage: build_print_step_rusage.unwrap_or(false),
             print_step_timings: build_print_step_timings.unwrap_or(false),
             profiler: build_profiler.unwrap_or(false),
             python: build_python.map(PathBuf::from),
             quiet: flags_quiet,
+            record_failed_tests_path,
             reproducible_artifacts: flags_reproducible_artifact,
             reuse: build_reuse.map(PathBuf::from),
             rust_analyzer_info,
@@ -1452,6 +1473,7 @@ impl Config {
                 .unwrap_or(vec![CodegenBackendKind::Llvm]),
             rust_codegen_units: rust_codegen_units.map(threads_from_config),
             rust_codegen_units_std: rust_codegen_units_std.map(threads_from_config),
+            rust_compress_debuginfo: rust_compress_debuginfo.unwrap_or_default(),
             rust_debug_logging: rust_debug_logging
                 .or(rust_rustc_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
@@ -1906,6 +1928,13 @@ impl Config {
             .get(&target)
             .and_then(|t| t.split_debuginfo)
             .unwrap_or_else(|| SplitDebuginfo::default_for_platform(target))
+    }
+
+    pub fn compress_debuginfo(&self, target: TargetSelection) -> CompressDebuginfo {
+        self.target_config
+            .get(&target)
+            .and_then(|t| t.compress_debuginfo)
+            .unwrap_or(self.rust_compress_debuginfo)
     }
 
     /// Checks if the given target is the same as the host target.

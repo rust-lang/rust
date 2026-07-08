@@ -1,4 +1,3 @@
-#![allow(unused, dead_code)]
 #![warn(clippy::format_collect)]
 
 fn hex_encode(bytes: &[u8]) -> String {

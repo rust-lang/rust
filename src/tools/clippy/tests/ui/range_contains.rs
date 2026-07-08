@@ -56,8 +56,7 @@ fn main() {
     let y = 3.;
     y >= 0. && y < 1.;
     //~^ manual_range_contains
-    y < 0. || y > 1.;
-    //~^ manual_range_contains
+    y < 0. || y > 1.; // no lint: float `||` differs in NaN handling (fix #16706)
 
     // handle negatives #8721
     x >= -10 && x <= 10;
@@ -95,4 +94,24 @@ fn msrv_1_35() {
     let x = 5;
     x >= 8 && x < 35;
     //~^ manual_range_contains
+}
+
+// Fix #16706
+fn float_nan_no_lint() {
+    let q = 0.5_f64;
+    // these still lint — float && (in-range) is fine, NaN semantics match
+    q >= 0.0 && q < 1.0;
+    //~^ manual_range_contains
+    q >= 0.0 && q <= 1.0;
+    //~^ manual_range_contains
+
+    // these do NOT lint — float || (out-of-range) NaN semantics differ
+    q < 0.0 || q > 1.0; // no lint
+    q < 0.0 || q >= 1.0; // no lint
+
+    let r = 0.5_f32;
+    r >= 0.0 && r < 1.0;
+    //~^ manual_range_contains
+
+    r < 0.0 || r > 1.0; // no lint
 }

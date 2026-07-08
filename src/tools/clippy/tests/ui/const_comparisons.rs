@@ -1,5 +1,4 @@
-#![allow(
-    unused,
+#![expect(
     clippy::identity_op,
     clippy::manual_range_contains,
     clippy::no_effect,

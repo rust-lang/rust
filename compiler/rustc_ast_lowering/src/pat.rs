@@ -7,10 +7,10 @@ use rustc_hir::{self as hir, LangItem, Target};
 use rustc_middle::span_bug;
 use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan};
 
-use super::errors::{
+use crate::diagnostics::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
 };
-use super::{
+use crate::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
 };
 

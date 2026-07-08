@@ -13,7 +13,9 @@ const COMPILE_FLAGS_HEADER: &str = "compile-flags:";
 
 #[derive(Default, Debug)]
 struct RevisionInfo<'a> {
+    /// Target architecture specified with `--target=`
     target_arch: Option<Option<&'a str>>,
+    /// LLVM components configured with `//@ needs-llvm-components: ...`
     llvm_components: Option<Vec<&'a str>>,
 }
 
@@ -59,6 +61,22 @@ pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
             .is_ok_and(|rest| rest.starts_with("run-make") || rest.starts_with("run-make-cargo"))
         {
             return;
+        }
+
+        // Directives without an explicit revision. These are inherited by all revisions.
+        let global = header_map.remove(&None).unwrap_or_default();
+
+        if header_map.is_empty() {
+            // `//@ revisions` is not used.
+            header_map.insert(None, global);
+        } else {
+            // Make all revisions inherit global directives.
+            for info in header_map.values_mut() {
+                info.target_arch = info.target_arch.or(global.target_arch);
+                if let Some(components) = &global.llvm_components {
+                    info.llvm_components.get_or_insert_with(Vec::new).extend(components);
+                }
+            }
         }
 
         for (rev, RevisionInfo { target_arch, llvm_components }) in &header_map {

@@ -183,6 +183,18 @@ affect that.
 The arguments to this flag are the same as those for the `-C` flag on rustc. Run `rustc -C help` to
 get the full list.
 
+## `--remap-path-prefix`: remap source paths in output
+
+This flag is the equivalent flag from `rustc`: `--remap-path-prefix`.
+
+```bash
+$ rustdoc src/lib.rs --remap-path-prefix="$PWD=/foo"
+```
+
+It permits remapping (as a best effort) source path prefixes in all output, including diagnostics,
+debug information, macro expansions, generated documentation, etc. It takes a value of the
+form `FROM=TO` where a path prefix equal to `FROM` is rewritten to the value `TO`.
+
 ## `--test`: run code examples as tests
 
 Using this flag looks like this:

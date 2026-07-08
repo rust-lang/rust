@@ -13,7 +13,7 @@ use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::errors::{FeaturePreviouslyDeclared, FeatureStableTwice};
+use crate::diagnostics::{FeaturePreviouslyDeclared, FeatureStableTwice};
 
 struct LibFeatureCollector<'tcx> {
     tcx: TyCtxt<'tcx>,

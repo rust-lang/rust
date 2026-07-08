@@ -6,8 +6,6 @@ pub mod conf;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
 pub mod futex;
-#[cfg(target_os = "linux")]
-pub mod linux;
 pub mod stack_overflow;
 pub mod sync;
 pub mod thread_parking;
@@ -78,7 +76,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
 
         // fast path with a single syscall for systems with poll()
         #[cfg(not(any(
-            miri,
+            miri, // no `poll`
             target_os = "emscripten",
             target_os = "fuchsia",
             target_os = "vxworks",
@@ -125,8 +123,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
 
         // fallback in case poll isn't available or limited by RLIMIT_NOFILE
         #[cfg(not(any(
-            // The standard fds are always available in Miri.
-            miri,
             target_os = "emscripten",
             target_os = "fuchsia",
             target_os = "vxworks",

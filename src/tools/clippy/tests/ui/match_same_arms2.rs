@@ -1,11 +1,6 @@
 #![warn(clippy::match_same_arms)]
-#![allow(
-    clippy::disallowed_names,
-    clippy::diverging_sub_expression,
-    clippy::uninlined_format_args,
-    clippy::match_single_binding,
-    clippy::match_like_matches_macro
-)]
+#![allow(clippy::match_single_binding)]
+#![expect(clippy::disallowed_names, clippy::match_like_matches_macro)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool {

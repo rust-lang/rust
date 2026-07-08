@@ -14,7 +14,7 @@ pub struct Unstable;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "unstable", issue = "none")]
-impl const MyTrait for Unstable {
+const impl MyTrait for Unstable {
     fn func() {}
 }
 
@@ -31,6 +31,6 @@ pub struct Unstable2;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "unstable2", issue = "none")]
-impl const MyTrait for Unstable2 {
+const impl MyTrait for Unstable2 {
     fn func() {}
 }

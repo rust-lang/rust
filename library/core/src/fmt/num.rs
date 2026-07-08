@@ -260,7 +260,6 @@ macro_rules! impl_Display {
             /// # Examples
             ///
             /// ```
-            /// #![feature(int_format_into)]
             /// use core::fmt::NumBuffer;
             ///
             #[doc = concat!("let n = 0", stringify!($Signed), ";")]
@@ -273,7 +272,7 @@ macro_rules! impl_Display {
             #[doc = concat!("let n2 = ", stringify!($Signed::MAX), ";")]
             #[doc = concat!("assert_eq!(n2.format_into(&mut buf), ", stringify!($Signed::MAX), ".to_string());")]
             /// ```
-            #[unstable(feature = "int_format_into", issue = "138215")]
+            #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
             pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
                 let mut offset;
 
@@ -299,13 +298,12 @@ macro_rules! impl_Display {
         }
 
         impl $Unsigned {
-            /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
-            /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+            /// Allows users to write an integer (in unsigned decimal format) into a variable `buf`
+            /// of type [`NumBuffer`] that is passed by the caller by mutable reference.
             ///
             /// # Examples
             ///
             /// ```
-            /// #![feature(int_format_into)]
             /// use core::fmt::NumBuffer;
             ///
             #[doc = concat!("let n = 0", stringify!($Unsigned), ";")]
@@ -318,7 +316,7 @@ macro_rules! impl_Display {
             #[doc = concat!("let n2 = ", stringify!($Unsigned::MAX), ";")]
             #[doc = concat!("assert_eq!(n2.format_into(&mut buf), ", stringify!($Unsigned::MAX), ".to_string());")]
             /// ```
-            #[unstable(feature = "int_format_into", issue = "138215")]
+            #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
             pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
                 let offset;
 
@@ -363,7 +361,7 @@ macro_rules! impl_Display {
 
         #[cfg(feature = "optimize_for_size")]
         fn ${concat($fmt_fn, _small)}(n: $T, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            const MAX_DEC_N: usize = $T::MAX.ilog(10) as usize + 1;
+            const MAX_DEC_N: usize = $T::MAX.ilog10() as usize + 1;
             let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
 
             let offset = ${concat($fmt_fn, _in_buf_small)}(n, &mut buf);
@@ -738,13 +736,12 @@ impl u128 {
         offset
     }
 
-    /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
+    /// Allows users to write an integer (in unsigned decimal format) into a variable `buf` of
     /// type [`NumBuffer`] that is passed by the caller by mutable reference.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(int_format_into)]
     /// use core::fmt::NumBuffer;
     ///
     /// let n = 0u128;
@@ -759,9 +756,9 @@ impl u128 {
     /// let mut buf2 = NumBuffer::new();
     /// assert_eq!(n2.format_into(&mut buf2), u128::MAX.to_string());
     /// ```
-    #[unstable(feature = "int_format_into", issue = "138215")]
+    #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
     pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
-        let diff = buf.capacity() - U128_MAX_DEC_N;
+        let diff = buf.buf.len() - U128_MAX_DEC_N;
         // FIXME: Once const generics are better, use `NumberBufferTrait::BUF_SIZE` as generic const
         // for `fmt_u128_inner`.
         //
@@ -779,7 +776,6 @@ impl i128 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(int_format_into)]
     /// use core::fmt::NumBuffer;
     ///
     /// let n = 0i128;
@@ -792,9 +788,9 @@ impl i128 {
     /// let n2 = i128::MAX;
     /// assert_eq!(n2.format_into(&mut buf), i128::MAX.to_string());
     /// ```
-    #[unstable(feature = "int_format_into", issue = "138215")]
+    #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
     pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
-        let diff = buf.capacity() - U128_MAX_DEC_N;
+        let diff = buf.buf.len() - U128_MAX_DEC_N;
         // FIXME: Once const generics are better, use `NumberBufferTrait::BUF_SIZE` as generic const
         // for `fmt_u128_inner`.
         //
@@ -868,7 +864,7 @@ fn div_rem_1e16(n: u128) -> (u128, u64) {
     const M_HIGH: u128 = 76624777043294442917917351357515459181;
     const SH_POST: u8 = 51;
 
-    let quot = n.widening_mul(M_HIGH).1 >> SH_POST;
+    let quot = n.carrying_mul(M_HIGH, 0).1 >> SH_POST;
     let rem = n - quot * D;
     (quot, rem as u64)
 }

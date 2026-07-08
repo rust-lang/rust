@@ -173,6 +173,8 @@ impl<'db> InferenceContext<'_, 'db> {
                 // impl forces the closure kind to `FnOnce` i.e. `u8`.
                 let kind_ty = autoderef.ctx().table.next_ty_var(call_expr.into());
                 let interner = autoderef.ctx().interner();
+
+                // Ignore splatting, it is unsupported on closures.
                 let call_sig = interner.mk_fn_sig(
                     [coroutine_closure_sig.tupled_inputs_ty],
                     coroutine_closure_sig.to_coroutine(
@@ -583,13 +585,7 @@ impl<'a, 'db> DeferredCallResolution<'db> {
                     method_callee.args,
                 );
             }
-            None => {
-                assert!(
-                    ctx.lang_items.FnOnce.is_none(),
-                    "Expected to find a suitable `Fn`/`FnMut`/`FnOnce` implementation for `{:?}`",
-                    self.closure_ty
-                )
-            }
+            None => {}
         }
     }
 }

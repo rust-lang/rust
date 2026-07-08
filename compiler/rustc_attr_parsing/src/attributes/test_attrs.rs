@@ -1,3 +1,4 @@
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::RustcAbiAttrKind;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
@@ -8,12 +9,13 @@ pub(crate) struct IgnoreParser;
 impl SingleAttributeParser for IgnoreParser {
     const PATH: &[Symbol] = &[sym::ignore];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::Ignore {
@@ -49,12 +51,13 @@ pub(crate) struct ShouldPanicParser;
 impl SingleAttributeParser for ShouldPanicParser {
     const PATH: &[Symbol] = &[sym::should_panic];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, List: &[r#"expected = "reason""#], NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::ShouldPanic {
@@ -80,8 +83,9 @@ pub(crate) struct ReexportTestHarnessMainParser;
 
 impl SingleAttributeParser for ReexportTestHarnessMainParser {
     const PATH: &[Symbol] = &[sym::reexport_test_harness_main];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+    const STABILITY: AttributeStability = unstable!(custom_test_frameworks);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(
@@ -101,7 +105,7 @@ pub(crate) struct RustcAbiParser;
 impl SingleAttributeParser for RustcAbiParser {
     const PATH: &[Symbol] = &[sym::rustc_abi];
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::debug, sym::assert_eq]);
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::TyAlias),
         Allow(Target::Fn),
         Allow(Target::ForeignFn),
@@ -110,6 +114,7 @@ impl SingleAttributeParser for RustcAbiParser {
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(args) = args.as_list() else {
@@ -123,7 +128,7 @@ impl SingleAttributeParser for RustcAbiParser {
         let mut fail_incorrect_argument =
             |span| cx.adcx().expected_specific_argument(span, &[sym::assert_eq, sym::debug]);
 
-        let Some(arg) = arg.meta_item() else {
+        let Some(arg) = arg.meta_item_no_args() else {
             fail_incorrect_argument(args.span);
             return None;
         };
@@ -145,7 +150,8 @@ pub(crate) struct RustcDelayedBugFromInsideQueryParser;
 
 impl NoArgsAttributeParser for RustcDelayedBugFromInsideQueryParser {
     const PATH: &[Symbol] = &[sym::rustc_delayed_bug_from_inside_query];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDelayedBugFromInsideQuery;
 }
 
@@ -153,13 +159,14 @@ pub(crate) struct RustcEvaluateWhereClausesParser;
 
 impl NoArgsAttributeParser for RustcEvaluateWhereClausesParser {
     const PATH: &[Symbol] = &[sym::rustc_evaluate_where_clauses];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Method(MethodKind::Trait { body: false })),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEvaluateWhereClauses;
 }
 
@@ -167,13 +174,14 @@ pub(crate) struct TestRunnerParser;
 
 impl SingleAttributeParser for TestRunnerParser {
     const PATH: &[Symbol] = &[sym::test_runner];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
+    const STABILITY: AttributeStability = unstable!(custom_test_frameworks);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;
 
-        let Some(meta) = single.meta_item() else {
+        let Some(meta) = single.meta_item_no_args() else {
             cx.adcx().expected_not_literal(single.span());
             return None;
         };
@@ -186,11 +194,12 @@ pub(crate) struct RustcTestMarkerParser;
 
 impl SingleAttributeParser for RustcTestMarkerParser {
     const PATH: &[Symbol] = &[sym::rustc_test_marker];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Const),
         Allow(Target::Fn),
         Allow(Target::Static),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "test_path");
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {

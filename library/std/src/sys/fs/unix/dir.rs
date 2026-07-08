@@ -25,7 +25,7 @@ use crate::os::wasi::io::{AsRawFd, FromRawFd};
 use crate::path::Path;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::OpenOptions;
-use crate::sys::fs::unix::{File, debug_path_fd};
+use crate::sys::fs::unix::{File, FileAttr, debug_path_fd};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt_r};
 use crate::{fmt, fs, io};
@@ -39,6 +39,16 @@ impl Dir {
 
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         run_path_with_cstr(path.as_ref(), &|path| self.open_file_c(path, &opts))
+    }
+
+    pub fn metadata(&self) -> io::Result<FileAttr> {
+        // Reuse the implementation for files, which should work for all FDs.
+        let fd = self.0.as_raw_fd();
+        let f = core::mem::ManuallyDrop::new(File(
+            // SAFETY: we borrowed `self` so the FD will not be closed while this function runs.
+            unsafe { FileDesc::from_raw_fd(fd) },
+        ));
+        f.file_attr()
     }
 
     pub fn open_with_c(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {

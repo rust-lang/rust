@@ -290,7 +290,6 @@ struct AA {
 struct AB {
     #[primary_span]
     span: Span,
-    #[skip_arg]
     z: Z,
 }
 

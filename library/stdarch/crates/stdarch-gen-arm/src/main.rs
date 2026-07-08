@@ -166,7 +166,7 @@ use super::*;{uses_neon}
 
 "#,
         uses_neon = if generated_input.ctx.uses_neon_types {
-            "\nuse crate::core_arch::arch::aarch64::*;"
+            "\nuse crate::core_arch::arch::aarch64::*;\nuse super::{AsSigned, AsUnsigned};"
         } else {
             ""
         },

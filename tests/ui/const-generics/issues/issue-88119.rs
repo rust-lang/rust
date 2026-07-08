@@ -6,7 +6,7 @@ const trait ConstName {
     const NAME_BYTES: &'static [u8];
 }
 
-impl const ConstName for u8 {
+const impl ConstName for u8 {
     const NAME_BYTES: &'static [u8] = b"u8";
 }
 
@@ -14,14 +14,14 @@ const fn name_len<T: ?Sized + ConstName>() -> usize {
     T::NAME_BYTES.len()
 }
 
-impl<T: ?Sized + ConstName> const ConstName for &T
+const impl<T: ?Sized + ConstName> ConstName for &T
 where
     [(); name_len::<T>()]:,
 {
     const NAME_BYTES: &'static [u8] = b"&T";
 }
 
-impl<T: ?Sized + ConstName> const ConstName for &mut T
+const impl<T: ?Sized + ConstName> ConstName for &mut T
 where
     [(); name_len::<T>()]:,
 {

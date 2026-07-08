@@ -151,7 +151,7 @@ macro_rules! default_impl {
     ($t:ty, $v:expr, $doc:tt) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-        impl const Default for $t {
+        const impl Default for $t {
             #[inline(always)]
             #[doc = $doc]
             fn default() -> $t {

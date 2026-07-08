@@ -1,8 +1,8 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Arch, Cc, CfgAbi, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions,
-    base,
+    Arch, Cc, CfgAbi, LinkerFlavor, Lld, RustcAbi, StackProbeType, Target, TargetMetadata,
+    TargetOptions, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -24,9 +24,10 @@ pub(crate) fn target() -> Target {
         arch: Arch::PowerPC,
         options: TargetOptions {
             cfg_abi: CfgAbi::Spe,
+            rustc_abi: Some(RustcAbi::PowerPcSpe),
             endian: Endian::Big,
             // feature msync would disable instruction 'fsync' which is not supported by fsl_p1p2
-            features: "+secure-plt,+msync".into(),
+            features: "+secure-plt,+msync,+spe".into(),
             ..base
         },
     }

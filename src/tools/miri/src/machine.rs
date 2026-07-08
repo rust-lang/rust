@@ -40,6 +40,7 @@ use crate::concurrency::sync::SyncObj;
 use crate::concurrency::{
     AllocDataRaceHandler, GenmcCtx, GenmcEvalContextExt as _, GlobalDataRaceHandler, weak_memory,
 };
+use crate::helpers::is_no_core;
 use crate::*;
 
 /// First real-time signal.
@@ -546,7 +547,8 @@ pub struct MiriMachine<'tcx> {
     /// Stores which thread is eligible to run on which CPUs.
     /// This has no effect at all, it is just tracked to produce the correct result
     /// in `sched_getaffinity`
-    pub(crate) thread_cpu_affinity: FxHashMap<ThreadId, CpuAffinityMask>,
+    /// This will be `None` when running `#![no_core]` crates.
+    pub(crate) thread_cpu_affinity: Option<FxHashMap<ThreadId, CpuAffinityMask>>,
 
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
@@ -735,11 +737,19 @@ impl<'tcx> MiriMachine<'tcx> {
             config.num_cpus
         );
         let threads = ThreadManager::new(config);
-        let mut thread_cpu_affinity = FxHashMap::default();
-        if matches!(&tcx.sess.target.os, Os::Linux | Os::FreeBsd | Os::Android) {
-            thread_cpu_affinity
-                .insert(threads.active_thread(), CpuAffinityMask::new(&layout_cx, config.num_cpus));
-        }
+        let thread_cpu_affinity =
+            if matches!(&tcx.sess.target.os, Os::Linux | Os::FreeBsd | Os::Android)
+                && !is_no_core(tcx)
+            {
+                let mut affinity = FxHashMap::default();
+                affinity.insert(
+                    threads.active_thread(),
+                    CpuAffinityMask::new(&layout_cx, config.num_cpus),
+                );
+                Some(affinity)
+            } else {
+                None
+            };
         let blocking_io = BlockingIoManager::new(config.isolated_op == IsolatedOp::Allow)
             .expect("Couldn't create poll instance");
         let alloc_addresses =

@@ -114,8 +114,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Add `ExternCrate::path`.
-pub const FORMAT_VERSION: u32 = 57;
+// Latest feature: Add default-body stability metadata.
+pub const FORMAT_VERSION: u32 = 60;
 
 /// The root of the emitted JSON blob.
 ///
@@ -282,7 +282,15 @@ pub struct Item {
     pub links: HashMap<String, Id>,
     /// Attributes on this item.
     ///
-    /// Does not include `#[deprecated]` attributes: see the [`Self::deprecation`] field instead.
+    /// Does not include:
+    /// - `#[doc = "Doc Comment"]` or `/// Doc comment`: see [`Self::docs`] instead.
+    /// - `#[deprecated]` attributes: see the [`Self::deprecation`] field instead.
+    /// - `#[stable]` and `#[unstable]` attributes: see the [`Self::stability`] field instead.
+    /// - `#[rustc_const_stable]` and `#[rustc_const_unstable]` attributes:
+    ///   see the [`Self::const_stability`] field instead.
+    /// - `#[rustc_default_body_unstable]` attributes: instead see `default_unstable` fields on
+    ///   item kinds that can have unstable default values, such as [`Function::default_unstable`],
+    ///   [`ItemEnum::AssocConst::default_unstable`], and [`ItemEnum::AssocType::default_unstable`].
     ///
     /// Attributes appear in pretty-printed Rust form, regardless of their formatting
     /// in the original source code. For example:
@@ -294,8 +302,85 @@ pub struct Item {
     pub attrs: Vec<Attribute>,
     /// Information about the item’s deprecation, if present.
     pub deprecation: Option<Deprecation>,
+
+    /// Stability information for this item, if any.
+    ///
+    /// This describes whether the item itself is stable or unstable, as noted by a `#[stable]` or
+    /// `#[unstable]` attribute. It does not capture const stability, default-body stability, etc.
+    ///
+    /// Whether a path to an item is stable depends on the stability of containing modules
+    /// or re-exports along that path. For example, a stable item can be reachable through both an
+    /// unstable module and a stable re-export.
+    ///
+    /// For items whose inner kind is [`ItemEnum::Use`], this is the stability of the import itself,
+    /// not the item being imported. This allows users to determine the stability of paths
+    /// that involve re-exports.
+    ///
+    /// Associated items can inherit instability from their enclosing unstable trait or impl.
+    /// Unannotated associated items in stable traits or impls may have no separate stability value.
+    ///
+    /// Currently, Rust's `#[stable]` and `#[unstable]` attributes are themselves not stable.
+    /// As a result, this field is primarily populated for standard-library items;
+    /// most ordinary third-party crates usually have no data here.
+    pub stability: Option<Box<Stability>>,
+
+    /// Stability information for using this item in const contexts, if any.
+    ///
+    /// This is separate from [`Self::stability`]. An item can be stable as regular API while its
+    /// const use is unstable. An unstable item may have no separate const-stability value here.
+    ///
+    /// This field is only populated for item kinds whose const behavior can have separate
+    /// stability information, such as const functions, const traits, const trait impls,
+    /// and associated items whose const behavior is controlled by a const trait or const impl.
+    pub const_stability: Option<Box<Stability>>,
+
     /// The type-specific fields describing this item.
     pub inner: ItemEnum,
+}
+
+/// Stability information for an item.
+///
+/// In [`Item::stability`], this refers to regular item stability: whether the item is
+/// stable or unstable as represented by the `#[stable]` or `#[unstable]` attributes.
+/// In [`Item::const_stability`], this refers to using the item in const contexts,
+/// as represented by `#[rustc_const_stable]` or `#[rustc_const_unstable]`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
+pub struct Stability {
+    /// The feature associated with this stability record.
+    ///
+    /// For unstable items, this is the feature gate associated with the item.
+    /// For stable items, this is the historical label recorded when the item was stabilized.
+    pub feature: String,
+
+    #[serde(flatten)]
+    pub level: StabilityLevel,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
+#[serde(tag = "level", rename_all = "snake_case")]
+pub enum StabilityLevel {
+    Stable {
+        /// The Rust version in which this item became stable, if available.
+        since: Option<String>,
+    },
+    Unstable,
+}
+
+/// Information about an unstable default provided by a trait item.
+///
+/// Example unstable defaults include:
+/// - a stable trait function or method whose body is not stable
+/// - a stable trait associated type or const whose default value is not stable
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
+pub struct ProvidedDefaultUnstable {
+    /// The feature that must be enabled to use the provided default.
+    pub feature: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -307,6 +392,12 @@ pub struct Item {
 /// This doesn't include:
 /// - `#[doc = "Doc Comment"]` or `/// Doc comment`. These are in [`Item::docs`] instead.
 /// - `#[deprecated]`. These are in [`Item::deprecation`] instead.
+/// - `#[stable]` and `#[unstable]`. These are in [`Item::stability`] instead.
+/// - `#[rustc_const_stable]` and `#[rustc_const_unstable]`. These are in
+///   [`Item::const_stability`] instead.
+/// - `#[rustc_default_body_unstable]`. These are in the `default_unstable` field on the appropriate
+///   item kinds: [`Function::default_unstable`], [`ItemEnum::AssocConst::default_unstable`],
+///   and [`ItemEnum::AssocType::default_unstable`].
 pub enum Attribute {
     /// `#[non_exhaustive]`
     NonExhaustive,
@@ -803,6 +894,11 @@ pub enum ItemEnum {
         /// //               ^^^^^^^^^^
         /// ```
         value: Option<String>,
+        /// Metadata about an unstable default value provided for the associated constant, if any.
+        ///
+        /// Empty if the associated constant has no default (see [`ItemEnum::AssocConst::value`]),
+        /// or if the default value is stable.
+        default_unstable: Option<Box<ProvidedDefaultUnstable>>,
     },
     /// An associated type of a trait or a type.
     AssocType {
@@ -827,6 +923,11 @@ pub enum ItemEnum {
         /// ```
         #[serde(rename = "type")]
         type_: Option<Type>,
+        /// Metadata about an unstable default value provided for the associated type, if any.
+        ///
+        /// Empty if the associated type has no default (see [`ItemEnum::AssocType::type_`]),
+        /// or if the default value is stable.
+        default_unstable: Option<Box<ProvidedDefaultUnstable>>,
     },
 }
 
@@ -1116,6 +1217,12 @@ pub struct Function {
     pub header: FunctionHeader,
     /// Whether the function has a body, i.e. an implementation.
     pub has_body: bool,
+    /// Metadata about a possible unstable provided default implementation for trait methods.
+    ///
+    /// Only populated for function items inside traits. Empty if the trait method
+    /// does not have a default implementation (see [`Function::has_body`]),
+    /// or if its default implementation is stable.
+    pub default_unstable: Option<Box<ProvidedDefaultUnstable>>,
 }
 
 /// Generic parameters accepted by an item and `where` clauses imposed on it and the parameters.

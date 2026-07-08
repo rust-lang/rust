@@ -82,7 +82,11 @@ pub fn feature_warn_issue(
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::lint_level
     let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
     let future_incompatible = lint.future_incompatible.as_ref().unwrap();
-    err.is_lint(lint.name_lower(), /* has_future_breakage */ false);
+    err.is_lint(
+        lint.name_lower(),
+        /* has_future_breakage */ false,
+        /* rust_version */ None,
+    );
     err.warn(lint.desc);
     err.note(format!("for more information, see {}", future_incompatible.reason.reference()));
 
@@ -306,6 +310,12 @@ pub(crate) struct CannotMixAndMatchSanitizers {
     "sanitizer is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`"
 )]
 pub(crate) struct CannotEnableCrtStaticLinux;
+
+#[derive(Diagnostic)]
+#[diag(
+    "pointer authentication requires dynamic linking. Statically linked libc is incompatible, disable it using `-C target-feature=-crt-static`"
+)]
+pub(crate) struct CannotEnableCrtStaticPointerAuth;
 
 #[derive(Diagnostic)]
 #[diag("`-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`")]

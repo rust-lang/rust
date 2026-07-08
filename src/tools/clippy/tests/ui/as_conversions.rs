@@ -1,7 +1,7 @@
 //@aux-build:proc_macros.rs
 
 #![warn(clippy::as_conversions)]
-#![allow(clippy::borrow_as_ptr, unused)]
+#![expect(clippy::borrow_as_ptr)]
 
 extern crate proc_macros;
 use proc_macros::{external, with_span};

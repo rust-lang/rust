@@ -3,7 +3,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diagnostic, MultiSpan};
-use rustc_feature::{AttributeTemplate, Features};
+use rustc_feature::Features;
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
@@ -14,7 +14,9 @@ use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::parser::{AllowExprMetavar, MetaItemOrLitParser};
-use crate::{AttributeParser, ParsedDescription, ShouldEmit, errors, parse_cfg_entry};
+use crate::{
+    AttributeParser, AttributeTemplate, ParsedDescription, ShouldEmit, diagnostics, parse_cfg_entry,
+};
 
 #[derive(Clone)]
 pub enum CfgSelectPredicate {
@@ -189,10 +191,10 @@ fn lint_unreachable(
             lint_node_id,
             move |dcx, level| match wildcard_span {
                 Some(wildcard_span) => {
-                    errors::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }
+                    diagnostics::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }
                         .into_diag(dcx, level)
                 }
-                None => errors::UnreachableCfgSelectPredicate { span }.into_diag(dcx, level),
+                None => diagnostics::UnreachableCfgSelectPredicate { span }.into_diag(dcx, level),
             },
         );
     };

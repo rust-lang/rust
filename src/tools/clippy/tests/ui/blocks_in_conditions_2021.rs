@@ -1,6 +1,6 @@
 //@edition: 2021
 
-#![allow(clippy::let_and_return)]
+#![expect(clippy::let_and_return)]
 
 // issue #11814
 fn block_in_match_expr(num: i32) -> i32 {

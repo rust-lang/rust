@@ -1,5 +1,5 @@
 #![warn(clippy::manual_retain)]
-#![allow(unused, clippy::needless_borrowed_reference, clippy::redundant_clone)]
+#![expect(clippy::needless_borrowed_reference)]
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};
 
 fn main() {}

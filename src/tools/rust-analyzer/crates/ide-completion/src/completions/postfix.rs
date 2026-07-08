@@ -259,7 +259,7 @@ pub(crate) fn complete_postfix(
                     postfix_snippet(
                         "lete",
                         "let Ok else {}",
-                        format!("let Ok({placeholder}) = {receiver_text} else {{\n    $2\n}};\n$0"),
+                        format!("let Ok({placeholder}) = {receiver_text} else {{\n    $2\n}};$0"),
                     )
                     .add_to(acc, ctx.db);
 
@@ -281,9 +281,7 @@ pub(crate) fn complete_postfix(
                     postfix_snippet(
                         "lete",
                         "let Some else {}",
-                        format!(
-                            "let Some({placeholder}) = {receiver_text} else {{\n    $2\n}};\n$0"
-                        ),
+                        format!("let Some({placeholder}) = {receiver_text} else {{\n    $2\n}};$0"),
                     )
                     .add_to(acc, ctx.db);
 
@@ -1101,8 +1099,28 @@ fn main() {
     let bar = Some(true);
     let Some(${1:bar}) = bar else {
     $2
-};
-$0
+};$0
+}
+"#,
+        );
+
+        check_edit(
+            "lete",
+            r#"
+//- minicore: option
+fn main() {
+    let bar = Some(true);
+    bar.$0
+    other();
+}
+"#,
+            r#"
+fn main() {
+    let bar = Some(true);
+    let Some(${1:bar}) = bar else {
+    $2
+};$0
+    other();
 }
 "#,
         );

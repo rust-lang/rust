@@ -39,13 +39,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    let mut loop_visitor = LoopVisitor {
-        cx,
-        label,
-        inner_labels: label.into_iter().collect(),
-        loop_depth: 0,
-        is_finite: false,
-    };
+    let mut loop_visitor = LoopVisitor::new(cx, label);
     loop_visitor.visit_block(loop_block);
 
     let is_finite_loop = loop_visitor.is_finite;
@@ -146,12 +140,24 @@ fn get_parent_fn_ret_ty<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option
     None
 }
 
-struct LoopVisitor<'hir, 'tcx> {
-    cx: &'hir LateContext<'tcx>,
-    label: Option<Label>,
-    inner_labels: Vec<Label>,
-    loop_depth: usize,
-    is_finite: bool,
+pub(super) struct LoopVisitor<'hir, 'tcx> {
+    pub cx: &'hir LateContext<'tcx>,
+    pub label: Option<Label>,
+    pub inner_labels: Vec<Label>,
+    pub loop_depth: usize,
+    pub is_finite: bool,
+}
+
+impl<'hir, 'tcx> LoopVisitor<'hir, 'tcx> {
+    pub fn new(cx: &'hir LateContext<'tcx>, label: Option<Label>) -> Self {
+        LoopVisitor {
+            cx,
+            label,
+            inner_labels: label.into_iter().collect(),
+            loop_depth: 0,
+            is_finite: false,
+        }
+    }
 }
 
 impl<'hir> Visitor<'hir> for LoopVisitor<'hir, '_> {

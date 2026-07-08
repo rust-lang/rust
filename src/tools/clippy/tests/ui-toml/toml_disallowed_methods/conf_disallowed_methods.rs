@@ -1,6 +1,5 @@
-#![allow(clippy::needless_raw_strings)]
+#![allow(clippy::needless_raw_strings, clippy::useless_vec)]
 #![warn(clippy::disallowed_methods)]
-#![allow(clippy::useless_vec)]
 
 extern crate futures;
 extern crate regex;

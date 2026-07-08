@@ -1,5 +1,5 @@
 #![deny(clippy::doc_markdown)]
-#![allow(clippy::doc_lazy_continuation)]
+#![expect(clippy::doc_lazy_continuation)]
 
 mod issue13097 {
     // This test checks that words starting with capital letters and ending with "ified" don't

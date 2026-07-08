@@ -692,6 +692,10 @@ mod adx;
 #[stable(feature = "simd_x86_adx", since = "1.33.0")]
 pub use self::adx::*;
 
+mod clflushopt;
+#[unstable(feature = "simd_x86_clflushopt", issue = "157096")]
+pub use self::clflushopt::*;
+
 #[cfg(test)]
 use stdarch_test::assert_instr;
 

@@ -196,6 +196,16 @@ impl<'db> Ty<'db> {
         )
     }
 
+    pub fn new_array_opt(interner: DbInterner<'db>, ty: Ty<'db>, n: Option<u128>) -> Ty<'db> {
+        Ty::new(
+            interner,
+            TyKind::Array(
+                ty,
+                crate::consteval::usize_const(interner.db, n, interner.expect_crate()),
+            ),
+        )
+    }
+
     fn new_generic_adt(interner: DbInterner<'db>, adt_id: AdtId, ty_param: Ty<'db>) -> Ty<'db> {
         let args = GenericArgs::fill_with_defaults(
             interner,
@@ -1504,6 +1514,7 @@ impl<'db> DbInterner<'db> {
                 TyKind::Tuple(params) => params,
                 _ => panic!(),
             };
+            // Ignore splatting, it is unsupported on closures.
             self.mk_fn_sig(params, s.output(), s.c_variadic(), safety, ExternAbi::Rust)
         })
     }

@@ -22,18 +22,6 @@ pub fn rdtimeh_w() -> (i32, isize) {
 
 #[allow(improper_ctypes)]
 unsafe extern "unadjusted" {
-    #[link_name = "llvm.loongarch.crc.w.b.w"]
-    fn __crc_w_b_w(a: i32, b: i32) -> i32;
-    #[link_name = "llvm.loongarch.crc.w.h.w"]
-    fn __crc_w_h_w(a: i32, b: i32) -> i32;
-    #[link_name = "llvm.loongarch.crc.w.w.w"]
-    fn __crc_w_w_w(a: i32, b: i32) -> i32;
-    #[link_name = "llvm.loongarch.crcc.w.b.w"]
-    fn __crcc_w_b_w(a: i32, b: i32) -> i32;
-    #[link_name = "llvm.loongarch.crcc.w.h.w"]
-    fn __crcc_w_h_w(a: i32, b: i32) -> i32;
-    #[link_name = "llvm.loongarch.crcc.w.w.w"]
-    fn __crcc_w_w_w(a: i32, b: i32) -> i32;
     #[link_name = "llvm.loongarch.dbar"]
     fn __dbar(a: i32);
     #[link_name = "llvm.loongarch.ibar"]
@@ -68,48 +56,6 @@ unsafe extern "unadjusted" {
     fn __frsqrte_s(a: f32) -> f32;
     #[link_name = "llvm.loongarch.frsqrte.d"]
     fn __frsqrte_d(a: f64) -> f64;
-}
-
-/// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
-#[inline(always)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crc_w_b_w(a: i32, b: i32) -> i32 {
-    unsafe { __crc_w_b_w(a, b) }
-}
-
-/// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
-#[inline(always)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crc_w_h_w(a: i32, b: i32) -> i32 {
-    unsafe { __crc_w_h_w(a, b) }
-}
-
-/// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
-#[inline(always)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crc_w_w_w(a: i32, b: i32) -> i32 {
-    unsafe { __crc_w_w_w(a, b) }
-}
-
-/// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
-#[inline(always)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crcc_w_b_w(a: i32, b: i32) -> i32 {
-    unsafe { __crcc_w_b_w(a, b) }
-}
-
-/// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
-#[inline(always)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crcc_w_h_w(a: i32, b: i32) -> i32 {
-    unsafe { __crcc_w_h_w(a, b) }
-}
-
-/// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
-#[inline(always)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crcc_w_w_w(a: i32, b: i32) -> i32 {
-    unsafe { __crcc_w_w_w(a, b) }
 }
 
 /// Generates the memory barrier instruction

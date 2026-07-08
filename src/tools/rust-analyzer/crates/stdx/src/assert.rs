@@ -43,7 +43,7 @@
 
 /// Asserts that the condition is always true and returns its actual value.
 ///
-/// If the condition is true does nothing and and evaluates to true.
+/// If the condition is true does nothing and evaluates to true.
 ///
 /// If the condition is false:
 /// * panics if `force` feature or `debug_assertions` are enabled,
@@ -71,7 +71,7 @@ macro_rules! always {
 
 /// Asserts that the condition is never true and returns its actual value.
 ///
-/// If the condition is false does nothing and and evaluates to false.
+/// If the condition is false does nothing and evaluates to false.
 ///
 /// If the condition is true:
 /// * panics if `force` feature or `debug_assertions` are enabled,

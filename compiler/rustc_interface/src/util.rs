@@ -14,11 +14,10 @@ use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
@@ -31,7 +30,7 @@ use rustc_span::{SessionGlobals, Symbol, sym};
 use rustc_target::spec::Target;
 use tracing::info;
 
-use crate::errors;
+use crate::diagnostics;
 use crate::passes::parse_crate_name;
 
 /// Function pointer type that constructs a new CodegenBackend.
@@ -91,12 +90,14 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
 
     for feature in abi_feature_constraints.required {
         if !sess.unstable_target_features.contains(&Symbol::intern(feature)) {
-            sess.dcx().emit_warn(errors::AbiRequiredTargetFeature { feature, enabled: "enabled" });
+            sess.dcx()
+                .emit_warn(diagnostics::AbiRequiredTargetFeature { feature, enabled: "enabled" });
         }
     }
     for feature in abi_feature_constraints.incompatible {
         if sess.unstable_target_features.contains(&Symbol::intern(feature)) {
-            sess.dcx().emit_warn(errors::AbiRequiredTargetFeature { feature, enabled: "disabled" });
+            sess.dcx()
+                .emit_warn(diagnostics::AbiRequiredTargetFeature { feature, enabled: "disabled" });
         }
     }
 }
@@ -418,8 +419,8 @@ impl CodegenBackend for DummyCodegenBackend {
         _sess: &Session,
         _outputs: &OutputFilenames,
         _crate_info: &CrateInfo,
-    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
-        (*ongoing_codegen.downcast().unwrap(), FxIndexMap::default())
+    ) -> (CompiledModules, WorkProductMap) {
+        (*ongoing_codegen.downcast().unwrap(), WorkProductMap::default())
     }
 
     fn link(
@@ -471,7 +472,7 @@ impl ArchiveBuilderBuilder for DummyArchiveBuilderBuilder {
         output_path: &Path,
     ) {
         // Build an empty static library to avoid calling an external dlltool on mingw
-        ArArchiveBuilderBuilder.new_archive_builder(sess).build(output_path);
+        ArArchiveBuilderBuilder.new_archive_builder(sess).build(output_path, None);
     }
 }
 
@@ -610,7 +611,7 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
         &sess.opts.output_types,
         sess.io.output_file == Some(OutFileName::Stdout),
     ) {
-        sess.dcx().emit_fatal(errors::MultipleOutputTypesToStdout);
+        sess.dcx().emit_fatal(diagnostics::MultipleOutputTypesToStdout);
     }
 
     let crate_name =
@@ -651,16 +652,16 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
             let unnamed_output_types =
                 sess.opts.output_types.values().filter(|a| a.is_none()).count();
             let ofile = if unnamed_output_types > 1 {
-                sess.dcx().emit_warn(errors::MultipleOutputTypesAdaption);
+                sess.dcx().emit_warn(diagnostics::MultipleOutputTypesAdaption);
                 None
             } else {
                 if !sess.opts.cg.extra_filename.is_empty() {
-                    sess.dcx().emit_warn(errors::IgnoringExtraFilename);
+                    sess.dcx().emit_warn(diagnostics::IgnoringExtraFilename);
                 }
                 Some(out_file.clone())
             };
             if sess.io.output_dir.is_some() {
-                sess.dcx().emit_warn(errors::IgnoringOutDir);
+                sess.dcx().emit_warn(diagnostics::IgnoringOutDir);
             }
 
             let out_filestem =

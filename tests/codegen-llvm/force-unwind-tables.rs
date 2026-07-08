@@ -4,3 +4,5 @@
 
 // CHECK: attributes #{{.*}} uwtable
 pub fn foo() {}
+
+// CHECK: !{{[0-9]+}} = !{i32 7, !"uwtable", i32 2}

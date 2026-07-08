@@ -11,7 +11,7 @@ note: cycle used when computing normalized predicates of `foo`
    |
 LL | fn foo<T: Baz<i32>>() {}
    | ^^^^^^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: aborting due to 1 previous error
 

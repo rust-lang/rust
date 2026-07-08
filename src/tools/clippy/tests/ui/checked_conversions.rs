@@ -1,12 +1,10 @@
+#![warn(clippy::checked_conversions)]
+#![expect(clippy::legacy_numeric_constants)]
 #![allow(
-    clippy::cast_lossless,
-    clippy::legacy_numeric_constants,
-    clippy::no_effect,
-    unused,
     // Int::max_value will be deprecated in the future
     deprecated,
+    clippy::no_effect,
 )]
-#![warn(clippy::checked_conversions)]
 
 // Positive tests
 

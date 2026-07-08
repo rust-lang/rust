@@ -40,11 +40,11 @@
 use core::result::Result;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::hash::{Hash, Hasher};
+use std::fmt;
+use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::{fmt, io};
 
 use rustc_abi::{
     Align, CVariadicStatus, CanonAbi, Endian, ExternAbi, Integer, Size, TargetDataLayout,
@@ -52,9 +52,7 @@ use rustc_abi::{
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
-use rustc_fs_util::try_canonicalize;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Symbol, kw, sym};
 use serde_json::Value;
 use tracing::debug;
@@ -67,11 +65,13 @@ pub mod crt_objects;
 mod abi_map;
 mod base;
 mod json;
+mod tuple;
 
 pub use abi_map::{AbiMap, AbiMapping};
 pub use base::apple;
 pub use base::avr::ef_avr_arch;
 pub use json::json_schema;
+pub use tuple::TargetTuple;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -132,8 +132,6 @@ pub enum LinkerFlavor {
     // Below: other linker-like tools with unique interfaces for exotic targets.
     /// Linker tool for BPF.
     Bpf,
-    /// Linker tool for Nvidia PTX.
-    Ptx,
     /// LLVM bitcode linker that can be used as a `self-contained` linker
     Llbc,
 }
@@ -153,7 +151,6 @@ pub enum LinkerFlavorCli {
     Msvc(Lld),
     EmCc,
     Bpf,
-    Ptx,
     Llbc,
 
     // Legacy stable values
@@ -174,8 +171,7 @@ impl LinkerFlavorCli {
             | LinkerFlavorCli::Msvc(Lld::Yes)
             | LinkerFlavorCli::EmCc
             | LinkerFlavorCli::Bpf
-            | LinkerFlavorCli::Llbc
-            | LinkerFlavorCli::Ptx => true,
+            | LinkerFlavorCli::Llbc => true,
             LinkerFlavorCli::Gcc
             | LinkerFlavorCli::Ld
             | LinkerFlavorCli::Lld(..)
@@ -211,7 +207,6 @@ impl LinkerFlavor {
             LinkerFlavorCli::EmCc => LinkerFlavor::EmCc,
             LinkerFlavorCli::Bpf => LinkerFlavor::Bpf,
             LinkerFlavorCli::Llbc => LinkerFlavor::Llbc,
-            LinkerFlavorCli::Ptx => LinkerFlavor::Ptx,
 
             // Below: legacy stable values
             LinkerFlavorCli::Gcc => match lld_flavor {
@@ -251,7 +246,6 @@ impl LinkerFlavor {
             LinkerFlavor::EmCc => LinkerFlavorCli::Em,
             LinkerFlavor::Bpf => LinkerFlavorCli::Bpf,
             LinkerFlavor::Llbc => LinkerFlavorCli::Llbc,
-            LinkerFlavor::Ptx => LinkerFlavorCli::Ptx,
         }
     }
 
@@ -266,7 +260,6 @@ impl LinkerFlavor {
             LinkerFlavor::EmCc => LinkerFlavorCli::EmCc,
             LinkerFlavor::Bpf => LinkerFlavorCli::Bpf,
             LinkerFlavor::Llbc => LinkerFlavorCli::Llbc,
-            LinkerFlavor::Ptx => LinkerFlavorCli::Ptx,
         }
     }
 
@@ -279,7 +272,7 @@ impl LinkerFlavor {
             LinkerFlavorCli::Unix(cc) => (Some(cc), None),
             LinkerFlavorCli::Msvc(lld) => (Some(Cc::No), Some(lld)),
             LinkerFlavorCli::EmCc => (Some(Cc::Yes), Some(Lld::Yes)),
-            LinkerFlavorCli::Bpf | LinkerFlavorCli::Ptx => (None, None),
+            LinkerFlavorCli::Bpf => (None, None),
             LinkerFlavorCli::Llbc => (None, None),
 
             // Below: legacy stable values
@@ -336,7 +329,7 @@ impl LinkerFlavor {
             LinkerFlavor::WasmLld(cc) => LinkerFlavor::WasmLld(cc_hint.unwrap_or(cc)),
             LinkerFlavor::Unix(cc) => LinkerFlavor::Unix(cc_hint.unwrap_or(cc)),
             LinkerFlavor::Msvc(lld) => LinkerFlavor::Msvc(lld_hint.unwrap_or(lld)),
-            LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Llbc | LinkerFlavor::Ptx => self,
+            LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Llbc => self,
         }
     }
 
@@ -355,7 +348,7 @@ impl LinkerFlavor {
         let compatible = |cli| {
             // The CLI flavor should be compatible with the target if:
             match (self, cli) {
-                // 1. they are counterparts: they have the same principal flavor.
+                // they are counterparts: they have the same principal flavor.
                 (LinkerFlavor::Gnu(..), LinkerFlavorCli::Gnu(..))
                 | (LinkerFlavor::Darwin(..), LinkerFlavorCli::Darwin(..))
                 | (LinkerFlavor::WasmLld(..), LinkerFlavorCli::WasmLld(..))
@@ -363,10 +356,7 @@ impl LinkerFlavor {
                 | (LinkerFlavor::Msvc(..), LinkerFlavorCli::Msvc(..))
                 | (LinkerFlavor::EmCc, LinkerFlavorCli::EmCc)
                 | (LinkerFlavor::Bpf, LinkerFlavorCli::Bpf)
-                | (LinkerFlavor::Llbc, LinkerFlavorCli::Llbc)
-                | (LinkerFlavor::Ptx, LinkerFlavorCli::Ptx) => return true,
-                // 2. The linker flavor is independent of target and compatible
-                (LinkerFlavor::Ptx, LinkerFlavorCli::Llbc) => return true,
+                | (LinkerFlavor::Llbc, LinkerFlavorCli::Llbc) => return true,
                 _ => {}
             }
 
@@ -389,8 +379,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Unix(..)
             | LinkerFlavor::EmCc
             | LinkerFlavor::Bpf
-            | LinkerFlavor::Llbc
-            | LinkerFlavor::Ptx => LldFlavor::Ld,
+            | LinkerFlavor::Llbc => LldFlavor::Ld,
             LinkerFlavor::Darwin(..) => LldFlavor::Ld64,
             LinkerFlavor::WasmLld(..) => LldFlavor::Wasm,
             LinkerFlavor::Msvc(..) => LldFlavor::Link,
@@ -415,8 +404,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Msvc(_)
             | LinkerFlavor::Unix(_)
             | LinkerFlavor::Bpf
-            | LinkerFlavor::Llbc
-            | LinkerFlavor::Ptx => false,
+            | LinkerFlavor::Llbc => false,
         }
     }
 
@@ -435,8 +423,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Msvc(_)
             | LinkerFlavor::Unix(_)
             | LinkerFlavor::Bpf
-            | LinkerFlavor::Llbc
-            | LinkerFlavor::Ptx => false,
+            | LinkerFlavor::Llbc => false,
         }
     }
 
@@ -512,7 +499,6 @@ linker_flavor_cli_impls! {
     (LinkerFlavorCli::EmCc) "em-cc"
     (LinkerFlavorCli::Bpf) "bpf"
     (LinkerFlavorCli::Llbc) "llbc"
-    (LinkerFlavorCli::Ptx) "ptx"
 
     // Legacy stable flavors
     (LinkerFlavorCli::Gcc) "gcc"
@@ -536,7 +522,6 @@ impl schemars::JsonSchema for LinkerFlavorCli {
             "type": "string",
             "enum": all
         })
-        .into()
     }
 }
 
@@ -601,7 +586,6 @@ impl schemars::JsonSchema for LinkSelfContainedDefault {
             "type": "string",
             "enum": ["false", "true", "wasm", "musl", "mingw"]
         })
-        .into()
     }
 }
 
@@ -747,7 +731,6 @@ impl schemars::JsonSchema for LinkSelfContainedComponents {
             "type": "string",
             "enum": all,
         })
-        .into()
     }
 }
 
@@ -926,7 +909,6 @@ impl schemars::JsonSchema for SmallDataThresholdSupport {
             "type": "string",
             "pattern": r#"^none|default-for-arch|llvm-module-flag=.+|llvm-arg=.+$"#,
         })
-        .into()
     }
 }
 
@@ -1006,8 +988,10 @@ crate::target_spec_enum! {
     pub enum RustcAbi {
         /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
         X86Sse2 = "x86-sse2",
+        /// On PowerPC only: build for SPE.
+        PowerPcSpe = "powerpc-spe",
         /// On x86-32/64, aarch64, and S390x: do not use any FPU or SIMD registers for the ABI.
-        Softfloat = "softfloat", "x86-softfloat",
+        Softfloat = "softfloat",
     }
 
     parse_error_type = "rustc abi";
@@ -1302,7 +1286,6 @@ impl schemars::JsonSchema for SanitizerSet {
             "type": "string",
             "enum": all,
         })
-        .into()
     }
 }
 
@@ -1479,6 +1462,7 @@ supported_targets! {
     ("powerpc-unknown-linux-muslspe", powerpc_unknown_linux_muslspe),
     ("powerpc64-ibm-aix", powerpc64_ibm_aix),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
+    ("powerpc64-unknown-linux-gnuelfv2", powerpc64_unknown_linux_gnuelfv2),
     ("powerpc64-unknown-linux-musl", powerpc64_unknown_linux_musl),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-musl", powerpc64le_unknown_linux_musl),
@@ -1504,6 +1488,7 @@ supported_targets! {
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
     ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
+    ("aarch64-unknown-linux-pauthtest", aarch64_unknown_linux_pauthtest),
     ("aarch64_be-unknown-linux-musl", aarch64_be_unknown_linux_musl),
     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
@@ -1702,6 +1687,7 @@ supported_targets! {
     ("riscv32im-unknown-none-elf", riscv32im_unknown_none_elf),
     ("riscv32ima-unknown-none-elf", riscv32ima_unknown_none_elf),
     ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),
+    ("riscv32imfc-unknown-none-elf", riscv32imfc_unknown_none_elf),
     ("riscv32imc-esp-espidf", riscv32imc_esp_espidf),
     ("riscv32imac-esp-espidf", riscv32imac_esp_espidf),
     ("riscv32imafc-esp-espidf", riscv32imafc_esp_espidf),
@@ -1806,10 +1792,10 @@ supported_targets! {
     ("aarch64-unknown-nto-qnx700", aarch64_unknown_nto_qnx700),
     ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx710),
     ("aarch64-unknown-nto-qnx710_iosock", aarch64_unknown_nto_qnx710_iosock),
-    ("aarch64-unknown-nto-qnx800", aarch64_unknown_nto_qnx800),
+    ("aarch64-unknown-qnx", aarch64_unknown_qnx),
     ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
     ("x86_64-pc-nto-qnx710_iosock", x86_64_pc_nto_qnx710_iosock),
-    ("x86_64-pc-nto-qnx800", x86_64_pc_nto_qnx800),
+    ("x86_64-pc-qnx", x86_64_pc_qnx),
     ("i686-pc-nto-qnx700", i686_pc_nto_qnx700),
 
     ("aarch64-unknown-linux-ohos", aarch64_unknown_linux_ohos),
@@ -1840,6 +1826,12 @@ supported_targets! {
     ("x86_64-unknown-linux-gnuasan", x86_64_unknown_linux_gnuasan),
     ("x86_64-unknown-linux-gnumsan", x86_64_unknown_linux_gnumsan),
     ("x86_64-unknown-linux-gnutsan", x86_64_unknown_linux_gnutsan),
+
+    ("aarch64-oe-linux-gnu", aarch64_oe_linux_gnu),
+    ("armv7-oe-linux-gnueabihf", armv7_oe_linux_gnueabihf),
+    ("i686-oe-linux-gnu", i686_oe_linux_gnu),
+    ("riscv64-oe-linux-gnu", riscv64_oe_linux_gnu),
+    ("x86_64-oe-linux-gnu", x86_64_oe_linux_gnu),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -2010,6 +2002,7 @@ crate::target_spec_enum! {
         OpenBsd = "openbsd",
         Psp = "psp",
         Psx = "psx",
+        Qnx = "qnx",
         Qurt = "qurt",
         Redox = "redox",
         Rtems = "rtems",
@@ -2050,7 +2043,6 @@ crate::target_spec_enum! {
         Nto70 = "nto70",
         Nto71 = "nto71",
         Nto71IoSock = "nto71_iosock",
-        Nto80 = "nto80",
         Ohos = "ohos",
         Relibc = "relibc",
         Sgx = "sgx",
@@ -2088,6 +2080,7 @@ crate::target_spec_enum! {
         Ilp32e = "ilp32e",
         Llvm = "llvm",
         MacAbi = "macabi",
+        Pauthtest = "pauthtest",
         Sim = "sim",
         SoftFloat = "softfloat",
         Spe = "spe",
@@ -2128,6 +2121,8 @@ crate::target_spec_enum! {
         // PowerPC
         ElfV1 = "elfv1",
         ElfV2 = "elfv2",
+        // Pointer authentication: Pauthtest
+        Pauthtest = "pauthtest",
 
         Unspecified = "",
     }
@@ -2243,6 +2238,8 @@ impl Target {
             // `clang`, or we should understand and document why it deviates.
             // - Ensure that `va_arg` is implemented in rustc. For stable targets we don't rely on
             // the LLVM implementation, it has historically caused miscompilations.
+            // - Ensure that LLVM's `va_end` for this target is a NOP.
+            // - Ensure that LLVM's `va_copy` for this target is equivalent to `memcpy`.
             // - The `tests/ui/c-variadic/roundtrip.rs` test must pass for the target. It may
             // need slight modifications for embedded targets, that's fine.
             // - Check that calling c-variadic functions defined in Rust can be called from C.
@@ -2258,6 +2255,26 @@ impl Target {
                 CVariadicStatus::Stable
             }
         }
+    }
+
+    /// Is this target single-threaded?
+    ///
+    /// This affects both optimizations (e.g., atomics can be lowered to regular operations) and
+    /// is also exposed as cfg(target_has_threads).
+    pub fn singlethread(&self, target_features: &FxIndexSet<Symbol>) -> bool {
+        // On the wasm target once the `atomics` feature is enabled that means that
+        // we're no longer single-threaded, or otherwise we don't want LLVM to
+        // lower atomic operations to single-threaded operations.
+        //
+        // FIXME: This (probably?) implies that atomics should be a target modifier, at which point
+        // it probably makes sense to be a separate target to ship precompiled artifacts for it?
+        //
+        // cc #77839 (tracking issue for wasm atomics)
+        if self.singlethread && self.is_like_wasm && target_features.contains(&sym::atomics) {
+            return false;
+        }
+
+        self.singlethread
     }
 }
 
@@ -2574,7 +2591,8 @@ pub struct TargetOptions {
     pub requires_lto: bool,
 
     /// This target has no support for threads.
-    pub singlethread: bool,
+    // This is private because wasm changes this depending on target features.
+    singlethread: bool,
 
     /// Whether library functions call lowering/optimization is disabled in LLVM
     /// for this target unconditionally.
@@ -2702,6 +2720,9 @@ pub struct TargetOptions {
     /// Default value is `CanonAbi::C`
     pub entry_abi: CanonAbi,
 
+    /// Whether the target supports fentry instrumentation.
+    pub supports_fentry: bool,
+
     /// Whether the target supports XRay instrumentation.
     pub supports_xray: bool,
 
@@ -2740,8 +2761,7 @@ fn add_link_args_iter(
         | LinkerFlavor::Unix(..)
         | LinkerFlavor::EmCc
         | LinkerFlavor::Bpf
-        | LinkerFlavor::Llbc
-        | LinkerFlavor::Ptx => {}
+        | LinkerFlavor::Llbc => {}
     }
 }
 
@@ -2944,6 +2964,7 @@ impl Default for TargetOptions {
             supports_stack_protector: true,
             entry_name: "main".into(),
             entry_abi: CanonAbi::C,
+            supports_fentry: false,
             supports_xray: false,
             default_address_space: rustc_abi::AddressSpace::ZERO,
             small_data_threshold_support: SmallDataThresholdSupport::DefaultForArch,
@@ -3127,10 +3148,7 @@ impl Target {
                             "mixing MSVC and non-MSVC linker flavors"
                         );
                     }
-                    LinkerFlavor::EmCc
-                    | LinkerFlavor::Bpf
-                    | LinkerFlavor::Ptx
-                    | LinkerFlavor::Llbc => {
+                    LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Llbc => {
                         check_eq!(flavor, self.linker_flavor, "mixing different linker flavors")
                     }
                 }
@@ -3412,9 +3430,10 @@ impl Target {
                 )
             }
             Arch::AArch64 => {
-                check!(
-                    self.llvm_abiname == LlvmAbi::Unspecified,
-                    "`llvm_abiname` is unused on aarch64"
+                check_matches!(
+                    self.llvm_abiname,
+                    LlvmAbi::Unspecified | LlvmAbi::Pauthtest,
+                    "invalid llvm ABI for aarch64"
                 );
                 check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on aarch64");
                 // FIXME: Ensure that target_abi = "ilp32" correlates with actually using that ABI.
@@ -3427,6 +3446,7 @@ impl Target {
                             CfgAbi::Ilp32
                                 | CfgAbi::Llvm
                                 | CfgAbi::MacAbi
+                                | CfgAbi::Pauthtest
                                 | CfgAbi::Sim
                                 | CfgAbi::Uwp
                                 | CfgAbi::Unspecified
@@ -3445,13 +3465,15 @@ impl Target {
                     "`llvm_abiname` is unused on PowerPC"
                 );
                 check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on PowerPC");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on PowerPC");
-                // FIXME: Check that `target_abi` matches the actually configured ABI (with or
-                // without SPE).
                 check_matches!(
+                    (&self.rustc_abi, &self.cfg_abi),
+                    (Some(RustcAbi::PowerPcSpe), CfgAbi::Spe)
+                        | (None, CfgAbi::Unspecified | CfgAbi::Other(_)),
+                    "invalid PowerPC Rust-specific ABI and `cfg(target_abi)` combination:\n\
+                    Rust-specific ABI: {:?}\n\
+                    cfg(target_abi): {}",
+                    self.rustc_abi,
                     self.cfg_abi,
-                    CfgAbi::Spe | CfgAbi::Unspecified | CfgAbi::Other(_),
-                    "invalid `target_abi` for PowerPC"
                 );
             }
             Arch::PowerPC64 => {
@@ -3580,6 +3602,19 @@ impl Target {
                     self.cfg_abi,
                     CfgAbi::AbiV2 | CfgAbi::AbiV2Hf,
                     "invalid `target_abi` for CSky"
+                );
+            }
+            Arch::Wasm32 | Arch::Wasm64 => {
+                check!(
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on wasm"
+                );
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on wasm");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on wasm");
+                check_matches!(
+                    self.cfg_abi,
+                    CfgAbi::Unspecified | CfgAbi::Other(_),
+                    "invalid `target_abi` for wasm"
                 );
             }
             ref arch => {
@@ -3879,142 +3914,3 @@ impl Target {
         Symbol::intern(&self.vendor)
     }
 }
-
-/// Either a target tuple string or a path to a JSON file.
-#[derive(Clone, Debug)]
-pub enum TargetTuple {
-    TargetTuple(String),
-    TargetJson {
-        /// Warning: This field may only be used by rustdoc. Using it anywhere else will lead to
-        /// inconsistencies as it is discarded during serialization.
-        path_for_rustdoc: PathBuf,
-        tuple: String,
-        contents: String,
-    },
-}
-
-// Use a manual implementation to ignore the path field
-impl PartialEq for TargetTuple {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::TargetTuple(l0), Self::TargetTuple(r0)) => l0 == r0,
-            (
-                Self::TargetJson { path_for_rustdoc: _, tuple: l_tuple, contents: l_contents },
-                Self::TargetJson { path_for_rustdoc: _, tuple: r_tuple, contents: r_contents },
-            ) => l_tuple == r_tuple && l_contents == r_contents,
-            _ => false,
-        }
-    }
-}
-
-// Use a manual implementation to ignore the path field
-impl Hash for TargetTuple {
-    fn hash<H: Hasher>(&self, state: &mut H) -> () {
-        match self {
-            TargetTuple::TargetTuple(tuple) => {
-                0u8.hash(state);
-                tuple.hash(state)
-            }
-            TargetTuple::TargetJson { path_for_rustdoc: _, tuple, contents } => {
-                1u8.hash(state);
-                tuple.hash(state);
-                contents.hash(state)
-            }
-        }
-    }
-}
-
-// Use a manual implementation to prevent encoding the target json file path in the crate metadata
-impl<S: Encoder> Encodable<S> for TargetTuple {
-    fn encode(&self, s: &mut S) {
-        match self {
-            TargetTuple::TargetTuple(tuple) => {
-                s.emit_u8(0);
-                s.emit_str(tuple);
-            }
-            TargetTuple::TargetJson { path_for_rustdoc: _, tuple, contents } => {
-                s.emit_u8(1);
-                s.emit_str(tuple);
-                s.emit_str(contents);
-            }
-        }
-    }
-}
-
-impl<D: Decoder> Decodable<D> for TargetTuple {
-    fn decode(d: &mut D) -> Self {
-        match d.read_u8() {
-            0 => TargetTuple::TargetTuple(d.read_str().to_owned()),
-            1 => TargetTuple::TargetJson {
-                path_for_rustdoc: PathBuf::new(),
-                tuple: d.read_str().to_owned(),
-                contents: d.read_str().to_owned(),
-            },
-            _ => {
-                panic!("invalid enum variant tag while decoding `TargetTuple`, expected 0..2");
-            }
-        }
-    }
-}
-
-impl TargetTuple {
-    /// Creates a target tuple from the passed target tuple string.
-    pub fn from_tuple(tuple: &str) -> Self {
-        TargetTuple::TargetTuple(tuple.into())
-    }
-
-    /// Creates a target tuple from the passed target path.
-    pub fn from_path(path: &Path) -> Result<Self, io::Error> {
-        let canonicalized_path = try_canonicalize(path)?;
-        let contents = std::fs::read_to_string(&canonicalized_path).map_err(|err| {
-            io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("target path {canonicalized_path:?} is not a valid file: {err}"),
-            )
-        })?;
-        let tuple = canonicalized_path
-            .file_stem()
-            .expect("target path must not be empty")
-            .to_str()
-            .expect("target path must be valid unicode")
-            .to_owned();
-        Ok(TargetTuple::TargetJson { path_for_rustdoc: canonicalized_path, tuple, contents })
-    }
-
-    /// Returns a string tuple for this target.
-    ///
-    /// If this target is a path, the file name (without extension) is returned.
-    pub fn tuple(&self) -> &str {
-        match *self {
-            TargetTuple::TargetTuple(ref tuple) | TargetTuple::TargetJson { ref tuple, .. } => {
-                tuple
-            }
-        }
-    }
-
-    /// Returns an extended string tuple for this target.
-    ///
-    /// If this target is a path, a hash of the path is appended to the tuple returned
-    /// by `tuple()`.
-    pub fn debug_tuple(&self) -> String {
-        use std::hash::DefaultHasher;
-
-        match self {
-            TargetTuple::TargetTuple(tuple) => tuple.to_owned(),
-            TargetTuple::TargetJson { path_for_rustdoc: _, tuple, contents: content } => {
-                let mut hasher = DefaultHasher::new();
-                content.hash(&mut hasher);
-                let hash = hasher.finish();
-                format!("{tuple}-{hash}")
-            }
-        }
-    }
-}
-
-impl fmt::Display for TargetTuple {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.debug_tuple())
-    }
-}
-
-into_diag_arg_using_display!(&TargetTuple);

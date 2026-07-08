@@ -30,8 +30,10 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 pub use rustc_span::AttrId;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{
-    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, respan, sym,
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
+    sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 
@@ -405,7 +407,7 @@ impl GenericBound {
     }
 }
 
-pub type GenericBounds = Vec<GenericBound>;
+pub type GenericBounds = ThinVec<GenericBound>;
 
 /// Specifies the enforced ordering for generic parameters. In the future,
 /// if we wanted to relax this order, we could override `PartialEq` and
@@ -509,8 +511,6 @@ pub enum WherePredicateKind {
     BoundPredicate(WhereBoundPredicate),
     /// A lifetime predicate (e.g., `'a: 'b + 'c`).
     RegionPredicate(WhereRegionPredicate),
-    /// An equality predicate (unsupported).
-    EqPredicate(WhereEqPredicate),
 }
 
 /// A type bound.
@@ -1534,7 +1534,7 @@ impl Expr {
                 let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) else {
                     return None;
                 };
-                TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
+                TyKind::TraitObject(thin_vec![lhs, rhs], TraitObjectSyntax::None)
             }
 
             ExprKind::Underscore => TyKind::Infer,
@@ -1557,12 +1557,10 @@ impl Expr {
         }
 
         match &self.kind {
-            ExprKind::Closure(closure) => {
-                match closure.fn_decl.output {
-                    FnRetTy::Default(_) => ExprPrecedence::Jump,
-                    FnRetTy::Ty(_) => prefix_attrs_precedence(&self.attrs),
-                }
-            }
+            ExprKind::Closure(closure) => match closure.fn_decl.output {
+                FnRetTy::Default(_) => ExprPrecedence::Jump,
+                FnRetTy::Ty(_) => prefix_attrs_precedence(&self.attrs),
+            },
 
             ExprKind::Break(_ /*label*/, value)
             | ExprKind::Ret(value)
@@ -1584,18 +1582,16 @@ impl Expr {
             ExprKind::Binary(op, ..) => op.node.precedence(),
             ExprKind::Cast(..) => ExprPrecedence::Cast,
 
-            ExprKind::Assign(..) |
-            ExprKind::AssignOp(..) => ExprPrecedence::Assign,
+            ExprKind::Assign(..) | ExprKind::AssignOp(..) => ExprPrecedence::Assign,
 
             // Unary, prefix
-            ExprKind::AddrOf(..)
+            ExprKind::AddrOf(..) => ExprPrecedence::Prefix,
+
             // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
             // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
-            | ExprKind::Let(..)
-            | ExprKind::Move(..)
-            | ExprKind::Unary(..) => ExprPrecedence::Prefix,
+            ExprKind::Let(..) | ExprKind::Move(..) | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Need parens if and only if there are prefix attributes.
             ExprKind::Array(_)
@@ -1872,7 +1868,7 @@ pub enum ExprKind {
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `core::mem::offset_of!(...)`.
-    OffsetOf(Box<Ty>, Vec<Ident>),
+    OffsetOf(Box<Ty>, ThinVec<Ident>),
 
     /// A macro invocation; pre-expansion.
     MacCall(Box<MacCall>),
@@ -2568,6 +2564,8 @@ pub enum TyKind {
     /// Usually not written directly in user code but indirectly via the macro
     /// `core::field::field_of!(...)`.
     FieldOf(Box<Ty>, Option<Ident>, Ident),
+    /// A view of a type. `T.{ field_1, field_2 }`.
+    View(Box<Ty>, #[visitable(ignore)] ThinVec<Ident>),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.
@@ -3057,8 +3055,31 @@ impl FnDecl {
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).is_some_and(Param::is_self)
     }
+
     pub fn c_variadic(&self) -> bool {
         self.inputs.last().is_some_and(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
+    }
+
+    /// The marker index for "no splatted arguments".
+    /// Higher values are also not supported, for performance reasons.
+    ///
+    /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `FnDeclFlags::NO_SPLATTED_ARG_INDEX`.
+    pub const NO_SPLATTED_ARG_INDEX: u8 = u8::MAX;
+
+    /// Returns a splatted argument index, if any are present.
+    pub fn splatted(&self) -> Option<u8> {
+        self.inputs.iter().enumerate().find_map(|(index, arg)| {
+            if index >= usize::from(Self::NO_SPLATTED_ARG_INDEX) {
+                // AST validation has already checked the splatted argument index is valid, so just
+                // ignore invalid indexes here.
+                None
+            } else {
+                arg.attrs
+                    .iter()
+                    .any(|attr| attr.has_name(sym::splat))
+                    .then_some(u8::try_from(index).unwrap())
+            }
+        })
     }
 }
 
@@ -3501,6 +3522,7 @@ impl AttrItem {
             || self.path == sym::warn
             || self.path == sym::allow
             || self.path == sym::deny
+            || self.path == sym::expect
     }
 }
 
@@ -3587,6 +3609,13 @@ pub struct ImplRestriction {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct MutRestriction {
+    pub kind: RestrictionKind,
+    pub span: Span,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum RestrictionKind {
     Unrestricted,
     Restricted { path: Box<Path>, id: NodeId, shorthand: bool },
@@ -3601,6 +3630,7 @@ pub struct FieldDef {
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
+    pub mut_restriction: MutRestriction,
     pub safety: Safety,
     pub ident: Option<Ident>,
 
@@ -3867,6 +3897,19 @@ pub struct Fn {
     pub eii_impls: ThinVec<EiiImpl>,
 }
 
+impl Fn {
+    pub fn is_pin_drop_sugar(&self) -> bool {
+        self.ident.name == sym::drop
+            && self
+                .sig
+                .decl
+                .inputs
+                .first()
+                .and_then(|param| param.to_self())
+                .is_some_and(|eself| matches!(eself.node, SelfKind::Pinned(None, Mutability::Mut)))
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct EiiImpl {
     pub node_id: NodeId,
@@ -3890,6 +3933,13 @@ pub struct EiiImpl {
     pub is_default: bool,
 }
 
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
+pub enum DelegationSource {
+    Single,
+    List(LocalExpnId),
+    Glob,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct Delegation {
     /// Path resolution id.
@@ -3900,7 +3950,14 @@ pub struct Delegation {
     pub rename: Option<Ident>,
     pub body: Option<Box<Block>>,
     /// The item was expanded from a glob delegation item.
-    pub from_glob: bool,
+    #[visitable(ignore)]
+    pub source: DelegationSource,
+}
+
+impl Delegation {
+    pub fn last_segment_span(&self) -> Span {
+        self.path.segments.last().unwrap().ident.span
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4310,6 +4367,23 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 
 pub type ForeignItem = Item<ForeignItemKind>;
 
+/// Fragment of the AST according to "HIR owner" semantics.
+///
+/// This is used to map each `LocalDefId` to its content's AST.
+#[derive(Debug)]
+pub enum AstOwner {
+    /// This definition does not correspond to a HIR owner.
+    NonOwner,
+    /// This definition corresponds to a nested `use` tree.
+    /// The `LocalDefId` points to its HIR owner.
+    NestedUseTree(LocalDefId),
+    Crate(Box<Crate>),
+    Item(Box<Item>),
+    TraitItem(Box<AssocItem>),
+    ImplItem(Box<AssocItem>),
+    ForeignItem(Box<ForeignItem>),
+}
+
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
@@ -4319,27 +4393,37 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(AssocItem, 80);
     static_assert_size!(AssocItemKind, 16);
+    static_assert_size!(AttrKind, 16);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
     static_assert_size!(Fn, 192);
+    static_assert_size!(FnDecl, 24);
+    static_assert_size!(FnHeader, 76);
+    static_assert_size!(FnSig, 96);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);
+    static_assert_size!(GenericArgs, 40);
     static_assert_size!(GenericBound, 88);
+    static_assert_size!(GenericParam, 80);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 80);
     static_assert_size!(Item, 152);
     static_assert_size!(ItemKind, 88);
+    static_assert_size!(Lifetime, 16);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);
+    static_assert_size!(MetaItem, 88);
+    static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 80);
     static_assert_size!(PatKind, 56);
     static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
+    static_assert_size!(QSelf, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
     static_assert_size!(TraitImplHeader, 72);

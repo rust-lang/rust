@@ -543,7 +543,7 @@ mod items {
         impl () {}
         impl<T> () {}
         impl Default for () {}
-        impl<T> const Default for () {}
+        const impl<T> Default for () {}
     }
 
     /// ItemKind::MacCall

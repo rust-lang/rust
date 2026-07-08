@@ -24,8 +24,8 @@ impl<'tcx> Stable<'tcx> for rustc_hir::Safety {
 impl<'tcx> Stable<'tcx> for rustc_hir::Constness {
     type T = crate::ty::Constness;
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        match self {
-            rustc_hir::Constness::Const => crate::ty::Constness::Const,
+        match *self {
+            rustc_hir::Constness::Const { always } => crate::ty::Constness::Const { always },
             rustc_hir::Constness::NotConst => crate::ty::Constness::NotConst,
         }
     }

@@ -17,12 +17,11 @@ use rustc_type_ir::{
 };
 
 use crate::{
-    GenericPredicates,
+    FieldType, GenericPredicates,
     db::HirDatabase,
     next_solver::{
         AliasTy, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, ParamEnv,
-        StoredEarlyBinder, StoredTy, TraitRef, Ty, TyKind, Unnormalized, fold::fold_tys,
-        generics::Generics,
+        StoredEarlyBinder, TraitRef, Ty, TyKind, Unnormalized, fold::fold_tys, generics::Generics,
     },
 };
 
@@ -193,7 +192,7 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
             else {
                 // Malformed derive.
                 return GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
-                    Clauses::default().store(),
+                    Clauses::empty(interner).store(),
                 ));
             };
             let duplicated_bounds =
@@ -305,7 +304,7 @@ fn simple_trait_predicates<'db>(
             loc.trait_,
         ),
         AdtId::EnumId(id) => {
-            for &(variant_id, _, _) in &id.enum_variants(interner.db).variants {
+            for &(variant_id, _) in id.enum_variants(interner.db).variants.values() {
                 extend_assoc_type_bounds(
                     interner,
                     &mut assoc_type_bounds,
@@ -333,7 +332,7 @@ fn simple_trait_predicates<'db>(
 fn extend_assoc_type_bounds<'db>(
     interner: DbInterner<'db>,
     assoc_type_bounds: &mut Vec<Clause<'db>>,
-    fields: &ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>,
+    fields: &ArenaMap<LocalFieldId, FieldType>,
     trait_id: TraitId,
     trait_: BuiltinDeriveImplTrait,
 ) {
@@ -365,7 +364,7 @@ fn extend_assoc_type_bounds<'db>(
 
     let mut visitor = ProjectionFinder { interner, assoc_type_bounds, trait_id, trait_ };
     for (_, field) in fields.iter() {
-        field.get().instantiate_identity().skip_norm_wip().visit_with(&mut visitor);
+        field.ty().instantiate_identity().skip_norm_wip().visit_with(&mut visitor);
     }
 }
 

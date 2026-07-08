@@ -1,5 +1,4 @@
 #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
-#![allow(dead_code)]
 //@no-rustfix
 // branches_sharing_code at the top and bottom of the if blocks
 

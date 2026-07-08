@@ -1,4 +1,3 @@
-<!-- date-check: Jul 2025 -->
 
 # Implementing new language features
 
@@ -191,7 +190,7 @@ The below steps needs to be followed in order to implement a new unstable featur
     If the feature gate is not set,
     you should either maintain the pre-feature behavior or raise an error,
     depending on what makes sense.
-    Errors should generally use [`rustc_session::parse::feature_err`].
+    Errors should generally use [`rustc_session::errors::feature_err`].
     For an example of adding an error, see [#81015].
 
    For features introducing new syntax, pre-expansion gating should be used instead.
@@ -221,13 +220,55 @@ The below steps needs to be followed in order to implement a new unstable featur
 
 [`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.GatedSpans.html
 [#81015]: https://github.com/rust-lang/rust/pull/81015
-[`rustc_session::parse::feature_err`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/fn.feature_err.html
+[`rustc_session::errors::feature_err`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/errors/fn.feature_err.html
 [`rustc_ast_passes::feature_gate::check_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_passes/feature_gate/fn.check_crate.html
 [value the stability of Rust]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 [stability in code]: #stability-in-code
 [here]: ./stabilization-guide.md
 [tracking issue]: #tracking-issues
 [add-feature-gate]: ./feature-gates.md#adding-a-feature-gate
+[guidance for compiler flags]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html?highlight=unstable%20flag#compiler-flags
+[`UnstableOptions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/options/struct.UnstableOptions.html
+
+## Adding unstable compiler flags
+
+For compiler-internal experiments, diagnostics, debugging aids, and temporary implementation
+controls, a `-Z` flag can be more appropriate than a language feature gate.
+Feature gates should still be preferred for user-facing language features,
+especially when crates need to opt in from source code.
+
+Before adding a new flag, check the compiler team's [guidance for compiler flags].
+Some flags, especially those intended for direct nightly user workflows or broader
+ecosystem use, may need additional sign-off beyond an r+ on the implementation PR.
+
+When adding a new `-Z` flag:
+
+1. Add the option to [`UnstableOptions`] in
+   `compiler/rustc_session/src/options.rs`.
+   The option name is written as snake_case in the struct and is exposed as
+   kebab-case on the command line.
+   Choose the parser, default value, and dependency tracking marker carefully.
+   Use `[UNTRACKED]` for flags that only affect diagnostics or debugging output,
+   and use `[TRACKED]` when changing the flag can change compilation results.
+
+1. Update the option tests in `compiler/rustc_interface/src/tests.rs`.
+   `options.rs` also has a short checklist near the `UnstableOptions` list for
+   files that need to stay in sync.
+
+1. Use the option through `sess.opts.unstable_opts.$flag_name` or
+   `tcx.sess.opts.unstable_opts.$flag_name`.
+   If bootstrap or rustdoc needs to pass the flag internally,
+   thread it through the relevant command construction code as part of the same
+   change.
+
+1. Add focused tests for the behavior controlled by the flag.
+   For example, UI tests can use `//@ compile-flags: -Zyour-flag`,
+   while rustdoc behavior usually belongs in `tests/rustdoc`.
+
+1. If the flag is meant for users of nightly rustc or rustdoc,
+   document it in the unstable book under `src/doc/unstable-book/src/compiler-flags`.
+
+Before opening the PR, run `./x test tidy` and the narrow test suite that exercises the new flag.
 
 ## Call for testing
 

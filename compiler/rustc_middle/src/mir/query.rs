@@ -27,6 +27,8 @@ pub struct CoroutineSavedTy<'tcx> {
     pub source_info: SourceInfo,
     /// Whether the local should be ignored for trait bound computations.
     pub ignore_for_traits: bool,
+    /// The name for debuginfo.
+    pub debuginfo_name: Option<Symbol>,
 }
 
 /// The layout of coroutine state.
@@ -35,9 +37,6 @@ pub struct CoroutineSavedTy<'tcx> {
 pub struct CoroutineLayout<'tcx> {
     /// The type of every local stored inside the coroutine.
     pub field_tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'tcx>>,
-
-    /// The name for debuginfo.
-    pub field_names: IndexVec<CoroutineSavedLocal, Option<Symbol>>,
 
     /// Which of the above fields are in each variant. Note that one field may
     /// be stored in multiple variants.

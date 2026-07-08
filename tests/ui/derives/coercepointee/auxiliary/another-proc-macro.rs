@@ -11,7 +11,6 @@ pub fn derive(_input: TokenStream) -> TokenStream {
             const ANOTHER_MACRO_DERIVED: () = ();
         };
     }
-    .into()
 }
 
 #[proc_macro_attribute]
@@ -24,7 +23,6 @@ pub fn pointee(
             const POINTEE_MACRO_ATTR_DERIVED: () = ();
         };
     }
-    .into()
 }
 
 #[proc_macro_attribute]
@@ -37,5 +35,4 @@ pub fn default(
             const DEFAULT_MACRO_ATTR_DERIVED: () = ();
         };
     }
-    .into()
 }

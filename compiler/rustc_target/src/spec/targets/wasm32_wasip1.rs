@@ -4,7 +4,7 @@
 //! "preview2". This target in rustc uses the previous version of the proposal.
 //!
 //! This target uses the syscalls defined at
-//! <https://github.com/WebAssembly/WASI/tree/main/legacy/preview1>.
+//! <https://github.com/WebAssembly/WASI/tree/wasi-0.1/preview1>.
 //!
 //! Note that this target was historically called `wasm32-wasi` originally and
 //! was since renamed to `wasm32-wasip1` after the preview2 target was
@@ -40,10 +40,6 @@ pub(crate) fn target() -> Target {
     // Allow `+crt-static` to create a "cdylib" output which is just a wasm file
     // without a main function.
     options.crt_static_allows_dylibs = true;
-
-    // WASI's `sys::args::init` function ignores its arguments; instead,
-    // `args::args()` makes the WASI API calls itself.
-    options.main_needs_argc_argv = false;
 
     // And, WASI mangles the name of "main" to distinguish between different
     // signatures.

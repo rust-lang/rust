@@ -22,12 +22,6 @@ pub(in crate::num) const fn mul() -> ! {
 
 #[cold]
 #[track_caller]
-pub(in crate::num) const fn div() -> ! {
-    panic!("attempt to divide with overflow")
-}
-
-#[cold]
-#[track_caller]
 pub(in crate::num) const fn rem() -> ! {
     panic!("attempt to calculate the remainder with overflow")
 }
@@ -52,6 +46,12 @@ pub(in crate::num) const fn shl() -> ! {
 
 #[cold]
 #[track_caller]
-pub(in crate::num) const fn cast_integer() -> ! {
+pub(in crate::num) const fn pow() -> ! {
+    panic!("attempt to exponentiate with overflow")
+}
+
+#[cold]
+#[track_caller]
+pub(crate) const fn cast_integer() -> ! {
     panic!("attempt to cast integer with overflow")
 }

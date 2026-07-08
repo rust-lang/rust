@@ -10,14 +10,14 @@ use clippy_utils::macros::{
 };
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanRangeExt, snippet, snippet_opt};
+use clippy_utils::source::{SpanExt, snippet, snippet_opt};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_from_proc_macro, is_in_test, peel_hir_expr_while, sym, trait_ref_of_method};
 use itertools::Itertools;
 use rustc_ast::FormatTrait::{Binary, Debug, Display, LowerExp, LowerHex, Octal, Pointer, UpperExp, UpperHex};
 use rustc_ast::{
     BorrowKind, FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount,
-    FormatOptions, FormatPlaceholder,
+    FormatOptions, FormatPlaceholder, Mutability,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -380,7 +380,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
     /// Check if there is a comma after the last format macro arg.
     fn check_trailing_comma(&self) {
         let span = self.macro_call.span;
-        if let Some(src) = span.get_source_text(self.cx)
+        if let Some(src) = span.get_text(self.cx)
             && let Some(src) = src.strip_suffix([')', ']', '}'])
             && let src = src.trim_end_matches(|c: char| c.is_whitespace() && c != '\n')
             && let Some(src) = src.strip_suffix(',')
@@ -451,6 +451,10 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
     }
 
     fn check_useless_borrows_in_formatting(&self, placeholder: &FormatPlaceholder, arg_expr: &Expr<'tcx>) {
+        // Updated while peeling:
+        let mut only_mutable = true;
+        let mut has_mutable = false;
+
         if !arg_expr.span.from_expansion()
             && !is_from_proc_macro(self.cx, arg_expr)
             && let Some(fmt_trait) = match placeholder.format_trait {
@@ -461,11 +465,13 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
             && let Some(sized_trait) = self.cx.tcx.lang_items().sized_trait()
             && let peeled_expr = peel_hir_expr_while(arg_expr, |e| {
                 // Need to handle `&&&T` to `&T` when a single ref is still required
-                if let ExprKind::AddrOf(BorrowKind::Ref, _, e) = e.kind
+                if let ExprKind::AddrOf(BorrowKind::Ref, m, e) = e.kind
                     && let ty = self.cx.typeck_results().expr_ty(e)
                     && implements_trait(self.cx, ty, sized_trait, &[])
                     && implements_trait(self.cx, ty, fmt_trait, &[])
                 {
+                    only_mutable = only_mutable && m == Mutability::Mut;
+                    has_mutable = has_mutable || m == Mutability::Mut;
                     Some(e)
                 } else {
                     None
@@ -475,12 +481,19 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
             && let Some(peeled_snippet) = snippet_opt(self.cx, peeled_expr.span)
         {
             let name = self.cx.tcx.item_name(self.macro_call.def_id);
+            let message = if only_mutable {
+                "remove the redundant `&mut`"
+            } else if has_mutable {
+                "remove the redundant `&`/`&mut`"
+            } else {
+                "remove the redundant `&`"
+            };
             span_lint_and_sugg(
                 self.cx,
                 USELESS_BORROWS_IN_FORMATTING,
                 arg_expr.span,
                 format!("redundant reference in `{name}!` argument"),
-                "remove the redundant `&`",
+                message,
                 peeled_snippet,
                 Applicability::MachineApplicable,
             );
@@ -681,7 +694,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
             && implements_trait(cx, target, display_trait_id, &[])
             && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
-            && let Some(receiver_snippet) = receiver.span.source_callsite().get_source_text(cx)
+            && let Some(receiver_snippet) = receiver.span.source_callsite().get_text(cx)
         {
             let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
             if n_needed_derefs == 0 && !needs_ref {
@@ -843,10 +856,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 };
                 let pointer_debug = derived_debug
                     && adt.all_fields().any(|f| {
-                        self.has_pointer_debug(
-                            tcx.normalize_erasing_regions(typing_env, f.ty(tcx, args)),
-                            depth,
-                        )
+                        self.has_pointer_debug(tcx.normalize_erasing_regions(typing_env, f.ty(tcx, args)), depth)
                     });
                 self.has_pointer_format.insert(ty, pointer_debug);
                 pointer_debug

@@ -1,6 +1,6 @@
 use crate::consts::ConstEvalCtxt;
 use crate::macros::macro_backtrace;
-use crate::source::{SpanRange, SpanRangeExt, walk_span_to_context};
+use crate::source::{SpanExt, SpanRange, walk_span_to_context};
 use crate::{sym, tokenize_with_text};
 use core::mem;
 use rustc_ast::ast;
@@ -300,9 +300,6 @@ impl HirEqInterExpr<'_, '_, '_> {
             (WherePredicateKind::RegionPredicate(l_region), WherePredicateKind::RegionPredicate(r_region)) => {
                 Self::eq_lifetime(l_region.lifetime, r_region.lifetime)
                     && self.eq_generics_bound(l_region.bounds, r_region.bounds)
-            },
-            (WherePredicateKind::EqPredicate(l_eq), WherePredicateKind::EqPredicate(r_eq)) => {
-                self.eq_ty(l_eq.lhs_ty, r_eq.lhs_ty)
             },
             _ => false,
         })
@@ -1039,7 +1036,7 @@ fn reduce_exprkind<'hir>(
             // `{}` => `()`
             ([], None)
                 if block.span.ctxt() != eval_ctxt
-                    || block.span.check_source_text(cx, |src| {
+                    || block.span.check_text(cx, |src| {
                         tokenize(src, FrontmatterAllowed::No)
                             .map(|t| t.kind)
                             .filter(|t| {

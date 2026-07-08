@@ -26,18 +26,18 @@
 //@ lldb-command:run
 
 //@ lldb-command:v no_padding1
-//@ lldb-check:[...] { x = { [0] = 0 [1] = 1 [2] = 2 } y = -3 z = { [0] = 4.5 [1] = 5.5 } }
+//@ lldb-check:[...] {x:(0, 1, 2), y:-3, z:(4.5, 5.5)}
 //@ lldb-command:v no_padding2
-//@ lldb-check:[...] { x = { [0] = 6 [1] = 7 [2] = 8 } y = { [0] = { [0] = 9 [1] = 10 } [1] = { [0] = 11 [1] = 12 } } }
+//@ lldb-check:[...] {x:(6, 7, 8), y:((9, 10), (11, 12))}
 
 //@ lldb-command:v struct_internal_padding
-//@ lldb-check:[...] { x = { [0] = 13 [1] = 14 } y = { [0] = 15 [1] = 16 } }
+//@ lldb-check:[...] {x:(13, 14), y:(15, 16)}
 
 //@ lldb-command:v single_vec
-//@ lldb-check:[...] { x = { [0] = 17 [1] = 18 [2] = 19 [3] = 20 [4] = 21 } }
+//@ lldb-check:[...] {x:(17, 18, 19, 20, 21)}
 
 //@ lldb-command:v struct_padded_at_end
-//@ lldb-check:[...] { x = { [0] = 22 [1] = 23 } y = { [0] = 24 [1] = 25 } }
+//@ lldb-check:[...] {x:(22, 23), y:(24, 25)}
 
 #![allow(unused_variables)]
 

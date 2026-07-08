@@ -2,7 +2,6 @@
 //@[edition2021] edition:2021
 //@[edition2024] edition:2024
 
-#![allow(unused)]
 #![warn(clippy::let_and_return)]
 
 use std::cell::RefCell;

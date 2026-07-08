@@ -1,4 +1,4 @@
-#![allow(clippy::missing_safety_doc, clippy::uninlined_format_args)]
+#![expect(clippy::missing_safety_doc, clippy::uninlined_format_args)]
 
 // TOO_MANY_ARGUMENTS
 fn good(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool) {}

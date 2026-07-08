@@ -108,7 +108,7 @@ fn eq_unsized() {
 fn eq_unsized_slice() {
     let a: Rc<[()]> = Rc::new([(); 3]);
     let ptr: *const () = Rc::into_raw(a.clone()).cast();
-    let b: Rc<[()]> = unsafe { Rc::from_raw(core::ptr::slice_from_raw_parts(ptr, 42)) };
+    let b: Rc<[()]> = unsafe { Rc::from_raw(ptr.cast_slice(42)) };
     assert!(a == a);
     assert!(!(a != a));
     assert!(a != b);

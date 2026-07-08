@@ -25,6 +25,12 @@ use crate::{Analysis, Backward, GenKill};
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
 pub struct MaybeLiveLocals;
 
+impl MaybeLiveLocals {
+    pub fn transfer_function<I>(state: &mut I) -> TransferFunction<'_, I> {
+        TransferFunction(state)
+    }
+}
+
 impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     type Domain = DenseBitSet<Local>;
     type Direction = Backward;
@@ -81,9 +87,12 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     }
 }
 
-pub struct TransferFunction<'a>(pub &'a mut DenseBitSet<Local>);
+pub struct TransferFunction<'a, I>(pub &'a mut I);
 
-impl<'tcx> Visitor<'tcx> for TransferFunction<'_> {
+impl<'tcx, I> Visitor<'tcx> for TransferFunction<'_, I>
+where
+    I: GenKill<Local>,
+{
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
         if let PlaceContext::MutatingUse(MutatingUseContext::Yield) = context {
             // The resume place is evaluated and assigned to only after coroutine resumes, so its
@@ -143,7 +152,7 @@ pub enum DefUse {
 }
 
 impl DefUse {
-    fn apply(state: &mut DenseBitSet<Local>, place: Place<'_>, context: PlaceContext) {
+    fn apply(state: &mut impl GenKill<Local>, place: Place<'_>, context: PlaceContext) {
         match DefUse::for_place(place, context) {
             DefUse::Def => state.kill(place.local),
             DefUse::Use => state.gen_(place.local),

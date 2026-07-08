@@ -136,10 +136,6 @@ help: parentheses are required to parse this as an expression
    |
 LL |     (if true { bar() } else { bar() }) && if true { bar() } else { bar() };
    |     +                                +
-help: consider using a semicolon here
-   |
-LL |     if true { bar() } else { bar() }; && if true { bar() } else { bar() };
-   |                                     +
 
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt-2.rs:24:30
@@ -154,46 +150,26 @@ help: parentheses are required to parse this as an expression
    |
 LL |     (if true { bar() } else { bar() }) && if true { bar() } else { bar() };
    |     +                                +
-help: consider using a semicolon here
-   |
-LL |     if true { bar() } else { bar() }; && if true { bar() } else { bar() };
-   |                                     +
 
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt-2.rs:27:15
    |
 LL |     if true { bar() } else { bar() } if true { bar() } else { bar() };
    |     ----------^^^^^-----------------
-   |     |         |
+   |     |         |    |
+   |     |         |    help: consider using a semicolon here: `;`
    |     |         expected `()`, found `bool`
    |     expected this to be `()`
-   |
-help: consider using a semicolon here
-   |
-LL |     if true { bar(); } else { bar() } if true { bar() } else { bar() };
-   |                    +
-help: consider using a semicolon here
-   |
-LL |     if true { bar() } else { bar() }; if true { bar() } else { bar() };
-   |                                     +
 
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt-2.rs:27:30
    |
 LL |     if true { bar() } else { bar() } if true { bar() } else { bar() };
    |     -------------------------^^^^^--
-   |     |                        |
+   |     |                        |    |
+   |     |                        |    help: consider using a semicolon here: `;`
    |     |                        expected `()`, found `bool`
    |     expected this to be `()`
-   |
-help: consider using a semicolon here
-   |
-LL |     if true { bar() } else { bar(); } if true { bar() } else { bar() };
-   |                                   +
-help: consider using a semicolon here
-   |
-LL |     if true { bar() } else { bar() }; if true { bar() } else { bar() };
-   |                                     +
 
 error: aborting due to 13 previous errors
 

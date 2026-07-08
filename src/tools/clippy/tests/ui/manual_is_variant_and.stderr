@@ -246,5 +246,17 @@ error: manual implementation of `Option::is_none_or`
 LL |     opt.filter(|x| condition(x)).is_none();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `opt.as_ref().is_none_or(|x| !condition(x))`
 
-error: aborting due to 35 previous errors
+error: called `.ok().is_some_and(..)` on a `Result` value
+  --> tests/ui/manual_is_variant_and.rs:273:13
+   |
+LL |     let _ = res.ok().is_some_and(|x| x > 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `is_ok_and` instead: `res.is_ok_and(|x| x > 0)`
+
+error: called `.ok().is_some_and(..)` on a `Result` value
+  --> tests/ui/manual_is_variant_and.rs:276:13
+   |
+LL |     let _ = res.ok().is_some_and(|x| x > 0) || res.is_err();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `is_ok_and` instead: `res.is_ok_and(|x| x > 0)`
+
+error: aborting due to 37 previous errors
 

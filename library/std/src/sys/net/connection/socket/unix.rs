@@ -76,6 +76,7 @@ impl Socket {
                 target_os = "openbsd",
                 target_os = "cygwin",
                 target_os = "nto",
+                target_os = "qnx",
                 target_os = "solaris",
             ) => {
                 // On platforms that support it we pass the SOCK_CLOEXEC
@@ -124,6 +125,7 @@ impl Socket {
                     target_os = "openbsd",
                     target_os = "cygwin",
                     target_os = "nto",
+                    target_os = "qnx",
                 ) => {
                     // Like above, set cloexec atomically
                     cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;
@@ -284,7 +286,7 @@ impl Socket {
         Ok(ret as usize)
     }
 
-    fn recv_with_flags(&self, mut buf: BorrowedCursor<'_>, flags: c_int) -> io::Result<()> {
+    fn recv_with_flags(&self, mut buf: BorrowedCursor<'_, u8>, flags: c_int) -> io::Result<()> {
         let ret = cvt(unsafe {
             libc::recv(
                 self.as_raw_fd(),
@@ -311,7 +313,7 @@ impl Socket {
         Ok(buf.len())
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.recv_with_flags(buf, 0)
     }
 

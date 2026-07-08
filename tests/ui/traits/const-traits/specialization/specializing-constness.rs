@@ -3,7 +3,7 @@
 #[rustc_specialization_trait]
 pub const trait Sup {}
 
-impl const Sup for () {}
+const impl Sup for () {}
 
 pub const trait A {
     fn a() -> u32;
@@ -11,7 +11,7 @@ pub const trait A {
 
 pub const trait Spec {}
 
-impl<T: [const] Spec> const A for T {
+const impl<T: [const] Spec> A for T {
     default fn a() -> u32 {
         2
     }

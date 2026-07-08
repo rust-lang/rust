@@ -1,4 +1,4 @@
-#![allow(dead_code, clippy::extra_unused_lifetimes)]
+#![expect(clippy::extra_unused_lifetimes)]
 #![warn(clippy::multiple_inherent_impl)]
 
 struct MyStruct;

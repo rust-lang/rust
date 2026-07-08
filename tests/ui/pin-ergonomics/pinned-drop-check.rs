@@ -25,11 +25,11 @@ mod pin_drop_only {
     struct Bar;
 
     impl Drop for Foo {
-        fn pin_drop(&pin mut self) {} // ok, only `pin_drop` is implemented
+        fn pin_drop(&pin mut self) {} // ok, non-`#[pin_v2]` can also implement `pin_drop`
     }
 
     impl Drop for Bar {
-        fn pin_drop(&pin mut self) {} // ok, non-`#[pin_v2]` can also implement `pin_drop`
+        fn pin_drop(&pin mut self) {} // ok, `#[pin_v2]` implements `pin_drop`
     }
 }
 
@@ -60,16 +60,67 @@ mod neither {
     impl Drop for Bar {} //~ ERROR not all trait items implemented, missing one of: `drop`, `pin_drop` [E0046]
 }
 
-mod drop_wrong_type {
+mod drop_sugar {
     struct Foo;
     #[pin_v2]
     struct Bar;
 
     impl Drop for Foo {
-        fn drop(&pin mut self) {} //~ ERROR method `drop` has an incompatible type for trait [E0053]
+        fn drop(&pin mut self) {} // ok, sugar for `pin_drop`
     }
+
     impl Drop for Bar {
-        fn drop(&pin mut self) {}
+        fn drop(&pin mut self) {} // ok, sugar for `pin_drop`
+    }
+}
+
+mod drop_pin_const_wrong_type {
+    struct Foo;
+    #[pin_v2]
+    struct Bar;
+
+    impl Drop for Foo {
+        fn drop(&pin const self) {} //~ ERROR method `drop` has an incompatible type for trait [E0053]
+    }
+
+    impl Drop for Bar {
+        fn drop(&pin const self) {}
+        //~^ ERROR method `drop` has an incompatible type for trait [E0053]
+        //~| ERROR `Bar` must implement `pin_drop`
+    }
+}
+
+mod drop_with_lifetime_wrong_type {
+    struct Foo;
+    #[pin_v2]
+    struct Bar;
+
+    impl Drop for Foo {
+        fn drop<'a>(&'a pin mut self) {}
+        //~^ ERROR method `drop` has an incompatible type for trait [E0053]
+    }
+
+    impl Drop for Bar {
+        fn drop<'a>(&'a pin mut self) {}
+        //~^ ERROR method `drop` has an incompatible type for trait [E0053]
+        //~| ERROR `Bar` must implement `pin_drop`
+    }
+}
+
+mod drop_explicit_pin_wrong_type {
+    use std::pin::Pin;
+
+    struct Foo;
+    #[pin_v2]
+    struct Bar;
+
+    impl Drop for Foo {
+        fn drop(self: Pin<&mut Self>) {}
+        //~^ ERROR method `drop` has an incompatible type for trait [E0053]
+    }
+
+    impl Drop for Bar {
+        fn drop(self: Pin<&mut Self>) {}
         //~^ ERROR method `drop` has an incompatible type for trait [E0053]
         //~| ERROR `Bar` must implement `pin_drop`
     }
@@ -121,6 +172,33 @@ mod explicit_call_drop {
         fn pin_drop(&pin mut self) {
             Drop::drop(todo!()); //~ ERROR explicit use of destructor method [E0040]
         }
+    }
+}
+
+mod explicit_call_drop_sugar {
+    struct Foo;
+
+    impl Drop for Foo {
+        fn drop(&pin mut self) {
+            Drop::drop(todo!()); //~ ERROR explicit use of destructor method [E0040]
+            Drop::pin_drop(todo!()); //~ ERROR explicit use of destructor method [E0040]
+        }
+    }
+}
+
+mod sugar_and_pin_drop {
+    struct Foo;
+    #[pin_v2]
+    struct Bar;
+
+    impl Drop for Foo {
+        fn drop(&pin mut self) {}
+        fn pin_drop(&pin mut self) {} //~ ERROR duplicate definitions with name `pin_drop`
+    }
+
+    impl Drop for Bar {
+        fn drop(&pin mut self) {}
+        fn pin_drop(&pin mut self) {} //~ ERROR duplicate definitions with name `pin_drop`
     }
 }
 

@@ -5,6 +5,11 @@ LL | static FOO: &'static [u8] = b"\f";
    |                                ^ unknown byte escape
    |
    = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
+help: if you meant to write a form feed, use a hex escape
+   |
+LL - static FOO: &'static [u8] = b"\f";
+LL + static FOO: &'static [u8] = b"\x0C";
+   |
 
 error: unknown byte escape: `f`
   --> $DIR/byte-string-literals.rs:4:8
@@ -13,6 +18,11 @@ LL |     b"\f";
    |        ^ unknown byte escape
    |
    = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
+help: if you meant to write a form feed, use a hex escape
+   |
+LL -     b"\f";
+LL +     b"\x0C";
+   |
 
 error: invalid character in numeric character escape: `Z`
   --> $DIR/byte-string-literals.rs:5:10

@@ -1,3 +1,9 @@
+error[E0271]: type mismatch resolving `<[()] as Bad>::Assert == _`
+  --> $DIR/trivial-unsized-projection.rs:20:12
+   |
+LL | const FOO: <[()] as Bad>::Assert = todo!();
+   |            ^^^^^^^^^^^^^^^^^^^^^ types differ
+
 error[E0277]: the size for values of type `[()]` cannot be known at compilation time
   --> $DIR/trivial-unsized-projection.rs:20:12
    |
@@ -18,14 +24,13 @@ help: consider relaxing the implicit `Sized` restriction
 LL |     type Assert: ?Sized
    |                ++++++++
 
-error[E0277]: the size for values of type `[()]` cannot be known at compilation time
+error[E0271]: type mismatch resolving `<[()] as Bad>::Assert == _`
   --> $DIR/trivial-unsized-projection.rs:20:36
    |
 LL | const FOO: <[()] as Bad>::Assert = todo!();
-   |                                    ^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `[()]`
+   |                                    ^^^^^^^ types differ
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

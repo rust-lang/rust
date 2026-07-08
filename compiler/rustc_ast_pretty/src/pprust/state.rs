@@ -1153,6 +1153,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_impl_restriction(r))
     }
 
+    fn mut_restriction_to_string(&self, r: &ast::MutRestriction) -> String {
+        Self::to_string(|s| s.print_mut_restriction(r))
+    }
+
     fn block_to_string(&self, blk: &ast::Block) -> String {
         Self::to_string(|s| {
             let (cb, ib) = s.head("");
@@ -1253,6 +1257,20 @@ impl<'a> State<'a> {
             self.print_lifetime(lt);
             self.nbsp();
         }
+    }
+
+    fn print_view(&mut self, fields: &[Ident]) {
+        self.word(".{");
+
+        if !fields.is_empty() {
+            self.space();
+            self.commasep(Consistent, fields, |s, field| {
+                s.print_ident(*field);
+            });
+            self.space();
+        }
+
+        self.word("}");
     }
 
     pub fn print_assoc_item_constraint(&mut self, constraint: &ast::AssocItemConstraint) {
@@ -1436,6 +1454,10 @@ impl<'a> State<'a> {
 
                 self.end(ib);
                 self.pclose();
+            }
+            ast::TyKind::View(ty, fields) => {
+                self.print_type(ty);
+                self.print_view(fields);
             }
         }
         self.end(ib);

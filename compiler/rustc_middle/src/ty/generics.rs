@@ -114,7 +114,7 @@ pub struct GenericParamCount {
 ///
 /// The ordering of parameters is the same as in [`ty::GenericArg`] (excluding child generics):
 /// `Self` (optionally), `Lifetime` params..., `Type` params...
-#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
+#[derive(Clone, TyEncodable, TyDecodable, StableHash)]
 pub struct Generics {
     pub parent: Option<DefId>,
     pub parent_count: usize,
@@ -126,6 +126,23 @@ pub struct Generics {
 
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
+}
+
+impl std::fmt::Debug for Generics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        // ironically, we get this warning because of what we're trying to fix.
+        #[expect(rustc::potential_query_instability)]
+        let mut stabilized_hashmap = self.param_def_id_to_index.iter().collect::<Vec<_>>();
+        stabilized_hashmap.sort_by_key(|(_, v)| **v);
+        f.debug_struct("Generics")
+            .field("parent", &self.parent)
+            .field("parent_count", &self.parent_count)
+            .field("own_params", &self.own_params)
+            .field("param_def_id_to_index", &stabilized_hashmap)
+            .field("has_self", &self.has_self)
+            .field("has_late_bound_regions", &self.has_late_bound_regions)
+            .finish()
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::GenericsOf<TyCtxt<'tcx>> for &'tcx Generics {
@@ -385,8 +402,9 @@ impl<'tcx> GenericPredicates<'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = (Unnormalized<'tcx, Clause<'tcx>>, Span)>
     + DoubleEndedIterator
-    + ExactSizeIterator {
-        EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args).map(|u| {
+    + ExactSizeIterator
+    + Clone {
+        EarlyBinder::bind_iter(self.predicates).iter_instantiated_copied(tcx, args).map(|u| {
             let (clause, span) = u.unzip();
             (clause, span.skip_normalization())
         })
@@ -396,8 +414,9 @@ impl<'tcx> GenericPredicates<'tcx> {
         self,
     ) -> impl Iterator<Item = (Unnormalized<'tcx, Clause<'tcx>>, Span)>
     + DoubleEndedIterator
-    + ExactSizeIterator {
-        EarlyBinder::bind(self.predicates).iter_identity_copied().map(|u| {
+    + ExactSizeIterator
+    + Clone {
+        EarlyBinder::bind_iter(self.predicates).iter_identity_copied().map(|u| {
             let (clause, span) = u.unzip();
             (clause, span.skip_normalization())
         })
@@ -414,7 +433,7 @@ impl<'tcx> GenericPredicates<'tcx> {
             tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, args);
         }
         instantiated.predicates.extend(
-            self.predicates.iter().map(|(p, _)| EarlyBinder::bind(*p).instantiate(tcx, args)),
+            self.predicates.iter().map(|(p, _)| EarlyBinder::bind(tcx, *p).instantiate(tcx, args)),
         );
         instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
     }
@@ -465,8 +484,9 @@ impl<'tcx> ConstConditions<'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = (Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)>
     + DoubleEndedIterator
-    + ExactSizeIterator {
-        EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args).map(|u| {
+    + ExactSizeIterator
+    + Clone {
+        EarlyBinder::bind_iter(self.predicates).iter_instantiated_copied(tcx, args).map(|u| {
             let (trait_ref, span) = u.unzip();
             (trait_ref, span.skip_normalization())
         })
@@ -476,8 +496,9 @@ impl<'tcx> ConstConditions<'tcx> {
         self,
     ) -> impl Iterator<Item = (Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)>
     + DoubleEndedIterator
-    + ExactSizeIterator {
-        EarlyBinder::bind(self.predicates).iter_identity_copied().map(|u| {
+    + ExactSizeIterator
+    + Clone {
+        EarlyBinder::bind_iter(self.predicates).iter_identity_copied().map(|u| {
             let (trait_ref, span) = u.unzip();
             (trait_ref, span.skip_normalization())
         })
@@ -494,7 +515,9 @@ impl<'tcx> ConstConditions<'tcx> {
             tcx.const_conditions(def_id).instantiate_into(tcx, instantiated, args);
         }
         instantiated.extend(
-            self.predicates.iter().map(|&(p, s)| (EarlyBinder::bind(p).instantiate(tcx, args), s)),
+            self.predicates
+                .iter()
+                .map(|&(p, s)| (EarlyBinder::bind(tcx, p).instantiate(tcx, args), s)),
         );
     }
 

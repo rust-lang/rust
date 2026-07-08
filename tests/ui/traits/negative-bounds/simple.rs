@@ -1,3 +1,4 @@
+//@ compile-flags: -Zinternal-testing-features
 #![feature(negative_bounds, negative_impls)]
 
 fn not_copy<T: !Copy>() {}

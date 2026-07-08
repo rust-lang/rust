@@ -7,7 +7,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
-use crate::errors::AutoDerefReachedRecursionLimit;
+use crate::diagnostics::AutoDerefReachedRecursionLimit;
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 
@@ -34,7 +34,7 @@ pub struct Autoderef<'a, 'tcx> {
     // Meta infos:
     infcx: &'a InferCtxt<'tcx>,
     span: Span,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 
     // Current state:
@@ -119,7 +119,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         Autoderef {
             infcx,
             span,
-            body_id: body_def_id,
+            body_def_id,
             param_env,
             state: AutoderefSnapshot {
                 steps: vec![],
@@ -149,7 +149,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             (tcx.lang_items().deref_trait()?, tcx.lang_items().deref_target()?)
         };
         let trait_ref = ty::TraitRef::new(tcx, trait_def_id, [ty]);
-        let cause = traits::ObligationCause::misc(self.span, self.body_id);
+        let cause = traits::ObligationCause::misc(self.span, self.body_def_id);
         let obligation = traits::Obligation::new(
             tcx,
             cause.clone(),
@@ -165,8 +165,9 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let (normalized_ty, obligations) = self
-            .normalize_ty(Unnormalized::new(Ty::new_projection(tcx, trait_target_def_id, [ty])))?;
+        let (normalized_ty, obligations) = self.normalize_ty(Unnormalized::new(
+            Ty::new_projection(tcx, ty::IsRigid::No, trait_target_def_id, [ty]),
+        ))?;
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 
@@ -180,7 +181,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     ) -> Option<(Ty<'tcx>, PredicateObligations<'tcx>)> {
         let ocx = ObligationCtxt::new(self.infcx);
         let normalized_ty = ocx.normalize(
-            &traits::ObligationCause::misc(self.span, self.body_id),
+            &traits::ObligationCause::misc(self.span, self.body_def_id),
             self.param_env,
             ty,
         );

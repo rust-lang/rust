@@ -49,6 +49,11 @@ pub enum ExternAbi {
     /// forcing callers to save all registers.
     RustPreserveNone,
 
+    /// Ensures that calls in tail position can always be optimized into a jump.
+    ///
+    /// This ABI is not stable, and relies on LLVM implementation details.
+    RustTail,
+
     /// Unstable impl detail that directly uses Rust types to describe the ABI to LLVM.
     /// Even normally-compatible Rust types can become ABI-incompatible with this ABI!
     Unadjusted,
@@ -205,6 +210,7 @@ abi_impls! {
             System { unwind: true } =><= "system-unwind",
             SysV64 { unwind: false } =><= "sysv64",
             SysV64 { unwind: true } =><= "sysv64-unwind",
+            RustTail =><= "tail",
             Thiscall { unwind: false } =><= "thiscall",
             Thiscall { unwind: true } =><= "thiscall-unwind",
             Unadjusted =><= "unadjusted",
@@ -280,7 +286,7 @@ impl ExternAbi {
     /// - are subject to change between compiler versions
     pub fn is_rustic_abi(self) -> bool {
         use ExternAbi::*;
-        matches!(self, Rust | RustCall | RustCold | RustPreserveNone)
+        matches!(self, Rust | RustCall | RustCold | RustPreserveNone | RustTail)
     }
 
     /// Returns whether the ABI supports C variadics. This only controls whether we allow *imports*
@@ -337,10 +343,16 @@ impl ExternAbi {
                 // This ABI does not support calls at all (except via assembly).
                 false
             }
+            Self::RustCall => {
+                // Argument untupling requires additional support for tail calls to be possible,
+                // see <https://github.com/rust-lang/rust/pull/158248>. There is no real uses of
+                // tail calling `extern "rust-call"` functions
+                false
+            }
+
             Self::C { .. }
             | Self::System { .. }
             | Self::Rust
-            | Self::RustCall
             | Self::RustCold
             | Self::RustInvalid
             | Self::Unadjusted
@@ -354,6 +366,7 @@ impl ExternAbi {
             | Self::SysV64 { .. }
             | Self::Win64 { .. }
             | Self::RustPreserveNone
+            | Self::RustTail
             | Self::Swift => true,
         }
     }

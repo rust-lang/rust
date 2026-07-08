@@ -11,7 +11,9 @@ use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::query::LocalCrate;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, GenericArgKind, GenericArgsRef, Instance, ShimKind, SymbolName, Ty, TyCtxt,
+};
 use rustc_middle::util::Providers;
 use rustc_session::config::CrateType;
 use rustc_span::Span;
@@ -19,6 +21,7 @@ use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;
 
+use crate::SymbolExport;
 use crate::back::symbol_export;
 use crate::base::allocator_shim_contents;
 
@@ -332,7 +335,10 @@ fn exported_generic_symbols_provider_local<'tcx>(
                         ));
                     }
                 }
-                MonoItem::Fn(Instance { def: InstanceKind::DropGlue(_, Some(ty)), args }) => {
+                MonoItem::Fn(Instance {
+                    def: InstanceKind::Shim(ShimKind::DropGlue(_, Some(ty))),
+                    args,
+                }) => {
                     // A little sanity-check
                     assert_eq!(args.non_erasable_generics().next(), Some(GenericArgKind::Type(ty)));
 
@@ -356,7 +362,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
                     }
                 }
                 MonoItem::Fn(Instance {
-                    def: InstanceKind::AsyncDropGlueCtorShim(_, ty),
+                    def: InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(_, ty)),
                     args,
                 }) => {
                     // A little sanity-check
@@ -371,7 +377,10 @@ fn exported_generic_symbols_provider_local<'tcx>(
                         },
                     ));
                 }
-                MonoItem::Fn(Instance { def: InstanceKind::AsyncDropGlue(def, ty), args: _ }) => {
+                MonoItem::Fn(Instance {
+                    def: InstanceKind::Shim(ShimKind::AsyncDropGlue(def, ty)),
+                    args: _,
+                }) => {
                     symbols.push((
                         ExportedSymbol::AsyncDropGlue(def, ty),
                         SymbolExportInfo {
@@ -578,7 +587,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
                 tcx,
                 ty::Instance {
-                    def: ty::InstanceKind::ThreadLocalShim(def_id),
+                    def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(def_id)),
                     args: ty::GenericArgs::empty(),
                 },
                 instantiating_crate,
@@ -713,7 +722,7 @@ pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
 /// Add it to the symbols list for all kernel functions, so that it is exported in the linked
 /// object.
 pub(crate) fn extend_exported_symbols<'tcx>(
-    symbols: &mut Vec<(String, SymbolExportKind)>,
+    symbols: &mut Vec<SymbolExport>,
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
@@ -729,7 +738,7 @@ pub(crate) fn extend_exported_symbols<'tcx>(
     // Add the symbol for the kernel descriptor (with .kd suffix)
     // Per https://llvm.org/docs/AMDGPUUsage.html#symbols these will always be `STT_OBJECT` so
     // export as data.
-    symbols.push((format!("{undecorated}.kd"), SymbolExportKind::Data));
+    symbols.push(SymbolExport::new(format!("{undecorated}.kd"), SymbolExportKind::Data));
 }
 
 fn maybe_emutls_symbol_name<'tcx>(

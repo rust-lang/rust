@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::impl_trait_in_params)]
 
 //@no-rustfix: has placeholders

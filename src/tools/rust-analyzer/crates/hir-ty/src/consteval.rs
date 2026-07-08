@@ -5,7 +5,7 @@ mod tests;
 
 use base_db::Crate;
 use hir_def::{
-    ConstId, EnumVariantId, ExpressionStoreOwnerId, GenericDefId, HasModule, StaticId,
+    ConstId, EnumVariantId, ExpressionStoreOwnerId, HasModule, StaticId,
     attrs::AttrFlags,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{Expr, ExprId, Literal},
@@ -23,6 +23,7 @@ use crate::{
     db::{AnonConstId, AnonConstLoc, GeneralConstId, HirDatabase},
     display::DisplayTarget,
     generics::Generics,
+    lower::LoweringMode,
     mir::{MirEvalError, MirLowerError, pad16},
     next_solver::{
         Allocation, Const, ConstKind, Consts, DbInterner, DefaultAny, GenericArgs, ParamConst,
@@ -86,18 +87,24 @@ fn intern_const_ref<'db>(
     let valtree = match (ty.kind(), value) {
         (TyKind::Uint(uint), Literal::Uint(value, _)) => {
             let size = uint.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
-            let scalar = ScalarInt::try_from_uint(*value, size).unwrap();
+            let Some(scalar) = ScalarInt::try_from_uint(*value, size) else {
+                return Ok(Const::error(interner));
+            };
             ValTreeKind::Leaf(scalar)
         }
         (TyKind::Uint(uint), Literal::Int(value, _)) => {
             // `Literal::Int` is the default, so we also need to account for the type being uint.
             let size = uint.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
-            let scalar = ScalarInt::try_from_uint(*value as u128, size).unwrap();
+            let Some(scalar) = ScalarInt::try_from_uint(*value as u128, size) else {
+                return Ok(Const::error(interner));
+            };
             ValTreeKind::Leaf(scalar)
         }
         (TyKind::Int(int), Literal::Int(value, _)) => {
             let size = int.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
-            let scalar = ScalarInt::try_from_int(*value, size).unwrap();
+            let Some(scalar) = ScalarInt::try_from_int(*value, size) else {
+                return Ok(Const::error(interner));
+            };
             ValTreeKind::Leaf(scalar)
         }
         (TyKind::Bool, Literal::Bool(value)) => ValTreeKind::Leaf(ScalarInt::from(*value)),
@@ -218,7 +225,9 @@ pub fn usize_const<'db>(db: &'db dyn HirDatabase, value: Option<u128>, krate: Cr
         return Const::error(interner);
     };
     let usize_ty = interner.default_types().types.usize;
-    let scalar = ScalarInt::try_from_uint(value, data_layout.pointer_size()).unwrap();
+    let Some(scalar) = ScalarInt::try_from_uint(value, data_layout.pointer_size()) else {
+        return Const::error(interner);
+    };
     Const::new_valtree(interner, usize_ty, ValTreeKind::Leaf(scalar))
 }
 
@@ -303,7 +312,9 @@ pub(crate) enum CreateConstError<'db> {
     UsedForbiddenParam,
     ResolveToNonConst,
     DoesNotResolve,
+    ConstHasGenerics,
     UnderscoreExpr,
+    AnonConstInterningDisabled,
     TypeMismatch {
         #[expect(unused, reason = "will need this for diagnostics")]
         actual: Ty<'db>,
@@ -321,9 +332,11 @@ pub(crate) fn path_to_const<'a, 'db>(
     let resolution = resolver
         .resolve_path_in_value_ns_fully(db, path, HygieneId::ROOT)
         .ok_or(CreateConstError::DoesNotResolve)?;
+    let no_generics = |def| crate::generics::generics(db, def).has_no_params();
     let konst = match resolution {
-        ValueNs::ConstId(id) => GeneralConstId::ConstId(id),
+        ValueNs::ConstId(id) if no_generics(id.into()) => GeneralConstId::ConstId(id),
         ValueNs::StaticId(id) => GeneralConstId::StaticId(id),
+        ValueNs::ConstId(_) => return Err(CreateConstError::ConstHasGenerics),
         ValueNs::GenericParam(param) => {
             let index = generics().type_or_const_param_idx(param.into());
             if forbid_params_after.is_some_and(|forbid_after| index >= forbid_after) {
@@ -352,6 +365,7 @@ pub(crate) fn create_anon_const<'a, 'db>(
     expected_ty: Ty<'db>,
     generics: &dyn Fn() -> &'a Generics<'db>,
     create_var: Option<&mut dyn FnMut(Span) -> Const<'db>>,
+    lowering_mode: LoweringMode,
     forbid_params_after: Option<u32>,
 ) -> Result<Const<'db>, CreateConstError<'db>> {
     match &store[expr] {
@@ -363,11 +377,18 @@ pub(crate) fn create_anon_const<'a, 'db>(
         Expr::Path(path)
             if let konst =
                 path_to_const(interner.db, resolver, generics, forbid_params_after, path)
-                && !matches!(konst, Err(CreateConstError::DoesNotResolve)) =>
+                && !matches!(
+                    konst,
+                    Err(CreateConstError::DoesNotResolve | CreateConstError::ConstHasGenerics)
+                ) =>
         {
             konst
         }
         _ => {
+            let Some(token) = lowering_mode.allow_tracked_structs() else {
+                return Err(CreateConstError::AnonConstInterningDisabled);
+            };
+
             let allow_using_generic_params = forbid_params_after.is_none();
             let konst = AnonConstId::new(
                 interner.db,
@@ -377,6 +398,7 @@ pub(crate) fn create_anon_const<'a, 'db>(
                     ty: StoredEarlyBinder::bind(expected_ty.store()),
                     allow_using_generic_params,
                 },
+                token,
             );
             let args = if allow_using_generic_params {
                 GenericArgs::identity_for_item(interner, owner.generic_def(interner.db).into())
@@ -400,12 +422,10 @@ pub(crate) fn const_eval_discriminant_variant(
     let body = Body::of(db, def);
     let loc = variant_id.lookup(db);
     if matches!(body[body.root_expr()], Expr::Missing) {
-        let prev_idx = loc.index.checked_sub(1);
+        let prev_idx = loc.index(db).checked_sub(1);
         let value = match prev_idx {
             Some(prev_idx) => {
-                1 + db.const_eval_discriminant(
-                    loc.parent.enum_variants(db).variants[prev_idx as usize].0,
-                )?
+                1 + db.const_eval_discriminant(loc.parent.enum_variants(db).variants[prev_idx].0)?
             }
             _ => 0,
         };
@@ -418,8 +438,11 @@ pub(crate) fn const_eval_discriminant_variant(
     let mir_body = db.monomorphized_mir_body(
         def.into(),
         GenericArgs::empty(interner).store(),
-        ParamEnvAndCrate { param_env: db.trait_environment(def.into()), krate: def.krate(db) }
-            .store(),
+        ParamEnvAndCrate {
+            param_env: db.trait_environment(def.generic_def(db)),
+            krate: def.krate(db),
+        }
+        .store(),
     )?;
     let c = interpret_mir(db, mir_body, false, None)?.0?;
     let c = if is_signed { allocation_as_isize(c) } else { allocation_as_usize(c) as i128 };
@@ -455,12 +478,8 @@ pub(crate) fn const_eval<'db>(
         let body = db.monomorphized_mir_body(
             def.into(),
             subst,
-            ParamEnvAndCrate {
-                param_env: db
-                    .trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(def))),
-                krate: def.krate(db),
-            }
-            .store(),
+            ParamEnvAndCrate { param_env: db.trait_environment(def.into()), krate: def.krate(db) }
+                .store(),
         )?;
         let c = interpret_mir(db, body, false, trait_env.as_ref().map(|env| env.as_ref()))?.0?;
         Ok(c.store())
@@ -499,7 +518,7 @@ pub(crate) fn anon_const_eval<'db>(
             def.into(),
             subst,
             ParamEnvAndCrate {
-                param_env: db.trait_environment(def.loc(db).owner),
+                param_env: db.trait_environment(def.loc(db).owner.generic_def(db)),
                 krate: def.krate(db),
             }
             .store(),
@@ -537,12 +556,8 @@ pub(crate) fn const_eval_static<'db>(
         let body = db.monomorphized_mir_body(
             def.into(),
             GenericArgs::empty(interner).store(),
-            ParamEnvAndCrate {
-                param_env: db
-                    .trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(def))),
-                krate: def.krate(db),
-            }
-            .store(),
+            ParamEnvAndCrate { param_env: db.trait_environment(def.into()), krate: def.krate(db) }
+                .store(),
         )?;
         let c = interpret_mir(db, body, false, None)?.0?;
         Ok(c.store())

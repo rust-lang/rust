@@ -357,7 +357,7 @@ where
 "#,
         expect![[r#"
             182..183 't': T
-            230..280 '{     ... {}; }': ()
+            230..280 '{     ... {}; }': !
             240..241 't': <T as DimMax<U>>::Output
             270..277 'loop {}': !
             275..277 '{}': ()
@@ -390,6 +390,26 @@ fn bar(_v: &[u8]) {}
 fn main() {
     bar(&foo());
 }
+    "#,
+    );
+}
+
+#[test]
+fn static_as_array_len_does_not_panic() {
+    check_no_mismatches(
+        r#"
+static S: usize = 8;
+const A: [u8; S] = [0; 8];
+    "#,
+    );
+}
+
+#[test]
+fn oversized_array_len_does_not_panic() {
+    // The array length literal does not fit in `usize`; interning it must not panic.
+    check_no_mismatches(
+        r#"
+fn f(_: [u8; 18446744073709551616]) {}
     "#,
     );
 }

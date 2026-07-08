@@ -15,6 +15,7 @@
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
+#![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
 #![feature(trim_prefix_suffix)]
 #![recursion_limit = "256"]
@@ -26,15 +27,16 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use diagnostics::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
+use diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
-use errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
+use error_helper::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
 use hygiene::Macros20NormalizedSyntaxContext;
 use imports::{Import, ImportData, ImportKind, NameResolution, PendingDecl};
 use late::{
     ForwardGenericParamBanReason, HasGenericParams, PathSource, PatternSource,
     UnnecessaryQualification,
 };
+pub use macros::registered_tools_ast;
 use macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
@@ -49,16 +51,15 @@ use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
 use rustc_data_structures::unord::{UnordItems, UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
-use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_feature::{BUILTIN_ATTRIBUTES, Features};
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
-    self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, MacroKinds, NonMacroAttrKind, PartialRes,
-    PerNS,
+    self, CtorOf, DefKind, DocLinkResMap, MacroKinds, NonMacroAttrKind, PartialRes, PerNS,
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguatorsMap};
-use rustc_hir::{PrimTy, TraitCandidate, find_attr};
+use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
@@ -76,23 +77,23 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
-type Res = def::Res<NodeId>;
+use crate::error_helper::OnUnknownData;
+use crate::imports::NameResolutionRef;
+use crate::ref_mut::{CmCell, CmRefCell};
 
 mod build_reduced_graph;
 mod check_unused;
 mod def_collector;
 mod diagnostics;
 mod effective_visibilities;
-mod errors;
+mod error_helper;
 mod ident;
 mod imports;
 mod late;
 mod macros;
 pub mod rustdoc;
 
-pub use macros::registered_tools_ast;
-
-use crate::ref_mut::{CmCell, CmRefCell};
+type Res = def::Res<NodeId>;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Determinacy {
@@ -187,7 +188,6 @@ struct InvocationParent {
     parent_def: LocalDefId,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
-    const_arg_context: ConstArgContext,
     owner: NodeId,
 }
 
@@ -196,7 +196,6 @@ impl InvocationParent {
         parent_def: CRATE_DEF_ID,
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
-        const_arg_context: ConstArgContext::NonDirect,
         owner: CRATE_NODE_ID,
     };
 }
@@ -206,13 +205,6 @@ enum ImplTraitContext {
     Existential,
     Universal,
     InBinding,
-}
-
-#[derive(Copy, Clone, Debug)]
-enum ConstArgContext {
-    Direct,
-    /// Either inside of an `AnonConst` or not inside a const argument at all.
-    NonDirect,
 }
 
 /// Used for tracking import use types which will be used for redundant import checking.
@@ -478,8 +470,8 @@ enum PathResult<'ra> {
         ///
         /// In this case, `module` will point to `a`.
         module: Option<ModuleOrUniformRoot<'ra>>,
-        /// The segment name of target
-        segment_name: Symbol,
+        /// The segment of target
+        segment: Ident,
         error_implied_by_parse_error: bool,
         message: String,
         note: Option<String>,
@@ -508,7 +500,7 @@ impl<'ra> PathResult<'ra> {
         };
         PathResult::Failed {
             span: ident.span,
-            segment_name: ident.name,
+            segment: ident,
             label,
             suggestion,
             is_error_from_last_segment,
@@ -640,7 +632,7 @@ impl BindingKey {
     }
 }
 
-type Resolutions<'ra> = CmRefCell<FxIndexMap<BindingKey, &'ra CmRefCell<NameResolution<'ra>>>>;
+type Resolutions<'ra> = CmRefCell<FxIndexMap<BindingKey, NameResolutionRef<'ra>>>;
 
 /// One node in the tree of modules.
 ///
@@ -691,8 +683,8 @@ struct ModuleData<'ra> {
     self_decl: Option<Decl<'ra>>,
 }
 
-/// All modules are unique and allocated on a same arena,
-/// so we can use referential equality to compare them.
+/// `Interned` is used because values of this type have "identity" and compare as unequal even if
+/// they have the same contents.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
 struct Module<'ra>(Interned<'ra, ModuleData<'ra>>);
@@ -706,19 +698,6 @@ struct LocalModule<'ra>(Interned<'ra, ModuleData<'ra>>);
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
 struct ExternModule<'ra>(Interned<'ra, ModuleData<'ra>>);
-
-// Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
-// contained data.
-// FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
-// are upheld.
-impl std::hash::Hash for ModuleData<'_> {
-    fn hash<H>(&self, _: &mut H)
-    where
-        H: std::hash::Hasher,
-    {
-        unreachable!()
-    }
-}
 
 impl<'ra> ModuleData<'ra> {
     fn new(
@@ -822,7 +801,7 @@ impl<'ra> Module<'ra> {
     }
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
-    fn ensure_traits<'tcx>(self, resolver: &impl AsRef<Resolver<'ra, 'tcx>>) {
+    fn ensure_traits<'tcx>(self, resolver: &Resolver<'ra, 'tcx>) {
         let mut traits = self.traits.borrow_mut(resolver.as_ref());
         if traits.is_none() {
             let mut collected_traits = Vec::new();
@@ -924,6 +903,7 @@ impl<'ra> LocalModule<'ra> {
         assert!(kind.is_local());
         let parent = parent.map(|m| m.to_module());
         let data = ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude, vis, arenas);
+        // SAFETY: `Interned` is valid because values of this type have "identity".
         LocalModule(Interned::new_unchecked(arenas.modules.alloc(data)))
     }
 
@@ -945,6 +925,7 @@ impl<'ra> ExternModule<'ra> {
         assert!(!kind.is_local());
         let parent = parent.map(|m| m.to_module());
         let data = ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude, vis, arenas);
+        // SAFETY: `Interned` is valid because values of this type have "identity".
         ExternModule(Interned::new_unchecked(arenas.modules.alloc(data)))
     }
 
@@ -993,13 +974,10 @@ impl<'ra> fmt::Debug for LocalModule<'ra> {
 }
 
 /// Data associated with any name declaration.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct DeclData<'ra> {
     kind: DeclKind<'ra>,
-    ambiguity: CmCell<Option<Decl<'ra>>>,
-    /// Produce a warning instead of an error when reporting ambiguities inside this binding.
-    /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
-    warn_ambiguity: CmCell<bool>,
+    ambiguity: CmCell<Option<(Decl<'ra>, bool /*warning*/)>>,
     expansion: LocalExpnId,
     span: Span,
     initial_vis: Visibility<DefId>,
@@ -1012,25 +990,12 @@ struct DeclData<'ra> {
     parent_module: Option<Module<'ra>>,
 }
 
-/// All name declarations are unique and allocated on a same arena,
-/// so we can use referential equality to compare them.
+/// `Interned` is used because values of this type have "identity" and compare as unequal even if
+/// they have the same contents.
 type Decl<'ra> = Interned<'ra, DeclData<'ra>>;
 
-// Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
-// contained data.
-// FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
-// are upheld.
-impl std::hash::Hash for DeclData<'_> {
-    fn hash<H>(&self, _: &mut H)
-    where
-        H: std::hash::Hasher,
-    {
-        unreachable!()
-    }
-}
-
 /// Name declaration kind.
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 enum DeclKind<'ra> {
     /// The name declaration is a definition (possibly without a `DefId`),
     /// can be provided by source code or built into the language.
@@ -1160,7 +1125,7 @@ impl<'ra> DeclData<'ra> {
 
     fn descent_to_ambiguity(self: Decl<'ra>) -> Option<(Decl<'ra>, Decl<'ra>)> {
         match self.ambiguity.get() {
-            Some(ambig_binding) => Some((self, ambig_binding)),
+            Some((ambig_binding, _)) => Some((self, ambig_binding)),
             None => match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.descent_to_ambiguity(),
                 _ => None,
@@ -1172,14 +1137,6 @@ impl<'ra> DeclData<'ra> {
         self.ambiguity.get().is_some()
             || match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.is_ambiguity_recursive(),
-                _ => false,
-            }
-    }
-
-    fn warn_ambiguity_recursive(&self) -> bool {
-        self.warn_ambiguity.get()
-            || match self.kind {
-                DeclKind::Import { source_decl, .. } => source_decl.warn_ambiguity_recursive(),
                 _ => false,
             }
     }
@@ -1323,7 +1280,10 @@ impl ExternPreludeEntry<'_> {
 struct DeriveData {
     resolutions: Vec<DeriveResolution>,
     helper_attrs: Vec<(usize, IdentKey, Span)>,
+    // if this list keeps getting extended, we could use `bitflags`,
+    // something like what [`rustc_type_ir::flags::TypeFlags`] is doing.
     has_derive_copy: bool,
+    has_derive_ord: bool,
 }
 
 pub struct ResolverOutputs<'tcx> {
@@ -1373,22 +1333,15 @@ pub struct Resolver<'ra, 'tcx> {
 
     /// Resolutions for nodes that have a single resolution.
     partial_res_map: NodeMap<PartialRes> = Default::default(),
-    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
-    import_res_map: NodeMap<PerNS<Option<Res>>> = Default::default(),
     /// An import will be inserted into this map if it has been used.
     import_use_map: FxHashMap<Import<'ra>, Used> = default::fx_hash_map(),
-    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    label_res_map: NodeMap<NodeId> = Default::default(),
-    /// Resolutions for lifetimes.
-    lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
-    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>> = Default::default(),
+    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, MissingLifetimeKind)>> = Default::default(),
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
     module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
     ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
-    trait_map: NodeMap<&'tcx [TraitCandidate<'tcx>]> = Default::default(),
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1467,6 +1420,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
     containers_deriving_copy: FxHashSet<LocalExpnId> = default::fx_hash_set(),
+    containers_deriving_ord: FxHashSet<LocalExpnId> = default::fx_hash_set(),
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
     invocation_parent_scopes: FxHashMap<LocalExpnId, ParentScope<'ra>> = default::fx_hash_map(),
@@ -1502,10 +1456,10 @@ pub struct Resolver<'ra, 'tcx> {
     next_node_id: NodeId = CRATE_NODE_ID,
 
     /// Preserves per owner data once the owner is finished resolving.
-    owners: NodeMap<PerOwnerResolverData>,
+    owners: NodeMap<PerOwnerResolverData<'tcx>>,
 
     /// An entry of `owners` that gets taken out and reinserted whenever an owner is handled.
-    current_owner: PerOwnerResolverData,
+    current_owner: PerOwnerResolverData<'tcx>,
 
     disambiguators: LocalDefIdMap<PerParentDisambiguatorState>,
 
@@ -1521,7 +1475,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Generic args to suggest for required params (e.g. `<'_>`, `<_, _>`), if any.
     item_required_generic_args_suggestions: FxHashMap<LocalDefId, String> = default::fx_hash_map(),
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig> = Default::default(),
-    delegation_infos: LocalDefIdMap<DelegationInfo> = Default::default(),
+    delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
 
     main_def: Option<MainDefinition> = None,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1529,8 +1483,6 @@ pub struct Resolver<'ra, 'tcx> {
     /// they are declared in the static array generated by proc_macro_harness.
     proc_macros: Vec<LocalDefId> = Vec::new(),
     confused_type_with_std_module: FxIndexMap<Span, Span>,
-    /// Whether lifetime elision was successful.
-    lifetime_elision_allowed: FxHashSet<NodeId> = default::fx_hash_set(),
 
     /// Names of items that were stripped out via cfg with their corresponding cfg meta item.
     stripped_cfg_items: Vec<StrippedCfgItem<NodeId>> = Vec::new(),
@@ -1565,6 +1517,10 @@ pub struct Resolver<'ra, 'tcx> {
     // that were encountered during resolution. These names are used to generate item names
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol> = default::fx_hash_map(),
+
+    /// Stores `#[diagnostic::on_unknown]` attributes placed on module declarations.
+    on_unknown_data: FxHashMap<LocalDefId, OnUnknownData> = default::fx_hash_map(),
+    features: &'tcx Features,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1591,7 +1547,6 @@ impl<'ra> ResolverArenas<'ra> {
         self.alloc_decl(DeclData {
             kind: DeclKind::Def(res),
             ambiguity: CmCell::new(None),
-            warn_ambiguity: CmCell::new(false),
             initial_vis: vis,
             ambiguity_vis_max: CmCell::new(None),
             ambiguity_vis_min: CmCell::new(None),
@@ -1606,16 +1561,18 @@ impl<'ra> ResolverArenas<'ra> {
     }
 
     fn alloc_decl(&'ra self, data: DeclData<'ra>) -> Decl<'ra> {
+        // SAFETY: `Interned` is valid because values of this type have "identity".
         Interned::new_unchecked(self.dropless.alloc(data))
     }
     fn alloc_import(&'ra self, import: ImportData<'ra>) -> Import<'ra> {
+        // SAFETY: `Interned` is valid because values of this type have "identity".
         Interned::new_unchecked(self.imports.alloc(import))
     }
-    fn alloc_name_resolution(
-        &'ra self,
-        orig_ident_span: Span,
-    ) -> &'ra CmRefCell<NameResolution<'ra>> {
-        self.name_resolutions.alloc(CmRefCell::new(NameResolution::new(orig_ident_span)))
+    fn alloc_name_resolution(&'ra self, orig_ident_span: Span) -> NameResolutionRef<'ra> {
+        // SAFETY: `Interned` is valid because values of this type have "identity".
+        Interned::new_unchecked(
+            self.name_resolutions.alloc(CmRefCell::new(NameResolution::new(orig_ident_span))),
+        )
     }
     fn alloc_macro_rules_scope(&'ra self, scope: MacroRulesScope<'ra>) -> MacroRulesScopeRef<'ra> {
         self.dropless.alloc(CacheCell::new(scope))
@@ -1853,9 +1810,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             builtin_attr_decls: BUILTIN_ATTRIBUTES
                 .iter()
                 .map(|builtin_attr| {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(builtin_attr.name));
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(*builtin_attr));
                     let decl = arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT);
-                    (builtin_attr.name, decl)
+                    (*builtin_attr, decl)
                 })
                 .collect(),
             registered_tool_decls: registered_tools
@@ -1889,8 +1846,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
             disambiguators: Default::default(),
+            delegation_infos: Default::default(),
+            features: tcx.features(),
             ..
         };
+
+        if let Some(directive) = OnUnknownData::from_attrs(&resolver, attrs) {
+            resolver.on_unknown_data.insert(CRATE_DEF_ID, directive);
+        }
 
         let root_parent_scope = ParentScope::module(graph_root, resolver.arenas);
         resolver.invocation_parent_scopes.insert(LocalExpnId::ROOT, root_parent_scope);
@@ -2009,19 +1972,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,
             all_macro_rules: self.all_macro_rules,
             stripped_cfg_items,
+            delegation_infos: self.delegation_infos,
         };
         let ast_lowering = ty::ResolverAstLowering {
             partial_res_map: self.partial_res_map,
-            import_res_map: self.import_res_map,
-            label_res_map: self.label_res_map,
-            lifetimes_res_map: self.lifetimes_res_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
             owners: self.owners,
-            trait_map: self.trait_map,
-            lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
-            delegation_infos: self.delegation_infos,
             disambiguators,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
@@ -2095,17 +2053,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.tcx
                 .sess
                 .time("finalize_macro_resolutions", || self.finalize_macro_resolutions(krate));
-            self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
+            let use_items =
+                self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
             self.tcx.sess.time("resolve_main", || self.resolve_main());
-            self.tcx.sess.time("resolve_check_unused", || self.check_unused(krate));
+            self.tcx.sess.time("resolve_check_unused", || self.check_unused(use_items));
             self.tcx.sess.time("resolve_report_errors", || self.report_errors(krate));
             self.tcx
                 .sess
                 .time("resolve_postprocess", || self.cstore_mut().postprocess(self.tcx, krate));
         });
 
-        // Make sure we don't mutate the cstore from here on.
-        self.tcx.untracked().cstore.freeze();
+        // Don't mutate the cstore or stable crate id map from here on.
+        self.tcx.untracked().freeze_cstore();
     }
 
     fn traits_in_scope(
@@ -2225,7 +2184,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module: Module<'ra>,
         key: BindingKey,
     ) -> Option<Ref<'ra, NameResolution<'ra>>> {
-        self.resolutions(module).borrow().get(&key).map(|resolution| resolution.borrow())
+        self.resolutions(module).borrow().get(&key).map(|resolution| resolution.0.borrow())
     }
 
     fn resolution_or_default(
@@ -2233,8 +2192,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module: Module<'ra>,
         key: BindingKey,
         orig_ident_span: Span,
-    ) -> &'ra CmRefCell<NameResolution<'ra>> {
-        self.resolutions(module)
+    ) -> NameResolutionRef<'ra> {
+        *self
+            .resolutions(module)
             .borrow_mut_unchecked()
             .entry(key)
             .or_insert_with(|| self.arenas.alloc_name_resolution(orig_ident_span))
@@ -2257,17 +2217,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn record_use(&mut self, ident: Ident, used_decl: Decl<'ra>, used: Used) {
-        self.record_use_inner(ident, used_decl, used, used_decl.warn_ambiguity.get());
-    }
-
-    fn record_use_inner(
-        &mut self,
-        ident: Ident,
-        used_decl: Decl<'ra>,
-        used: Used,
-        warn_ambiguity: bool,
-    ) {
-        if let Some(b2) = used_decl.ambiguity.get() {
+        if let Some((b2, warning)) = used_decl.ambiguity.get() {
             let ambiguity_error = AmbiguityError {
                 kind: AmbiguityKind::GlobVsGlob,
                 ambig_vis: None,
@@ -2276,7 +2226,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 b2,
                 scope1: Scope::ModuleGlobs(used_decl.parent_module.unwrap(), None),
                 scope2: Scope::ModuleGlobs(b2.parent_module.unwrap(), None),
-                warning: if warn_ambiguity { Some(AmbiguityWarning::GlobImport) } else { None },
+                warning: if warning { Some(AmbiguityWarning::GlobImport) } else { None },
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
                 // avoid duplicated span information to be emit out
@@ -2305,7 +2255,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         PRIVATE_MACRO_USE,
                         import.root_id,
                         ident.span,
-                        errors::MacroIsPrivate { ident },
+                        diagnostics::MacroIsPrivate { ident },
                     );
                 }
             }
@@ -2326,12 +2276,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.used_imports.insert(id);
             }
             self.add_to_glob_map(import, ident.name);
-            self.record_use_inner(
-                ident,
-                source_decl,
-                Used::Other,
-                warn_ambiguity || source_decl.warn_ambiguity.get(),
-            );
+            self.record_use(ident, source_decl, Used::Other);
         }
     }
 
@@ -2691,7 +2636,7 @@ fn with_owner<'ra, 'tcx, R: AsMut<Resolver<'ra, 'tcx>>, T>(
 fn with_owner_tables<'ra, 'tcx, R: AsMut<Resolver<'ra, 'tcx>>, T>(
     this: &mut R,
     owner: NodeId,
-    tables: PerOwnerResolverData,
+    tables: PerOwnerResolverData<'tcx>,
     work: impl FnOnce(&mut R) -> T,
 ) -> T {
     debug_assert!(!this.as_mut().owners.contains_key(&owner));
@@ -2860,8 +2805,6 @@ type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
 // parallel name resolution.
 use std::cell::{Cell as CacheCell, RefCell as CacheRefCell};
 
-// FIXME: `*_unchecked` methods in the module below should be eliminated in the process
-// of migration to parallel name resolution.
 mod ref_mut {
     use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
     use std::fmt;
@@ -2906,15 +2849,9 @@ mod ref_mut {
         #[track_caller]
         pub(crate) fn get_mut(&mut self) -> &mut T {
             match self.mutable {
-                false => panic!("Can't mutably borrow speculative resolver"),
+                false => panic!("can't mutably borrow speculative resolver"),
                 true => self.p,
             }
-        }
-
-        /// Returns a mutable reference to the inner value without checking if
-        /// it's in a mutable state.
-        pub(crate) fn get_mut_unchecked(&mut self) -> &mut T {
-            self.p
         }
     }
 
@@ -2939,12 +2876,12 @@ mod ref_mut {
             self.0.get()
         }
 
-        pub(crate) fn update_unchecked(&self, f: impl FnOnce(T) -> T)
+        pub(crate) fn update<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>, f: impl FnOnce(T) -> T)
         where
             T: Copy,
         {
             let old = self.get();
-            self.set_unchecked(f(old));
+            self.set(f(old), r);
         }
     }
 
@@ -2953,7 +2890,10 @@ mod ref_mut {
             CmCell(Cell::new(value))
         }
 
-        pub(crate) fn set_unchecked(&self, val: T) {
+        pub(crate) fn set<'ra, 'tcx>(&self, val: T, r: &Resolver<'ra, 'tcx>) {
+            if r.assert_speculative {
+                panic!("not allowed to mutate a `CmCell` during speculative resolution")
+            }
             self.0.set(val);
         }
 
@@ -2972,6 +2912,8 @@ mod ref_mut {
         }
 
         #[track_caller]
+        // FIXME: this should be eliminated in the process of migration
+        // to parallel name resolution.
         pub(crate) fn borrow_mut_unchecked(&self) -> RefMut<'_, T> {
             self.0.borrow_mut()
         }
@@ -2979,13 +2921,19 @@ mod ref_mut {
         #[track_caller]
         pub(crate) fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> RefMut<'_, T> {
             if r.assert_speculative {
-                panic!("Not allowed to mutably borrow a CmRefCell during speculative resolution");
+                panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
             }
-            self.borrow_mut_unchecked()
+            self.0.borrow_mut()
         }
 
         #[track_caller]
-        pub(crate) fn try_borrow_mut_unchecked(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
+        pub(crate) fn try_borrow_mut<'ra, 'tcx>(
+            &self,
+            r: &Resolver<'ra, 'tcx>,
+        ) -> Result<RefMut<'_, T>, BorrowMutError> {
+            if r.assert_speculative {
+                panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
+            }
             self.0.try_borrow_mut()
         }
 
@@ -2998,7 +2946,7 @@ mod ref_mut {
     impl<T: Default> CmRefCell<T> {
         pub(crate) fn take<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> T {
             if r.assert_speculative {
-                panic!("Not allowed to mutate a CmRefCell during speculative resolution");
+                panic!("not allowed to mutate a CmRefCell during speculative resolution");
             }
             self.0.take()
         }

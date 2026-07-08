@@ -1,5 +1,5 @@
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:10:5
+  --> tests/ui/manual_find_fixable.rs:9:5
    |
 LL | /     for &v in ARRAY {
 LL | |
@@ -13,7 +13,7 @@ LL | |     None
    = help: to override `-D warnings` add `#[allow(clippy::manual_find)]`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:20:5
+  --> tests/ui/manual_find_fixable.rs:19:5
    |
 LL | /     for (a, _) in arr {
 LL | |
@@ -24,7 +24,7 @@ LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().map(|(a, _)| a).find(|&a| a.is_multiple_of(2))`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:34:5
+  --> tests/ui/manual_find_fixable.rs:33:5
    |
 LL | /     for el in arr {
 LL | |
@@ -37,7 +37,7 @@ LL | |     None
    = note: you may need to dereference some variables
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:45:5
+  --> tests/ui/manual_find_fixable.rs:44:5
    |
 LL | /     for Tuple(a, _) in arr {
 LL | |
@@ -48,7 +48,7 @@ LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().map(|Tuple(a, _)| a).find(|&a| a >= 3)`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:61:5
+  --> tests/ui/manual_find_fixable.rs:60:5
    |
 LL | /     for el in arr {
 LL | |
@@ -61,7 +61,7 @@ LL | |     None
    = note: you may need to dereference some variables
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:72:5
+  --> tests/ui/manual_find_fixable.rs:71:5
    |
 LL | /     for el in arr {
 LL | |
@@ -72,7 +72,7 @@ LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().find(|&el| f(el) == 20)`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:83:5
+  --> tests/ui/manual_find_fixable.rs:82:5
    |
 LL | /     for &el in arr.values() {
 LL | |
@@ -83,7 +83,7 @@ LL | |     None
    | |________^ help: replace with an iterator: `arr.values().find(|&&el| f(el)).copied()`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:93:5
+  --> tests/ui/manual_find_fixable.rs:92:5
    |
 LL | /     for el in arr {
 LL | |
@@ -96,7 +96,7 @@ LL | |     None
    = note: you may need to dereference some variables
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:124:5
+  --> tests/ui/manual_find_fixable.rs:123:5
    |
 LL | /     for (_, &x) in v {
 LL | |
@@ -107,7 +107,7 @@ LL | |     None
    | |________^ help: replace with an iterator: `v.into_iter().map(|(_, &x)| x).find(|&x| x > 10)`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:134:5
+  --> tests/ui/manual_find_fixable.rs:133:5
    |
 LL | /     for &(_, &x) in v {
 LL | |
@@ -118,7 +118,7 @@ LL | |     None
    | |________^ help: replace with an iterator: `v.iter().map(|&(_, &x)| x).find(|&x| x > 10)`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:144:5
+  --> tests/ui/manual_find_fixable.rs:143:5
    |
 LL | /     for x in arr {
 LL | |
@@ -129,7 +129,7 @@ LL | |     return None;
    | |________________^ help: replace with an iterator: `arr.into_iter().find(|&x| x >= 5)`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:200:9
+  --> tests/ui/manual_find_fixable.rs:199:9
    |
 LL | /         for x in arr {
 LL | |
@@ -140,7 +140,7 @@ LL | |         None
    | |____________^ help: replace with an iterator: `arr.into_iter().find(|&x| x < 1)`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:257:9
+  --> tests/ui/manual_find_fixable.rs:256:9
    |
 LL | /         for candidate in &["foo", "bar"] {
 LL | |
@@ -151,7 +151,7 @@ LL | |         None
    | |____________^ help: replace with an iterator: `["foo", "bar"].iter().find(|&candidate| candidate.eq_ignore_ascii_case(needle)).map(|v| v as _)`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find_fixable.rs:267:9
+  --> tests/ui/manual_find_fixable.rs:266:9
    |
 LL | /         for &candidate in &["foo", "bar"] {
 LL | |

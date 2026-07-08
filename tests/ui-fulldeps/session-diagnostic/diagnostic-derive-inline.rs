@@ -327,7 +327,6 @@ struct ArgFieldWithoutSkip {
     #[primary_span]
     span: Span,
     other: Hello,
-    //~^ ERROR the trait bound `Hello: IntoDiagArg` is not satisfied
 }
 
 #[derive(Diagnostic)]
@@ -335,9 +334,8 @@ struct ArgFieldWithoutSkip {
 struct ArgFieldWithSkip {
     #[primary_span]
     span: Span,
-    // `Hello` does not implement `IntoDiagArg` so this would result in an error if
-    // not for `#[skip_arg]`.
-    #[skip_arg]
+    // `Hello` does not implement `IntoDiagArg` so this would result if `Diagnostic`
+    // doesn't skip it correctly.
     other: Hello,
 }
 

@@ -2,7 +2,7 @@ use itertools::Itertools;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_middle::mir;
 use rustc_middle::mir::coverage::{BasicCoverageBlock, BranchSpan};
-use rustc_span::{ExpnId, ExpnKind, Span};
+use rustc_span::{ExpnKind, Span, SyntaxContext};
 
 use crate::coverage::from_mir;
 use crate::coverage::graph::CoverageGraph;
@@ -17,21 +17,21 @@ pub(crate) struct SpanWithBcb {
 
 #[derive(Debug)]
 pub(crate) struct ExpnTree {
-    nodes: FxIndexMap<ExpnId, ExpnNode>,
+    nodes: FxIndexMap<SyntaxContext, ExpnNode>,
 }
 
 impl ExpnTree {
-    pub(crate) fn get(&self, expn_id: ExpnId) -> Option<&ExpnNode> {
-        self.nodes.get(&expn_id)
+    pub(crate) fn get(&self, context: SyntaxContext) -> Option<&ExpnNode> {
+        self.nodes.get(&context)
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct ExpnNode {
-    /// Storing the expansion ID in its own node is not strictly necessary,
+    /// Storing the syntax context in its own node is not strictly necessary,
     /// but is helpful for debugging and might be useful later.
     #[expect(dead_code)]
-    pub(crate) expn_id: ExpnId,
+    pub(crate) context: SyntaxContext,
     /// Index of this node in a depth-first traversal from the root.
     pub(crate) dfs_rank: usize,
 
@@ -39,9 +39,9 @@ pub(crate) struct ExpnNode {
     pub(crate) expn_kind: ExpnKind,
     /// Non-dummy `ExpnData::call_site` span.
     pub(crate) call_site: Option<Span>,
-    /// Expansion ID of `call_site`, if present.
+    /// Syntax context of `call_site`, if present.
     /// This links an expansion node to its parent in the tree.
-    pub(crate) call_site_expn_id: Option<ExpnId>,
+    pub(crate) call_site_context: Option<SyntaxContext>,
 
     /// Holds the function signature span, if it belongs to this expansion.
     /// Used by special-case code in span refinement.
@@ -53,7 +53,7 @@ pub(crate) struct ExpnNode {
     /// Spans (and their associated BCBs) belonging to this expansion.
     pub(crate) spans: Vec<SpanWithBcb>,
     /// Expansions whose call-site is in this expansion.
-    pub(crate) child_expn_ids: FxIndexSet<ExpnId>,
+    pub(crate) child_contexts: FxIndexSet<SyntaxContext>,
     /// The "minimum" and "maximum" BCBs (in dominator order) of ordinary spans
     /// belonging to this tree node and all of its descendants. Used when
     /// creating a single code mapping representing an entire child expansion.
@@ -68,25 +68,25 @@ pub(crate) struct ExpnNode {
 }
 
 impl ExpnNode {
-    fn new(expn_id: ExpnId) -> Self {
-        let expn_data = expn_id.expn_data();
+    fn for_context(context: SyntaxContext) -> Self {
+        let expn_data = context.outer_expn_data();
 
         let call_site = Some(expn_data.call_site).filter(|sp| !sp.is_dummy());
-        let call_site_expn_id = try { call_site?.ctxt().outer_expn() };
+        let call_site_context = try { call_site?.ctxt() };
 
         Self {
-            expn_id,
+            context,
             dfs_rank: usize::MAX,
 
             expn_kind: expn_data.kind,
             call_site,
-            call_site_expn_id,
+            call_site_context,
 
             fn_sig_span: None,
             body_span: None,
 
             spans: vec![],
-            child_expn_ids: FxIndexSet::default(),
+            child_contexts: FxIndexSet::default(),
             minmax_bcbs: None,
 
             branch_spans: vec![],
@@ -106,32 +106,32 @@ pub(crate) fn build_expn_tree(
     let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
 
     let mut nodes = FxIndexMap::default();
-    let new_node = |&expn_id: &ExpnId| ExpnNode::new(expn_id);
+    let new_node = |&context: &SyntaxContext| ExpnNode::for_context(context);
 
     for from_mir::RawSpanFromMir { raw_span, bcb } in raw_spans {
         let span_with_bcb = SpanWithBcb { span: raw_span, bcb };
 
         // Create a node for this span's enclosing expansion, and add the span to it.
-        let expn_id = span_with_bcb.span.ctxt().outer_expn();
-        let node = nodes.entry(expn_id).or_insert_with_key(new_node);
+        let context = span_with_bcb.span.ctxt();
+        let node = nodes.entry(context).or_insert_with_key(new_node);
         node.spans.push(span_with_bcb);
 
         // Now walk up the expansion call-site chain, creating nodes and registering children.
-        let mut prev = expn_id;
-        let mut curr_expn_id = node.call_site_expn_id;
-        while let Some(expn_id) = curr_expn_id {
-            let entry = nodes.entry(expn_id);
+        let mut prev = context;
+        let mut curr_context = node.call_site_context;
+        while let Some(context) = curr_context {
+            let entry = nodes.entry(context);
             let node_existed = matches!(entry, IndexEntry::Occupied(_));
 
             let node = entry.or_insert_with_key(new_node);
-            node.child_expn_ids.insert(prev);
+            node.child_contexts.insert(prev);
 
             if node_existed {
                 break;
             }
 
-            prev = expn_id;
-            curr_expn_id = node.call_site_expn_id;
+            prev = context;
+            curr_context = node.call_site_context;
         }
     }
 
@@ -152,22 +152,22 @@ pub(crate) fn build_expn_tree(
     // If we have a span for the function signature, associate it with the
     // corresponding expansion tree node.
     if let Some(fn_sig_span) = hir_info.fn_sig_span
-        && let Some(node) = nodes.get_mut(&fn_sig_span.ctxt().outer_expn())
+        && let Some(node) = nodes.get_mut(&fn_sig_span.ctxt())
     {
         node.fn_sig_span = Some(fn_sig_span);
     }
 
     // Also associate the body span with its expansion tree node.
     let body_span = hir_info.body_span;
-    if let Some(node) = nodes.get_mut(&body_span.ctxt().outer_expn()) {
+    if let Some(node) = nodes.get_mut(&body_span.ctxt()) {
         node.body_span = Some(body_span);
     }
 
     // Associate each hole span (extracted from HIR) with its corresponding
     // expansion tree node.
     for &hole_span in &hir_info.hole_spans {
-        let expn_id = hole_span.ctxt().outer_expn();
-        let Some(node) = nodes.get_mut(&expn_id) else { continue };
+        let context = hole_span.ctxt();
+        let Some(node) = nodes.get_mut(&context) else { continue };
         node.hole_spans.push(hole_span);
     }
 
@@ -175,7 +175,7 @@ pub(crate) fn build_expn_tree(
     // corresponding expansion tree node.
     if let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() {
         for branch_span in &coverage_info_hi.branch_spans {
-            if let Some(node) = nodes.get_mut(&branch_span.span.ctxt().outer_expn()) {
+            if let Some(node) = nodes.get_mut(&branch_span.span.ctxt()) {
                 node.branch_spans.push(BranchSpan::clone(branch_span));
             }
         }
@@ -188,17 +188,19 @@ pub(crate) fn build_expn_tree(
 ///
 /// This allows subsequent operations to iterate over all nodes, while assuming
 /// that every node occurs before all of its descendants.
-fn sort_nodes_depth_first(nodes: &mut FxIndexMap<ExpnId, ExpnNode>) -> Result<(), MappingsError> {
-    let mut dfs_stack = vec![ExpnId::root()];
+fn sort_nodes_depth_first(
+    nodes: &mut FxIndexMap<SyntaxContext, ExpnNode>,
+) -> Result<(), MappingsError> {
+    let mut dfs_stack = vec![SyntaxContext::root()];
     let mut next_dfs_rank = 0usize;
-    while let Some(expn_id) = dfs_stack.pop() {
-        if let Some(node) = nodes.get_mut(&expn_id) {
+    while let Some(context) = dfs_stack.pop() {
+        if let Some(node) = nodes.get_mut(&context) {
             node.dfs_rank = next_dfs_rank;
             next_dfs_rank += 1;
-            dfs_stack.extend(node.child_expn_ids.iter().rev().copied());
+            dfs_stack.extend(node.child_contexts.iter().rev().copied());
         }
     }
-    nodes.sort_by_key(|_expn_id, node| node.dfs_rank);
+    nodes.sort_by_key(|_context, node| node.dfs_rank);
 
     // Verify that the depth-first search visited each node exactly once.
     for (i, &ExpnNode { dfs_rank, .. }) in nodes.values().enumerate() {
@@ -222,12 +224,12 @@ pub(crate) struct MinMaxBcbs {
 /// and the min/max of its immediate children.
 fn minmax_bcbs_for_expn_tree_node(
     graph: &CoverageGraph,
-    nodes: &FxIndexMap<ExpnId, ExpnNode>,
+    nodes: &FxIndexMap<SyntaxContext, ExpnNode>,
     node: &ExpnNode,
 ) -> Option<MinMaxBcbs> {
     let immediate_span_bcbs = node.spans.iter().map(|sp: &SpanWithBcb| sp.bcb);
     let child_minmax_bcbs = node
-        .child_expn_ids
+        .child_contexts
         .iter()
         .flat_map(|id| nodes.get(id))
         .flat_map(|child| child.minmax_bcbs)

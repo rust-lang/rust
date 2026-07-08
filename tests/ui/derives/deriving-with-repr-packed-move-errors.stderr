@@ -33,27 +33,6 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
    |
 LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
-   |                                ---------- in this derive macro expansion
-LL | struct StructA(String);
-   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
-   |
-   = note: `#[derive(PartialOrd)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
-
-error[E0507]: cannot move out of a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
-   |
-LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
-   |                                ---------- in this derive macro expansion
-LL | struct StructA(String);
-   |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
-   |
-   = note: `#[derive(PartialOrd)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0507]: cannot move out of a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:13:16
-   |
-LL | #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
    |                                            --- in this derive macro expansion
 LL | struct StructA(String);
    |                ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
@@ -92,7 +71,7 @@ LL | struct StructA(String);
    = note: `#[derive(Clone)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
 
 error[E0507]: cannot move out of `self` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:28:9
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:26:9
    |
 LL |         self.0
    |         ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
@@ -103,7 +82,7 @@ LL |         self.0.clone()
    |               ++++++++
 
 error[E0507]: cannot move out of `self` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:38:20
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:36:20
    |
 LL |         let x = &{ self.0 };
    |                    ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
@@ -114,7 +93,7 @@ LL |         let x = &{ self.0.clone() };
    |                          ++++++++
 
 error[E0507]: cannot move out of `self` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:45:12
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:43:12
    |
 LL |         ({ self.0 }) == ({ other.0 })
    |            ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
@@ -125,7 +104,7 @@ LL |         ({ self.0.clone() }) == ({ other.0 })
    |                  ++++++++
 
 error[E0507]: cannot move out of `other` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:45:28
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:43:28
    |
 LL |         ({ self.0 }) == ({ other.0 })
    |                            ^^^^^^^ move occurs because `other.0` has type `String`, which does not implement the `Copy` trait
@@ -136,7 +115,7 @@ LL |         ({ self.0 }) == ({ other.0.clone() })
    |                                   ++++++++
 
 error[E0507]: cannot move out of `self` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:53:36
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:51:36
    |
 LL |         PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
    |                                    ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
@@ -147,7 +126,7 @@ LL |         PartialOrd::partial_cmp(&{ self.0.clone() }, &{ other.0 })
    |                                          ++++++++
 
 error[E0507]: cannot move out of `other` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:53:49
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:51:49
    |
 LL |         PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
    |                                                 ^^^^^^^ move occurs because `other.0` has type `String`, which does not implement the `Copy` trait
@@ -158,7 +137,7 @@ LL |         PartialOrd::partial_cmp(&{ self.0 }, &{ other.0.clone() })
    |                                                        ++++++++
 
 error[E0507]: cannot move out of `self` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:68:20
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:66:20
    |
 LL |         let x = &{ self.0 };
    |                    ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
@@ -169,7 +148,7 @@ LL |         let x = &{ self.0.clone() };
    |                          ++++++++
 
 error[E0507]: cannot move out of `self` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:75:12
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:73:12
    |
 LL |         ({ self.0 }) == ({ other.0 })
    |            ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
@@ -180,7 +159,7 @@ LL |         ({ self.0.clone() }) == ({ other.0 })
    |                  ++++++++
 
 error[E0507]: cannot move out of `other` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:75:28
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:73:28
    |
 LL |         ({ self.0 }) == ({ other.0 })
    |                            ^^^^^^^ move occurs because `other.0` has type `String`, which does not implement the `Copy` trait
@@ -191,7 +170,7 @@ LL |         ({ self.0 }) == ({ other.0.clone() })
    |                                   ++++++++
 
 error[E0507]: cannot move out of `self` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:83:36
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:81:36
    |
 LL |         PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
    |                                    ^^^^^^ move occurs because `self.0` has type `String`, which does not implement the `Copy` trait
@@ -202,7 +181,7 @@ LL |         PartialOrd::partial_cmp(&{ self.0.clone() }, &{ other.0 })
    |                                          ++++++++
 
 error[E0507]: cannot move out of `other` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:83:49
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:81:49
    |
 LL |         PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
    |                                                 ^^^^^^^ move occurs because `other.0` has type `String`, which does not implement the `Copy` trait
@@ -213,7 +192,7 @@ LL |         PartialOrd::partial_cmp(&{ self.0 }, &{ other.0.clone() })
    |                                                        ++++++++
 
 error[E0507]: cannot move out of `arg` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed-move-errors.rs:92:5
+  --> $DIR/deriving-with-repr-packed-move-errors.rs:90:5
    |
 LL |     arg.0
    |     ^^^^^ move occurs because `arg.0` has type `String`, which does not implement the `Copy` trait
@@ -223,6 +202,6 @@ help: consider cloning the value if the performance cost is acceptable
 LL |     arg.0.clone()
    |          ++++++++
 
-error: aborting due to 21 previous errors
+error: aborting due to 19 previous errors
 
 For more information about this error, try `rustc --explain E0507`.

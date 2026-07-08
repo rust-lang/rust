@@ -14,7 +14,6 @@ use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::codegen_fn_attrs::PatchableFunctionEntry;
 use rustc_middle::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -25,10 +24,10 @@ use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
-use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use rustc_target::spec::{
-    Arch, CfgAbi, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
+    Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
+    Target, TlsModel,
 };
 use smallvec::SmallVec;
 
@@ -135,7 +134,6 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
-    eh_catch_typeinfo: Cell<Option<&'ll Value>>,
     pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
 
     intrinsics:
@@ -202,6 +200,14 @@ pub(crate) unsafe fn create_module<'ll>(
         if sess.target.arch == Arch::PowerPC64 {
             // LLVM 22 updated the ABI alignment for double on AIX: https://github.com/llvm/llvm-project/pull/144673
             target_data_layout = target_data_layout.replace("-f64:32:64", "");
+
+            // LLVM 22 fixed the data layout calculation for targets that default to ELFv1
+            // when the ABI is set to ELFv2. With LLVM 21, the ELFv1 datalayout must be used,
+            // which will overalign function entries.
+            // https://github.com/llvm/llvm-project/pull/149725
+            if sess.target.llvm_target == "powerpc64-unknown-linux-gnu" {
+                target_data_layout = target_data_layout.replace("-Fn32", "-Fi64");
+            }
         }
         if sess.target.arch == Arch::AmdGpu {
             // LLVM 22 specified ELF mangling in the amdgpu data layout:
@@ -311,20 +317,38 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
+    if sess.must_emit_unwind_tables() {
+        // This assertion checks that Max is the correct merge behavior.
+        // Async unwind tables are strictly more useful than sync uwtables.
+        const {
+            assert!((llvm::UWTableKind::None as u32) < (llvm::UWTableKind::Sync as u32));
+            assert!((llvm::UWTableKind::Sync as u32) < (llvm::UWTableKind::Async as u32));
+        }
+
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Max,
+            "uwtable",
+            match sess.opts.unstable_opts.use_sync_unwind {
+                Some(true) => llvm::UWTableKind::Sync as u32,
+                Some(false) | None => llvm::UWTableKind::Async as u32,
+            },
+        );
+    }
+
     // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
     if sess.is_sanitizer_kcfi_enabled() {
         llvm::add_module_flag_u32(llmod, llvm::ModuleFlagMergeBehavior::Override, "kcfi", 1);
 
         // Add "kcfi-offset" module flag with -Z patchable-function-entry (See
         // https://reviews.llvm.org/D141172).
-        let pfe =
-            PatchableFunctionEntry::from_config(sess.opts.unstable_opts.patchable_function_entry);
-        if pfe.prefix() > 0 {
+        let patchable_prefix_nops = sess.opts.unstable_opts.patchable_function_entry.prefix();
+        if patchable_prefix_nops > 0 {
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Override,
                 "kcfi-offset",
-                pfe.prefix().into(),
+                patchable_prefix_nops.into(),
             );
         }
 
@@ -470,6 +494,20 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
+    let fp = attributes::frame_pointer(sess);
+    if fp != FramePointer::MayOmit {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Max,
+            "frame-pointer",
+            match fp {
+                FramePointer::Always => llvm::FramePointerKind::All as u32,
+                FramePointer::NonLeaf => llvm::FramePointerKind::NonLeaf as u32,
+                FramePointer::MayOmit => llvm::FramePointerKind::None as u32,
+            },
+        );
+    }
+
     if sess.opts.unstable_opts.indirect_branch_cs_prefix {
         llvm::add_module_flag_u32(
             llmod,
@@ -607,7 +645,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             tcx.sess.instrument_coverage().then(coverageinfo::CguCoverageContext::new);
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
-            let dctx = debuginfo::CodegenUnitDebugContext::new(llmod);
+            let dctx = debuginfo::CodegenUnitDebugContext::new(llmod, tcx.sess);
             debuginfo::metadata::build_compile_unit_di_node(
                 tcx,
                 codegen_unit.name().as_str(),
@@ -638,7 +676,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 coverage_cx,
                 dbg_cx,
                 eh_personality: Cell::new(None),
-                eh_catch_typeinfo: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: Default::default(),
                 local_gen_sym_counter: Cell::new(0),
@@ -686,6 +723,24 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             // (a.k.a the "non-fragile ABI").
             2
         }
+    }
+
+    pub(crate) fn add_ptrauth_elf_got_flag(&self) {
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "ptrauth-elf-got",
+            1,
+        );
+    }
+
+    pub(crate) fn add_ptrauth_sign_personality_flag(&self) {
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "ptrauth-sign-personality",
+            1,
+        );
     }
 
     // We do our best here to match what Clang does when compiling Objective-C natively.
@@ -832,8 +887,24 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>) -> &'ll Value {
-        get_fn(self, instance)
+    fn get_fn_addr(&self, instance: Instance<'tcx>, pac: Option<PacMetadata>) -> &'ll Value {
+        // When pointer authentication metadata is provided, `get_fn_addr` will
+        // attempt to sign the pointer using LLVM's `ConstPtrAuth` constant
+        // expression.
+        //
+        // FIXME(jchlanda) Currently, all function addresses requested from
+        // within LLVM codegen are signed. This behavior is too broad, resulting
+        // in the logic being applied to function values, not just pointers
+        // (addresses).
+        //
+        // See the discussion in the rust-lang issue:
+        // <https://github.com/rust-lang/rust/issues/152532>, and comment in
+        // builder's `ptrauth_operand_bundle`.
+        let llfn = get_fn(self, instance);
+        match pac {
+            Some(pac) => common::maybe_sign_fn_ptr(self, instance, llfn, pac),
+            None => llfn,
+        }
     }
 
     fn eh_personality(&self) -> &'ll Value {
@@ -875,13 +946,16 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if name.is_none() => self.get_fn_addr(ty::Instance::expect_resolve(
-                tcx,
-                self.typing_env(),
-                def_id,
-                ty::List::empty(),
-                DUMMY_SP,
-            )),
+            Some(def_id) if name.is_none() => self.get_fn_addr(
+                ty::Instance::expect_resolve(
+                    tcx,
+                    self.typing_env(),
+                    def_id,
+                    ty::List::empty(),
+                    DUMMY_SP,
+                ),
+                Some(PacMetadata::default()),
+            ),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");
                 if let Some(llfn) = self.get_declared_value(name) {
@@ -937,6 +1011,10 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             None
         }
     }
+
+    fn intrinsic_call_expects_place_always(&self, name: Symbol) -> bool {
+        matches!(name, sym::black_box)
+    }
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
@@ -959,39 +1037,47 @@ impl<'ll> CodegenCx<'ll, '_> {
         base_name: &str,
         type_params: &[&'ll Type],
     ) -> (&'ll Type, &'ll Value) {
-        // This isn't an "LLVM intrinsic", but LLVM's optimization passes
-        // recognize it like one (including turning it into `bcmp` sometimes)
-        // and we use it to implement intrinsics like `raw_eq` and `compare_bytes`
-        if base_name == "memcmp" {
-            let fn_ty = self
-                .type_func(&[self.type_ptr(), self.type_ptr(), self.type_isize()], self.type_int());
-            let f = self.declare_cfn("memcmp", llvm::UnnamedAddr::No, fn_ty);
+        match base_name {
+            // This isn't an "LLVM intrinsic", but LLVM's optimization passes
+            // recognize it like one (including turning it into `bcmp` sometimes)
+            // and we use it to implement intrinsics like `raw_eq` and `compare_bytes`
+            "memcmp" => {
+                let fn_ty = self.type_func(
+                    &[self.type_ptr(), self.type_ptr(), self.type_isize()],
+                    self.type_int(),
+                );
+                let f = self.declare_cfn("memcmp", llvm::UnnamedAddr::No, fn_ty);
 
-            return (fn_ty, f);
-        }
-
-        let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
-            .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
-        let f = intrinsic.get_declaration(self.llmod, &type_params);
-
-        (self.get_type_of_global(f), f)
-    }
-
-    pub(crate) fn eh_catch_typeinfo(&self) -> &'ll Value {
-        if let Some(eh_catch_typeinfo) = self.eh_catch_typeinfo.get() {
-            return eh_catch_typeinfo;
-        }
-        let tcx = self.tcx;
-        assert!(self.sess().target.os == Os::Emscripten);
-        let eh_catch_typeinfo = match tcx.lang_items().eh_catch_typeinfo() {
-            Some(def_id) => self.get_static(def_id),
-            _ => {
-                let ty = self.type_struct(&[self.type_ptr(), self.type_ptr()], false);
-                self.declare_global(&mangle_internal_symbol(self.tcx, "rust_eh_catch_typeinfo"), ty)
+                (fn_ty, f)
             }
-        };
-        self.eh_catch_typeinfo.set(Some(eh_catch_typeinfo));
-        eh_catch_typeinfo
+            // Experimental retag intrinsics.
+            // This form is used to retag a pointer that has already been stored in a register. It receives
+            // the pointer and returns an alias with the same address, but different provenance.
+            "__rust_retag_reg" => {
+                let fn_ty = self.type_func(type_params, self.type_ptr());
+                let llfn = self.declare_cfn(base_name, llvm::UnnamedAddr::No, fn_ty);
+                let nounwind = llvm::AttributeKind::NoUnwind.create_attr(self.llcx);
+                attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[nounwind]);
+                (fn_ty, llfn)
+            }
+            // This form is used to retag a pointer that is stored in another place. It receives a pointer to the
+            // place and returns `void`. This communicates the indirection  without requiring an explicit load and
+            // store. If we used the `reg` form instead, then we would need to load the place, retag it, and then
+            // store the result back, which would be undefined behavior for `readonly` places.
+            "__rust_retag_mem" => {
+                let fn_ty = self.type_func(type_params, self.type_void());
+                let llfn = self.declare_cfn(base_name, llvm::UnnamedAddr::No, fn_ty);
+                let nounwind = llvm::AttributeKind::NoUnwind.create_attr(self.llcx);
+                attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[nounwind]);
+                (fn_ty, llfn)
+            }
+            _ => {
+                let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
+                    .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
+                let f = intrinsic.get_declaration(self.llmod, &type_params);
+                (self.get_type_of_global(f), f)
+            }
+        }
     }
 }
 
@@ -1037,9 +1123,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         instruction: &'ll Value,
         kind_id: MetadataKindId,
         md_list: &[&'ll Metadata],
-    ) {
+    ) -> &'ll Metadata {
         let md = self.md_node_in_context(md_list);
         self.set_metadata(instruction, kind_id, md);
+        md
     }
 
     /// Helper method for the sequence of calls:

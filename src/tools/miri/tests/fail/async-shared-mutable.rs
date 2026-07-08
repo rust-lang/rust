@@ -3,7 +3,7 @@
 //! `UnsafePinned` must include the effects of `UnsafeCell`.
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-//@normalize-stderr-test: "\[0x[a-fx\d.]+\]" -> "[OFFSET]"
+//@normalize-stderr-test: "\[0x[a-fx\d.]+\]" -> "[RANGE]"
 
 use core::future::Future;
 use core::pin::{Pin, pin};

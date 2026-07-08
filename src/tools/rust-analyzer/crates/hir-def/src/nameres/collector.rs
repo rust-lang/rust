@@ -15,7 +15,7 @@ use hir_expand::{
     builtin::{BuiltinDeriveExpander, find_builtin_attr, find_builtin_derive, find_builtin_macro},
     mod_path::{ModPath, PathKind},
     name::{AsName, Name},
-    proc_macro::CustomProcMacroExpander,
+    proc_macro::{CustomProcMacroExpander, ProcMacros},
 };
 use intern::{Interned, Symbol, sym};
 use itertools::izip;
@@ -79,9 +79,9 @@ pub(super) fn collect_defs(
     }
 
     let proc_macros = if krate.is_proc_macro {
-        db.proc_macros_for_crate(def_map.krate)
+        ProcMacros::get_for_crate(db, def_map.krate)
             .and_then(|proc_macros| {
-                proc_macros.list(db.syntax_context(tree_id.file_id(), krate.edition))
+                proc_macros.list(tree_id.file_id().syntax_context(db, krate.edition))
             })
             .unwrap_or_default()
     } else {
@@ -616,7 +616,7 @@ impl<'db> DefCollector<'db> {
         let (expander, kind) = match self.proc_macros.iter().find(|(n, _, _)| n == &def.name) {
             Some(_)
                 if kind == hir_expand::proc_macro::ProcMacroKind::Attr
-                    && !self.db.expand_proc_attr_macros() =>
+                    && !crate::db::ExpandProcAttrMacros::get(self.db).enabled(self.db) =>
             {
                 (CustomProcMacroExpander::disabled_proc_attr(), kind)
             }
@@ -1027,7 +1027,7 @@ impl<'db> DefCollector<'db> {
                             .enum_variants(self.db)
                             .variants
                             .iter()
-                            .map(|&(variant, ref name, _)| {
+                            .map(|(name, &(variant, _))| {
                                 let res = PerNs::both(variant.into(), variant.into(), vis, None);
                                 (Some(name.clone()), res)
                             })
@@ -2428,6 +2428,8 @@ impl ModCollector<'_, '_> {
                 self.def_collector.db,
                 self.def_collector.def_map.krate,
                 self.def_collector.def_map.block_id(),
+                Some(self.module_id),
+                name.clone(),
             )
             .to_static()
         };
@@ -2529,12 +2531,8 @@ impl ModCollector<'_, '_> {
         // Case 1: builtin macros
         let expander = if attrs.by_key(sym::rustc_builtin_macro).exists() {
             // `#[rustc_builtin_macro = "builtin_name"]` overrides the `macro_rules!` name.
-            let name;
             let name = match attrs.by_key(sym::rustc_builtin_macro).string_value_with_span() {
-                Some((it, span)) => {
-                    name = Name::new_symbol(Symbol::intern(it), span.ctx);
-                    &name
-                }
+                Some((it, span)) => &Name::new_symbol(Symbol::intern(it), span.ctx),
                 None => {
                     let explicit_name =
                         attrs.by_key(sym::rustc_builtin_macro).tt_values().next().and_then(|tt| {
@@ -2544,10 +2542,7 @@ impl ModCollector<'_, '_> {
                             }
                         });
                     match explicit_name {
-                        Some(ident) => {
-                            name = ident.as_name();
-                            &name
-                        }
+                        Some(ident) => &ident.as_name(),
                         None => &mac.name,
                     }
                 }
@@ -2560,7 +2555,7 @@ impl ModCollector<'_, '_> {
                         .def_map
                         .diagnostics
                         .push(DefDiagnostic::unimplemented_builtin_macro(self.module_id, f_ast_id));
-                    return;
+                    MacroExpander::UnimplementedBuiltIn
                 }
             }
         } else {
@@ -2639,7 +2634,7 @@ impl ModCollector<'_, '_> {
                     .def_map
                     .diagnostics
                     .push(DefDiagnostic::unimplemented_builtin_macro(self.module_id, f_ast_id));
-                return;
+                MacroExpander::UnimplementedBuiltIn
             }
         } else {
             // Case 2: normal `macro`

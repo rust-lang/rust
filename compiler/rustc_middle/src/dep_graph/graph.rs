@@ -1,4 +1,5 @@
 use std::assert_matches;
+use std::cell::Cell;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -9,7 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
-use rustc_data_structures::sync::{AtomicU64, Lock};
+use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
 use rustc_index::IndexVec;
@@ -89,6 +90,38 @@ pub(crate) struct MarkFrame<'a> {
     parent: Option<&'a MarkFrame<'a>>,
 }
 
+/// The edge list of one node being marked green: it occupies `buf[start..]` of the shared
+/// scratch buffer and is popped again on drop, restoring the buffer for the enclosing call.
+struct EdgeFrame<'a> {
+    buf: &'a mut Vec<DepNodeIndex>,
+    start: usize,
+}
+
+impl<'a> EdgeFrame<'a> {
+    #[inline]
+    fn new(buf: &'a mut Vec<DepNodeIndex>) -> Self {
+        EdgeFrame { start: buf.len(), buf }
+    }
+
+    #[inline]
+    fn push(&mut self, edge: DepNodeIndex) {
+        self.buf.push(edge);
+    }
+
+    /// The edges pushed onto this frame so far.
+    #[inline]
+    fn get(&self) -> &[DepNodeIndex] {
+        &self.buf[self.start..]
+    }
+}
+
+impl Drop for EdgeFrame<'_> {
+    #[inline]
+    fn drop(&mut self) {
+        self.buf.truncate(self.start);
+    }
+}
+
 #[derive(Debug)]
 pub(super) enum DepNodeColor {
     Green(DepNodeIndex),
@@ -119,6 +152,9 @@ pub struct DepGraphData {
     /// a particular query result was decoded from disk
     /// (not just marked green)
     debug_loaded_from_disk: Lock<FxHashSet<DepNode>>,
+
+    /// Per-worker edge buffer amortized across `try_mark_green` calls.
+    green_edge_buf: WorkerLocal<Cell<Vec<DepNodeIndex>>>,
 }
 
 pub fn hash_result<R>(hcx: &mut StableHashState<'_>, result: &R) -> Fingerprint
@@ -135,7 +171,7 @@ impl DepGraph {
         session: &Session,
         prev_graph: Arc<SerializedDepGraph>,
         prev_work_products: WorkProductMap,
-        encoder: FileEncoder,
+        encoder: FileEncoder<'static>,
     ) -> DepGraph {
         let prev_graph_node_count = prev_graph.node_count();
 
@@ -175,6 +211,7 @@ impl DepGraph {
                 previous: prev_graph,
                 colors,
                 debug_loaded_from_disk: Default::default(),
+                green_edge_buf: WorkerLocal::default(),
             })),
             virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
         }
@@ -195,10 +232,12 @@ impl DepGraph {
         self.data.is_some()
     }
 
-    pub fn with_retained_dep_graph(&self, f: impl Fn(&RetainedDepGraph)) {
-        if let Some(data) = &self.data {
-            data.current.encoder.with_retained_dep_graph(f)
-        }
+    /// Returns a clone of the in-memory retained dep graph, if it is being built
+    /// (i.e. `-Zquery-dep-graph` is set). Cloning rather than exposing the lock keeps
+    /// callers from holding it while forcing queries, which would deadlock against a
+    /// reentrant `record` under the parallel frontend.
+    pub fn retained_dep_graph(&self) -> Option<RetainedDepGraph> {
+        self.data.as_ref().and_then(|data| data.current.encoder.retained_dep_graph())
     }
 
     pub fn assert_ignored(&self) {
@@ -210,6 +249,14 @@ impl DepGraph {
                     "expected no task dependency tracking"
                 );
             })
+        }
+    }
+
+    pub fn assert_eval_always(&self) {
+        if self.data.is_some() {
+            read_deps(|deps| {
+                assert_matches!(deps, TaskDepsRef::EvalAlways, "expected eval always context")
+            });
         }
     }
 
@@ -780,8 +827,9 @@ impl DepGraphData {
     fn promote_node_and_deps_to_current(
         &self,
         prev_index: SerializedDepNodeIndex,
+        edges: &[DepNodeIndex],
     ) -> Option<DepNodeIndex> {
-        let dep_node_index = self.current.encoder.send_promoted(prev_index, &self.colors);
+        let dep_node_index = self.current.encoder.send_promoted(prev_index, &self.colors, edges);
 
         #[cfg(debug_assertions)]
         if let Some(dep_node_index) = dep_node_index {
@@ -868,20 +916,29 @@ impl DepGraphData {
                 // in the previous compilation session too, so we can try to
                 // mark it as green by recursively marking all of its
                 // dependencies green.
-                self.try_mark_previous_green(tcx, prev_index, None)
-                    .map(|dep_node_index| (prev_index, dep_node_index))
+
+                // Reuse a per-worker buffer for the edges instead of allocating one per call.
+                // The recursion gives it back empty: each `EdgeFrame` pops its edges on drop.
+                let mut edge_buf = self.green_edge_buf.take();
+                let result = self.try_mark_previous_green(tcx, prev_index, None, &mut edge_buf);
+                debug_assert!(edge_buf.is_empty());
+                self.green_edge_buf.set(edge_buf);
+                result.map(|dep_node_index| (prev_index, dep_node_index))
             }
         }
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
-    #[instrument(skip(self, tcx, prev_dep_node_index, frame), level = "debug")]
+    #[instrument(skip(self, tcx, prev_dep_node_index, frame, edge_buf), level = "debug")]
     fn try_mark_previous_green<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         prev_dep_node_index: SerializedDepNodeIndex,
         frame: Option<&MarkFrame<'_>>,
+        // Amortized buffer to store edges in.
+        edge_buf: &mut Vec<DepNodeIndex>,
     ) -> Option<DepNodeIndex> {
+        let mut edges = EdgeFrame::new(edge_buf);
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
         // We never try to mark eval_always nodes as green
@@ -891,7 +948,10 @@ impl DepGraphData {
             match self.colors.get(parent_dep_node_index) {
                 // This dependency has been marked as green before, we are still ok and can
                 // continue checking the remaining dependencies.
-                DepNodeColor::Green(_) => continue,
+                DepNodeColor::Green(parent_index) => {
+                    edges.push(parent_index);
+                    continue;
+                }
 
                 // This dependency's result is different to the previous compilation session. We
                 // cannot mark this dep_node as green, so stop checking.
@@ -905,8 +965,16 @@ impl DepGraphData {
 
             // If this dependency isn't eval_always, try to mark it green recursively.
             if !tcx.is_eval_always(parent_dep_node.kind)
-                && self.try_mark_previous_green(tcx, parent_dep_node_index, Some(&frame)).is_some()
+                && let Some(parent_index) = self.try_mark_previous_green(
+                    tcx,
+                    parent_dep_node_index,
+                    Some(&frame),
+                    // Pass the edge buffer to the recursive call.
+                    // It will use an `EdgeFrame` to give it back unchanged.
+                    edges.buf,
+                )
             {
+                edges.push(parent_index);
                 continue;
             }
 
@@ -916,7 +984,10 @@ impl DepGraphData {
             }
 
             match self.colors.get(parent_dep_node_index) {
-                DepNodeColor::Green(_) => continue,
+                DepNodeColor::Green(parent_index) => {
+                    edges.push(parent_index);
+                    continue;
+                }
                 DepNodeColor::Red => return None,
                 DepNodeColor::Unknown => {}
             }
@@ -944,7 +1015,8 @@ impl DepGraphData {
         // adding all the appropriate edges imported from the previous graph.
         //
         // `no_hash` nodes may fail this promotion due to already being conservatively colored red.
-        let dep_node_index = self.promote_node_and_deps_to_current(prev_dep_node_index)?;
+        let dep_node_index =
+            self.promote_node_and_deps_to_current(prev_dep_node_index, edges.get())?;
 
         // ... and finally storing a "Green" entry in the color map.
         // Multiple threads can all write the same color here.
@@ -1127,7 +1199,7 @@ impl CurrentDepGraph {
     fn new(
         session: &Session,
         prev_graph_node_count: usize,
-        encoder: FileEncoder,
+        encoder: FileEncoder<'static>,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {
         let mut stable_hasher = StableHasher::new();

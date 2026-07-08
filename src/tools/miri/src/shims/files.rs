@@ -1,9 +1,10 @@
 use std::any::Any;
 use std::collections::BTreeMap;
-use std::fs::File;
+use std::fs::{Dir, File};
 use std::io::{ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::marker::CoercePointee;
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 use std::{fs, io};
 
@@ -362,6 +363,7 @@ impl FileDescription for io::Stderr {
 #[derive(Debug)]
 pub struct FileHandle {
     pub(crate) file: File,
+    pub(crate) readable: bool,
     pub(crate) writable: bool,
 }
 
@@ -379,6 +381,10 @@ impl FileDescription for FileHandle {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
+
+        if !self.readable {
+            return finish.call(ecx, Err(ErrorKind::PermissionDenied.into()));
+        }
 
         let mut file = &self.file;
         let result = ecx.read_from_host(|buf| file.read(buf), len, ptr)?;
@@ -465,6 +471,39 @@ impl FileDescription for FileHandle {
             "unix file operations are only available for unix targets"
         );
         self
+    }
+}
+
+#[derive(Debug)]
+pub struct DirHandle {
+    #[cfg_attr(bootstrap, allow(unused))]
+    pub(crate) dir: Dir,
+    /// Fallback used under `cfg(bootstrap)`.
+    #[cfg_attr(not(bootstrap), allow(unused))]
+    pub(crate) path: PathBuf,
+}
+
+impl FileDescription for DirHandle {
+    fn name(&self) -> &'static str {
+        "directory"
+    }
+
+    fn metadata<'tcx>(
+        &self,
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        #[cfg(not(bootstrap))]
+        return interp_ok(Either::Left(self.dir.metadata()));
+        #[cfg(bootstrap)]
+        return interp_ok(Either::Left(std::fs::metadata(&self.path)));
+    }
+
+    fn destroy<'tcx>(
+        self,
+        _self_id: FdId,
+        _communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        interp_ok(Ok(()))
     }
 }
 

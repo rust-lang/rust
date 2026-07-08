@@ -46,7 +46,7 @@ error: `#[coverage]` attribute cannot be used on required trait methods
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: `#[coverage]` can be applied to closures, crates, functions, impl blocks, inherent methods, modules, provided trait methods, and trait methods in impl blocks
+   = help: `#[coverage]` can be applied to crates, functions with a body, impl blocks, and modules
 
 error: `#[coverage]` attribute cannot be used on required trait methods
   --> $DIR/allowed-positions.rs:31:5
@@ -54,7 +54,7 @@ error: `#[coverage]` attribute cannot be used on required trait methods
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: `#[coverage]` can be applied to closures, crates, functions, impl blocks, inherent methods, modules, provided trait methods, and trait methods in impl blocks
+   = help: `#[coverage]` can be applied to crates, functions with a body, impl blocks, and modules
 
 error: `#[coverage]` attribute cannot be used on associated types
   --> $DIR/allowed-positions.rs:39:5
@@ -110,7 +110,7 @@ error: `#[coverage]` attribute cannot be used on foreign functions
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: `#[coverage]` can be applied to closures, crates, functions, impl blocks, methods, and modules
+   = help: `#[coverage]` can be applied to crates, functions with a body, impl blocks, and modules
 
 error: `#[coverage]` attribute cannot be used on statements
   --> $DIR/allowed-positions.rs:88:5

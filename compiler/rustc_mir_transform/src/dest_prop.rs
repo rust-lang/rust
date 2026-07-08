@@ -146,7 +146,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::{Analysis, EntryStates};
+use rustc_mir_dataflow::{Analysis, EntryStates, GenKill};
 use tracing::{debug, trace};
 
 pub(super) struct DestinationPropagation;
@@ -470,7 +470,7 @@ fn dest_prop_mir_dump<'tcx>(
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Effect {
     Before,
     After,
@@ -497,28 +497,95 @@ impl TwoStepIndex {
         // Reverse the indexing to use more efficient `IntervalSet::append`.
         TwoStepIndex::from_u32(max_index - index)
     }
+
+    fn effect(self) -> Effect {
+        if self.as_u32() & 1 == 0 { Effect::After } else { Effect::Before }
+    }
 }
 
 /// Add points depending on the result of the given dataflow analysis.
+#[tracing::instrument(level = "trace", skip(elements, body))]
 fn save_as_intervals<'tcx>(
     elements: &DenseLocationMap,
     body: &Body<'tcx>,
     relevant: &RelevantLocals,
     entry_states: EntryStates<DenseBitSet<Local>>,
 ) -> SparseIntervalMatrix<RelevantLocal, TwoStepIndex> {
-    let mut values = SparseIntervalMatrix::new(2 * elements.num_points());
-    let mut state = MaybeLiveLocals.bottom_value(body);
-    let reachable_blocks = traversal::reachable_as_bitset(body);
+    /// Generalized dataflow state for use inside a given block.
+    struct GenKillIntervalMatrix<'a> {
+        values: SparseIntervalMatrix<RelevantLocal, TwoStepIndex>,
+        relevant: &'a RelevantLocals,
+        /// If a local is live, this stores the start of the live range.
+        /// If a local is dead, this stores `None`.
+        pending: IndexVec<RelevantLocal, Option<TwoStepIndex>>,
+        /// The current position of the cursor inside the MIR body.
+        current: TwoStepIndex,
+    }
 
-    let two_step_loc = |location, effect| TwoStepIndex::new(elements, location, effect);
-    let append_at =
-        |values: &mut SparseIntervalMatrix<_, _>, state: &DenseBitSet<Local>, twostep| {
-            for (relevant, &original) in relevant.original.iter_enumerated() {
-                if state.contains(original) {
-                    values.append(relevant, twostep);
+    impl GenKill<Local> for GenKillIntervalMatrix<'_> {
+        fn gen_(&mut self, elem: Local) {
+            let Some(elem) = self.relevant.shrink[elem] else { return };
+            // If the local was already live, do not overwrite the start position.
+            let _ = self.pending[elem].get_or_insert(self.current);
+        }
+
+        fn kill(&mut self, elem: Local) {
+            // Ensure we only kill for `Effect::Before`, so `insert_single` is well-behaved.
+            debug_assert_eq!(self.current.effect(), Effect::Before);
+            let Some(elem) = self.relevant.shrink[elem] else { return };
+            if let Some(start) = self.pending[elem].take() {
+                debug_assert!(start <= self.current);
+                // The local is live since `start`.
+                // We are killing it, so it won't be after `current`, hence an exclusive range.
+                self.values.append_range(elem, start..self.current);
+            }
+        }
+    }
+
+    impl GenKillIntervalMatrix<'_> {
+        /// Insert a singleton range. This can be used for dead locals to mark conflicts, for
+        /// instance `move` operands in function calls or partial writes.
+        fn insert_single(&mut self, elem: RelevantLocal) {
+            // If we have a set pending, we will insert it when killing it, so nothing more to do.
+            // Kills only happen for `Effect::Before`, so we don't risk `kill` to insert
+            // a range excluding `self.current`.
+            debug_assert_eq!(self.current.effect(), Effect::After);
+            if self.pending[elem].is_none() {
+                self.values.append(elem, self.current);
+            }
+        }
+
+        fn start_block(&mut self, entry_state: &DenseBitSet<Local>) {
+            debug_assert!(self.pending.iter().all(Option::is_none));
+            for local in entry_state.iter() {
+                if let Some(elem) = self.relevant.shrink[local] {
+                    self.pending[elem] = Some(self.current);
                 }
             }
-        };
+        }
+
+        fn end_block(&mut self) {
+            for (elem, start) in self.pending.iter_enumerated_mut() {
+                if let Some(start) = start.take() {
+                    debug_assert!(start <= self.current);
+                    // We are ending a block, mark all live locals as live up to `current`,
+                    // including that position (which is still inside the block).
+                    self.values.append_range(elem, start..=self.current);
+                }
+            }
+        }
+    }
+
+    let reachable_blocks = traversal::reachable_as_bitset(body);
+    let two_step_loc = |location, effect| TwoStepIndex::new(elements, location, effect);
+
+    let mut state = GenKillIntervalMatrix {
+        values: SparseIntervalMatrix::new(2 * elements.num_points()),
+        relevant,
+        pending: IndexVec::from_elem(None, &relevant.original),
+        // Dummy value.
+        current: TwoStepIndex::from_u32(0),
+    };
 
     // Iterate blocks in decreasing order, to visit locations in decreasing order. This
     // allows to use the more efficient `append` method to interval sets.
@@ -527,14 +594,15 @@ fn save_as_intervals<'tcx>(
             continue;
         }
 
-        state.clone_from(&entry_states[block]);
-
         let block_data = &body.basic_blocks[block];
         let loc = Location { block, statement_index: block_data.statements.len() };
+        state.current = two_step_loc(loc, Effect::After);
+
+        // Setup the new block.
+        state.start_block(&entry_states[block]);
 
         let term = block_data.terminator();
-        let mut twostep = two_step_loc(loc, Effect::After);
-        append_at(&mut values, &state, twostep);
+
         // Ensure we have a non-zero live range even for dead stores. This is done by marking all
         // the written-to locals as live in the second half of the statement.
         // We also ensure that operands read by terminators conflict with writes by that terminator.
@@ -543,7 +611,7 @@ fn save_as_intervals<'tcx>(
             if let Some(relevant) = relevant.shrink[place.local] {
                 match DefUse::for_place(place, ctxt) {
                     DefUse::Def | DefUse::Use | DefUse::PartialWrite => {
-                        values.insert(relevant, twostep);
+                        state.insert_single(relevant);
                     }
                     DefUse::NonUse => {}
                 }
@@ -551,17 +619,15 @@ fn save_as_intervals<'tcx>(
         })
         .visit_terminator(term, loc);
 
-        twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
-        debug_assert_eq!(twostep, two_step_loc(loc, Effect::Before));
-        MaybeLiveLocals.apply_early_terminator_effect(&mut state, term, loc);
-        MaybeLiveLocals.apply_primary_terminator_effect(&mut state, term, loc);
-        append_at(&mut values, &state, twostep);
+        state.current = state.current + 1;
+        debug_assert_eq!(state.current, two_step_loc(loc, Effect::Before));
+        MaybeLiveLocals::transfer_function(&mut state).visit_terminator(term, loc);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
             let loc = Location { block, statement_index };
-            twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
-            debug_assert_eq!(twostep, two_step_loc(loc, Effect::After));
-            append_at(&mut values, &state, twostep);
+            state.current = state.current + 1;
+            debug_assert_eq!(state.current, two_step_loc(loc, Effect::After));
+
             // Like terminators, ensure we have a non-zero live range even for dead stores.
             // Some rvalues interleave reads and writes, for instance `Rvalue::Aggregate`, see
             // https://github.com/rust-lang/rust/issues/146383. By precaution, treat statements
@@ -580,10 +646,10 @@ fn save_as_intervals<'tcx>(
                 if let Some(relevant) = relevant.shrink[place.local] {
                     match DefUse::for_place(place, ctxt) {
                         DefUse::Def | DefUse::PartialWrite => {
-                            values.insert(relevant, twostep);
+                            state.insert_single(relevant);
                         }
                         DefUse::Use if !is_simple_assignment => {
-                            values.insert(relevant, twostep);
+                            state.insert_single(relevant);
                         }
                         DefUse::Use | DefUse::NonUse => {}
                     }
@@ -591,15 +657,16 @@ fn save_as_intervals<'tcx>(
             })
             .visit_statement(stmt, loc);
 
-            twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
-            debug_assert_eq!(twostep, two_step_loc(loc, Effect::Before));
-            MaybeLiveLocals.apply_early_statement_effect(&mut state, stmt, loc);
-            MaybeLiveLocals.apply_primary_statement_effect(&mut state, stmt, loc);
             // ... but reads from operands are marked as live here so they do not conflict with
             // the all the writes we manually marked as live in the second half of the statement.
-            append_at(&mut values, &state, twostep);
+            state.current = TwoStepIndex::from_u32(state.current.as_u32() + 1);
+            debug_assert_eq!(state.current, two_step_loc(loc, Effect::Before));
+            MaybeLiveLocals::transfer_function(&mut state).visit_statement(stmt, loc);
         }
+
+        // Cleanup the current block for the next one.
+        state.end_block();
     }
 
-    values
+    state.values
 }

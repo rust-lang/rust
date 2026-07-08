@@ -103,7 +103,7 @@ use crate::sys::cvt;
 mod tests;
 
 #[unstable(feature = "stdio_swap", issue = "150667")]
-pub trait StdioExt: crate::sealed::Sealed {
+pub impl(self) trait StdioExt {
     /// Redirects the stdio file descriptor to point to the file description underpinning `fd`.
     ///
     /// Rust std::io write buffers (if any) are flushed, but other runtimes

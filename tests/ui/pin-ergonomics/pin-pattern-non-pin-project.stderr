@@ -1,0 +1,104 @@
+error: cannot project on type that is not `#[pin_v2]`
+  --> $DIR/pin-pattern-non-pin-project.rs:27:18
+   |
+LL |     let &pin mut NotPinProject(ref pin mut _x) = p;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/pin-pattern-non-pin-project.rs:15:1
+   |
+LL | struct NotPinProject<T>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | struct NotPinProject<T>(T);
+   |
+
+error: cannot project on type that is not `#[pin_v2]`
+  --> $DIR/pin-pattern-non-pin-project.rs:32:18
+   |
+LL |     let &pin mut NotPinProjectStruct { x: ref pin mut _x } = p;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/pin-pattern-non-pin-project.rs:17:1
+   |
+LL | struct NotPinProjectStruct<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | struct NotPinProjectStruct<T> {
+   |
+
+error: cannot project on type that is not `#[pin_v2]`
+  --> $DIR/pin-pattern-non-pin-project.rs:37:20
+   |
+LL |     let &pin const NotPinProject(ref pin const _x) = p;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/pin-pattern-non-pin-project.rs:15:1
+   |
+LL | struct NotPinProject<T>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | struct NotPinProject<T>(T);
+   |
+
+error: cannot project on type that is not `#[pin_v2]`
+  --> $DIR/pin-pattern-non-pin-project.rs:42:21
+   |
+LL |     if let &pin mut NotPinProjectEnum::Tuple(ref pin mut _x) = p {}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/pin-pattern-non-pin-project.rs:21:1
+   |
+LL | enum NotPinProjectEnum<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | enum NotPinProjectEnum<T> {
+   |
+
+error: cannot project on type that is not `#[pin_v2]`
+  --> $DIR/pin-pattern-non-pin-project.rs:47:21
+   |
+LL |     if let &pin mut NotPinProjectEnum::Struct { x: ref pin mut _x } = p {}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/pin-pattern-non-pin-project.rs:21:1
+   |
+LL | enum NotPinProjectEnum<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | enum NotPinProjectEnum<T> {
+   |
+
+error: cannot project on type that is not `#[pin_v2]`
+  --> $DIR/pin-pattern-non-pin-project.rs:57:18
+   |
+LL |     let &pin mut Thing(ref pin mut _pinned_option) = pinned_thing;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/pin-pattern-non-pin-project.rs:53:1
+   |
+LL | struct Thing<T>(T);
+   | ^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | struct Thing<T>(T);
+   |
+
+error: aborting due to 6 previous errors
+

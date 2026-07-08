@@ -5,7 +5,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::Range;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::{EMPTY, Sugg};
-use clippy_utils::{get_enclosing_block, is_integer_const, is_integer_literal_untyped};
+use clippy_utils::{get_enclosing_block, is_integer_literal, is_integer_literal_untyped};
 use rustc_ast::{Label, RangeLimits};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr};
@@ -44,7 +44,7 @@ pub(super) fn check<'tcx>(
             continue;
         }
 
-        let is_zero = is_integer_const(cx, initializer, 0);
+        let is_zero = is_integer_literal(initializer, 0);
         let mut applicability = Applicability::MaybeIncorrect;
         let span = expr.span.with_hi(arg.span.hi());
         let loop_label = label.map_or(String::new(), |l| format!("{}: ", l.ident.name));
@@ -88,7 +88,7 @@ pub(super) fn check<'tcx>(
                 if pat_snippet == "_"
                     && let Some(range) = Range::hir(cx, arg)
                     && range.limits == RangeLimits::HalfOpen
-                    && range.start.is_some_and(|start| is_integer_const(cx, start, 0))
+                    && range.start.is_some_and(|start| is_integer_literal(start, 0))
                     && let Some(end) = range.end
                 {
                     let end = snippet_with_applicability(cx, end.span, "..", &mut applicability);

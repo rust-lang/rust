@@ -13,7 +13,7 @@ use std::hash::Hash;
 const REGION_START: &str = "// region:";
 const REGION_END: &str = "// endregion";
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FoldKind {
     Comment,
     Imports,
@@ -32,8 +32,8 @@ pub enum FoldKind {
     TypeAliases,
     ExternCrates,
     // endregion: item runs
-    Stmt(ast::Stmt),
-    TailExpr(ast::Expr),
+    Stmt,
+    TailExpr,
 }
 
 #[derive(Debug)]
@@ -68,7 +68,7 @@ pub(crate) fn folding_ranges(file: &SourceFile, add_collapsed_text: bool) -> Vec
 
     for element in file.syntax().descendants_with_tokens() {
         // Fold items that span multiple lines
-        if let Some(kind) = fold_kind(element.clone()) {
+        if let Some((kind, collapsed_text)) = fold_kind(element.clone(), add_collapsed_text) {
             let is_multiline = match &element {
                 NodeOrToken::Node(node) => node.text().contains_char('\n'),
                 NodeOrToken::Token(token) => token.text().contains('\n'),
@@ -100,7 +100,6 @@ pub(crate) fn folding_ranges(file: &SourceFile, add_collapsed_text: bool) -> Vec
                     }
                 }
 
-                let collapsed_text = if add_collapsed_text { collapsed_text(&kind) } else { None };
                 let fold = Fold::new(element.text_range(), kind).with_text(collapsed_text);
                 res.push(fold);
                 continue;
@@ -183,55 +182,10 @@ pub(crate) fn folding_ranges(file: &SourceFile, add_collapsed_text: bool) -> Vec
     res
 }
 
-fn collapsed_text(kind: &FoldKind) -> Option<String> {
-    match kind {
-        FoldKind::TailExpr(expr) => collapse_expr(expr.clone()),
-        FoldKind::Stmt(stmt) => {
-            match stmt {
-                ast::Stmt::ExprStmt(expr_stmt) => {
-                    expr_stmt.expr().and_then(collapse_expr).map(|text| format!("{text};"))
-                }
-                ast::Stmt::LetStmt(let_stmt) => 'blk: {
-                    if let_stmt.let_else().is_some() {
-                        break 'blk None;
-                    }
-
-                    let Some(expr) = let_stmt.initializer() else {
-                        break 'blk None;
-                    };
-
-                    // If the `let` statement spans multiple lines, we do not collapse it.
-                    // We use the `eq_token` to check whether the `let` statement is a single line,
-                    // as the formatter may place the initializer on a new line for better readability.
-                    //
-                    // Example:
-                    // ```rust
-                    // let complex_pat =
-                    //     complex_expr;
-                    // ```
-                    //
-                    // In this case, we should generate the collapsed text.
-                    let Some(eq_token) = let_stmt.eq_token() else {
-                        break 'blk None;
-                    };
-                    let eq_token_offset =
-                        eq_token.text_range().end() - let_stmt.syntax().text_range().start();
-                    let text_until_eq_token = let_stmt.syntax().text().slice(..eq_token_offset);
-                    if text_until_eq_token.contains_char('\n') {
-                        break 'blk None;
-                    }
-
-                    collapse_expr(expr).map(|text| format!("{text_until_eq_token} {text};"))
-                }
-                // handling `items` in external matches.
-                ast::Stmt::Item(_) => None,
-            }
-        }
-        _ => None,
-    }
-}
-
-fn fold_kind(element: SyntaxElement) -> Option<FoldKind> {
+fn fold_kind(
+    element: SyntaxElement,
+    add_collapsed_text: bool,
+) -> Option<(FoldKind, Option<String>)> {
     // handle tail_expr
     if let Some(node) = element.as_node()
         // tail_expr -> stmt_list -> block
@@ -239,7 +193,10 @@ fn fold_kind(element: SyntaxElement) -> Option<FoldKind> {
         && let Some(tail_expr) = block.tail_expr()
         && tail_expr.syntax() == node
     {
-        return Some(FoldKind::TailExpr(tail_expr));
+        return Some((
+            FoldKind::TailExpr,
+            add_collapsed_text.then(|| collapse_expr(tail_expr)).flatten(),
+        ));
     }
 
     match element.kind() {
@@ -260,14 +217,63 @@ fn fold_kind(element: SyntaxElement) -> Option<FoldKind> {
         | MATCH_ARM_LIST
         | VARIANT_LIST
         | TOKEN_TREE => Some(FoldKind::Block),
-        EXPR_STMT | LET_STMT => Some(FoldKind::Stmt(ast::Stmt::cast(element.as_node()?.clone())?)),
+        EXPR_STMT | LET_STMT => {
+            return Some((
+                FoldKind::Stmt,
+                add_collapsed_text
+                    .then(|| collapsed_stmt(ast::Stmt::cast(element.as_node()?.clone())?))
+                    .flatten(),
+            ));
+        }
         _ => None,
+    }
+    .zip(Some(None))
+}
+
+fn collapsed_stmt(stmt: ast::Stmt) -> Option<String> {
+    match stmt {
+        ast::Stmt::ExprStmt(expr_stmt) => {
+            expr_stmt.expr().and_then(collapse_expr).map(|text| format!("{text};"))
+        }
+        ast::Stmt::LetStmt(let_stmt) => 'blk: {
+            if let_stmt.let_else().is_some() {
+                break 'blk None;
+            }
+
+            let Some(expr) = let_stmt.initializer() else {
+                break 'blk None;
+            };
+
+            // If the `let` statement spans multiple lines, we do not collapse it.
+            // We use the `eq_token` to check whether the `let` statement is a single line,
+            // as the formatter may place the initializer on a new line for better readability.
+            //
+            // Example:
+            // ```rust
+            // let complex_pat =
+            //     complex_expr;
+            // ```
+            //
+            // In this case, we should generate the collapsed text.
+            let Some(eq_token) = let_stmt.eq_token() else {
+                break 'blk None;
+            };
+            let eq_token_offset =
+                eq_token.text_range().end() - let_stmt.syntax().text_range().start();
+            let text_until_eq_token = let_stmt.syntax().text().slice(..eq_token_offset);
+            if text_until_eq_token.contains_char('\n') {
+                break 'blk None;
+            }
+
+            collapse_expr(expr).map(|text| format!("{text_until_eq_token} {text};"))
+        }
+        // handling `items` in external matches.
+        ast::Stmt::Item(_) => None,
     }
 }
 
-const COLLAPSE_EXPR_MAX_LEN: usize = 100;
-
 fn collapse_expr(expr: ast::Expr) -> Option<String> {
+    const COLLAPSE_EXPR_MAX_LEN: usize = 100;
     let mut text = String::with_capacity(COLLAPSE_EXPR_MAX_LEN * 2);
 
     let mut preorder = expr.syntax().preorder_with_tokens();
@@ -435,7 +441,7 @@ fn contiguous_range_for_comment(
 }
 
 fn fold_range_for_multiline_match_arm(match_arm: ast::MatchArm) -> Option<TextRange> {
-    if fold_kind(match_arm.expr()?.syntax().syntax_element()).is_some() {
+    if fold_kind(match_arm.expr()?.syntax().syntax_element(), false).is_some() {
         None
     } else if match_arm.expr()?.syntax().text().contains_char('\n') {
         Some(match_arm.expr()?.syntax().text_range())
@@ -507,8 +513,8 @@ mod tests {
                 FoldKind::MatchArm => "matcharm",
                 FoldKind::Function => "function",
                 FoldKind::ExternCrates => "externcrates",
-                FoldKind::Stmt(_) => "stmt",
-                FoldKind::TailExpr(_) => "tailexpr",
+                FoldKind::Stmt => "stmt",
+                FoldKind::TailExpr => "tailexpr",
             };
             assert_eq!(kind, &attr.unwrap());
             if enable_collapsed_text {

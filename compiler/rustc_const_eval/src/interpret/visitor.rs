@@ -41,6 +41,11 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
     fn visit_box(&mut self, _box_ty: Ty<'tcx>, _v: &Self::V) -> InterpResult<'tcx> {
         interp_ok(())
     }
+    /// Visits the given type after it has been found to have no variants.
+    #[inline(always)]
+    fn visit_variantless(&mut self, _v: &Self::V) -> InterpResult<'tcx> {
+        interp_ok(())
+    }
 
     /// Called each time we recurse down to a field of a "product-like" aggregate
     /// (structs, tuples, arrays and the like, but not enums), passing in old (outer)
@@ -193,7 +198,11 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 self.visit_variant(v, idx, &inner)?;
             }
             // For single-variant layouts, we already did everything there is to do.
-            Variants::Single { .. } | Variants::Empty => {}
+            Variants::Single { .. } => {}
+            // Non-variant layouts need special treatment by the visitor.
+            Variants::Empty => {
+                self.visit_variantless(v)?;
+            }
         }
 
         interp_ok(())

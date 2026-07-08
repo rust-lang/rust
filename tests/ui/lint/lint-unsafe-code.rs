@@ -1,6 +1,13 @@
+//@ only-x86_64 (for the force_target_feature tests)
 #![allow(unused_unsafe)]
 #![allow(dead_code)]
 #![deny(unsafe_code)]
+#![feature(naked_functions_rustic_abi)]
+#![feature(ffi_pure)]
+#![feature(ffi_const)]
+#![feature(effective_target_features)]
+
+use std::arch::naked_asm;
 
 struct Bar;
 struct Bar2;
@@ -18,18 +25,18 @@ mod allowed_unsafe {
 
 macro_rules! unsafe_in_macro {
     () => {{
-        #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` function
-        #[no_mangle] static FOO: u32 = 5; //~ ERROR: declaration of a `no_mangle` static
+        #[no_mangle] fn foo() {} //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
+        #[no_mangle] static FOO: u32 = 5; //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
         #[export_name = "bar"] fn bar() {}
-        //~^ ERROR: declaration of a function with `export_name`
+        //~^ ERROR: usage of the unsafe `#[export_name]` attribute
         #[export_name = "BAR"] static BAR: u32 = 5;
-        //~^ ERROR: declaration of a static with `export_name`
+        //~^ ERROR: usage of the unsafe `#[export_name]` attribute
         unsafe {} //~ ERROR: usage of an `unsafe` block
     }}
 }
 
-#[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` function
-#[no_mangle] static FOO: u32 = 5; //~ ERROR: declaration of a `no_mangle` static
+#[no_mangle] fn foo() {} //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
+#[no_mangle] static FOO: u32 = 5; //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
 
 trait AssocFnTrait {
     fn foo();
@@ -38,27 +45,27 @@ trait AssocFnTrait {
 struct AssocFnFoo;
 
 impl AssocFnFoo {
-    #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` method
+    #[no_mangle] fn foo() {} //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
 }
 
 impl AssocFnTrait for AssocFnFoo {
-    #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` method
+    #[no_mangle] fn foo() {} //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
 }
 
-#[export_name = "bar"] fn bar() {} //~ ERROR: declaration of a function with `export_name`
-#[export_name = "BAR"] static BAR: u32 = 5; //~ ERROR: declaration of a static with `export_name`
+#[export_name = "bar"] fn bar() {} //~ ERROR: usage of the unsafe `#[export_name]` attribute
+#[export_name = "BAR"] static BAR: u32 = 5; //~ ERROR: usage of the unsafe `#[export_name]` attribute
 
-#[link_section = "__TEXT,__text"] fn uwu() {} //~ ERROR: declaration of a function with `link_section`
-#[link_section = "__TEXT,__text"] static UWU: u32 = 5; //~ ERROR: declaration of a static with `link_section`
+#[link_section = "__TEXT,__text"] fn uwu() {} //~ ERROR: usage of the unsafe `#[link_section]` attribute
+#[link_section = "__TEXT,__text"] static UWU: u32 = 5; //~ ERROR: usage of the unsafe `#[link_section]` attribute
 
 struct AssocFnBar;
 
 impl AssocFnBar {
-    #[export_name = "bar"] fn bar() {} //~ ERROR: declaration of a method with `export_name`
+    #[export_name = "bar"] fn bar() {} //~ ERROR: usage of the unsafe `#[export_name]` attribute
 }
 
 impl AssocFnTrait for AssocFnBar {
-    #[export_name = "bar"] fn foo() {} //~ ERROR: declaration of a method with `export_name`
+    #[export_name = "bar"] fn foo() {} //~ ERROR: usage of the unsafe `#[export_name]` attribute
 }
 
 unsafe fn baz() {} //~ ERROR: declaration of an `unsafe` function
@@ -127,4 +134,51 @@ fn main() {
     unsafe {} //~ ERROR: usage of an `unsafe` block
 
     unsafe_in_macro!()
+}
+
+#[unsafe(naked)] fn naked1() { naked_asm!("halt") }
+//~^ ERROR usage of the unsafe `#[naked]` attribute
+
+struct Naked;
+impl Naked {
+    #[unsafe(naked)] fn naked2() { naked_asm!("halt") }
+    //~^ ERROR usage of the unsafe `#[naked]` attribute
+}
+
+trait NakedTrait {
+    #[unsafe(naked)] fn naked3() { naked_asm!("halt") }
+    //~^ ERROR usage of the unsafe `#[naked]` attribute
+    fn naked4();
+}
+impl NakedTrait for Naked {
+    #[unsafe(naked)] fn naked4() { naked_asm!("halt") }
+    //~^ ERROR usage of the unsafe `#[naked]` attribute
+}
+
+extern "C" {
+    #[unsafe(ffi_pure)]
+    //~^ ERROR usage of the unsafe `#[ffi_pure]` attribute
+    fn ffi_pure();
+
+    #[unsafe(ffi_const)]
+    //~^ ERROR usage of the unsafe `#[ffi_const]` attribute
+    fn ffi_const();
+}
+
+#[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
+//~^ ERROR usage of the unsafe `#[force_target_feature]` attribute
+
+struct ForceTargetFeature;
+impl ForceTargetFeature {
+    #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
+    //~^ ERROR usage of the unsafe `#[force_target_feature]` attribute
+}
+
+trait ForceTargetFeatureTrait {
+    #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
+    //~^ ERROR usage of the unsafe `#[force_target_feature]` attribute
+}
+impl ForceTargetFeatureTrait for ForceTargetFeature {
+    #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
+    //~^ ERROR usage of the unsafe `#[force_target_feature]` attribute
 }

@@ -3,11 +3,11 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use crate::shims::unix::android::thread::prctl;
 use crate::shims::unix::env::EvalContextExt as _;
 use crate::shims::unix::linux_like::epoll::EvalContextExt as _;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use crate::shims::unix::linux_like::syscall::syscall;
+use crate::shims::unix::linux_like::thread::prctl;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -27,18 +27,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         match link_name.as_str() {
             // File related shims
-            "stat" => {
-                // FIXME: This does not have a direct test (#3179).
-                let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.stat(path, buf)?;
-                this.write_scalar(result, dest)?;
-            }
-            "lstat" => {
-                // FIXME: This does not have a direct test (#3179).
-                let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.lstat(path, buf)?;
-                this.write_scalar(result, dest)?;
-            }
             "pread64" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, count, offset] = this.check_shim_sig(

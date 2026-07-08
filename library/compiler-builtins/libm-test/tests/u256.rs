@@ -2,6 +2,7 @@
 //! routines, so this only does a few million fuzz iterations against GMP.
 
 #![cfg(feature = "build-mpfr")]
+#![allow(unstable_name_collisions)] // for the integer_widen_truncate feature
 
 use std::sync::LazyLock;
 

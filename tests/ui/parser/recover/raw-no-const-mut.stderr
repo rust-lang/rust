@@ -23,19 +23,15 @@ LL |     [&raw const 1, &raw const 2]
    |                         +++++
 LL |     [&raw const 1, &raw mut 2]
    |                         +++
-help: missing `,`
-   |
-LL |     [&raw const 1, &raw, 2]
-   |                        +
 
 error: expected `{`, found `z`
-  --> $DIR/raw-no-const-mut.rs:14:18
+  --> $DIR/raw-no-const-mut.rs:12:18
    |
 LL |     if x == &raw z {}
    |                  ^ expected `{`
    |
 note: the `if` expression is missing a block after this condition
-  --> $DIR/raw-no-const-mut.rs:14:8
+  --> $DIR/raw-no-const-mut.rs:12:8
    |
 LL |     if x == &raw z {}
    |        ^^^^^^^^^
@@ -47,7 +43,7 @@ LL |     if x == &raw mut z {}
    |                  +++
 
 error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `const`, `mut`, `{`, or an operator, found `2`
-  --> $DIR/raw-no-const-mut.rs:19:12
+  --> $DIR/raw-no-const-mut.rs:17:12
    |
 LL |     f(&raw 2);
    |            ^ expected one of 10 possible tokens
@@ -58,13 +54,9 @@ LL |     f(&raw const 2);
    |            +++++
 LL |     f(&raw mut 2);
    |            +++
-help: missing `,`
-   |
-LL |     f(&raw, 2);
-   |           +
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `const`, `mut`, `{`, `}`, or an operator, found `1`
-  --> $DIR/raw-no-const-mut.rs:27:14
+  --> $DIR/raw-no-const-mut.rs:24:14
    |
 LL |     x = &raw 1;
    |              ^ expected one of 10 possible tokens
@@ -76,26 +68,8 @@ LL |     x = &raw const 1;
 LL |     x = &raw mut 1;
    |              +++
 
-error[E0425]: cannot find value `raw` in this scope
-  --> $DIR/raw-no-const-mut.rs:7:21
-   |
-LL |     [&raw const 1, &raw 2]
-   |                     ^^^ not found in this scope
-
-error[E0425]: cannot find value `raw` in this scope
-  --> $DIR/raw-no-const-mut.rs:19:8
-   |
-LL |     f(&raw 2);
-   |        ^^^ not found in this scope
-
-error[E0745]: cannot take address of a temporary
-  --> $DIR/raw-no-const-mut.rs:7:17
-   |
-LL |     [&raw const 1, &raw 2]
-   |                 ^ temporary value
-
 error[E0425]: cannot find function `f` in this scope
-  --> $DIR/raw-no-const-mut.rs:19:5
+  --> $DIR/raw-no-const-mut.rs:17:5
    |
 LL | fn a() {
    | ------ similarly named function `a` defined here
@@ -109,7 +83,6 @@ LL -     f(&raw 2);
 LL +     a(&raw 2);
    |
 
-error: aborting due to 9 previous errors
+error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0425, E0745.
-For more information about an error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0425`.

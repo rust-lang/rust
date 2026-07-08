@@ -2,7 +2,7 @@
 
 #![feature(repr_simd)]
 
-#[repr(simd)] //~ ERROR attribute should be applied to a struct
+#[repr(simd)] //~ ERROR attribute cannot be used on
 enum Aligned {
     Zero = 0,
     One = 1,

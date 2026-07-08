@@ -145,26 +145,21 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
             let src = self.body.basic_blocks.get(location.block).unwrap();
             match (src.is_cleanup, bb.is_cleanup, edge_kind) {
                 // Non-cleanup blocks can jump to non-cleanup blocks along non-unwind edges
-                (false, false, EdgeKind::Normal)
+                (false, false, EdgeKind::Normal) => {}
                 // Cleanup blocks can jump to cleanup blocks along non-unwind edges
-                | (true, true, EdgeKind::Normal) => {}
+                (true, true, EdgeKind::Normal) => {}
                 // Non-cleanup blocks can jump to cleanup blocks along unwind edges
                 (false, true, EdgeKind::Unwind) => {
                     self.unwind_edge_count += 1;
                 }
                 // All other jumps are invalid
-                _ => {
-                    self.fail(
-                        location,
-                        format!(
-                            "{:?} edge to {:?} violates unwind invariants (cleanup {:?} -> {:?})",
-                            edge_kind,
-                            bb,
-                            src.is_cleanup,
-                            bb.is_cleanup,
-                        )
-                    )
-                }
+                _ => self.fail(
+                    location,
+                    format!(
+                        "{:?} edge to {:?} violates unwind invariants (cleanup {:?} -> {:?})",
+                        edge_kind, bb, src.is_cleanup, bb.is_cleanup,
+                    ),
+                ),
             }
         } else {
             self.fail(location, format!("encountered jump to invalid basic block {bb:?}"))
@@ -372,6 +367,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_unwind_edge(location, *unwind);
                 if let Some(drop) = drop {
                     self.check_edge(location, *drop, EdgeKind::Normal);
+                    if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                        self.fail(
+                            location,
+                            "`async drop` should have been removed after drop elaboration",
+                        );
+                    }
                 }
             }
             TerminatorKind::Call { func, args, .. }
@@ -678,7 +679,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+                    &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                         self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().kind()
                     }
                     kind => kind,
@@ -782,7 +783,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 return;
                             };
 
-                            ty::EarlyBinder::bind(f_ty.ty)
+                            ty::EarlyBinder::bind(self.tcx, f_ty.ty)
                                 .instantiate(self.tcx, args)
                                 .skip_norm_wip()
                         } else {
@@ -1550,7 +1551,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     pty.kind(),
                     ty::Adt(..)
                         | ty::Coroutine(..)
-                        | ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
+                        | ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })
                 ) {
                     self.fail(
                         location,

@@ -23,7 +23,7 @@ rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
 smallvec = { version = "1.8.1", default-features = false, features = [
     "const_generics",
 ] }
-thin-vec = "0.2.15"
+thin-vec = "0.2.18"
 tracing = "0.1"
 # tidy-alphabetical-end
 

@@ -21,7 +21,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 
 use crate::LateContext;
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
-use crate::errors::{OverruledAttributeSub, RequestedLevel};
+use crate::diagnostics::{OverruledAttributeSub, RequestedLevel};
 use crate::lifetime_syntax::LifetimeSyntaxCategories;
 
 // array_into_iter.rs
@@ -160,46 +160,6 @@ pub(crate) enum BuiltinUnsafe {
     UnsafeTrait,
     #[diag("implementation of an `unsafe` trait")]
     UnsafeImpl,
-    #[diag("declaration of a `no_mangle` function")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    NoMangleFn,
-    #[diag("declaration of a function with `export_name`")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    ExportNameFn,
-    #[diag("declaration of a function with `link_section`")]
-    #[note(
-        "the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them"
-    )]
-    LinkSectionFn,
-    #[diag("declaration of a `no_mangle` static")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    NoMangleStatic,
-    #[diag("declaration of a static with `export_name`")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    ExportNameStatic,
-    #[diag("declaration of a static with `link_section`")]
-    #[note(
-        "the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them"
-    )]
-    LinkSectionStatic,
-    #[diag("declaration of a `no_mangle` method")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    NoMangleMethod,
-    #[diag("declaration of a method with `export_name`")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    ExportNameMethod,
     #[diag("declaration of an `unsafe` function")]
     DeclUnsafeFn,
     #[diag("declaration of an `unsafe` method")]
@@ -654,6 +614,33 @@ pub(crate) enum BuiltinSpecialModuleNameUsed {
     Main,
 }
 
+// c_void_return.rs
+#[derive(Diagnostic)]
+#[diag("`c_void` should not be used as a return type")]
+#[help("returning `()` in Rust is equivalent to returning `void` in C")]
+pub(crate) struct CVoidReturn {
+    #[suggestion(
+        "remove the return type to implicitly return `()`",
+        code = "",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggestion: Span,
+}
+
+// c_void_return.rs
+#[derive(Diagnostic)]
+#[diag("declarations returning `c_void` are not compatible with C functions returning `void`")]
+#[help("returning `()` in Rust is equivalent to returning `void` in C")]
+#[note("`c_void` is only used through raw pointers for compatibility with `void` pointers")]
+pub(crate) struct ExternCVoidReturn {
+    #[suggestion(
+        "remove the return type to implicitly return `()`",
+        code = "",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggestion: Span,
+}
+
 // deref_into_dyn_supertrait.rs
 #[derive(Diagnostic)]
 #[diag("this `Deref` implementation is covered by an implicit supertrait coercion")]
@@ -846,6 +833,45 @@ pub(crate) enum UseLetUnderscoreIgnoreSuggestion {
         #[suggestion_part(code = "")]
         end_span: Span,
     },
+}
+
+// runtime_symbols.rs
+#[derive(Diagnostic)]
+pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
+    #[diag(
+        "invalid definition of the runtime `{$symbol_name}` symbol used by the standard library"
+    )]
+    #[note(
+        "expected `{$expected_fn_sig}`
+    found    `{$found_fn_sig}`"
+    )]
+    #[help(
+        "either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = \"{$symbol_name}\")]`, or `#[link_name = \"{$symbol_name}\"]`"
+    )]
+    FnDefInvalid { symbol_name: String, expected_fn_sig: Ty<'tcx>, found_fn_sig: Ty<'tcx> },
+    #[diag(
+        "suspicious definition of the runtime `{$symbol_name}` symbol used by the standard library"
+    )]
+    #[note(
+        "expected `{$expected_fn_sig}`
+    found    `{$found_fn_sig}`"
+    )]
+    #[help(
+        "either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = \"{$symbol_name}\")]`, or `#[link_name = \"{$symbol_name}\"]`"
+    )]
+    #[help("allow this lint if the signature is compatible")]
+    FnDefSuspicious { symbol_name: String, expected_fn_sig: Ty<'tcx>, found_fn_sig: Ty<'tcx> },
+    #[diag(
+        "invalid definition of the runtime `{$symbol_name}` symbol used by the standard library"
+    )]
+    #[note(
+        "expected `{$expected_fn_sig}`
+    found    `static {$symbol_name}: {$static_ty}`"
+    )]
+    #[help(
+        "either fix the signature or remove any attributes `#[unsafe(no_mangle)]` or `#[unsafe(export_name = \"{$symbol_name}\")]`"
+    )]
+    Static { symbol_name: String, static_ty: Ty<'tcx>, expected_fn_sig: Ty<'tcx> },
 }
 
 // drop_forget_useless.rs
@@ -1562,17 +1588,16 @@ pub(crate) enum NonCamelCaseTypeSub {
 pub(crate) struct NonSnakeCaseDiag<'a> {
     pub sort: &'a str,
     pub name: &'a str,
-    pub sc: String,
     #[subdiagnostic]
     pub sub: NonSnakeCaseDiagSub,
 }
 
 pub(crate) enum NonSnakeCaseDiagSub {
     Label { span: Span },
-    Help,
+    Help { sc: String },
     RenameOrConvertSuggestion { span: Span, suggestion: Ident },
     ConvertSuggestion { span: Span, suggestion: String },
-    SuggestionAndNote { span: Span },
+    SuggestionAndNote { sc: String, span: Span },
 }
 
 impl Subdiagnostic for NonSnakeCaseDiagSub {
@@ -1581,7 +1606,8 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
             NonSnakeCaseDiagSub::Label { span } => {
                 diag.span_label(span, msg!("should have a snake_case name"));
             }
-            NonSnakeCaseDiagSub::Help => {
+            NonSnakeCaseDiagSub::Help { sc } => {
+                diag.arg("sc", sc);
                 diag.help(msg!("convert the identifier to snake case: `{$sc}`"));
             }
             NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion } => {
@@ -1600,7 +1626,8 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
                     Applicability::MaybeIncorrect,
                 );
             }
-            NonSnakeCaseDiagSub::SuggestionAndNote { span } => {
+            NonSnakeCaseDiagSub::SuggestionAndNote { sc, span } => {
+                diag.arg("sc", sc);
                 diag.note(msg!("`{$sc}` cannot be used as a raw identifier"));
                 diag.span_suggestion(
                     span,
@@ -2669,6 +2696,12 @@ pub(crate) struct RefOfMutStatic<'a> {
         "mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives"
     )]
     pub mut_note: bool,
+    #[help(
+        "use a type that relies on \"interior mutability\" instead; to read more on this, visit <https://doc.rust-lang.org/reference/interior-mutability.html>"
+    )]
+    pub interior_mutability_help: bool,
+    #[subdiagnostic]
+    pub interior_mutability_sugg: Option<StaticMutRefsInteriorMutabilitySugg>,
 }
 
 #[derive(Subdiagnostic)]
@@ -2691,6 +2724,18 @@ pub(crate) enum MutRefSugg {
         #[suggestion_part(code = "&raw mut ")]
         span: Span,
     },
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "this type already provides \"interior mutability\", so its binding doesn't need to be declared as mutable",
+    style = "verbose",
+    applicability = "maybe-incorrect",
+    code = ""
+)]
+pub(crate) struct StaticMutRefsInteriorMutabilitySugg {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -2914,3 +2959,83 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;
+
+#[derive(Diagnostic)]
+#[diag("cast from `{$expr_ty}` to `{$cast_ty}` implicitly relies on exposed provenance")]
+#[help(
+    "if conforming to strict provenance is not possible, use `std::ptr::with_exposed_provenance()`"
+)]
+#[note("for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>")]
+pub(crate) struct ImplicitProvenanceCastsInt2Ptr<'tcx> {
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub sugg: Option<Int2PtrSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "use `.with_addr()` to adjust the address of a valid pointer in the same allocation",
+    applicability = "has-placeholders"
+)]
+pub(crate) struct Int2PtrSuggestion {
+    #[suggestion_part(code = "(...).with_addr(")]
+    pub lo: Span,
+    #[suggestion_part(code = ")")]
+    pub hi: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("cast from `{$cast_from_ty}` to `{$cast_to_ty}` implicitly exposes pointer provenance")]
+#[help("if conforming to strict provenance is not possible, use `.expose_provenance()`")]
+#[note("for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>")]
+pub(crate) struct ImplicitProvenanceCastsPtr2Int<'tcx> {
+    pub cast_from_ty: Ty<'tcx>,
+    pub cast_to_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub sugg: Option<Ptr2IntSuggestion<'tcx>>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum Ptr2IntSuggestion<'tcx> {
+    #[multipart_suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        applicability = "maybe-incorrect"
+    )]
+    NeedsParensCast {
+        #[suggestion_part(code = "(")]
+        expr_span: Span,
+        #[suggestion_part(code = ").addr() as {cast_to_ty}")]
+        cast_span: Span,
+        cast_to_ty: Ty<'tcx>,
+    },
+    #[multipart_suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        applicability = "maybe-incorrect"
+    )]
+    NeedsParens {
+        #[suggestion_part(code = "(")]
+        expr_span: Span,
+        #[suggestion_part(code = ").addr()")]
+        cast_span: Span,
+    },
+    #[suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        code = ".addr() as {cast_to_ty}",
+        applicability = "maybe-incorrect"
+    )]
+    NeedsCast {
+        #[primary_span]
+        cast_span: Span,
+        cast_to_ty: Ty<'tcx>,
+    },
+    #[suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        code = ".addr()",
+        applicability = "maybe-incorrect"
+    )]
+    Other {
+        #[primary_span]
+        cast_span: Span,
+    },
+}

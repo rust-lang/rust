@@ -22,16 +22,16 @@
 
 //@ lldb-command:run
 //@ lldb-command:v simple
-//@ lldb-check:[...] { x = 10 y = 20 }
+//@ lldb-check:[...] {x:10, y:20}
 
 //@ lldb-command:v noDestructor
-//@ lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
+//@ lldb-check:[...] {a:{x:10, y:20}, guard:-1}
 
 //@ lldb-command:v withDestructor
-//@ lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
+//@ lldb-check:[...] {a:{x:10, y:20}, guard:-1}
 
 //@ lldb-command:v nested
-//@ lldb-check:[...] { a = { a = { x = 7890 y = 9870 } } }
+//@ lldb-check:[...] {a:{a:{x:7890, y:9870}}}
 
 #![allow(unused_variables)]
 

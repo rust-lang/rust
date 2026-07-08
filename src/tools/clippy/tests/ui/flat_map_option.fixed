@@ -1,5 +1,4 @@
 #![warn(clippy::flat_map_option)]
-#![allow(clippy::redundant_closure, clippy::unnecessary_filter_map)]
 
 fn main() {
     // yay

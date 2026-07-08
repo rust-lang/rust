@@ -14,7 +14,7 @@
 //~| NOTE: the `#[rustc_main]` attribute is an internal implementation detail that will never be stable
 //~| NOTE: the `#[rustc_main]` attribute is used internally to specify test entry point function
 #![repr()]
-//~^ ERROR: `repr` attribute cannot be used at crate level
+//~^ ERROR: attribute cannot be used
 //~| WARN unused attribute
 //~| NOTE empty list has no effect
 #![path = "3800"]
@@ -37,8 +37,6 @@
 #[inline]
 //~^ ERROR attribute cannot be used on
 mod inline {
-    //~^ NOTE the inner attribute doesn't annotate this item
-
     mod inner { #![inline] }
     //~^ ERROR attribute cannot be used on
 
@@ -121,50 +119,40 @@ mod export_name {
 }
 
 #[repr(C)]
-//~^ ERROR: attribute should be applied to a struct, enum, or union
+//~^ ERROR: attribute cannot be used on
 mod repr {
-//~^ NOTE not a struct, enum, or union
     mod inner { #![repr(C)] }
-    //~^ ERROR: attribute should be applied to a struct, enum, or union
-    //~| NOTE not a struct, enum, or union
+    //~^ ERROR: attribute cannot be used on
 
     #[repr(C)] fn f() { }
-    //~^ ERROR: attribute should be applied to a struct, enum, or union
-    //~| NOTE not a struct, enum, or union
+    //~^ ERROR: attribute cannot be used on
 
     struct S;
 
     #[repr(C)] type T = S;
-    //~^ ERROR: attribute should be applied to a struct, enum, or union
-    //~| NOTE not a struct, enum, or union
+    //~^ ERROR: attribute cannot be used on
 
     #[repr(C)] impl S { }
-    //~^ ERROR: attribute should be applied to a struct, enum, or union
-    //~| NOTE not a struct, enum, or union
+    //~^ ERROR: attribute cannot be used on
 }
 
 
 #[repr(Rust)]
-//~^ ERROR: attribute should be applied to a struct, enum, or union
+//~^ ERROR: attribute cannot be used on
 mod repr_rust {
-//~^ NOTE not a struct, enum, or union
     mod inner { #![repr(Rust)] }
-    //~^ ERROR: attribute should be applied to a struct, enum, or union
-    //~| NOTE not a struct, enum, or union
+    //~^ ERROR: attribute cannot be used on
 
     #[repr(Rust)] fn f() { }
-    //~^ ERROR: attribute should be applied to a struct, enum, or union
-    //~| NOTE not a struct, enum, or union
+    //~^ ERROR: attribute cannot be used on
 
     struct S;
 
     #[repr(Rust)] type T = S;
-    //~^ ERROR: attribute should be applied to a struct, enum, or union
-    //~| NOTE not a struct, enum, or union
+    //~^ ERROR: attribute cannot be used on
 
     #[repr(Rust)] impl S { }
-    //~^ ERROR: attribute should be applied to a struct, enum, or union
-    //~| NOTE not a struct, enum, or union
+    //~^ ERROR: attribute cannot be used on
 }
 
 fn main() {}

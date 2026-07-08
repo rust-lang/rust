@@ -1,7 +1,5 @@
 #![warn(clippy::inconsistent_struct_constructor)]
-#![allow(clippy::redundant_field_names)]
-#![allow(clippy::unnecessary_operation)]
-#![allow(clippy::no_effect)]
+#![allow(clippy::no_effect, clippy::redundant_field_names, clippy::unnecessary_operation)]
 
 #[derive(Default)]
 struct Foo {

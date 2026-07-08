@@ -9,6 +9,7 @@ fn main() {
 fn test() where
 #[repr()]
 //~^ ERROR unused attribute
+//~| ERROR attribute cannot be used on
 (): Sized {
 
 }

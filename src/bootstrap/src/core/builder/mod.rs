@@ -910,6 +910,8 @@ impl<'a> Builder<'a> {
                 test::CargoMiri,
                 test::Clippy,
                 test::CompiletestTest,
+                test::StdarchVerify,
+                test::IntrinsicTest,
                 test::CrateRunMakeSupport,
                 test::CrateBuildHelper,
                 test::RustdocJSStd,
@@ -1148,6 +1150,7 @@ impl<'a> Builder<'a> {
     /// compiler will run on, *not* the target it will build code for). Explicitly does not take
     /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
     /// since it ensures that they are valid (i.e., built and assembled).
+    #[track_caller]
     #[cfg_attr(
         feature = "tracing",
         instrument(
@@ -1181,6 +1184,7 @@ impl<'a> Builder<'a> {
     ///
     /// However, without this optimization, we would also build stage 2 rustc for **target1**,
     /// which is completely wasteful.
+    #[track_caller]
     pub fn compiler_for_std(&self, stage: u32) -> Compiler {
         if compile::Std::should_be_uplifted_from_stage_1(self, stage) {
             self.compiler(1, self.host_target)
@@ -1200,6 +1204,7 @@ impl<'a> Builder<'a> {
     /// sysroot.
     ///
     /// See `force_use_stage1` and `force_use_stage2` for documentation on what each argument is.
+    #[track_caller]
     #[cfg_attr(
         feature = "tracing",
         instrument(
@@ -1247,6 +1252,7 @@ impl<'a> Builder<'a> {
     /// Prefer using this method rather than manually invoking `Std::new`.
     ///
     /// Returns an optional build stamp, if libstd was indeed built.
+    #[track_caller]
     #[cfg_attr(
         feature = "tracing",
         instrument(
@@ -1295,17 +1301,20 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         }
     }
 
+    #[track_caller]
     pub fn sysroot(&self, compiler: Compiler) -> PathBuf {
         self.ensure(compile::Sysroot::new(compiler))
     }
 
     /// Returns the bindir for a compiler's sysroot.
+    #[track_caller]
     pub fn sysroot_target_bindir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
         self.ensure(Libdir { compiler, target }).join(target).join("bin")
     }
 
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
+    #[track_caller]
     pub fn sysroot_target_libdir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
         self.ensure(Libdir { compiler, target }).join(target).join("lib")
     }
@@ -1414,6 +1423,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// Returns a path to `Rustdoc` that "belongs" to the `target_compiler`.
     /// It can be either a stage0 rustdoc or a locally built rustdoc that *links* to
     /// `target_compiler`.
+    #[track_caller]
     pub fn rustdoc_for_compiler(&self, target_compiler: Compiler) -> PathBuf {
         self.ensure(tool::Rustdoc { target_compiler })
     }
@@ -1530,6 +1540,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// Ensure that a given step is built, returning its output. This will
     /// cache the step, so it is safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are built.
+    #[track_caller]
     pub fn ensure<S: Step>(&'a self, step: S) -> S::Output {
         {
             let mut stack = self.stack.borrow_mut();
@@ -1587,7 +1598,8 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
                     // in the step_name field.
                     "step",
                     step_name = pretty_step_name::<S>(),
-                    args = step_debug_args(&step)
+                    args = step_debug_args(&step),
+                    location = crate::utils::tracing::format_location(*std::panic::Location::caller())
                 );
                 span.entered()
             };

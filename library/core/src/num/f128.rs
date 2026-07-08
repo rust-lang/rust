@@ -33,6 +33,7 @@ pub mod consts {
     pub const TAU: f128 = 6.28318530717958647692528676655900576839433879875021164194989_f128;
 
     /// The golden ratio (φ)
+    #[doc(alias = "phi")]
     #[unstable(feature = "f128", issue = "116909")]
     pub const GOLDEN_RATIO: f128 =
         1.61803398874989484820458683436563811772030917980576286213545_f128;
@@ -977,7 +978,7 @@ impl f128 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     pub const fn midpoint(self, other: f128) -> f128 {
-        const HI: f128 = f128::MAX / 2.;
+        const HI: f128 = f128::MAX * 0.5;
 
         let (a, b) = (self, other);
         let abs_a = a.abs();
@@ -985,9 +986,9 @@ impl f128 {
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
-            (a + b) / 2.
+            (a + b) * 0.5
         } else {
-            (a / 2.) + (b / 2.)
+            (a * 0.5) + (b * 0.5)
         }
     }
 
@@ -1551,8 +1552,8 @@ impl f128 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[inline]
     pub const fn algebraic_add(self, rhs: f128) -> f128 {
         intrinsics::fadd_algebraic(self, rhs)
@@ -1562,8 +1563,8 @@ impl f128 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[inline]
     pub const fn algebraic_sub(self, rhs: f128) -> f128 {
         intrinsics::fsub_algebraic(self, rhs)
@@ -1573,8 +1574,8 @@ impl f128 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[inline]
     pub const fn algebraic_mul(self, rhs: f128) -> f128 {
         intrinsics::fmul_algebraic(self, rhs)
@@ -1584,8 +1585,8 @@ impl f128 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[inline]
     pub const fn algebraic_div(self, rhs: f128) -> f128 {
         intrinsics::fdiv_algebraic(self, rhs)
@@ -1595,8 +1596,8 @@ impl f128 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[inline]
     pub const fn algebraic_rem(self, rhs: f128) -> f128 {
         intrinsics::frem_algebraic(self, rhs)

@@ -1,5 +1,5 @@
 error: deref on an immutable reference
-  --> tests/ui/borrow_deref_ref_unfixable.rs:9:23
+  --> tests/ui/borrow_deref_ref_unfixable.rs:8:23
    |
 LL |         let x: &str = &*s;
    |                       ^^^

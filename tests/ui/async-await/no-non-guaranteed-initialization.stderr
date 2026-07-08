@@ -10,6 +10,8 @@ LL |     }
    |      - an `else` arm might be missing here, initializing `y`
 LL |     y
    |     ^ `y` used here but it is possibly-uninitialized
+   |
+   = note: when checking initialization, the compiler describes possible control-flow paths without evaluating whether branch conditions can actually have the values shown
 
 error: aborting due to 1 previous error
 

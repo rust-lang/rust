@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `s` which is behind a shared reference
-  --> $DIR/simple.rs:38:17
+  --> $DIR/simple.rs:58:17
    |
 LL |     let X(_t) = *s;
    |           --    ^^
@@ -13,7 +13,7 @@ LL +     let X(_t) = s;
    |
 
 error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
-  --> $DIR/simple.rs:41:30
+  --> $DIR/simple.rs:61:30
    |
 LL |     if let Either::One(_t) = *r { }
    |                        --    ^^
@@ -27,7 +27,7 @@ LL +     if let Either::One(_t) = r { }
    |
 
 error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
-  --> $DIR/simple.rs:44:33
+  --> $DIR/simple.rs:64:33
    |
 LL |     while let Either::One(_t) = *r { }
    |                           --    ^^
@@ -41,7 +41,7 @@ LL +     while let Either::One(_t) = r { }
    |
 
 error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
-  --> $DIR/simple.rs:47:11
+  --> $DIR/simple.rs:67:11
    |
 LL |     match *r {
    |           ^^
@@ -56,7 +56,7 @@ LL +     match r {
    |
 
 error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
-  --> $DIR/simple.rs:53:11
+  --> $DIR/simple.rs:73:11
    |
 LL |     match *r {
    |           ^^
@@ -71,7 +71,7 @@ LL +     match r {
    |
 
 error[E0507]: cannot move out of `sm` which is behind a mutable reference
-  --> $DIR/simple.rs:61:17
+  --> $DIR/simple.rs:81:17
    |
 LL |     let X(_t) = *sm;
    |           --    ^^^
@@ -85,7 +85,7 @@ LL +     let X(_t) = sm;
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:64:30
+  --> $DIR/simple.rs:84:30
    |
 LL |     if let Either::One(_t) = *rm { }
    |                        --    ^^^
@@ -99,7 +99,7 @@ LL +     if let Either::One(_t) = rm { }
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:67:33
+  --> $DIR/simple.rs:87:33
    |
 LL |     while let Either::One(_t) = *rm { }
    |                           --    ^^^
@@ -113,7 +113,7 @@ LL +     while let Either::One(_t) = rm { }
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:70:11
+  --> $DIR/simple.rs:90:11
    |
 LL |     match *rm {
    |           ^^^
@@ -128,7 +128,7 @@ LL +     match rm {
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:76:11
+  --> $DIR/simple.rs:96:11
    |
 LL |     match *rm {
    |           ^^^
@@ -143,7 +143,7 @@ LL +     match rm {
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:83:11
+  --> $DIR/simple.rs:103:11
    |
 LL |     match *rm {
    |           ^^^
@@ -158,7 +158,7 @@ LL +     match rm {
    |
 
 error[E0507]: cannot move out of index of `Vec<X>`
-  --> $DIR/simple.rs:91:17
+  --> $DIR/simple.rs:111:17
    |
 LL |     let X(_t) = vs[0];
    |           --    ^^^^^
@@ -171,7 +171,7 @@ LL |     let X(_t) = &vs[0];
    |                 +
 
 error[E0507]: cannot move out of index of `Vec<Either>`
-  --> $DIR/simple.rs:94:30
+  --> $DIR/simple.rs:114:30
    |
 LL |     if let Either::One(_t) = vr[0] { }
    |                        --    ^^^^^
@@ -184,7 +184,7 @@ LL |     if let Either::One(_t) = &vr[0] { }
    |                              +
 
 error[E0507]: cannot move out of index of `Vec<Either>`
-  --> $DIR/simple.rs:97:33
+  --> $DIR/simple.rs:117:33
    |
 LL |     while let Either::One(_t) = vr[0] { }
    |                           --    ^^^^^
@@ -197,7 +197,7 @@ LL |     while let Either::One(_t) = &vr[0] { }
    |                                 +
 
 error[E0507]: cannot move out of index of `Vec<Either>`
-  --> $DIR/simple.rs:100:11
+  --> $DIR/simple.rs:120:11
    |
 LL |     match vr[0] {
    |           ^^^^^
@@ -211,7 +211,7 @@ LL |     match &vr[0] {
    |           +
 
 error[E0507]: cannot move out of index of `Vec<Either>`
-  --> $DIR/simple.rs:106:11
+  --> $DIR/simple.rs:126:11
    |
 LL |     match vr[0] {
    |           ^^^^^
@@ -225,7 +225,7 @@ LL |     match &vr[0] {
    |           +
 
 error[E0507]: cannot move out of index of `Vec<X>`
-  --> $DIR/simple.rs:114:17
+  --> $DIR/simple.rs:134:17
    |
 LL |     let X(_t) = vsm[0];
    |           --    ^^^^^^
@@ -238,7 +238,7 @@ LL |     let X(_t) = &vsm[0];
    |                 +
 
 error[E0507]: cannot move out of index of `Vec<Either>`
-  --> $DIR/simple.rs:117:30
+  --> $DIR/simple.rs:137:30
    |
 LL |     if let Either::One(_t) = vrm[0] { }
    |                        --    ^^^^^^
@@ -251,7 +251,7 @@ LL |     if let Either::One(_t) = &vrm[0] { }
    |                              +
 
 error[E0507]: cannot move out of index of `Vec<Either>`
-  --> $DIR/simple.rs:120:33
+  --> $DIR/simple.rs:140:33
    |
 LL |     while let Either::One(_t) = vrm[0] { }
    |                           --    ^^^^^^
@@ -264,7 +264,7 @@ LL |     while let Either::One(_t) = &vrm[0] { }
    |                                 +
 
 error[E0507]: cannot move out of index of `Vec<Either>`
-  --> $DIR/simple.rs:123:11
+  --> $DIR/simple.rs:143:11
    |
 LL |     match vrm[0] {
    |           ^^^^^^
@@ -278,7 +278,7 @@ LL |     match &vrm[0] {
    |           +
 
 error[E0507]: cannot move out of index of `Vec<Either>`
-  --> $DIR/simple.rs:129:11
+  --> $DIR/simple.rs:149:11
    |
 LL |     match vrm[0] {
    |           ^^^^^^
@@ -292,7 +292,7 @@ LL |     match &vrm[0] {
    |           +
 
 error[E0507]: cannot move out of index of `Vec<Either>`
-  --> $DIR/simple.rs:136:11
+  --> $DIR/simple.rs:156:11
    |
 LL |     match vrm[0] {
    |           ^^^^^^
@@ -305,8 +305,24 @@ help: consider borrowing here
 LL |     match &vrm[0] {
    |           +
 
+error[E0507]: cannot move out of dereference of `Wrap<WrappedField>`
+  --> $DIR/simple.rs:165:27
+   |
+LL |     if let Some(mut _t) = (&wrapped_field).field { }
+   |                 ------    ^^^^^^^^^^^^^^^^^^^^^^
+   |                 |
+   |                 data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+
+error[E0508]: cannot move out of type `[Option<X>; 1]`, a non-copy array
+  --> $DIR/simple.rs:169:27
+   |
+LL |     if let Some(mut _t) = (&wrapped_index)[0] { }
+   |                 ------    ^^^^^^^^^^^^^^^^^^^ cannot move out of here
+   |                 |
+   |                 data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+
 error[E0507]: cannot move out of `s` which is behind a shared reference
-  --> $DIR/simple.rs:146:18
+  --> $DIR/simple.rs:174:18
    |
 LL |     let &X(_t) = s;
    |            --    ^
@@ -320,7 +336,7 @@ LL +     let X(_t) = s;
    |
 
 error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
-  --> $DIR/simple.rs:149:31
+  --> $DIR/simple.rs:177:31
    |
 LL |     if let &Either::One(_t) = r { }
    |                         --    ^
@@ -334,7 +350,7 @@ LL +     if let Either::One(_t) = r { }
    |
 
 error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
-  --> $DIR/simple.rs:152:34
+  --> $DIR/simple.rs:180:34
    |
 LL |     while let &Either::One(_t) = r { }
    |                            --    ^
@@ -348,7 +364,7 @@ LL +     while let Either::One(_t) = r { }
    |
 
 error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
-  --> $DIR/simple.rs:155:11
+  --> $DIR/simple.rs:183:11
    |
 LL |     match r {
    |           ^
@@ -363,7 +379,7 @@ LL +         Either::One(_t)
    |
 
 error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
-  --> $DIR/simple.rs:162:11
+  --> $DIR/simple.rs:190:11
    |
 LL |     match r {
    |           ^
@@ -378,7 +394,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
-  --> $DIR/simple.rs:168:11
+  --> $DIR/simple.rs:196:11
    |
 LL |     match r {
    |           ^
@@ -393,7 +409,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of `sm` which is behind a mutable reference
-  --> $DIR/simple.rs:178:22
+  --> $DIR/simple.rs:206:22
    |
 LL |     let &mut X(_t) = sm;
    |                --    ^^
@@ -407,7 +423,7 @@ LL +     let X(_t) = sm;
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:181:35
+  --> $DIR/simple.rs:209:35
    |
 LL |     if let &mut Either::One(_t) = rm { }
    |                             --    ^^
@@ -421,7 +437,7 @@ LL +     if let Either::One(_t) = rm { }
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:184:38
+  --> $DIR/simple.rs:212:38
    |
 LL |     while let &mut Either::One(_t) = rm { }
    |                                --    ^^
@@ -435,7 +451,7 @@ LL +     while let Either::One(_t) = rm { }
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:187:11
+  --> $DIR/simple.rs:215:11
    |
 LL |     match rm {
    |           ^^
@@ -459,7 +475,7 @@ LL +         Either::Two(_t) => (),
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:194:11
+  --> $DIR/simple.rs:222:11
    |
 LL |     match rm {
    |           ^^
@@ -474,7 +490,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:200:11
+  --> $DIR/simple.rs:228:11
    |
 LL |     match rm {
    |           ^^
@@ -489,7 +505,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
-  --> $DIR/simple.rs:206:11
+  --> $DIR/simple.rs:234:11
    |
 LL |     match rm {
    |           ^^
@@ -504,7 +520,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:220:21
+  --> $DIR/simple.rs:248:21
    |
 LL |     let (&X(_t),) = (&x.clone(),);
    |             --      ^^^^^^^^^^^^^
@@ -518,7 +534,7 @@ LL +     let (X(_t),) = (&x.clone(),);
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:223:34
+  --> $DIR/simple.rs:251:34
    |
 LL |     if let (&Either::One(_t),) = (&e.clone(),) { }
    |                          --      ^^^^^^^^^^^^^
@@ -532,7 +548,7 @@ LL +     if let (Either::One(_t),) = (&e.clone(),) { }
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:226:37
+  --> $DIR/simple.rs:254:37
    |
 LL |     while let (&Either::One(_t),) = (&e.clone(),) { }
    |                             --      ^^^^^^^^^^^^^
@@ -546,7 +562,7 @@ LL +     while let (Either::One(_t),) = (&e.clone(),) { }
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:229:11
+  --> $DIR/simple.rs:257:11
    |
 LL |     match (&e.clone(),) {
    |           ^^^^^^^^^^^^^
@@ -561,7 +577,7 @@ LL +         (Either::One(_t),)
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:239:25
+  --> $DIR/simple.rs:267:25
    |
 LL |     let (&mut X(_t),) = (&mut xm.clone(),);
    |                 --      ^^^^^^^^^^^^^^^^^^
@@ -575,7 +591,7 @@ LL +     let (X(_t),) = (&mut xm.clone(),);
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:242:38
+  --> $DIR/simple.rs:270:38
    |
 LL |     if let (&mut Either::One(_t),) = (&mut em.clone(),) { }
    |                              --      ^^^^^^^^^^^^^^^^^^
@@ -589,7 +605,7 @@ LL +     if let (Either::One(_t),) = (&mut em.clone(),) { }
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:245:41
+  --> $DIR/simple.rs:273:41
    |
 LL |     while let (&mut Either::One(_t),) = (&mut em.clone(),) { }
    |                                 --      ^^^^^^^^^^^^^^^^^^
@@ -603,7 +619,7 @@ LL +     while let (Either::One(_t),) = (&mut em.clone(),) { }
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:248:11
+  --> $DIR/simple.rs:276:11
    |
 LL |     match (&mut em.clone(),) {
    |           ^^^^^^^^^^^^^^^^^^
@@ -627,7 +643,7 @@ LL +         (Either::Two(_t),) => (),
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:261:18
+  --> $DIR/simple.rs:289:18
    |
 LL |     let &X(_t) = &x;
    |            --    ^^
@@ -641,7 +657,7 @@ LL +     let X(_t) = &x;
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:264:31
+  --> $DIR/simple.rs:292:31
    |
 LL |     if let &Either::One(_t) = &e { }
    |                         --    ^^
@@ -655,7 +671,7 @@ LL +     if let Either::One(_t) = &e { }
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:267:34
+  --> $DIR/simple.rs:295:34
    |
 LL |     while let &Either::One(_t) = &e { }
    |                            --    ^^
@@ -669,7 +685,7 @@ LL +     while let Either::One(_t) = &e { }
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:270:11
+  --> $DIR/simple.rs:298:11
    |
 LL |     match &e {
    |           ^^
@@ -684,7 +700,7 @@ LL +         Either::One(_t)
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:277:11
+  --> $DIR/simple.rs:305:11
    |
 LL |     match &e {
    |           ^^
@@ -699,7 +715,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:283:11
+  --> $DIR/simple.rs:311:11
    |
 LL |     match &e {
    |           ^^
@@ -714,7 +730,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:290:22
+  --> $DIR/simple.rs:318:22
    |
 LL |     let &mut X(_t) = &mut xm;
    |                --    ^^^^^^^
@@ -728,7 +744,7 @@ LL +     let X(_t) = &mut xm;
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:293:35
+  --> $DIR/simple.rs:321:35
    |
 LL |     if let &mut Either::One(_t) = &mut em { }
    |                             --    ^^^^^^^
@@ -742,7 +758,7 @@ LL +     if let Either::One(_t) = &mut em { }
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:296:38
+  --> $DIR/simple.rs:324:38
    |
 LL |     while let &mut Either::One(_t) = &mut em { }
    |                                --    ^^^^^^^
@@ -756,7 +772,7 @@ LL +     while let Either::One(_t) = &mut em { }
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:299:11
+  --> $DIR/simple.rs:327:11
    |
 LL |     match &mut em {
    |           ^^^^^^^
@@ -771,7 +787,7 @@ LL +         Either::One(_t)
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:306:11
+  --> $DIR/simple.rs:334:11
    |
 LL |     match &mut em {
    |           ^^^^^^^
@@ -786,7 +802,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:312:11
+  --> $DIR/simple.rs:340:11
    |
 LL |     match &mut em {
    |           ^^^^^^^
@@ -801,7 +817,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:318:11
+  --> $DIR/simple.rs:346:11
    |
 LL |     match &mut em {
    |           ^^^^^^^
@@ -816,7 +832,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:174:11
+  --> $DIR/simple.rs:202:11
    |
 LL |     fn f1(&X(_t): &X) { }
    |           ^^^--^
@@ -830,7 +846,7 @@ LL +     fn f1(X(_t): &X) { }
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:212:11
+  --> $DIR/simple.rs:240:11
    |
 LL |     fn f2(&mut X(_t): &mut X) { }
    |           ^^^^^^^--^
@@ -844,7 +860,7 @@ LL +     fn f2(X(_t): &mut X) { }
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:235:11
+  --> $DIR/simple.rs:263:11
    |
 LL |     fn f3((&X(_t),): (&X,)) { }
    |           ^^^^--^^^
@@ -858,7 +874,7 @@ LL +     fn f3((X(_t),): (&X,)) { }
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:255:11
+  --> $DIR/simple.rs:283:11
    |
 LL |     fn f4((&mut X(_t),): (&mut X,)) { }
    |           ^^^^^^^^--^^^
@@ -872,7 +888,7 @@ LL +     fn f4((X(_t),): (&mut X,)) { }
    |
 
 error[E0507]: cannot move out of `a.a` as enum variant `Some` which is behind a shared reference
-  --> $DIR/simple.rs:331:20
+  --> $DIR/simple.rs:359:20
    |
 LL |     let Some(_s) = a.a else {
    |              --    ^^^
@@ -884,6 +900,7 @@ help: consider borrowing the pattern binding
 LL |     let Some(ref _s) = a.a else {
    |              +++
 
-error: aborting due to 61 previous errors
+error: aborting due to 63 previous errors
 
-For more information about this error, try `rustc --explain E0507`.
+Some errors have detailed explanations: E0507, E0508.
+For more information about an error, try `rustc --explain E0507`.

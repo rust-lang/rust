@@ -12,7 +12,7 @@ fn bind<T>() -> (T, [u8; 6 + 1]) {
 fn main() {
     let (mut t, foo) = bind();
     //~^ ERROR mismatched types
-    //~| NOTE cyclic type
+    //~| NOTE recursive type
 
     // `t` is `ty::Infer(TyVar(?1t))`
     // `foo` contains `ty::Infer(TyVar(?1t))` in its substs

@@ -110,6 +110,26 @@ fn needs_parens_in_call(make: &SyntaxFactory, param: &ast::Expr) -> bool {
     param.needs_parens_in_place_of(call.syntax(), callable.syntax())
 }
 
+pub(crate) fn wrap_paren_in_guard_chain(guard: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
+    if needs_parens_in_guard_chain(make, &guard) { make.expr_paren(guard).into() } else { guard }
+}
+
+fn needs_parens_in_guard_chain(make: &SyntaxFactory, guard: &ast::Expr) -> bool {
+    let ast::Expr::BinExpr(if_let_and_guard) = make.expr_bin_op(
+        make.expr_unit(),
+        ast::BinaryOp::LogicOp(ast::LogicOp::And),
+        make.expr_unit(),
+    ) else {
+        stdx::never!("`SyntaxFactory::expr_bin_op` returns a `BinExpr`");
+        return false;
+    };
+    let Some(fake_guard) = if_let_and_guard.rhs() else {
+        stdx::never!("invalid make call");
+        return false;
+    };
+    guard.needs_parens_in_place_of(if_let_and_guard.syntax(), fake_guard.syntax())
+}
+
 /// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
 /// `#[test_case(...)]`, `#[tokio::test]` and similar.
 /// Also a regular `#[test]` annotation is supported.
@@ -417,6 +437,7 @@ fn check_pat_variant_nested_or_literal_with_depth(
         | ast::Pat::PathPat(_)
         | ast::Pat::BoxPat(_)
         | ast::Pat::DerefPat(_)
+        | ast::Pat::NotNull(_)
         | ast::Pat::ConstBlockPat(_) => true,
 
         ast::Pat::IdentPat(ident_pat) => ident_pat.pat().is_some_and(|pat| {
@@ -841,8 +862,8 @@ pub(crate) fn convert_reference_type<'db>(
 }
 
 fn could_deref_to_target(ty: &hir::Type<'_>, target: &hir::Type<'_>, db: &dyn HirDatabase) -> bool {
-    let ty_ref = ty.add_reference(hir::Mutability::Shared);
-    let target_ref = target.add_reference(hir::Mutability::Shared);
+    let ty_ref = ty.add_reference(db, hir::Mutability::Shared);
+    let target_ref = target.add_reference(db, hir::Mutability::Shared);
     ty_ref.could_coerce_to(db, &target_ref)
 }
 
@@ -870,7 +891,7 @@ fn handle_as_ref_slice(
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
-    let slice_type = hir::Type::new_slice(type_argument);
+    let slice_type = hir::Type::new_slice(db, type_argument);
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&slice_type)).then_some((
         ReferenceConversionType::AsRefSlice,
@@ -1176,18 +1197,19 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
     is_const
 }
 
+pub(crate) fn original_range_in(
+    file_id: hir::EditionedFileId,
+    sema: &Semantics<'_, RootDatabase>,
+    value: &SyntaxNode,
+) -> Option<TextRange> {
+    let original = sema.original_range_opt(value)?;
+    (original.file_id == file_id).then_some(original.range)
+}
+
 // FIXME: #20460 When hir-ty can analyze the `never` statement at the end of block, remove it
 pub(crate) fn is_never_block(
     sema: &Semantics<'_, RootDatabase>,
     block_expr: &ast::BlockExpr,
 ) -> bool {
-    if let Some(tail_expr) = block_expr.tail_expr() {
-        sema.type_of_expr(&tail_expr).is_some_and(|ty| ty.original.is_never())
-    } else if let Some(ast::Stmt::ExprStmt(expr_stmt)) = block_expr.statements().last()
-        && let Some(expr) = expr_stmt.expr()
-    {
-        sema.type_of_expr(&expr).is_some_and(|ty| ty.original.is_never())
-    } else {
-        false
-    }
+    sema.expr_is_diverging(&block_expr.clone().into())
 }

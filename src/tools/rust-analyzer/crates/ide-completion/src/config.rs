@@ -44,6 +44,8 @@ pub struct CompletionConfig<'a> {
 pub enum AutoImportExclusionType {
     Always,
     Methods,
+    SubItems,
+    Variants,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

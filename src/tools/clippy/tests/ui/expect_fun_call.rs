@@ -1,9 +1,5 @@
 #![warn(clippy::expect_fun_call)]
-#![allow(
-    clippy::to_string_in_format_args,
-    clippy::uninlined_format_args,
-    clippy::unnecessary_literal_unwrap
-)]
+#![expect(clippy::unnecessary_literal_unwrap)]
 
 macro_rules! one {
     () => {

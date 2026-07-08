@@ -10,7 +10,7 @@ use rustc_hir::ItemKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{self, InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt};
-use rustc_infer::traits::{Obligation, PredicateObligations};
+use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::relate::solver_relating::RelateExt;
@@ -26,7 +26,7 @@ use rustc_trait_selection::traits::misc::{
 use rustc_trait_selection::traits::{self, FulfillmentError, ObligationCause, ObligationCtxt};
 use tracing::debug;
 
-use crate::errors;
+use crate::diagnostics;
 
 pub(super) fn check_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -84,7 +84,7 @@ fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaran
 
     let impl_ = tcx.hir_expect_item(impl_did).expect_impl();
 
-    Err(tcx.dcx().emit_err(errors::DropImplOnWrongItem {
+    Err(tcx.dcx().emit_err(diagnostics::DropImplOnWrongItem {
         span: impl_.self_ty.span,
         trait_: tcx.item_name(checker.impl_header.trait_ref.skip_binder().def_id),
     }))
@@ -123,12 +123,12 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
         }
         Err(CopyImplementationError::NotAnAdt) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
-            Err(tcx.dcx().emit_err(errors::CopyImplOnNonAdt { span }))
+            Err(tcx.dcx().emit_err(diagnostics::CopyImplOnNonAdt { span }))
         }
         Err(CopyImplementationError::HasDestructor(did)) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             let impl_ = tcx.def_span(did);
-            Err(tcx.dcx().emit_err(errors::CopyImplOnTypeWithDtor { span, impl_ }))
+            Err(tcx.dcx().emit_err(diagnostics::CopyImplOnTypeWithDtor { span, impl_ }))
         }
         Err(CopyImplementationError::HasUnsafeFields) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
@@ -159,7 +159,7 @@ fn visit_implementation_of_unpin(checker: &Checker<'_>) -> Result<(), ErrorGuara
             // `&mut T` that dereferenced by `Pin<&mut T>`, which breaks the safety contract of
             // `Pin<&mut U>` for `U: !Unpin`.
             ty::Adt(adt, _) if adt.is_pin_project() => {
-                return Err(tcx.dcx().emit_err(crate::errors::ImplUnpinForPinProjectedType {
+                return Err(tcx.dcx().emit_err(crate::diagnostics::ImplUnpinForPinProjectedType {
                     span,
                     adt_span: tcx.def_span(adt.did()),
                     adt_name: tcx.item_name(adt.did()),
@@ -201,7 +201,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
                             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
                             return Err(tcx
                                 .dcx()
-                                .emit_err(errors::ConstParamTyFieldVisMismatch { span }));
+                                .emit_err(diagnostics::ConstParamTyFieldVisMismatch { span }));
                         }
                     }
                 }
@@ -226,13 +226,13 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
         }
         Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
-            Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
+            Err(tcx.dcx().emit_err(diagnostics::ConstParamTyImplOnNonAdt { span }))
         }
         Err(ConstParamTyImplementationError::NonExhaustive(attr_span)) => {
             let defn_span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx
                 .dcx()
-                .emit_err(errors::ConstParamTyImplOnNonExhaustive { defn_span, attr_span }))
+                .emit_err(diagnostics::ConstParamTyImplOnNonExhaustive { defn_span, attr_span }))
         }
         Err(ConstParamTyImplementationError::InvalidInnerTyOfBuiltinTy(infringing_tys)) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
@@ -246,7 +246,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
         }
         Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
-            Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnUnsized { span }))
+            Err(tcx.dcx().emit_err(diagnostics::ConstParamTyImplOnUnsized { span }))
         }
     }
 }
@@ -337,7 +337,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     match (source.kind(), target.kind()) {
         (&ty::Pat(_, pat_a), &ty::Pat(_, pat_b)) => {
             if pat_a != pat_b {
-                return Err(tcx.dcx().emit_err(errors::CoerceSamePatKind {
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceSamePatKind {
                     span,
                     trait_name,
                     pat_a: pat_a.to_string(),
@@ -359,7 +359,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
             if def_a != def_b {
                 let source_path = tcx.def_path_str(def_a.did());
                 let target_path = tcx.def_path_str(def_b.did());
-                return Err(tcx.dcx().emit_err(errors::CoerceSameStruct {
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceSameStruct {
                     span,
                     trait_name,
                     note: true,
@@ -369,7 +369,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
             }
 
             if def_a.repr().c() || def_a.repr().packed() {
-                return Err(tcx.dcx().emit_err(errors::DispatchFromDynRepr { span }));
+                return Err(tcx.dcx().emit_err(diagnostics::DispatchFromDynRepr { span }));
             }
 
             let fields = &def_a.non_enum_variant().fields;
@@ -409,7 +409,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                             return None;
                         }
 
-                        res = Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
+                        res = Err(tcx.dcx().emit_err(diagnostics::DispatchFromDynZST {
                             span,
                             name: field.ident(tcx),
                             ty: ty_a,
@@ -424,7 +424,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
             res?;
 
             if coerced_fields.is_empty() {
-                return Err(tcx.dcx().emit_err(errors::CoerceNoField {
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceNoField {
                     span,
                     trait_name,
                     note: true,
@@ -440,7 +440,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 let errors = ocx.evaluate_obligations_error_on_ambiguity();
                 if !errors.is_empty() {
                     if is_from_coerce_pointee_derive(tcx, span) {
-                        return Err(tcx.dcx().emit_err(errors::CoerceFieldValidity {
+                        return Err(tcx.dcx().emit_err(diagnostics::CoerceFieldValidity {
                             span,
                             trait_name,
                             ty: trait_ref.self_ty(),
@@ -457,7 +457,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
 
                 Ok(())
             } else {
-                return Err(tcx.dcx().emit_err(errors::CoerceMulti {
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceMulti {
                     span,
                     trait_name,
                     number: coerced_fields.len(),
@@ -465,39 +465,8 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 }));
             }
         }
-        _ => Err(tcx.dcx().emit_err(errors::CoerceUnsizedNonStruct { span, trait_name })),
+        _ => Err(tcx.dcx().emit_err(diagnostics::CoerceUnsizedNonStruct { span, trait_name })),
     }
-}
-
-fn structurally_normalize_ty<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    infcx: &InferCtxt<'tcx>,
-    impl_did: LocalDefId,
-    span: Span,
-    ty: Unnormalized<'tcx, Ty<'tcx>>,
-) -> Option<(Ty<'tcx>, PredicateObligations<'tcx>)> {
-    let ocx = ObligationCtxt::new(infcx);
-    let Ok(normalized_ty) = ocx.structurally_normalize_ty(
-        &traits::ObligationCause::misc(span, impl_did),
-        tcx.param_env(impl_did),
-        ty,
-    ) else {
-        // We shouldn't have errors here in the old solver, except for
-        // evaluate/fulfill mismatches, but that's not a reason for an ICE.
-        return None;
-    };
-    let errors = ocx.try_evaluate_obligations();
-    if !errors.is_empty() {
-        if infcx.next_trait_solver() {
-            unreachable!();
-        }
-        // We shouldn't have errors here in the old solver, except for
-        // evaluate/fulfill mismatches, but that's not a reason for an ICE.
-        debug!(?errors, "encountered errors while fulfilling");
-        return None;
-    }
-
-    Some((normalized_ty, ocx.into_pending_obligations()))
 }
 
 pub(crate) fn reborrow_info<'tcx>(
@@ -517,7 +486,7 @@ pub(crate) fn reborrow_info<'tcx>(
     if trait_impl_lifetime_params_count(tcx, impl_did) != 1 {
         return Err(tcx
             .dcx()
-            .emit_err(errors::CoerceSharedNotSingleLifetimeParam { span, trait_name }));
+            .emit_err(diagnostics::CoerceSharedNotSingleLifetimeParam { span, trait_name }));
     }
 
     assert_eq!(trait_ref.def_id, reborrow_trait);
@@ -528,7 +497,9 @@ pub(crate) fn reborrow_info<'tcx>(
         &ty::Adt(def, args) if def.is_struct() => (def, args),
         _ => {
             // Note: reusing error here as it takes trait_name as argument.
-            return Err(tcx.dcx().emit_err(errors::CoerceUnsizedNonStruct { span, trait_name }));
+            return Err(tcx
+                .dcx()
+                .emit_err(diagnostics::CoerceUnsizedNonStruct { span, trait_name }));
         }
     };
 
@@ -543,15 +514,19 @@ pub(crate) fn reborrow_info<'tcx>(
             tcx.def_span(impl_did)
         };
 
-        return Err(tcx.dcx().emit_err(errors::CoerceSharedMulti { span, trait_name }));
+        return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMulti { span, trait_name }));
     }
 
     if data_fields.is_empty() {
         return Ok(());
     }
 
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     // We've found some data fields. They must all be either be Copy or Reborrow.
     for (field, span) in data_fields {
+        let field = ocx
+            .deeply_normalize(&traits::ObligationCause::misc(span, impl_did), param_env, field)
+            .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
         if assert_field_type_is_reborrow(
             tcx,
             &infcx,
@@ -563,8 +538,8 @@ pub(crate) fn reborrow_info<'tcx>(
         )
         .is_ok()
         {
-            // Field implements Reborrow.
-            return Ok(());
+            // Field implements Reborrow, check remaining fields.
+            continue;
         }
 
         // Field does not implement Reborrow: it must be Copy.
@@ -614,21 +589,20 @@ pub(crate) fn coerce_shared_info<'tcx>(
     if trait_impl_lifetime_params_count(tcx, impl_did) != 1 {
         return Err(tcx
             .dcx()
-            .emit_err(errors::CoerceSharedNotSingleLifetimeParam { span, trait_name }));
+            .emit_err(diagnostics::CoerceSharedNotSingleLifetimeParam { span, trait_name }));
     }
 
     assert_eq!(trait_ref.def_id, coerce_shared_trait);
-    let Some((target, _obligations)) = structurally_normalize_ty(
-        tcx,
-        &infcx,
-        impl_did,
-        span,
-        Unnormalized::new_wip(trait_ref.args.type_at(1)),
-    ) else {
-        todo!("something went wrong with structurally_normalize_ty");
-    };
-
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let param_env = tcx.param_env(impl_did);
+    let (source, target) = ocx
+        .deeply_normalize(
+            &traits::ObligationCause::misc(span, impl_did),
+            param_env,
+            Unnormalized::new_wip((source, trait_ref.args.type_at(1))),
+        )
+        .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
+
     assert!(!source.has_escaping_bound_vars());
 
     let data = match (source.kind(), target.kind()) {
@@ -660,7 +634,9 @@ pub(crate) fn coerce_shared_info<'tcx>(
                     tcx.def_span(impl_did)
                 };
 
-                return Err(tcx.dcx().emit_err(errors::CoerceSharedMulti { span, trait_name }));
+                return Err(tcx
+                    .dcx()
+                    .emit_err(diagnostics::CoerceSharedMulti { span, trait_name }));
             }
 
             if a_data_fields.len() == 1 {
@@ -668,6 +644,20 @@ pub(crate) fn coerce_shared_info<'tcx>(
                 // them below.
                 let (a, span_a) = a_data_fields[0];
                 let (b, span_b) = b_data_fields[0];
+                let a = ocx
+                    .deeply_normalize(
+                        &traits::ObligationCause::misc(span_a, impl_did),
+                        param_env,
+                        a,
+                    )
+                    .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
+                let b = ocx
+                    .deeply_normalize(
+                        &traits::ObligationCause::misc(span_b, impl_did),
+                        param_env,
+                        b,
+                    )
+                    .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
 
                 Some((a, b, coerce_shared_trait, span_a, span_b))
             } else {
@@ -679,7 +669,9 @@ pub(crate) fn coerce_shared_info<'tcx>(
 
         _ => {
             // Note: reusing CoerceUnsizedNonStruct error as it takes trait_name as argument.
-            return Err(tcx.dcx().emit_err(errors::CoerceUnsizedNonStruct { span, trait_name }));
+            return Err(tcx
+                .dcx()
+                .emit_err(diagnostics::CoerceUnsizedNonStruct { span, trait_name }));
         }
     };
 
@@ -690,12 +682,19 @@ pub(crate) fn coerce_shared_info<'tcx>(
         //
         // 1 data field each; they must be the same type and Copy, or relate to one another using
         // CoerceShared.
+        //
+        // FIXME(reborrow): we should do the relating inside `probe` so the region constraint
+        // doesn't affect later result in case that this relating fails.
+        // We should resolve regions if the relating succeeds.
+        // Besides, the regions of `Ref`s are not checked here so `&'a mut T -> &'static T` is
+        // allowed.
         if source.ref_mutability() == Some(ty::Mutability::Mut)
             && target.ref_mutability() == Some(ty::Mutability::Not)
             && infcx
-                .eq_structurally_relating_aliases(
+                .relate(
                     param_env,
                     source.peel_refs(),
+                    ty::Variance::Invariant,
                     target.peel_refs(),
                     source_field_span,
                 )
@@ -704,14 +703,16 @@ pub(crate) fn coerce_shared_info<'tcx>(
             // &mut T implements CoerceShared to &T, except not really.
             return Ok(());
         }
+
+        // FIXME(reborrow): we should do the relating inside `probe` so the region constraint
+        // doesn't affect later result in case that this relating fails.
         if infcx
-            .eq_structurally_relating_aliases(param_env, source, target, source_field_span)
+            .relate(param_env, source, ty::Variance::Invariant, target, source_field_span)
             .is_err()
         {
             // The two data fields don't agree on a common type; this means
             // that they must be `A: CoerceShared<B>`. Register an obligation
             // for that.
-            let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
             let cause = traits::ObligationCause::misc(span, impl_did);
             let obligation = Obligation::new(
                 tcx,
@@ -729,6 +730,8 @@ pub(crate) fn coerce_shared_info<'tcx>(
             ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
         } else {
             // Types match: check that it is Copy.
+            //
+            // FIXME(reborrow): We should resolve regions here.
             assert_field_type_is_copy(tcx, &infcx, impl_did, param_env, source, source_field_span)?;
         }
     }
@@ -748,19 +751,20 @@ fn generic_lifetime_params_count(args: &[ty::GenericArg<'_>]) -> usize {
     args.iter().filter(|arg| arg.as_region().is_some()).count()
 }
 
-// FIXME(#155345): This should return `Unnormalized`
 fn collect_struct_data_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::AdtDef<'tcx>,
     args: ty::GenericArgsRef<'tcx>,
-) -> Vec<(Ty<'tcx>, Span)> {
+) -> Vec<(Unnormalized<'tcx, Ty<'tcx>>, Span)> {
     def.non_enum_variant()
         .fields
         .iter()
         .filter_map(|f| {
             // Ignore PhantomData fields
-            let ty = f.ty(tcx, args).skip_norm_wip();
-            if ty.is_phantom_data() {
+            let ty = f.ty(tcx, args);
+            // FIXME(#155345): alias might be normalized to PhantomData.
+            // We probably should normalize here instead.
+            if ty.skip_norm_wip().is_phantom_data() {
                 return None;
             }
             Some((ty, tcx.def_span(f.did)))
@@ -836,7 +840,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     let (source, target, trait_def_id, kind, field_span) = match (source.kind(), target.kind()) {
         (&ty::Pat(ty_a, pat_a), &ty::Pat(ty_b, pat_b)) => {
             if pat_a != pat_b {
-                return Err(tcx.dcx().emit_err(errors::CoerceSamePatKind {
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceSamePatKind {
                     span,
                     trait_name,
                     pat_a: pat_a.to_string(),
@@ -871,7 +875,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
             if def_a != def_b {
                 let source_path = tcx.def_path_str(def_a.did());
                 let target_path = tcx.def_path_str(def_b.did());
-                return Err(tcx.dcx().emit_err(errors::CoerceSameStruct {
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceSameStruct {
                     span,
                     trait_name,
                     note: true,
@@ -959,7 +963,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                 .collect::<Vec<_>>();
 
             if diff_fields.is_empty() {
-                return Err(tcx.dcx().emit_err(errors::CoerceNoField {
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceNoField {
                     span,
                     trait_name,
                     note: true,
@@ -974,7 +978,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                     tcx.def_span(impl_did)
                 };
 
-                return Err(tcx.dcx().emit_err(errors::CoerceMulti {
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceMulti {
                     span,
                     trait_name,
                     number: diff_fields.len(),
@@ -988,7 +992,9 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         }
 
         _ => {
-            return Err(tcx.dcx().emit_err(errors::CoerceUnsizedNonStruct { span, trait_name }));
+            return Err(tcx
+                .dcx()
+                .emit_err(diagnostics::CoerceUnsizedNonStruct { span, trait_name }));
         }
     };
 
@@ -1006,7 +1012,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
 
     if !errors.is_empty() {
         if is_from_coerce_pointee_derive(tcx, span) {
-            return Err(tcx.dcx().emit_err(errors::CoerceFieldValidity {
+            return Err(tcx.dcx().emit_err(diagnostics::CoerceFieldValidity {
                 span,
                 trait_name,
                 ty: trait_ref.self_ty(),
@@ -1119,7 +1125,7 @@ fn infringing_fields_error<'tcx>(
     let mut notes = Vec::new();
     for ((ty, error_predicate), spans) in errors {
         let span: MultiSpan = spans.into();
-        notes.push(errors::ImplForTyRequires {
+        notes.push(diagnostics::ImplForTyRequires {
             span,
             error_predicate,
             trait_name: trait_name.clone(),
@@ -1127,7 +1133,7 @@ fn infringing_fields_error<'tcx>(
         });
     }
 
-    let mut err = tcx.dcx().create_err(errors::TraitCannotImplForTy {
+    let mut err = tcx.dcx().create_err(diagnostics::TraitCannotImplForTy {
         span: impl_span,
         trait_name,
         label_spans,
@@ -1155,10 +1161,10 @@ fn visit_implementation_of_coerce_pointee_validity(
         tcx.impl_trait_ref(checker.impl_def_id).instantiate_identity().skip_norm_wip().self_ty();
     let span = tcx.def_span(checker.impl_def_id);
     if !tcx.is_builtin_derived(checker.impl_def_id.into()) {
-        return Err(tcx.dcx().emit_err(errors::CoercePointeeNoUserValidityAssertion { span }));
+        return Err(tcx.dcx().emit_err(diagnostics::CoercePointeeNoUserValidityAssertion { span }));
     }
     let ty::Adt(def, _args) = self_ty.kind() else {
-        return Err(tcx.dcx().emit_err(errors::CoercePointeeNotConcreteType { span }));
+        return Err(tcx.dcx().emit_err(diagnostics::CoercePointeeNotConcreteType { span }));
     };
     let did = def.did();
     // Now get a more precise span of the `struct`.
@@ -1166,13 +1172,13 @@ fn visit_implementation_of_coerce_pointee_validity(
     if !def.is_struct() {
         return Err(tcx
             .dcx()
-            .emit_err(errors::CoercePointeeNotStruct { span, kind: def.descr().into() }));
+            .emit_err(diagnostics::CoercePointeeNotStruct { span, kind: def.descr().into() }));
     }
     if !def.repr().transparent() {
-        return Err(tcx.dcx().emit_err(errors::CoercePointeeNotTransparent { span }));
+        return Err(tcx.dcx().emit_err(diagnostics::CoercePointeeNotTransparent { span }));
     }
     if def.all_fields().next().is_none() {
-        return Err(tcx.dcx().emit_err(errors::CoercePointeeNoField { span }));
+        return Err(tcx.dcx().emit_err(diagnostics::CoercePointeeNoField { span }));
     }
     Ok(())
 }

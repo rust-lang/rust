@@ -1,5 +1,5 @@
 #![warn(clippy::lossy_float_literal)]
-#![allow(overflowing_literals, unused)]
+#![expect(overflowing_literals)]
 #![feature(f128)]
 #![feature(f16)]
 

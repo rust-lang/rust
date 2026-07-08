@@ -35,7 +35,13 @@ const PTHREAD_INIT: u8 = 1;
 #[inline]
 fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     interp_ok(match &ecx.tcx.sess.target.os {
-        Os::Linux | Os::Illumos | Os::Solaris | Os::MacOs | Os::FreeBsd | Os::Android => 0,
+        Os::Linux
+        | Os::Illumos
+        | Os::Solaris
+        | Os::MacOs
+        | Os::FreeBsd
+        | Os::Android
+        | Os::NetBsd => 0,
         os => throw_unsup_format!("`pthread_mutexattr` is not supported on {os}"),
     })
 }
@@ -135,8 +141,8 @@ impl SyncObj for PthreadMutex {
 fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> {
     let offset = match &ecx.tcx.sess.target.os {
         Os::Linux | Os::Illumos | Os::Solaris | Os::FreeBsd | Os::Android => 0,
-        // macOS stores a signature in the first bytes, so we move to offset 4.
-        Os::MacOs => 4,
+        // macOS and NetBSD store a signature in the first bytes, so we move to offset 4.
+        Os::MacOs | Os::NetBsd => 4,
         os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
     };
     let offset = Size::from_bytes(offset);
@@ -163,7 +169,7 @@ fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size>
                 check_static_initializer("PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP");
                 check_static_initializer("PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP");
             }
-            Os::Illumos | Os::Solaris | Os::MacOs | Os::FreeBsd | Os::Android => {
+            Os::Illumos | Os::Solaris | Os::MacOs | Os::FreeBsd | Os::Android | Os::NetBsd => {
                 // No non-standard initializers.
             }
             os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
@@ -920,22 +926,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(());
         };
 
-        let (clock, anchor) = if macos_relative_np {
+        let (clock, style) = if macos_relative_np {
             // `pthread_cond_timedwait_relative_np` always measures time against the
             // monotonic clock, regardless of the condvar clock.
-            (TimeoutClock::Monotonic, TimeoutAnchor::Relative)
+            (TimeoutClock::Monotonic, TimeoutStyle::Relative)
         } else {
             if data.clock == TimeoutClock::RealTime {
                 this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
             }
 
-            (data.clock, TimeoutAnchor::Absolute)
+            (data.clock, TimeoutStyle::Absolute)
         };
 
         this.condvar_wait(
             data.condvar_ref,
             mutex_ref,
-            Some((clock, anchor, duration)),
+            Some(this.machine.timeout(clock, style, duration)),
             Scalar::from_i32(0),
             this.eval_libc("ETIMEDOUT"), // retval_timeout
             dest.clone(),

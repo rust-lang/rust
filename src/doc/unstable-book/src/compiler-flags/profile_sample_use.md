@@ -4,7 +4,7 @@
 
 `-Zprofile-sample-use=code.prof` directs `rustc` to use the profile
 `code.prof` as a source for Automatic Feedback Directed Optimization (AFDO).
-See the documentation of [`-Zdebug-info-for-profiling`] for more information
+See the documentation of [`-Zdebuginfo-for-profiling`] for more information
 on using AFDO.
 
-[`-Zdebug-info-for-profiling`]: debug_info_for_profiling.html
+[`-Zdebuginfo-for-profiling`]: debuginfo_for_profiling.html

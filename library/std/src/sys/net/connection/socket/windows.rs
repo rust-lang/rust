@@ -225,7 +225,7 @@ impl Socket {
         Ok(Self(self.0.try_clone()?))
     }
 
-    fn recv_with_flags(&self, mut buf: BorrowedCursor<'_>, flags: c_int) -> io::Result<()> {
+    fn recv_with_flags(&self, mut buf: BorrowedCursor<'_, u8>, flags: c_int) -> io::Result<()> {
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.
         let length = cmp::min(buf.capacity(), i32::MAX as usize) as i32;
@@ -255,7 +255,7 @@ impl Socket {
         Ok(buf.len())
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.recv_with_flags(buf, 0)
     }
 

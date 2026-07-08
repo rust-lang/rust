@@ -2,7 +2,8 @@
 
 use crate::io::{self, Error, ErrorKind};
 use crate::path::{Path, PathBuf};
-use crate::sys::fs::{File, OpenOptions};
+use crate::sys::IntoInner;
+use crate::sys::fs::{File, FileAttr, OpenOptions};
 use crate::sys::helpers::ignore_notfound;
 use crate::{fmt, fs};
 
@@ -71,6 +72,10 @@ impl Dir {
 
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         File::open(&self.path.join(path), &opts)
+    }
+
+    pub fn metadata(&self) -> io::Result<FileAttr> {
+        self.path.metadata().map(|m| m.into_inner())
     }
 }
 

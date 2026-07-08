@@ -127,7 +127,7 @@ impl<'tcx> NewPermission {
         pointee: Ty<'tcx>,
         ref_mutability: Option<Mutability>,
         mode: RetagMode,
-        cx: &crate::MiriInterpCx<'tcx>,
+        cx: &MiriInterpCx<'tcx>,
     ) -> Option<Self> {
         if mode == RetagMode::None {
             return None;
@@ -143,15 +143,7 @@ impl<'tcx> NewPermission {
         // `#[rustc_no_writable]` attribute. For performance reasons, only performs the lookup if
         // is_protected is true as implicit writes are only performed for protected references.
         let implicit_writes_enabled = is_protected && {
-            let implicit_writes = cx
-                .machine
-                .borrow_tracker
-                .as_ref()
-                .unwrap()
-                .borrow()
-                .borrow_tracker_method
-                .get_tree_borrows_params()
-                .implicit_writes;
+            let implicit_writes = cx.get_tree_borrows_params().implicit_writes;
             let def_id = cx.frame().instance().def_id();
             implicit_writes && !find_attr!(cx.tcx, def_id, RustcNoWritable)
         };
@@ -234,6 +226,14 @@ impl<'tcx> NewPermission {
 /// the implementation of NewPermission.
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    #[track_caller]
+    #[inline]
+    fn get_tree_borrows_params(&self) -> TreeBorrowsParams {
+        let this = self.eval_context_ref();
+        let borrow_tracker = this.machine.borrow_tracker.as_ref().unwrap().borrow();
+        borrow_tracker.borrow_tracker_method.get_tree_borrows_params()
+    }
+
     /// Returns the provenance that should be used henceforth.
     fn tb_reborrow(
         &mut self,
@@ -326,15 +326,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let protected = new_perm.protector.is_some();
-        let precise_interior_mut = this
-            .machine
-            .borrow_tracker
-            .as_mut()
-            .unwrap()
-            .get_mut()
-            .borrow_tracker_method
-            .get_tree_borrows_params()
-            .precise_interior_mut;
+        let precise_interior_mut = this.get_tree_borrows_params().precise_interior_mut;
 
         // Compute initial "inside" permissions.
         let loc_state = |frozen: bool| -> LocationState {
@@ -487,20 +479,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
         let this = self.eval_context_mut();
         let new_perm = match *ty.kind() {
-            _ if ty.is_box_global(*this.tcx) => {
-                // The `None` marks this as a Box.
-                NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, this)
-            }
             ty::Ref(_, pointee, mutability) =>
                 NewPermission::new(pointee, Some(mutability), mode, this),
+            _ if ty.is_box() => {
+                let box_custom_allocator_unique =
+                    this.get_tree_borrows_params().box_custom_allocator_unique;
+                if box_custom_allocator_unique || ty.is_box_global(*this.tcx) {
+                    // The `None` marks this as a Box.
+                    NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, this)
+                } else {
+                    // No retagging for boxes with custom allocators.
+                    None
+                }
+            }
 
             ty::RawPtr(..) => {
                 assert!(mode == RetagMode::Raw);
                 // We don't give new tags to raw pointers.
-                None
-            }
-            _ if ty.is_box() => {
-                // No retagging for boxes with local allocators.
                 None
             }
             _ => panic!("tb_retag_ptr_value: invalid type {ty}"),

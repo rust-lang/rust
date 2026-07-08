@@ -181,6 +181,9 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub is_local: bool,
+    /// This is missing variant in the patterns.
+    /// Maybe this can also be used for struct fields.
+    pub is_missing: bool,
     /// Populated when the completion item comes from a trait (impl).
     pub trait_: Option<CompletionRelevanceTraitInfo>,
     /// This is set when an import is suggested in a use item whose name is already imported.
@@ -286,6 +289,7 @@ impl CompletionRelevance {
             exact_name_match,
             type_match,
             is_local,
+            is_missing,
             is_name_already_imported,
             requires_import,
             is_private_editable,
@@ -300,16 +304,19 @@ impl CompletionRelevance {
         // only applicable for completions within use items
         // lower rank for conflicting import names
         if is_name_already_imported {
-            score -= 1;
+            score -= 15;
         }
         // slightly prefer locals
         if is_local {
-            score += 1;
+            score += 2;
+        }
+        if is_missing {
+            score += 2;
         }
 
         // lower rank private things
         if !is_private_editable {
-            score += 1;
+            score += 10;
         }
 
         if let Some(trait_) = trait_ {
@@ -330,10 +337,10 @@ impl CompletionRelevance {
 
         // lower rank for items that need an import
         if requires_import {
-            score -= 1;
+            score -= 12;
         }
         if exact_name_match {
-            score += 20;
+            score += 40;
         }
         match postfix_match {
             Some(CompletionRelevancePostfixMatch::Exact) => score += 100,
@@ -341,16 +348,26 @@ impl CompletionRelevance {
             None => (),
         };
         score += match type_match {
-            Some(CompletionRelevanceTypeMatch::Exact) => 18,
-            Some(CompletionRelevanceTypeMatch::CouldUnify) => 5,
+            Some(CompletionRelevanceTypeMatch::Exact) => 35,
+            Some(CompletionRelevanceTypeMatch::CouldUnify) => 15,
             None => 0,
         };
         if let Some(function) = function {
-            let mut fn_score = match function.return_type {
-                CompletionRelevanceReturnType::DirectConstructor => 15,
-                CompletionRelevanceReturnType::Builder => 10,
-                CompletionRelevanceReturnType::Constructor => 5,
-                CompletionRelevanceReturnType::Other => 0u32,
+            let mut fn_score = if requires_import {
+                // Rank constructors that require imports lower than those who don't.
+                match function.return_type {
+                    CompletionRelevanceReturnType::DirectConstructor => 8,
+                    CompletionRelevanceReturnType::Builder => 5,
+                    CompletionRelevanceReturnType::Constructor => 3,
+                    CompletionRelevanceReturnType::Other => 0u32,
+                }
+            } else {
+                match function.return_type {
+                    CompletionRelevanceReturnType::DirectConstructor => 15,
+                    CompletionRelevanceReturnType::Builder => 10,
+                    CompletionRelevanceReturnType::Constructor => 5,
+                    CompletionRelevanceReturnType::Other => 0u32,
+                }
             };
 
             // When a fn is bumped due to return type:
@@ -368,12 +385,12 @@ impl CompletionRelevance {
         };
 
         if has_local_inherent_impl {
-            score -= 5;
+            score -= 8;
         }
 
         // lower rank for deprecated items
         if is_deprecated {
-            score -= 5;
+            score -= 15;
         }
 
         score
@@ -824,15 +841,17 @@ mod tests {
                 is_private_editable: true,
                 ..default
             }],
-            vec![Cr {
-                trait_: Some(crate::item::CompletionRelevanceTraitInfo {
-                    notable_trait: false,
-                    is_op_method: true,
-                }),
-                ..default
-            }],
+            vec![
+                Cr {
+                    trait_: Some(crate::item::CompletionRelevanceTraitInfo {
+                        notable_trait: false,
+                        is_op_method: true,
+                    }),
+                    ..default
+                },
+                Cr { is_private_editable: true, ..default },
+            ],
             vec![Cr { postfix_match: Some(CompletionRelevancePostfixMatch::NonExact), ..default }],
-            vec![Cr { is_private_editable: true, ..default }],
             vec![default],
             vec![Cr { is_local: true, ..default }],
             vec![Cr { type_match: Some(CompletionRelevanceTypeMatch::CouldUnify), ..default }],

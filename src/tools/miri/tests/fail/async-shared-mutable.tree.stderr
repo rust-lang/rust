@@ -1,4 +1,4 @@
-error: Undefined Behavior: write access through <TAG> at ALLOC[OFFSET] is forbidden
+error: Undefined Behavior: write access through <TAG> at ALLOC[RANGE] is forbidden
   --> tests/fail/async-shared-mutable.rs:LL:CC
    |
 LL |             *x = 1;
@@ -16,13 +16,13 @@ LL | |             Poll::<()>::Pending
 LL | |         })
 LL | |         .await
    | |______________^
-help: the accessed tag <TAG> later transitioned to Unique due to a child write access at offsets [OFFSET]
+help: the accessed tag <TAG> later transitioned to Unique due to a child write access at offsets [RANGE]
   --> tests/fail/async-shared-mutable.rs:LL:CC
    |
 LL |             *x = 1;
    |             ^^^^^^
    = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
-help: the accessed tag <TAG> later transitioned to Frozen due to a reborrow (acting as a foreign read access) at offsets [OFFSET]
+help: the accessed tag <TAG> later transitioned to Frozen due to a reborrow (acting as a foreign read access) at offsets [RANGE]
   --> tests/fail/async-shared-mutable.rs:LL:CC
    |
 LL |     let _: Pin<&_> = f.as_ref(); // Or: `f.as_mut().into_ref()`.

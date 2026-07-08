@@ -371,7 +371,7 @@ impl SourceToDefCtx<'_, '_> {
             .as_expression_store_owner()?
             .as_def_with_body()?;
         let body = Body::of(self.db, container);
-        Some((container, body.self_param()?))
+        Some((container, body.self_param?.user_written))
     }
     pub(super) fn label_to_def(
         &mut self,

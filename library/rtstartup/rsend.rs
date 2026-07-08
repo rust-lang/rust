@@ -27,8 +27,7 @@ auto trait Freeze {}
 
 impl<T: PointeeSized> Copy for *mut T {}
 
-#[cfg_attr(not(bootstrap), lang = "drop_glue")]
-#[cfg_attr(bootstrap, lang = "drop_in_place")]
+#[lang = "drop_glue"]
 #[inline]
 pub unsafe fn drop_glue<T: PointeeSized>(_to_drop: &mut T) {}
 

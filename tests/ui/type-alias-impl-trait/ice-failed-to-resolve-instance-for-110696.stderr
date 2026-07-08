@@ -3,6 +3,15 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T: MyFrom<Phantom2<DummyT<U>>>, U> MyIndex<DummyT<T>> for Scope<U> {
    |      ^ unconstrained type parameter
+   |
+help: use the type parameter `T` in the `Scope` type and use it in the type definition
+   |
+LL ~ struct Scope<T, T>(Phantom2<DummyT<T>>);
+LL |
+...
+LL |
+LL ~ impl<T: MyFrom<Phantom2<DummyT<U>>>, U> MyIndex<DummyT<T>> for Scope<U, T> {
+   |
 
 error: item does not constrain `DummyT::{opaque#0}`
   --> $DIR/ice-failed-to-resolve-instance-for-110696.rs:30:8

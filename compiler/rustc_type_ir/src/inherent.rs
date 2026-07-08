@@ -53,26 +53,30 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
 
-    fn new_alias(interner: I, alias_ty: ty::AliasTy<I>) -> Self;
+    fn new_alias(interner: I, is_rigid: ty::IsRigid, alias_ty: ty::AliasTy<I>) -> Self;
 
     fn new_projection_from_args(
         interner: I,
+        is_rigid: ty::IsRigid,
         def_id: I::TraitAssocTyId,
         args: I::GenericArgs,
     ) -> Self {
         Self::new_alias(
             interner,
+            is_rigid,
             ty::AliasTy::new_from_args(interner, ty::AliasTyKind::Projection { def_id }, args),
         )
     }
 
     fn new_projection(
         interner: I,
+        is_rigid: ty::IsRigid,
         def_id: I::TraitAssocTyId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> Self {
         Self::new_alias(
             interner,
+            is_rigid,
             ty::AliasTy::new(interner, ty::AliasTyKind::Projection { def_id }, args),
         )
     }
@@ -190,7 +194,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Alias(_)
+            | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Placeholder(_)
@@ -276,7 +280,7 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_placeholder(interner: I, param: ty::PlaceholderConst<I>) -> Self;
 
-    fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
+    fn new_alias(interner: I, is_rigid: ty::IsRigid, alias_const: ty::AliasConst<I>) -> Self;
 
     fn new_expr(interner: I, expr: I::ExprConst) -> Self;
 
@@ -400,17 +404,28 @@ pub trait Term<I: Interner<Term = Self>>:
         }
     }
 
-    fn to_alias_term(self, interner: I) -> Option<ty::AliasTerm<I>> {
+    fn to_alias_term(self) -> Option<ty::AliasTerm<I>> {
         match self.kind() {
             ty::TermKind::Ty(ty) => match ty.kind() {
-                ty::Alias(alias_ty) => Some(alias_ty.into()),
+                ty::Alias(_, alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => {
-                    Some(ty::AliasTerm::from_unevaluated_const(interner, uv))
-                }
+                ty::ConstKind::Alias(_, alias_const) => Some(alias_const.into()),
                 _ => None,
+            },
+        }
+    }
+
+    fn is_non_rigid_alias(self) -> bool {
+        match self.kind() {
+            ty::TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(is_rigid, _) => is_rigid == ty::IsRigid::No,
+                _ => false,
+            },
+            ty::TermKind::Const(ct) => match ct.kind() {
+                ty::ConstKind::Alias(is_rigid, _) => is_rigid == ty::IsRigid::No,
+                _ => false,
             },
         }
     }
@@ -474,6 +489,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitPredicate<I>>
+    + UpcastFrom<I, ty::ProjectionPredicate<I>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
@@ -481,19 +497,9 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
 {
     fn as_clause(self) -> Option<I::Clause>;
 
-    fn as_normalizes_to(self) -> Option<ty::Binder<I, ty::NormalizesTo<I>>> {
-        let kind = self.kind();
-        match kind.skip_binder() {
-            ty::PredicateKind::NormalizesTo(pred) => Some(kind.rebind(pred)),
-            _ => None,
-        }
-    }
-
     fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
-            PredicateKind::Clause(ClauseKind::WellFormed(_)) | PredicateKind::AliasRelate(..) => {
-                false
-            }
+            PredicateKind::Clause(ClauseKind::WellFormed(_)) => false,
             PredicateKind::Clause(ClauseKind::Trait(_))
             | PredicateKind::Clause(ClauseKind::HostEffect(..))
             | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
@@ -519,6 +525,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + Hash
     + Eq
     + TypeFoldable<I>
+    + Flags
     + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>

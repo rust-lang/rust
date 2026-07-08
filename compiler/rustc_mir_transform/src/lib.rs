@@ -4,6 +4,7 @@
 #![feature(deref_patterns)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iterator_try_collect)]
+#![feature(option_into_flat_iter)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
@@ -40,8 +41,8 @@ mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
 mod deduce_param_attrs;
+mod diagnostics;
 mod elaborate_drop;
-mod errors;
 mod ffi_unwind_calls;
 mod lint;
 mod lint_tail_expr_drop_order;
@@ -50,6 +51,9 @@ mod patch;
 mod shim;
 mod ssa;
 mod trivial_const;
+
+/// Exposed for rustc drivers.
+pub use shim::build_drop_shim;
 
 /// We import passes via this macro so that we can have a static list of pass names
 /// (used to verify CLI arguments). It takes a list of modules, followed by the passes
@@ -122,7 +126,6 @@ declare_passes! {
     mod add_subtyping_projections : Subtyper;
     mod check_inline : CheckForceInline;
     mod check_call_recursion : CheckCallRecursion, CheckDropRecursion;
-    mod check_inline_always_target_features: CheckInlineAlwaysTargetFeature;
     mod check_alignment : CheckAlignment;
     mod check_enums : CheckEnums;
     mod check_const_item_mutation : CheckConstItemMutation;
@@ -156,6 +159,7 @@ declare_passes! {
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
     mod large_enums : EnumSizeOpt;
+    mod lint_and_remove_uninhabited : LintAndRemoveUninhabited;
     mod lower_intrinsics : LowerIntrinsics;
     mod lower_slice_len : LowerSliceLenCalls;
     mod match_branches : MatchBranchSimplification;
@@ -257,8 +261,12 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 let ty = tupled_args.node.ty(&body.local_decls, tcx);
                 let fields = ty.tuple_fields();
                 let num_args = fields.len();
-                let func =
-                    if context == hir::Constness::Const { called_in_const } else { called_at_rt };
+                let func = match context {
+                    // Using `const_eval_select` in always-const code is useful when used in macros
+                    // that you don't know whether they are going to be used in `const fn` or in `const` items.
+                    hir::Constness::Const { .. } => called_in_const,
+                    hir::Constness::NotConst => called_at_rt,
+                };
                 let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) =
                     match tupled_args.node {
                         Operand::Constant(_) | Operand::RuntimeChecks(_) => {
@@ -400,12 +408,12 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
         tcx,
         &mut body,
         &[
+            // This used to be part of MIR building,
+            // now done separately to separate concerns.
+            &lint_and_remove_uninhabited::LintAndRemoveUninhabited,
             // MIR-level lints.
             &Lint(check_inline::CheckForceInline),
             &Lint(check_call_recursion::CheckCallRecursion),
-            // Check callee's target features match callers target features when
-            // using `#[inline(always)]`
-            &Lint(check_inline_always_target_features::CheckInlineAlwaysTargetFeature),
             &Lint(check_packed_ref::CheckPackedRef),
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(function_item_references::FunctionItemReferences),
@@ -433,7 +441,7 @@ fn mir_promoted(
 
     let const_qualifs = match tcx.def_kind(def) {
         DefKind::Fn | DefKind::AssocFn | DefKind::Closure
-            if tcx.constness(def) == hir::Constness::Const =>
+            if matches!(tcx.constness(def), hir::Constness::Const { .. }) =>
         {
             tcx.mir_const_qualif(def)
         }
@@ -497,16 +505,29 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     }
 
     let body = tcx.mir_drops_elaborated_and_const_checked(def);
-    let body = match tcx.hir_body_const_context(def) {
+    let (body, always) = match tcx.hir_body_const_context(def) {
         // consts and statics do not have `optimized_mir`, so we can steal the body instead of
         // cloning it.
-        Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => body.steal(),
-        Some(hir::ConstContext::ConstFn) => body.borrow().clone(),
+        Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {
+            (body.steal(), true)
+        }
+        Some(hir::ConstContext::ConstFn) => (body.borrow().clone(), false),
         None => bug!("`mir_for_ctfe` called on non-const {def:?}"),
     };
 
-    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const);
-    pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None, pm::Optimizations::Allowed);
+    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const { always });
+    // FIXME(reflection): probably need to look at this for comptime closures
+    let passes: &[&dyn MirPass<'_>] = if matches!(tcx.def_kind(def), DefKind::Fn | DefKind::AssocFn)
+        && matches!(tcx.constness(def), hir::Constness::Const { always: true })
+    {
+        // Need to generate mentioned items, as all functions are expected to have them, but for const
+        // fns we just look at the optimized MIR, which generates it. For comptime fns, there is no
+        // optimized MIR.
+        &[&ctfe_limit::CtfeLimit, &mentioned_items::MentionedItems]
+    } else {
+        &[&ctfe_limit::CtfeLimit]
+    };
+    pm::run_passes(tcx, &mut body, passes, None, pm::Optimizations::Allowed);
 
     body
 }
@@ -545,11 +566,15 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         body.tainted_by_errors = Some(error_reported);
     }
 
+    let root = tcx.typeck_root_def_id_local(def);
+    if let Err(e) = tcx.check_transmutes(root) {
+        body.tainted_by_errors = Some(e);
+    }
+
     // Also taint the body if it's within a top-level item that is not well formed.
     //
     // We do this check here and not during `mir_promoted` because that may result
     // in borrowck cycles if WF requires looking into an opaque hidden type.
-    let root = tcx.typeck_root_def_id_local(def);
     match tcx.def_kind(root) {
         DefKind::Fn
         | DefKind::AssocFn

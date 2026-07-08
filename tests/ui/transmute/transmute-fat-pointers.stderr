@@ -1,5 +1,5 @@
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/transmute-fat-pointers.rs:10:14
+  --> $DIR/transmute-fat-pointers.rs:11:14
    |
 LL |     unsafe { transmute(x) }
    |              ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     unsafe { transmute(x) }
    = note: target type: `&U` (pointer to `U`)
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/transmute-fat-pointers.rs:14:14
+  --> $DIR/transmute-fat-pointers.rs:15:14
    |
 LL |     unsafe { transmute(x) }
    |              ^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     unsafe { transmute(x) }
    = note: target type: `&U` (pointer to `U`)
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/transmute-fat-pointers.rs:26:14
+  --> $DIR/transmute-fat-pointers.rs:27:14
    |
 LL |     unsafe { transmute(x) }
    |              ^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     unsafe { transmute(x) }
    = note: target type: `&U` (N bits)
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/transmute-fat-pointers.rs:30:14
+  --> $DIR/transmute-fat-pointers.rs:31:14
    |
 LL |     unsafe { transmute(x) }
    |              ^^^^^^^^^

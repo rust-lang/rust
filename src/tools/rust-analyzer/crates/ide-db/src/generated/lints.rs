@@ -573,13 +573,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
-        label: "inline_always_mismatching_target_features",
-        description: r##"detects when a function annotated with `#[inline(always)]` and `#[target_feature(enable = "..")]` is inlined into a caller without the required target feature"##,
-        default_severity: Severity::Warning,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "inline_no_sanitize",
         description: r##"detects incompatible use of `#[inline(always)]` and `#[sanitize(... = "off")]`"##,
         default_severity: Severity::Warning,
@@ -2458,6 +2451,22 @@ The tracking issue for this feature is: [#111889]
         deny_since: None,
     },
     Lint {
+        label: "abi_swift",
+        description: r##"# `abi_swift`
+
+Allows `extern "Swift" fn()`.
+
+The tracking issue for this feature is: [#156481]
+
+[#156481]: https://github.com/rust-lang/rust/issues/156481
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "abi_unadjusted",
         description: r##"# `abi_unadjusted`
 
@@ -3932,22 +3941,6 @@ The tracking issue for this feature is: [#151828]
         deny_since: None,
     },
     Lint {
-        label: "bool_to_result",
-        description: r##"# `bool_to_result`
-
-
-
-The tracking issue for this feature is: [#142748]
-
-[#142748]: https://github.com/rust-lang/rust/issues/142748
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "borrowed_buf_init",
         description: r##"# `borrowed_buf_init`
 
@@ -4494,20 +4487,6 @@ The tracking issue for this feature is: [#128044]
         deny_since: None,
     },
     Lint {
-        label: "cfg_emscripten_wasm_eh",
-        description: r##"# `cfg_emscripten_wasm_eh`
-
-Allows access to the emscripten_wasm_eh config, used by panic_unwind and unwind
-
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "cfg_eval",
         description: r##"# `cfg_eval`
 
@@ -4637,22 +4616,6 @@ Allows `cfg(target_has_atomic_load_store = "...")`.
 The tracking issue for this feature is: [#94039]
 
 [#94039]: https://github.com/rust-lang/rust/issues/94039
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "cfg_target_has_atomic_equal_alignment",
-        description: r##"# `cfg_target_has_atomic_equal_alignment`
-
-Allows `cfg(target_has_atomic_equal_alignment = "...")`.
-
-The tracking issue for this feature is: [#93822]
-
-[#93822]: https://github.com/rust-lang/rust/issues/93822
 
 ------------------------
 "##,
@@ -4844,6 +4807,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#148519]
 
 [#148519]: https://github.com/rust-lang/rust/issues/148519
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "clflushopt_target_feature",
+        description: r##"# `clflushopt_target_feature`
+
+The `clflushopt` target feature on x86.
+
+The tracking issue for this feature is: [#157096]
+
+[#157096]: https://github.com/rust-lang/rust/issues/157096
 
 ------------------------
 "##,
@@ -9041,6 +9020,22 @@ The tracking issue for this feature is: [#135513]
         deny_since: None,
     },
     Lint {
+        label: "gpu_offload",
+        description: r##"# `gpu_offload`
+
+
+
+The tracking issue for this feature is: [#131513]
+
+[#131513]: https://github.com/rust-lang/rust/issues/131513
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "guard_patterns",
         description: r##"# `guard_patterns`
 
@@ -10005,8 +10000,7 @@ Some features provided by lang items:
   failure mechanisms of the compiler. This is often mapped to GCC's personality
   function (see the [`std` implementation][personality] for more information),
   but programs which don't trigger a panic can be assured that this function is
-  never called. Additionally, a `eh_catch_typeinfo` static is needed for certain
-  targets which implement Rust panics on top of C++ exceptions.
+  never called.
 - the traits in `core::marker` used to indicate types of
   various kinds; e.g. lang items `sized`, `sync` and `copy`.
 - memory allocation, see below.
@@ -11167,6 +11161,22 @@ The tracking issue for this feature is: [#147456]
         deny_since: None,
     },
     Lint {
+        label: "move_expr",
+        description: r##"# `move_expr`
+
+Allows `move(expr)` in closures.
+
+The tracking issue for this feature is: [#155050]
+
+[#155050]: https://github.com/rust-lang/rust/issues/155050
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "movrs_target_feature",
         description: r##"# `movrs_target_feature`
 
@@ -11255,6 +11265,22 @@ Allows `mut ref` and `mut ref mut` identifier patterns.
 The tracking issue for this feature is: [#123076]
 
 [#123076]: https://github.com/rust-lang/rust/issues/123076
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "mut_restriction",
+        description: r##"# `mut_restriction`
+
+Allows `mut(crate) field: Type` restrictions.
+
+The tracking issue for this feature is: [#105077]
+
+[#105077]: https://github.com/rust-lang/rust/issues/105077
 
 ------------------------
 "##,
@@ -12069,6 +12095,20 @@ The tracking issue for this feature is: [#118485]
         deny_since: None,
     },
     Lint {
+        label: "os_str_split_at",
+        description: r##"# `os_str_split_at`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "os_string_truncate",
         description: r##"# `os_string_truncate`
 
@@ -12249,22 +12289,6 @@ The tracking issue for this feature is: [#123115]
 The tracking issue for this feature is: [#153328]
 
 [#153328]: https://github.com/rust-lang/rust/issues/153328
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "path_is_empty",
-        description: r##"# `path_is_empty`
-
-
-
-The tracking issue for this feature is: [#148494]
-
-[#148494]: https://github.com/rust-lang/rust/issues/148494
 
 ------------------------
 "##,
@@ -13467,6 +13491,22 @@ The tracking issue for this feature is: [#138099]
         deny_since: None,
     },
     Lint {
+        label: "return_address",
+        description: r##"# `return_address`
+
+
+
+The tracking issue for this feature is: [#154966]
+
+[#154966]: https://github.com/rust-lang/rust/issues/154966
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "return_type_notation",
         description: r##"# `return_type_notation`
 
@@ -13933,6 +13973,22 @@ The tracking issue for this feature is: [#90747]
 The tracking issue for this feature is: [#56975]
 
 [#56975]: https://github.com/rust-lang/rust/issues/56975
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "share_trait",
+        description: r##"# `share_trait`
+
+
+
+The tracking issue for this feature is: [#156756]
+
+[#156756]: https://github.com/rust-lang/rust/issues/156756
 
 ------------------------
 "##,
@@ -14927,22 +14983,6 @@ The tracking issue for this feature is: [#95439]
         deny_since: None,
     },
     Lint {
-        label: "target_feature_inline_always",
-        description: r##"# `target_feature_inline_always`
-
-Allows the use of target_feature when a function is marked inline(always).
-
-The tracking issue for this feature is: [#145574]
-
-[#145574]: https://github.com/rust-lang/rust/issues/145574
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "tcp_deferaccept",
         description: r##"# `tcp_deferaccept`
 
@@ -15687,22 +15727,6 @@ The tracking issue for this feature is: [#37572]
         deny_since: None,
     },
     Lint {
-        label: "trusted_len_next_unchecked",
-        description: r##"# `trusted_len_next_unchecked`
-
-
-
-The tracking issue for this feature is: [#37572]
-
-[#37572]: https://github.com/rust-lang/rust/issues/37572
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "trusted_random_access",
         description: r##"# `trusted_random_access`
 
@@ -16306,6 +16330,22 @@ The tracking issue for this feature is: [#89517]
         deny_since: None,
     },
     Lint {
+        label: "unix_kill_process_group",
+        description: r##"# `unix_kill_process_group`
+
+
+
+The tracking issue for this feature is: [#156537]
+
+[#156537]: https://github.com/rust-lang/rust/issues/156537
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "unix_mkfifo",
         description: r##"# `unix_mkfifo`
 
@@ -16394,6 +16434,22 @@ The tracking issue for this feature is: [#123481]
 The tracking issue for this feature is: [#76923]
 
 [#76923]: https://github.com/rust-lang/rust/issues/76923
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "unnamed_enum_variants",
+        description: r##"# `unnamed_enum_variants`
+
+Allows using `_ = <range-or-int>` enum variants.
+
+The tracking issue for this feature is: [#156628]
+
+[#156628]: https://github.com/rust-lang/rust/issues/156628
 
 ------------------------
 "##,

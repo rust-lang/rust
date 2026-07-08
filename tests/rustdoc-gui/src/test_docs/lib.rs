@@ -8,6 +8,9 @@
 #![feature(rustdoc_internals)]
 #![feature(doc_cfg)]
 #![feature(associated_type_defaults)]
+#![feature(macro_attr)]
+#![feature(macro_derive)]
+#![feature(negative_impls)]
 
 /*!
 Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
@@ -85,6 +88,19 @@ impl AsRef<str> for Foo {
     fn as_ref(&self) -> &str {
         "hello"
     }
+}
+
+unsafe impl Send for Foo {}
+impl !Sync for Foo {}
+
+impl From<u8> for Foo {
+    fn from(value: u8) -> Self { todo!(); }
+}
+impl From<u16> for Foo {
+    fn from(value: u16) -> Self { todo!(); }
+}
+impl From<u32> for Foo {
+    fn from(value: u32) -> Self { todo!(); }
 }
 
 /// <div id="doc-warning-0" class="warning">I have warnings!</div>

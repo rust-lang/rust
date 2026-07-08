@@ -3,7 +3,7 @@
 //@ ignore-spirv
 //@ reference: attributes.codegen.naked.body
 
-#![feature(asm_unwind, linkage, rustc_attrs, cfg_target_object_format)]
+#![feature(asm_unwind, linkage, rustc_attrs, cfg_target_object_format, abi_custom)]
 #![crate_type = "lib"]
 
 use std::arch::{asm, naked_asm};
@@ -240,4 +240,11 @@ pub extern "C" fn rustc_std_internal_symbol() {
 #[unsafe(naked)]
 pub extern "C" fn rustfmt_skip() {
     naked_asm!("", options(raw));
+}
+
+/// This is here to ensure that for any new target that adds assembly support, we
+/// check whether it can/does support `extern "custom"`.
+#[unsafe(naked)]
+unsafe extern "custom" fn abi_custom() {
+    naked_asm!("")
 }

@@ -26,9 +26,10 @@
 //! non-zero exit code.
 //!
 //! When the main thread of a Rust program terminates, the entire program shuts
-//! down, even if other threads are still running. However, this module provides
-//! convenient facilities for automatically waiting for the termination of a
-//! thread (i.e., join).
+//! down, even if other threads are still running, and any destructors on the
+//! remaining threads' stacks may not be executed.  However, this module
+//! provides convenient facilities for automatically waiting for the
+//! termination of a thread (i.e., join).
 //!
 //! ## Spawning a thread
 //!

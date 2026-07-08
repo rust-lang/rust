@@ -1,6 +1,5 @@
-#![allow(non_local_definitions, clippy::needless_ifs)]
+#![expect(clippy::needless_ifs)]
 #![warn(clippy::bool_comparison)]
-#![allow(clippy::non_canonical_partial_ord_impl)]
 
 fn main() {
     let x = true;

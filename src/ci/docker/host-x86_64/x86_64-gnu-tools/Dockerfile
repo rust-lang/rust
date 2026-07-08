@@ -56,6 +56,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   lsb-release \
   xdg-utils \
   wget \
+  unzip \
   # libgccjit dependencies
   flex \
   libmpfr-dev \
@@ -71,6 +72,16 @@ RUN sh /scripts/sccache.sh
 ENV GCC_EXEC_PREFIX="/usr/lib/gcc/"
 
 COPY host-x86_64/x86_64-gnu-tools/checktools.sh /tmp/
+
+# The version used by current `browser-ui-test` version. To be removed once `yarn` can download
+# it without failing...
+RUN curl https://ci-mirrors.rust-lang.org/rustc/chrome-linux64.zip > chrome-linux64.zip
+RUN unzip -d /usr/bin/ chrome-linux64.zip && rm chrome-linux64.zip
+
+# We already downloaded chromium so no need to download it again.
+ENV PUPPETEER_SKIP_DOWNLOAD 1
+# We provide the path to the extracted chrome binary.
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chrome-linux64/chrome
 
 COPY scripts/nodejs.sh /scripts/
 RUN sh /scripts/nodejs.sh /node

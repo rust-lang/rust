@@ -63,9 +63,11 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 /// of this trait must inspect [`Iterator::size_hint()`]’s upper bound.
 #[unstable(feature = "trusted_len", issue = "37572")]
 #[rustc_unsafe_specialization_marker]
-pub unsafe trait TrustedLen: Iterator {}
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+pub const unsafe trait TrustedLen: [const] Iterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 
 /// An iterator that when yielding an item will have taken at least one element
