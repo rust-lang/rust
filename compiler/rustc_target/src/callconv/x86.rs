@@ -92,7 +92,7 @@ where
                 Ty: TyAbiInterface<'a, C> + Copy,
             {
                 match layout.backend_repr {
-                    BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) => false,
+                    BackendRepr::Scalar(_) | BackendRepr::ScalarPair { .. } => false,
                     BackendRepr::SimdVector { .. } => true,
                     BackendRepr::Memory { .. } => {
                         for i in 0..layout.fields.count() {
@@ -211,7 +211,7 @@ where
     if !fn_abi.ret.is_ignore() {
         let has_float = match fn_abi.ret.layout.backend_repr {
             BackendRepr::Scalar(s) => matches!(s.primitive(), Primitive::Float(_)),
-            BackendRepr::ScalarPair(s1, s2) => {
+            BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
                 matches!(s1.primitive(), Primitive::Float(_))
                     || matches!(s2.primitive(), Primitive::Float(_))
             }

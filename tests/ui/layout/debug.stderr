@@ -102,22 +102,23 @@ error: layout_of(S) = Layout {
            align: AbiAlign {
                abi: Align(4 bytes),
            },
-           backend_repr: ScalarPair(
-               Initialized {
+           backend_repr: ScalarPair {
+               a: Initialized {
                    value: Int(
                        I32,
                        true,
                    ),
                    valid_range: 0..=4294967295,
                },
-               Initialized {
+               b: Initialized {
                    value: Int(
                        I32,
                        true,
                    ),
                    valid_range: 0..=4294967295,
                },
-           ),
+               b_offset: Size(4 bytes),
+           },
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
@@ -174,22 +175,23 @@ error: layout_of(Result<i32, i32>) = Layout {
            align: AbiAlign {
                abi: Align(4 bytes),
            },
-           backend_repr: ScalarPair(
-               Initialized {
+           backend_repr: ScalarPair {
+               a: Initialized {
                    value: Int(
                        I32,
                        false,
                    ),
                    valid_range: 0..=1,
                },
-               Initialized {
+               b: Initialized {
                    value: Int(
                        I32,
                        true,
                    ),
                    valid_range: 0..=4294967295,
                },
-           ),
+               b_offset: Size(4 bytes),
+           },
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
@@ -222,22 +224,23 @@ error: layout_of(Result<i32, i32>) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(8 bytes),
-                       backend_repr: ScalarPair(
-                           Initialized {
+                       backend_repr: ScalarPair {
+                           a: Initialized {
                                value: Int(
                                    I32,
                                    false,
                                ),
                                valid_range: 0..=1,
                            },
-                           Initialized {
+                           b: Initialized {
                                value: Int(
                                    I32,
                                    true,
                                ),
                                valid_range: 0..=4294967295,
                            },
-                       ),
+                           b_offset: Size(4 bytes),
+                       },
                        field_offsets: [
                            Size(4 bytes),
                        ],
@@ -249,22 +252,23 @@ error: layout_of(Result<i32, i32>) = Layout {
                    },
                    VariantLayout {
                        size: Size(8 bytes),
-                       backend_repr: ScalarPair(
-                           Initialized {
+                       backend_repr: ScalarPair {
+                           a: Initialized {
                                value: Int(
                                    I32,
                                    false,
                                ),
                                valid_range: 0..=1,
                            },
-                           Initialized {
+                           b: Initialized {
                                value: Int(
                                    I32,
                                    true,
                                ),
                                valid_range: 0..=4294967295,
                            },
-                       ),
+                           b_offset: Size(4 bytes),
+                       },
                        field_offsets: [
                            Size(4 bytes),
                        ],

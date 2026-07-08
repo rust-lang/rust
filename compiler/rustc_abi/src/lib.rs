@@ -1796,14 +1796,18 @@ impl IntoDiagArg for NumScalableVectors {
 pub enum BackendRepr {
     Scalar(Scalar),
     /// The data contained in this type can be entirely represented by two scalars.
-    /// The two scalars are listed in *memory* order, so the first is at offset zero
-    /// and the second at a non-zero offset.
+    /// The two scalars are listed in *memory* order, so `a` is at offset zero
+    /// and `b` is at non-zero offset `b_offset`.
     /// These need not be `FieldIdx(0)` and `FieldIdx(1)`.
     ///
-    /// As of June 2026 the offset to the second scalar is the size of the first
-    /// scalar rounded up to the platform alignment of the second scalar.
+    /// As of June 2026 the `b_offset` is always the size of the `a`
+    /// scalar rounded up to the platform alignment of the `b` scalar.
     /// That may soon change, however; see MCP#1007.
-    ScalarPair(Scalar, Scalar),
+    ScalarPair {
+        a: Scalar,
+        b: Scalar,
+        b_offset: Size,
+    },
     SimdScalableVector {
         element: Scalar,
         count: u64,
@@ -1826,7 +1830,7 @@ impl BackendRepr {
     pub fn is_unsized(&self) -> bool {
         match *self {
             BackendRepr::Scalar(_)
-            | BackendRepr::ScalarPair(..)
+            | BackendRepr::ScalarPair { .. }
             // FIXME(rustc_scalable_vector): Scalable vectors are `Sized` while the
             // `sized_hierarchy` feature is not yet fully implemented. After `sized_hierarchy` is
             // fully implemented, scalable vectors will remain `Sized`, they just won't be
@@ -1875,7 +1879,7 @@ impl BackendRepr {
     pub fn scalar_platform_align<C: HasDataLayout>(&self, cx: &C) -> Option<Align> {
         match *self {
             BackendRepr::Scalar(s) => Some(s.default_align(cx).abi),
-            BackendRepr::ScalarPair(s1, s2) => {
+            BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
                 Some(s1.default_align(cx).max(s2.default_align(cx)).abi)
             }
             // The align of a Vector can vary in surprising ways
@@ -1893,8 +1897,7 @@ impl BackendRepr {
             // No padding in scalars.
             BackendRepr::Scalar(s) => Some(s.size(cx)),
             // May have some padding between the pair.
-            BackendRepr::ScalarPair(s1, s2) => {
-                let field2_offset = s1.size(cx).align_to(s2.default_align(cx).abi);
+            BackendRepr::ScalarPair { a: _, b: s2, b_offset: field2_offset } => {
                 let size = (field2_offset + s2.size(cx)).align_to(
                     self.scalar_platform_align(cx)
                         // We absolutely must have an answer here or everything is FUBAR.
@@ -1913,8 +1916,8 @@ impl BackendRepr {
     pub fn to_union(&self) -> Self {
         match *self {
             BackendRepr::Scalar(s) => BackendRepr::Scalar(s.to_union()),
-            BackendRepr::ScalarPair(s1, s2) => {
-                BackendRepr::ScalarPair(s1.to_union(), s2.to_union())
+            BackendRepr::ScalarPair { a: s1, b: s2, b_offset } => {
+                BackendRepr::ScalarPair { a: s1.to_union(), b: s2.to_union(), b_offset }
             }
             BackendRepr::SimdVector { element, count } => {
                 BackendRepr::SimdVector { element: element.to_union(), count }
@@ -1939,8 +1942,13 @@ impl BackendRepr {
                 BackendRepr::SimdVector { element: element_l, count: count_l },
                 BackendRepr::SimdVector { element: element_r, count: count_r },
             ) => element_l.primitive() == element_r.primitive() && count_l == count_r,
-            (BackendRepr::ScalarPair(l1, l2), BackendRepr::ScalarPair(r1, r2)) => {
-                l1.primitive() == r1.primitive() && l2.primitive() == r2.primitive()
+            (
+                BackendRepr::ScalarPair { a: l1, b: l2, b_offset: l_offset },
+                BackendRepr::ScalarPair { a: r1, b: r2, b_offset: r_offset },
+            ) => {
+                l1.primitive() == r1.primitive()
+                    && l2.primitive() == r2.primitive()
+                    && l_offset == r_offset
             }
             // Everything else must be strictly identical.
             _ => self == other,
@@ -2180,7 +2188,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
             | BackendRepr::SimdScalableVector { .. } => false,
-            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
+            BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => true,
         }
     }
 
@@ -2294,7 +2302,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     pub fn is_zst(&self) -> bool {
         match self.backend_repr {
             BackendRepr::Scalar(_)
-            | BackendRepr::ScalarPair(..)
+            | BackendRepr::ScalarPair { .. }
             | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
