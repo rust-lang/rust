@@ -966,6 +966,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
+    // FIXME why is this loaded separately from the dep graph?
     let query_result_on_disk_cache =
         rustc_incremental::load_query_result_cache(sess, incr_comp_session.as_ref());
 

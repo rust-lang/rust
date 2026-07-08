@@ -11,7 +11,7 @@ use tracing::debug;
 
 use super::data::*;
 use super::fs::*;
-use super::{clean, file_format, work_product};
+use super::{clean, file_format};
 use crate::assert_dep_graph::assert_dep_graph;
 use crate::diagnostics;
 
@@ -118,7 +118,6 @@ pub fn save_work_product_index(
     let previous_work_products = dep_graph.previous_work_products();
     for (id, wp) in previous_work_products.to_sorted_stable_ord() {
         if !new_work_products.contains_key(id) {
-            work_product::delete_workproduct_files(sess, incr_comp_session.unwrap(), wp);
             debug_assert!(
                 !wp.saved_files.items().all(|(_, path)| in_incr_comp_dir_sess(
                     incr_comp_session.unwrap(),

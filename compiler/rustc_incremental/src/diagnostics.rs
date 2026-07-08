@@ -170,21 +170,6 @@ pub(crate) struct DeleteLock<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "hard linking files in the incremental compilation cache failed. copying files instead. consider moving the cache directory to a file system which supports hard linking in session dir `{$path}`"
-)]
-pub(crate) struct HardLinkFailed<'a> {
-    pub path: &'a Path,
-}
-
-#[derive(Diagnostic)]
-#[diag("failed to delete partly initialized session dir `{$path}`: {$err}")]
-pub(crate) struct DeletePartial<'a> {
-    pub path: &'a Path,
-    pub err: std::io::Error,
-}
-
-#[derive(Diagnostic)]
 #[diag("did not finalize incremental compilation session directory `{$path}`: {$err}")]
 #[help("the next build will not be able to reuse work from this compilation")]
 pub(crate) struct Finalize<'a> {

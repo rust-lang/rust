@@ -15,7 +15,9 @@ use rustc_errors::{
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::find_attr;
-use rustc_incremental::{copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir_sess};
+use rustc_incremental::{
+    copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir_sess, in_old_incr_comp_dir_sess,
+};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::bug;
@@ -349,9 +351,12 @@ pub struct CodegenContext {
     /// Directory into which should the LLVM optimization remarks be written.
     /// If `None`, they will be written to stderr.
     pub remark_dir: Option<PathBuf>,
+    /// The previous incremental compilation session directory, or None if we
+    /// are not compiling incrementally or there is no previous session.
+    pub old_incr_comp_session_dir: Option<PathBuf>,
     /// The incremental compilation session directory, or None if we are not
     /// compiling incrementally
-    pub incr_comp_session_dir: Option<PathBuf>,
+    pub new_incr_comp_session_dir: Option<PathBuf>,
     /// `true` if the codegen should be run in parallel.
     ///
     /// Depends on [`WriteBackendMethods::supports_parallel()`] and `-Zno_parallel_backend`.
@@ -498,7 +503,6 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
             incr_comp_session.unwrap(),
             &module.name,
             files.as_slice(),
-            &module.links_from_incr_cache,
         );
         work_products.insert(id, product);
     }
@@ -840,7 +844,7 @@ fn execute_optimize_work_item<B: WriteBackendMethods>(
     // save our module to disk first.
     let bitcode = if cgcx.module_config.emit_pre_lto_bc {
         let filename = pre_lto_bitcode_filename(&module.name);
-        cgcx.incr_comp_session_dir.as_ref().map(|path| path.join(&filename))
+        cgcx.new_incr_comp_session_dir.as_ref().map(|path| path.join(&filename))
     } else {
         None
     };
@@ -887,11 +891,9 @@ fn execute_copy_from_cache_work_item(
     let dcx = DiagCtxt::new(Box::new(shared_emitter));
     let dcx = dcx.handle();
 
-    let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
+    let incr_comp_session_dir = cgcx.old_incr_comp_session_dir.as_ref().unwrap();
 
-    let mut links_from_incr_cache = Vec::new();
-
-    let mut load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
+    let load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
         let source_file_in_incr_comp_dir = incr_comp_session_dir.join(saved_path);
         debug!(
             "copying preexisting module `{}` from {:?} to {}",
@@ -900,10 +902,7 @@ fn execute_copy_from_cache_work_item(
             output_path.display()
         );
         match link_or_copy(&source_file_in_incr_comp_dir, &output_path) {
-            Ok(_) => {
-                links_from_incr_cache.push(source_file_in_incr_comp_dir);
-                Some(output_path)
-            }
+            Ok(_) => Some(output_path),
             Err(error) => {
                 dcx.emit_err(diagnostics::CopyPathBuf {
                     source_file: source_file_in_incr_comp_dir,
@@ -926,7 +925,7 @@ fn execute_copy_from_cache_work_item(
             load_from_incr_comp_dir(dwarf_obj_out, saved_dwarf_object_file)
         });
 
-    let mut load_from_incr_cache = |perform, output_type: OutputType| {
+    let load_from_incr_cache = |perform, output_type: OutputType| {
         if perform {
             let saved_file = module.source.saved_files.get(output_type.extension())?;
             let output_path = cgcx.output_filenames.temp_path_for_cgu(output_type, &module.name);
@@ -954,7 +953,6 @@ fn execute_copy_from_cache_work_item(
     }
 
     CompiledModule {
-        links_from_incr_cache,
         kind: ModuleKind::Regular,
         name: module.name,
         object,
@@ -1288,10 +1286,14 @@ fn start_executing_work<B: WriteBackendMethods>(
         time_trace: sess.opts.unstable_opts.llvm_time_trace,
         remark: sess.opts.cg.remark.clone(),
         remark_dir,
-        incr_comp_session_dir: tcx
+        old_incr_comp_session_dir: tcx
             .incr_comp_session
             .as_ref()
-            .map(|incr_comp_session| incr_comp_session.session_directory.clone()),
+            .and_then(|incr_comp_session| incr_comp_session.old_session_directory.clone()),
+        new_incr_comp_session_dir: tcx
+            .incr_comp_session
+            .as_ref()
+            .map(|incr_comp_session| incr_comp_session.new_session_directory.clone()),
         output_filenames: Arc::clone(tcx.output_filenames(())),
         module_config: regular_config,
         opt_level,
@@ -2262,7 +2264,22 @@ pub(crate) fn submit_pre_lto_module_to_llvm<B: WriteBackendMethods>(
     module: CachedModuleCodegen,
 ) {
     let filename = pre_lto_bitcode_filename(&module.name);
+    let old_bitcode_path =
+        in_old_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename).unwrap();
     let bitcode_path = in_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename);
+
+    match link_or_copy(&old_bitcode_path, &bitcode_path) {
+        Ok(_) => {}
+        Err(error) => {
+            tcx.sess.dcx().emit_err(diagnostics::CopyPathBuf {
+                source_file: old_bitcode_path,
+                output_path: bitcode_path,
+                error,
+            });
+            return;
+        }
+    }
+
     // Schedule the module to be loaded
     drop(
         coordinator

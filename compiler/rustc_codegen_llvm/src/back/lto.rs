@@ -463,23 +463,33 @@ fn thin_lto(
 
         info!("thin LTO data created");
 
-        let (key_map_path, prev_key_map, curr_key_map) = if let Some(ref incr_comp_session_dir) =
-            cgcx.incr_comp_session_dir
+        let new_key_map_path = cgcx
+            .new_incr_comp_session_dir
+            .as_ref()
+            .map(|dir| dir.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME));
+
+        let (prev_key_map, curr_key_map) = if let Some(ref old_incr_comp_session_dir) =
+            cgcx.old_incr_comp_session_dir
         {
-            let path = incr_comp_session_dir.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME);
+            let old_path = old_incr_comp_session_dir.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME);
+
             // If the previous file was deleted, or we get an IO error
             // reading the file, then we'll just use `None` as the
             // prev_key_map, which will force the code to be recompiled.
-            let prev =
-                if path.exists() { ThinLTOKeysMap::load_from_file(&path).ok() } else { None };
+            let prev = if old_path.exists() {
+                ThinLTOKeysMap::load_from_file(&old_path).ok()
+            } else {
+                None
+            };
             let curr = ThinLTOKeysMap::from_thin_lto_modules(&data, &thin_modules, &module_names);
-            (Some(path), prev, curr)
+
+            (prev, curr)
         } else {
             // If we don't compile incrementally, we don't need to load the
             // import data from LLVM.
             assert!(green_modules.is_empty());
             let curr = ThinLTOKeysMap::default();
-            (None, None, curr)
+            (None, curr)
         };
         info!("thin LTO cache key map loaded");
         info!("prev_key_map: {:#?}", prev_key_map);
@@ -500,7 +510,8 @@ fn thin_lto(
             if let (Some(prev_key_map), true) =
                 (prev_key_map.as_ref(), green_modules.contains_key(module_name))
             {
-                assert!(cgcx.incr_comp_session_dir.is_some());
+                assert!(cgcx.old_incr_comp_session_dir.is_some());
+                assert!(cgcx.new_incr_comp_session_dir.is_some());
 
                 // If a module exists in both the current and the previous session,
                 // and has the same LTO cache key in both sessions, then we can re-use it
@@ -508,7 +519,6 @@ fn thin_lto(
                     let work_product = green_modules[module_name].clone();
                     copy_jobs.push(work_product);
                     info!(" - {}: re-used", module_name);
-                    assert!(cgcx.incr_comp_session_dir.is_some());
                     continue;
                 }
             }
@@ -518,8 +528,8 @@ fn thin_lto(
         }
 
         // Save the current ThinLTO import information for the next compilation
-        // session, overwriting the previous serialized data (if any).
-        if let Some(path) = key_map_path
+        // session.
+        if let Some(path) = new_key_map_path
             && let Err(err) = curr_key_map.save_to_file(&path)
         {
             write::llvm_err(dcx, LlvmError::WriteThinLtoKey { err });
