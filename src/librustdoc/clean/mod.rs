@@ -2808,6 +2808,8 @@ fn add_without_unwanted_attributes<'hir>(
     is_inline: bool,
     import_parent: Option<DefId>,
 ) {
+    let is_automatically_derived =
+        rustc_hir::find_attr!(new_attrs, AttributeKind::AutomaticallyDerived);
     for attr in new_attrs {
         match attr {
             hir::Attribute::Parsed(AttributeKind::DocComment { .. }) => {
@@ -2855,6 +2857,8 @@ fn add_without_unwanted_attributes<'hir>(
 
             // We discard `#[cfg(...)]` attributes unless we're inlining
             hir::Attribute::Parsed(AttributeKind::CfgTrace(..)) if !is_inline => {}
+            hir::Attribute::Parsed(AttributeKind::CfgAttrTrace(..))
+                if !is_inline || !is_automatically_derived => {}
             // We keep all other attributes
             _ => {
                 attrs.push((Cow::Borrowed(attr), import_parent));

@@ -910,7 +910,22 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         span,
                         path,
                     };
-                    let items = match expander.expand(self.cx, span, &meta, item, is_const) {
+                    let cfg_attrs = if let Annotatable::Item(ref item) = item {
+                        item.attrs
+                            .iter()
+                            .filter(|attr| {
+                                // FIXME(GuillaumeGomez): Should we convert the `cfg_attr_trace`
+                                // attributes into `cfg_trace` to prevent having to handle two
+                                // different attributes for the same information?
+                                attr.name().is_some_and(|name| name == sym::cfg_attr_trace)
+                                    && self.cx.call_site().overlaps(attr.span)
+                            })
+                            .cloned()
+                            .collect::<Vec<_>>()
+                    } else {
+                        Vec::new()
+                    };
+                    let mut items = match expander.expand(self.cx, span, &meta, item, is_const) {
                         ExpandResult::Ready(items) => items,
                         ExpandResult::Retry(item) => {
                             // Reassemble the original invocation for retrying.
@@ -920,6 +935,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             });
                         }
                     };
+
+                    if !cfg_attrs.is_empty() {
+                        for item in &mut items {
+                            if let Annotatable::Item(item) = item {
+                                item.attrs.extend(cfg_attrs.clone());
+                            }
+                        }
+                    }
+
                     let fragment = fragment_kind.expect_from_annotatables(items);
                     if macro_stats {
                         update_derive_macro_stats(

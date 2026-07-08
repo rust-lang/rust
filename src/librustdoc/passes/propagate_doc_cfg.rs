@@ -37,6 +37,8 @@ struct CfgPropagator<'a, 'tcx> {
 /// This function goes through the attributes list (`new_attrs`) and extract the `cfg` tokens from
 /// it and put them into `attrs`.
 fn add_only_cfg_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) {
+    let is_automatically_derived =
+        rustc_hir::find_attr!(new_attrs, AttributeKind::AutomaticallyDerived);
     for attr in new_attrs {
         if let Attribute::Parsed(AttributeKind::Doc(d)) = attr
             && !d.cfg.is_empty()
@@ -47,6 +49,11 @@ fn add_only_cfg_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) 
         } else if let Attribute::Parsed(AttributeKind::CfgTrace(..)) = attr {
             // If it's a `cfg()` attribute, we keep it.
             attrs.push(attr.clone());
+        } else if let Attribute::Parsed(AttributeKind::CfgAttrTrace(..)) = attr
+            && is_automatically_derived
+        {
+            // If it's a `cfg()` attribute, we keep it.
+            attrs.push(attr.clone());
         }
     }
 }
@@ -54,6 +61,8 @@ fn add_only_cfg_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) 
 /// This function goes through the attributes list (`new_attrs`) and extracts the attributes that
 /// affect the cfg state propagated to detached items.
 fn add_cfg_state_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) {
+    let is_automatically_derived =
+        rustc_hir::find_attr!(new_attrs, AttributeKind::AutomaticallyDerived);
     for attr in new_attrs {
         if let Attribute::Parsed(AttributeKind::Doc(d)) = attr
             && (!d.cfg.is_empty() || !d.auto_cfg.is_empty() || !d.auto_cfg_change.is_empty())
@@ -64,6 +73,11 @@ fn add_cfg_state_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute])
             new_attr.auto_cfg_change = d.auto_cfg_change.clone();
             attrs.push(Attribute::Parsed(AttributeKind::Doc(Box::new(new_attr))));
         } else if let Attribute::Parsed(AttributeKind::CfgTrace(..)) = attr {
+            // If it's a `cfg()` attribute, we keep it.
+            attrs.push(attr.clone());
+        } else if let Attribute::Parsed(AttributeKind::CfgAttrTrace(..)) = attr
+            && is_automatically_derived
+        {
             // If it's a `cfg()` attribute, we keep it.
             attrs.push(attr.clone());
         }

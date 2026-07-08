@@ -2,6 +2,7 @@
 
 use std::iter;
 
+use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree, WithTokens,
@@ -264,8 +265,6 @@ impl<'a> StripUnconfigured<'a> {
         // A trace attribute left in AST in place of the original `cfg_attr` attribute.
         // It can later be used by lints or other diagnostics.
         let mut trace_attr = cfg_attr.clone();
-        trace_attr.replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgAttrTrace));
-        let trace_attr = attr_into_trace(trace_attr, sym::cfg_attr_trace);
 
         let Some((cfg_predicate, expanded_attrs)) = rustc_attr_parsing::parse_cfg_attr(
             cfg_attr,
@@ -273,7 +272,10 @@ impl<'a> StripUnconfigured<'a> {
             self.features,
             self.lint_node_id,
         ) else {
-            return vec![trace_attr];
+            trace_attr.replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgAttrTrace(
+                CfgEntry::Bool(false, cfg_attr.span),
+            )));
+            return vec![attr_into_trace(trace_attr, sym::cfg_attr_trace)];
         };
 
         // Lint on zero attributes in source.
@@ -287,8 +289,16 @@ impl<'a> StripUnconfigured<'a> {
         }
 
         if !attr::eval_config_entry(self.sess, &cfg_predicate).as_bool() {
-            return vec![trace_attr];
+            trace_attr.replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgAttrTrace(
+                CfgEntry::Bool(false, cfg_attr.span),
+            )));
+            return vec![attr_into_trace(trace_attr, sym::cfg_attr_trace)];
         }
+
+        // We add the `cfg` predicate into the trace.
+        trace_attr
+            .replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgAttrTrace(cfg_predicate)));
+        let trace_attr = attr_into_trace(trace_attr, sym::cfg_attr_trace);
 
         if recursive {
             // We call `process_cfg_attr` recursively in case there's a

@@ -796,7 +796,7 @@ impl<'a> TraitDef<'a> {
         let rustc_const_unstable =
             cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));
 
-        let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
+        let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span)];
 
         // Only add `rustc_const_unstable` attributes if `derive_const` is used within libcore/libstd,
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
