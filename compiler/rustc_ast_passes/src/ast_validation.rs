@@ -933,11 +933,19 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_item_named(&self, ident: Ident, kind: &str) {
+    fn check_item_named(&self, ident: Ident, kind: &str, ctxt: AssocCtxt) {
         if ident.name != kw::Underscore {
             return;
         }
-        self.dcx().emit_err(diagnostics::ItemUnderscore { span: ident.span, kind });
+
+        if !self.features.enabled(sym::associated_const_underscore)
+            && matches!(ctxt, AssocCtxt::Impl { of_trait: false })
+        {
+            let msg = format!("naming associated constants with `_` is unstable");
+            feature_err(&self.sess, sym::associated_const_underscore, ident.span, msg).emit();
+        } else if !matches!(ctxt, AssocCtxt::Impl { of_trait: false }) {
+            self.dcx().emit_err(diagnostics::ItemUnderscore { span: ident.span, kind });
+        }
     }
 
     fn check_nomangle_item_asciionly(&self, ident: Ident, item_span: Span) {
@@ -1964,7 +1972,7 @@ impl Visitor<'_> for AstValidator<'_> {
         }
 
         if let AssocItemKind::Const(ci) = &item.kind {
-            self.check_item_named(ci.ident, "const");
+            self.check_item_named(ci.ident, "const", ctxt);
         }
 
         let parent_is_const =
