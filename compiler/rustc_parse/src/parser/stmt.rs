@@ -3,13 +3,12 @@ use std::mem;
 use std::ops::Bound;
 
 use ast::Label;
-use rustc_ast as ast;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
-    AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
-    LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
+    self as ast, AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind,
+    HasAttrs, Local, LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
 };
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, kw, sym};
@@ -494,7 +493,7 @@ impl<'a> Parser<'a> {
             _ => self.eat(exp!(Eq)),
         };
 
-        Ok(if eq_consumed || eq_optional { Some(self.parse_expr()?) } else { None })
+        Ok(if eq_consumed || eq_optional { Some(self.parse_expr_in_let()?) } else { None })
     }
 
     /// Parses a block. No inner attributes are allowed.

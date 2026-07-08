@@ -4690,3 +4690,15 @@ pub(crate) struct SuggestIntroduceTypeParameter {
     pub span: Span,
     pub parameters: String,
 }
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "you might have meant to write a diverging block on a refutable `let` statement by using `let-else`
+    for more information, visit <https://doc.rust-lang.org/beta/rust-by-example/flow_control/let_else.html>",
+    code = " else ",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct MissingElseInLet {
+    #[primary_span]
+    pub span: Span,
+}
