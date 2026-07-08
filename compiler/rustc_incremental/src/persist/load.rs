@@ -48,12 +48,16 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
 
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
-    let path = dep_graph_path(incr_comp_session);
+    let Some(path) = old_dep_graph_path(incr_comp_session) else {
+        return LoadResult::DataOutOfDate;
+    };
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
     let mut prev_work_products = UnordMap::default();
 
-    let work_products_path = work_products_path(incr_comp_session);
+    let Some(work_products_path) = old_work_products_path(incr_comp_session) else {
+        return LoadResult::DataOutOfDate;
+    };
 
     if let Ok(OpenFile { mmap, start_pos }) =
         file_format::open_incremental_file(sess, &work_products_path)
@@ -68,7 +72,7 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
 
         for swp in work_products {
             let all_files_exist = swp.work_product.saved_files.items().all(|(_, path)| {
-                let exists = in_incr_comp_dir_sess(incr_comp_session, path).exists();
+                let exists = in_old_incr_comp_dir_sess(incr_comp_session, path).unwrap().exists();
                 if !exists && sess.opts.unstable_opts.incremental_info {
                     eprintln!("incremental: could not find file for work product: {path}",);
                 }
@@ -134,7 +138,9 @@ pub fn load_query_result_cache(
 
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
-    let path = query_cache_path(incr_comp_session);
+    let Some(path) = old_query_cache_path(incr_comp_session) else {
+        return Some(OnDiskCache::new_empty());
+    };
     match file_format::open_incremental_file(sess, &path) {
         Ok(OpenFile { mmap, start_pos }) => {
             let cache = OnDiskCache::new(sess, mmap, start_pos).unwrap_or_else(|()| {
@@ -196,7 +202,7 @@ pub fn setup_dep_graph(
 
     sess.time("incr_comp_garbage_collect_session_directories", || {
         if let Err(e) =
-            garbage_collect_session_directories(sess, &incr_comp_session.session_directory)
+            garbage_collect_session_directories(sess, &incr_comp_session.new_session_directory)
         {
             warn!(
                 "Error while trying to garbage collect incremental compilation \
