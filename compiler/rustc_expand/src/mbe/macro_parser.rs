@@ -592,7 +592,7 @@ impl TtParser {
                     let matches = Rc::try_unwrap(eof_mp.matches).unwrap().into_iter();
                     Success(self.nameize(matcher, matches))
                 }
-                [] => Failure(T::build_failure(
+                [] => Failure(track.failure(
                     Token::new(
                         token::Eof,
                         if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
@@ -642,7 +642,7 @@ impl TtParser {
                 (0, 0) => {
                     // There are no possible next positions AND we aren't waiting for the black-box
                     // parser: syntax error.
-                    return Failure(T::build_failure(
+                    return Failure(track.failure(
                         parser.token,
                         parser.approx_token_stream_pos(),
                         "no rules expected this token in macro call",

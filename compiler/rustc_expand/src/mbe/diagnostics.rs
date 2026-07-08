@@ -193,10 +193,6 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         self.current = Some(which_matcher);
     }
 
-    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
-        (tok, position, msg)
-    }
-
     fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc) {
         if self.remaining_matcher.is_none()
             || (parser.has_no_remaining_items_for_step() && *matcher != MatcherLoc::Eof)
@@ -206,10 +202,6 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
     }
 
     fn after_arm(&mut self, result: &NamedParseResult<Self::Failure>) {
-        let Some(which_matcher) = self.current else {
-            bug!("`Self::prepare()` was not called to initialize context");
-        };
-
         match *result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -219,22 +211,9 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     "should not collect detailed info for successful macro match",
                 );
             }
-            Failure((token, approx_position, msg)) => {
-                debug!(?token, ?msg, "a new failure of an arm");
-
-                if self.best_failure.as_ref().is_none_or(|failure| {
-                    failure.is_better_position(which_matcher, approx_position)
-                }) {
-                    self.best_failure = Some(BestFailure {
-                        token,
-                        matcher: which_matcher,
-                        position: approx_position,
-                        msg,
-                        remaining_matcher: self
-                            .remaining_matcher
-                            .expect("must have collected matcher already")
-                            .clone(),
-                    })
+            Failure(_) => {
+                if self.best_failure.is_none() {
+                    bug!("A matching failure occurred but `Self::failure()` was not called");
                 }
             }
             Ambiguity => {
@@ -246,6 +225,33 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
 
         self.current = None;
+    }
+
+    fn failure(&mut self, token: Token, approx_position: u32, msg: &'static str) -> Self::Failure {
+        let Some(which_matcher) = self.current else {
+            bug!("`Self::prepare()` was not called to initialize context");
+        };
+
+        debug!(?token, ?msg, "a new failure of an arm");
+
+        if self
+            .best_failure
+            .as_ref()
+            .is_none_or(|failure| failure.is_better_position(which_matcher, approx_position))
+        {
+            self.best_failure = Some(BestFailure {
+                token,
+                matcher: which_matcher,
+                position: approx_position,
+                msg,
+                remaining_matcher: self
+                    .remaining_matcher
+                    .expect("must have collected matcher already")
+                    .clone(),
+            })
+        }
+
+        (token, approx_position, msg)
     }
 
     fn ambiguity(

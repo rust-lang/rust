@@ -365,17 +365,21 @@ pub(super) trait Tracker<'matcher> {
     /// Provide context on the arm that's about to be matched.
     fn prepare(&mut self, which_matcher: WhichMatcher);
 
-    /// Arm failed to match. If the token is `token::Eof`, it indicates an unexpected
-    /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
-    /// The usize is the approximate position of the token in the input token stream.
-    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure;
-
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
 
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
     fn after_arm(&mut self, result: &NamedParseResult<Self::Failure>);
+
+    /// The arm could not be matched successfully.
+    ///
+    /// If the parser is located at [`token::Eof`], it indicates an unexpected end of macro
+    /// invocation. Otherwise, the parser is located at a token in the middle of the input, and it
+    /// indicates that no rules in the arm expected the given token.
+    ///
+    /// The parser will return [`NamedParseResult::Failure`] after calling this.
+    fn failure(&mut self, token: Token, approx_position: u32, msg: &'static str) -> Self::Failure;
 
     /// An ambiguity error occurred.
     ///
@@ -402,8 +406,6 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
     fn prepare(&mut self, _which_matcher: WhichMatcher) {}
 
-    fn build_failure(_tok: Token, _position: u32, _msg: &'static str) -> Self::Failure {}
-
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
 
     fn ambiguity(
@@ -415,6 +417,14 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
     }
 
     fn after_arm(&mut self, _result: &NamedParseResult<Self::Failure>) {}
+
+    fn failure(
+        &mut self,
+        _token: Token,
+        _approx_position: u32,
+        _msg: &'static str,
+    ) -> Self::Failure {
+    }
 
     fn description() -> &'static str {
         "none"
