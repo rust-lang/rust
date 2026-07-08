@@ -22,6 +22,9 @@ use crate::ast_traits::{HasAttrs, HasTokens};
 use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::{AttrVec, Attribute};
 
+#[cfg(test)]
+mod tests;
+
 /// Part of a `TokenStream`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub enum TokenTree {
