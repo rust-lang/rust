@@ -1,10 +1,10 @@
-use crate::io::{ErrorKind, Result, Seek, SeekFrom, SizeHint};
+use crate::io::{self, ErrorKind, IoSlice, Result, Seek, SeekFrom, SizeHint, Write};
 use crate::{cmp, fmt};
 
 /// `Empty` ignores any data written via [`Write`], and will always be empty
 /// (returning zero bytes) when read via [`Read`].
 ///
-/// [`Write`]: ../../std/io/trait.Write.html
+/// [`Write`]: crate::io::Write
 /// [`Read`]: ../../std/io/trait.Read.html
 ///
 /// This struct is generally created by calling [`empty()`]. Please
@@ -20,6 +20,84 @@ impl SizeHint for Empty {
     #[inline]
     fn upper_bound(&self) -> Option<usize> {
         Some(0)
+    }
+}
+
+#[stable(feature = "empty_write", since = "1.73.0")]
+impl Write for Empty {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        Ok(buf.len())
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let total_len = bufs.iter().map(|b| b.len()).sum();
+        Ok(total_len)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn write_all(&mut self, _buf: &[u8]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, _bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, _args: fmt::Arguments<'_>) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+#[stable(feature = "empty_write", since = "1.73.0")]
+impl Write for &Empty {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        Ok(buf.len())
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let total_len = bufs.iter().map(|b| b.len()).sum();
+        Ok(total_len)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn write_all(&mut self, _buf: &[u8]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, _bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, _args: fmt::Arguments<'_>) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
 
@@ -51,7 +129,7 @@ impl Seek for Empty {
 /// [`Ok(buf.len())`]: Ok
 /// [`Ok(0)`]: Ok
 ///
-/// [`write`]: ../../std/io/trait.Write.html#tymethod.write
+/// [`write`]: crate::io::Write::write
 /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
 ///
 /// # Examples
@@ -142,12 +220,90 @@ impl fmt::Debug for Repeat {
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Sink;
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Write for Sink {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        Ok(buf.len())
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let total_len = bufs.iter().map(|b| b.len()).sum();
+        Ok(total_len)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn write_all(&mut self, _buf: &[u8]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, _bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, _args: fmt::Arguments<'_>) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+#[stable(feature = "write_mt", since = "1.48.0")]
+impl Write for &Sink {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        Ok(buf.len())
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let total_len = bufs.iter().map(|b| b.len()).sum();
+        Ok(total_len)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn write_all(&mut self, _buf: &[u8]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, _bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, _args: fmt::Arguments<'_>) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
 /// Creates an instance of a writer which will successfully consume all data.
 ///
 /// All calls to [`write`] on the returned instance will return [`Ok(buf.len())`]
 /// and the contents of the buffer will not be inspected.
 ///
-/// [`write`]: ../../std/io/trait.Write.html#tymethod.write
+/// [`write`]: crate::io::Write::write
 /// [`Ok(buf.len())`]: Ok
 ///
 /// # Examples
