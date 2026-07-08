@@ -415,16 +415,21 @@ impl Ctx<'_> {
                         editor.replace(path.syntax(), qualified.clone().syntax());
                     } else if let Some(path_ty) = ast::PathType::cast(parent) {
                         let old = path_ty.syntax();
+                        let needs_paren = type_needs_parens(old.parent(), subst);
+                        let subst = if needs_paren {
+                            make.ty(&format!("({subst})"))
+                        } else {
+                            subst.clone()
+                        };
 
                         if old.parent().is_some() {
-                            editor.replace(old, subst.clone().syntax());
+                            editor.replace(old, subst.syntax());
                         } else {
                             let start = path_ty.syntax().first_child().map(NodeOrToken::Node)?;
                             let end = path_ty.syntax().last_child().map(NodeOrToken::Node)?;
                             editor.replace_all(
                                 start..=end,
                                 subst
-                                    .clone()
                                     .syntax()
                                     .children()
                                     .map(NodeOrToken::Node)
@@ -596,6 +601,15 @@ impl Ctx<'_> {
             _ => None,
         }
     }
+}
+
+fn type_needs_parens(parent: Option<SyntaxNode>, new: &ast::Type) -> bool {
+    if !matches!(new, ast::Type::DynTraitType(_)) {
+        return false;
+    }
+    let Some(parent) = parent else { return false };
+    let kind = parent.kind();
+    ast::CastExpr::can_cast(kind) || ast::RefType::can_cast(kind) || ast::PtrType::can_cast(kind)
 }
 
 // FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
