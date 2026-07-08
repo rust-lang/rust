@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, cmp::Ordering, iter};
 
-use base_db::{Crate, CrateOrigin, LangCrateOrigin};
+use base_db::{Crate, CrateOrigin, LangCrateOrigin, SourceDatabase};
 use hir_expand::{
     Lookup,
     mod_path::{ModPath, PathKind},
@@ -13,7 +13,6 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     ModuleDefId, ModuleId,
-    db::DefDatabase,
     import_map::ImportMap,
     item_scope::ItemInNs,
     nameres::DefMap,
@@ -37,7 +36,7 @@ pub struct FindPathConfig {
 /// Find a path that can be used to refer to a certain item. This can depend on
 /// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     item: ItemInNs,
     from: ModuleId,
     mut prefix_kind: PrefixKind,
@@ -114,7 +113,7 @@ impl PrefixKind {
 }
 
 struct FindPathCtx<'db> {
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     prefix: PrefixKind,
     cfg: FindPathConfig,
     ignore_local_imports: bool,
@@ -268,7 +267,7 @@ fn find_path_for_module(
 }
 
 fn find_in_scope(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     def_map: &DefMap,
     from: ModuleId,
     item: ItemInNs,
@@ -285,7 +284,7 @@ fn find_in_scope(
 /// Returns single-segment path (i.e. without any prefix) if `item` is found in prelude and its
 /// name doesn't clash in current scope.
 fn find_in_prelude(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     local_def_map: &DefMap,
     item: ItemInNs,
     from: ModuleId,
@@ -318,7 +317,7 @@ fn find_in_prelude(
 }
 
 fn is_kw_kind_relative_to_from(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     def_map: &DefMap,
     item: ModuleId,
     from: ModuleId,

@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
@@ -15,8 +15,8 @@ use syntax::{AstNode, Parse, ast};
 use tt::TextRange;
 
 use crate::{
-    MacroId, UnresolvedMacro, attrs::AttrFlags, db::DefDatabase, expr_store::HygieneId,
-    macro_call_as_call_id, nameres::DefMap,
+    MacroId, UnresolvedMacro, attrs::AttrFlags, expr_store::HygieneId, macro_call_as_call_id,
+    nameres::DefMap,
 };
 
 #[derive(Debug)]
@@ -31,7 +31,7 @@ pub(super) struct Expander<'db> {
 
 impl<'db> Expander<'db> {
     pub(super) fn new(
-        db: &'db dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         current_file_id: HirFileId,
         def_map: &'db DefMap,
     ) -> Expander<'db> {
@@ -55,7 +55,7 @@ impl<'db> Expander<'db> {
         self.span_map.span_for_range(range).ctx
     }
 
-    pub(super) fn hygiene_for_range(&self, db: &dyn DefDatabase, range: TextRange) -> HygieneId {
+    pub(super) fn hygiene_for_range(&self, db: &dyn SourceDatabase, range: TextRange) -> HygieneId {
         match self.span_map {
             SpanMap::ExpansionSpanMap(span_map) => {
                 HygieneId::new(span_map.span_at(range.start()).ctx.opaque_and_semiopaque(db))
@@ -74,7 +74,7 @@ impl<'db> Expander<'db> {
 
     pub(super) fn enter_expand<T: ast::AstNode>(
         &mut self,
-        db: &'db dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         macro_call: ast::MacroCall,
         krate: Crate,
         resolver: impl Fn(&ModPath) -> Option<MacroId>,
@@ -127,7 +127,7 @@ impl<'db> Expander<'db> {
 
     pub(super) fn enter_expand_id<T: ast::AstNode>(
         &mut self,
-        db: &'db dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         call_id: MacroCallId,
     ) -> ExpandResult<Option<(Mark<'db>, Option<Parse<T>>)>> {
         self.within_limit(db, |_this| ExpandResult::ok(Some(call_id)))
@@ -159,7 +159,7 @@ impl<'db> Expander<'db> {
 
     fn within_limit<F, T: ast::AstNode>(
         &mut self,
-        db: &'db dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         op: F,
     ) -> ExpandResult<Option<(Mark<'db>, Option<Parse<T>>)>>
     where

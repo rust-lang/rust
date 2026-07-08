@@ -46,7 +46,7 @@ use std::{
 };
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateOrigin, LangCrateOrigin, all_crates};
+use base_db::{CrateDisplayName, CrateOrigin, LangCrateOrigin, SourceDatabase, all_crates};
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, AssocItemLoc, BuiltinDeriveImplId, CallableDefId, ConstId, ConstParamId,
@@ -115,7 +115,7 @@ use syntax::{
 };
 use triomphe::Arc;
 
-use crate::db::{DefDatabase, HirDatabase};
+use crate::db::HirDatabase;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PredicateEvaluationStatus {
@@ -325,7 +325,7 @@ impl Crate {
 
     pub fn query_external_importables(
         self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         query: import_map::Query,
     ) -> impl Iterator<Item = (Either<ModuleDef, Macro>, Complete)> {
         let _p = tracing::info_span!("query_external_importables").entered();
@@ -1109,7 +1109,7 @@ impl Module {
     /// this module, if possible.
     pub fn find_path(
         self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         item: impl Into<ItemInNs>,
         cfg: FindPathConfig,
     ) -> Option<ModPath> {
@@ -1127,7 +1127,7 @@ impl Module {
     /// this module, if possible. This is used for returning import paths for use-statements.
     pub fn find_use_path(
         self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         item: impl Into<ItemInNs>,
         prefix_kind: PrefixKind,
         cfg: FindPathConfig,
@@ -3622,7 +3622,7 @@ fn as_assoc_item<'db, ID, DEF, LOC>(
     id: ID,
 ) -> Option<AssocItem>
 where
-    ID: Lookup<Database = dyn DefDatabase, Data = AssocItemLoc<LOC>>,
+    ID: Lookup<Database = dyn SourceDatabase, Data = AssocItemLoc<LOC>>,
     DEF: From<ID>,
     LOC: AstIdNode,
 {
@@ -3638,7 +3638,7 @@ fn as_extern_assoc_item<'db, ID, DEF, LOC>(
     id: ID,
 ) -> Option<ExternAssocItem>
 where
-    ID: Lookup<Database = dyn DefDatabase, Data = AssocItemLoc<LOC>>,
+    ID: Lookup<Database = dyn SourceDatabase, Data = AssocItemLoc<LOC>>,
     DEF: From<ID>,
     LOC: AstIdNode,
 {

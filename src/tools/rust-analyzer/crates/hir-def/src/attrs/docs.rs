@@ -11,7 +11,7 @@ use std::{
     ops::{ControlFlow, Range},
 };
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
@@ -27,7 +27,7 @@ use syntax::{
 };
 use tt::{TextRange, TextSize};
 
-use crate::{db::DefDatabase, macro_call_as_call_id, nameres::MacroSubNs, resolver::Resolver};
+use crate::{macro_call_as_call_id, nameres::MacroSubNs, resolver::Resolver};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct DocsSourceMapLine {
@@ -323,7 +323,7 @@ impl Docs {
 }
 
 struct DocMacroExpander<'db> {
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     krate: Crate,
     recursion_depth: usize,
     recursion_limit: usize,
@@ -408,7 +408,7 @@ fn expand_doc_macro_call<'db>(
 
 fn extend_with_attrs<'a, 'db>(
     result: &mut Docs,
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     krate: Crate,
     node: &SyntaxNode,
     file_id: HirFileId,
@@ -473,7 +473,7 @@ fn extend_with_attrs<'a, 'db>(
 }
 
 pub(crate) fn extract_docs<'a, 'db>(
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     krate: Crate,
     resolver: &dyn Fn() -> Resolver<'db>,
     get_cfg_options: &dyn Fn() -> &'a CfgOptions,

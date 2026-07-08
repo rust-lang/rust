@@ -5,7 +5,7 @@
 
 use std::{iter, mem, ops::Range};
 
-use base_db::{BuiltDependency, Crate, CrateOrigin, LangCrateOrigin};
+use base_db::{BuiltDependency, Crate, CrateOrigin, LangCrateOrigin, SourceDatabase};
 use cfg::{CfgAtom, CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -33,9 +33,7 @@ use crate::{
     ImplLoc, Intern, ItemContainerId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId,
     MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, ProcMacroId,
     ProcMacroLoc, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId,
-    UseLoc,
-    db::DefDatabase,
-    file_item_tree,
+    UseLoc, file_item_tree,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
         self, Attrs, AttrsOrCfg, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId,
@@ -62,7 +60,7 @@ const GLOB_RECURSION_LIMIT: usize = 100;
 const FIXED_POINT_LIMIT: usize = 8192;
 
 pub(super) fn collect_defs(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     def_map: DefMap,
     tree_id: TreeId,
     crate_local_def_map: Option<&LocalDefMap>,
@@ -232,7 +230,7 @@ struct DeferredBuiltinDerive {
 
 /// Walks the tree of module recursively
 struct DefCollector<'db> {
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     def_map: DefMap,
     local_def_map: LocalDefMap,
     /// Set only in case of blocks.

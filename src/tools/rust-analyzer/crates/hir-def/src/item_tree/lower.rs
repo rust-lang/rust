@@ -2,7 +2,7 @@
 
 use std::cell::OnceCell;
 
-use base_db::{Crate, FxIndexSet};
+use base_db::{Crate, FxIndexSet, SourceDatabase};
 use cfg::CfgOptions;
 use hir_expand::{HirFileId, mod_path::PathKind, name::AsName, span_map::SpanMap};
 use la_arena::Arena;
@@ -12,19 +12,15 @@ use syntax::{
     ast::{self, HasModuleItem, HasName},
 };
 
-use crate::{
-    db::DefDatabase,
-    item_tree::{
-        BigModItem, Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl,
-        ImportAlias, Interned, ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod,
-        ModItemId, ModKind, ModPath, RawVisibility, RawVisibilityId, SmallModItem, Static, Struct,
-        StructKind, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind, VisibilityExplicitness,
-        attrs::AttrsOrCfg,
-    },
+use crate::item_tree::{
+    BigModItem, Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ImportAlias,
+    Interned, ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind,
+    ModPath, RawVisibility, RawVisibilityId, SmallModItem, Static, Struct, StructKind, Trait,
+    TypeAlias, Union, Use, UseTree, UseTreeKind, VisibilityExplicitness, attrs::AttrsOrCfg,
 };
 
 pub(super) struct Ctx<'db> {
-    pub(super) db: &'db dyn DefDatabase,
+    pub(super) db: &'db dyn SourceDatabase,
     tree: ItemTree,
     source_ast_id_map: &'db AstIdMap,
     span_map: OnceCell<SpanMap<'db>>,
@@ -36,7 +32,7 @@ pub(super) struct Ctx<'db> {
 }
 
 impl<'db> Ctx<'db> {
-    pub(super) fn new(db: &'db dyn DefDatabase, file: HirFileId, krate: Crate) -> Self {
+    pub(super) fn new(db: &'db dyn SourceDatabase, file: HirFileId, krate: Crate) -> Self {
         Self {
             db,
             tree: ItemTree::default(),
@@ -382,7 +378,7 @@ impl<'db> Ctx<'db> {
 }
 
 struct UseTreeLowering<'a> {
-    db: &'a dyn DefDatabase,
+    db: &'a dyn SourceDatabase,
     mapping: Arena<ast::UseTree>,
 }
 
@@ -450,7 +446,7 @@ impl UseTreeLowering<'_> {
 }
 
 pub(crate) fn lower_use_tree(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     tree: ast::UseTree,
     span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
 ) -> Option<(UseTree, Arena<ast::UseTree>)> {
@@ -464,7 +460,7 @@ fn private_vis() -> RawVisibility {
 }
 
 pub(crate) fn visibility_from_ast(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     node: Option<ast::Visibility>,
     span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
 ) -> RawVisibility {
