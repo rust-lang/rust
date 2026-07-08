@@ -155,7 +155,6 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         match &stmt.kind {
             StatementKind::StorageDead(l) => state.kill(*l),
 
-            // If a place is assigned to in a statement, it needs storage for that statement.
             StatementKind::Assign((place, _)) => {
                 state.gen_(place.local);
             }
@@ -180,12 +179,35 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     fn apply_primary_statement_effect(
         &self,
         state: &mut Self::Domain,
-        _: &Statement<'tcx>,
+        stmt: &Statement<'tcx>,
         loc: Location,
     ) {
         // If we move from a place then it only stops needing storage *after*
         // that statement.
         self.check_for_move(state, loc);
+
+        match &stmt.kind {
+            // If a place is assigned to in a statement, it needs storage after that statement.
+            // Even if the place was moved from in the rvalue (e.g. `x = x + 1` or `x = f(move x)`),
+            // the assignment restores a valid value into the place.
+            StatementKind::Assign((place, _)) => {
+                state.gen_(place.local);
+            }
+            StatementKind::SetDiscriminant { place, .. } => {
+                state.gen_(place.local);
+            }
+
+            StatementKind::StorageDead(_)
+            | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
+            | StatementKind::Coverage(..)
+            | StatementKind::FakeRead(..)
+            | StatementKind::ConstEvalCounter
+            | StatementKind::Nop
+            | StatementKind::Intrinsic(..)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::StorageLive(..) => {}
+        }
     }
 
     fn apply_early_terminator_effect(
