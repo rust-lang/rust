@@ -80,7 +80,7 @@ bitflags::bitflags! {
         /// Does this have `Inherent`?
         const HAS_TY_INHERENT             = 1 << 13;
         /// Does this have `ConstKind::Alias`?
-        const HAS_CT_PROJECTION           = 1 << 14;
+        const HAS_CONST_ALIAS           = 1 << 14;
 
         /// Does this have `Alias` or `ConstKind::Alias`?
         ///
@@ -89,7 +89,7 @@ bitflags::bitflags! {
                                           | TypeFlags::HAS_TY_FREE_ALIAS.bits()
                                           | TypeFlags::HAS_TY_OPAQUE.bits()
                                           | TypeFlags::HAS_TY_INHERENT.bits()
-                                          | TypeFlags::HAS_CT_PROJECTION.bits();
+                                          | TypeFlags::HAS_CONST_ALIAS.bits();
 
         /// Is a type or const error reachable?
         const HAS_NON_REGION_ERROR          = 1 << 15;
@@ -476,7 +476,7 @@ impl<I: Interner> FlagComputation<I> {
             ty::ConstKind::Alias(is_rigid, alias_const) => {
                 self.add_is_rigid(is_rigid);
                 self.add_args(alias_const.args.as_slice());
-                self.add_flags(TypeFlags::HAS_CT_PROJECTION);
+                self.add_flags(TypeFlags::HAS_CONST_ALIAS);
             }
             ty::ConstKind::Infer(infer) => match infer {
                 ty::InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
