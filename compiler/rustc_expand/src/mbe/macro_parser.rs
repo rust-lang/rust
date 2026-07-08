@@ -570,6 +570,7 @@ impl TtParser {
                     mp.idx += 1;
                     self.cur_mps.push(mp);
                 } else if token_name_eq(t, token) {
+                    track.matched_one(parser, mp.idx);
                     mp.idx += 1;
                     self.next_mps.push(mp);
                 }
@@ -629,6 +630,7 @@ impl TtParser {
 
                 if token_name_eq(token, separator) {
                     // The separator matches the current token. Advance past it.
+                    track.matched_one(parser, mp.idx);
                     mp.idx += 1;
                     self.next_mps.push(mp);
                 }
@@ -644,6 +646,7 @@ impl TtParser {
                 // from consideration. We use the span of the metavariable declaration to determine
                 // any edition-specific matching behavior for non-terminals.
                 if Parser::nonterminal_may_begin_with(kind, token) {
+                    track.matched_one(parser, mp.idx);
                     self.bb_mps.push(mp);
                 }
             }

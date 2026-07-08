@@ -365,6 +365,14 @@ pub(super) trait Tracker<'matcher> {
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
 
+    /// A [`MatcherLoc`] successfully consumed input from the parser.
+    ///
+    /// This is called for [`MatcherLoc::Token`] and [`MatcherLoc::SequenceSep`], which consume
+    /// single tokens, when they successfully match [`Parser::token`]. It is also called for
+    /// [`MatcherLoc::MetaVarDecl`] when non-terminal parsing is guaranteed to occur (i.e. after
+    /// [`Parser::nonterminal_may_begin_with()`] returns `true`).
+    fn matched_one(&mut self, parser: &Parser<'_>, loc_index: usize);
+
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
     fn after_arm(&mut self, result: &NamedParseResult);
@@ -402,6 +410,8 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
     fn prepare(&mut self, _which_matcher: WhichMatcher, _matcher: &'matcher [MatcherLoc]) {}
 
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
+
+    fn matched_one(&mut self, _parser: &Parser<'_>, _loc_index: usize) {}
 
     fn ambiguity(
         &mut self,

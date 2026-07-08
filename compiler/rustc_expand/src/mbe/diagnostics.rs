@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
@@ -154,11 +155,28 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
     // FIXME: Factor out a per-arm `Tracker` so that the `Option` is unnecessary.
     current: Option<(WhichMatcher, &'matcher [MatcherLoc])>,
 
+    /// Matches of [`MatcherLoc`]s that successfully consumed input from the parser.
+    ///
+    /// This accumulates all calls to [`Tracker::matched_one()`]. It is used to identify all
+    /// competing matches for ambiguity errors.
+    matches: FxHashSet<SuccessfulMatch>,
+
     remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
     best_failure: Option<BestFailure>,
     root_span: Span,
     result: Option<(Span, ErrorGuaranteed)>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct SuccessfulMatch {
+    /// The position in the parser.
+    ///
+    /// As per [`Parser::approx_token_stream_pos()`].
+    input_pos: u32,
+
+    /// The index of the [`MatcherLoc`].
+    loc_index: u32,
 }
 
 struct BestFailure {
@@ -199,6 +217,13 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
+    fn matched_one(&mut self, parser: &Parser<'_>, loc_index: usize) {
+        let input_pos = parser.approx_token_stream_pos();
+        let loc_index: u32 = loc_index.try_into().unwrap();
+        let m = SuccessfulMatch { input_pos, loc_index };
+        self.matches.insert(m);
+    }
+
     fn after_arm(&mut self, result: &NamedParseResult) {
         match *result {
             Success(_) => {
@@ -223,6 +248,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
 
         self.current = None;
+        self.matches.clear();
     }
 
     fn failure(&mut self, parser: &Parser<'_>) {
@@ -316,6 +342,7 @@ impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
             macro_name,
             dcx,
             current: None,
+            matches: FxHashSet::default(),
             remaining_matcher: None,
             best_failure: None,
             root_span,
