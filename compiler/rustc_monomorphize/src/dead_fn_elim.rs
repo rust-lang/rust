@@ -50,24 +50,43 @@ fn def_id_key(def_id: DefId) -> u64 {
 /// used as the ground truth for [`is_safe_to_eliminate`], so this function never re-enters
 /// the monomorphization collection query.
 pub(crate) fn run_analysis(tcx: TyCtxt<'_>, mono_items: &[MonoItem<'_>]) {
-    // Skip analysis entirely for library crates: we never eliminate public items, so the
-    // only candidates would be private functions — but without a binary entry point there
-    // are no seeds, meaning every private function would be eliminated incorrectly.
-    // Returning early is safe and avoids MIR traversal overhead.
-    if tcx.entry_fn(()).is_none() {
+    // A used-set file (`-Zdead-fn-used-set`) carries the `DefPathHash`es a downstream binary
+    // reaches in *this* crate. When present, it seeds the BFS for a library crate: `pub`
+    // functions the binary never calls become eliminable. This is the cross-crate case.
+    let used_set = tcx
+        .sess
+        .opts
+        .unstable_opts
+        .dead_fn_used_set
+        .as_deref()
+        .and_then(|p| crate::used_set::UsedSet::load(tcx, p));
+
+    // Without a used-set, the pass is binary-only: skip library crates entirely. A binary's
+    // collector is already exact, so there is nothing to eliminate there without a used-set,
+    // and a library without one has no seeds — every private fn would be dropped incorrectly.
+    if used_set.is_none() && tcx.entry_fn(()).is_none() {
         return;
     }
 
-    // Build the set of `DefId`s that the collector kept. Dropping any of these would
-    // dangle a symbol, so they are never eligible for elimination.
-    let mono_def_ids: FxHashSet<DefId> = mono_items
-        .iter()
-        .filter_map(|item| match item {
-            MonoItem::Fn(instance) => Some(instance.def_id()),
-            MonoItem::Static(def_id) => Some(*def_id),
-            _ => None,
-        })
-        .collect();
+    // Build the set of `DefId`s that the collector kept. In the *binary* case dropping any of
+    // these would dangle a symbol, so they are never eligible. In the *cross-crate* case this
+    // guard must be empty: a library's collector eagerly emits its whole `pub` closure, so
+    // "the local collector kept it" is exactly the over-emission we are removing — authority
+    // is the used-set, not the local collector. Soundness is still enforced by
+    // `is_locally_safe_to_eliminate` (linker-visible / lang / vtable / drop-glue / generics),
+    // which `is_safe_to_eliminate` always applies.
+    let mono_def_ids: FxHashSet<DefId> = if used_set.is_some() {
+        FxHashSet::default()
+    } else {
+        mono_items
+            .iter()
+            .filter_map(|item| match item {
+                MonoItem::Fn(instance) => Some(instance.def_id()),
+                MonoItem::Static(def_id) => Some(*def_id),
+                _ => None,
+            })
+            .collect()
+    };
 
     // Build the call graph (vtable constructions are scanned inline by `add_mir_edges`,
     // which also records address-taken functions).
@@ -76,7 +95,7 @@ pub(crate) fn run_analysis(tcx: TyCtxt<'_>, mono_items: &[MonoItem<'_>]) {
     // BFS from entry seeds. Vtable traits and address-taken functions were populated by
     // `build_call_graph`; the latter are unioned into the seed set below so that functions
     // reached only through indirect calls survive.
-    let mut seeds = collect_seeds(tcx);
+    let mut seeds = collect_seeds(tcx, used_set.as_ref());
     // Iteration order over the `FxHashSet` does not affect the resulting seed set.
     #[allow(rustc::potential_query_instability)]
     ADDRESS_TAKEN.with(|a| {
@@ -86,10 +105,11 @@ pub(crate) fn run_analysis(tcx: TyCtxt<'_>, mono_items: &[MonoItem<'_>]) {
     });
     let reachable = run_bfs(seeds, &call_graph);
 
-    // Every item in `reachable_set` was unioned into the seeds (via `collect_seeds`), so
-    // BFS cannot drop it. This invariant guards against future regressions.
+    // In the binary-only case, every `reachable_set` item was seeded, so BFS cannot drop it.
+    // (In the cross-crate case this invariant is intentionally relaxed: unused `pub` fns are
+    // dropped by design, so only mandatory-keep items are guaranteed to survive.)
     #[cfg(debug_assertions)]
-    {
+    if used_set.is_none() {
         let reachable_set = tcx.reachable_set(());
         for &local_def_id in tcx.mir_keys(()) {
             if reachable_set.contains(&local_def_id) {
@@ -100,6 +120,13 @@ pub(crate) fn run_analysis(tcx: TyCtxt<'_>, mono_items: &[MonoItem<'_>]) {
                 );
             }
         }
+    }
+
+    if let Some(used) = &used_set {
+        tcx.sess.dcx().note(format!(
+            "-Z dead-fn-elimination: cross-crate used-set with {} entries applied",
+            used.len()
+        ));
     }
 
     // Mark unreachable and safe functions as eliminable.
@@ -133,7 +160,13 @@ pub(crate) fn is_eliminable(idx: u64) -> bool {
 }
 
 /// Collect the BFS seed set: everything that must be kept regardless of the call graph.
-fn collect_seeds(tcx: TyCtxt<'_>) -> FxHashSet<u64> {
+///
+/// `used_set` is `Some` only in the cross-crate (library) case. When present, a public
+/// function is seeded *only if* the downstream binary actually reaches it — this is what
+/// lets an unused `pub fn` be eliminated. Items that must be kept for reasons other than
+/// visibility (lang items, `#[used]`/`#[no_mangle]`, custom linkage) are still seeded
+/// unconditionally, because dropping them would dangle a required symbol.
+fn collect_seeds(tcx: TyCtxt<'_>, used_set: Option<&crate::used_set::UsedSet>) -> FxHashSet<u64> {
     let mut seeds = FxHashSet::default();
 
     // `reachable_set` is the non-eliminable lower bound. It already covers public items by
@@ -143,9 +176,23 @@ fn collect_seeds(tcx: TyCtxt<'_>) -> FxHashSet<u64> {
     // slice. See `compiler/rustc_passes/src/reachable.rs`.
     let reachable_set = tcx.reachable_set(());
     for &local_def_id in tcx.mir_keys(()) {
-        if reachable_set.contains(&local_def_id) {
-            seeds.insert(def_id_key(local_def_id.to_def_id()));
+        if !reachable_set.contains(&local_def_id) {
+            continue;
         }
+        let def_id = local_def_id.to_def_id();
+        // Cross-crate: a `pub` fn that is in `reachable_set` only by visibility becomes a
+        // *candidate* for elimination when the binary does not use it — so do not seed it.
+        // Soundness is still enforced downstream by `is_safe_to_eliminate`, which keeps every
+        // linker-visible / lang / vtable / drop-glue / generic item regardless of the used-set;
+        // the used-set can only ever narrow the visibility-reachable, provably-droppable slice.
+        if let Some(used) = used_set
+            && tcx.def_kind(def_id).is_fn_like()
+            && is_locally_safe_to_eliminate(tcx, def_id)
+            && !used.contains(tcx, def_id)
+        {
+            continue;
+        }
+        seeds.insert(def_id_key(def_id));
     }
 
     // The entry function is a binary-specific seed that `reachable_set` does not provide.

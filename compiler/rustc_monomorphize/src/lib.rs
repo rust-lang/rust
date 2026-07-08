@@ -19,6 +19,7 @@ mod diagnostics;
 mod graph_checks;
 mod mono_checks;
 mod partitioning;
+mod used_set;
 mod util;
 
 fn custom_coerce_unsize_info<'tcx>(

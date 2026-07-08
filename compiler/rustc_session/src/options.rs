@@ -2313,6 +2313,9 @@ options! {
         "threshold to allow cross crate inlining of functions"),
     dead_fn_elimination: bool = (false, parse_bool, [UNTRACKED],
         "eliminate functions unreachable from the entry point before codegen (experimental)"),
+    dead_fn_used_set: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
+        "path to a used-set file (mangled symbols a downstream binary links from this crate, \
+         e.g. from `nm`); enables cross-crate dead-fn elimination for library crates (experimental)"),
     debug_info_type_line_numbers: bool = (false, parse_bool, [TRACKED],
         "emit type and line information for additional data types (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
