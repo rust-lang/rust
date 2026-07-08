@@ -323,6 +323,8 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
         let lock_file_path = lock_file_path(&*incr_comp_session_dir);
         delete_session_dir_lock_file(sess, &lock_file_path);
         sess.mark_incr_comp_session_as_invalid();
+        let _ = garbage_collect_session_directories(sess);
+        return;
     }
 
     debug!("finalize_session_directory() - session directory: {}", incr_comp_session_dir.display());
