@@ -1,5 +1,4 @@
-use crate::env::home_dir;
-use crate::ffi::CStr;
+use crate::ffi::{CStr, c_char};
 use crate::fs::UserDirs;
 use crate::io::{self, ErrorKind, const_error};
 use crate::path::{Path, PathBuf};
@@ -144,7 +143,7 @@ unsafe fn get_user_sysdir(
         return Ok(None);
     }
 
-    let mut path = [0 as c_char; PATH_MAX];
+    let mut path = [0 as c_char; sys::PATH_MAX];
     // SAFETY: `state` comes from `sysdir_start_search_path_enumeration`
     // SAFETY: sysdir_get_next_search_path_enumeration will write at most `PATH_MAX-1` bytes to `path`
     let state = unsafe { sys::sysdir_get_next_search_path_enumeration(state, path.as_mut_ptr()) };
@@ -192,36 +191,13 @@ unsafe fn get_user_sysdir(
 }
 
 mod sys {
-    use crate::ffi::{c_char, c_uint};
-
-    pub const PATH_MAX: usize = 1024; // matches darwin define
-
-    pub type sysdir_search_path_directory_t = u32;
-    pub const SYSDIR_DIRECTORY_DOCUMENT: sysdir_search_path_directory_t = 9;
-    pub const SYSDIR_DIRECTORY_DESKTOP: sysdir_search_path_directory_t = 12;
-    pub const SYSDIR_DIRECTORY_CACHES: sysdir_search_path_directory_t = 13;
-    pub const SYSDIR_DIRECTORY_APPLICATION_SUPPORT: sysdir_search_path_directory_t = 14;
-    pub const SYSDIR_DIRECTORY_DOWNLOADS: sysdir_search_path_directory_t = 15;
-    pub const SYSDIR_DIRECTORY_MOVIES: sysdir_search_path_directory_t = 17;
-    pub const SYSDIR_DIRECTORY_MUSIC: sysdir_search_path_directory_t = 18;
-    pub const SYSDIR_DIRECTORY_PICTURES: sysdir_search_path_directory_t = 19;
-    pub const SYSDIR_DIRECTORY_SHARED_PUBLIC: sysdir_search_path_directory_t = 21;
-
-    pub type sysdir_search_path_domain_mask_t = c_uint;
-    pub const SYSDIR_DOMAIN_MASK_USER: sysdir_search_path_domain_mask_t = 0x0001;
-
-    pub type sysdir_search_path_enumeration_state = c_uint;
-
-    unsafe extern "C" {
-        pub unsafe fn sysdir_start_search_path_enumeration(
-            dir: sysdir_search_path_directory_t,
-            domain_mask: sysdir_search_path_domain_mask_t,
-        ) -> sysdir_search_path_enumeration_state;
-        pub unsafe fn sysdir_get_next_search_path_enumeration(
-            state: sysdir_search_path_enumeration_state,
-            path: *mut c_char,
-        ) -> sysdir_search_path_enumeration_state;
-    }
+    pub use libc::sysdir_search_path_directory_t::*;
+    pub use libc::sysdir_search_path_domain_mask_t::*;
+    pub use libc::{
+        PATH_MAX, sysdir_get_next_search_path_enumeration, sysdir_search_path_directory_t,
+        sysdir_search_path_domain_mask_t, sysdir_search_path_enumeration_state,
+        sysdir_start_search_path_enumeration,
+    };
 }
 
 #[cfg(test)]
