@@ -439,6 +439,9 @@ pub(crate) struct TtParser {
     /// Pre-allocate an empty match array, so it can be cloned cheaply for macros with many rules
     /// that have no metavars.
     empty_matches: Rc<Vec<NamedMatch>>,
+
+    /// Whether an ambiguity error has occurred.
+    found_ambiguity: bool,
 }
 
 impl TtParser {
@@ -448,6 +451,7 @@ impl TtParser {
             next_mps: vec![],
             bb_mps: vec![],
             empty_matches: Rc::new(vec![]),
+            found_ambiguity: false,
         }
     }
 
@@ -473,7 +477,12 @@ impl TtParser {
         let mut eof_mps = SmallVec::<[MatcherPos; 1]>::new();
 
         while let Some(mp) = self.cur_mps.pop() {
-            self.match_one(parser, matcher, mp, track, &mut eof_mps);
+            self.match_one(parser, matcher, mp, track, &mut eof_mps, false);
+        }
+
+        if std::mem::take(&mut self.found_ambiguity) {
+            // Too many possibilities!
+            return Some(self.ambiguity_error(parser, track));
         }
 
         // If we reached the end of input, check that there is EXACTLY ONE possible matcher.
@@ -533,10 +542,7 @@ impl TtParser {
                 self.cur_mps.push(mp);
             }
 
-            (_, _) => {
-                // Too many possibilities!
-                return Some(self.ambiguity_error(parser, track));
-            }
+            (_, _) => unreachable!(),
         }
 
         None
@@ -551,6 +557,7 @@ impl TtParser {
         mut mp: MatcherPos,
         track: &mut T,
         eof_mps: &mut SmallVec<[MatcherPos; 1]>,
+        checking_for_ambiguity: bool,
     ) {
         let matcher_loc = &matcher[mp.idx];
         track.before_match_loc(self, matcher_loc);
@@ -645,10 +652,32 @@ impl TtParser {
                 // Built-in nonterminals never start with these tokens, so we can eliminate them
                 // from consideration. We use the span of the metavariable declaration to determine
                 // any edition-specific matching behavior for non-terminals.
-                if Parser::nonterminal_may_begin_with(kind, token) {
-                    track.matched_one(parser, mp.idx);
-                    self.bb_mps.push(mp);
+                if !Parser::nonterminal_may_begin_with(kind, token) {
+                    return;
                 }
+
+                // EOF tokens would cause unexpected processing in `match_one()`.
+                assert!(parser.token != token::Eof, "{kind:?}");
+
+                track.matched_one(parser, mp.idx);
+
+                if checking_for_ambiguity {
+                    // This was called in the context of a different meta-variable that was about to
+                    // be matched. An ambiguity error has occurred. Details have already been saved
+                    // by `track`. Note the error and stop.
+                    self.found_ambiguity = true;
+                    return;
+                }
+
+                self.check_for_ambiguity(parser, matcher, track);
+
+                if self.found_ambiguity {
+                    // Let the caller handle the error.
+                    return;
+                }
+
+                // TODO: Perform the non-terminal parsing here.
+                self.bb_mps.push(mp);
             }
             MatcherLoc::Eof => {
                 // We are past the matcher's end, and not in a sequence. Try to end things.
@@ -657,6 +686,35 @@ impl TtParser {
                     eof_mps.push(mp);
                 }
             }
+        }
+    }
+
+    /// Look for ambiguity before parsing a non-terminal.
+    ///
+    /// Sets [`Self::found_ambiguity`] if ambiguity is found.
+    fn check_for_ambiguity<'matcher, T: Tracker<'matcher>>(
+        &mut self,
+        parser: &Parser<'_>,
+        matcher: &'matcher [MatcherLoc],
+        track: &mut T,
+    ) {
+        assert!(!self.found_ambiguity);
+
+        // EOF tokens would cause unexpected processing in `match_one()`.
+        assert!(parser.token != token::Eof);
+
+        // NOTE: Dummy variable, will not be modified.
+        let mut eof_mps = SmallVec::<[MatcherPos; 1]>::new();
+
+        // Consume all pending mps at the current input position.
+        while let Some(mp) = self.cur_mps.pop() {
+            self.match_one(parser, matcher, mp, track, &mut eof_mps, true);
+        }
+
+        assert!(eof_mps.is_empty());
+
+        if !self.next_mps.is_empty() {
+            self.found_ambiguity = true;
         }
     }
 
