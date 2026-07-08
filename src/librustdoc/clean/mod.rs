@@ -3047,7 +3047,9 @@ fn clean_impl<'tcx>(
     let items = impl_
         .items
         .iter()
-        .map(|&ii| clean_impl_item(tcx.hir_impl_item(ii), cx))
+        .map(|&ii| tcx.hir_impl_item(ii))
+        .filter(|item| !item.is_anon_const())
+        .map(|item| clean_impl_item(item, cx))
         .collect::<Vec<_>>();
 
     // If this impl block is a positive implementation of the Deref trait, then we

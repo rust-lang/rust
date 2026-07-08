@@ -1779,6 +1779,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         record!(self.tables.assoc_container[def_id] <- item.container);
 
+        if item.is_anon_const() {
+            self.tables.is_anon_assoc_const.set(def_id.index, true);
+        }
+
         if let AssocContainer::Trait = item.container
             && item.is_type()
         {
