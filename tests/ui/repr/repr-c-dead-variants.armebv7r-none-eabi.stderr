@@ -78,21 +78,22 @@ error: layout_of(TwoVariants) = Layout {
            align: AbiAlign {
                abi: Align(1 bytes),
            },
-           backend_repr: ScalarPair(
-               Initialized {
+           backend_repr: ScalarPair {
+               a: Initialized {
                    value: Int(
                        I8,
                        false,
                    ),
                    valid_range: 0..=1,
                },
-               Union {
+               b: Union {
                    value: Int(
                        I8,
                        false,
                    ),
                },
-           ),
+               b_offset: Size(1 bytes),
+           },
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
@@ -125,21 +126,22 @@ error: layout_of(TwoVariants) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       backend_repr: ScalarPair(
-                           Initialized {
+                       backend_repr: ScalarPair {
+                           a: Initialized {
                                value: Int(
                                    I8,
                                    false,
                                ),
                                valid_range: 0..=1,
                            },
-                           Union {
+                           b: Union {
                                value: Int(
                                    I8,
                                    false,
                                ),
                            },
-                       ),
+                           b_offset: Size(1 bytes),
+                       },
                        field_offsets: [
                            Size(1 bytes),
                        ],
@@ -151,21 +153,22 @@ error: layout_of(TwoVariants) = Layout {
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       backend_repr: ScalarPair(
-                           Initialized {
+                       backend_repr: ScalarPair {
+                           a: Initialized {
                                value: Int(
                                    I8,
                                    false,
                                ),
                                valid_range: 0..=1,
                            },
-                           Union {
+                           b: Union {
                                value: Int(
                                    I8,
                                    false,
                                ),
                            },
-                       ),
+                           b_offset: Size(1 bytes),
+                       },
                        field_offsets: [
                            Size(1 bytes),
                        ],

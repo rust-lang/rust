@@ -12,7 +12,7 @@ where
     let fixup = |a: &mut ArgAbi<'_, Ty>, is_ret: bool| {
         match a.layout.backend_repr {
             BackendRepr::Memory { sized: false } => {}
-            BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
+            BackendRepr::ScalarPair { .. } | BackendRepr::Memory { sized: true } => {
                 match a.layout.size.bits() {
                     8 => a.cast_to(Reg::i8()),
                     16 => a.cast_to(Reg::i16()),
