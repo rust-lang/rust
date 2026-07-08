@@ -7,15 +7,16 @@
       let _2: T;
       let mut _3: AlwaysSome<T>;
       let mut _4: fn() -> AlwaysSome<T>;
-      let _5: T;
-      let mut _6: T;
-      let mut _7: isize;
+      let mut _5: isize;
+      let _6: T;
+      let mut _7: T;
       let mut _8: isize;
+      let mut _9: isize;
       scope 1 {
           debug v => _2;
       }
       scope 2 {
-          debug v => _5;
+          debug v => _6;
       }
   
       bb0: {
@@ -30,23 +31,34 @@
   
       bb1: {
           StorageDead(_4);
--         StorageLive(_5);
--         _5 = move ((_3 as Some).0: T);
--         _2 = move _5;
--         StorageDead(_5);
-+         nop;
-+         _5 = copy ((_3 as Some).0: T);
-+         _2 = copy _5;
-+         nop;
-          _7 = discriminant(_3);
+          _5 = discriminant(_3);
+-         switchInt(move _5) -> [0: bb3, otherwise: bb2];
++         switchInt(copy _5) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+          unreachable;
+      }
+  
+      bb3: {
+-         StorageLive(_6);
+-         _6 = move ((_3 as Some).0: T);
+-         _2 = move _6;
+-         StorageDead(_6);
+-         _8 = discriminant(_3);
 -         StorageDead(_3);
 +         nop;
-          StorageLive(_6);
--         _6 = move _2;
--         _0 = AlwaysSome::<T>::Some(move _6);
-+         _6 = copy _5;
++         _6 = copy ((_3 as Some).0: T);
++         _2 = copy _6;
++         nop;
++         _8 = copy _5;
++         nop;
+          StorageLive(_7);
+-         _7 = move _2;
+-         _0 = AlwaysSome::<T>::Some(move _7);
++         _7 = copy _6;
 +         _0 = copy _3;
-          StorageDead(_6);
+          StorageDead(_7);
           StorageDead(_2);
           return;
       }

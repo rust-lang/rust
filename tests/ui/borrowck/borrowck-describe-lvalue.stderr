@@ -71,6 +71,17 @@ LL |         h.0;
 LL |         drop(x);
    |              - borrow later used here
 
+error[E0503]: cannot use `e` because it was mutably borrowed
+  --> $DIR/borrowck-describe-lvalue.rs:58:15
+   |
+LL |         let x = e.x();
+   |                 - `e` is borrowed here
+LL |         match e {
+   |               ^ use of borrowed `e`
+...
+LL |         drop(x);
+   |              - borrow later used here
+
 error[E0503]: cannot use `e.0` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:59:20
    |
@@ -120,6 +131,17 @@ LL |         let x = &mut h.0;
    |                 -------- `h.0` is borrowed here
 LL |         h.0;
    |         ^^^ use of borrowed `h.0`
+LL |         drop(x);
+   |              - borrow later used here
+
+error[E0503]: cannot use `*e` because it was mutably borrowed
+  --> $DIR/borrowck-describe-lvalue.rs:95:15
+   |
+LL |         let x = e.x();
+   |                 - `*e` is borrowed here
+LL |         match *e {
+   |               ^^ use of borrowed `*e`
+...
 LL |         drop(x);
    |              - borrow later used here
 
@@ -355,7 +377,7 @@ LL |                 drop(x);
    |
    = note: move occurs because `x` has type `Vec<i32>`, which does not implement the `Copy` trait
 
-error: aborting due to 31 previous errors
+error: aborting due to 33 previous errors
 
 Some errors have detailed explanations: E0382, E0499, E0502, E0503.
 For more information about an error, try `rustc --explain E0382`.
