@@ -429,7 +429,7 @@ pub fn set_name(name: &CStr) {
     target_os = "freebsd",
     target_os = "dragonfly",
     target_os = "nuttx",
-    target_os = "cygwin"
+    target_os = "cygwin",
 ))]
 pub fn set_name(name: &CStr) {
     unsafe {
@@ -779,8 +779,13 @@ pub fn sleep_until(deadline: crate::time::Instant) {
 }
 
 pub fn yield_now() {
-    let ret = unsafe { libc::sched_yield() };
-    debug_assert_eq!(ret, 0);
+    #[cfg(not(target_os = "qurt"))]
+    {
+        let ret = unsafe { libc::sched_yield() };
+        debug_assert_eq!(ret, 0);
+    }
+    #[cfg(target_os = "qurt")]
+    sleep(Duration::ZERO);
 }
 
 #[cfg(any(target_os = "android", target_os = "linux"))]

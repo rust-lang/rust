@@ -73,6 +73,7 @@ cfg_select! {
     target_os = "trusty",
     target_os = "wasi",
     target_os = "motor",
+    target_os = "qurt",
     doc
 ))]
 pub mod fd;
@@ -127,6 +128,8 @@ pub mod nto;
 pub mod nuttx;
 #[cfg(target_os = "openbsd")]
 pub mod openbsd;
+#[cfg(target_os = "qurt")]
+pub mod qurt;
 #[cfg(target_os = "redox")]
 pub mod redox;
 #[cfg(target_os = "rtems")]

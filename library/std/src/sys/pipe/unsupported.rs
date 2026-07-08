@@ -56,7 +56,7 @@ impl fmt::Debug for Pipe {
     }
 }
 
-#[cfg(any(unix, target_os = "hermit", target_os = "wasi"))]
+#[cfg(any(unix, target_os = "hermit", target_os = "qurt", target_os = "wasi"))]
 mod unix_traits {
     use super::Pipe;
     use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};

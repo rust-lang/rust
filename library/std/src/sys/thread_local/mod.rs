@@ -146,7 +146,7 @@ pub(crate) mod key {
             all(
                 not(target_vendor = "apple"),
                 not(target_family = "wasm"),
-                target_family = "unix",
+                any(target_family = "unix", target_os = "qurt"),
             ),
             all(not(target_thread_local), target_vendor = "apple"),
             target_os = "teeos",

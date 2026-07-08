@@ -30,7 +30,7 @@ cfg_select! {
         mod uefi;
         use uefi as imp;
     }
-    target_family = "unix" => {
+    any(target_family = "unix", target_os = "qurt") => {
         mod unix;
         use unix as imp;
     }

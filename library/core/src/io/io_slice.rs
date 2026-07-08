@@ -3,7 +3,7 @@ use crate::mem::take;
 use crate::ops::{Deref, DerefMut};
 
 cfg_select! {
-    any(target_family = "unix", target_os = "hermit", target_os = "solid_asp3", target_os = "trusty", target_os = "wasi") => {
+    any(target_family = "unix", target_os = "hermit", target_os = "solid_asp3", target_os = "trusty", target_os = "wasi", target_os = "qurt") => {
         #[path = "io_slice/repr_iovec.rs"]
         mod repr;
     }

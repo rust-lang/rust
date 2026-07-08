@@ -23,7 +23,7 @@ cfg_select! {
         mod uefi;
         pub use uefi::*;
     }
-    target_family = "unix" => {
+    any(target_family = "unix", target_os = "qurt") => {
         mod unix;
         pub use unix::*;
     }
