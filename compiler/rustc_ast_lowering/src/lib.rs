@@ -1014,7 +1014,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         res.unwrap_or(Res::Err)
     }
 
-    fn expect_full_res(&mut self, id: NodeId) -> Res<NodeId> {
+    fn expect_full_res(&self, id: NodeId) -> Res<NodeId> {
         self.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
