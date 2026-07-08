@@ -69,6 +69,7 @@ use hir_expand::{
 use intern::{Interned, sym};
 use nameres::DefMap;
 use rustc_abi::ExternAbi;
+use salsa::{Durability, Setter};
 use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::impl_from;
 use syntax::{AstNode, ast};
@@ -97,6 +98,26 @@ pub use crate::{
 pub use hir_expand::{Intern, Lookup, tt};
 
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
+
+/// Whether to expand procedural macros during name resolution.
+///
+/// Note: this struct shouldn't be exposed to ide crates -- consider using
+/// [`set_expand_proc_attr_macros`] instead, if possible.
+#[salsa::input(singleton, debug)]
+pub(crate) struct ExpandProcAttrMacros {
+    #[returns(copy)]
+    pub(crate) enabled: bool,
+}
+
+pub fn set_expand_proc_attr_macros(db: &mut dyn SourceDatabase, enabled: bool) {
+    if let Some(expand_proc_attr_macros) = ExpandProcAttrMacros::try_get(db) {
+        if expand_proc_attr_macros.enabled(db) != enabled {
+            expand_proc_attr_macros.set_enabled(db).with_durability(Durability::HIGH).to(enabled);
+        }
+    } else {
+        _ = ExpandProcAttrMacros::builder(enabled).durability(Durability::HIGH).new(db);
+    }
+}
 
 #[derive(Debug)]
 pub struct ItemLoc<N: AstIdNode> {
