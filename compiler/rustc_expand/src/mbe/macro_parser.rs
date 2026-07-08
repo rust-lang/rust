@@ -433,9 +433,6 @@ pub(crate) struct TtParser {
     /// `parse_tt`.
     next_mps: Vec<MatcherPos>,
 
-    /// The set of mps that are waiting for the black-box parser.
-    bb_mps: Vec<MatcherPos>,
-
     /// Pre-allocate an empty match array, so it can be cloned cheaply for macros with many rules
     /// that have no metavars.
     empty_matches: Rc<Vec<NamedMatch>>,
@@ -449,7 +446,6 @@ impl TtParser {
         TtParser {
             cur_mps: vec![],
             next_mps: vec![],
-            bb_mps: vec![],
             empty_matches: Rc::new(vec![]),
             found_ambiguity: false,
         }
@@ -492,7 +488,6 @@ impl TtParser {
         let token = &parser.token;
         if *token == token::Eof {
             assert!(self.next_mps.is_empty());
-            assert!(self.bb_mps.is_empty());
 
             return Some(match *eof_mps {
                 [_] => {
@@ -731,7 +726,6 @@ impl TtParser {
         loop {
             assert!(!self.cur_mps.is_empty());
             self.next_mps.clear();
-            self.bb_mps.clear();
 
             // Parse all mps at the current input position, then progress the parser.
             let res = self.parse_tt_inner(parser, matcher, track);
