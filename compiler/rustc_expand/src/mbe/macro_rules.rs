@@ -374,6 +374,9 @@ pub(super) trait Tracker<'matcher> {
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
     fn after_arm(&mut self, which_matcher: WhichMatcher, result: &NamedParseResult<Self::Failure>);
 
+    /// An ambiguity error occurred.
+    ///
+    /// The parser will return [`NamedParseResult::Ambiguity`] after calling this.
     fn ambiguity(
         &mut self,
         parser: &Parser<'_>,

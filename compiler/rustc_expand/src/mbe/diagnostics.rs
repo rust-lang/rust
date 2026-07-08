@@ -221,7 +221,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             }
             Ambiguity => {
                 if self.result.is_none() {
-                    bug!("`Error(..)` is only constructed through `Self::ambiguity()`");
+                    bug!("An ambiguity error occurred but `Self::ambiguity()` was not called");
                 }
             }
             ErrorReported(guar) => self.result = Some((self.root_span, guar)),
