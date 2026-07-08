@@ -995,12 +995,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // We use `DeepRejectCtxt` here which may return false positive on where clauses
         // with alias self types. We need to later on reject these as inherent candidates
         // in `consider_probe`.
-        let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
-            let bound_predicate = predicate.kind();
-            match bound_predicate.skip_binder() {
+        let bounds = self.param_env.caller_bounds().iter().filter_map(|clause| {
+            let bound_clause = clause.kind();
+            match bound_clause.skip_binder() {
                 ty::ClauseKind::Trait(trait_predicate) => DeepRejectCtxt::relate_rigid_rigid(tcx)
                     .types_may_unify(param_ty, trait_predicate.trait_ref.self_ty())
-                    .then(|| bound_predicate.rebind(trait_predicate.trait_ref)),
+                    .then(|| bound_clause.rebind(trait_predicate.trait_ref)),
                 ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::TypeOutlives(_)
                 | ty::ClauseKind::Projection(_)
