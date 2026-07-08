@@ -150,7 +150,7 @@ impl<'db> SourceToDefCache<'db> {
         }
         self.included_file_cache.insert(file, None);
         for &crate_id in relevant_crates(db, file.file_id(db)) {
-            for &(macro_call_id, file_id) in db.include_macro_invoc(crate_id).iter() {
+            for &(macro_call_id, file_id) in hir_def::include_macro_invoc(db, crate_id) {
                 self.included_file_cache.insert(file_id, Some(macro_call_id));
             }
         }
@@ -192,8 +192,7 @@ impl SourceToDefCtx<'_, '_> {
                 mods.extend(modules(file));
                 if mods.len() == n_mods {
                     mods.extend(
-                        self.db
-                            .include_macro_invoc(crate_id)
+                        hir_def::include_macro_invoc(self.db, crate_id)
                             .iter()
                             .filter(|&&(_, file_id)| file_id.file_id(self.db) == file)
                             .flat_map(|&(macro_call_id, file_id)| {

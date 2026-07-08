@@ -56,8 +56,8 @@ use std::hash::{Hash, Hasher};
 
 use base_db::{Crate, SourceDatabase, impl_intern_key};
 use hir_expand::{
-    AstId, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallStyles,
-    MacroDefId, MacroDefKind,
+    AstId, EditionedFileId, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind,
+    MacroCallStyles, MacroDefId, MacroDefKind,
     attrs::AttrId,
     builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
     eager::expand_eager_macro_input,
@@ -1463,4 +1463,18 @@ impl Complete {
             _ => item_attr,
         }
     }
+}
+
+// return: macro call id and include file id
+#[salsa::tracked(returns(ref))]
+pub fn include_macro_invoc(
+    db: &dyn DefDatabase,
+    krate: Crate,
+) -> Box<[(MacroCallId, EditionedFileId)]> {
+    crate_def_map(db, krate)
+        .modules
+        .values()
+        .flat_map(|m| m.scope.iter_macro_invoc())
+        .filter_map(|(_, &invoc)| invoc.loc(db).include_file_id(db, invoc).map(|x| (invoc, x)))
+        .collect()
 }
