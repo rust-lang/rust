@@ -47,7 +47,7 @@ fn s_255_terminal(
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
-    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is not supported on argument index 255
+    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 255
 ) {}
 
 #[rustfmt::skip]
@@ -68,7 +68,7 @@ fn s_256_terminal(
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A,
-    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is not supported on argument index 255 or greater, but is on index 256
+    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 256
 ) {}
 
 #[rustfmt::skip]
@@ -88,7 +88,7 @@ fn s_255_non_terminal(
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
-    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is not supported on argument index 255 or greater, but is on index 255
+    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 255
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
 ) {}
 
@@ -110,7 +110,7 @@ fn s_256_non_terminal(
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A,
-    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is not supported on argument index 255 or greater, but is on index 256
+    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 256
     _: A,
 ) {}
 

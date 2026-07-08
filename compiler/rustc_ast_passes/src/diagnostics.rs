@@ -125,11 +125,11 @@ pub(crate) struct FnParamCVarArgsNotLast {
 
 #[derive(Diagnostic)]
 #[diag(
-    "`#[splat]` is not supported on argument index {$min_invalid_splatted_arg_index} or greater, but is on index {$first_invalid_splatted_arg_index}"
+    "`#[splat]` is only supported on argument index {$max_valid_splatted_arg_index} or less, this `#[splat]` is on index {$first_invalid_splatted_arg_index}"
 )]
 #[help("remove `#[splat]`, or use it on an argument closer to the start of the argument list")]
 pub(crate) struct InvalidSplattedArgs {
-    pub min_invalid_splatted_arg_index: u16,
+    pub max_valid_splatted_arg_index: u16,
 
     pub first_invalid_splatted_arg_index: u16,
 

@@ -3064,6 +3064,9 @@ impl FnDecl {
     /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `FnDeclFlags::NO_SPLATTED_ARG_INDEX`.
     pub const NO_SPLATTED_ARG_INDEX: u8 = u8::MAX;
 
+    /// The maximum valid splatted argument index.
+    pub const MAX_VALID_SPLATTED_ARG_INDEX: u8 = Self::NO_SPLATTED_ARG_INDEX - 1;
+
     /// Returns a splatted argument index, if any are present.
     pub fn splatted(&self) -> Option<u8> {
         self.inputs.iter().enumerate().find_map(|(index, arg)| {

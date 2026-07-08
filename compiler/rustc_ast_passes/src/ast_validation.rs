@@ -471,7 +471,7 @@ impl<'a> AstValidator<'a> {
             splatted_arg_spans.split_off(&u16::from(FnDecl::NO_SPLATTED_ARG_INDEX));
         if !out_of_range_spans.is_empty() {
             self.dcx().emit_err(diagnostics::InvalidSplattedArgs {
-                min_invalid_splatted_arg_index: u16::from(FnDecl::NO_SPLATTED_ARG_INDEX),
+                max_valid_splatted_arg_index: u16::from(FnDecl::MAX_VALID_SPLATTED_ARG_INDEX),
                 first_invalid_splatted_arg_index: *out_of_range_spans.keys().next().unwrap(),
                 spans: out_of_range_spans.values().flatten().copied().collect(),
             });
