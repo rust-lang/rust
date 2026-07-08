@@ -696,11 +696,15 @@ impl TtParser {
     }
 
     fn ambiguity_error<'matcher, T: Tracker<'matcher>>(
-        &self,
+        &mut self,
         parser: &Parser<'_>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
     ) -> NamedParseResult<T::Failure> {
+        // Use a reasonable and deterministic ordering for data in the error message.
+        self.bb_mps.sort_unstable_by_key(|mp| mp.idx);
+        self.next_mps.sort_unstable_by_key(|mp| mp.idx);
+
         let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
         let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
         track.ambiguity(parser, bb_locs, next_locs);
