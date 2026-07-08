@@ -816,6 +816,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.get_partial_res(id)?.full_res()
     }
 
+    /// Unless you're manually handling path resolutions, you do not want to use this function.
+    /// Prefer [Self::get_full_res] or [Self::expect_full_res] instead.
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
         match self.partial_res_overrides.get(&id) {
             Some(self_param_id) => Some(PartialRes::new(Res::Local(*self_param_id))),

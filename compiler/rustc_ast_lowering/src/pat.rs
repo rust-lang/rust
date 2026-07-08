@@ -288,11 +288,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir_id: hir::HirId,
         lower_sub: impl FnOnce(&mut Self) -> Option<&'hir hir::Pat<'hir>>,
     ) -> hir::PatKind<'hir> {
-        match self.get_partial_res(p.id).map(|d| d.expect_full_res()) {
-            // `None` can occur in body-less function signatures
-            res @ (None | Some(Res::Local(_))) => {
+        let res = self.expect_full_res(p.id);
+        match res {
+            // `Err` can occur in body-less function signatures
+            Res::Local(_) | Res::Err => {
                 let binding_id = match res {
-                    Some(Res::Local(id)) => {
+                    Res::Local(id) => {
                         // In `Or` patterns like `VariantA(s) | VariantB(s, _)`, multiple identifier patterns
                         // will be resolved to the same `Res::Local`. Thus they just share a single
                         // `HirId`.
@@ -318,7 +319,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     lower_sub(self),
                 )
             }
-            Some(res) => {
+            res => {
                 let res = self.lower_res(res);
                 let span = self.lower_span(ident.span);
                 hir::PatKind::Expr(self.arena.alloc(hir::PatExpr {
