@@ -1,32 +1,32 @@
-error: `#[splat]` is not supported on argument index 255
+error: `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 255
   --> $DIR/splat-255-limit-fail.rs:50:5
    |
 LL |     #[splat] (_a, _b): (u32, i8),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `#[splat]` is not supported here
+   |     ^^^^^^^^ `#[splat]` is not supported here
    |
    = help: remove `#[splat]`, or use it on an argument closer to the start of the argument list
 
-error: `#[splat]` is not supported on argument index 256
+error: `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 256
   --> $DIR/splat-255-limit-fail.rs:71:5
    |
 LL |     #[splat] (_a, _b): (u32, i8),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `#[splat]` is not supported here
+   |     ^^^^^^^^ `#[splat]` is not supported here
    |
    = help: remove `#[splat]`, or use it on an argument closer to the start of the argument list
 
-error: `#[splat]` is not supported on argument index 255
+error: `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 255
   --> $DIR/splat-255-limit-fail.rs:91:5
    |
 LL |     #[splat] (_a, _b): (u32, i8),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `#[splat]` is not supported here
+   |     ^^^^^^^^ `#[splat]` is not supported here
    |
    = help: remove `#[splat]`, or use it on an argument closer to the start of the argument list
 
-error: `#[splat]` is not supported on argument index 256
+error: `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 256
   --> $DIR/splat-255-limit-fail.rs:113:5
    |
 LL |     #[splat] (_a, _b): (u32, i8),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `#[splat]` is not supported here
+   |     ^^^^^^^^ `#[splat]` is not supported here
    |
    = help: remove `#[splat]`, or use it on an argument closer to the start of the argument list
 
