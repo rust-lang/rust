@@ -5,4 +5,10 @@
 Name: extraslice, Id: _1, Ty: ExtraSlice<'_>, Value: <indirect>
 Name: _slice, Id: _2, Ty: &[u8], Value: <immediate-pair>
 Name: _extra, Id: _3, Ty: u32, Value: <immediate>
+(priroda) Id: _0, Ty: (), Value: <uninit>
+(priroda) Id: _1, Ty: ExtraSlice<'_>, Value: <indirect>
+(priroda) Id: _2, Ty: &[u8], Value: <immediate-pair>
+(priroda) Id: _3, Ty: u32, Value: <immediate>
+(priroda) no local for this id
+(priroda) no local for this id
 (priroda) quitting

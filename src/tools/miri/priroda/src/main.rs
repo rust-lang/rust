@@ -375,8 +375,65 @@ impl<'tcx> PrirodaContext<'tcx> {
             DebuggerCommand::Breakpoint(path, line) =>
                 interp_ok(CommandResult::BreakpointResult(self.set_breakpoint(path, line))),
             DebuggerCommand::ListLocals => interp_ok(CommandResult::Locals(self.list_locals())),
+            DebuggerCommand::Print(local) =>
+                interp_ok(CommandResult::SingleLocal(self.get_local(local))),
             DebuggerCommand::TerminateSession => interp_ok(CommandResult::TerminateSession),
         }
+    }
+
+    fn get_local(&self, local: usize) -> Option<LocalDesc> {
+        let Some(frame) = self.ecx.active_thread_stack().last() else {
+            return None;
+        };
+
+        let local = mir::Local::from_usize(local);
+        let Some(local_decl) = &frame.body().local_decls.get(local) else {
+            return None;
+        };
+
+        // Create LocalDesc for MIR local before processing debug info.
+        // Later debug-derived descriptions will be pushed back to LocalDesc list.
+        let mut local_desc = LocalDesc {
+            source_name: None,
+            source_projection: None,
+            local: Some(local),
+            storage_projection: Vec::new(),
+            ty: local_decl.ty.to_string(),
+            // FIXME: projection not handled yet.
+            value: "<unsupported>".to_string(),
+        };
+
+        if let Some(local) = local_desc.local {
+            if local_desc.storage_projection.is_empty() {
+                match &frame.locals[local].as_mplace_or_imm() {
+                    None => {
+                        local_desc.value = "<dead>".to_string();
+                    }
+                    Some(Either::Left(_)) => {
+                        local_desc.value = "<indirect>".to_string();
+                    }
+                    Some(Either::Right(imm)) => {
+                        match imm {
+                            Scalar(_) => {
+                                local_desc.value = "<immediate>".to_string();
+                            }
+                            ScalarPair(_, _) => {
+                                local_desc.value = "<immediate-pair>".to_string();
+                            }
+
+                            Uninit => {
+                                local_desc.value = "<uninit>".to_string();
+                            }
+                        };
+                    }
+                };
+            } else {
+                // FIXME: projection not handled yet.
+                local_desc.value = "<unsupported-projection>".to_string();
+            }
+        }
+
+        Some(local_desc)
     }
 
     /// Returns structured descriptions for locals in the innermost stack frame.
@@ -580,6 +637,7 @@ enum DebuggerCommand {
     Continue,
     Breakpoint(PathBuf, usize),
     ListLocals,
+    Print(usize),
 }
 
 enum BreakpointSetResult {
@@ -592,6 +650,7 @@ enum CommandResult {
     ExecutionStopped(StepResult),
     BreakpointResult(BreakpointSetResult),
     Locals(Vec<LocalDesc>),
+    SingleLocal(Option<LocalDesc>),
     // FIXME: distinguish terminating the debugger session from disconnecting a
     // frontend and terminating the interpreted program once multiple frontends exist.
     TerminateSession,
@@ -668,6 +727,18 @@ impl Cli {
                                 );
                             }
                         },
+                    CommandResult::SingleLocal(local_desc) =>
+                        match local_desc {
+                            Some(local_desc) => {
+                                println!(
+                                    "Id: _{}, Ty: {}, Value: {}",
+                                    local_desc.local.unwrap().index(),
+                                    local_desc.ty,
+                                    local_desc.value
+                                );
+                            }
+                            None => println!("no local for this id"),
+                        },
                     CommandResult::TerminateSession => {
                         println!("quitting");
                         return interp_ok(());
@@ -699,6 +770,7 @@ impl Cli {
             "c" | "continue" => Some(DebuggerCommand::Continue),
             "b" | "break" => self.parse_breakpoint(args),
             "l" | "locals" => Some(DebuggerCommand::ListLocals),
+            "p" | "print" => self.parse_print_local(args),
             _ => None,
         }
     }
@@ -725,5 +797,10 @@ impl Cli {
         let line = line.parse().ok()?;
 
         Some(DebuggerCommand::Breakpoint(PathBuf::from(path), line))
+    }
+
+    fn parse_print_local(&self, input: &str) -> Option<DebuggerCommand> {
+        let local = input.parse().ok()?;
+        Some(DebuggerCommand::Print(local))
     }
 }
