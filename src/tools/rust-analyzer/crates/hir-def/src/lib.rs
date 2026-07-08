@@ -35,9 +35,8 @@ pub mod builtin_derive;
 pub mod lang_item;
 pub mod unstable_features;
 
-pub mod hir;
-pub use self::hir::type_ref;
 pub mod expr_store;
+pub mod hir;
 pub mod resolver;
 
 pub mod nameres;
@@ -47,12 +46,6 @@ pub mod src;
 pub mod find_path;
 pub mod import_map;
 pub mod visibility;
-
-use intern::{Interned, sym};
-use rustc_abi::ExternAbi;
-use thin_vec::ThinVec;
-
-pub use crate::signatures::LocalFieldId;
 
 #[cfg(test)]
 mod macro_expansion_tests;
@@ -73,12 +66,13 @@ use hir_expand::{
     name::Name,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind},
 };
+use intern::{Interned, sym};
 use nameres::DefMap;
+use rustc_abi::ExternAbi;
 use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::impl_from;
 use syntax::{AstNode, ast};
-
-pub use hir_expand::{Intern, Lookup, tt};
+use thin_vec::ThinVec;
 
 use crate::{
     attrs::AttrFlags,
@@ -96,21 +90,10 @@ use crate::{
     signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
 };
 
+pub use crate::{find_path::FindPathConfig, hir::type_ref, signatures::LocalFieldId};
+pub use hir_expand::{Intern, Lookup, tt};
+
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
-/// A wrapper around three booleans
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
-pub struct FindPathConfig {
-    /// If true, prefer to unconditionally use imports of the `core` and `alloc` crate
-    /// over the std.
-    pub prefer_no_std: bool,
-    /// If true, prefer import paths containing a prelude module.
-    pub prefer_prelude: bool,
-    /// If true, prefer abs path (starting with `::`) where it is available.
-    pub prefer_absolute: bool,
-    /// If true, paths containing `#[unstable]` segments may be returned, but only if if there is no
-    /// stable path. This does not check, whether the item itself that is being imported is `#[unstable]`.
-    pub allow_unstable: bool,
-}
 
 #[derive(Debug)]
 pub struct ItemLoc<N: AstIdNode> {
