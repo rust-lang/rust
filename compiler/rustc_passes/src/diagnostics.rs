@@ -1168,6 +1168,13 @@ pub(crate) struct OnMoveMalformedFormatLiterals {
 }
 
 #[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
+pub(crate) struct OnConstMalformedFormatLiterals {
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag("unused target expression is specified for glob or list delegation")]
 pub(crate) struct GlobOrListDelegationUnusedTargetExpr {
     #[primary_span]
