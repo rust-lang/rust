@@ -1,0 +1,10 @@
+error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
+  --> $DIR/next-solver-gce-incompatible-issue-158428.rs:5:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove one of these features
+
+error: aborting due to 1 previous error
+

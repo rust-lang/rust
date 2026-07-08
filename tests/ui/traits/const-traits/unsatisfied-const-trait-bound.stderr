@@ -1,45 +1,31 @@
-error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
-  --> $DIR/unsatisfied-const-trait-bound.rs:5:30
-   |
-LL | #![feature(const_trait_impl, generic_const_exprs)]
-   |                              ^^^^^^^^^^^^^^^^^^^
-   |
-   = help: remove one of these features
-
-error[E0391]: cycle detected when evaluating type-level constant
-  --> $DIR/unsatisfied-const-trait-bound.rs:28:35
+error[E0277]: the trait bound `T: const Trait` is not satisfied
+  --> $DIR/unsatisfied-const-trait-bound.rs:28:37
    |
 LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
-   |                                   ^^^^^^^^^^^^^
-   |
-   = note: ...which requires const-evaluating + checking `accept0::{constant#0}`...
-   = note: ...which requires checking if `accept0::{constant#0}` is a trivial const...
-   = note: ...which requires building MIR for `accept0::{constant#0}`...
-   = note: ...which requires building an abstract representation for `accept0::{constant#0}`...
-   = note: ...which requires building THIR for `accept0::{constant#0}`...
-   = note: ...which requires type-checking `accept0::{constant#0}`...
-   = note: ...which requires computing normalized predicates of `accept0::{constant#0}`...
-   = note: ...which again requires evaluating type-level constant, completing the cycle
-   = note: cycle used when computing normalized predicates of `accept0`
-   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+   |                                     ^
 
-error[E0391]: cycle detected when checking if `accept1::{constant#0}` is a trivial const
-  --> $DIR/unsatisfied-const-trait-bound.rs:32:49
+error[E0277]: the trait bound `T: const Trait` is not satisfied
+  --> $DIR/unsatisfied-const-trait-bound.rs:32:51
    |
 LL | const fn accept1<T: [const] Trait>(_: Container<{ T::make() }>) {}
-   |                                                 ^^^^^^^^^^^^^
+   |                                                   ^
+
+error[E0277]: the trait bound `Ty: const Trait` is not satisfied
+  --> $DIR/unsatisfied-const-trait-bound.rs:21:15
    |
-   = note: ...which requires building MIR for `accept1::{constant#0}`...
-   = note: ...which requires building an abstract representation for `accept1::{constant#0}`...
-   = note: ...which requires building THIR for `accept1::{constant#0}`...
-   = note: ...which requires type-checking `accept1::{constant#0}`...
-   = note: ...which requires computing normalized predicates of `accept1::{constant#0}`...
-   = note: ...which requires evaluating type-level constant...
-   = note: ...which requires const-evaluating + checking `accept1::{constant#0}`...
-   = note: ...which again requires checking if `accept1::{constant#0}` is a trivial const, completing the cycle
-   = note: cycle used when const-evaluating + checking `accept1::{constant#0}`
-   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+LL |     require::<Ty>();
+   |               ^^
+   |
+note: required by a bound in `require`
+  --> $DIR/unsatisfied-const-trait-bound.rs:8:15
+   |
+LL | fn require<T: const Trait>() {}
+   |               ^^^^^^^^^^^ required by this bound in `require`
+help: make the `impl` of trait `Trait` `const`
+   |
+LL | impl const Trait for Ty {
+   |      +++++
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0391`.
+For more information about this error, try `rustc --explain E0277`.

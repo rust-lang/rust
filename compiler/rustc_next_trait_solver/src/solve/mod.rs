@@ -222,20 +222,12 @@ where
                 }
             }
 
-            // We can freely ICE for `Param` and `Bound` here as:
+            // We can freely ICE here as:
             // - `Param` gets replaced with a placeholder during canonicalization
             // - `Bound` cannot exist as we don't have a binder around the self Type
-            ty::ConstKind::Param(_) | ty::ConstKind::Bound(_, _) => {
+            // - `Expr` is part of `feature(generic_const_exprs)` and is not implemented yet
+            ty::ConstKind::Param(_) | ty::ConstKind::Bound(_, _) | ty::ConstKind::Expr(_) => {
                 panic!("unexpected const kind: {:?}", ct)
-            }
-
-            ty::ConstKind::Expr(_) => {
-                // `ConstKind::Expr` is part of `feature(generic_const_exprs)`,
-                // which is not implemented in the next solver and should be
-                // rejected by feature gating when the next solver is enabled
-                // globally. Recover with ambiguity instead of ICEing while
-                // compiling after errors.
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
         }
     }
@@ -265,14 +257,9 @@ where
             ty::ConstKind::Alias(ty::IsRigid::No, _) => unimplemented!(
                 "non-rigid unevaluated constant for compute_const_arg_has_type_goal: {ct:?}"
             ),
-            ty::ConstKind::Expr(_) => {
-                // `ConstKind::Expr` is part of `feature(generic_const_exprs)`,
-                // which is not implemented in the next solver. Recover with
-                // ambiguity instead of ICEing while compiling after errors.
-                return self
-                    .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                    .map_err(Into::into);
-            }
+            ty::ConstKind::Expr(_) => unimplemented!(
+                "`feature(generic_const_exprs)` is not supported in the new trait solver"
+            ),
             ty::ConstKind::Param(_) => {
                 unreachable!("`ConstKind::Param` should have been canonicalized to `Placeholder`")
             }

@@ -1,6 +1,6 @@
 //@ known-bug: unknown
 // Ensure that we print unsatisfied always-const trait bounds as `const Trait` in diagnostics.
-//@ compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver=coherence
 
 #![feature(const_trait_impl, generic_const_exprs)]
 #![allow(incomplete_features)]
