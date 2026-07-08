@@ -13,6 +13,7 @@ use crate::shims::files::{
     EvalContextExt as _, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
 use crate::shims::unix::UnixFileDescription;
+use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::*;
 
 /// The maximum capacity of the socketpair buffer in bytes.
@@ -120,7 +121,7 @@ impl FileDescription for VirtualSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        ecx.virtual_socket_read(self, ptr, len, finish)
+        ecx.virtual_socket_read(self, ptr, len, /* is_non_block */ false, finish)
     }
 
     fn write<'tcx>(
@@ -131,7 +132,7 @@ impl FileDescription for VirtualSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        ecx.virtual_socket_write(self, ptr, len, finish)
+        ecx.virtual_socket_write(self, ptr, len, /* is_non_block */ false, finish)
     }
 
     fn short_fd_operations(&self) -> bool {
@@ -248,18 +249,107 @@ impl FileDescription for VirtualSocket {
     }
 }
 
-impl UnixFileDescription for VirtualSocket {}
+impl UnixFileDescription for VirtualSocket {
+    fn ioctl<'tcx>(
+        &self,
+        op: Scalar,
+        arg: Option<&OpTy<'tcx>>,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, i32> {
+        match self.fd_type {
+            VirtualSocketType::Socketpair => { /* fall-through to below */ }
+            VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => {
+                // The standard library only uses ioctl for changing the blocking mode
+                // of Unix sockets. Thus, since using ioctl isn't the preferred way of
+                // changing the blocking mode, we don't support it on pipes.
+                throw_unsup_format!("cannot use ioctl on pipe");
+            }
+        }
+
+        let fionbio = ecx.eval_libc("FIONBIO");
+
+        if op == fionbio {
+            // On these OSes, Rust uses the ioctl, so we trust that it is reasonable and controls
+            // the same internal flag as fcntl.
+            if !matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android | Os::MacOs | Os::FreeBsd)
+            {
+                // FIONBIO cannot be used to change the blocking mode of a socket on solarish targets:
+                // <https://github.com/rust-lang/rust/commit/dda5c97675b4f5b1f6fdab64606c8a1f21021b0a>
+                // Since there might be more targets which do weird things with this option, we use
+                // an allowlist instead of just denying solarish targets.
+                throw_unsup_format!(
+                    "ioctl: setting FIONBIO on sockets is unsupported on target {}",
+                    ecx.tcx.sess.target.os
+                );
+            }
+
+            let Some(value_ptr) = arg else {
+                throw_ub_format!("ioctl: setting FIONBIO on sockets requires a third argument");
+            };
+            let value = ecx.deref_pointer_as(value_ptr, ecx.machine.layouts.i32)?;
+            let non_block = ecx.read_scalar(&value)?.to_i32()? != 0;
+            self.is_nonblock.set(non_block);
+            return interp_ok(0);
+        }
+
+        throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
+    }
+
+    fn as_socket<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &MiriInterpCx<'tcx>,
+    ) -> Option<FileDescriptionRef<dyn UnixSocketFileDescription>> {
+        match self.fd_type {
+            VirtualSocketType::Socketpair => Some(self),
+            VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => None,
+        }
+    }
+}
+
+impl UnixSocketFileDescription for VirtualSocket {
+    fn send<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        ptr: Pointer,
+        len: usize,
+        is_non_block: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        ecx.virtual_socket_write(self, ptr, len, is_non_block, finish)
+    }
+
+    fn recv<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        ptr: Pointer,
+        len: usize,
+        is_peek: bool,
+        is_non_block: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        if is_peek {
+            throw_unsup_format!("socketpair: virtual sockets don't support peeking")
+        }
+
+        ecx.virtual_socket_read(self, ptr, len, is_non_block, finish)
+    }
+}
 
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Attempt two write `len` bytes from the buffer pointed to by `ptr` into the
-    /// virtual socket `socket`. After a successful write, `finish` is called with
-    /// the amount of bytes written.
+    /// virtual socket `socket`.
+    /// `is_non_block` specifies whether the operation should be performed as if the
+    /// socket was non-blocking.
+    /// After a successful write, `finish` is called with the amount of bytes written.
     fn virtual_socket_write(
         &mut self,
         socket: FileDescriptionRef<VirtualSocket>,
         ptr: Pointer,
         len: usize,
+        is_non_block: bool,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -286,7 +376,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let available_space =
             MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(writebuf.borrow().buf.len());
         if available_space == 0 {
-            if socket.is_nonblock.get() {
+            if socket.is_nonblock.get() || is_non_block {
                 // Non-blocking socketpair with a full buffer.
                 return finish.call(this, Err(ErrorKind::WouldBlock.into()));
             } else {
@@ -302,6 +392,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             weak_socket: WeakFileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
                             len: usize,
+                            is_non_block: bool,
                             finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                         }
                         |this, unblock: UnblockKind| {
@@ -309,7 +400,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // If we got unblocked, then our peer successfully upgraded its weak
                             // ref to us. That means we can also upgrade our weak ref.
                             let socket = weak_socket.upgrade().unwrap();
-                            this.virtual_socket_write(socket, ptr, len, finish)
+                            this.virtual_socket_write(socket, ptr, len, is_non_block, finish)
                         }
                     ),
                 );
@@ -348,13 +439,16 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Attempt to read `len` bytes from the virtual socket `socket` into the buffer
-    /// pointed to by `ptr`. After a successful read, `finish` is called with the
-    /// amount of bytes read.
+    /// pointed to by `ptr`.
+    /// `is_non_block` specifies whether the operation should be performed as if the
+    /// socket was non-blocking.
+    /// After a successful read, `finish` is called with the amount of bytes read.
     fn virtual_socket_read(
         &mut self,
         socket: FileDescriptionRef<VirtualSocket>,
         ptr: Pointer,
         len: usize,
+        is_non_block: bool,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -375,7 +469,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Socketpair with no peer and empty buffer.
                 // 0 bytes successfully read indicates end-of-file.
                 return finish.call(this, Ok(0));
-            } else if socket.is_nonblock.get() {
+            } else if socket.is_nonblock.get() || is_non_block {
                 // Non-blocking socketpair with writer and empty buffer.
                 // https://linux.die.net/man/2/read
                 // EAGAIN or EWOULDBLOCK can be returned for socket,
@@ -395,6 +489,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             weak_socket: WeakFileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
                             len: usize,
+                            is_non_block: bool,
                             finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                         }
                         |this, unblock: UnblockKind| {
@@ -402,7 +497,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // If we got unblocked, then our peer successfully upgraded its weak
                             // ref to us. That means we can also upgrade our weak ref.
                             let socket = weak_socket.upgrade().unwrap();
-                            this.virtual_socket_read(socket, ptr, len, finish)
+                            this.virtual_socket_read(socket, ptr, len, is_non_block, finish)
                         }
                     ),
                 );
@@ -475,8 +570,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
         // if there is anything left at the end, that's an unsupported flag.
-        if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android) {
-            // SOCK_NONBLOCK only exists on Linux.
+        if matches!(
+            this.tcx.sess.target.os,
+            Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
+        ) {
+            // SOCK_NONBLOCK and SOCK_CLOEXEC only exist on Linux, Android, FreeBSD,
+            // Solaris, and Illumos targets.
             let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
             let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
             if flags & sock_nonblock == sock_nonblock {

@@ -238,8 +238,8 @@ impl UnixFileDescription for TcpSocket {
     fn as_socket<'tcx>(
         self: FileDescriptionRef<Self>,
         _ecx: &MiriInterpCx<'tcx>,
-    ) -> FileDescriptionRef<dyn UnixSocketFileDescription> {
-        self
+    ) -> Option<FileDescriptionRef<dyn UnixSocketFileDescription>> {
+        Some(self)
     }
 }
 

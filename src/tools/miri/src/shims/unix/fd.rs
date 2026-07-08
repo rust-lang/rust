@@ -77,11 +77,12 @@ pub trait UnixFileDescription: FileDescription {
         throw_unsup_format!("cannot use ioctl on {}", self.name());
     }
 
+    /// Returns this file description as a Unix socket, if it represents one.
     fn as_socket<'tcx>(
         self: FileDescriptionRef<Self>,
         _ecx: &MiriInterpCx<'tcx>,
-    ) -> FileDescriptionRef<dyn UnixSocketFileDescription> {
-        panic!("Not a unix socket file descriptor: {}", self.name());
+    ) -> Option<FileDescriptionRef<dyn UnixSocketFileDescription>> {
+        None
     }
 }
 

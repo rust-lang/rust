@@ -70,10 +70,10 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         throw_unsup_format!("cannot connect {}", self.name());
     }
 
-    /// Recieve data on the socket into the given buffer `ptr`.
+    /// Receive data on the socket into the given buffer `ptr`.
     /// `len` indicates how many bytes we should try to receive.
     /// `is_peek` specifies whether the receive removes the bytes from the receive buffer
-    /// ([`false`]) or leaves them in the reiceve buffer ([`true`]).
+    /// ([`false`]) or leaves them in the receive buffer ([`true`]).
     /// `is_non_block` specifies whether the receive operation is non-blocking.
     /// After a successful receive, `finish` should be called with the amount of bytes received.
     fn recv<'tcx>(
@@ -254,7 +254,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+        };
+
         match socket.bind(this.machine.communicate(), address, this)? {
             Ok(_) => interp_ok(Scalar::from_i32(0)),
             Err(e) => this.set_errno_and_return_neg1_i32(e),
@@ -272,7 +275,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+        };
+
         match socket.listen(this.machine.communicate(), backlog, this)? {
             Ok(_) => interp_ok(Scalar::from_i32(0)),
             Err(e) => this.set_errno_and_return_neg1_i32(e),
@@ -303,7 +309,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
+        };
 
         let mut is_client_sock_nonblock = false;
 
@@ -388,7 +396,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
+        };
 
         let dest = dest.clone();
 
@@ -432,7 +442,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
+        };
 
         let mut is_non_block = false;
 
@@ -509,7 +521,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
+        };
 
         let mut is_peek = false;
         let mut is_non_block = false;
@@ -599,7 +613,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+        };
+
         let result = socket.setsockopt(level, option_name, option_value_ptr, option_len, this)?;
         match result {
             Ok(_) => interp_ok(Scalar::from_i32(0)),
@@ -633,7 +650,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+        };
 
         if option_value_ptr == Pointer::null() || option_len_ptr == Pointer::null() {
             // This socket option returns a value and thus we need to return EFAULT
@@ -699,7 +718,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+        };
+
         let address = match socket.getsockname(this.machine.communicate(), this)? {
             Ok(address) => address,
             Err(e) => return this.set_errno_and_return_neg1_i32(e),
@@ -728,7 +750,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
+        };
+
         let dest = dest.clone();
 
         socket.getpeername(
@@ -768,7 +793,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
-        let socket = fd.as_unix(this).as_socket(this);
+        let Some(socket) = fd.as_unix(this).as_socket(this) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+        };
 
         let is_read_shutdown = how == this.eval_libc_i32("SHUT_RD");
         let is_write_shutdown = how == this.eval_libc_i32("SHUT_WR");
