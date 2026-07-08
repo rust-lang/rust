@@ -822,6 +822,7 @@ symbols! {
         diagnostic_on_unmatched_args,
         dialect,
         direct,
+        direct_const_arg,
         discriminant_kind,
         discriminant_type,
         discriminant_value,
