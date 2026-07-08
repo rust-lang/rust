@@ -3,7 +3,7 @@
 //! [work products]: WorkProduct
 
 use std::fs as std_fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_fs_util::link_or_copy;
@@ -23,7 +23,6 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     incr_comp_session: &IncrCompSession,
     cgu_name: &str,
     files: &[(&'static str, &Path)],
-    known_links: &[PathBuf],
 ) -> (WorkProductId, WorkProduct) {
     debug!(?cgu_name, ?files);
     assert!(sess.opts.incremental.is_some());
@@ -32,10 +31,6 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     for (ext, path) in files {
         let file_name = format!("{cgu_name}.{ext}");
         let path_in_incr_dir = in_incr_comp_dir_sess(incr_comp_session, &file_name);
-        if known_links.contains(&path_in_incr_dir) {
-            let _ = saved_files.insert(ext.to_string(), file_name);
-            continue;
-        }
         match link_or_copy(path, &path_in_incr_dir) {
             Ok(_) => {
                 let _ = saved_files.insert(ext.to_string(), file_name);
@@ -63,7 +58,7 @@ pub(crate) fn delete_workproduct_files(
     work_product: &WorkProduct,
 ) {
     for (_, path) in work_product.saved_files.items().into_sorted_stable_ord() {
-        let path = in_incr_comp_dir_sess(incr_comp_session, path);
+        let path = in_old_incr_comp_dir_sess(incr_comp_session, path).unwrap();
         if let Err(err) = std_fs::remove_file(&path) {
             sess.dcx().emit_warn(diagnostics::DeleteWorkProduct { path: &path, err });
         }
