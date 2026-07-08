@@ -72,21 +72,17 @@ fn foo::{closure#0}(_1: &mut {async fn body of foo()}) -> () {
 
     bb0: {
         _35 = discriminant((*_1));
-        switchInt(move _35) -> [0: bb9, 3: bb12, otherwise: bb13];
+        switchInt(move _35) -> [0: bb7, 3: bb10, otherwise: bb11];
     }
 
     bb1: {
         StorageDead(_27);
         StorageDead(_26);
-        drop((((*_1) as variant#3).3: {async block@$DIR/async_fn.rs:21:13: 21:18})) -> [return: bb2, unwind: bb6];
+        drop((((*_1) as variant#3).3: {async block@$DIR/async_fn.rs:21:13: 21:18})) -> [return: bb2, unwind: bb5];
     }
 
     bb2: {
         nop;
-        goto -> bb3;
-    }
-
-    bb3: {
         StorageDead(_9);
         StorageDead(_8);
         StorageDead(_7);
@@ -94,50 +90,46 @@ fn foo::{closure#0}(_1: &mut {async fn body of foo()}) -> () {
         StorageDead(_5);
         nop;
         nop;
-        goto -> bb10;
-    }
-
-    bb4: {
-        return;
-    }
-
-    bb5 (cleanup): {
-        resume;
-    }
-
-    bb6 (cleanup): {
-        nop;
-        goto -> bb7;
-    }
-
-    bb7 (cleanup): {
-        StorageDead(_9);
-        StorageDead(_8);
-        StorageDead(_7);
-        nop;
-        StorageDead(_5);
-        nop;
-        nop;
-        goto -> bb5;
-    }
-
-    bb8: {
-        return;
-    }
-
-    bb9: {
-        goto -> bb11;
-    }
-
-    bb10: {
-        goto -> bb4;
-    }
-
-    bb11: {
         goto -> bb8;
     }
 
-    bb12: {
+    bb3: {
+        return;
+    }
+
+    bb4 (cleanup): {
+        resume;
+    }
+
+    bb5 (cleanup): {
+        nop;
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        nop;
+        StorageDead(_5);
+        nop;
+        nop;
+        goto -> bb4;
+    }
+
+    bb6: {
+        return;
+    }
+
+    bb7: {
+        goto -> bb9;
+    }
+
+    bb8: {
+        goto -> bb3;
+    }
+
+    bb9: {
+        goto -> bb6;
+    }
+
+    bb10: {
         StorageLive(_5);
         StorageLive(_7);
         StorageLive(_8);
@@ -147,7 +139,7 @@ fn foo::{closure#0}(_1: &mut {async fn body of foo()}) -> () {
         goto -> bb1;
     }
 
-    bb13: {
+    bb11: {
         return;
     }
 }

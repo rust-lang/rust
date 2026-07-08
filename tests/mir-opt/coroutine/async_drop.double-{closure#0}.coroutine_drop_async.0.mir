@@ -60,65 +60,53 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
         _43 = std::future::ResumeTy(move _44);
         _42 = copy (_1.0: &mut {async fn body of double()});
         _41 = discriminant((*_42));
-        switchInt(move _41) -> [0: bb29, 2: bb36, 3: bb32, 4: bb33, 5: bb34, 6: bb35, otherwise: bb37];
+        switchInt(move _41) -> [0: bb26, 2: bb33, 3: bb29, 4: bb30, 5: bb31, 6: bb32, otherwise: bb34];
     }
 
     bb1: {
         nop;
-        goto -> bb2;
-    }
-
-    bb2: {
         nop;
-        goto -> bb3;
-    }
-
-    bb3: {
-        nop;
-        goto -> bb4;
-    }
-
-    bb4: {
         _0 = Poll::<()>::Ready(const ());
         return;
     }
 
-    bb5 (cleanup): {
+    bb2 (cleanup): {
         nop;
-        drop((((*_42) as variant#6).2: AsyncInt)) -> [return: bb6, unwind terminate(cleanup)];
+        drop((((*_42) as variant#6).2: AsyncInt)) -> [return: bb3, unwind terminate(cleanup)];
     }
 
-    bb6 (cleanup): {
+    bb3 (cleanup): {
         nop;
-        drop((((*_42) as variant#6).1: SyncInt)) -> [return: bb7, unwind terminate(cleanup)];
+        drop((((*_42) as variant#6).1: SyncInt)) -> [return: bb4, unwind terminate(cleanup)];
     }
 
-    bb7 (cleanup): {
-        nop;
-        goto -> bb8;
-    }
-
-    bb8 (cleanup): {
-        goto -> bb31;
-    }
-
-    bb9: {
-        nop;
-        goto -> bb1;
-    }
-
-    bb10 (cleanup): {
+    bb4 (cleanup): {
         nop;
         goto -> bb5;
     }
 
-    bb11: {
-        _43 = move _7;
-        StorageDead(_7);
-        goto -> bb17;
+    bb5 (cleanup): {
+        goto -> bb28;
     }
 
-    bb12: {
+    bb6: {
+        nop;
+        nop;
+        goto -> bb1;
+    }
+
+    bb7 (cleanup): {
+        nop;
+        goto -> bb2;
+    }
+
+    bb8: {
+        _43 = move _7;
+        StorageDead(_7);
+        goto -> bb14;
+    }
+
+    bb9: {
         StorageLive(_7);
         _0 = Poll::<()>::Pending;
         StorageDead(_7);
@@ -126,53 +114,53 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
         return;
     }
 
-    bb13: {
+    bb10: {
         unreachable;
     }
 
-    bb14: {
+    bb11: {
         _9 = discriminant(_8);
-        switchInt(move _9) -> [0: bb9, 1: bb12, otherwise: bb13];
+        switchInt(move _9) -> [0: bb6, 1: bb9, otherwise: bb10];
+    }
+
+    bb12: {
+        _8 = <impl Future<Output = ()> as Future>::poll(move _10, move _11) -> [return: bb11, unwind: bb7];
+    }
+
+    bb13: {
+        _12 = move _43;
+        _11 = copy (_12.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
+        goto -> bb12;
+    }
+
+    bb14: {
+        _13 = &mut (((*_42) as variant#4).4: impl std::future::Future<Output = ()>);
+        _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb13, unwind: bb7];
     }
 
     bb15: {
-        _8 = <impl Future<Output = ()> as Future>::poll(move _10, move _11) -> [return: bb14, unwind: bb10];
+        _43 = move _14;
+        StorageDead(_14);
+        goto -> bb14;
     }
 
     bb16: {
-        _12 = move _43;
-        _11 = copy (_12.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
-        goto -> bb15;
+        nop;
+        goto -> bb1;
     }
 
-    bb17: {
-        _13 = &mut (((*_42) as variant#4).4: impl std::future::Future<Output = ()>);
-        _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb16, unwind: bb10];
+    bb17 (cleanup): {
+        nop;
+        goto -> bb3;
     }
 
     bb18: {
-        _43 = move _14;
-        StorageDead(_14);
-        goto -> bb17;
+        _43 = move _24;
+        StorageDead(_24);
+        goto -> bb23;
     }
 
     bb19: {
-        nop;
-        goto -> bb2;
-    }
-
-    bb20 (cleanup): {
-        nop;
-        goto -> bb6;
-    }
-
-    bb21: {
-        _43 = move _24;
-        StorageDead(_24);
-        goto -> bb26;
-    }
-
-    bb22: {
         StorageLive(_24);
         _0 = Poll::<()>::Pending;
         StorageDead(_24);
@@ -180,79 +168,79 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
         return;
     }
 
-    bb23: {
+    bb20: {
         _26 = discriminant(_25);
-        switchInt(move _26) -> [0: bb19, 1: bb22, otherwise: bb13];
+        switchInt(move _26) -> [0: bb16, 1: bb19, otherwise: bb10];
+    }
+
+    bb21: {
+        _25 = <impl Future<Output = ()> as Future>::poll(move _27, move _28) -> [return: bb20, unwind: bb17];
+    }
+
+    bb22: {
+        _29 = move _43;
+        _28 = copy (_29.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
+        goto -> bb21;
+    }
+
+    bb23: {
+        _30 = &mut (((*_42) as variant#6).3: impl std::future::Future<Output = ()>);
+        _27 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _30) -> [return: bb22, unwind: bb17];
     }
 
     bb24: {
-        _25 = <impl Future<Output = ()> as Future>::poll(move _27, move _28) -> [return: bb23, unwind: bb20];
+        _43 = move _31;
+        StorageDead(_31);
+        goto -> bb23;
     }
 
     bb25: {
-        _29 = move _43;
-        _28 = copy (_29.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
-        goto -> bb24;
-    }
-
-    bb26: {
-        _30 = &mut (((*_42) as variant#6).3: impl std::future::Future<Output = ()>);
-        _27 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _30) -> [return: bb25, unwind: bb20];
-    }
-
-    bb27: {
-        _43 = move _31;
-        StorageDead(_31);
-        goto -> bb26;
-    }
-
-    bb28: {
         _0 = Poll::<()>::Ready(const ());
         return;
     }
 
-    bb29: {
-        goto -> bb30;
+    bb26: {
+        goto -> bb27;
     }
 
-    bb30: {
-        goto -> bb28;
+    bb27: {
+        goto -> bb25;
     }
 
-    bb31 (cleanup): {
+    bb28 (cleanup): {
         discriminant((*_42)) = 2;
         resume;
     }
 
-    bb32: {
+    bb29: {
         StorageLive(_7);
         _7 = move _43;
-        goto -> bb11;
+        goto -> bb8;
     }
 
-    bb33: {
+    bb30: {
         StorageLive(_14);
         _14 = move _43;
+        goto -> bb15;
+    }
+
+    bb31: {
+        StorageLive(_24);
+        _24 = move _43;
         goto -> bb18;
     }
 
-    bb34: {
-        StorageLive(_24);
-        _24 = move _43;
-        goto -> bb21;
-    }
-
-    bb35: {
+    bb32: {
         StorageLive(_31);
         _31 = move _43;
-        goto -> bb27;
+        goto -> bb24;
     }
 
-    bb36: {
-        assert(const false, "`async fn` resumed after panicking") -> [success: bb36, unwind continue];
+    bb33: {
+        assert(const false, "`async fn` resumed after panicking") -> [success: bb33, unwind continue];
     }
 
-    bb37: {
+    bb34: {
         _0 = Poll::<()>::Ready(const ());
         return;
     }

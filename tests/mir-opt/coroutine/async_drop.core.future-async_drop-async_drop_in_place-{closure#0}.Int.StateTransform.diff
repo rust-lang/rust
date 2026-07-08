@@ -1,46 +1,42 @@
 - // MIR for `std::future::async_drop_in_place::{closure#0}` before StateTransform
 + // MIR for `std::future::async_drop_in_place::{closure#0}` after StateTransform
   
-- fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<Int>()}, _2: std::future::ResumeTy) -> ()
-- yields ()
--  {
--     let mut _0: ();
-+ fn async_drop_in_place::{closure#0}(_1: Pin<&mut {async fn body of async_drop_in_place<Int>()}>, _2: &mut Context<'_>) -> Poll<()> {
-+     coroutine layout {
-+         variant_fields = {
-+             Unresumed(0): [],
-+             Returned (1): [],
-+             Panicked (2): [],
-+         }
-+         storage_conflicts = BitMatrix(0x0) {}
-+     }
-+     let mut _0: std::task::Poll<()>;
-+     let mut _3: ();
-+     let mut _4: u32;
-+     let mut _5: &mut {async fn body of std::future::async_drop_in_place<Int>()};
-+     let _6: std::future::ResumeTy;
-+     let mut _7: std::ptr::NonNull<std::task::Context<'_>>;
+  fn async_drop_in_place::{closure#0}(_1: Pin<&mut {async fn body of async_drop_in_place<Int>()}>, _2: &mut Context<'_>) -> Poll<()> {
+      coroutine layout {
+          variant_fields = {
+              Unresumed(0): [],
+              Returned (1): [],
+              Panicked (2): [],
+          }
+          storage_conflicts = BitMatrix(0x0) {}
+      }
+      let mut _0: std::task::Poll<()>;
+      let mut _3: ();
+      let mut _4: u32;
+      let mut _5: &mut {async fn body of std::future::async_drop_in_place<Int>()};
+      let _6: std::future::ResumeTy;
+      let mut _7: std::ptr::NonNull<std::task::Context<'_>>;
   
       bb0: {
-+         _7 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-+         _6 = std::future::ResumeTy(move _7);
-+         _5 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<Int>()});
-+         _4 = discriminant((*_5));
-+         switchInt(move _4) -> [0: bb3, 1: bb1, otherwise: bb2];
-+     }
-+ 
-+     bb1: {
-+         _0 = Poll::<()>::Ready(const ());
-+         return;
-+     }
-+ 
-+     bb2: {
-+         unreachable;
-+     }
-+ 
-+     bb3: {
-+         _0 = Poll::<()>::Ready(move _3);
-+         discriminant((*_5)) = 1;
+          _7 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
+          _6 = std::future::ResumeTy(move _7);
+          _5 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<Int>()});
+          _4 = discriminant((*_5));
+          switchInt(move _4) -> [0: bb3, 1: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          _0 = Poll::<()>::Ready(const ());
+          return;
+      }
+  
+      bb2: {
+          unreachable;
+      }
+  
+      bb3: {
+          _0 = Poll::<()>::Ready(move _3);
+          discriminant((*_5)) = 1;
           return;
       }
   }
