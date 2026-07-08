@@ -589,10 +589,8 @@ impl TtParser {
 
             Some(match *eof_mps {
                 [_] => {
-                    let mut eof_mp = eof_mps.pop().unwrap();
-                    // Need to take ownership of the matches from within the `Rc`.
-                    Rc::make_mut(&mut eof_mp.matches);
-                    let matches = Rc::try_unwrap(eof_mp.matches).unwrap().into_iter();
+                    let eof_mp = eof_mps.pop().unwrap();
+                    let matches = Rc::unwrap_or_clone(eof_mp.matches).into_iter();
                     Success(self.nameize(matcher, matches))
                 }
                 [] => {
