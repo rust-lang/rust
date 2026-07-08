@@ -477,7 +477,9 @@ impl TtParser {
         let mut eof_mps = SmallVec::<[MatcherPos; 1]>::new();
 
         while let Some(mp) = self.cur_mps.pop() {
-            self.match_one(parser, matcher, mp, track, &mut eof_mps, false);
+            if let Some(result) = self.match_one(parser, matcher, mp, track, &mut eof_mps, false) {
+                return Some(result);
+            }
         }
 
         if std::mem::take(&mut self.found_ambiguity) {
@@ -507,58 +509,35 @@ impl TtParser {
         }
 
         // FIXME: Error messages here could be improved with links to original rules.
-        match (self.next_mps.len(), self.bb_mps.len()) {
-            (0, 0) => {
-                // There are no possible next positions AND we aren't waiting for the black-box
-                // parser: syntax error.
-                track.failure(parser);
-                return Some(Failure);
-            }
 
-            (_, 0) => {
-                // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
-                // process the next token.
-                self.cur_mps.append(&mut self.next_mps);
-                parser.to_mut().bump();
-            }
-
-            (0, 1) => {
-                // We need to call the black-box parser to get some nonterminal.
-                let mut mp = self.bb_mps.pop().unwrap();
-                let loc = &matcher[mp.idx];
-                let MatcherLoc::MetaVarDecl { kind, next_metavar, seq_depth, .. } = *loc else {
-                    unreachable!()
-                };
-
-                // We use the span of the metavariable declaration to determine any
-                // edition-specific matching behavior for non-terminals.
-                let nt = match parser.to_mut().parse_nonterminal(kind) {
-                    Err(err) => return Some(self.nt_parsing_error(loc, err)),
-                    Ok(nt) => nt,
-                };
-                mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
-
-                mp.idx += 1;
-                self.cur_mps.push(mp);
-            }
-
-            (_, _) => unreachable!(),
+        if self.next_mps.is_empty() {
+            // There are no possible next positions: syntax error.
+            track.failure(parser);
+            return Some(Failure);
         }
+
+        // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
+        // process the next token.
+        self.cur_mps.append(&mut self.next_mps);
+        parser.to_mut().bump();
 
         None
     }
 
     /// Match a single [`MatcherPos`].
+    ///
+    /// If a meta-variable is encountered and `checking_for_ambiguity` is `false`, `cur_mps` will be
+    /// drained to eagerly check for ambiguity, and `parser` will be modified.
     #[inline(always)] // must be inlined in `parse_tt_inner()`
-    fn match_one<'matcher, T: Tracker<'matcher>>(
+    fn match_one<'matcher, R, T: Tracker<'matcher>>(
         &mut self,
-        parser: &Parser<'_>,
+        parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         mut mp: MatcherPos,
         track: &mut T,
         eof_mps: &mut SmallVec<[MatcherPos; 1]>,
         checking_for_ambiguity: bool,
-    ) {
+    ) -> Option<ParseResult<R>> {
         let matcher_loc = &matcher[mp.idx];
         track.before_match_loc(self, matcher_loc);
         let token = &parser.token;
@@ -648,12 +627,12 @@ impl TtParser {
                 mp.idx = idx_first;
                 self.cur_mps.push(mp);
             }
-            &MatcherLoc::MetaVarDecl { kind, .. } => {
+            &MatcherLoc::MetaVarDecl { kind, next_metavar, seq_depth, .. } => {
                 // Built-in nonterminals never start with these tokens, so we can eliminate them
                 // from consideration. We use the span of the metavariable declaration to determine
                 // any edition-specific matching behavior for non-terminals.
                 if !Parser::nonterminal_may_begin_with(kind, token) {
-                    return;
+                    return None;
                 }
 
                 // EOF tokens would cause unexpected processing in `match_one()`.
@@ -666,18 +645,29 @@ impl TtParser {
                     // be matched. An ambiguity error has occurred. Details have already been saved
                     // by `track`. Note the error and stop.
                     self.found_ambiguity = true;
-                    return;
+                    return None;
                 }
 
                 self.check_for_ambiguity(parser, matcher, track);
 
                 if self.found_ambiguity {
                     // Let the caller handle the error.
-                    return;
+                    return None;
                 }
 
-                // TODO: Perform the non-terminal parsing here.
-                self.bb_mps.push(mp);
+                assert!(self.cur_mps.is_empty());
+                assert!(self.next_mps.is_empty());
+
+                // We use the span of the metavariable declaration to determine any
+                // edition-specific matching behavior for non-terminals.
+                let nt = match parser.to_mut().parse_nonterminal(kind) {
+                    Err(err) => return Some(self.nt_parsing_error(matcher_loc, err)),
+                    Ok(nt) => nt,
+                };
+                mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
+
+                mp.idx += 1;
+                self.cur_mps.push(mp);
             }
             MatcherLoc::Eof => {
                 // We are past the matcher's end, and not in a sequence. Try to end things.
@@ -687,6 +677,8 @@ impl TtParser {
                 }
             }
         }
+
+        None
     }
 
     /// Look for ambiguity before parsing a non-terminal.
@@ -694,7 +686,7 @@ impl TtParser {
     /// Sets [`Self::found_ambiguity`] if ambiguity is found.
     fn check_for_ambiguity<'matcher, T: Tracker<'matcher>>(
         &mut self,
-        parser: &Parser<'_>,
+        parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
     ) {
@@ -708,7 +700,10 @@ impl TtParser {
 
         // Consume all pending mps at the current input position.
         while let Some(mp) = self.cur_mps.pop() {
-            self.match_one(parser, matcher, mp, track, &mut eof_mps, true);
+            let result = self.match_one::<(), _>(parser, matcher, mp, track, &mut eof_mps, true);
+            // A result is only returned if non-terminal parsing fails, but non-terminal parsing
+            // is not performed when `check_for_ambiguity` is `true`.
+            assert!(result.is_none());
         }
 
         assert!(eof_mps.is_empty());
@@ -747,7 +742,7 @@ impl TtParser {
         }
     }
 
-    fn nt_parsing_error(&self, loc: &MatcherLoc, err: Diag<'_>) -> NamedParseResult {
+    fn nt_parsing_error<R>(&self, loc: &MatcherLoc, err: Diag<'_>) -> ParseResult<R> {
         let &MatcherLoc::MetaVarDecl { span, kind, .. } = loc else { unreachable!() };
         let guarantee = err
             .with_span_label(
@@ -758,11 +753,11 @@ impl TtParser {
         ErrorReported(guarantee)
     }
 
-    fn ambiguity_error<'matcher, T: Tracker<'matcher>>(
+    fn ambiguity_error<'matcher, R, T: Tracker<'matcher>>(
         &mut self,
         parser: &Parser<'_>,
         track: &mut T,
-    ) -> NamedParseResult {
+    ) -> ParseResult<R> {
         track.ambiguity(parser);
         Ambiguity
     }
