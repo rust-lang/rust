@@ -45,21 +45,25 @@ case ${TARGET} in
     aarch64_be*)
         export CFLAGS="-I${AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc/usr/include --sysroot={AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc -Wno-nonportable-vector-initialization"
         ARCH=aarch64_be
+        RUNTIME_RUSTFLAGS=
         ;;
 
     aarch64*)
         export CFLAGS="-I/usr/aarch64-linux-gnu/include/"
         ARCH=aarch64
+        RUNTIME_RUSTFLAGS=-Ctarget-feature=+sve,+sve2
         ;;
 
     armv7*)
         export CFLAGS="-I/usr/arm-linux-gnueabihf/include/"
         ARCH=arm
+        RUNTIME_RUSTFLAGS=
         ;;
 
     x86_64*)
         export CFLAGS="-I/usr/include/x86_64-linux-gnu/"
         ARCH=x86
+        RUNTIME_RUSTFLAGS=
         ;;
     *)
         ;;
@@ -86,5 +90,5 @@ case "${TARGET}" in
         ;;
 esac
 
-cargo test --manifest-path=rust_programs/Cargo.toml --target "${TARGET}" --profile "${PROFILE}" \
-    --tests "$@"
+RUSTFLAGS="${RUNTIME_RUSTFLAGS}" cargo test --manifest-path=rust_programs/Cargo.toml \
+    --target "${TARGET}" --profile "${PROFILE}" --tests --no-fail-fast "$@"

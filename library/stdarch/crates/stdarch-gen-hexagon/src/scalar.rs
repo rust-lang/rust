@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use stdarch_gen_common::GENERATED_MARKER;
 
 /// Extract the instruction mnemonic from the assembly syntax string.
 ///
@@ -630,6 +631,7 @@ fn generate_scalar_file(intrinsics: &[ScalarIntrinsic], output_path: &Path) -> R
     let mut output =
         File::create(output_path).map_err(|e| format!("Failed to create output: {}", e))?;
 
+    writeln!(output, "{}", GENERATED_MARKER).map_err(|e| e.to_string())?;
     writeln!(output, "{}", generate_module_doc()).map_err(|e| e.to_string())?;
     writeln!(output, "").map_err(|e| e.to_string())?;
     writeln!(output, "{}", generate_extern_block(intrinsics)).map_err(|e| e.to_string())?;
@@ -651,28 +653,12 @@ fn generate_scalar_file(intrinsics: &[ScalarIntrinsic], output_path: &Path) -> R
     Ok(())
 }
 
-fn main() -> Result<(), String> {
-    println!("=== Hexagon Scalar Code Generator ===\n");
-
-    let crate_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::env::current_dir().unwrap());
-
-    let header_content = read_header(&crate_dir)?;
-    println!("Read {} bytes", header_content.len());
-
+/// Parse the scalar header in `crate_dir` and write `scalar.rs` into `out_dir`.
+pub fn generate(crate_dir: &std::path::Path, out_dir: &std::path::Path) -> Result<(), String> {
+    let header_content = read_header(crate_dir)?;
     let intrinsics = parse_header(&header_content);
-    println!("Parsed {} scalar intrinsics", intrinsics.len());
-
-    let hexagon_dir = std::env::args()
-        .nth(1)
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| crate_dir.join("../core_arch/src/hexagon"));
-    std::fs::create_dir_all(&hexagon_dir).map_err(|e| e.to_string())?;
-    let scalar_path = hexagon_dir.join("scalar.rs");
-
+    std::fs::create_dir_all(out_dir).map_err(|e| e.to_string())?;
+    let scalar_path = out_dir.join("scalar.rs");
     generate_scalar_file(&intrinsics, &scalar_path)?;
-    println!("Generated scalar.rs at {}", scalar_path.display());
-
     Ok(())
 }

@@ -59,7 +59,7 @@ pub fn _mm_cvttsd_si64x(a: __m128d) -> i64 {
     _mm_cvttsd_si64(a)
 }
 
-/// Stores a 64-bit integer value in the specified memory location.
+/// Stores a 64-bit integer value in an 8-byte aligned memory location.
 /// To minimize caching, the data is flagged as non-temporal (unlikely to be
 /// used again soon).
 ///
