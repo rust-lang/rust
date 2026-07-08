@@ -294,7 +294,7 @@ impl Crate {
         self.id
             .transitive_deps(db)
             .into_iter()
-            .filter_map(|krate| db.crate_notable_traits(krate))
+            .filter_map(|krate| hir_def::crate_notable_traits(db, krate))
             .flatten()
     }
 

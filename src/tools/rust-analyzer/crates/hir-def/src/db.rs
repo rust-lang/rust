@@ -4,14 +4,10 @@ use hir_expand::{EditionedFileId, MacroCallId};
 use salsa::{Durability, Setter};
 use triomphe::Arc;
 
-use crate::{TraitId, nameres::crate_def_map};
+use crate::nameres::crate_def_map;
 
 #[query_group::query_group]
 pub trait DefDatabase: SourceDatabase {
-    #[salsa::invoke(crate::lang_item::crate_notable_traits)]
-    #[salsa::transparent]
-    fn crate_notable_traits(&self, krate: Crate) -> Option<&[TraitId]>;
-
     #[salsa::invoke(include_macro_invoc)]
     fn include_macro_invoc(&self, crate_id: Crate) -> Arc<[(MacroCallId, EditionedFileId)]>;
 }
