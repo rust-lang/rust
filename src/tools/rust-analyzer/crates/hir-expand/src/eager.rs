@@ -18,7 +18,7 @@
 //!
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use span::SyntaxContext;
 use syntax::{
     AstPtr, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent, syntax_editor::SyntaxEditor,
@@ -29,7 +29,6 @@ use crate::{
     AstId, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile,
     MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
     ast::{self, AstNode},
-    db::ExpandDatabase,
     mod_path::ModPath,
 };
 
@@ -39,7 +38,7 @@ pub type EagerCallBackFn<'a> = &'a mut dyn FnMut(
 );
 
 pub fn expand_eager_macro_input(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     krate: Crate,
     macro_call: &ast::MacroCall,
     ast_id: AstId<ast::MacroCall>,
@@ -119,7 +118,7 @@ pub fn expand_eager_macro_input(
 }
 
 fn lazy_expand<'db>(
-    db: &'db dyn ExpandDatabase,
+    db: &'db dyn SourceDatabase,
     def: &MacroDefId,
     macro_call: &ast::MacroCall,
     ast_id: AstId<ast::MacroCall>,
@@ -142,7 +141,7 @@ fn lazy_expand<'db>(
 }
 
 fn eager_macro_recur(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span_map: &ExpansionSpanMap,
     expanded_map: &mut ExpansionSpanMap,
     mut offset: TextSize,

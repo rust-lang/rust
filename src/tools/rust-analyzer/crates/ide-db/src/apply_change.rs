@@ -195,19 +195,6 @@ impl RootDatabase {
             // hir::db::InternProcMacroQuery
             // hir::db::InternMacroRulesQuery
 
-            // // ExpandDatabase
-            // hir::db::AstIdMapQuery
-            // hir::db::DeclMacroExpanderQuery
-            // hir::db::ExpandProcMacroQuery
-            // hir::db::InternMacroCallQuery
-            // hir::db::InternSyntaxContextQuery
-            // hir::db::MacroArgQuery
-            // hir::db::ParseMacroExpansionErrorQuery
-            // hir::db::ParseMacroExpansionQuery
-            // hir::db::ProcMacroSpanQuery
-            // hir::db::ProcMacrosQuery
-            // hir::db::RealSpanMapQuery
-
             // // LineIndexDatabase
             // crate::LineIndexQuery
 

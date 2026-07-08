@@ -26,7 +26,6 @@ use hir_expand::{
     EditionedFileId, ExpandResult, FileRange, HirFileId, InMacroFile, MacroCallId,
     attrs::AstPathExt,
     builtin::{BuiltinFnLikeExpander, EagerExpander},
-    db::ExpandDatabase,
     files::{FileRangeWrapper, HirFileRange, InRealFile},
     mod_path::{ModPath, PathKind},
     name::AsName,
@@ -2604,7 +2603,7 @@ fn macro_call_to_macro_id(
     ctx: &mut SourceToDefCtx<'_, '_>,
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
-    let db: &dyn ExpandDatabase = ctx.db;
+    let db = ctx.db;
     let loc = macro_call_id.loc(db);
 
     match loc.def.ast_id() {

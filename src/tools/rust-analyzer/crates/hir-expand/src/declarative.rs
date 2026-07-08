@@ -2,7 +2,7 @@
 
 use std::ops::ControlFlow;
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use span::{Edition, Span, SyntaxContext};
 use stdx::TupleExt;
 use syntax::{
@@ -15,7 +15,6 @@ use crate::{
     AstId, ExpandError, ExpandErrorKind, ExpandResult, HirFileId, Lookup, MacroCallId,
     MacroCallStyle,
     attrs::{AstKeyValueMetaExt, AstPathExt, expand_cfg_attr},
-    db::ExpandDatabase,
     hygiene::{Transparency, apply_mark},
     tt,
 };
@@ -31,7 +30,7 @@ pub struct DeclarativeMacroExpander {
 impl DeclarativeMacroExpander {
     pub fn expand(
         &self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         tt: &tt::TopSubtree,
         call_id: MacroCallId,
         span: Span,
@@ -60,7 +59,7 @@ impl DeclarativeMacroExpander {
 
     pub fn expand_unhygienic(
         &self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         tt: &tt::TopSubtree,
         call_style: MacroCallStyle,
         call_site: Span,
@@ -85,7 +84,7 @@ impl AstId<ast::Macro> {
     #[salsa::tracked(returns(ref))]
     pub fn decl_macro_expander(
         self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         def_crate: Crate,
     ) -> DeclarativeMacroExpander {
         let id = self;
