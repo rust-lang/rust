@@ -19,7 +19,7 @@ use build_helper::git::PathFreshness;
 
 use crate::core::build_steps::llvm;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
-use crate::core::config::{Config, TargetSelection};
+use crate::core::config::{Config, LlvmPgoGenerationMode, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
@@ -369,14 +369,17 @@ impl Step for Llvm {
         // This flag makes sure `FileCheck` is copied in the final binaries directory.
         cfg.define("LLVM_INSTALL_UTILS", "ON");
 
-        if builder.config.llvm_profile_generate {
+        if let Some(mode) = builder.config.llvm_pgo.generate_profile.as_ref() {
             cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
-            if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
-                cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
+            match mode {
+                LlvmPgoGenerationMode::Implicit => {}
+                LlvmPgoGenerationMode::Directory(llvm_profile_dir) => {
+                    cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
+                }
             }
             cfg.define("LLVM_BUILD_RUNTIME", "No");
         }
-        if let Some(path) = builder.config.llvm_profile_use.as_ref() {
+        if let Some(path) = builder.config.llvm_pgo.use_profile.as_ref() {
             cfg.define("LLVM_PROFDATA_FILE", path);
         }
 
@@ -1326,7 +1329,7 @@ impl Step for Lld {
         // when doing PGO on CI, cmake or clang-cl don't automatically link clang's
         // profiler runtime in. In that case, we need to manually ask cmake to do it, to avoid
         // linking errors, much like LLVM's cmake setup does in that situation.
-        if builder.config.llvm_profile_generate
+        if builder.config.llvm_pgo.generate_profile.is_some()
             && target.is_msvc()
             && let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref()
         {
