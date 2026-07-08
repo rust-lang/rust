@@ -230,18 +230,16 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             bug!("`Self::prepare()` was not called to initialize context");
         };
 
-        let token = &parser.token;
-        let (token, approx_position, msg) = if *token == token::Eof {
-            (
-                Token::new(
-                    token::Eof,
-                    if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
-                ),
-                parser.approx_token_stream_pos(),
-                "missing tokens in macro arguments",
-            )
+        let mut token = parser.token;
+        let approx_position = parser.approx_token_stream_pos();
+        let msg = if token.kind == token::Eof {
+            // FIXME: Can this be factored out of the EOF case?
+            if !token.span.is_dummy() {
+                token.span = token.span.shrink_to_hi();
+            }
+            "missing tokens in macro arguments"
         } else {
-            (*token, parser.approx_token_stream_pos(), "no rules expected this token in macro call")
+            "no rules expected this token in macro call"
         };
 
         debug!(?token, ?msg, "a new failure of an arm");
