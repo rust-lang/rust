@@ -35,9 +35,8 @@ pub mod builtin_derive;
 pub mod lang_item;
 pub mod unstable_features;
 
-pub mod hir;
-pub use self::hir::type_ref;
 pub mod expr_store;
+pub mod hir;
 pub mod resolver;
 
 pub mod nameres;
@@ -47,12 +46,6 @@ pub mod src;
 pub mod find_path;
 pub mod import_map;
 pub mod visibility;
-
-use intern::{Interned, sym};
-use rustc_abi::ExternAbi;
-use thin_vec::ThinVec;
-
-pub use crate::signatures::LocalFieldId;
 
 #[cfg(test)]
 mod macro_expansion_tests;
@@ -73,12 +66,13 @@ use hir_expand::{
     name::Name,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind},
 };
+use intern::{Interned, sym};
 use nameres::DefMap;
+use rustc_abi::ExternAbi;
 use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::impl_from;
 use syntax::{AstNode, ast};
-
-pub use hir_expand::{Intern, Lookup, tt};
+use thin_vec::ThinVec;
 
 use crate::{
     attrs::AttrFlags,
@@ -96,8 +90,11 @@ use crate::{
     signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
 };
 
+pub use crate::{hir::type_ref, signatures::LocalFieldId};
+pub use hir_expand::{Intern, Lookup, tt};
+
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
-/// A wrapper around three booleans
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub struct FindPathConfig {
     /// If true, prefer to unconditionally use imports of the `core` and `alloc` crate
