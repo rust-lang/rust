@@ -2827,7 +2827,7 @@ impl SelfParam {
 impl HasVisibility for Function {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         match self.id {
-            AnyFunctionId::FunctionId(id) => db.assoc_visibility(id.into()),
+            AnyFunctionId::FunctionId(id) => AssocItemId::from(id).assoc_visibility(db),
             AnyFunctionId::BuiltinDeriveImplMethod { .. } => Visibility::Public,
         }
     }
@@ -2929,7 +2929,7 @@ impl Const {
 
 impl HasVisibility for Const {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.assoc_visibility(self.id.into())
+        AssocItemId::from(self.id).assoc_visibility(db)
     }
 }
 
@@ -3159,7 +3159,7 @@ impl TypeAlias {
 
 impl HasVisibility for TypeAlias {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.assoc_visibility(self.id.into())
+        AssocItemId::from(self.id).assoc_visibility(db)
     }
 }
 

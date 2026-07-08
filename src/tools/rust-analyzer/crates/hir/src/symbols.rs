@@ -410,7 +410,7 @@ impl<'a> SymbolCollector<'a> {
         );
         self.with_container_name(impl_name.as_deref().map(Symbol::intern), |s| {
             for &(ref name, assoc_item_id) in &impl_id.impl_items(self.db).items {
-                if s.collect_pub_only && s.db.assoc_visibility(assoc_item_id) != Visibility::Public
+                if s.collect_pub_only && assoc_item_id.assoc_visibility(s.db) != Visibility::Public
                 {
                     continue;
                 }

@@ -5,11 +5,10 @@ use salsa::{Durability, Setter};
 use triomphe::Arc;
 
 use crate::{
-    AssocItemId, AttrDefId, TraitId,
+    AttrDefId, TraitId,
     attrs::AttrFlags,
     item_tree::{ItemTree, file_item_tree},
     nameres::crate_def_map,
-    visibility::{self, Visibility},
 };
 
 #[query_group::query_group]
@@ -18,13 +17,6 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(file_item_tree)]
     #[salsa::transparent]
     fn file_item_tree(&self, file_id: HirFileId, krate: Crate) -> &ItemTree;
-
-    // region:visibilities
-
-    #[salsa::invoke(visibility::assoc_visibility_query)]
-    fn assoc_visibility(&self, def: AssocItemId) -> Visibility;
-
-    // endregion:visibilities
 
     #[salsa::invoke(crate::lang_item::crate_notable_traits)]
     #[salsa::transparent]
