@@ -171,7 +171,7 @@ fn const_to_valtree_inner<'tcx>(
             branches(ecx, place, elem_tys.len(), None, num_nodes, visited, settled)
         }
 
-        ty::Adt(def, _) => {
+        ty::Adt(def, _) | ty::View(def, _, _) | ty::ViewInfer(def, _, _) => {
             if def.is_union() {
                 Err(ValTreeCreationError::NonSupportedType(ty))
             } else if def.variants().is_empty() {
@@ -326,7 +326,7 @@ pub fn valtree_to_const_value<'tcx>(
             );
             op_to_const(&ecx, &imm.into(), /* for diagnostics */ false)
         }
-        ty::Tuple(_) | ty::Array(_, _) | ty::Adt(..) => {
+        ty::Tuple(_) | ty::Array(_, _) | ty::Adt(..) | ty::View(..) | ty::ViewInfer(..) => {
             let layout = tcx.layout_of(typing_env.as_query_input(cv.ty)).unwrap();
             if layout.is_zst() {
                 // Fast path to avoid some allocations.

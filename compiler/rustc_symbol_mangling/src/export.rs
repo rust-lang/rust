@@ -62,7 +62,9 @@ impl<'tcx> AbiStableHash<'tcx> for Ty<'tcx> {
             ty::Uint(uint_ty) => uint_ty.name_str().abi_stable_hash(tcx, hasher),
             ty::Float(float_ty) => float_ty.name_str().abi_stable_hash(tcx, hasher),
 
-            ty::Adt(adt_def, args) => {
+            ty::Adt(adt_def, args)
+            | ty::View(adt_def, args, _)
+            | ty::ViewInfer(adt_def, args, _) => {
                 adt_def.is_struct().abi_stable_hash(tcx, hasher);
                 adt_def.is_enum().abi_stable_hash(tcx, hasher);
                 adt_def.is_union().abi_stable_hash(tcx, hasher);

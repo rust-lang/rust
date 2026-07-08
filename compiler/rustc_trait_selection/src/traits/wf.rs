@@ -817,7 +817,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 return; // Subtree handled by compute_inherent_projection.
             }
 
-            ty::Adt(def, args) => {
+            ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
                 // WfNominalType
                 let obligations = self.nominal_obligations(def.did(), args);
                 self.out.extend(obligations);

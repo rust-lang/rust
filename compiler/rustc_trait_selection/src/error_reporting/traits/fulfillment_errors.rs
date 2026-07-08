@@ -1909,7 +1909,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
                 ty::Str => Some(2),
-                ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => Some(2),
+                ty::Adt(def, _) | ty::View(def, _, _) | ty::ViewInfer(def, _, _)
+                    if tcx.is_lang_item(def.did(), LangItem::String) =>
+                {
+                    Some(2)
+                }
                 ty::Int(..)
                 | ty::Uint(..)
                 | ty::Float(..)
@@ -1933,7 +1937,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::CoroutineClosure(..) => Some(21),
                 ty::Pat(..) => Some(22),
                 ty::UnsafeBinder(..) => Some(23),
-                ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
+                ty::View(..) => Some(24),
+                ty::Placeholder(..)
+                | ty::Bound(..)
+                | ty::Infer(..)
+                | ty::ViewInfer(..)
+                | ty::Error(_) => None,
             }
         }
 

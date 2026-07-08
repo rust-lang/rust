@@ -751,7 +751,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         match *ty.kind() {
-            ty::Adt(def, args) => {
+            ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
                 if let Some(inner_ty) = ty.boxed_ty() {
                     return self.visit_indirection(state, ty, inner_ty, IndirectionKind::Box);
                 }

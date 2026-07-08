@@ -303,7 +303,9 @@ fn characteristic_def_id_of_type_cached<'a>(
     visited: &mut SsoHashSet<Ty<'a>>,
 ) -> Option<DefId> {
     match *ty.kind() {
-        ty::Adt(adt_def, _) => Some(adt_def.did()),
+        ty::Adt(adt_def, _) | ty::View(adt_def, _, _) | ty::ViewInfer(adt_def, _, _) => {
+            Some(adt_def.did())
+        }
 
         ty::Dynamic(data, ..) => data.principal_def_id(),
 

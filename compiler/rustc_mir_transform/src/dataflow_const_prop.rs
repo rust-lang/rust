@@ -874,7 +874,7 @@ fn try_write_constant<'tcx>(
             }
         }
 
-        ty::Adt(def, args) => {
+        ty::Adt(def, args) | ty::View(def, args, _)| ty::ViewInfer(def, args, _) => {
             if def.is_union() {
                 throw_machine_stop_str!("cannot propagate unions")
             }
