@@ -415,7 +415,7 @@ mod zombie_processes;
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::Lint;
+use rustc_lint::{Lint, is_lint_pass_required};
 use rustc_middle::ty::TyCtxt;
 use utils::attr_collector::AttrStorage;
 
@@ -455,7 +455,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     // NOTE: Do not add any more pre-expansion passes. These should be removed eventually.
     // Due to the architecture of the compiler, currently `cfg_attr` attributes on crate
     // level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
-    store.register_pre_expansion_pass(Box::new(move || Box::new(attrs::EarlyAttributes::new(conf))));
+    store.register_pre_expansion_lint_pass(Box::new(move || Box::new(attrs::EarlyAttributes::new(conf))));
 
     let format_args_storage = FormatArgsStorage::default();
     let attr_storage = AttrStorage::default();
@@ -463,19 +463,14 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     {
         let format_args = format_args_storage.clone();
         let attrs = attr_storage.clone();
-        store.early_passes.push(Box::new(move || {
+        store.register_early_lint_pass(Box::new(move || {
             Box::new(CombinedEarlyLintPass::new(conf, format_args.clone(), attrs.clone()))
         }));
     }
 
-    store.late_passes.push(Box::new(move |tcx: TyCtxt<'_>| {
-        let dont_need = tcx.lints_that_dont_need_to_run(());
-        let is_active = |lints: &rustc_lint::LintVec| {
-            lints.is_empty()
-                || !lints
-                    .iter()
-                    .all(|lint| dont_need.contains(&rustc_lint::LintId::of(lint)))
-        };
+    store.register_late_lint_pass(Box::new(move |tcx: TyCtxt<'_>| {
+        let skippable_lints = tcx.skippable_lints(());
+        let is_active = |lints: &rustc_lint::LintVec| is_lint_pass_required(skippable_lints, lints);
         Box::new(CombinedLateLintPass::new(
             tcx,
             conf,
