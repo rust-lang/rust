@@ -675,7 +675,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "clippy"
-version = "0.1.98"
+version = "0.1.99"
 dependencies = [
  "anstream 0.6.21",
  "askama",
@@ -687,7 +687,7 @@ dependencies = [
  "color-print",
  "declare_clippy_lint",
  "filetime",
- "itertools 0.12.1",
+ "itertools 0.15.0",
  "pulldown-cmark",
  "regex",
  "rustc_tools_util 0.4.2",
@@ -702,10 +702,10 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.98"
+version = "0.1.99"
 dependencies = [
  "clippy_utils",
- "itertools 0.12.1",
+ "itertools 0.15.0",
  "serde",
  "toml 0.7.8",
  "walkdir",
@@ -718,7 +718,7 @@ dependencies = [
  "chrono",
  "clap",
  "indoc",
- "itertools 0.12.1",
+ "itertools 0.15.0",
  "opener",
  "rustc-literal-escaper",
  "walkdir",
@@ -726,14 +726,14 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.98"
+version = "0.1.99"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.23.1",
  "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
- "itertools 0.12.1",
+ "itertools 0.15.0",
  "quine-mc_cluskey",
  "regex-syntax",
  "semver",
@@ -751,17 +751,17 @@ version = "0.0.1"
 dependencies = [
  "clippy_config",
  "clippy_utils",
- "itertools 0.12.1",
+ "itertools 0.15.0",
  "regex",
  "rustc-semver",
 ]
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.98"
+version = "0.1.99"
 dependencies = [
  "arrayvec",
- "itertools 0.12.1",
+ "itertools 0.15.0",
  "rustc_apfloat",
  "serde",
 ]
@@ -1173,7 +1173,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.98"
+version = "0.1.99"
 
 [[package]]
 name = "derive-where"
