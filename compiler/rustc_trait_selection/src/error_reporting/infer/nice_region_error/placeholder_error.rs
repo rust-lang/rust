@@ -53,7 +53,7 @@ where
 
         self.value.print(&mut p)?;
         let b = p.into_buffer();
-        if b.len() <= 40 || !self.highlight.keep_regions {
+        if b.len() <= 40 || !self.highlight.keep_regions || self.tcx.sess.opts.verbose {
             // This is a short enough type that can be safely be printed to the user, or we aren't
             // showing the type with a particular interest in its lifetimes.
             f.write_str(&b)?;
