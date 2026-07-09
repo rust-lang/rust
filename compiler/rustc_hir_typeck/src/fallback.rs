@@ -159,14 +159,14 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// ```
     fn calculate_fallback_to_f32(
         &self,
-        unresolved_variables: &[ty::FloatVid],
+        unresolved_root_variables: &[ty::FloatVid],
     ) -> UnordSet<FloatVid> {
         // Short-circuit: if no unresolved variable is a float, no f32 fallback can apply,
         // so we can skip the (potentially very expensive) work in `from_float_for_f32_root_vids`.
         // Under the new solver, that function walks `visit_proof_tree` for every pending
         // obligation, which is O(N × proof_tree_size) and can dominate type-checking on crates
         // with many large pending obligations and no f32 involvement.
-        if unresolved_variables.is_empty() {
+        if unresolved_root_variables.is_empty() {
             return UnordSet::new();
         }
 
@@ -179,10 +179,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // Calculate all the unresolved variables that need to fallback to `f32` here. This ensures
         // we don't need to find root variables in `fallback_if_possible`: see the comment at the
         // top of that function for details.
-        let fallback_to_f32 = unresolved_variables
+        let fallback_to_f32 = unresolved_root_variables
             .iter()
             .copied()
-            .filter(|&vid| roots.contains(&self.root_float_var(vid)))
+            .filter(|&vid| roots.contains(&vid))
             .inspect(|&vid| {
                 let origin = self.float_var_origin(vid);
                 // Show the entire literal in the suggestion to make it clearer.
