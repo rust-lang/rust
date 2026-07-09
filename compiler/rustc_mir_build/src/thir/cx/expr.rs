@@ -1225,26 +1225,50 @@ impl<'tcx> ThirBuildCx<'tcx> {
             self.typeck_results.splatted_def(expr.hir_id).unwrap_or_else(|| {
                 span_bug!(expr.span, "no splatted def for function or method callee")
             });
-        let def_id = def_id.unwrap_or_else(|| {
-            span_bug!(expr.span, "no splatted def for function or method callee")
-        });
-        let def_kind = self.tcx.def_kind(def_id);
-        let user_ty = self.user_args_applied_to_res(expr.hir_id, Res::Def(def_kind, def_id));
-        debug!(
-            "splatted_callee: user_ty={:?} def_kind={:?} def_id={:?} arg_index={:?} arg_count={:?}",
-            user_ty, def_kind, def_id, arg_index, arg_count
-        );
 
-        (
+        let expr = if let Some(def_id) = def_id {
+            // We're calling a function via a FnDef, and its possibly generic type
+            let def_kind = self.tcx.def_kind(def_id);
+            let user_ty = self.user_args_applied_to_res(expr.hir_id, Res::Def(def_kind, def_id));
+            debug!(
+                "splatted_callee FnDef: user_ty={:?} def_kind={:?} def_id={:?} arg_index={:?} arg_count={:?}",
+                user_ty, def_kind, def_id, arg_index, arg_count,
+            );
+
             Expr {
                 temp_scope_id: expr.hir_id.local_id,
+                // Create a new FnDef type, representing the splatted function arguments with
+                // user-supplied generic types applied
                 ty: Ty::new_fn_def(self.tcx, def_id, self.typeck_results.node_args(expr.hir_id)),
                 span,
                 kind: ExprKind::ZstLiteral { user_ty },
-            },
-            arg_index,
-            arg_count,
-        )
+            }
+        } else {
+            // We're calling a function via a FnPtr and its type
+            // FIXME(splat): populate the side-tables for FnPtrs, using liberated_fn_sigs if needed
+            let fn_ty = self.typeck_results.expr_ty_adjusted(expr);
+            let user_ty =
+                self.typeck_results.user_provided_types().get(expr.hir_id).copied().map(Box::new);
+            debug!(
+                "splatted_callee FnPtr: user_ty={:?} fn_ty={:?} arg_index={:?} arg_count={:?}",
+                user_ty, fn_ty, arg_index, arg_count,
+            );
+
+            if !fn_ty.is_fn() {
+                span_bug!(expr.span, "splatted FnPtr side-tables are not yet implemented")
+            }
+
+            Expr {
+                temp_scope_id: expr.hir_id.local_id,
+                // Create a new FnPtr FnSig type, representing the splatted function arguments with
+                // user-supplied generic types applied
+                ty: Ty::new_fn_ptr(self.tcx, fn_ty.fn_sig(self.tcx)),
+                span,
+                kind: ExprKind::ZstLiteral { user_ty },
+            }
+        };
+
+        (expr, arg_index, arg_count)
     }
 
     /// The callee has a splatted tuple argument.
