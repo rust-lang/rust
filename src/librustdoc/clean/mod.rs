@@ -1953,6 +1953,10 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::UnsafeBinder(unsafe_binder_ty) => {
             UnsafeBinder(Box::new(clean_unsafe_binder_ty(unsafe_binder_ty, cx)))
         }
+        TyKind::View(ty, _) => {
+            // FIXME(scrabsha): propagate view types to `rustdoc`.
+            clean_ty(ty, cx)
+        }
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
         TyKind::Infer(())
         | TyKind::Err(_)
