@@ -4,8 +4,8 @@ use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
-    AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, MgcaDisambiguation,
-    ParenthesizedArgs, Path, PathSegment, QSelf,
+    AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
+    Path, PathSegment, QSelf,
 };
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{BytePos, Ident, Span, kw, sym};
@@ -876,13 +876,12 @@ impl<'a> Parser<'a> {
     /// the caller.
     pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
         // Parse const argument.
-        let (value, mgca_disambiguation) = if self.token.kind == token::OpenBrace {
-            let value = self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?;
-            (value, MgcaDisambiguation::Direct)
+        let value = if self.token.kind == token::OpenBrace {
+            self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?
         } else {
             self.parse_unambiguous_unbraced_const_arg()?
         };
-        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value, mgca_disambiguation })
+        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }
 
     /// Attempt to parse a const argument that has not been enclosed in braces.
@@ -892,9 +891,7 @@ impl<'a> Parser<'a> {
     /// - Single-segment paths (i.e. standalone generic const parameters).
     /// All other expressions that can be parsed will emit an error suggesting the expression be
     /// wrapped in braces.
-    pub(super) fn parse_unambiguous_unbraced_const_arg(
-        &mut self,
-    ) -> PResult<'a, (Box<Expr>, MgcaDisambiguation)> {
+    pub(super) fn parse_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, Box<Expr>> {
         let start = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         let (expr, _) =
@@ -915,7 +912,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        Ok((expr, MgcaDisambiguation::Direct))
+        Ok(expr)
     }
 
     /// Parse a generic argument in a path segment.
@@ -1019,11 +1016,7 @@ impl<'a> Parser<'a> {
                 GenericArg::Type(_) => GenericArg::Type(self.mk_ty(attr_span, TyKind::Err(guar))),
                 GenericArg::Const(_) => {
                     let error_expr = self.mk_expr(attr_span, ExprKind::Err(guar));
-                    GenericArg::Const(AnonConst {
-                        id: ast::DUMMY_NODE_ID,
-                        value: error_expr,
-                        mgca_disambiguation: MgcaDisambiguation::Direct,
-                    })
+                    GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value: error_expr })
                 }
                 GenericArg::Lifetime(lt) => GenericArg::Lifetime(lt),
             }));
