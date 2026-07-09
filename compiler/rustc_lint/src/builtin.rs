@@ -1325,7 +1325,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         // FIXME(generic_const_exprs): Revisit this before stabilization.
         // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
         let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
-        if ty.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
+        if ty.has_type_flags(ty::TypeFlags::HAS_CONST_ALIAS)
             && cx.tcx.features().generic_const_exprs()
         {
             return;
