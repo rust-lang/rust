@@ -66,6 +66,11 @@ impl LanguageItems {
             .enumerate()
             .filter_map(|(i, id)| id.map(|id| (LangItem::from_u32(i as u32).unwrap(), id)))
     }
+
+    /// Remove any missing items from the list that aren't actually missing
+    pub fn trim_missing(&mut self) {
+        self.missing.retain(|&item| self.items[item as usize].is_none());
+    }
 }
 
 // The actual lang items defined come at the end of this file in one handy table.

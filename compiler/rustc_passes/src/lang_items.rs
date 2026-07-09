@@ -68,7 +68,9 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                         }
                     }
                     // Weak lang items are handled separately
-                    if !lang_item.is_weak() || actual_target == Target::Fn {
+                    if lang_item.is_weak() && actual_target == Target::ForeignFn {
+                        self.items.missing.push(lang_item);
+                    } else {
                         // Weak only lang items are always handled here
                         self.collect_item_extended(
                             lang_item,
@@ -256,7 +258,7 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
     visit::Visitor::visit_crate(&mut collector, krate);
 
     // Find all required but not-yet-defined lang items.
-    weak_lang_items::check_crate(tcx, &mut collector.items, krate);
+    weak_lang_items::check_crate(tcx, &mut collector.items);
 
     // Return all the lang items that were found.
     collector.items
