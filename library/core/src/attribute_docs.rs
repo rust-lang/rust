@@ -349,3 +349,59 @@ mod deprecated_attribute {}
 /// [`deny`]: ./attribute.deny.html
 /// [`forbid`]: ./attribute.forbid.html
 mod warn_attribute {}
+
+#[doc(attribute = "no_std")]
+//
+/// Prevents automatically linking the standard library.
+///
+/// Written as an inner attribute at the top of the crate root, the `no_std` attribute stops
+/// the compiler from linking [`std`] into the crate, and only links [`core`].
+///
+/// The attribute also swaps which prelude gets inserted, with the [`core`] prelude replacing
+/// the [`std`] prelude. Items like [`Option`], [`Result`], and the primitive types remain
+/// available from [`core`] without any imports needed:
+///
+/// ```rust,ignore (no_std)
+/// #![no_std]
+///
+/// fn halve(x: u32) -> Option<u32> {
+///     if x % 2 == 0 { Some(x / 2) } else { None }
+/// }
+/// ```
+///
+/// Anything that requires heap memory allocations is not part of [`core`]. Linking the [`alloc`]
+/// crate explicitly can be used to include these types:
+///
+/// ```rust,ignore (no_std + needs a global allocator to link)
+/// #![no_std]
+///
+/// extern crate alloc;
+///
+/// use alloc::vec::Vec;
+/// ```
+///
+/// A `no_std` binary also removes the startup routine and default panic handler `std`
+/// normally provides. It must define its own `#[panic_handler]`, and typically its own
+/// entry point by additionally using `#![no_main]`:
+///
+/// ```rust,ignore (no_std + needs more than no_main alone to link)
+/// #![no_std]
+/// #![no_main]
+///
+/// use core::panic::PanicInfo;
+///
+/// #[panic_handler]
+/// fn on_panic(_info: &PanicInfo) -> ! {
+///     loop {}
+/// }
+/// ```
+///
+/// For more information, see the Reference on [the `no_std` attribute].
+///
+/// [`std`]: ../std/index.html
+/// [`core`]: ../core/index.html
+/// [`alloc`]: ../alloc/index.html
+/// [`Option`]: option::Option
+/// [`Result`]: result::Result
+/// [the `no_std` attribute]: ../reference/names/preludes.html#the-no_std-attribute
+mod no_std_attribute {}
