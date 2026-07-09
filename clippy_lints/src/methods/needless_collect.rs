@@ -35,6 +35,10 @@ pub(super) fn check<'tcx>(
         return; // don't lint if the iterator has side effects
     }
 
+    if collect_turbofish_is_fully_concrete(collect_expr) {
+        return; // don't lint if turbofish on collect maybe the only thing anchoring the type
+    }
+
     match cx.tcx.parent_hir_node(collect_expr.hir_id) {
         Node::Expr(parent) => {
             check_collect_into_intoiterator(cx, parent, collect_expr, call_span, iter_expr);
@@ -230,6 +234,41 @@ fn check_collect_into_intoiterator<'tcx>(
     }
 }
 
+/// Returns `true` if `collect_expr`'s turbofish is fully concrete (has
+/// generic arguments and none of them are inference placeholders)
+fn collect_turbofish_is_fully_concrete(collect_expr: &Expr<'_>) -> bool {
+    if let ExprKind::MethodCall(segment, ..) = collect_expr.kind
+        && let Some(args) = segment.args
+        && !args.args.is_empty()
+    {
+        args.args.iter().all(generic_arg_is_fully_concrete)
+    } else {
+        false
+    }
+}
+
+fn generic_arg_is_fully_concrete(arg: &rustc_hir::GenericArg<'_>) -> bool {
+    match arg {
+        rustc_hir::GenericArg::Infer(_) => false,
+        rustc_hir::GenericArg::Type(ty) => ty_is_fully_concrete(ty.as_unambig_ty()),
+        rustc_hir::GenericArg::Const(ct) => !matches!(ct.as_unambig_ct().kind, rustc_hir::ConstArgKind::Infer(..)),
+        rustc_hir::GenericArg::Lifetime(_) => true,
+    }
+}
+
+fn ty_is_fully_concrete(ty: &rustc_hir::Ty<'_>) -> bool {
+    match &ty.kind {
+        rustc_hir::TyKind::Infer(..) => false,
+        rustc_hir::TyKind::Path(rustc_hir::QPath::Resolved(_, path)) => path.segments.iter().all(|seg| {
+            seg.args
+                .is_none_or(|a| a.args.iter().all(generic_arg_is_fully_concrete))
+        }),
+        rustc_hir::TyKind::Ref(_, mut_ty) => ty_is_fully_concrete(mut_ty.ty),
+        rustc_hir::TyKind::Slice(ty) | rustc_hir::TyKind::Array(ty, _) => ty_is_fully_concrete(ty),
+        rustc_hir::TyKind::Tup(tys) => tys.iter().all(ty_is_fully_concrete),
+        _ => true,
+    }
+}
 /// Checks if the given method call matches the expected signature of `([&[mut]] self) -> bool`
 fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
     cx.typeck_results().type_dependent_def_id(call_id).is_some_and(|id| {

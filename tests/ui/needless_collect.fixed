@@ -291,3 +291,27 @@ mod collect_push_then_iter {
         [5].into_iter().chain([1, 3].into_iter().chain(iter).chain([2]).chain(iter2)).chain([4, 6]).map(|x| x + 1).collect()
     }
 }
+
+fn issue_17315() {
+    struct Foo<T> {
+        inner: T,
+        marker: core::marker::PhantomData<Self>,
+    }
+
+    impl<T: Iterator> Iterator for Foo<T> {
+        type Item = T::Item;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.inner.next()
+        }
+    }
+
+    // not trigger needless_collect.
+    fn foo() {
+        Foo {
+            inner: [].iter(),
+            marker: core::marker::PhantomData,
+        }
+        .collect::<Vec<&i32>>()
+        .len();
+    }
+}
