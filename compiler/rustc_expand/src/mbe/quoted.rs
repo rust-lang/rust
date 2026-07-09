@@ -8,6 +8,7 @@ use rustc_session::Session;
 use rustc_session::errors::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, Span, kw, sym};
+use shared_vector::vector;
 
 use crate::diagnostics;
 use crate::mbe::macro_parser::count_metavar_decls;
@@ -191,7 +192,7 @@ pub(super) fn parse_one_tt(
     features: &Features,
     edition: Edition,
 ) -> TokenTree {
-    parse(&tokenstream::TokenStream::new(vec![input]), part, sess, node_id, features, edition)
+    parse(&tokenstream::TokenStream::new(vector![input]), part, sess, node_id, features, edition)
         .pop()
         .unwrap()
 }

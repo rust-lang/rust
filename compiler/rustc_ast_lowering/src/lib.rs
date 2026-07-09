@@ -565,7 +565,7 @@ fn index_ast<'tcx>(
                     args: Box::new(DelimArgs {
                         dspan: DelimSpan::from_single(span),
                         delim: Delimiter::Parenthesis,
-                        tokens: TokenStream::new(Vec::new()),
+                        tokens: TokenStream::default(),
                     }),
                 })),
                 tokens: None,

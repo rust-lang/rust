@@ -17,6 +17,7 @@ use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol};
+use shared_vector::vector;
 use tracing::debug;
 
 use crate::comment::{
@@ -1209,7 +1210,7 @@ impl<'a> MacroParser<'a> {
             TokenTree::Token(..) => return None,
             &TokenTree::Delimited(delimited_span, _, d, _) => (delimited_span.open.lo(), d),
         };
-        let args = TokenStream::new(vec![tok.clone()]);
+        let args = TokenStream::new(vector![tok.clone()]);
         match self.iter.next()? {
             TokenTree::Token(
                 Token {

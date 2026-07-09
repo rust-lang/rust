@@ -14,6 +14,7 @@ use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, respan, sym};
+use shared_vector::vector;
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
@@ -2502,7 +2503,7 @@ impl<'a> Parser<'a> {
             // Convert `MacParams MacBody` into `{ MacParams => MacBody }`.
             let bspan = body.span();
             let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
-            let tokens = TokenStream::new(vec![params, arrow, body]);
+            let tokens = TokenStream::new(vector![params, arrow, body]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
             Box::new(DelimArgs { dspan, delim: Delimiter::Brace, tokens })
         } else {

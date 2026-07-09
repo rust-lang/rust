@@ -63,7 +63,7 @@ impl MutVisitor for Normalize {
 }
 
 fn normalize_attr_token_stream(stream: &mut AttrTokenStream) {
-    Arc::make_mut(&mut stream.0)
+    stream.0
         .iter_mut()
         .for_each(normalize_attr_token_tree);
 }

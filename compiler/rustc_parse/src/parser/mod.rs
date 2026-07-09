@@ -45,6 +45,7 @@ use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;
 use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use shared_vector::Vector;
 use thin_vec::ThinVec;
 use token_type::TokenTypeSet;
 pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
@@ -1451,7 +1452,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_tokens(&mut self) -> TokenStream {
-        let mut result = Vec::new();
+        let mut result = Vector::new();
         loop {
             if self.token.kind.is_close_delim_or_eof() {
                 break;

@@ -23,6 +23,7 @@ rustc_index = { path = "../rustc_index", package = "rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_thread_pool = { path = "../rustc_thread_pool" }
+shared_vector = "0.5"
 smallvec = { version = "1.8.1", features = [
     "const_generics",
     "union",

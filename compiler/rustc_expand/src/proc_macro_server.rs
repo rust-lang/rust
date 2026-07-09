@@ -19,6 +19,7 @@ use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, FileName, Pos, Span, Symbol, sym};
+use shared_vector::Vector;
 use smallvec::{SmallVec, smallvec};
 
 use crate::base::ExtCtxt;
@@ -652,7 +653,12 @@ impl server::Server for Rustc<'_, '_> {
         &mut self,
         tree: TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
     ) -> Self::TokenStream {
-        Self::TokenStream::new((tree, &mut *self).to_internal().into_iter().collect::<Vec<_>>())
+        let internal = (tree, &mut *self).to_internal();
+        // FIXME(shared_vector): `AtomicSharedVector` doesn't impl `FromIterator`, so we can't do
+        // `internal.into_iter().collect()`.
+        let mut tts = Vector::with_capacity(internal.len());
+        tts.extend(internal);
+        Self::TokenStream::new(tts)
     }
 
     fn ts_concat_trees(

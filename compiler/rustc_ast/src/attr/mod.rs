@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::{Ident, Span, Symbol, sym};
+use shared_vector::{Vector, vector};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -299,7 +300,7 @@ impl Attribute {
         }
     }
 
-    pub fn token_trees(&self) -> Vec<TokenTree> {
+    pub fn token_trees(&self) -> Vector<TokenTree> {
         match self.kind {
             AttrKind::Normal(ref normal) => normal
                 .tokens
@@ -307,7 +308,7 @@ impl Attribute {
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
                 .to_attr_token_stream()
                 .to_token_trees(),
-            AttrKind::DocComment(comment_kind, data) => vec![TokenTree::token_alone(
+            AttrKind::DocComment(comment_kind, data) => vector![TokenTree::token_alone(
                 token::DocComment(comment_kind, self.style, data),
                 self.span,
             )],
@@ -789,7 +790,7 @@ pub fn mk_attr_nested_word(
     inner: Symbol,
     span: Span,
 ) -> Attribute {
-    let inner_tokens = TokenStream::new(vec![TokenTree::Token(
+    let inner_tokens = TokenStream::new(vector![TokenTree::Token(
         Token::from_ast_ident(Ident::new(inner, span)),
         Spacing::Alone,
     )]);

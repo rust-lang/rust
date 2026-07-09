@@ -29,6 +29,7 @@ use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::errors::feature_err;
 use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
+use shared_vector::{Vector, vector};
 use tracing::instrument;
 
 use crate::diagnostics::{
@@ -201,36 +202,36 @@ impl<'a> StripUnconfigured<'a> {
             return stream.clone();
         }
 
-        let trees: Vec<_> = stream
-            .0
-            .iter()
-            .filter_map(|tree| match tree.clone() {
-                AttrTokenTree::AttrsTarget(mut target) => {
-                    // Expand any `cfg_attr` attributes.
-                    target.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
+        let iter = stream.0.iter().filter_map(|tree| match tree.clone() {
+            AttrTokenTree::AttrsTarget(mut target) => {
+                // Expand any `cfg_attr` attributes.
+                target.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
 
-                    if self.in_cfg(&target.attrs) {
-                        target.tokens = LazyAttrTokenStream::new_direct(
-                            self.configure_tokens(&target.tokens.to_attr_token_stream()),
-                        );
-                        Some(AttrTokenTree::AttrsTarget(target))
-                    } else {
-                        // Remove the target if there's a `cfg` attribute and
-                        // the condition isn't satisfied.
-                        None
-                    }
+                if self.in_cfg(&target.attrs) {
+                    target.tokens = LazyAttrTokenStream::new_direct(
+                        self.configure_tokens(&target.tokens.to_attr_token_stream()),
+                    );
+                    Some(AttrTokenTree::AttrsTarget(target))
+                } else {
+                    // Remove the target if there's a `cfg` attribute and
+                    // the condition isn't satisfied.
+                    None
                 }
-                AttrTokenTree::Delimited(sp, spacing, delim, mut inner) => {
-                    inner = self.configure_tokens(&inner);
-                    Some(AttrTokenTree::Delimited(sp, spacing, delim, inner))
-                }
-                AttrTokenTree::Token(Token { kind, .. }, _) if kind.is_delim() => {
-                    panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tree);
-                }
-                AttrTokenTree::Token(token, spacing) => Some(AttrTokenTree::Token(token, spacing)),
-            })
-            .collect();
-        AttrTokenStream::new(trees)
+            }
+            AttrTokenTree::Delimited(sp, spacing, delim, mut inner) => {
+                inner = self.configure_tokens(&inner);
+                Some(AttrTokenTree::Delimited(sp, spacing, delim, inner))
+            }
+            AttrTokenTree::Token(Token { kind, .. }, _) if kind.is_delim() => {
+                panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tree);
+            }
+            AttrTokenTree::Token(token, spacing) => Some(AttrTokenTree::Token(token, spacing)),
+        });
+        // FIXME(shared_vector): `shared_vector::Vector` lacks `FromIterator`, so we can't use
+        // `iter.collect()` here.
+        let mut tts = Vector::with_capacity(stream.0.len());
+        tts.extend(iter);
+        AttrTokenStream::new(tts)
     }
 
     /// Parse and expand all `cfg_attr` attributes into a list of attributes
@@ -313,7 +314,10 @@ impl<'a> StripUnconfigured<'a> {
         // Convert `#[cfg_attr(pred, attr)]` to `#[attr]`.
 
         // Use the `#` from `#[cfg_attr(pred, attr)]` in the result `#[attr]`.
-        let mut orig_trees = cfg_attr.token_trees().into_iter();
+        // FIXME(shared_vector): can't use `cfg_attr.token_trees().into_iter()` because `Vector`
+        // lacks a by-value `IntoIterator` impl.
+        let orig_trees = cfg_attr.token_trees();
+        let mut orig_trees = orig_trees.into_iter();
         let Some(TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _)) =
             orig_trees.next()
         else {
@@ -327,12 +331,12 @@ impl<'a> StripUnconfigured<'a> {
             else {
                 panic!("Bad tokens for attribute {cfg_attr:?}");
             };
-            vec![
-                AttrTokenTree::Token(pound_token, Spacing::Joint),
-                AttrTokenTree::Token(bang_token, Spacing::JointHidden),
+            vector![
+                AttrTokenTree::Token(*pound_token, Spacing::Joint),
+                AttrTokenTree::Token(*bang_token, Spacing::JointHidden),
             ]
         } else {
-            vec![AttrTokenTree::Token(pound_token, Spacing::JointHidden)]
+            vector![AttrTokenTree::Token(*pound_token, Spacing::JointHidden)]
         };
 
         // And the same thing for the `[`/`]` delimiters in `#[attr]`.
@@ -342,8 +346,8 @@ impl<'a> StripUnconfigured<'a> {
             panic!("Bad tokens for attribute {cfg_attr:?}");
         };
         trees.push(AttrTokenTree::Delimited(
-            delim_span,
-            delim_spacing,
+            *delim_span,
+            *delim_spacing,
             Delimiter::Bracket,
             item.tokens
                 .as_ref()

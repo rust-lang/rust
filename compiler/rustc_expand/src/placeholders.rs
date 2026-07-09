@@ -20,7 +20,7 @@ pub(crate) fn placeholder(
             args: Box::new(ast::DelimArgs {
                 dspan: ast::tokenstream::DelimSpan::dummy(),
                 delim: Delimiter::Parenthesis,
-                tokens: ast::tokenstream::TokenStream::new(Vec::new()),
+                tokens: ast::tokenstream::TokenStream::default(),
             }),
         })
     }

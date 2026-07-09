@@ -18,6 +18,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{
     BytePos, FileName, Pos, Span, Symbol, create_default_session_globals_then, kw, sym,
 };
+use shared_vector::vector;
 
 use crate::lexer::StripTokens;
 use crate::parser::{AllowConstBlockItems, ForceCollect, Parser};
@@ -2320,7 +2321,7 @@ fn string_to_tts_1() {
     create_default_session_globals_then(|| {
         let tts = string_to_stream("fn a(b: i32) { b; }".to_string());
 
-        let expected = TokenStream::new(vec![
+        let expected = TokenStream::new(vector![
             TokenTree::token_alone(token::Ident(kw::Fn, IdentIsRaw::No), sp(0, 2)),
             TokenTree::token_joint_hidden(
                 token::Ident(sym::character('a'), IdentIsRaw::No),
@@ -2332,7 +2333,7 @@ fn string_to_tts_1() {
                 // `b`, `Alone` because the `)` is followed by whitespace.
                 DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
                 Delimiter::Parenthesis,
-                TokenStream::new(vec![
+                TokenStream::new(vector![
                     TokenTree::token_joint(
                         token::Ident(sym::character('b'), IdentIsRaw::No),
                         sp(5, 6),
@@ -2352,7 +2353,7 @@ fn string_to_tts_1() {
                 // EOF.
                 DelimSpacing::new(Spacing::Alone, Spacing::Alone),
                 Delimiter::Brace,
-                TokenStream::new(vec![
+                TokenStream::new(vector![
                     TokenTree::token_joint(
                         token::Ident(sym::character('b'), IdentIsRaw::No),
                         sp(15, 16),

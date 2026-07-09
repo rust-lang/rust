@@ -15,6 +15,7 @@ use rustc_span::{
     BytePos, Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, kw, sym,
     with_metavar_spans,
 };
+use shared_vector::Vector;
 use smallvec::{SmallVec, smallvec};
 
 use crate::diagnostics::{
@@ -64,11 +65,11 @@ struct TranscrCtx<'psess, 'itp> {
     ///
     /// Thus, if we try to pop the `result_stack` and it is empty, we have reached the top-level
     /// again, and we are done transcribing.
-    result: Vec<TokenTree>,
+    result: Vector<TokenTree>,
 
     /// The in-progress `result` lives at the top of this stack. Each entered `TokenTree` adds a
     /// new entry.
-    result_stack: Vec<Vec<TokenTree>>,
+    result_stack: Vec<Vector<TokenTree>>,
 }
 
 impl<'psess> TranscrCtx<'psess, '_> {
@@ -186,7 +187,7 @@ pub(super) fn transcribe<'a>(
             src_span,
             DelimSpacing::new(Spacing::Alone, Spacing::Alone)
         )],
-        result: Vec::new(),
+        result: Vector::new(),
         result_stack: Vec::new(),
     };
 

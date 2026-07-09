@@ -44,6 +44,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
+name = "allocator-api2"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c880a97d28a3681c0267bd29cff89621202715b065127cd445fa0f0fe0aa2880"
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1713,7 +1719,7 @@ version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
- "allocator-api2",
+ "allocator-api2 0.2.21",
  "equivalent",
  "foldhash 0.1.5",
 ]
@@ -3593,6 +3599,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "shared_vector",
  "smallvec",
  "thin-vec",
  "tracing",
@@ -3872,6 +3879,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_thread_pool",
+ "shared_vector",
  "smallvec",
  "stacker",
  "tempfile",
@@ -3995,6 +4003,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "scoped-tls",
+ "shared_vector",
  "smallvec",
  "thin-vec",
  "tracing",
@@ -4496,6 +4505,7 @@ dependencies = [
  "rustc_macros",
  "rustc_session",
  "rustc_span",
+ "shared_vector",
  "thin-vec",
  "tracing",
  "unicode-normalization",
@@ -5278,6 +5288,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "shared_vector"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db178a7b1e552c11440665d314451b8dc12bfc4da84212728292bbbd08f28f6f"
+dependencies = [
+ "allocator-api2 0.4.0",
 ]
 
 [[package]]

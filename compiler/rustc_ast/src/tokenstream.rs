@@ -5,9 +5,9 @@
 //! which are themselves a single [`Token`] or a `Delimited` subsequence of tokens.
 
 use std::borrow::Cow;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::ops::Range;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::{cmp, fmt, iter, mem};
 
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
@@ -15,6 +15,7 @@ use rustc_data_structures::sync;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
+use shared_vector::{AtomicSharedVector, Vector, vector};
 use thin_vec::ThinVec;
 
 use crate::ast::AttrStyle;
@@ -322,13 +323,6 @@ enum FlatToken {
     Empty,
 }
 
-/// An `AttrTokenStream` is similar to a `TokenStream`, but with extra
-/// information about the tokens for attribute targets. This is used
-/// during expansion to perform early cfg-expansion, and to process attributes
-/// during proc-macro invocations.
-#[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct AttrTokenStream(pub Arc<Vec<AttrTokenTree>>);
-
 /// Converts a flattened iterator of tokens (including open and close delimiter tokens) into an
 /// `AttrTokenStream`, creating an `AttrTokenTree::Delimited` for each matching pair of open and
 /// close delims.
@@ -340,10 +334,10 @@ fn make_attr_token_stream(
     struct FrameData {
         // This is `None` for the first frame, `Some` for all others.
         open_delim_sp: Option<(Delimiter, Span, Spacing)>,
-        inner: Vec<AttrTokenTree>,
+        inner: Vector<AttrTokenTree>,
     }
     // The stack always has at least one element. Storing it separately makes for shorter code.
-    let mut stack_top = FrameData { open_delim_sp: None, inner: vec![] };
+    let mut stack_top = FrameData { open_delim_sp: None, inner: vector![] };
     let mut stack_rest = vec![];
     for flat_token in iter {
         match flat_token {
@@ -351,7 +345,7 @@ fn make_attr_token_stream(
                 if let Some(delim) = kind.open_delim() {
                     stack_rest.push(mem::replace(
                         &mut stack_top,
-                        FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
+                        FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vector![] },
                     ));
                 } else if let Some(delim) = kind.close_delim() {
                     // If there's no matching opening delimiter, the token stream is malformed,
@@ -411,17 +405,30 @@ pub enum AttrTokenTree {
     AttrsTarget(AttrsTarget),
 }
 
+/// An `AttrTokenStream` is similar to a `TokenStream`, but with extra
+/// information about the tokens for attribute targets. This is used
+/// during expansion to perform early cfg-expansion, and to process attributes
+/// during proc-macro invocations.
+#[derive(Clone, Debug)]
+pub struct AttrTokenStream(pub AtomicSharedVector<AttrTokenTree>);
+
 impl AttrTokenStream {
-    pub fn new(tokens: Vec<AttrTokenTree>) -> AttrTokenStream {
-        AttrTokenStream(Arc::new(tokens))
+    pub fn new(tts: Vector<AttrTokenTree>) -> AttrTokenStream {
+        // FIXME(shared_vector): See the comment on `EMPTY_TOKEN_STREAM` for why `default` is used.
+        // FIXME(shared_vector): See the comment on `TokenStream::new` about minimum capacity.
+        if tts.is_empty() {
+            AttrTokenStream::default()
+        } else {
+            AttrTokenStream(tts.into_shared_atomic())
+        }
     }
 
     /// Converts this `AttrTokenStream` to a plain `Vec<TokenTree>`. During
     /// conversion, any `AttrTokenTree::AttrsTarget` gets "flattened" back to a
     /// `TokenStream`, as described in the comment on
     /// `attrs_and_tokens_to_token_trees`.
-    pub fn to_token_trees(&self) -> Vec<TokenTree> {
-        let mut res = Vec::with_capacity(self.0.len());
+    pub fn to_token_trees(&self) -> Vector<TokenTree> {
+        let mut res = Vector::with_capacity(self.0.len());
         for tree in self.0.iter() {
             match tree {
                 AttrTokenTree::Token(inner, spacing) => {
@@ -444,6 +451,45 @@ impl AttrTokenStream {
     }
 }
 
+// FIXME(shared_vector): See EMPTY_TOKEN_STREAM.
+static EMPTY_ATTR_TOKEN_STREAM: LazyLock<AttrTokenStream> = LazyLock::new(|| {
+    let mut asv = AtomicSharedVector::new();
+    asv.shrink_to_fit();
+    AttrTokenStream(asv)
+});
+
+impl Default for AttrTokenStream {
+    fn default() -> AttrTokenStream {
+        EMPTY_ATTR_TOKEN_STREAM.clone()
+    }
+}
+
+// FIXME(shared_vector): see `Decodable` impl for `TokenStream`.
+impl<S: SpanEncoder> Encodable<S> for AttrTokenStream {
+    fn encode(&self, s: &mut S) {
+        self.0.as_slice().encode(s);
+    }
+}
+
+// FIXME(shared_vector): see `Decodable` impl for `TokenStream`.
+impl<D: SpanDecoder> Decodable<D> for AttrTokenStream {
+    fn decode(d: &mut D) -> AttrTokenStream {
+        let len = d.read_usize();
+        (0..len).map(|_| Decodable::decode(d)).collect()
+    }
+}
+
+impl FromIterator<AttrTokenTree> for AttrTokenStream {
+    fn from_iter<I: IntoIterator<Item = AttrTokenTree>>(iter: I) -> Self {
+        // FIXME(shared_vector): `shared_vector::Vector` lacks `FromIterator`, so we can't use
+        // `iter.into_iter().collect()` here.
+        let iter = iter.into_iter();
+        let mut tts = Vector::with_capacity(iter.size_hint().0);
+        tts.extend(iter);
+        AttrTokenStream::new(tts)
+    }
+}
+
 // Converts multiple attributes and the tokens for a target AST node into token trees, and appends
 // them to `res`.
 //
@@ -455,18 +501,21 @@ impl AttrTokenStream {
 fn attrs_and_tokens_to_token_trees(
     attrs: &[Attribute],
     target_tokens: &LazyAttrTokenStream,
-    res: &mut Vec<TokenTree>,
+    res: &mut Vector<TokenTree>,
 ) {
     let idx = attrs.partition_point(|attr| matches!(attr.style, crate::AttrStyle::Outer));
     let (outer_attrs, inner_attrs) = attrs.split_at(idx);
 
     // Add outer attribute tokens.
     for attr in outer_attrs {
-        res.extend(attr.token_trees());
+        // FIXME(shared_vector): can't use `res.extend(attr.token_trees())` because `Vector`
+        // doesn't have a by-value `IntoIterator` impl. (Likewise for additional `append` calls
+        // below.)
+        res.append(&mut attr.token_trees());
     }
 
     // Add target AST node tokens.
-    res.extend(target_tokens.to_attr_token_stream().to_token_trees());
+    res.append(&mut target_tokens.to_attr_token_stream().to_token_trees());
 
     // Insert inner attribute tokens.
     if !inner_attrs.is_empty() {
@@ -487,13 +536,13 @@ fn attrs_and_tokens_to_token_trees(
     // `#![my_attr]` at the start of a file. Support for custom attributes in
     // this position is not properly implemented - we always synthesize fake
     // tokens, so we never reach this code.
-    fn insert_inner_attrs(inner_attrs: &[Attribute], tts: &mut Vec<TokenTree>) -> bool {
+    fn insert_inner_attrs(inner_attrs: &[Attribute], tts: &mut Vector<TokenTree>) -> bool {
         for tree in tts.iter_mut().rev() {
             if let TokenTree::Delimited(span, spacing, Delimiter::Brace, stream) = tree {
                 // Found it: the rightmost, outermost braced group.
-                let mut tts = vec![];
+                let mut tts = vector![];
                 for inner_attr in inner_attrs {
-                    tts.extend(inner_attr.token_trees());
+                    tts.append(&mut inner_attr.token_trees());
                 }
                 tts.extend(stream.0.iter().cloned());
                 let stream = TokenStream::new(tts);
@@ -503,7 +552,10 @@ fn attrs_and_tokens_to_token_trees(
                 tree
             {
                 // Recurse inside invisible delimiters.
-                let mut vec: Vec<_> = stream.iter().cloned().collect();
+                // FIXME(shared_vector): `AtomicSharedVector` doesn't impl `FromIterator`, so we
+                // can't do `stream.iter().cloned().collect()`.
+                let mut vec = Vector::with_capacity(stream.len());
+                vec.extend(stream.iter().cloned());
                 if insert_inner_attrs(inner_attrs, &mut vec) {
                     *tree = TokenTree::Delimited(
                         *span,
@@ -601,13 +653,21 @@ pub enum Spacing {
     JointHidden,
 }
 
-/// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
+#[derive(Clone, Debug, PartialEq)]
+pub struct TokenStream(pub(crate) AtomicSharedVector<TokenTree>);
+
+// FIXME(shared_vector): `AtomicSharedVector` doesn't impl `Eq` even though it impls `PartialEq`.
+// This appears to just be an oversight. So we can't derive it for `TokenStream`.
+impl Eq for TokenStream {}
 
 impl TokenStream {
-    pub fn new(tts: Vec<TokenTree>) -> TokenStream {
-        TokenStream(Arc::new(tts))
+    pub fn new(tts: Vector<TokenTree>) -> TokenStream {
+        // FIXME(shared_vector): See the comment on `EMPTY_TOKEN_STREAM` for why `default` is used.
+        // FIXME(shared_vector): For non-empty `Vector`s grown by incremental pushing the minimum
+        // capacity is 8, compared to a minimum of 4 for `Vec`. This results in non-trivial amounts
+        // of extra memory being used because a lot of token streams have 1, 2, 3, or 4 tokens and
+        // are created by incremental pushing.
+        if tts.is_empty() { TokenStream::default() } else { TokenStream(tts.into_shared_atomic()) }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -631,12 +691,12 @@ impl TokenStream {
     /// because it's never used. In practice we arbitrarily use
     /// `Spacing::Alone`.
     pub fn token_alone(kind: TokenKind, span: Span) -> TokenStream {
-        TokenStream::new(vec![TokenTree::token_alone(kind, span)])
+        TokenStream::new(vector![TokenTree::token_alone(kind, span)])
     }
 
     pub fn from_ast(node: &(impl HasAttrs + HasTokens + fmt::Debug)) -> TokenStream {
         let tokens = node.tokens().unwrap_or_else(|| panic!("missing tokens for node: {:?}", node));
-        let mut tts = vec![];
+        let mut tts = vector![];
         attrs_and_tokens_to_token_trees(node.attrs(), tokens, &mut tts);
         TokenStream::new(tts)
     }
@@ -658,39 +718,34 @@ impl TokenStream {
     }
 
     /// Push `tt` onto the end of the stream, possibly gluing it to the last
-    /// token. Uses `make_mut` to maximize efficiency.
+    /// token. If `self` is unshared the modification will happen in place.
     pub fn push_tree(&mut self, tt: TokenTree) {
-        let vec_mut = Arc::make_mut(&mut self.0);
-
-        if Self::try_glue_to_last(vec_mut, &tt) {
+        if Self::try_glue_to_last(self.0.as_mut_slice(), &tt) {
             // nothing else to do
         } else {
-            vec_mut.push(tt);
+            self.0.push(tt);
         }
     }
 
     /// Push `stream` onto the end of the stream, possibly gluing the first
     /// token tree to the last token. (No other token trees will be glued.)
-    /// Uses `make_mut` to maximize efficiency.
+    /// If `self` is unshared the modification will happen in place.
     pub fn push_stream(&mut self, stream: TokenStream) {
-        let vec_mut = Arc::make_mut(&mut self.0);
-
         let stream_iter = stream.0.iter().cloned();
 
         if let Some(first) = stream.0.first()
-            && Self::try_glue_to_last(vec_mut, first)
+            && Self::try_glue_to_last(self.0.as_mut_slice(), first)
         {
             // Now skip the first token tree from `stream`.
-            vec_mut.extend(stream_iter.skip(1));
+            self.0.extend(stream_iter.skip(1));
         } else {
             // Append all of `stream`.
-            vec_mut.extend(stream_iter);
+            self.0.extend(stream_iter);
         }
     }
 
     /// Desugar doc comments like `/// foo` in the stream into `#[doc =
-    /// r"foo"]`. Modifies the `TokenStream` via `Arc::make_mut`, but as little
-    /// as possible.
+    /// r"foo"]`. Modifies the `TokenStream` when necessary.
     pub fn desugar_doc_comments(&mut self) {
         if let Some(desugared_stream) = desugar_inner(self.clone()) {
             *self = desugared_stream;
@@ -708,7 +763,11 @@ impl TokenStream {
                     ) => {
                         let desugared = desugared_tts(attr_style, data, span);
                         let desugared_len = desugared.len();
-                        Arc::make_mut(&mut stream.0).splice(i..i + 1, desugared);
+
+                        let mut vec = stream.0.into_unique();
+                        vec.splice(i..i + 1, desugared);
+                        stream.0 = vec.into_shared_atomic();
+
                         modified = true;
                         i += desugared_len;
                     }
@@ -719,7 +778,8 @@ impl TokenStream {
                         if let Some(desugared_delim_stream) = desugar_inner(delim_stream.clone()) {
                             let new_tt =
                                 TokenTree::Delimited(sp, spacing, delim, desugared_delim_stream);
-                            Arc::make_mut(&mut stream.0)[i] = new_tt;
+
+                            stream.0.as_mut_slice()[i] = new_tt;
                             modified = true;
                         }
                         i += 1;
@@ -803,7 +863,7 @@ impl TokenStream {
             }
         }
         if let Some((pos, comma, sp)) = suggestion {
-            let mut new_stream = Vec::with_capacity(self.0.len() + 1);
+            let mut new_stream = Vector::with_capacity(self.0.len() + 1);
             let parts = self.0.split_at(pos + 1);
             new_stream.extend_from_slice(parts.0);
             new_stream.push(comma);
@@ -814,9 +874,63 @@ impl TokenStream {
     }
 }
 
+// FIXME(shared_vector): Any empty `AtomicSharedVector` (created with `new()` or `from_slice(&[])`
+// or `with_capacity(0)`) actually gets a capacity of 16, due to an unavoidable capacity adjustment
+// in `shared_vector::raw::allocate_header_buffer`. This is weird and annoying. It's possible to
+// shrink the capacity back to zero, but that takes an extra allocation.
+//
+// To work around this, we create a single empty `TokenStream` and clone it whenever a new empty
+// `TokenStream` is needed, either from `TokenStream::default()` or `TokenStream::new(tts)` where
+// `tts` is empty. (Note that this overcapacity problem doesn't affect `shared_vector::Vector`,
+// so passing an empty `tts` is fine.)
+static EMPTY_TOKEN_STREAM: LazyLock<TokenStream> = LazyLock::new(|| {
+    let mut asv = AtomicSharedVector::new();
+    // Reduce capacity from 16 to 0. Doesn't really matter for a single token stream, but useful
+    // if the capacity is ever printed for debugging purposes.
+    asv.shrink_to_fit();
+    TokenStream(asv)
+});
+
+impl Default for TokenStream {
+    fn default() -> TokenStream {
+        EMPTY_TOKEN_STREAM.clone()
+    }
+}
+
+// FIXME(shared_vector): this impl can't be derived because `AtomicSharedVector` doesn't impl
+// `Hash`.
+impl Hash for TokenStream {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.as_slice().hash(state)
+    }
+}
+
+// FIXME(shared_vector): see `Decodable` impl for `TokenStream`.
+impl<S: SpanEncoder> Encodable<S> for TokenStream {
+    fn encode(&self, s: &mut S) {
+        self.0.as_slice().encode(s);
+    }
+}
+
+// FIXME(shared_vector): ideally we'd impl `Decodable` on `AtomicSharedVector` and then derive
+// `Decodable` for `TokenStream`. But we need to impl it directly on `TokenStream` in order to use
+// `TokenStream::FromIterator` which uses `TokenStream::new` which uses `EMPTY_TOKEN_STREAM` which
+// avoids empty token streams having a capacity of 16.
+impl<D: SpanDecoder> Decodable<D> for TokenStream {
+    fn decode(d: &mut D) -> TokenStream {
+        let len = d.read_usize();
+        (0..len).map(|_| Decodable::decode(d)).collect()
+    }
+}
+
 impl FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(iter: I) -> Self {
-        TokenStream::new(iter.into_iter().collect::<Vec<TokenTree>>())
+        // FIXME(shared_vector): `shared_vector::Vector` lacks `FromIterator`, so we can't use
+        // `iter.into_iter().collect()` here.
+        let iter = iter.into_iter();
+        let mut tts = Vector::with_capacity(iter.size_hint().0);
+        tts.extend(iter);
+        TokenStream::new(tts)
     }
 }
 

@@ -2,6 +2,7 @@ use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_errors::Diag;
+use shared_vector::Vector;
 
 use super::diagnostics::{
     report_missing_open_delim, report_suspicious_mismatch_block, same_indentation_level,
@@ -18,7 +19,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         // Move past the opening delimiter.
         let open_spacing = self.bump_minimal();
 
-        let mut buf = Vec::new();
+        let mut buf = Vector::new();
         loop {
             if let Some(delim) = self.token.kind.open_delim() {
                 // Invisible delimiters cannot occur here because `TokenTreesReader` parses
