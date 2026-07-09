@@ -328,14 +328,6 @@ impl ReadinessWatcher {
     }
 }
 
-impl PartialEq for ReadinessWatcher {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
-impl Eq for ReadinessWatcher {}
-
 impl VisitProvenance for ReadinessWatcher {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
 }
@@ -393,18 +385,16 @@ impl ReadinessInterestTable {
 
     /// Get all watchers which have a registered interest in the file description
     /// with id `fd_id`.
-    fn get_watchers_for_fd(&mut self, fd_id: &FdId) -> Option<Vec<Rc<ReadinessWatcher>>> {
-        let watchers = self.interests.get_mut(fd_id)?;
-        Some(
-            watchers
-                .iter()
-                .map(|(_id, watcher)| {
-                    watcher.upgrade().expect(
-                        "someone forgot to remove the garbage from `machine.readiness_interests`",
-                    )
-                })
-                .collect(),
-        )
+    fn get_watchers_for_fd(
+        &self,
+        fd_id: FdId,
+    ) -> Option<impl Iterator<Item = Rc<ReadinessWatcher>>> {
+        let watchers = self.interests.get(&fd_id)?;
+        Some(watchers.iter().map(|(_id, watcher)| {
+            watcher
+                .upgrade()
+                .expect("someone forgot to remove the garbage from `machine.readiness_interests`")
+        }))
     }
 
     /// Remove all watchers for the file description with id `fd_id`.
@@ -430,15 +420,14 @@ impl ReadinessInterestTable {
 
 impl<'tcx> EvalContextExt<'tcx> for MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
-    /// Recursively check whether the [`ReadinessWatcher`] contains
-    /// interests which are host I/O source file descriptions.
-    fn has_watcher_host_interests(&self, watcher: &ReadinessWatcher) -> bool {
+    /// Returns whether the given FD has any readiness watcher with blocked threads watching it.
+    fn has_watcher_with_blocked_threads(&self, fd_id: FdId) -> bool {
         let this = self.eval_context_ref();
-        watcher.interests().keys().any(|(fd_id, _fd_num)| {
-            // By looking up whether the file description is currently registered,
-            // we get whether it's a host I/O source file description.
-            this.machine.blocking_io.contains_source(fd_id)
-        })
+        let Some(mut watchers) = this.machine.readiness_interests.get_watchers_for_fd(fd_id) else {
+            return false;
+        };
+        // See if any of those watchers has a blocked thread.
+        watchers.any(|w| w.queue.borrow().len() > 0)
     }
 
     /// For a specific file description, get its current readiness and send it to everyone who
@@ -455,9 +444,10 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let fd_id = fd.id();
 
-        let Some(watchers) = this.machine.readiness_interests.get_watchers_for_fd(&fd_id) else {
+        let Some(watchers) = this.machine.readiness_interests.get_watchers_for_fd(fd_id) else {
             return interp_ok(());
         };
+        let watchers = watchers.collect::<Vec<_>>(); // need to make a copy so below we can unblock threads
         let active_readiness = fd.readiness()?;
         for watcher in watchers {
             this.update_readiness(&watcher, active_readiness.clone(), force_edge, |callback| {
@@ -526,7 +516,7 @@ pub trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             && let Some(thread_id) = watcher.queue.borrow_mut().pop_front()
         {
             drop(ready);
-            this.unblock_thread(thread_id, BlockReason::Readiness { watcher: watcher.clone() })?;
+            this.unblock_thread(thread_id, BlockReason::Readiness)?;
             ready = watcher.ready.borrow_mut();
         }
         interp_ok(())

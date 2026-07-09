@@ -192,14 +192,6 @@ impl BlockingIoManager {
         interp_ok(Ok(()))
     }
 
-    /// Return whether a source file description is currently registered in the
-    /// blocking I/O poll.
-    /// This can also be used to check whether a file description is a host
-    /// I/O source.
-    pub fn contains_source(&self, source_id: &FdId) -> bool {
-        self.sources.contains_key(source_id)
-    }
-
     /// Register a source file description to the blocking I/O poll.
     pub fn register(&mut self, source_fd: FileDescriptionRef<dyn SourceFileDescription>) {
         let poll =
@@ -353,5 +345,15 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             // reachable when a system resource error (e.g. ENOMEM or ENOSPC) occurred.
             Err(e) => panic!("unexpected error while polling: {e}"),
         }
+    }
+
+    /// Returns whether there exists any thread that is blocked on host I/O.
+    fn any_thread_blocked_on_host(&self) -> bool {
+        let this = self.eval_context_ref();
+        this.machine.blocking_io.sources.iter().any(|(&fd_id, source)| {
+            // There's two ways something could be blocked on this: directly,
+            // or indirectly via a readiness watcher.
+            source.blocked_threads.len() > 0 || this.has_watcher_with_blocked_threads(fd_id)
+        })
     }
 }

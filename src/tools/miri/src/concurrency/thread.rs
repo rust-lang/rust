@@ -1,7 +1,6 @@
 //! Implements threads.
 
 use std::mem;
-use std::rc::Rc;
 use std::sync::atomic::Ordering::Relaxed;
 use std::task::Poll;
 use std::time::{Duration, SystemTime};
@@ -91,7 +90,7 @@ impl From<ThreadId> for u64 {
 }
 
 /// Keeps track of what the thread is blocked on.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BlockReason {
     /// The thread tried to join the specified thread and is blocked until that
     /// thread terminates.
@@ -108,8 +107,8 @@ pub enum BlockReason {
     Futex,
     /// Blocked on an InitOnce.
     InitOnce,
-    /// Blocked until a file description readiness is satisfied.
-    Readiness { watcher: Rc<ReadinessWatcher> },
+    /// Blocked until a file description readiness is satisfied (e.g. epoll).
+    Readiness,
     /// Blocked on eventfd.
     Eventfd,
     /// Blocked on virtual socket.
@@ -774,26 +773,13 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             // timeout_callbacks, which may unblock some of the threads. Hence,
             // sleep until the first callback.
             interp_ok(SchedulingAction::SleepAndWaitForIo(Some(sleep_time)))
-        } else if threads.iter().any(|thread| this.is_thread_blocked_on_host(thread)) {
+        } else if this.any_thread_blocked_on_host() {
             // At least one thread doesn't have a timeout set, and is blocked on host I/O or is waiting on an
             // epoll instance which contains a host source interest. Hence, we sleep indefinitely in the
             // hope that eventually an I/O event happens.
             interp_ok(SchedulingAction::SleepAndWaitForIo(None))
         } else {
             throw_machine_stop!(TerminationInfo::GlobalDeadlock);
-        }
-    }
-
-    /// Check whether the provided thread is currently blocked on host I/O.
-    /// This means, it's either blocked on an I/O operation directly or it's
-    /// blocked on an epoll instance which contains a host source interest.
-    fn is_thread_blocked_on_host(&self, thread: &Thread<'tcx>) -> bool {
-        let this = self.eval_context_ref();
-        match &thread.state {
-            ThreadState::Blocked { reason: BlockReason::IO, .. } => true,
-            ThreadState::Blocked { reason: BlockReason::Readiness { watcher }, .. } =>
-                this.has_watcher_host_interests(watcher),
-            _ => false,
         }
     }
 
@@ -1057,7 +1043,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .map(|(id, _)| id)
             .collect::<Vec<_>>();
         for thread in joining_threads {
-            this.unblock_thread(thread, unblock_reason.clone())?;
+            this.unblock_thread(thread, unblock_reason)?;
         }
 
         interp_ok(())
