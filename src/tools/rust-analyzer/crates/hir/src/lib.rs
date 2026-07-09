@@ -1065,15 +1065,9 @@ impl Module {
                 db.impl_self_ty_with_diagnostics(impl_id).diagnostics(),
                 source_map,
             );
-            push_ty_diagnostics(
-                db,
-                acc,
-                db.impl_trait_with_diagnostics(impl_id)
-                    .as_ref()
-                    .map(|it| it.diagnostics())
-                    .unwrap_or_default(),
-                source_map,
-            );
+            if let Some(it) = db.impl_trait_with_diagnostics(impl_id) {
+                push_ty_diagnostics(db, acc, it.diagnostics(), source_map);
+            }
 
             for &(_, item) in impl_id.impl_items(db).items.iter() {
                 AssocItem::from(item).diagnostics(db, acc, style_lints);

@@ -1379,7 +1379,7 @@ impl HasResolver for TypeAliasId {
 
 impl HasResolver for ImplId {
     fn resolver(self, db: &dyn SourceDatabase) -> Resolver<'_> {
-        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
     }
 }
 
@@ -1450,7 +1450,7 @@ impl HasResolver for ExpressionStoreOwnerId {
 
 impl HasResolver for EnumVariantId {
     fn resolver(self, db: &dyn SourceDatabase) -> Resolver<'_> {
-        self.lookup(db).parent.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
