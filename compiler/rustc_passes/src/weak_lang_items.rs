@@ -12,7 +12,7 @@ use rustc_session::config::CrateType;
 use crate::diagnostics::{MissingLangItem, MissingPanicHandler, PanicUnwindWithoutStd};
 use crate::lang_items::extract_ast;
 
-/// Checks the crate for usage of weak lang items, returning a vector of all the
+/// Checks the crate for usage of weak lang items. Erroring on all the
 /// lang items required by this crate, but not defined yet.
 pub(crate) fn check_crate(
     tcx: TyCtxt<'_>,
