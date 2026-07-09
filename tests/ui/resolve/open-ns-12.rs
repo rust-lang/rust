@@ -1,4 +1,4 @@
-//@ build-pass
+//@ check-pass
 //@ aux-crate: my_api=open-ns-my_api.rs
 //@ aux-crate: my_api::utils=open-ns-my_api_utils.rs
 //@ compile-flags: -Z namespaced-crates
