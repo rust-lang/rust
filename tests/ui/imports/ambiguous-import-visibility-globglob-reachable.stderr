@@ -1,0 +1,8 @@
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/ambiguous-import-visibility-globglob-reachable.rs:14:5
+   |
+LL |     pub fn f() {}
+   |     ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
