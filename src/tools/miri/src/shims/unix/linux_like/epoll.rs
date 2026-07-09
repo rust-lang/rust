@@ -309,7 +309,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // This means there'll be a leak if we never wake up, but that anyway would imply
             // a thread is permanently blocked so this is fine.
             this.block_thread(
-                BlockReason::Readiness { watcher: epfd.watcher.clone() },
+                BlockReason::Readiness,
                 deadline,
                 callback!(
                     @capture<'tcx> {
