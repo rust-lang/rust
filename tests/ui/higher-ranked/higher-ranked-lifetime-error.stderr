@@ -4,7 +4,7 @@ error: implementation of `FnMut` is not general enough
 LL |     assert_all::<_, &String>(id);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnMut` is not general enough
    |
-   = note: `for<'a> fn(&'a ...) -> &'a ... {id}` must implement `FnMut<(&String,)>`
+   = note: `for<'a> fn(&'a _) -> &'a _ {id}` must implement `FnMut<(&String,)>`
    = note: ...but it actually implements `FnMut<(&'0 String,)>`, for some specific lifetime `'0`
 
 error: aborting due to 1 previous error

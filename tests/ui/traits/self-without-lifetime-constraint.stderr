@@ -2,13 +2,13 @@ error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/self-without-lifetime-constraint.rs:46:5
    |
 LL |     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self, &Self>;
-   |     -------------------------------------------------------------------- expected `fn(ValueRef<'1>) -> Result<(&'2 str, &'1 &'2 str), ...>`
+   |     -------------------------------------------------------------------- expected `fn(ValueRef<'1>) -> Result<(&'2 str, &'1 &'2 str), _>`
 ...
 LL |     fn column_result(value: ValueRef<'_>) -> FromSqlResult<&str, &&str> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(ValueRef<'1>) -> Result<(&'1 str, &'1 &'1 str), ...>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(ValueRef<'1>) -> Result<(&'1 str, &'1 &'1 str), _>`
    |
-   = note: expected signature `fn(ValueRef<'1>) -> Result<(&'2 str, &'1 &'2 str), ...>`
-              found signature `fn(ValueRef<'1>) -> Result<(&'1 str, &'1 &'1 str), ...>`
+   = note: expected signature `fn(ValueRef<'1>) -> Result<(&'2 str, &'1 &'2 str), _>`
+              found signature `fn(ValueRef<'1>) -> Result<(&'1 str, &'1 &'1 str), _>`
 help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
   --> $DIR/self-without-lifetime-constraint.rs:42:60
    |

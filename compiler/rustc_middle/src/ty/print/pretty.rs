@@ -899,7 +899,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                 if !self.should_print_verbose() {
                     write!(self, "{coroutine_kind}")?;
-                    if coroutine_kind.is_fn_like() {
+                    if self.should_truncate() {
+                        write!(self, "@...}}")?;
+                        return Ok(());
+                    } else if coroutine_kind.is_fn_like() {
                         // If we are printing an `async fn` coroutine type, then give the path
                         // of the fn, instead of its span, because that will in most cases be
                         // more helpful for the reader than just a source location.
@@ -1028,7 +1031,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             "coroutine from coroutine-closure should have CoroutineSource::Closure"
                         ),
                     }
-                    if let Some(did) = did.as_local() {
+                    if self.should_truncate() {
+                        write!(self, "@...}}")?;
+                        return Ok(());
+                    } else if let Some(did) = did.as_local() {
                         if self.tcx().sess.opts.unstable_opts.span_free_formats {
                             write!(self, "@")?;
                             self.print_def_path(did.to_def_id(), args)?;
