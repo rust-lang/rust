@@ -353,7 +353,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         this.machine.blocking_io.sources.iter().any(|(&fd_id, source)| {
             // There's two ways something could be blocked on this: directly,
             // or indirectly via a readiness watcher.
-            source.blocked_threads.len() > 0 || this.has_watcher_with_blocked_threads(fd_id)
+            source.blocked_threads.len() > 0 || this.has_watcher_with_blocked_thread(fd_id)
         })
     }
 }

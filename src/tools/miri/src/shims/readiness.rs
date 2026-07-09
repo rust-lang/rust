@@ -93,6 +93,8 @@ impl ReadinessInterest {
     }
 }
 
+type ReadinessWatcherId = usize;
+
 /// A struct which stores [`ReadinessInterest`]s for a set of file descriptions
 /// together with which interests are currently satisfied, and a list of
 /// threads which should be unblocked once a [`ReadinessInterest`] of the
@@ -100,7 +102,7 @@ impl ReadinessInterest {
 #[derive(Debug)]
 pub struct ReadinessWatcher {
     /// Globally unique identifier of the watcher.
-    id: usize,
+    id: ReadinessWatcherId,
     /// A map of [`ReadinessInterest`]s registered for this watcher. Each entry is
     /// identified using a [`FdId`] [`FdNum`] tuple.
     interests: RefCell<BTreeMap<ReadinessInterestKey, ReadinessInterest>>,
@@ -338,12 +340,13 @@ impl VisitProvenance for ReadinessWatcher {
 pub struct ReadinessInterestTable {
     /// The id of the next [`ReadinessWatcher`] created through
     /// [`ReadinessInterestTable::new_watcher`].
-    next_watcher_id: usize,
+    next_watcher_id: ReadinessWatcherId,
     /// Maps each file description (identified by its [`FdId`]) to the list of watchers that are
     /// interested in that FD. We also store the [`ReadinessWatcher`]s ID
     /// separately so we can access it without calling `upgrade`. The list
-    /// is sorted by that id.
-    interests: BTreeMap<FdId, Vec<(usize, Weak<ReadinessWatcher>)>>,
+    /// is sorted by that id. We use an ID so that we can identify the watcher even after it has
+    /// been moved, e.g. in [`ReadinessWatcher::destroy`].
+    interests: BTreeMap<FdId, Vec<(ReadinessWatcherId, Weak<ReadinessWatcher>)>>,
 }
 
 impl ReadinessInterestTable {
@@ -420,8 +423,8 @@ impl ReadinessInterestTable {
 
 impl<'tcx> EvalContextExt<'tcx> for MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
-    /// Returns whether the given FD has any readiness watcher with blocked threads watching it.
-    fn has_watcher_with_blocked_threads(&self, fd_id: FdId) -> bool {
+    /// Returns whether the given FD has any readiness watcher with a blocked thread watching it.
+    fn has_watcher_with_blocked_thread(&self, fd_id: FdId) -> bool {
         let this = self.eval_context_ref();
         let Some(mut watchers) = this.machine.readiness_interests.get_watchers_for_fd(fd_id) else {
             return false;
