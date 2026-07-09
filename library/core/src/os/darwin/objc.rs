@@ -67,7 +67,8 @@ pub type SEL = *mut objc_selector;
 ///
 /// # Example
 ///
-/// ```no_run
+#[cfg_attr(target_os = "macos", doc = "```no_run")]
+#[cfg_attr(not(target_os = "macos"), doc = "```ignore (needs windows)")]
 /// #![feature(darwin_objc)]
 /// use core::os::darwin::objc;
 ///
@@ -93,7 +94,8 @@ pub macro class($classname:expr) {{
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(target_os = "macos", doc = "```no_run")]
+#[cfg_attr(not(target_os = "macos"), doc = "```ignore (needs windows)")]
 /// #![feature(darwin_objc)]
 /// use core::os::darwin::objc;
 ///
