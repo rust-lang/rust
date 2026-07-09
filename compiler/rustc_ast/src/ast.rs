@@ -3734,6 +3734,19 @@ impl Item {
     }
 }
 
+impl Item<AssocItemKind> {
+    pub fn opt_generics(&self) -> Option<&Generics> {
+        match &self.kind {
+            AssocItemKind::Fn(fun) => Some(&fun.generics),
+            AssocItemKind::Const(ct) => Some(&ct.generics),
+            AssocItemKind::Type(ty) => Some(&ty.generics),
+            AssocItemKind::Delegation(..)
+            | AssocItemKind::MacCall(_)
+            | AssocItemKind::DelegationMac(_) => None,
+        }
+    }
+}
+
 /// `extern` qualifier on a function item or function type.
 #[derive(Clone, Copy, Encodable, Decodable, Debug, Walkable)]
 pub enum Extern {

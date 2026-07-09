@@ -11,7 +11,7 @@ use rustc_ast as ast;
 use rustc_ast::visit;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::GenericRequirement;
-use rustc_hir::{LangItem, LanguageItems, MethodKind, Target};
+use rustc_hir::{LangItem, LanguageItems, Target};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;
@@ -62,7 +62,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                     if actual_target != lang_item.target() {
                         self.tcx
                             .dcx()
-                            .delayed_bug("lang item target is checked in attribute parser");
+                            .delayed_bug(format!("lang item target is checked in attribute parser: {:?} has {} but expected {}", def_id, actual_target, lang_item.target()));
                         return;
                     }
                     // Weak lang items are handled separately
@@ -262,27 +262,7 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
 
 impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     fn visit_item(&mut self, i: &'ast ast::Item) {
-        let target = match &i.kind {
-            ast::ItemKind::ExternCrate(..) => Target::ExternCrate,
-            ast::ItemKind::Use(_) => Target::Use,
-            ast::ItemKind::Static(_) => Target::Static,
-            ast::ItemKind::Const(_) | ast::ItemKind::ConstBlock(_) => Target::Const,
-            ast::ItemKind::Fn(_) | ast::ItemKind::Delegation(..) => Target::Fn,
-            ast::ItemKind::Mod(..) => Target::Mod,
-            ast::ItemKind::ForeignMod(_) => Target::ForeignFn,
-            ast::ItemKind::GlobalAsm(_) => Target::GlobalAsm,
-            ast::ItemKind::TyAlias(_) => Target::TyAlias,
-            ast::ItemKind::Enum(..) => Target::Enum,
-            ast::ItemKind::Struct(..) => Target::Struct,
-            ast::ItemKind::Union(..) => Target::Union,
-            ast::ItemKind::Trait(_) => Target::Trait,
-            ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
-            ast::ItemKind::Impl(imp_) => Target::Impl { of_trait: imp_.of_trait.is_some() },
-            ast::ItemKind::MacroDef(..) => Target::MacroDef,
-            ast::ItemKind::MacCall(_) | ast::ItemKind::DelegationMac(_) => {
-                unreachable!("macros should have been expanded")
-            }
-        };
+        let target = Target::from_ast_item(i);
 
         self.check_for_lang(
             target,
@@ -300,6 +280,8 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &'ast ast::ForeignItem) {
         self.check_for_lang(
+            // FIXME: Ideally we'd use `Target::from_foreign_item_kind` here, but `panic_handler` is a
+            // free function while `panic_impl` is a foreign function, but they are linked as a weak lang item.
             Target::Fn,
             self.resolver.owners[&i.id].def_id,
             &i.attrs,
@@ -321,33 +303,8 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     }
 
     fn visit_assoc_item(&mut self, i: &'ast ast::AssocItem, ctxt: visit::AssocCtxt) {
-        let (target, generics) = match &i.kind {
-            ast::AssocItemKind::Fn(..) | ast::AssocItemKind::Delegation(..) => {
-                let (body, generics) = if let ast::AssocItemKind::Fn(fun) = &i.kind {
-                    (fun.body.is_some(), Some(&fun.generics))
-                } else {
-                    (true, None)
-                };
-                (
-                    match ctxt {
-                        visit::AssocCtxt::Impl { of_trait } => {
-                            if of_trait {
-                                Target::Method(MethodKind::TraitImpl)
-                            } else {
-                                Target::Method(MethodKind::Inherent)
-                            }
-                        }
-                        visit::AssocCtxt::Trait => Target::Method(MethodKind::Trait { body }),
-                    },
-                    generics,
-                )
-            }
-            ast::AssocItemKind::Const(ct) => (Target::AssocConst, Some(&ct.generics)),
-            ast::AssocItemKind::Type(ty) => (Target::AssocTy, Some(&ty.generics)),
-            ast::AssocItemKind::MacCall(_) | ast::AssocItemKind::DelegationMac(_) => {
-                unreachable!("macros should have been expanded")
-            }
-        };
+        let target = Target::from_assoc_item_kind(&i.kind, ctxt);
+        let generics = i.opt_generics();
 
         self.check_for_lang(
             target,

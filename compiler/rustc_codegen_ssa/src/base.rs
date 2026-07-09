@@ -1013,7 +1013,7 @@ impl CrateInfo {
                 .filter_map(|&l| {
                     let name = l.link_name()?;
                     let export_kind = match l.target() {
-                        Target::Fn => SymbolExportKind::Text,
+                        Target::ForeignFn | Target::Fn => SymbolExportKind::Text,
                         Target::Static => SymbolExportKind::Data,
                         _ => bug!(
                             "Don't know what the export kind is for lang item of kind {:?}",
