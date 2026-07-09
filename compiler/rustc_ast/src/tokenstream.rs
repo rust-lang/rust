@@ -707,10 +707,6 @@ impl TokenStream {
         }
     }
 
-    pub fn chunks(&self, chunk_size: usize) -> core::slice::Chunks<'_, TokenTree> {
-        self.0.chunks(chunk_size)
-    }
-
     /// Desugar doc comments like `/// foo` in the stream into `#[doc =
     /// r"foo"]`. Modifies the `TokenStream` via `Arc::make_mut`, but as little
     /// as possible.
