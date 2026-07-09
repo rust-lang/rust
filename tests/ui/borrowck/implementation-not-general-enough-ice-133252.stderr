@@ -1,8 +1,8 @@
 error: implementation of `LoadQuery` is not general enough
-  --> $DIR/implementation-not-general-enough-ice-133252.rs:9:9
+  --> $DIR/implementation-not-general-enough-ice-133252.rs:9:20
    |
 LL |         force_send(async_load(&not_static));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `LoadQuery` is not general enough
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ implementation of `LoadQuery` is not general enough
    |
    = note: `LoadQuery<'0>` would have to be implemented for the type `&u8`, for any lifetime `'0`...
    = note: ...but `LoadQuery<'1>` is actually implemented for the type `&'1 u8`, for some specific lifetime `'1`
@@ -15,10 +15,10 @@ LL |     async {
 LL |         let not_static = 0;
    |             ---------- binding `not_static` declared here
 LL |         force_send(async_load(&not_static));
-   |         ----------------------^^^^^^^^^^^--
-   |         |                     |
-   |         |                     borrowed value does not live long enough
-   |         argument requires that `not_static` is borrowed for `'1`
+   |                    -----------^^^^^^^^^^^-
+   |                    |          |
+   |                    |          borrowed value does not live long enough
+   |                    argument requires that `not_static` is borrowed for `'1`
 ...
 LL |     }
    |     - `not_static` dropped here while still borrowed

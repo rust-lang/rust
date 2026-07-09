@@ -34,11 +34,11 @@ fn demand_y<'x, 'y>(_cell_x: Cell<&'x u32>, _cell_y: Cell<&'y u32>, _y: &'y u32)
 
 #[rustc_regions]
 fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
-    //~vv ERROR lifetime may not live long enough
-    //~v ERROR lifetime may not live long enough
     establish_relationships(
         cell_a,
         cell_b,
+        //~vv ERROR lifetime may not live long enough
+        //~v ERROR lifetime may not live long enough
         cell_c,
         |_outlives1, _outlives2, _outlives3, x, y| {
             // Only works if 'x: 'y:

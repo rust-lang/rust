@@ -7,7 +7,7 @@ LL | fn fails<I: LendingIterator, F>(iter: &mut I, f: F) -> bool
    |                                 `iter` is a reference that is only valid in the function body
 ...
 LL |     let _next = iter2.next();
-   |                 ^^^^^^^^^^^^
+   |                 ^^^^^
    |                 |
    |                 `iter` escapes the function body here
    |                 receiver requires that `'1` must outlive `'static`

@@ -6,7 +6,7 @@ LL |     let line = String::new();
 LL |     match [&*line] {
    |              ^^^^ borrowed value does not live long enough
 LL |         [ word ] => { assert_static(word); }
-   |                       ------------------- argument requires that `line` is borrowed for `'static`
+   |                                     ---- argument requires that `line` is borrowed for `'static`
 LL |     }
 LL | }
    | - `line` dropped here while still borrowed

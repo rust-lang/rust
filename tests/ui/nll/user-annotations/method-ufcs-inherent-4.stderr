@@ -6,10 +6,10 @@ LL | fn foo<'a>() {
 LL |     let v = 22;
    |         - binding `v` declared here
 LL |     let x = <A<'a>>::new::<&'a u32>(&v, &v);
-   |             ------------------------^^-----
-   |             |                       |
-   |             |                       borrowed value does not live long enough
-   |             argument requires that `v` is borrowed for `'a`
+   |                                     ^^
+   |                                     |
+   |                                     borrowed value does not live long enough
+   |                                     argument requires that `v` is borrowed for `'a`
 ...
 LL | }
    | - `v` dropped here while still borrowed
@@ -22,10 +22,10 @@ LL | fn foo<'a>() {
 LL |     let v = 22;
    |         - binding `v` declared here
 LL |     let x = <A<'a>>::new::<&'a u32>(&v, &v);
-   |             ----------------------------^^-
-   |             |                           |
-   |             |                           borrowed value does not live long enough
-   |             argument requires that `v` is borrowed for `'a`
+   |                                         ^^
+   |                                         |
+   |                                         borrowed value does not live long enough
+   |                                         argument requires that `v` is borrowed for `'a`
 ...
 LL | }
    | - `v` dropped here while still borrowed

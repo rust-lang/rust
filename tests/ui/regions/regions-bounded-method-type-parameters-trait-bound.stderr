@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:20:5
+  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:20:14
    |
 LL | fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
    |            -- -- lifetime `'b` defined here
@@ -7,7 +7,7 @@ LL | fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
    |            lifetime `'a` defined here
 LL |     // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
 LL |     f.method(b);
-   |     ^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |              ^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
    = note: requirement occurs because of the type `Inv<'_>`, which makes the generic argument `'_` invariant

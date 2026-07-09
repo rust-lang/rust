@@ -1,8 +1,8 @@
 error[E0621]: explicit lifetime required in the type of `get`
-  --> $DIR/variance-trait-matching.rs:24:5
+  --> $DIR/variance-trait-matching.rs:24:10
    |
 LL |     pick(get, &22)
-   |     ^^^^^^^^^^^^^^ lifetime `'a` required
+   |          ^^^ lifetime `'a` required
    |
 help: add explicit lifetime `'a` to the type of `get`
    |
