@@ -8,7 +8,7 @@
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{
     Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnOpaques,
-    SucceededInErased,
+    GoalStalledOnRef, SucceededInErased,
 };
 use rustc_type_ir::{InferCtxtLike, Interner};
 
@@ -43,8 +43,8 @@ where
     }
 
     // If the goal isn't stalled, we should definitely run it.
-    let Some(&GoalStalledOn { ref opaques, ref stalled_vars, ref sub_roots, stalled_certainty }) =
-        stalled_on
+    let Some(GoalStalledOnRef { opaques, stalled_vars, sub_roots, stalled_certainty }) =
+        stalled_on.map(|i| i.as_ref())
     else {
         return MayMakeProgress;
     };

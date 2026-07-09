@@ -10,9 +10,10 @@ use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, LowerAvailableDepth, PathKind};
 use rustc_type_ir::solve::{
-    AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
-    NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
-    RerunNonErased, RerunReason, RerunResultExt, SmallCopyList,
+    AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse,
+    GoalStalledOnBigData, MaybeInfo, NoSolutionOrRerunNonErased, OpaqueTypesJank,
+    QueryResultOrRerunNonErased, RerunCondition, RerunNonErased, RerunReason, RerunResultExt,
+    SmallCopyList, SmallStalledOnData,
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
@@ -749,18 +750,23 @@ where
             },
         });
 
-        GoalStalledOn {
-            stalled_vars,
-            sub_roots,
-            stalled_certainty: certainty,
-            opaques: GoalStalledOnOpaques::Yes {
-                num_opaques_in_storage: canonical_goal
-                    .canonical
-                    .value
-                    .predefined_opaques_in_body
-                    .len(),
-                previously_succeeded_in_erased,
-            },
+        let num_opaques_in_storage =
+            canonical_goal.canonical.value.predefined_opaques_in_body.len();
+        if let SucceededInErased::No = previously_succeeded_in_erased
+            && num_opaques_in_storage == 0
+            && let Some(small) = SmallStalledOnData::new(certainty, &stalled_vars, &sub_roots)
+        {
+            GoalStalledOn::SmallZeroOpaques(small)
+        } else {
+            GoalStalledOn::Big(Box::new(GoalStalledOnBigData {
+                stalled_vars,
+                sub_roots,
+                stalled_certainty: certainty,
+                opaques: GoalStalledOnOpaques::Yes {
+                    num_opaques_in_storage,
+                    previously_succeeded_in_erased,
+                },
+            }))
         }
     }
 

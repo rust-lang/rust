@@ -89,12 +89,16 @@ pub enum SmallCopyList<T: Copy + Debug + Hash + Eq> {
 }
 
 impl<T: Copy + Debug + Hash + Eq> SmallCopyList<T> {
-    fn empty() -> Self {
+    pub fn empty() -> Self {
         Self::Empty
     }
 
-    fn new(first: T) -> Self {
+    pub fn new(first: T) -> Self {
         Self::One([first])
+    }
+
+    pub fn two(first: T, second: T) -> Self {
+        if first == second { Self::One([first]) } else { Self::Two([first, second]) }
     }
 
     /// Computes the union of two lists. Duplicates are removed.
@@ -965,15 +969,119 @@ pub enum GoalStalledOnOpaques<I: Interner> {
     },
 }
 
-/// The conditions that must change for a goal to warrant
 #[derive_where(Clone, Debug; I: Interner)]
-pub struct GoalStalledOn<I: Interner> {
+pub struct GoalStalledOnBigData<I: Interner> {
     pub stalled_vars: Vec<I::GenericArg>,
     pub sub_roots: Vec<TyVid>,
     /// The certainty that will be returned on subsequent evaluations if this
     /// goal remains stalled.
     pub stalled_certainty: Certainty,
     pub opaques: GoalStalledOnOpaques<I>,
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub struct GoalStalledOnRef<'a, I: Interner> {
+    pub stalled_vars: &'a [I::GenericArg],
+    pub sub_roots: &'a [TyVid],
+    /// The certainty that will be returned on subsequent evaluations if this
+    /// goal remains stalled.
+    pub stalled_certainty: Certainty,
+    pub opaques: &'a GoalStalledOnOpaques<I>,
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub enum SmallStalledOnData<I: Interner> {
+    Empty(Certainty),
+    OneVarNoRoots(Certainty, [I::GenericArg; 1]),
+    TwoVarsNoRoots(Certainty, [I::GenericArg; 2]),
+    NoVarsOneRoot(Certainty, [TyVid; 1]),
+    NoVarsTwoRoots(Certainty, [TyVid; 2]),
+    OneVarOneRoot(Certainty, [I::GenericArg; 1], [TyVid; 1]),
+}
+
+impl<I: Interner> SmallStalledOnData<I> {
+    #[inline(always)]
+    pub fn new(
+        stalled_certainty: Certainty,
+        stalled_vars: &[I::GenericArg],
+        sub_roots: &[TyVid],
+    ) -> Option<Self> {
+        match (stalled_vars, sub_roots) {
+            ([], []) => Some(Self::Empty(stalled_certainty)),
+            ([a], []) => Some(Self::OneVarNoRoots(stalled_certainty, [*a])),
+            ([a, b], []) => Some(Self::TwoVarsNoRoots(stalled_certainty, [*a, *b])),
+            ([], [a]) => Some(Self::NoVarsOneRoot(stalled_certainty, [*a])),
+            ([], [a, b]) => Some(Self::NoVarsTwoRoots(stalled_certainty, [*a, *b])),
+            ([a], [b]) => Some(Self::OneVarOneRoot(stalled_certainty, [*a], [*b])),
+            _ => None,
+        }
+    }
+
+    #[inline(always)]
+    fn as_ref(&self) -> (Certainty, &[I::GenericArg], &[TyVid]) {
+        match self {
+            SmallStalledOnData::Empty(certainty) => (*certainty, &[], &[]),
+            SmallStalledOnData::OneVarNoRoots(certainty, stalled_vars) => {
+                (*certainty, stalled_vars, &[])
+            }
+            SmallStalledOnData::TwoVarsNoRoots(certainty, stalled_vars) => {
+                (*certainty, stalled_vars, &[])
+            }
+            SmallStalledOnData::NoVarsOneRoot(certainty, sub_roots) => (*certainty, &[], sub_roots),
+            SmallStalledOnData::NoVarsTwoRoots(certainty, sub_roots) => {
+                (*certainty, &[], sub_roots)
+            }
+            SmallStalledOnData::OneVarOneRoot(certainty, stalled_vars, sub_roots) => {
+                (*certainty, stalled_vars, sub_roots)
+            }
+        }
+    }
+}
+
+/// The conditions that must change for a goal to warrant
+#[derive_where(Clone, Debug; I: Interner)]
+pub enum GoalStalledOn<I: Interner> {
+    SmallZeroOpaques(SmallStalledOnData<I>),
+    SmallOpaquesDontMatter(SmallStalledOnData<I>),
+    Big(Box<GoalStalledOnBigData<I>>),
+}
+
+impl<I: Interner> GoalStalledOn<I> {
+    pub fn as_ref(&self) -> GoalStalledOnRef<'_, I> {
+        match self {
+            GoalStalledOn::SmallZeroOpaques(s) => {
+                let (stalled_certainty, stalled_vars, sub_roots) = s.as_ref();
+                GoalStalledOnRef {
+                    stalled_vars,
+                    sub_roots,
+                    stalled_certainty,
+                    opaques: &GoalStalledOnOpaques::Yes {
+                        num_opaques_in_storage: 0,
+                        previously_succeeded_in_erased: SucceededInErased::No,
+                    },
+                }
+            }
+            GoalStalledOn::SmallOpaquesDontMatter(s) => {
+                let (stalled_certainty, stalled_vars, sub_roots) = s.as_ref();
+                GoalStalledOnRef {
+                    stalled_vars,
+                    sub_roots,
+                    stalled_certainty,
+                    opaques: &GoalStalledOnOpaques::No,
+                }
+            }
+            GoalStalledOn::Big(data) => {
+                let GoalStalledOnBigData { stalled_vars, sub_roots, stalled_certainty, opaques } =
+                    data.as_ref();
+                GoalStalledOnRef {
+                    stalled_vars,
+                    sub_roots,
+                    stalled_certainty: *stalled_certainty,
+                    opaques,
+                }
+            }
+        }
+    }
 }
 
 /// For some goals we can trivially answer some questions without going through
