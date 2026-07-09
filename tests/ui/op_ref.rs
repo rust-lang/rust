@@ -1,5 +1,5 @@
-#![allow(unused_variables, clippy::disallowed_names)]
 #![warn(clippy::op_ref)]
+#![expect(clippy::disallowed_names)]
 use std::collections::HashSet;
 use std::ops::{BitAnd, Mul};
 

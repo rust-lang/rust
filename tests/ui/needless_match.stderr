@@ -1,5 +1,5 @@
 error: this match expression is unnecessary
-  --> tests/ui/needless_match.rs:15:18
+  --> tests/ui/needless_match.rs:13:18
    |
 LL |       let _: i32 = match i {
    |  __________________^
@@ -15,7 +15,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::needless_match)]`
 
 error: this match expression is unnecessary
-  --> tests/ui/needless_match.rs:23:19
+  --> tests/ui/needless_match.rs:21:19
    |
 LL |       let _: &str = match s {
    |  ___________________^
@@ -27,7 +27,7 @@ LL | |     };
    | |_____^ help: replace it with: `s`
 
 error: this match expression is unnecessary
-  --> tests/ui/needless_match.rs:33:21
+  --> tests/ui/needless_match.rs:31:21
    |
 LL |       let _: Simple = match se {
    |  _____________________^
@@ -40,7 +40,7 @@ LL | |     };
    | |_____^ help: replace it with: `se`
 
 error: this match expression is unnecessary
-  --> tests/ui/needless_match.rs:56:26
+  --> tests/ui/needless_match.rs:54:26
    |
 LL |       let _: Option<i32> = match x {
    |  __________________________^
@@ -51,7 +51,7 @@ LL | |     };
    | |_____^ help: replace it with: `x`
 
 error: this match expression is unnecessary
-  --> tests/ui/needless_match.rs:73:31
+  --> tests/ui/needless_match.rs:71:31
    |
 LL |       let _: Result<i32, i32> = match Ok(1) {
    |  _______________________________^
@@ -62,7 +62,7 @@ LL | |     };
    | |_____^ help: replace it with: `Ok(1)`
 
 error: this match expression is unnecessary
-  --> tests/ui/needless_match.rs:78:31
+  --> tests/ui/needless_match.rs:76:31
    |
 LL |       let _: Result<i32, i32> = match func_ret_err(0_i32) {
    |  _______________________________^
@@ -73,25 +73,25 @@ LL | |     };
    | |_____^ help: replace it with: `func_ret_err(0_i32)`
 
 error: this if-let expression is unnecessary
-  --> tests/ui/needless_match.rs:92:13
+  --> tests/ui/needless_match.rs:90:13
    |
 LL |     let _ = if let Some(a) = Some(1) { Some(a) } else { None };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `Some(1)`
 
 error: this if-let expression is unnecessary
-  --> tests/ui/needless_match.rs:128:31
+  --> tests/ui/needless_match.rs:126:31
    |
 LL |     let _: Result<i32, i32> = if let Err(e) = x { Err(e) } else { x };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
 
 error: this if-let expression is unnecessary
-  --> tests/ui/needless_match.rs:130:31
+  --> tests/ui/needless_match.rs:128:31
    |
 LL |     let _: Result<i32, i32> = if let Ok(val) = x { Ok(val) } else { x };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
 
 error: this if-let expression is unnecessary
-  --> tests/ui/needless_match.rs:138:21
+  --> tests/ui/needless_match.rs:136:21
    |
 LL |       let _: Simple = if let Simple::A = x {
    |  _____________________^
@@ -104,7 +104,7 @@ LL | |     };
    | |_____^ help: replace it with: `x`
 
 error: this match expression is unnecessary
-  --> tests/ui/needless_match.rs:178:26
+  --> tests/ui/needless_match.rs:176:26
    |
 LL |           let _: Complex = match ce {
    |  __________________________^
@@ -117,7 +117,7 @@ LL | |         };
    | |_________^ help: replace it with: `ce`
 
 error: this match expression is unnecessary
-  --> tests/ui/needless_match.rs:263:17
+  --> tests/ui/needless_match.rs:261:17
    |
 LL |           let _ = match e {
    |  _________________^
@@ -128,7 +128,7 @@ LL | |         };
    | |_________^ help: replace it with: `e`
 
 error: this match expression is unnecessary
-  --> tests/ui/needless_match.rs:270:17
+  --> tests/ui/needless_match.rs:268:17
    |
 LL |           let _ = match e {
    |  _________________^
@@ -140,7 +140,7 @@ LL | |         };
    | |_________^ help: replace it with: `e`
 
 error: this if-let expression is unnecessary
-  --> tests/ui/needless_match.rs:352:9
+  --> tests/ui/needless_match.rs:350:9
    |
 LL | /         if let Some(num) = A {
 LL | |
@@ -152,7 +152,7 @@ LL | |         }
    | |_________^ help: replace it with: `A`
 
 error: this match expression is unnecessary
-  --> tests/ui/needless_match.rs:373:13
+  --> tests/ui/needless_match.rs:371:13
    |
 LL |       let x = match t {
    |  _____________^
