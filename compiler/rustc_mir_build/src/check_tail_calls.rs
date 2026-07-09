@@ -29,7 +29,7 @@ pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), E
         tcx,
         thir,
         found_errors: Ok(()),
-        typing_env: ty::TypingEnv::post_typeck_unil_borrowck_for_mir_build(tcx, def),
+        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
         is_closure,
         caller_def_id: def,
     };
@@ -55,7 +55,7 @@ struct TailCallCkVisitor<'a, 'tcx> {
 impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
     fn check_tail_call(&self, call: &Expr<'_>, expr: &Expr<'_>) -> Result<(), ErrorGuaranteed> {
         if self.is_closure {
-            self.report_in_closure(expr)? as !;
+            return Err(self.report_in_closure(expr));
         }
 
         let BodyTy::Fn(caller_sig) = self.thir.body_type else {
@@ -81,15 +81,15 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 | ExprKind::AssignOp { .. }
                 | ExprKind::Index { .. }
         ) {
-            self.report_builtin_op(call, expr)? as !;
+            return Err(self.report_builtin_op(call, expr));
         }
 
         let ExprKind::Call { ty, fun, ref args, from_hir_call, fn_span } = value.kind else {
-            self.report_non_call(value, expr)? as !;
+            return Err(self.report_non_call(value, expr));
         };
 
         if !from_hir_call {
-            self.report_op(ty, args, fn_span, expr)? as !;
+            return Err(self.report_op(ty, args, fn_span, expr));
         }
 
         if let &ty::FnDef(did, args) = ty.kind() {
@@ -110,17 +110,17 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
 
                 // Tail calling is likely to cause unrelated errors (ABI, argument mismatches),
                 // skip them, producing an error about calling a closure is enough.
-                err? as !;
+                return Err(err);
             };
 
             if self.tcx.intrinsic(did).is_some() {
-                self.report_calling_intrinsic(expr)? as !;
+                return Err(self.report_calling_intrinsic(expr));
             }
         }
 
         let (ty::FnDef(..) | ty::FnPtr(..)) = ty.kind() else {
             // early return, as `fn_sig` below panics otherwise
-            self.report_nonfn_callee(fn_span, self.thir[fun].span, ty)? as !;
+            return Err(self.report_nonfn_callee(fn_span, self.thir[fun].span, ty));
         };
 
         // Erase regions since tail calls don't care about lifetimes
@@ -131,21 +131,20 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
 
         {
             if caller_sig.abi() != callee_sig.abi() {
-                found_errors = self
-                    .report_abi_mismatch(expr.span, caller_sig.abi(), callee_sig.abi())
-                    .map(|x| x);
+                found_errors =
+                    Err(self.report_abi_mismatch(expr.span, caller_sig.abi(), callee_sig.abi()));
             }
 
             if !callee_sig.abi().supports_guaranteed_tail_call() {
-                found_errors = self.report_unsupported_abi(expr.span, callee_sig.abi()).map(|x| x);
+                found_errors = Err(self.report_unsupported_abi(expr.span, callee_sig.abi()));
             }
 
             if caller_sig.c_variadic() {
-                found_errors = self.report_c_variadic_caller(expr.span).map(|x| x);
+                found_errors = Err(self.report_c_variadic_caller(expr.span));
             }
 
             if callee_sig.c_variadic() {
-                found_errors = self.report_c_variadic_callee(expr.span).map(|x| x);
+                found_errors = Err(self.report_c_variadic_callee(expr.span));
             }
 
             // We do a lot of special-cased errors above; equating signatures below would duplicate
@@ -169,19 +168,15 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 infcx.at(&cause, param_env).sub(DefineOpaqueTypes::No, caller_sig, callee_sig)
             {
                 let caller_ty = self.tcx.type_of(self.caller_def_id).skip_binder();
-                found_errors = self
-                    .report_signature_mismatch(
-                        expr.span,
-                        self.tcx.liberate_late_bound_regions(
-                            CRATE_DEF_ID.to_def_id(),
-                            caller_ty.fn_sig(self.tcx),
-                        ),
-                        self.tcx.liberate_late_bound_regions(
-                            CRATE_DEF_ID.to_def_id(),
-                            ty.fn_sig(self.tcx),
-                        ),
-                    )
-                    .map(|x| x);
+                found_errors = Err(self.report_signature_mismatch(
+                    expr.span,
+                    self.tcx.liberate_late_bound_regions(
+                        CRATE_DEF_ID.to_def_id(),
+                        caller_ty.fn_sig(self.tcx),
+                    ),
+                    self.tcx
+                        .liberate_late_bound_regions(CRATE_DEF_ID.to_def_id(), ty.fn_sig(self.tcx)),
+                ));
             }
         }
 
@@ -203,13 +198,13 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             let caller_needs_location = self.caller_needs_location();
 
             if caller_needs_location {
-                found_errors = self.report_track_caller_caller(expr.span).map(|x| x);
+                found_errors = Err(self.report_track_caller_caller(expr.span));
             }
         }
 
         for &arg_ty in callee_sig.inputs() {
             if !arg_ty.is_sized(self.tcx, self.typing_env) {
-                found_errors = self.report_unsized_argument(expr.span, arg_ty).map(|x| x);
+                found_errors = Err(self.report_unsized_argument(expr.span, arg_ty));
             }
         }
 
@@ -223,14 +218,12 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
     }
 
-    fn report_in_closure(&self, expr: &Expr<'_>) -> Result<!, ErrorGuaranteed> {
-        let err = self.tcx.dcx().span_err(expr.span, "`become` is not allowed in closures");
-        Err(err)
+    fn report_in_closure(&self, expr: &Expr<'_>) -> ErrorGuaranteed {
+        self.tcx.dcx().span_err(expr.span, "`become` is not allowed in closures")
     }
 
-    fn report_builtin_op(&self, value: &Expr<'_>, expr: &Expr<'_>) -> Result<!, ErrorGuaranteed> {
-        let err = self
-            .tcx
+    fn report_builtin_op(&self, value: &Expr<'_>, expr: &Expr<'_>) -> ErrorGuaranteed {
+        self.tcx
             .dcx()
             .struct_span_err(value.span, "`become` does not support operators")
             .with_note("using `become` on a builtin operator is not useful")
@@ -240,8 +233,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 "return ",
                 Applicability::MachineApplicable,
             )
-            .emit();
-        Err(err)
+            .emit()
     }
 
     fn report_op(
@@ -250,7 +242,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         args: &[ExprId],
         fn_span: Span,
         expr: &Expr<'_>,
-    ) -> Result<!, ErrorGuaranteed> {
+    ) -> ErrorGuaranteed {
         let mut err =
             self.tcx.dcx().struct_span_err(fn_span, "`become` does not support operators");
 
@@ -290,12 +282,11 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             }
         }
 
-        Err(err.emit())
+        err.emit()
     }
 
-    fn report_non_call(&self, value: &Expr<'_>, expr: &Expr<'_>) -> Result<!, ErrorGuaranteed> {
-        let err = self
-            .tcx
+    fn report_non_call(&self, value: &Expr<'_>, expr: &Expr<'_>) -> ErrorGuaranteed {
+        self.tcx
             .dcx()
             .struct_span_err(value.span, "`become` requires a function call")
             .with_span_note(value.span, "not a function call")
@@ -305,8 +296,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 "return ",
                 Applicability::MaybeIncorrect,
             )
-            .emit();
-        Err(err)
+            .emit()
     }
 
     fn report_calling_closure(
@@ -314,15 +304,14 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         fun: &Expr<'_>,
         tupled_args: Ty<'_>,
         expr: &Expr<'_>,
-    ) -> Result<!, ErrorGuaranteed> {
+    ) -> ErrorGuaranteed {
         let underscored_args = match tupled_args.kind() {
             ty::Tuple(tys) if tys.is_empty() => "".to_owned(),
             ty::Tuple(tys) => std::iter::repeat_n("_, ", tys.len() - 1).chain(["_"]).collect(),
             _ => "_".to_owned(),
         };
 
-        let err = self
-            .tcx
+        self.tcx
             .dcx()
             .struct_span_err(expr.span, "tail calling closures directly is not allowed")
             .with_multipart_suggestion(
@@ -333,26 +322,14 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 ],
                 Applicability::MaybeIncorrect,
             )
-            .emit();
-        Err(err)
+            .emit()
     }
 
-    fn report_calling_intrinsic(&self, expr: &Expr<'_>) -> Result<!, ErrorGuaranteed> {
-        let err = self
-            .tcx
-            .dcx()
-            .struct_span_err(expr.span, "tail calling intrinsics is not allowed")
-            .emit();
-
-        Err(err)
+    fn report_calling_intrinsic(&self, expr: &Expr<'_>) -> ErrorGuaranteed {
+        self.tcx.dcx().struct_span_err(expr.span, "tail calling intrinsics is not allowed").emit()
     }
 
-    fn report_nonfn_callee(
-        &self,
-        call_sp: Span,
-        fun_sp: Span,
-        ty: Ty<'_>,
-    ) -> Result<!, ErrorGuaranteed> {
+    fn report_nonfn_callee(&self, call_sp: Span, fun_sp: Span, ty: Ty<'_>) -> ErrorGuaranteed {
         let mut err = self
             .tcx
             .dcx()
@@ -382,7 +359,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             );
         }
 
-        Err(err.emit())
+        err.emit()
     }
 
     fn report_abi_mismatch(
@@ -390,29 +367,21 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         sp: Span,
         caller_abi: ExternAbi,
         callee_abi: ExternAbi,
-    ) -> Result<!, ErrorGuaranteed> {
-        let err = self
-            .tcx
+    ) -> ErrorGuaranteed {
+        self.tcx
             .dcx()
             .struct_span_err(sp, "mismatched function ABIs")
             .with_note("`become` requires caller and callee to have the same ABI")
             .with_note(format!("caller ABI is `{caller_abi}`, while callee ABI is `{callee_abi}`"))
-            .emit();
-        Err(err)
+            .emit()
     }
 
-    fn report_unsupported_abi(
-        &self,
-        sp: Span,
-        callee_abi: ExternAbi,
-    ) -> Result<!, ErrorGuaranteed> {
-        let err = self
-            .tcx
+    fn report_unsupported_abi(&self, sp: Span, callee_abi: ExternAbi) -> ErrorGuaranteed {
+        self.tcx
             .dcx()
             .struct_span_err(sp, "ABI does not support guaranteed tail calls")
             .with_note(format!("`become` is not supported for `extern {callee_abi}` functions"))
-            .emit();
-        Err(err)
+            .emit()
     }
 
     fn report_signature_mismatch(
@@ -420,62 +389,48 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         sp: Span,
         caller_sig: ty::FnSig<'_>,
         callee_sig: ty::FnSig<'_>,
-    ) -> Result<!, ErrorGuaranteed> {
-        let err = self
-            .tcx
+    ) -> ErrorGuaranteed {
+        self.tcx
             .dcx()
             .struct_span_err(sp, "mismatched signatures")
             .with_note("`become` requires caller and callee to have matching signatures")
             .with_note(format!("caller signature: `{caller_sig}`"))
             .with_note(format!("callee signature: `{callee_sig}`"))
-            .emit();
-        Err(err)
+            .emit()
     }
 
-    fn report_track_caller_caller(&self, sp: Span) -> Result<!, ErrorGuaranteed> {
-        let err = self
-            .tcx
+    fn report_track_caller_caller(&self, sp: Span) -> ErrorGuaranteed {
+        self.tcx
             .dcx()
             .struct_span_err(
                 sp,
                 "a function marked with `#[track_caller]` cannot perform a tail-call",
             )
-            .emit();
-
-        Err(err)
+            .emit()
     }
 
-    fn report_c_variadic_caller(&self, sp: Span) -> Result<!, ErrorGuaranteed> {
-        let err = self
-            .tcx
+    fn report_c_variadic_caller(&self, sp: Span) -> ErrorGuaranteed {
+        self.tcx
             .dcx()
             // FIXME(explicit_tail_calls): highlight the `...`
             .struct_span_err(sp, "tail-calls are not allowed in c-variadic functions")
-            .emit();
-
-        Err(err)
+            .emit()
     }
 
-    fn report_c_variadic_callee(&self, sp: Span) -> Result<!, ErrorGuaranteed> {
-        let err = self
-            .tcx
+    fn report_c_variadic_callee(&self, sp: Span) -> ErrorGuaranteed {
+        self.tcx
             .dcx()
             // FIXME(explicit_tail_calls): highlight the function or something...
             .struct_span_err(sp, "c-variadic functions can't be tail-called")
-            .emit();
-
-        Err(err)
+            .emit()
     }
 
-    fn report_unsized_argument(&self, sp: Span, arg_ty: Ty<'tcx>) -> Result<!, ErrorGuaranteed> {
-        let err = self
-            .tcx
+    fn report_unsized_argument(&self, sp: Span, arg_ty: Ty<'tcx>) -> ErrorGuaranteed {
+        self.tcx
             .dcx()
             .struct_span_err(sp, format!("unsized arguments cannot be used in a tail call"))
             .with_note(format!("unsized argument of type `{arg_ty}`"))
-            .emit();
-
-        Err(err)
+            .emit()
     }
 }
 
