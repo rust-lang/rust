@@ -26,11 +26,6 @@ pub(crate) enum Duplicate {
     CrateDepends,
 }
 
-enum CollectWeak {
-    Allowed,
-    Ignore,
-}
-
 struct LanguageItemCollector<'ast, 'tcx> {
     items: LanguageItems,
     tcx: TyCtxt<'tcx>,
@@ -53,7 +48,6 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         attrs: &'ast [ast::Attribute],
         item_span: Span,
         generics: Option<&'ast ast::Generics>,
-        collect_weak: CollectWeak,
     ) {
         if let Some((name, attr_span)) = extract_ast(attrs) {
             match LangItem::from_name(name) {
@@ -74,8 +68,8 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                         }
                     }
                     // Weak lang items are handled separately
-                    // Weak only lang items are always handled here
-                    if !lang_item.is_weak() || matches!(collect_weak, CollectWeak::Allowed) {
+                    if !lang_item.is_weak() || actual_target == Target::Fn {
+                        // Weak only lang items are always handled here
                         self.collect_item_extended(
                             lang_item,
                             def_id,
@@ -278,7 +272,6 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             &i.attrs,
             i.span,
             i.opt_generics(),
-            CollectWeak::Allowed,
         );
 
         let parent_item = self.parent_item.replace(i);
@@ -293,7 +286,6 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             &i.attrs,
             i.span,
             None,
-            CollectWeak::Ignore,
         );
     }
 
@@ -304,7 +296,6 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             &variant.attrs,
             variant.span,
             None,
-            CollectWeak::Allowed,
         );
     }
 
@@ -312,14 +303,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
         let target = Target::from_assoc_item_kind(&i.kind, ctxt);
         let generics = i.opt_generics();
 
-        self.check_for_lang(
-            target,
-            self.resolver.owners[&i.id].def_id,
-            &i.attrs,
-            i.span,
-            generics,
-            CollectWeak::Allowed,
-        );
+        self.check_for_lang(target, self.resolver.owners[&i.id].def_id, &i.attrs, i.span, generics);
 
         visit::walk_assoc_item(self, i, ctxt);
     }
