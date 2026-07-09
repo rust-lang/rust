@@ -39,7 +39,7 @@ use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT,
-    Goal, GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnReason, HasChanged, MaybeCause,
+    Goal, GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause,
     NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
     VisibleForLeakCheck, inspect,
 };
@@ -753,8 +753,12 @@ where
             stalled_vars,
             sub_roots,
             stalled_certainty: certainty,
-            reason: GoalStalledOnReason::Other {
-                num_opaques: canonical_goal.canonical.value.predefined_opaques_in_body.len(),
+            opaques: GoalStalledOnOpaques::Yes {
+                num_opaques_in_storage: canonical_goal
+                    .canonical
+                    .value
+                    .predefined_opaques_in_body
+                    .len(),
                 previously_succeeded_in_erased,
             },
         }

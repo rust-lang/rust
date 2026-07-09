@@ -11,14 +11,14 @@ use rustc_infer::infer::canonical::{
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::{
-    ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal,
+    ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, SucceededInErased,
 };
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{
     self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt, TypingMode,
 };
-use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnReason};
+use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques};
 use rustc_span::{DUMMY_SP, Span};
 
 use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
@@ -47,6 +47,43 @@ impl<'tcx> SolverDelegate<'tcx> {
             // in erased mode, observing that opaques are empty aren't enough to give a result
             // here, so let's try the slow path instead.
             && !self.typing_mode_raw().is_erased_not_coherence()
+    }
+}
+
+/// Create a [`ComputeGoalFastPathOutcome`] signalling the  goal is stalled
+/// on a list of [`ty::GenericArg`]
+fn goal_stalled_on_args<'tcx>(
+    stalled_vars: Vec<ty::GenericArg<'tcx>>,
+) -> ComputeGoalFastPathOutcome<'tcx> {
+    ComputeGoalFastPathOutcome::TriviallyStalled {
+        stalled_on: GoalStalledOn {
+            stalled_vars,
+            sub_roots: Vec::new(),
+            stalled_certainty: Certainty::AMBIGUOUS,
+            opaques: GoalStalledOnOpaques::No,
+        },
+    }
+}
+
+/// Create a [`ComputeGoalFastPathOutcome`] signalling the  goal is stalled
+/// on a list of [`ty::GenericArg`] *or* the opaque type storage being nonempty.
+///
+fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
+    stalled_vars: Vec<ty::GenericArg<'tcx>>,
+) -> ComputeGoalFastPathOutcome<'tcx> {
+    ComputeGoalFastPathOutcome::TriviallyStalled {
+        stalled_on: GoalStalledOn {
+            stalled_vars,
+            sub_roots: Vec::new(),
+            stalled_certainty: Certainty::AMBIGUOUS,
+            opaques: GoalStalledOnOpaques::Yes {
+                num_opaques_in_storage: 0,
+                // This function should only be called when not in erased mode,
+                // otherwise this is wrong. The `compute_goal_fast_path` does this
+                // through `known_no_opaque_types_in_storage`
+                previously_succeeded_in_erased: SucceededInErased::No,
+            },
+        },
     }
 }
 
@@ -79,19 +116,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     ) -> ComputeGoalFastPathOutcome<'tcx> {
         use ComputeGoalFastPathOutcome as Outcome;
 
-        fn stalled_with_args<'tcx>(
-            stalled_vars: Vec<ty::GenericArg<'tcx>>,
-        ) -> ComputeGoalFastPathOutcome<'tcx> {
-            Outcome::TriviallyStalled {
-                stalled_on: GoalStalledOn {
-                    stalled_vars,
-                    sub_roots: Vec::new(),
-                    stalled_certainty: Certainty::AMBIGUOUS,
-                    reason: GoalStalledOnReason::FastPath,
-                },
-            }
-        }
-
         // FIXME(-Zassumptions-on-binders): actually handle fast path
         if self.tcx.assumptions_on_binders() {
             return Outcome::NoFastPath;
@@ -110,13 +134,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 // FIXME: Properly consider opaques here.
                 && self.known_no_opaque_types_in_storage()
                 {
-                    stalled_with_args(vec![self_ty.into()])
+                    goal_stalled_on_args_or_nonempty_opaques(vec![self_ty.into()])
                 } else if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                         Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
                             let predicate = self.resolve_vars_if_possible(goal.predicate);
                             if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
-                                return Outcome::TriviallyHolds;
+                                Outcome::TriviallyHolds
                             } else {
                                 Outcome::NoFastPath
                             }
@@ -133,7 +157,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                                 .has_type_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_INFER)
                                 && self_ty.is_trivially_pure_clone_copy()
                             {
-                                return Outcome::TriviallyHolds;
+                                Outcome::TriviallyHolds
                             } else {
                                 Outcome::NoFastPath
                             }
@@ -182,7 +206,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 match (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind()) {
                     (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                         self.sub_unify_ty_vids_raw(a_vid, b_vid);
-                        stalled_with_args(vec![a.into(), b.into()])
+                        goal_stalled_on_args(vec![a.into(), b.into()])
                     }
                     _ => Outcome::NoFastPath,
                 }
@@ -194,7 +218,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
                 let arg = self.shallow_resolve_const(ct);
                 if arg.is_ct_infer() {
-                    stalled_with_args(vec![arg.into()])
+                    goal_stalled_on_args(vec![arg.into()])
                 } else {
                     Outcome::NoFastPath
                 }
@@ -208,7 +232,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 if arg.is_trivially_wf(self.tcx) {
                     Outcome::TriviallyHolds
                 } else if arg.is_infer() {
-                    stalled_with_args(vec![arg.into_arg()])
+                    goal_stalled_on_args(vec![arg.into_arg()])
                 } else {
                     Outcome::NoFastPath
                 }
