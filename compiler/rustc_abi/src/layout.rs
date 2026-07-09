@@ -1351,18 +1351,23 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     layout_of_single_non_zst_field = Some(field);
 
                     // Field fills the struct and it has a scalar or scalar pair ABI.
-                    if offsets[i].bytes() == 0 && align == field.align.abi && size == field.size {
+                    // [MCP1007] For now only scalars allow arbitrary alignment,
+                    // but future work is expected to allow that for others too.
+                    if offsets[i].bytes() == 0 && size == field.size {
                         match field.backend_repr {
                             // For plain scalars, or vectors of them, we can't unpack
                             // newtypes for `#[repr(C)]`, as that affects C ABIs.
-                            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. }
-                                if optimize_abi =>
+                            BackendRepr::Scalar(_) if optimize_abi => {
+                                abi = field.backend_repr;
+                            }
+                            BackendRepr::SimdVector { .. }
+                                if optimize_abi && align == field.align.abi =>
                             {
                                 abi = field.backend_repr;
                             }
                             // But scalar pairs are Rust-specific and get
                             // treated as aggregates by C ABIs anyway.
-                            BackendRepr::ScalarPair { .. } => {
+                            BackendRepr::ScalarPair { .. } if align == field.align.abi => {
                                 abi = field.backend_repr;
                             }
                             _ => {}

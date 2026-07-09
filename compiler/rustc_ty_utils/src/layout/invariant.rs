@@ -93,16 +93,8 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     }
 
     fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
-        // Verify the ABI-mandated alignment and size for scalars.
-        let align = layout.backend_repr.scalar_platform_align(cx);
+        // Verify the size expectation for scalars.
         let size = layout.backend_repr.scalar_size(cx);
-        if let Some(align) = align {
-            assert_eq!(
-                layout.layout.align().abi,
-                align,
-                "alignment mismatch between ABI and layout in {layout:#?}"
-            );
-        }
         if let Some(size) = size {
             assert_eq!(
                 layout.layout.size(),
@@ -112,6 +104,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         }
 
         // Verify per-ABI invariants
+        let align = layout.backend_repr.scalar_platform_align(cx);
         match layout.layout.backend_repr() {
             BackendRepr::Scalar(_) => {
                 // These must always be present for `Scalar` types.
@@ -169,6 +162,9 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 }
             }
             BackendRepr::ScalarPair { a: scalar1, b: scalar2, b_offset } => {
+                // These must always be present for `ScalarPair` types.
+                let align = align.unwrap();
+                let _size = size.unwrap();
                 // Check that the underlying pair of fields matches.
                 let inner = skip_newtypes(cx, layout);
                 assert!(
@@ -176,6 +172,13 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     "`ScalarPair` type {} is newtype around non-`ScalarPair` type {}",
                     layout.ty,
                     inner.ty
+                );
+                // We currently require that a ScalarPair's alignment match the expectations
+                // of the platform ABI for its scalars, though this may change soon [MCP1007].
+                assert_eq!(
+                    layout.layout.align().abi,
+                    align,
+                    "alignment mismatch between ABI and layout in {layout:#?}"
                 );
                 // `a` is at memory offset zero, so to keep them from overlapping the offset
                 // to `b` must be at least as much as the size of `a`.
