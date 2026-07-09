@@ -2262,7 +2262,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
     pub fn same_type_modulo_infer<T: relate::Relate<TyCtxt<'tcx>>>(&self, a: T, b: T) -> bool {
         let (a, b) = self.resolve_vars_if_possible((a, b));
-        let (a, b) = ty::set_aliases_to_non_rigid(self.tcx, (a, b)).skip_norm_wip();
         SameTypeModuloInfer(self).relate(a, b).is_ok()
     }
 }
@@ -2312,6 +2311,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
             | (ty::Infer(ty::InferTy::TyVar(_)), _)
             | (_, ty::Infer(ty::InferTy::TyVar(_))) => Ok(a),
             (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Mismatch),
+            // Whether an alias is marked as `IsRigid::Yes` depends on inference progress.
+            // A comparison modulo inference must therefore ignore it.
+            (ty::Alias(_, alias_a), ty::Alias(_, alias_b)) => {
+                self.relate(*alias_a, *alias_b)?;
+                Ok(a)
+            }
             _ => relate::structurally_relate_tys(self, a, b),
         }
     }

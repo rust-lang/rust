@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<S as HasLifetime>::AtLifetime<'static> == ExistentialLifetime<_>`
-  --> $DIR/rigid-alias-in-same-type-modulo-infer-158773.rs:13:9
+  --> $DIR/rigid-alias-in-same-type-modulo-infer-158773.rs:11:9
    |
 LL | ...   ExistentialLifetime(ExistentialLifetime(()))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `ExistentialLifetime<_>`, found associated type

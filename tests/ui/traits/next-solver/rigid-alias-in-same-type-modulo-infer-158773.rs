@@ -1,5 +1,3 @@
-// Regression test for #158773.
-// This test is cited from #158773.
 //@ compile-flags: -Znext-solver=globally
 
 trait HasLifetime {
