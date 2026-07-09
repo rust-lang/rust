@@ -347,7 +347,14 @@ mod tests {
     #[test]
     #[cfg_attr(target_vendor = "apple", ignore = "Apple OSes don't use xdg-user-dirs")]
     fn can_fetch_xdg_user_dirs() {
-        let dirs = UserDirs::xdg_user().unwrap();
+        let dirs = match UserDirs::xdg_user() {
+            Ok(dirs) => dirs,
+            Err(e) if e.kind() == ErrorKind::NotFound => {
+                // xdg-user-dirs not initialized on this system, skip the test
+                return;
+            }
+            Err(e) => panic!("failed to fetch xdg user dirs: {e:?}"),
+        };
 
         assert!(dirs.cache_home().is_some());
         assert!(dirs.config_home().is_some());
