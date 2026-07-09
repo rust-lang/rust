@@ -2082,10 +2082,7 @@ impl<T: IntoIterator> Option<T> {
     /// assert_eq!(o2.into_flat_iter().collect::<Vec<_>>(), Vec::<&usize>::new());
     /// ```
     #[unstable(feature = "option_into_flat_iter", issue = "148441")]
-    pub fn into_flat_iter<A>(self) -> OptionFlatten<A>
-    where
-        T: IntoIterator<IntoIter = A>,
-    {
+    pub fn into_flat_iter(self) -> OptionFlatten<T::IntoIter> {
         OptionFlatten { iter: self.map(IntoIterator::into_iter) }
     }
 }
