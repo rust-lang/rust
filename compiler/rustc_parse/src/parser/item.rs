@@ -122,6 +122,8 @@ enum ReuseKind {
 }
 
 impl<'a> Parser<'a> {
+    /// Parse an item that is in a module or in a statement context
+    /// (and thus, not directly in an `impl`, `extern`, or `trait` block).
     pub fn parse_item(
         &mut self,
         force_collect: ForceCollect,
@@ -152,6 +154,7 @@ impl<'a> Parser<'a> {
         )
     }
 
+    /// Most general function for parsing an item in all contexts which items can appear.
     pub(super) fn parse_item_common(
         &mut self,
         attrs: AttrWrapper,
@@ -191,7 +194,10 @@ impl<'a> Parser<'a> {
                 return Ok((Some(item), Trailing::No, UsePreAttrPos::No));
             }
 
-            // At this point, we have failed to parse an item.
+            // At this point, we have failed to parse an item,
+            // but we may have succeeded at parsing a modifier (`pub`, `default`, `final`)
+            // that precedes an item. If we did any of those, we will emit an error.
+
             if !matches!(vis.kind, VisibilityKind::Inherited) {
                 let vis_str = pprust::vis_to_string(&vis).trim_end().to_string();
                 let mut err = this.dcx().create_err(diagnostics::VisibilityNotFollowedByItem {
