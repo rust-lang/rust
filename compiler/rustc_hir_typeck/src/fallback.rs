@@ -81,6 +81,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// - Unconstrained floats are replaced with `f64`, except when there is a trait predicate
     ///   `f32: From<{float}>`, in which case `f32` is used as the fallback instead.
     ///
+    /// - Non-numberics may get constrained if there are obligations which have multiple applicable
+    ///   impls, all bot one of which are low priority.
+    ///
     /// - Non-numerics may get replaced with `()` or `!`, depending on how they
     ///   were categorized by [`Self::calculate_diverging_fallback`], crate's
     ///   edition, and the setting of `#![rustc_never_type_options(fallback = ...)]`.
@@ -97,25 +100,16 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         diverging_fallback_ty: Ty<'tcx>,
         fallback_to_f32: &UnordSet<FloatVid>,
     ) -> bool {
-        // Careful: we do NOT shallow-resolve `ty`. We know that `ty`
-        // is an unsolved variable, and we determine its fallback
-        // based solely on how it was created, not what other type
-        // variables it may have been unified with since then.
+        // Resolve is needed because both low priority impl fallback and diverging fallback might
+        // apply to the same variable. We want low priority impl fallback to take precedence, so it
+        // happens first.
         //
-        // The reason this matters is that other attempts at fallback
-        // may (in principle) conflict with this fallback, and we wish
-        // to generate a type error in that case. (However, this
-        // actually isn't true right now, because we're only using the
-        // builtin fallback rules. This would be true if we were using
-        // user-supplied fallbacks. But it's still useful to write the
-        // code to detect bugs.)
-        //
-        // (Note though that if we have a general type variable `?T`
-        // that is then unified with an integer type variable `?I`
-        // that ultimately never gets resolved to a special integral
-        // type, `?T` is not considered unsolved, but `?I` is. The
-        // same is true for float variables.)
-        let fallback = match ty.kind() {
+        // Yet, there might be a case where multiple related type variables require fallback, such
+        // that low priority impl fallback applies to the first, resolving both of them. In such
+        // cases low priority impl fallback wouldn't apply to the second, allowing diverging
+        // fallback to trigger. To prevent such cases, resolve the variables in `ty` first, to make
+        // sure it is still unresolved.
+        let fallback = match self.resolve_vars_if_possible(ty).kind() {
             _ if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx, e),
             ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
             ty::Infer(ty::FloatVar(vid)) if fallback_to_f32.contains(vid) => self.tcx.types.f32,
@@ -127,7 +121,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 return true;
             }
 
-            _ if diverging_fallback.contains(&ty) => {
+            ty::Infer(_) if diverging_fallback.contains(&ty) => {
                 self.diverging_fallback_has_occurred.set(true);
                 diverging_fallback_ty
             }
