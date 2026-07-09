@@ -1,7 +1,6 @@
 //! Construction of MIR from HIR.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(deref_patterns)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
