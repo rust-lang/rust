@@ -1,5 +1,5 @@
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/missing-universe-cause-issue-114907.rs:33:5
+  --> $DIR/missing-universe-cause-issue-114907.rs:34:5
    |
 LL |     accept(callback);
    |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
@@ -12,21 +12,7 @@ LL |     let callback = |_: &()| {};
    |                      +++++
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/missing-universe-cause-issue-114907.rs:33:5
-   |
-LL |     accept(callback);
-   |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
-   |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider adding an explicit type annotation to the closure's argument
-   |
-LL |     let callback = |_: &()| {};
-   |                      +++++
-
-error: implementation of `FnOnce` is not general enough
-  --> $DIR/missing-universe-cause-issue-114907.rs:33:5
+  --> $DIR/missing-universe-cause-issue-114907.rs:34:5
    |
 LL |     accept(callback);
    |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
@@ -40,7 +26,21 @@ LL |     let callback = |_: &()| {};
    |                      +++++
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/missing-universe-cause-issue-114907.rs:33:5
+  --> $DIR/missing-universe-cause-issue-114907.rs:34:5
+   |
+LL |     accept(callback);
+   |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     let callback = |_: &()| {};
+   |                      +++++
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/missing-universe-cause-issue-114907.rs:34:5
    |
 LL |     accept(callback);
    |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
@@ -54,13 +54,13 @@ LL |     let callback = |_: &()| {};
    |                      +++++
 
 error: higher-ranked subtype error
-  --> $DIR/missing-universe-cause-issue-114907.rs:33:5
+  --> $DIR/missing-universe-cause-issue-114907.rs:34:5
    |
 LL |     accept(callback);
    |     ^^^^^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/missing-universe-cause-issue-114907.rs:33:21
+  --> $DIR/missing-universe-cause-issue-114907.rs:34:21
    |
 LL |     accept(callback);
    |                     ^

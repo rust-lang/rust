@@ -5,7 +5,8 @@
     clippy::match_single_binding,
     clippy::needless_ifs,
     clippy::never_loop,
-    clippy::unused_unit
+    clippy::unused_unit,
+    todo_macro_calls
 )]
 #![warn(clippy::manual_let_else)]
 enum Variant {

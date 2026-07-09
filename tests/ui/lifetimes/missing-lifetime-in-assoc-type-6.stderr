@@ -1,5 +1,5 @@
 error: missing lifetime in associated type
-  --> $DIR/missing-lifetime-in-assoc-type-6.rs:16:17
+  --> $DIR/missing-lifetime-in-assoc-type-6.rs:17:17
    |
 LL | impl<'a> Trait for &'_ S {
    |     ---- there is a named lifetime specified on the impl block you could use
@@ -14,7 +14,7 @@ LL |     type Item = &'a T;
    |                  ++
 
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/missing-lifetime-in-assoc-type-6.rs:11:6
+  --> $DIR/missing-lifetime-in-assoc-type-6.rs:12:6
    |
 LL | impl<'a> Trait for &'_ S {
    |      ^^ unconstrained lifetime parameter

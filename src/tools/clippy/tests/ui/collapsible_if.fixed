@@ -1,4 +1,4 @@
-#![allow(clippy::eq_op, clippy::needless_ifs)]
+#![allow(clippy::eq_op, clippy::needless_ifs, todo_macro_calls)]
 #![expect(clippy::assertions_on_constants, clippy::redundant_pattern_matching)]
 
 #[rustfmt::skip]

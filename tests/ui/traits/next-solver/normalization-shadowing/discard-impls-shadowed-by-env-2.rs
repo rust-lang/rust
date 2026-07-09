@@ -3,7 +3,7 @@
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 
-#![allow(warnings)]
+#![allow(warnings, todo_macro_calls)]
 trait Trait<U> {
     type Assoc;
 }

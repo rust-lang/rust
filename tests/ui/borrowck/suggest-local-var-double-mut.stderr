@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*self` as mutable more than once at a time
-  --> $DIR/suggest-local-var-double-mut.rs:12:22
+  --> $DIR/suggest-local-var-double-mut.rs:13:22
    |
 LL |             self.foo(self.bar());
    |             ---- --- ^^^^ second mutable borrow occurs here
@@ -8,18 +8,18 @@ LL |             self.foo(self.bar());
    |             first mutable borrow occurs here
    |
 help: try adding a local storing this argument...
-  --> $DIR/suggest-local-var-double-mut.rs:12:22
+  --> $DIR/suggest-local-var-double-mut.rs:13:22
    |
 LL |             self.foo(self.bar());
    |                      ^^^^^^^^^^
 help: ...and then using that local as the argument to this call
-  --> $DIR/suggest-local-var-double-mut.rs:12:13
+  --> $DIR/suggest-local-var-double-mut.rs:13:13
    |
 LL |             self.foo(self.bar());
    |             ^^^^^^^^^^^^^^^^^^^^
 
 error[E0499]: cannot borrow `*self` as mutable more than once at a time
-  --> $DIR/suggest-local-var-double-mut.rs:24:39
+  --> $DIR/suggest-local-var-double-mut.rs:25:39
    |
 LL |             Self::foo(self, Self::bar(self));
    |             --------- ----            ^^^^ second mutable borrow occurs here
@@ -28,12 +28,12 @@ LL |             Self::foo(self, Self::bar(self));
    |             first borrow later used by call
    |
 help: try adding a local storing this argument...
-  --> $DIR/suggest-local-var-double-mut.rs:24:29
+  --> $DIR/suggest-local-var-double-mut.rs:25:29
    |
 LL |             Self::foo(self, Self::bar(self));
    |                             ^^^^^^^^^^^^^^^
 help: ...and then using that local as the argument to this call
-  --> $DIR/suggest-local-var-double-mut.rs:24:13
+  --> $DIR/suggest-local-var-double-mut.rs:25:13
    |
 LL |             Self::foo(self, Self::bar(self));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

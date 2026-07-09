@@ -1,5 +1,5 @@
 #![warn(clippy::iter_on_single_items)]
-#![allow(clippy::iter_next_slice)]
+#![allow(clippy::iter_next_slice, todo_macro_calls)]
 
 fn array() {
     assert_eq!([123].into_iter().next(), Some(123));

@@ -88,6 +88,7 @@ unsafe impl Allocator for MyAllocator {
         Ok(NonNull::slice_from_raw_parts(ptr, layout.size()))
     }
 
+    #[expect(todo_macro_calls)]
     unsafe fn deallocate(&self, ptr: NonNull<u8>, _layout: Layout) {
         // Make sure accesses via `self` don't disturb anything.
         let _val = self.bins[0].top.get();

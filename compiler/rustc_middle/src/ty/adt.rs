@@ -309,6 +309,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self.is_fundamental()
     }
 
+    #[cfg_attr(not(bootstrap), expect(todo_macro_calls))]
     fn destructor(self, tcx: TyCtxt<'tcx>) -> Option<AdtDestructorKind> {
         Some(match tcx.constness(self.destructor(tcx)?.did) {
             hir::Constness::Const { always: true } => todo!("FIXME(comptime)"),

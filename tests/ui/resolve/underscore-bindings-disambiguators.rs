@@ -1,6 +1,7 @@
 //@ edition:2015
 // Regression test for issue #144168 where some `_` bindings were incorrectly only allowed once per
 // module, failing with "error[E0428]: the name `_` is defined multiple times".
+#![allow(todo_macro_calls)]
 
 // This weird/complex setup is reduced from `zerocopy-0.8.25` where the issue was encountered.
 

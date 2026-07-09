@@ -1,4 +1,4 @@
-#![allow(clippy::needless_return)]
+#![allow(clippy::needless_return, todo_macro_calls)]
 #![warn(clippy::filter_map_identity)]
 #![feature(stmt_expr_attributes)]
 

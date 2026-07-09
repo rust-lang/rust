@@ -1,5 +1,5 @@
 #![expect(clippy::boxed_local, clippy::needless_late_init)]
-#![allow(clippy::box_collection)]
+#![allow(clippy::box_collection, todo_macro_calls)]
 #![warn(clippy::assigning_clones)]
 
 use std::borrow::ToOwned;

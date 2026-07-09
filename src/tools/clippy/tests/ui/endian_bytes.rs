@@ -1,4 +1,4 @@
-#![expect(clippy::diverging_sub_expression)]
+#![expect(clippy::diverging_sub_expression, todo_macro_calls)]
 #![no_main]
 
 // FIXME(f16_f128): add these types when `{to_from}_*_bytes` are available

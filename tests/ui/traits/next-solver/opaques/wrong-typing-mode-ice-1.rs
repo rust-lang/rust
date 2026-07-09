@@ -7,6 +7,7 @@
 // This caused opaque types in the defining body not to be revealed.
 
 #![feature(type_alias_impl_trait)]
+#![allow(todo_macro_calls)]
 
 struct Task<F>(F);
 

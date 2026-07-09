@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::error_impl_error)]
 #![no_main]
 

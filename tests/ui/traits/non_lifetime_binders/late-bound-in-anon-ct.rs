@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![feature(non_lifetime_binders, generic_const_exprs)]
 
 fn foo() -> usize

@@ -1,5 +1,5 @@
 #![warn(clippy::match_single_binding)]
-#![allow(clippy::no_effect, clippy::toplevel_ref_arg)]
+#![allow(clippy::no_effect, clippy::toplevel_ref_arg, todo_macro_calls)]
 #![expect(clippy::let_unit_value, clippy::useless_vec)]
 
 struct Point {

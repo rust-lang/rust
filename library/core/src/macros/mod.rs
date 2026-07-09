@@ -811,7 +811,10 @@ macro_rules! unimplemented {
 /// an intent of implementing the functionality later and the message is "not yet
 /// implemented", `unimplemented!` makes no such claims. Its message is "not implemented".
 ///
-/// Also, some IDEs will mark `todo!`s.
+/// Also, some IDEs will mark `todo!`s. Furthermore, the `unreachable_code` lint will
+/// not warn on code that is unreachable because of a `todo!()` to reduce unhelpful
+/// messages. The code will however still be marked as unreachable, which may have an
+/// effect on type and lifetime checks.
 ///
 /// # Panics
 ///
@@ -844,6 +847,7 @@ macro_rules! unimplemented {
 /// # }
 /// struct MyStruct;
 ///
+/// # #[allow(todo_macro_calls)]
 /// impl Foo for MyStruct {
 ///     fn bar(&self) -> u8 {
 ///         1 + 1

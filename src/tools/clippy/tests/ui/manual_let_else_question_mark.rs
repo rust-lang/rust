@@ -1,4 +1,5 @@
 #![warn(clippy::manual_let_else, clippy::question_mark)]
+#![allow(todo_macro_calls)]
 
 enum Variant {
     A(usize, usize),

@@ -2,7 +2,7 @@
 //@ compile-flags: -Cdebuginfo=2
 // fixes issue #94149
 
-#![allow(dead_code)]
+#![allow(dead_code, todo_macro_calls)]
 
 pub fn main() {
     let _ = Foo::<dyn FooTrait>::new();

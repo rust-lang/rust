@@ -442,6 +442,7 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
 }
 
 // NOTE: Keep this in sync with `const_conditions_for_destruct` in the new solver.
+#[cfg_attr(not(bootstrap), expect(todo_macro_calls))]
 fn evaluate_host_effect_for_destruct_goal<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
@@ -587,6 +588,7 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
     }
 }
 
+#[cfg_attr(not(bootstrap), expect(todo_macro_calls))]
 fn evaluate_host_effect_from_selection_candidate<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,

@@ -1,6 +1,7 @@
 //@ build-pass
 //@ compile-flags: -Cdebuginfo=2
 // fixes issue #94725
+#![allow(todo_macro_calls)]
 
 #![feature(allocator_api)]
 

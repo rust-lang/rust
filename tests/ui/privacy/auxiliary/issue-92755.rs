@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 mod machine {
     pub struct A {
         pub b: B,

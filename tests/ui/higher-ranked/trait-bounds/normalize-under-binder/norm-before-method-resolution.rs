@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 // We normalize and check bounds before we resolve the generics
 // of the function (which we know because of the return type).

@@ -1,4 +1,5 @@
 #![feature(type_alias_impl_trait)]
+#![allow(todo_macro_calls)]
 
 //! This test used to ICE rust-lang/rust#124891
 //! because we added an assertion for catching cases where opaque types get

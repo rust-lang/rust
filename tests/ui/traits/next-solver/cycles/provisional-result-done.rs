@@ -1,5 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 // This tests checks that we update results in the provisional cache when
 // we pop a goal from the stack.

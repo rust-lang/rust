@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 pub fn todo<T>() -> T {
     const { todo!() }

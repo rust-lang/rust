@@ -1,5 +1,5 @@
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:8:13
+  --> tests/ui/manual_ok_err.rs:9:13
    |
 LL |       let _ = match funcall() {
    |  _____________^
@@ -13,7 +13,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::manual_ok_err)]`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:14:13
+  --> tests/ui/manual_ok_err.rs:15:13
    |
 LL |       let _ = match funcall() {
    |  _____________^
@@ -24,7 +24,7 @@ LL | |     };
    | |_____^ help: replace with: `funcall().ok()`
 
 error: manual implementation of `err`
-  --> tests/ui/manual_ok_err.rs:20:13
+  --> tests/ui/manual_ok_err.rs:21:13
    |
 LL |       let _ = match funcall() {
    |  _____________^
@@ -35,7 +35,7 @@ LL | |     };
    | |_____^ help: replace with: `funcall().err()`
 
 error: manual implementation of `err`
-  --> tests/ui/manual_ok_err.rs:26:13
+  --> tests/ui/manual_ok_err.rs:27:13
    |
 LL |       let _ = match funcall() {
    |  _____________^
@@ -46,7 +46,7 @@ LL | |     };
    | |_____^ help: replace with: `funcall().err()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:32:13
+  --> tests/ui/manual_ok_err.rs:33:13
    |
 LL |       let _ = if let Ok(v) = funcall() {
    |  _____________^
@@ -59,7 +59,7 @@ LL | |     };
    | |_____^ help: replace with: `funcall().ok()`
 
 error: manual implementation of `err`
-  --> tests/ui/manual_ok_err.rs:40:13
+  --> tests/ui/manual_ok_err.rs:41:13
    |
 LL |       let _ = if let Err(v) = funcall() {
    |  _____________^
@@ -72,7 +72,7 @@ LL | |     };
    | |_____^ help: replace with: `funcall().err()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:49:13
+  --> tests/ui/manual_ok_err.rs:50:13
    |
 LL |       let _ = match funcall() {
    |  _____________^
@@ -83,7 +83,7 @@ LL | |     };
    | |_____^ help: replace with: `funcall().ok()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:66:13
+  --> tests/ui/manual_ok_err.rs:67:13
    |
 LL |       let _ = match -S {
    |  _____________^
@@ -94,7 +94,7 @@ LL | |     };
    | |_____^ help: replace with: `(-S).ok()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:137:12
+  --> tests/ui/manual_ok_err.rs:138:12
    |
 LL |       } else if let Ok(n) = "1".parse::<u8>() {
    |  ____________^
@@ -112,7 +112,7 @@ LL ~     };
    |
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:152:9
+  --> tests/ui/manual_ok_err.rs:153:9
    |
 LL | /         match &x.field {
 LL | |
@@ -122,7 +122,7 @@ LL | |         }
    | |_________^ help: replace with: `(&x.field).as_ref().ok()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:161:9
+  --> tests/ui/manual_ok_err.rs:162:9
    |
 LL | /         match result_with_ref() {
 LL | |
@@ -132,7 +132,7 @@ LL | |         }
    | |_________^ help: replace with: `result_with_ref().as_ref().ok()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:173:9
+  --> tests/ui/manual_ok_err.rs:174:9
    |
 LL | /         match result_with_ref_mut(x) {
 LL | |
@@ -142,7 +142,7 @@ LL | |         }
    | |_________^ help: replace with: `result_with_ref_mut(x).as_mut().ok()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:188:13
+  --> tests/ui/manual_ok_err.rs:189:13
    |
 LL |       let _ = match test_expr!(42) {
    |  _____________^

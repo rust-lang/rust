@@ -2,7 +2,8 @@
 #![allow(
     clippy::eq_op,
     clippy::field_reassign_with_default,
-    clippy::literal_string_with_formatting_args
+    clippy::literal_string_with_formatting_args,
+    todo_macro_calls
 )]
 
 extern crate proc_macro;

@@ -1,4 +1,5 @@
 //@ edition: 2021
+#![allow(todo_macro_calls)]
 
 // Ensure that the output of a `fn` pointer that implements `AsyncFn*` is `Sized`,
 // like other built-in impls of an fn pointer, like `Fn*`.

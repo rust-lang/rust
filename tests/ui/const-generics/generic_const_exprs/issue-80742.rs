@@ -1,6 +1,6 @@
 //@ check-fail
 
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_calls)]
 #![feature(generic_const_exprs)]
 
 use std::fmt::Debug;

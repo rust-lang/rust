@@ -1,3 +1,5 @@
+#![allow(todo_macro_calls)]
+
 pub trait Trait<T> {
     type Assoc;
 }

@@ -4,7 +4,7 @@
     clippy::needless_ifs,
     clippy::iter_next_slice,
     clippy::iter_count
-)]
+, todo_macro_calls)]
 #![warn(clippy::needless_collect)]
 
 use std::collections::{BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
