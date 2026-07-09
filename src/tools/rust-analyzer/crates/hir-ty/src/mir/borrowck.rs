@@ -133,7 +133,7 @@ fn all_mir_bodies<'db>(
     }
 }
 
-#[salsa_macros::tracked(returns(ref), lru = 2024)]
+#[salsa_macros::tracked(returns(as_deref), lru = 2024)]
 pub fn borrowck_query(
     db: &dyn HirDatabase,
     def: InferBodyId,
@@ -144,7 +144,7 @@ pub fn borrowck_query(
     let env = db.trait_environment(def.generic_def(db));
     // This calculates opaques defining scope which is a bit costly therefore is put outside `all_mir_bodies()`.
     let typing_mode = TypingMode::borrowck(interner, def.into());
-    let res = all_mir_bodies(
+    all_mir_bodies(
         db,
         def,
         |body, owner| {
@@ -184,8 +184,7 @@ pub fn borrowck_query(
                 }
             }
         },
-    )?;
-    Ok(res)
+    )
 }
 
 fn moved_out_of_ref<'db>(

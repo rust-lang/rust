@@ -6,7 +6,7 @@ use rustc_abi::{AddressSpace, AlignFromBytesError, TargetDataLayoutError};
 
 use crate::db::HirDatabase;
 
-#[salsa_macros::tracked(returns(ref))]
+#[salsa_macros::tracked(returns(as_ref))]
 pub fn target_data_layout_query(
     db: &dyn HirDatabase,
     krate: Crate,

@@ -2101,7 +2101,7 @@ impl DefWithBody {
         }
 
         if let Ok(borrowck_results) = db.borrowck(id.into()) {
-            for borrowck_result in borrowck_results.iter() {
+            for borrowck_result in borrowck_results {
                 let mir_body = borrowck_result.mir_body(db);
                 for moof in &borrowck_result.moved_out_of_ref {
                     let span: InFile<SyntaxNodePtr> = match moof.span {
