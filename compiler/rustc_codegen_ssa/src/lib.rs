@@ -163,11 +163,12 @@ pub enum ModuleKind {
 }
 
 bitflags::bitflags! {
+    /// This previously had an `UNALIGNED` variant, but that should never be done via flags.
+    /// If you want something to be unaligned, see [`mir::place::PlaceRef::unaligned`].
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct MemFlags: u8 {
         const VOLATILE = 1 << 0;
         const NONTEMPORAL = 1 << 1;
-        const UNALIGNED = 1 << 2;
         /// Indicates that writing through the stored pointer is undefined behavior.
         /// Only valid on stores of pointers, or pairs where the first element is a pointer.
         /// In the latter case, the flag only applies to the first element of the pair.
