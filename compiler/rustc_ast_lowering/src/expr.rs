@@ -498,6 +498,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
 
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
+
+                ExprKind::DirectConstArg(_) => {
+                    let e = self
+                        .tcx
+                        .dcx()
+                        .struct_span_err(
+                            e.span,
+                            "expected expression, found `direct_const_arg!()` constant",
+                        )
+                        .emit();
+                    hir::ExprKind::Err(e)
+                }
             };
 
             hir::Expr { hir_id: expr_hir_id, kind, span }
@@ -599,11 +611,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         arg
                     };
 
-                let anon_const = AnonConst {
-                    id: node_id,
-                    value: const_value,
-                    mgca_disambiguation: MgcaDisambiguation::AnonConst,
-                };
+                let anon_const = AnonConst { id: node_id, value: const_value };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
             } else {
                 real_args.push(arg);
