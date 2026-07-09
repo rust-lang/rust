@@ -476,7 +476,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             Err(AbiMismatch) | Ok(None) => BackendRepr::Memory { sized: true },
             Ok(Some((repr, _))) => match repr {
                 // Mismatched alignment (e.g. union is #[repr(packed)]): disable opt
-                BackendRepr::Scalar(_) | BackendRepr::ScalarPair(_, _)
+                BackendRepr::Scalar(_) | BackendRepr::ScalarPair { .. }
                     if repr.scalar_platform_align(dl).unwrap() != align =>
                 {
                     BackendRepr::Memory { sized: true }
@@ -489,7 +489,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 }
                 // the alignment tests passed and we can use this
                 BackendRepr::Scalar(..)
-                | BackendRepr::ScalarPair(..)
+                | BackendRepr::ScalarPair { .. }
                 | BackendRepr::SimdVector { .. }
                 | BackendRepr::SimdScalableVector { .. }
                 | BackendRepr::Memory { .. } => repr,
@@ -558,7 +558,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             };
             match &mut st.backend_repr {
                 BackendRepr::Scalar(scalar) => hide_niches(scalar),
-                BackendRepr::ScalarPair(a, b) => {
+                BackendRepr::ScalarPair { a, b, b_offset: _ } => {
                     hide_niches(a);
                     hide_niches(b);
                 }
@@ -701,13 +701,21 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     // When the total alignment and size match, we can use the
                     // same ABI as the scalar variant with the reserved niche.
                     BackendRepr::Scalar(_) => BackendRepr::Scalar(niche_scalar),
-                    BackendRepr::ScalarPair(first, second) => {
+                    BackendRepr::ScalarPair { a: first, b: second, b_offset } => {
                         // Only the niche is guaranteed to be initialised,
                         // so use union layouts for the other primitive.
                         if niche_offset == Size::ZERO {
-                            BackendRepr::ScalarPair(niche_scalar, second.to_union())
+                            BackendRepr::ScalarPair {
+                                a: niche_scalar,
+                                b: second.to_union(),
+                                b_offset,
+                            }
                         } else {
-                            BackendRepr::ScalarPair(first.to_union(), niche_scalar)
+                            BackendRepr::ScalarPair {
+                                a: first.to_union(),
+                                b: niche_scalar,
+                                b_offset,
+                            }
                         }
                     }
                     _ => BackendRepr::Memory { sized: true },
@@ -1037,7 +1045,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         // If we pick a "clever" (by-value) ABI, we might have to adjust the ABI of the
         // variants to ensure they are consistent. This is because a downcast is
         // semantically a NOP, and thus should not affect layout.
-        if matches!(abi, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)) {
+        if matches!(abi, BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }) {
             for variant in &mut layout_variants {
                 // We only do this for variants with fields; the others are not accessed anyway.
                 // Also do not overwrite any already existing "clever" ABIs.
@@ -1354,7 +1362,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                             }
                             // But scalar pairs are Rust-specific and get
                             // treated as aggregates by C ABIs anyway.
-                            BackendRepr::ScalarPair(..) => {
+                            BackendRepr::ScalarPair { .. } => {
                                 abi = field.backend_repr;
                             }
                             _ => {}

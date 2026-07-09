@@ -3692,18 +3692,22 @@ impl<T> [T] {
         self.partition_dedup_by(|a, b| a == b)
     }
 
-    /// Moves all but the first of consecutive elements to the end of the slice satisfying
-    /// a given equality relation.
+    /// Moves all but the first of consecutive elements to the end of the slice that are
+    /// "equal" according to the given predicate function.
     ///
     /// Returns two slices. The first contains no consecutive repeated elements.
     /// The second contains all the duplicates in no specified order.
     ///
-    /// The `same_bucket` function is passed references to two elements from the slice and
-    /// must determine if the elements compare equal. The elements are passed in opposite order
-    /// from their order in the slice, so if `same_bucket(a, b)` returns `true`, `a` is moved
-    /// at the end of the slice.
+    /// The predicate `same_bucket(x, p)` is passed references to two elements from
+    /// the slice and must determine if the elements compare equal. The element `p` occurs
+    /// *before* `x` in the slice (`[.., p, .., x, ..]`), so `same_bucket(x, p)`
+    /// is receiving them in reversed order.
     ///
-    /// If the slice is sorted, the first returned slice contains no duplicates.
+    /// If the slice is sorted, the first returned slice contains no duplicates. For more
+    /// complicated predicates however, the order (ascending vs. descending) can matter.
+    ///
+    /// Both references passed to `same_bucket` are mutable.
+    /// This allows merged elements in the first slice by mutating `p` and returning `true`.
     ///
     /// # Examples
     ///
@@ -3712,7 +3716,7 @@ impl<T> [T] {
     ///
     /// let mut slice = ["foo", "Foo", "BAZ", "Bar", "bar", "baz", "BAZ"];
     ///
-    /// let (dedup, duplicates) = slice.partition_dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+    /// let (dedup, duplicates) = slice.partition_dedup_by(|x, p| x.eq_ignore_ascii_case(p));
     ///
     /// assert_eq!(dedup, ["foo", "BAZ", "Bar", "baz"]);
     /// assert_eq!(duplicates, ["bar", "Foo", "BAZ"]);
@@ -3793,7 +3797,7 @@ impl<T> [T] {
         // are less than `len`, thus are inside `self`. `prev_ptr_write` points to
         // one element before `ptr_write`, but `next_write` starts at 1, so
         // `prev_ptr_write` is never less than 0 and is inside the slice.
-        // This fulfils the requirements for dereferencing `ptr_read`, `prev_ptr_write`
+        // This fulfills the requirements for dereferencing `ptr_read`, `prev_ptr_write`
         // and `ptr_write`, and for using `ptr.add(next_read)`, `ptr.add(next_write - 1)`
         // and `prev_ptr_write.offset(1)`.
         //
