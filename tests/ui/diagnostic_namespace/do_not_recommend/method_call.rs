@@ -2,7 +2,7 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-
+//@forbid-output: DoNotMentionThis
 extern crate foreign_blanket_impl;
 use foreign_blanket_impl::{DoNotMentionThis, ForeignType};
 
@@ -22,8 +22,8 @@ fn main() {
         //~^ERROR the trait bound `ForeignType<u8>: Clone` is not satisfied [E0277]
 
         let _ = f.clone();
-        //[next]~^ERROR no method named `clone` found for struct `ForeignType<T>` in the current scope [E0599]
-        //[current]~^^ERROR the method `clone` exists for struct `ForeignType<u8>`, but its trait bounds were not satisfied [E0599]
+        //~^ERROR no method named `clone` found for struct `ForeignType<T>` in the current scope [E0599]
+
     }
 
     {
@@ -32,7 +32,7 @@ fn main() {
         //~^ERROR the trait bound `LocalType<u8>: Clone` is not satisfied [E0277]
 
         let _ = l.clone();
-        //[next]~^ERROR no method named `clone` found for struct `LocalType<T>` in the current scope [E0599]
-        //[current]~^^ERROR the method `clone` exists for struct `LocalType<u8>`, but its trait bounds were not satisfied [E0599]
+        //~^ERROR no method named `clone` found for struct `LocalType<T>` in the current scope [E0599]
+        
     }
 }

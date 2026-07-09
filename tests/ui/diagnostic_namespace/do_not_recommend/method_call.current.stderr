@@ -4,20 +4,11 @@ error[E0277]: the trait bound `ForeignType<u8>: Clone` is not satisfied
 LL |         let _ = Clone::clone(&f);
    |                              ^^ the trait `Clone` is not implemented for `ForeignType<u8>`
 
-error[E0599]: the method `clone` exists for struct `ForeignType<u8>`, but its trait bounds were not satisfied
+error[E0599]: no method named `clone` found for struct `ForeignType<T>` in the current scope
   --> $DIR/method_call.rs:24:19
    |
 LL |         let _ = f.clone();
-   |                   ^^^^^ method cannot be called on `ForeignType<u8>` due to unsatisfied trait bounds
-   |
-  ::: $DIR/auxiliary/foreign_blanket_impl.rs:1:1
-   |
-LL | pub struct ForeignType<T>(pub T);
-   | ------------------------- doesn't satisfy `ForeignType<u8>: Clone`
-   |
-   = note: the following trait bounds were not satisfied:
-           `u8: DoNotMentionThis`
-           which is required by `ForeignType<u8>: Clone`
+   |                   ^^^^^ method not found in `ForeignType<u8>`
 
 error[E0277]: the trait bound `LocalType<u8>: Clone` is not satisfied
   --> $DIR/method_call.rs:31:30
@@ -31,22 +22,15 @@ LL + #[derive(Clone)]
 LL | pub struct LocalType<T>(pub T);
    |
 
-error[E0599]: the method `clone` exists for struct `LocalType<u8>`, but its trait bounds were not satisfied
+error[E0599]: no method named `clone` found for struct `LocalType<T>` in the current scope
   --> $DIR/method_call.rs:34:19
    |
 LL | pub struct LocalType<T>(pub T);
-   | ----------------------- method `clone` not found for this struct because it doesn't satisfy `LocalType<u8>: Clone`
+   | ----------------------- method `clone` not found for this struct
 ...
 LL |         let _ = l.clone();
-   |                   ^^^^^ method cannot be called on `LocalType<u8>` due to unsatisfied trait bounds
+   |                   ^^^^^ method not found in `LocalType<u8>`
    |
-note: trait bound `u8: DoNotMentionThis` was not satisfied
-  --> $DIR/method_call.rs:12:9
-   |
-LL | impl<T: DoNotMentionThis> Clone for LocalType<T> {
-   |         ^^^^^^^^^^^^^^^^  -----     ------------
-   |         |
-   |         unsatisfied trait bound introduced here
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `Clone`

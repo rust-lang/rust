@@ -1886,7 +1886,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
         let obligation =
             traits::Obligation::new(self.tcx, self.misc(self.span), self.param_env, trait_ref);
-        traits::SelectionContext::new(self).select(&obligation)
+        let candidate = traits::SelectionContext::new(self).select(&obligation);
+        if let Ok(Some(traits::ImplSource::UserDefined(impl_source_user_defined_data))) = &candidate
+            && self.infcx.tcx.do_not_recommend_impl(impl_source_user_defined_data.impl_def_id)
+        {
+            return Err(traits::SelectionError::Unimplemented);
+        }
+        candidate
     }
 
     /// Used for ambiguous method call error reporting. Uses probing that throws away the result internally,
