@@ -840,9 +840,7 @@ impl FromIterator<TokenTree> for TokenStream {
 
 impl StableHash for TokenStream {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        for sub_tt in self.iter() {
-            sub_tt.stable_hash(hcx, hasher);
-        }
+        self.0.as_slice().stable_hash(hcx, hasher);
     }
 }
 
