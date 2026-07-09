@@ -90,6 +90,7 @@ pub trait UserDirsExt: Sized + Sealed {
 }
 
 #[unstable(feature = "dir_discovery", issue = "157515")]
+#[cfg(target_vendor = "apple")]
 impl UserDirsExt for UserDirs {
     fn sysdir() -> io::Result<Self> {
         let mut dirs = UserDirs::new();
@@ -126,6 +127,7 @@ impl UserDirsExt for UserDirs {
 }
 
 /// Get the path for a system directory using `sysdir(3)`.
+#[cfg(target_vendor = "apple")]
 fn get_user_sysdir(
     home: &Path,
     kind: sys::sysdir_search_path_directory_t,
@@ -188,6 +190,7 @@ fn get_user_sysdir(
     Err(const_error!(ErrorKind::InvalidData, "multiple paths returned for standard user directory"))
 }
 
+#[cfg(target_vendor = "apple")]
 mod sys {
     pub use libc::sysdir_search_path_directory_t::*;
     pub use libc::sysdir_search_path_domain_mask_t::*;
@@ -198,6 +201,7 @@ mod sys {
 }
 
 #[cfg(test)]
+#[cfg(target_vendor = "apple")]
 mod tests {
     use super::*;
 
