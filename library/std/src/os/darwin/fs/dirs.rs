@@ -184,7 +184,9 @@ fn get_user_sysdir(
     // exhaust iterator for cleanup; ignore the paths that get returned
     while state != 0 {
         // SAFETY: `state` is nonzero and is from a previous call to sysdir_get_next_search_path_enumeration
-        state = unsafe { sys::sysdir_get_next_search_path_enumeration(state, path.as_mut_ptr()) };
+        state = unsafe {
+            sys::sysdir_get_next_search_path_enumeration(state, path.as_mut_ptr() as *mut c_char)
+        };
     }
 
     Err(const_error!(ErrorKind::InvalidData, "multiple paths returned for standard user directory"))
