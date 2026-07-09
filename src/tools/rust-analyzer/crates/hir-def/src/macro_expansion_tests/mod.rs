@@ -43,7 +43,6 @@ use tt::{TextRange, TextSize};
 
 use crate::{
     AdtId, Lookup, ModuleDefId,
-    db::DefDatabase,
     expr_store::Body,
     nameres::{DefMap, ModuleSource, crate_def_map},
     src::HasSource,
@@ -260,7 +259,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 }
 
 fn resolve_macro_call_id(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     def_map: &DefMap,
     ast_id: AstId<ast::MacroCall>,
     ast_ptr: InFile<AstPtr<ast::MacroCall>>,

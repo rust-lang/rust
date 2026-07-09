@@ -858,7 +858,6 @@ dependencies = [
  "intern",
  "itertools 0.15.0",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "query-group-macro",
  "ra-ap-rustc_abi",
  "ra-ap-rustc_parse_format",
  "rustc-hash 2.1.2",

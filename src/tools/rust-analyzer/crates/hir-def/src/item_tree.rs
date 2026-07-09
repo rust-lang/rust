@@ -44,7 +44,7 @@ use std::{
 };
 
 use ast::{AstNode, StructKind};
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use cfg::CfgOptions;
 use hir_expand::{
     ExpandTo, HirFileId,
@@ -63,7 +63,7 @@ use syntax::{SourceFile, SyntaxKind, ast, match_ast};
 use thin_vec::ThinVec;
 use tt::TextRange;
 
-use crate::{BlockId, Lookup, attrs::parse_extra_crate_attrs, db::DefDatabase};
+use crate::{BlockId, Lookup, attrs::parse_extra_crate_attrs};
 
 pub(crate) use crate::item_tree::{
     attrs::*,
@@ -94,7 +94,7 @@ impl fmt::Debug for RawVisibilityId {
 }
 
 fn lower_extra_crate_attrs<'a>(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     crate_attrs_as_src: SourceFile,
     file_id: span::EditionedFileId,
     cfg_options: &dyn Fn() -> &'a CfgOptions,
@@ -120,7 +120,8 @@ fn lower_extra_crate_attrs<'a>(
     AttrsOrCfg::lower(db, &crate_attrs_as_src, cfg_options, span_map)
 }
 
-pub(crate) fn file_item_tree(db: &dyn DefDatabase, file_id: HirFileId, krate: Crate) -> &ItemTree {
+/// Computes an [`ItemTree`] for the given file or macro expansion.
+pub fn file_item_tree(db: &dyn SourceDatabase, file_id: HirFileId, krate: Crate) -> &ItemTree {
     match file_item_tree_query(db, file_id, krate) {
         Some(item_tree) => item_tree,
         None => {
@@ -139,7 +140,7 @@ pub(crate) fn file_item_tree(db: &dyn DefDatabase, file_id: HirFileId, krate: Cr
 
 #[salsa_macros::tracked(returns(ref))]
 fn file_item_tree_query(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     file_id: HirFileId,
     krate: Crate,
 ) -> Option<Box<ItemTree>> {
@@ -198,7 +199,7 @@ fn file_item_tree_query(
 
 #[salsa_macros::tracked(returns(ref))]
 pub(crate) fn block_item_tree_query(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     block: BlockId,
     krate: Crate,
 ) -> ItemTree {
@@ -266,7 +267,7 @@ impl ItemTree {
         ItemTreeDataStats { traits, impls, mods, macro_calls, macro_rules }
     }
 
-    pub fn pretty_print(&self, db: &dyn DefDatabase, edition: Edition) -> String {
+    pub fn pretty_print(&self, db: &dyn SourceDatabase, edition: Edition) -> String {
         pretty::print_item_tree(db, self, edition)
     }
 
@@ -344,7 +345,11 @@ impl TreeId {
         Self { file, block }
     }
 
-    pub(crate) fn item_tree<'db>(&self, db: &'db dyn DefDatabase, krate: Crate) -> &'db ItemTree {
+    pub(crate) fn item_tree<'db>(
+        &self,
+        db: &'db dyn SourceDatabase,
+        krate: Crate,
+    ) -> &'db ItemTree {
         match self.block {
             Some(block) => block_item_tree_query(db, block, krate),
             None => file_item_tree(db, self.file, krate),

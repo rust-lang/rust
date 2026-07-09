@@ -9,7 +9,7 @@ use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{
-    db::DefDatabase,
+    file_item_tree,
     nameres::{crate_def_map, tests::TestDB},
 };
 
@@ -236,7 +236,7 @@ pub struct S {}
                 "HirFileId::ast_id_map_",
                 "parse",
                 "real_span_map",
-                "macro_def_shim",
+                "MacroId::definition_",
                 "file_item_tree_query",
                 "HirFileId::ast_id_map_",
                 "MacroCallId::parse_macro_expansion_",
@@ -299,7 +299,7 @@ fn f() { foo }
                 "HirFileId::ast_id_map_",
                 "parse",
                 "real_span_map",
-                "macro_def_shim",
+                "MacroId::definition_",
                 "file_item_tree_query",
                 "HirFileId::ast_id_map_",
                 "MacroCallId::parse_macro_expansion_",
@@ -424,18 +424,18 @@ pub struct S {}
                 "HirFileId::ast_id_map_",
                 "parse",
                 "real_span_map",
-                "macro_def_shim",
+                "MacroId::definition_",
                 "file_item_tree_query",
                 "HirFileId::ast_id_map_",
                 "MacroCallId::parse_macro_expansion_",
                 "MacroCallId::macro_arg_",
                 "AstId < ast :: Macro >::decl_macro_expander_",
-                "macro_def_shim",
+                "MacroId::definition_",
                 "file_item_tree_query",
                 "HirFileId::ast_id_map_",
                 "MacroCallId::parse_macro_expansion_",
                 "MacroCallId::macro_arg_",
-                "macro_def_shim",
+                "MacroId::definition_",
                 "file_item_tree_query",
                 "HirFileId::ast_id_map_",
                 "MacroCallId::parse_macro_expansion_",
@@ -535,7 +535,7 @@ m!(Z);
                 "HirFileId::ast_id_map_",
                 "parse",
                 "real_span_map",
-                "macro_def_shim",
+                "MacroId::definition_",
                 "file_item_tree_query",
                 "HirFileId::ast_id_map_",
                 "MacroCallId::parse_macro_expansion_",
@@ -604,7 +604,7 @@ pub type Ty = ();
     execute_assert_events(
         &db,
         || {
-            db.file_item_tree(pos.file_id.into(), db.test_crate());
+            file_item_tree(&db, pos.file_id.into(), db.test_crate());
         },
         &[("file_item_tree_query", 1), ("parse", 1)],
         expect![[r#"
@@ -624,7 +624,7 @@ pub type Ty = ();
     execute_assert_events(
         &db,
         || {
-            db.file_item_tree(pos.file_id.into(), db.test_crate());
+            file_item_tree(&db, pos.file_id.into(), db.test_crate());
         },
         &[("file_item_tree_query", 1), ("parse", 1)],
         expect![[r#"

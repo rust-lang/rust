@@ -2,6 +2,7 @@
 
 use std::mem;
 
+use base_db::SourceDatabase;
 use cfg::CfgOptions;
 use hir_expand::{
     AstId, AttrMacroAttrIds, ExpandTo, HirFileId, InFile, Intern, Lookup, MacroCallKind,
@@ -21,7 +22,6 @@ use thin_vec::ThinVec;
 use crate::{
     AssocItemId, AstIdWithPath, ConstLoc, FunctionId, FunctionLoc, ImplId, ItemContainerId,
     ItemLoc, MacroCallId, ModuleId, TraitId, TypeAliasId, TypeAliasLoc,
-    db::DefDatabase,
     item_tree::AttrsOrCfg,
     macro_call_as_call_id,
     nameres::{
@@ -41,13 +41,13 @@ pub struct TraitItems {
 #[salsa::tracked]
 impl TraitItems {
     #[inline]
-    pub(crate) fn query(db: &dyn DefDatabase, tr: TraitId) -> &TraitItems {
+    pub(crate) fn query(db: &dyn SourceDatabase, tr: TraitId) -> &TraitItems {
         &Self::query_with_diagnostics(db, tr).0
     }
 
     #[salsa::tracked(returns(ref))]
     pub fn query_with_diagnostics(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         tr: TraitId,
     ) -> (TraitItems, DefDiagnostics) {
         let ItemLoc { container: module_id, id: ast_id } = *tr.lookup(db);
@@ -113,7 +113,7 @@ pub struct ImplItems {
 #[salsa::tracked]
 impl ImplItems {
     #[salsa::tracked(returns(ref))]
-    pub fn of(db: &dyn DefDatabase, id: ImplId) -> (ImplItems, DefDiagnostics) {
+    pub fn of(db: &dyn SourceDatabase, id: ImplId) -> (ImplItems, DefDiagnostics) {
         let _p = tracing::info_span!("impl_items_with_diagnostics_query").entered();
         let ItemLoc { container: module_id, id: ast_id } = *id.lookup(db);
 
@@ -133,7 +133,7 @@ impl ImplItems {
 }
 
 struct AssocItemCollector<'db> {
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     module_id: ModuleId,
     def_map: &'db DefMap,
     local_def_map: &'db LocalDefMap,
@@ -151,7 +151,7 @@ struct AssocItemCollector<'db> {
 
 impl<'db> AssocItemCollector<'db> {
     fn new(
-        db: &'db dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         module_id: ModuleId,
         container: ItemContainerId,
         file_id: HirFileId,
@@ -312,7 +312,7 @@ impl<'db> AssocItemCollector<'db> {
                         )
                         .0
                         .take_macros()
-                        .map(|it| self.db.macro_def(it))
+                        .map(|it| it.definition(self.db))
                 };
                 match macro_call_as_call_id(
                     self.db,

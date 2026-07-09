@@ -8,7 +8,7 @@ mod path;
 
 use std::{cell::OnceCell, mem};
 
-use base_db::FxIndexSet;
+use base_db::{FxIndexSet, SourceDatabase};
 use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
@@ -38,7 +38,6 @@ use crate::{
     AdtId, BlockId, BlockLoc, ConstId, DefWithBodyId, FunctionId, GenericDefId, ImplId,
     ItemContainerId, MacroId, ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
     attrs::AttrFlags,
-    db::DefDatabase,
     expr_store::{
         Body, BodySourceMap, ExprPtr, ExprRoot, ExpressionStore, ExpressionStoreBuilder,
         ExpressionStoreDiagnostics, ExpressionStoreSourceMap, HygieneId, LabelPtr, LifetimePtr,
@@ -68,7 +67,7 @@ use crate::{
 pub use self::path::hir_segment_to_ast_segment;
 
 pub(super) fn lower_body(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     owner: DefWithBodyId,
     current_file_id: HirFileId,
     module: ModuleId,
@@ -200,7 +199,7 @@ pub(super) fn lower_body(
 }
 
 pub(crate) fn lower_type_ref(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     type_ref: InFile<Option<ast::Type>>,
 ) -> (ExpressionStore, ExpressionStoreSourceMap, TypeRefId) {
@@ -212,7 +211,7 @@ pub(crate) fn lower_type_ref(
 }
 
 pub fn lower_generic_params(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     def: GenericDefId,
     file_id: HirFileId,
@@ -228,7 +227,7 @@ pub fn lower_generic_params(
 }
 
 pub(crate) fn lower_impl(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     impl_syntax: InFile<ast::Impl>,
     impl_id: ImplId,
@@ -256,7 +255,7 @@ pub(crate) fn lower_impl(
 }
 
 pub(crate) fn lower_trait(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     trait_syntax: InFile<ast::Trait>,
     trait_id: TraitId,
@@ -278,7 +277,7 @@ pub(crate) fn lower_trait(
 }
 
 pub(crate) fn lower_type_alias(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     alias: InFile<ast::TypeAlias>,
     type_alias_id: TypeAliasId,
@@ -313,7 +312,7 @@ pub(crate) fn lower_type_alias(
 }
 
 pub(crate) fn lower_function(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     fn_: InFile<ast::Fn>,
     function_id: FunctionId,
@@ -438,7 +437,7 @@ pub(crate) fn lower_function(
 }
 
 pub struct ExprCollector<'db> {
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     cfg_options: &'db CfgOptions,
     expander: Expander<'db>,
     def_map: &'db DefMap,
@@ -554,7 +553,7 @@ impl BindingList {
 
 impl<'db> ExprCollector<'db> {
     pub fn new(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         module: ModuleId,
         current_file_id: HirFileId,
     ) -> ExprCollector<'_> {
@@ -2516,7 +2515,7 @@ impl<'db> ExprCollector<'db> {
             statements.push(Statement::Item(Item::Other));
             return;
         };
-        let macro_id = self.db.macro_def(macro_id);
+        let macro_id = macro_id.definition(self.db);
         statements.push(Statement::Item(Item::MacroDef(Box::new(macro_id))));
         self.label_ribs.push(LabelRib::new(RibKind::MacroDef(Box::new(macro_id))));
     }
