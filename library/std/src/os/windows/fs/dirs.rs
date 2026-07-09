@@ -73,6 +73,17 @@ pub trait UserDirsExt: Sized + Sealed {
     /// [`FOLDERID_Pictures`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_pictures
     /// [`FOLDERID_Public`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_public
     /// [`FOLDERID_Videos`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_videos
+    /// [`cache_home`]: UserDirs::cache_home
+    /// [`config_home`]: UserDirs::config_home
+    /// [`data_home`]: UserDirs::data_home
+    /// [`state_home`]: UserDirs::state_home
+    /// [`desktop`]: UserDirs::desktop
+    /// [`documents`]: UserDirs::documents
+    /// [`downloads`]: UserDirs::downloads
+    /// [`music`]: UserDirs::music
+    /// [`pictures`]: UserDirs::pictures
+    /// [`public_share`]: UserDirs::public_share
+    /// [`videos`]: UserDirs::videos
     #[unstable(feature = "dir_discovery", issue = "157515")]
     fn known_folders() -> io::Result<Self>;
 }

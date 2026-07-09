@@ -44,8 +44,8 @@ pub trait UserDirsExt: Sized + Sealed {
     /// | [`data_home`] | `XDG_DATA_HOME` | `$HOME/.local/share` |
     /// | [`state_home`] | `XDG_STATE_HOME` | `$HOME/.local/state` |
     /// | [`runtime_home`] | `XDG_RUNTIME_DIR` | (see method docs) |
-    /// | [`config_dirs`] | `XDG_CONFIG_DIRS` | [`/etc/xdg`] |
-    /// | [`data_dirs`] | `XDG_DATA_DIRS` | [`/usr/local/share/`, `/usr/share/`] |
+    /// | [`config_dirs`] | `XDG_CONFIG_DIRS` | \[`/etc/xdg`] |
+    /// | [`data_dirs`] | `XDG_DATA_DIRS` | \[`/usr/local/share/`, `/usr/share/`] |
     ///
     /// Note that `$HOME` here means [`env::home_dir`](home_dir), which uses
     /// `$HOME` if set and non-empty, but falls back to the system password
@@ -97,6 +97,7 @@ pub trait UserDirsExt: Sized + Sealed {
     /// Errors if the user's home directory cannot be determined or if the
     /// `$XDG_CONFIG_HOME/user-dirs.dirs` file cannot be read.
     ///
+    /// [`xdg_base`]: UserDirsExt::xdg_base
     /// [xdg-user-dirs]: https://www.freedesktop.org/wiki/Software/xdg-user-dirs/
     /// [`desktop`]: UserDirs::desktop
     /// [`documents`]: UserDirs::documents
@@ -123,24 +124,28 @@ pub trait UserDirsExt: Sized + Sealed {
     fn runtime_home(&self) -> Option<&Path>;
 
     /// A preference-ordered list of base directories to search for config
-    /// files *in addition to* [`config_home`](UserDirs::config_home).
+    /// files *in addition to* [`config_home`].
     ///
     /// The order of directories denotes their importance; the first directory
     /// is the most important. Information defined relative to the more
     /// important base directory takes precedent. [`config_home`] is not
     /// necessarily present in this list, and is considered more important
     /// than any base directory in this list.
+    ///
+    /// [`config_home`]: UserDirs::config_home
     #[unstable(feature = "dir_search_discovery", issue = "157515")]
     fn config_dirs(&self) -> Option<SplitPaths<'_>>;
 
     /// A preference-ordered list of base directories to search for data
-    /// files *in addition to* [`data_home`](UserDirs::data_home).
+    /// files *in addition to* [`data_home`].
     ///
     /// The order of directories denotes their importance; the first directory
     /// is the most important. Information defined relative to the more
     /// important base directory takes precedent. [`data_home`] is not
     /// necessarily present in this list, and is considered more important
     /// than any base directory in this list.
+    ///
+    /// [`data_home`]: UserDirs::data_home
     #[unstable(feature = "dir_search_discovery", issue = "157515")]
     fn data_dirs(&self) -> Option<SplitPaths<'_>>;
 

@@ -47,7 +47,7 @@ pub trait UserDirsExt: Sized + Sealed {
     ///
     /// Errors if the underlying system directory discovery API returns
     /// multiple directories for a queried standard directory, if a
-    /// directory path is not valid Unicode, or if the [user home](home_dir)
+    /// directory path is not valid Unicode, or if the [user home](UserDirs::user_home)
     /// cannot be determined.
     ///
     /// # Implementation-specific behavior
