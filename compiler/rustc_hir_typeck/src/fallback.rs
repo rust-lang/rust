@@ -71,8 +71,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             return false;
         }
 
-        let (diverging_fallback, diverging_fallback_ty) =
-            self.calculate_diverging_fallback(&unresolved_ty);
+        let (diverging_fallback, diverging_fallback_ty) = self.calculate_diverging_fallback();
         let fallback_to_f32 = self.calculate_fallback_to_f32(&unresolved_float);
 
         // We do fallback in two passes, to try to generate
@@ -209,12 +208,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         fallback_to_f32
     }
 
-    fn calculate_diverging_fallback(
-        &self,
-        unresolved_variables: &[ty::TyVid],
-    ) -> (UnordSet<ty::TyVid>, Ty<'tcx>) {
-        debug!("calculate_diverging_fallback({:?})", unresolved_variables);
-
+    fn calculate_diverging_fallback(&self) -> (UnordSet<ty::TyVid>, Ty<'tcx>) {
         let diverging_fallback_ty = match self.diverging_fallback_behavior {
             DivergingFallbackBehavior::ToUnit => self.tcx.types.unit,
             DivergingFallbackBehavior::ToNever => self.tcx.types.never,
@@ -224,21 +218,13 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             }
         };
 
-        // Construct a coercion graph where an edge `A -> B` indicates
-        // a type variable is that is coerced
-        let coercion_graph = self.create_coercion_graph();
-
-        // Extract the unsolved type inference variable vids; note that some
-        // unsolved variables are integer/float variables and are excluded.
-        let unsolved_vids = unresolved_variables.iter();
-
         // Compute the diverging root vids D -- that is, the root vid of
         // those type variables that (a) are the target of a coercion from
         // a `!` type and (b) have not yet been solved.
         //
         // These variables are the ones that are targets for fallback to
         // either `!` or `()`.
-        let diverging_roots: UnordSet<ty::TyVid> = self
+        let diverging_root_vids: Vec<ty::TyVid> = self
             .diverging_type_vars
             .borrow()
             .iter()
@@ -246,57 +232,28 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .filter_map(|ty| ty.ty_vid())
             .map(|vid| self.root_var(vid))
             .collect();
-        debug!(
-            "calculate_diverging_fallback: diverging_type_vars={:?}",
-            self.diverging_type_vars.borrow()
-        );
-        debug!("calculate_diverging_fallback: diverging_roots={:?}", diverging_roots);
 
-        // Find all type variables that are reachable from a diverging
-        // type variable. These will typically default to `!`, unless
-        // we find later that they are *also* reachable from some
-        // other type variable outside this set.
-        let mut diverging_vids = vec![];
-        for &unsolved_vid in unsolved_vids {
-            let root_vid = self.root_var(unsolved_vid);
-            debug!(
-                "calculate_diverging_fallback: unsolved_vid={:?} root_vid={:?} diverges={:?}",
-                unsolved_vid,
-                root_vid,
-                diverging_roots.contains(&root_vid),
+        {
+            // Construct a coercion graph where an edge `A -> B` indicates
+            // a type variable is that is coerced
+            let coercion_graph = self.create_coercion_graph();
+
+            self.lint_obligations_broken_by_never_type_fallback_change(
+                &diverging_root_vids,
+                &coercion_graph,
             );
-            if diverging_roots.contains(&root_vid) {
-                diverging_vids.push(unsolved_vid);
 
-                debug!(
-                    "calculate_diverging_fallback: root_vid={:?} reaches {:?}",
+            let unsafe_infer_vars = OnceCell::new();
+            for &root_vid in &diverging_root_vids {
+                self.lint_never_type_fallback_flowing_into_unsafe_code(
+                    &unsafe_infer_vars,
+                    &coercion_graph,
                     root_vid,
-                    graph::depth_first_search(&coercion_graph, root_vid).collect::<Vec<_>>()
                 );
             }
         }
 
-        debug!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
-
-        let mut diverging_fallback = UnordSet::with_capacity(diverging_vids.len());
-        let unsafe_infer_vars = OnceCell::new();
-
-        self.lint_obligations_broken_by_never_type_fallback_change(
-            &diverging_vids,
-            &coercion_graph,
-        );
-
-        for &diverging_vid in &diverging_vids {
-            let root_vid = self.root_var(diverging_vid);
-
-            self.lint_never_type_fallback_flowing_into_unsafe_code(
-                &unsafe_infer_vars,
-                &coercion_graph,
-                root_vid,
-            );
-
-            diverging_fallback.insert(diverging_vid);
-        }
+        let diverging_fallback = diverging_root_vids.into_iter().collect::<UnordSet<_>>();
 
         (diverging_fallback, diverging_fallback_ty)
     }
