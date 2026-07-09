@@ -112,7 +112,6 @@ pub(crate) struct DocAttributeNotAttribute {
 pub(crate) struct TargetFeatureOnLangItem {
     #[primary_span]
     pub attr_span: Span,
-    pub kind: Symbol, // FIXME remove
     #[label("lang item function is not allowed to have `#[target_feature]`")]
     pub item_span: Span,
 }
