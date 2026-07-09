@@ -397,7 +397,17 @@ cfg_select! {
         #[unstable(feature = "c_variadic_int128", issue = "155752")]
         unsafe impl VaArgSafe for u128 {}
     }
-    _ => {}
+    _ => {
+        #[repr(transparent)]
+        #[derive(Clone, Copy)]
+        struct S(i32);
+
+        // When there are no actual implementations on i128, declare the c_variadic_int128 feature
+        // on a private type so that the feature is defined on all targets.
+        #[unstable(feature = "c_variadic_int128", issue = "155752")]
+        unsafe impl VaArgSafe for S {}
+
+    }
 }
 
 unsafe impl VaArgSafe for f64 {}
