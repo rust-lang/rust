@@ -134,7 +134,7 @@ fn main_loop(
                     break;
                 }
                 if let Err(err) = handle_request(&connection, &req, &mut docs) {
-                    log::error!("[lsp] request {} failed: {err}", &req.method);
+                    log::error!("[lsp] request {} failed: {err}", req.method);
                 }
             }
             Message::Notification(note) => {

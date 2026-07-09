@@ -37,7 +37,8 @@ pub(crate) fn remove_underscore(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
             _ => return None,
         };
         (text.to_owned(), name_ref.syntax().text_range(), def)
-    } else if let Some(name_ref) = ctx.find_node_at_offset::<ast::NameRef>() {
+    } else {
+        let name_ref = ctx.find_node_at_offset::<ast::NameRef>()?;
         let text = name_ref.text();
         if !text.starts_with('_') {
             return None;
@@ -48,8 +49,6 @@ pub(crate) fn remove_underscore(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
             _ => return None,
         };
         (text.to_owned(), name_ref.syntax().text_range(), def)
-    } else {
-        return None;
     };
 
     if !def.usages(&ctx.sema).at_least_one() {

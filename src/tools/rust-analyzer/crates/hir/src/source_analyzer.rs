@@ -1427,11 +1427,10 @@ impl<'db> SourceAnalyzer<'db> {
                 let ty = if let Some(expr) = ast::Expr::cast(parent.clone()) {
                     let expr_id = self.expr_id(expr)?;
                     self.infer()?.type_of_expr_or_pat(expr_id)?
-                } else if let Some(pat) = ast::Pat::cast(parent) {
+                } else {
+                    let pat = ast::Pat::cast(parent)?;
                     let pat_id = self.pat_id(&pat)?;
                     self.infer()?.expr_or_pat_ty(pat_id)
-                } else {
-                    return None;
                 };
                 let (subst, expected_resolution) = match ty.kind() {
                     TyKind::Adt(adt_def, subst) => {

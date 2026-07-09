@@ -181,10 +181,7 @@ fn import_edits(
     };
     let mut res = Vec::with_capacity(requires.len());
     for import in requires {
-        match resolve(import) {
-            Some(first) => res.extend(first),
-            None => return None,
-        }
+        res.extend(resolve(import)?)
     }
     Some(res)
 }

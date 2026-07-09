@@ -4715,7 +4715,7 @@ impl Impl {
                 &mut |impls| extend_with_impls(Either::Left(impls.for_self_ty(&simplified_ty))),
             );
             iter::successors(module.block(db), |block| block.loc(db).module.block(db))
-                .filter_map(|block| TraitImpls::for_block(db, block).as_deref())
+                .filter_map(|block| TraitImpls::for_block(db, block))
                 .for_each(|impls| impls.for_self_ty(&simplified_ty, &mut extend_with_impls));
             for &krate in &*all_crates(db) {
                 TraitImpls::for_crate(db, krate)
