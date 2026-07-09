@@ -535,6 +535,9 @@ impl str {
     /// safety, as the rest of the standard library [assumes that `str`s are
     /// valid UTF-8](prim@str#invariant).
     ///
+    /// As an exception to the [general rule](prim@str#invariant), this function will not cause
+    /// immediate undefined behavior if called on a `str` containing invalid UTF-8.
+    ///
     /// # Examples
     ///
     /// Basic usage:

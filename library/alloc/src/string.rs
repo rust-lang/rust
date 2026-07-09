@@ -349,6 +349,10 @@ use crate::vec::{self, Vec};
 /// called on a `String` may assume that it is valid UTF-8, which means that a non-UTF-8 `String`
 /// can lead to undefined behavior down the road.
 ///
+/// Some functions explicitly allow invalid UTF-8, and will not immediately cause undefined behavior
+/// if called on a `String` containing invalid UTF-8. Such functions explicitly specify this in their
+/// documentation.
+///
 /// [str]: prim@str "str"
 /// [`str`]: prim@str "str"
 /// [`&str`]: prim@str "&str"
@@ -1826,9 +1830,12 @@ impl String {
     ///
     /// This function is unsafe because the returned `&mut Vec` allows writing
     /// bytes which are not valid UTF-8. If this constraint is violated, using
-    /// the original `String` after dropping the `&mut Vec` may violate memory
+    /// the original `String` after the `&mut Vec<u8>` borrow expires may violate memory
     /// safety, as the rest of the standard library [assumes that `String`s are
     /// valid UTF-8](String#invariant).
+    ///
+    /// As an exception to the [general rule](String#invariant), this function will not cause
+    /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     ///
     /// # Examples
     ///
