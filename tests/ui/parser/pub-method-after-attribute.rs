@@ -1,7 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3753>.
+//! Pub keyword after attribute caused parser to fail.
 //@ run-pass
-// Issue #3656
-// Issue Name: pub method preceded by attribute can't be parsed
-// Abstract: Visibility parsing failed when compiler parsing
 
 use std::f64;
 

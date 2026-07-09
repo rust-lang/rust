@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3702>.
+//! This used to trigger LLVM assertion.
+
 pub trait ToPrimitive {
     fn to_int(&self) -> isize { 0 }
 }
