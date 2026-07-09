@@ -1,5 +1,5 @@
 error: enclosing `Some` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:20:12
+  --> tests/ui/needless_question_mark.rs:14:12
    |
 LL |     return Some(to.magic?);
    |            ^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     return to.magic;
    |
 
 error: enclosing `Some` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:29:12
+  --> tests/ui/needless_question_mark.rs:23:12
    |
 LL |     return Some(to.magic?)
    |            ^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     return to.magic
    |
 
 error: enclosing `Some` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:35:5
+  --> tests/ui/needless_question_mark.rs:29:5
    |
 LL |     Some(to.magic?)
    |     ^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     to.magic
    |
 
 error: enclosing `Some` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:41:21
+  --> tests/ui/needless_question_mark.rs:35:21
    |
 LL |     to.and_then(|t| Some(t.magic?))
    |                     ^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     to.and_then(|t| t.magic)
    |
 
 error: enclosing `Some` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:51:9
+  --> tests/ui/needless_question_mark.rs:45:9
    |
 LL |         Some(t.magic?)
    |         ^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +         t.magic
    |
 
 error: enclosing `Ok` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:57:12
+  --> tests/ui/needless_question_mark.rs:51:12
    |
 LL |     return Ok(tr.magic?);
    |            ^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     return tr.magic;
    |
 
 error: enclosing `Ok` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:65:12
+  --> tests/ui/needless_question_mark.rs:59:12
    |
 LL |     return Ok(tr.magic?)
    |            ^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL +     return tr.magic
    |
 
 error: enclosing `Ok` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:70:5
+  --> tests/ui/needless_question_mark.rs:64:5
    |
 LL |     Ok(tr.magic?)
    |     ^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL +     tr.magic
    |
 
 error: enclosing `Ok` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:75:21
+  --> tests/ui/needless_question_mark.rs:69:21
    |
 LL |     tr.and_then(|t| Ok(t.magic?))
    |                     ^^^^^^^^^^^^
@@ -109,7 +109,7 @@ LL +     tr.and_then(|t| t.magic)
    |
 
 error: enclosing `Ok` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:84:9
+  --> tests/ui/needless_question_mark.rs:78:9
    |
 LL |         Ok(t.magic?)
    |         ^^^^^^^^^^^^
@@ -121,7 +121,7 @@ LL +         t.magic
    |
 
 error: enclosing `Ok` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:92:16
+  --> tests/ui/needless_question_mark.rs:86:16
    |
 LL |         return Ok(t.magic?);
    |                ^^^^^^^^^^^^
@@ -133,7 +133,7 @@ LL +         return t.magic;
    |
 
 error: enclosing `Some` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:128:27
+  --> tests/ui/needless_question_mark.rs:122:27
    |
 LL |         || -> Option<_> { Some(Some($expr)?) }()
    |                           ^^^^^^^^^^^^^^^^^^
@@ -149,7 +149,7 @@ LL +         || -> Option<_> { Some($expr) }()
    |
 
 error: enclosing `Some` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:140:5
+  --> tests/ui/needless_question_mark.rs:134:5
    |
 LL |     Some(to.magic?)
    |     ^^^^^^^^^^^^^^^
@@ -161,7 +161,7 @@ LL +     to.magic
    |
 
 error: enclosing `Ok` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:149:5
+  --> tests/ui/needless_question_mark.rs:143:5
    |
 LL |     Ok(s.magic?)
    |     ^^^^^^^^^^^^
@@ -173,7 +173,7 @@ LL +     s.magic
    |
 
 error: enclosing `Some` and `?` operator are unneeded
-  --> tests/ui/needless_question_mark.rs:154:7
+  --> tests/ui/needless_question_mark.rs:148:7
    |
 LL |     { Some(a?) }
    |       ^^^^^^^^

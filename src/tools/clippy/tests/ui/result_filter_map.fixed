@@ -1,5 +1,5 @@
 #![warn(clippy::result_filter_map)]
-#![allow(clippy::map_flatten, clippy::unnecessary_map_on_constructor)]
+#![allow(clippy::map_flatten)]
 
 fn odds_out(x: i32) -> Result<i32, ()> {
     if x % 2 == 0 { Ok(x) } else { Err(()) }

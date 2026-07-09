@@ -1,7 +1,7 @@
 #![warn(clippy::obfuscated_if_else)]
 #![allow(
-    clippy::unnecessary_lazy_evaluations,
     clippy::unit_arg,
+    clippy::unnecessary_lazy_evaluations,
     clippy::unused_unit,
     clippy::unwrap_or_default
 )]
