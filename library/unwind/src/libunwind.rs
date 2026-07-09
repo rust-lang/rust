@@ -24,65 +24,28 @@ pub type _Unwind_Ptr = *const u8;
 pub type _Unwind_Trace_Fn =
     extern "C" fn(ctx: *mut _Unwind_Context, arg: *mut c_void) -> _Unwind_Reason_Code;
 
-#[cfg(target_arch = "x86")]
-pub const unwinder_private_data_size: usize = 5;
-
-#[cfg(all(target_arch = "x86_64", not(any(target_os = "windows", target_os = "cygwin"))))]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(all(target_arch = "x86_64", any(target_os = "windows", target_os = "cygwin")))]
-pub const unwinder_private_data_size: usize = 6;
-
-#[cfg(all(target_arch = "arm", not(target_vendor = "apple")))]
-pub const unwinder_private_data_size: usize = 20;
-
-#[cfg(all(target_arch = "arm", target_vendor = "apple"))]
-pub const unwinder_private_data_size: usize = 5;
-
-#[cfg(all(target_arch = "aarch64", target_pointer_width = "64", not(target_os = "windows")))]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(all(target_arch = "aarch64", target_pointer_width = "64", target_os = "windows"))]
-pub const unwinder_private_data_size: usize = 6;
-
-#[cfg(all(target_arch = "aarch64", target_pointer_width = "32"))]
-pub const unwinder_private_data_size: usize = 5;
-
-#[cfg(target_arch = "m68k")]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(any(target_arch = "mips", target_arch = "mips32r6"))]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(target_arch = "csky")]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(any(target_arch = "mips64", target_arch = "mips64r6"))]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(target_arch = "s390x")]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(any(target_arch = "sparc", target_arch = "sparc64"))]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(any(target_arch = "riscv64", target_arch = "riscv32"))]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(all(target_family = "wasm", target_os = "emscripten"))]
-pub const unwinder_private_data_size: usize = 20;
-
-#[cfg(all(target_arch = "wasm32", any(target_os = "linux", target_os = "wasi")))]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(target_arch = "hexagon")]
-pub const unwinder_private_data_size: usize = 5;
-
-#[cfg(any(target_arch = "loongarch32", target_arch = "loongarch64"))]
-pub const unwinder_private_data_size: usize = 2;
+const unwinder_private_data_size: usize = cfg_select! {
+    target_arch = "x86" => 5,
+    all(target_arch = "x86_64", not(any(target_os = "windows", target_os = "cygwin"))) => 2,
+    all(target_arch = "x86_64", any(target_os = "windows", target_os = "cygwin")) => 6,
+    all(target_arch = "arm", not(target_vendor = "apple")) => 20,
+    all(target_arch = "arm", target_vendor = "apple") => 5,
+    all(target_arch = "aarch64", target_pointer_width = "64", not(target_os = "windows")) => 2,
+    all(target_arch = "aarch64", target_pointer_width = "64", target_os = "windows") => 6,
+    all(target_arch = "aarch64", target_pointer_width = "32") => 5,
+    target_arch = "m68k" => 2,
+    any(target_arch = "mips", target_arch = "mips32r6") => 2,
+    target_arch = "csky" => 2,
+    any(target_arch = "mips64", target_arch = "mips64r6") => 2,
+    any(target_arch = "powerpc", target_arch = "powerpc64") => 2,
+    target_arch = "s390x" => 2,
+    any(target_arch = "sparc", target_arch = "sparc64") => 2,
+    any(target_arch = "riscv64", target_arch = "riscv32") => 2,
+    all(target_family = "wasm", target_os = "emscripten") => 20,
+    all(target_arch = "wasm32", any(target_os = "linux", target_os = "wasi")) => 2,
+    target_arch = "hexagon" => 5,
+    any(target_arch = "loongarch32", target_arch = "loongarch64") => 2,
+};
 
 #[repr(C)]
 pub struct _Unwind_Exception {

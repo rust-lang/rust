@@ -36,7 +36,7 @@ pub type _Unwind_Exception_Class = u64;
 pub type _Unwind_Word = *const u8;
 pub type _Unwind_Ptr = *const u8;
 
-pub const unwinder_private_data_size: usize = size_of::<UnwindException>()
+const unwinder_private_data_size: usize = size_of::<UnwindException>()
     - size_of::<_Unwind_Exception_Class>()
     - size_of::<_Unwind_Exception_Cleanup_Fn>();
 
