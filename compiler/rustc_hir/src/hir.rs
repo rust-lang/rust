@@ -3960,6 +3960,8 @@ pub enum TyKind<'hir, Unambig = ()> {
     ///
     /// The optional ident is the variant when an enum is passed `field_of!(Enum, Variant.field)`.
     FieldOf(&'hir Ty<'hir>, &'hir TyFieldPath),
+    /// A view of a type. `T.{ field_1, field_2 }`.
+    View(&'hir Ty<'hir>, &'hir [Ident]),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     ///
