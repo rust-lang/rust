@@ -752,27 +752,22 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    pub fn unresolved_variables(&self) -> Vec<Ty<'tcx>> {
+    pub fn unresolved_variables(&self) -> (Vec<TyVid>, Vec<ty::IntVid>, Vec<ty::FloatVid>) {
         let mut inner = self.inner.borrow_mut();
-        let mut vars: Vec<Ty<'_>> = inner
-            .type_variables()
-            .unresolved_variables()
-            .into_iter()
-            .map(|t| Ty::new_var(self.tcx, t))
+        let ty = inner.type_variables().unresolved_variables().into_iter().collect();
+        let int = (0..inner.int_unification_table().len())
+            .map(|i| ty::IntVid::from_usize(i))
+            .filter(|&vid| {
+                inner.int_unification_table().probe_value(vid).is_unknown()
+            })
             .collect();
-        vars.extend(
-            (0..inner.int_unification_table().len())
-                .map(|i| ty::IntVid::from_usize(i))
-                .filter(|&vid| inner.int_unification_table().probe_value(vid).is_unknown())
-                .map(|v| Ty::new_int_var(self.tcx, v)),
-        );
-        vars.extend(
-            (0..inner.float_unification_table().len())
-                .map(|i| ty::FloatVid::from_usize(i))
-                .filter(|&vid| inner.float_unification_table().probe_value(vid).is_unknown())
-                .map(|v| Ty::new_float_var(self.tcx, v)),
-        );
-        vars
+        let float = (0..inner.float_unification_table().len())
+            .map(|i| ty::FloatVid::from_usize(i))
+            .filter(|&vid| {
+                inner.float_unification_table().probe_value(vid).is_unknown()
+            })
+            .collect();
+        (ty, int, float)
     }
 
     #[instrument(skip(self), level = "debug")]
