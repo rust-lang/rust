@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use arg_file_command::ArgFileCommand;
 use shared_helpers::{
-    dylib_path, dylib_path_var, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
+    collect_args, dylib_path, dylib_path_var, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
     parse_value_from_args,
 };
 
@@ -18,7 +18,7 @@ mod shared_helpers;
 mod arg_file_command;
 
 fn main() {
-    let args = env::args_os().skip(1).collect::<Vec<_>>();
+    let args = collect_args();
 
     let stage = parse_rustc_stage();
     let verbose = parse_rustc_verbose();
