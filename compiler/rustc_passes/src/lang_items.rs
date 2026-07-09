@@ -60,10 +60,18 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 // Known lang item
                 Some(lang_item) => {
                     if actual_target != lang_item.target() {
-                        self.tcx
+                        // `#[panic_handler]` is turned into `#[lang = "panic_impl"]`, but in contrast
+                        // to the actual lang item attr, is applied to `Fn` instead of `ForeignFn`.
+                        if !(lang_item.is_weak()
+                            && actual_target == Target::Fn
+                            && lang_item.target() == Target::ForeignFn
+                            && matches!(lang_item, LangItem::PanicImpl))
+                        {
+                            self.tcx
                             .dcx()
                             .delayed_bug(format!("lang item target is checked in attribute parser: {:?} has {} but expected {}", def_id, actual_target, lang_item.target()));
-                        return;
+                            return;
+                        }
                     }
                     // Weak lang items are handled separately
                     // Weak only lang items are always handled here
@@ -280,9 +288,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &'ast ast::ForeignItem) {
         self.check_for_lang(
-            // FIXME: Ideally we'd use `Target::from_foreign_item_kind` here, but `panic_handler` is a
-            // free function while `panic_impl` is a foreign function, but they are linked as a weak lang item.
-            Target::Fn,
+            Target::from_foreign_item_kind(&i.kind),
             self.resolver.owners[&i.id].def_id,
             &i.attrs,
             i.span,
