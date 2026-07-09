@@ -9,7 +9,6 @@
 
 use rustc_ast as ast;
 use rustc_ast::visit;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::GenericRequirement;
 use rustc_hir::{LangItem, LanguageItems, MethodKind, Target};
@@ -36,9 +35,6 @@ struct LanguageItemCollector<'ast, 'tcx> {
     items: LanguageItems,
     tcx: TyCtxt<'tcx>,
     resolver: &'ast ResolverAstLowering<'tcx>,
-    // FIXME(#118552): We should probably feed def_span eagerly on def-id creation
-    // so we can avoid constructing this map for local def-ids.
-    item_spans: FxHashMap<DefId, Span>,
     parent_item: Option<&'ast ast::Item>,
 }
 
@@ -47,13 +43,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         tcx: TyCtxt<'tcx>,
         resolver: &'ast ResolverAstLowering<'tcx>,
     ) -> LanguageItemCollector<'ast, 'tcx> {
-        LanguageItemCollector {
-            tcx,
-            resolver,
-            items: LanguageItems::new(),
-            item_spans: FxHashMap::default(),
-            parent_item: None,
-        }
+        LanguageItemCollector { tcx, resolver, items: LanguageItems::new(), parent_item: None }
     }
 
     fn check_for_lang(
@@ -116,7 +106,6 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                     .join(", ")
             };
 
-            let first_defined_span = self.item_spans.get(&original_def_id).copied();
             let mut orig_crate_name = None;
             let mut orig_dependency_of = None;
             let orig_is_local = original_def_id.is_local();
@@ -131,7 +120,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                     .join(", ")
             };
 
-            if first_defined_span.is_none() {
+            if !original_def_id.is_local() {
                 orig_crate_name = Some(self.tcx.crate_name(original_def_id.krate));
                 if let Some(ExternCrate { dependency_of: inner_dependency_of, .. }) =
                     self.tcx.extern_crate(original_def_id.krate)
@@ -162,7 +151,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 dependency_of,
                 is_local,
                 path,
-                first_defined_span,
+                first_defined_span: original_def_id.as_local().map(|did| self.tcx.source_span(did)),
                 orig_crate_name,
                 orig_dependency_of,
                 orig_is_local,
@@ -172,10 +161,6 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         } else {
             // Matched.
             self.items.set(lang_item, item_def_id);
-            // Collect span for error later
-            if let Some(item_span) = item_span {
-                self.item_spans.insert(item_def_id, item_span);
-            }
         }
     }
 
