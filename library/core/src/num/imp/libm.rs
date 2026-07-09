@@ -78,54 +78,65 @@ unsafe extern "C" {
 /// These symbols will be available when `std` is available, and on many no-std platforms. However,
 /// since this isn't a guarantee, we cannot rely on them for stable implementations.
 pub(crate) mod likely_available {
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => {
+            /* these symbols are not available on x86 msvc */
+        }
+        _ => {
+            #[allow(dead_code)]
+            unsafe extern "C" {
+                pub(crate) safe fn acosf(n: f32) -> f32;
+                pub(crate) safe fn asinf(n: f32) -> f32;
+                pub(crate) safe fn atan2f(a: f32, b: f32) -> f32;
+                pub(crate) safe fn atanf(n: f32) -> f32;
+                pub(crate) safe fn cosf(x: f32) -> f32;
+                pub(crate) safe fn coshf(n: f32) -> f32;
+                pub(crate) safe fn erfcf(x: f32) -> f32;
+                pub(crate) safe fn erff(x: f32) -> f32;
+                pub(crate) safe fn exp2f(x: f32) -> f32;
+                pub(crate) safe fn expf(x: f32) -> f32;
+                pub(crate) safe fn expm1f(n: f32) -> f32;
+                pub(crate) safe fn hypotf(x: f32, y: f32) -> f32;
+                pub(crate) safe fn ldexpf(f: f32, n: i32) -> f32;
+                pub(crate) safe fn log10f(x: f32) -> f32;
+                pub(crate) safe fn log1pf(n: f32) -> f32;
+                pub(crate) safe fn log2f(x: f32) -> f32;
+                pub(crate) safe fn logf(x: f32) -> f32;
+                pub(crate) safe fn powf(x: f32, y: f32) -> f32;
+                pub(crate) safe fn sinf(x: f32) -> f32;
+                pub(crate) safe fn sinhf(n: f32) -> f32;
+                pub(crate) safe fn tanf(n: f32) -> f32;
+                pub(crate) safe fn tanhf(n: f32) -> f32;
+                pub(crate) safe fn tgammaf(x: f32) -> f32;
+            }
+        }
+    }
+
     #[allow(dead_code)]
     unsafe extern "C" {
         pub(crate) safe fn acos(x: f64) -> f64;
-        pub(crate) safe fn acosf(n: f32) -> f32;
         pub(crate) safe fn asin(x: f64) -> f64;
-        pub(crate) safe fn asinf(n: f32) -> f32;
         pub(crate) safe fn atan(x: f64) -> f64;
         pub(crate) safe fn atan2(x: f64, y: f64) -> f64;
-        pub(crate) safe fn atan2f(a: f32, b: f32) -> f32;
-        pub(crate) safe fn atanf(n: f32) -> f32;
         pub(crate) safe fn cos(x: f64) -> f64;
-        pub(crate) safe fn cosf(x: f32) -> f32;
         pub(crate) safe fn cosh(x: f64) -> f64;
-        pub(crate) safe fn coshf(n: f32) -> f32;
         pub(crate) safe fn erf(x: f64) -> f64;
         pub(crate) safe fn erfc(x: f64) -> f64;
-        pub(crate) safe fn erfcf(x: f32) -> f32;
-        pub(crate) safe fn erff(x: f32) -> f32;
         pub(crate) safe fn exp(x: f64) -> f64;
         pub(crate) safe fn exp2(x: f64) -> f64;
-        pub(crate) safe fn exp2f(x: f32) -> f32;
-        pub(crate) safe fn expf(x: f32) -> f32;
         pub(crate) safe fn expm1(x: f64) -> f64;
-        pub(crate) safe fn expm1f(n: f32) -> f32;
         pub(crate) safe fn hypot(x: f64, y: f64) -> f64;
-        pub(crate) safe fn hypotf(x: f32, y: f32) -> f32;
         pub(crate) safe fn ldexp(f: f64, n: i32) -> f64;
-        pub(crate) safe fn ldexpf(f: f32, n: i32) -> f32;
         pub(crate) safe fn log(x: f64) -> f64;
         pub(crate) safe fn log10(x: f64) -> f64;
-        pub(crate) safe fn log10f(x: f32) -> f32;
         pub(crate) safe fn log1p(x: f64) -> f64;
-        pub(crate) safe fn log1pf(n: f32) -> f32;
         pub(crate) safe fn log2(x: f64) -> f64;
-        pub(crate) safe fn log2f(x: f32) -> f32;
-        pub(crate) safe fn logf(x: f32) -> f32;
         pub(crate) safe fn pow(x: f64, y: f64) -> f64;
-        pub(crate) safe fn powf(x: f32, y: f32) -> f32;
         pub(crate) safe fn sin(x: f64) -> f64;
-        pub(crate) safe fn sinf(x: f32) -> f32;
         pub(crate) safe fn sinh(x: f64) -> f64;
-        pub(crate) safe fn sinhf(n: f32) -> f32;
         pub(crate) safe fn tan(x: f64) -> f64;
-        pub(crate) safe fn tanf(n: f32) -> f32;
         pub(crate) safe fn tanh(x: f64) -> f64;
-        pub(crate) safe fn tanhf(n: f32) -> f32;
         pub(crate) safe fn tgamma(x: f64) -> f64;
-        pub(crate) safe fn tgammaf(x: f32) -> f32;
     }
 }
 
