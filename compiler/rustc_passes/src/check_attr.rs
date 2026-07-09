@@ -233,8 +233,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::OnUnimplemented { directive } => {
                 self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())
             }
-            AttributeKind::OnConst { span, .. } => {
-                self.check_diagnostic_on_const(*span, hir_id, target, item)
+            AttributeKind::OnConst { span, directive } => {
+                self.check_diagnostic_on_const(*span, hir_id, target, item, directive.as_deref())
             }
             AttributeKind::OnMove { directive } => {
                 self.check_diagnostic_on_move(hir_id, directive.as_deref())
@@ -545,10 +545,36 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         hir_id: HirId,
         target: Target,
         item: Option<ItemLike<'_>>,
+        directive: Option<&Directive>,
     ) {
         // We only check the non-constness here. A diagnostic for use
         // on not-trait impl items is issued during attribute parsing.
         if target == (Target::Impl { of_trait: true }) {
+            if let Some(directive) = directive
+                && let Node::Item(Item { kind: ItemKind::Impl(hir::Impl { generics, .. }), .. }) =
+                    self.tcx.hir_node(hir_id)
+            {
+                directive.visit_params(&mut |argument_name, span| {
+                    let has_generic = generics.params.iter().any(|p| {
+                        if !matches!(p.kind, GenericParamKind::Lifetime { .. })
+                            && let ParamName::Plain(name) = p.name
+                            && name.name == argument_name
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    });
+                    if !has_generic {
+                        self.tcx.emit_node_span_lint(
+                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                            hir_id,
+                            span,
+                            diagnostics::OnConstMalformedFormatLiterals { name: argument_name },
+                        )
+                    }
+                });
+            }
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
                     Constness::Const { .. } => {
@@ -566,9 +592,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ItemLike::ForeignItem => {}
             }
         }
-        // FIXME(#155570) Can we do something with generic args here?
-        // regardless, we don't check the validity of generic args here
-        // ...whose generics would that be, anyway? The traits' or the impls'?
     }
 
     /// Checks use of generic formatting parameters in `#[diagnostic::on_move]`
