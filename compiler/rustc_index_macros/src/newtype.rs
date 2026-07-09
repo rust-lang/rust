@@ -138,13 +138,15 @@ impl Parse for Newtype {
                     }
                 }
                 impl ::std::cmp::Ord for #name {
+                    #[inline]
                     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
                         self.as_u32().cmp(&other.as_u32())
                     }
                 }
                 impl ::std::cmp::PartialOrd for #name {
+                    #[inline]
                     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-                        self.as_u32().partial_cmp(&other.as_u32())
+                        Some(self.cmp(other))
                     }
                 }
             }

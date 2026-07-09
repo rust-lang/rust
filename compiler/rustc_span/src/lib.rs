@@ -738,7 +738,7 @@ impl Default for SpanData {
 
 impl PartialOrd for Span {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        PartialOrd::partial_cmp(&self.data(), &rhs.data())
+        Some(self.cmp(rhs))
     }
 }
 impl Ord for Span {
