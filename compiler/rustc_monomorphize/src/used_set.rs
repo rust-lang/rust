@@ -23,12 +23,15 @@
 //! _RNvCseMk9t9oSu0C_6deplib8used_one
 //! ```
 
+use std::collections::BTreeMap;
+use std::panic;
 use std::path::Path;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_middle::mir::TerminatorKind;
 use rustc_middle::mono::MonoItem;
-use rustc_middle::ty::{Instance, TyCtxt};
-use rustc_span::def_id::DefId;
+use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_span::def_id::{DefId, LOCAL_CRATE};
 
 /// A parsed used-set: the mangled symbol names a final binary links from this crate.
 pub(crate) struct UsedSet {
@@ -76,4 +79,90 @@ impl UsedSet {
     pub(crate) fn len(&self) -> usize {
         self.symbols.len()
     }
+}
+
+/// The used-set **probe** (component 1). Walks this crate's MIR — available after analysis,
+/// *before* codegen — and records every *extern* (non-local) function it references from a
+/// call or as a function value. Each such reference is the exact non-generic dependency
+/// function this crate reaches; grouped by crate and written as one `<crate>.usedset` file
+/// per dependency into `dir`.
+///
+/// This is the first-build mechanism: it runs on `--emit=metadata` (no codegen), so a later
+/// dependency compile can be pruned against the used-set and codegen'd *once*, rather than
+/// fully codegen'd and then discarded. It deliberately does **not** use the monomorphization
+/// collector, which filters to local `DefId`s and so never lists non-generic extern fns.
+pub(crate) fn emit_used_sets(tcx: TyCtxt<'_>, dir: &Path) {
+    if let Err(e) = std::fs::create_dir_all(dir) {
+        tcx.sess.dcx().warn(format!("-Z dead-fn-emit-used-set: cannot create {}: {e}", dir.display()));
+        return;
+    }
+
+    // Collect extern fn DefIds referenced across all local MIR bodies.
+    let mut externs: FxIndexSet<DefId> = FxIndexSet::default();
+    for &local_def_id in tcx.mir_keys(()) {
+        let def_id = local_def_id.to_def_id();
+        if !tcx.is_mir_available(def_id) {
+            continue;
+        }
+        let Ok(body) =
+            panic::catch_unwind(panic::AssertUnwindSafe(|| tcx.optimized_mir(def_id)))
+        else {
+            continue;
+        };
+        for bb in body.basic_blocks.iter() {
+            if let TerminatorKind::Call { func, .. } = &bb.terminator().kind
+                && let rustc_middle::mir::Operand::Constant(c) = func
+                && let ty::FnDef(callee, _) = c.const_.ty().kind()
+                && !callee.is_local()
+            {
+                externs.insert(*callee);
+            }
+            for stmt in &bb.statements {
+                use rustc_middle::mir::{Rvalue, StatementKind};
+                if let StatementKind::Assign(box (_, Rvalue::Use(op, _) | Rvalue::Cast(_, op, _))) =
+                    &stmt.kind
+                    && let rustc_middle::mir::Operand::Constant(c) = op
+                    && let ty::FnDef(callee, _) = c.const_.ty().kind()
+                    && !callee.is_local()
+                {
+                    externs.insert(*callee);
+                }
+            }
+        }
+    }
+
+    // Group by defining crate; key each entry by the extern fn's mangled symbol name, so it
+    // matches what the dependency's own compile produces (and what the consumer checks).
+    let mut per_crate: BTreeMap<String, std::collections::BTreeSet<String>> = BTreeMap::new();
+    for &did in &externs {
+        if did.krate == LOCAL_CRATE || tcx.def_kind(did) != rustc_hir::def::DefKind::Fn {
+            continue;
+        }
+        // Only non-generic fns have a stable, callable mono symbol usable as an identity.
+        if tcx.generics_of(did).count() != 0 {
+            continue;
+        }
+        let name = tcx.crate_name(did.krate).to_string();
+        let sym = MonoItem::Fn(Instance::mono(tcx, did)).symbol_name(tcx).name.to_string();
+        per_crate.entry(name).or_default().insert(sym);
+    }
+
+    let mut wrote = 0;
+    for (crate_name, syms) in &per_crate {
+        let path = dir.join(format!("{crate_name}.usedset"));
+        let mut body = format!("# used-set for `{crate_name}` — {} symbols (MIR probe)\n", syms.len());
+        for s in syms {
+            body.push_str(s);
+            body.push('\n');
+        }
+        if std::fs::write(&path, body).is_ok() {
+            wrote += 1;
+        }
+    }
+    tcx.sess.dcx().note(format!(
+        "-Z dead-fn-emit-used-set: probed {} extern fns → {} used-set files in {}",
+        externs.len(),
+        wrote,
+        dir.display()
+    ));
 }
