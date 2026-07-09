@@ -1,0 +1,24 @@
+error[E0283]: type annotations needed
+  --> $DIR/from.rs:46:16
+   |
+LL |     let _: X = Meow::f(<_>::default());
+   |                ^^^^^^^ -------------- type must be known at this point
+   |                |
+   |                cannot infer type of the type parameter `T` declared on the trait `Meow`
+   |
+note: multiple `impl`s satisfying `X: Meow<_>` found
+  --> $DIR/from.rs:31:1
+   |
+LL | impl<T> Meow<T> for T {
+   | ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl Meow<Y> for X {
+   | ^^^^^^^^^^^^^^^^^^
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: X = Meow::</* Type */>::f(<_>::default());
+   |                    ++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.
