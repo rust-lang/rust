@@ -752,21 +752,24 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    pub fn unresolved_variables(&self) -> (Vec<TyVid>, Vec<ty::IntVid>, Vec<ty::FloatVid>) {
+    pub fn unresolved_root_variables(&self) -> (Vec<TyVid>, Vec<ty::IntVid>, Vec<ty::FloatVid>) {
         let mut inner = self.inner.borrow_mut();
-        let ty = inner.type_variables().unresolved_variables().into_iter().collect();
+        let ty = inner.type_variables().unresolved_root_variables().into_iter().collect();
         let int = (0..inner.int_unification_table().len())
             .map(|i| ty::IntVid::from_usize(i))
             .filter(|&vid| {
                 inner.int_unification_table().probe_value(vid).is_unknown()
+                    && inner.int_unification_table().find(vid) == vid
             })
             .collect();
         let float = (0..inner.float_unification_table().len())
             .map(|i| ty::FloatVid::from_usize(i))
             .filter(|&vid| {
                 inner.float_unification_table().probe_value(vid).is_unknown()
+                    && inner.float_unification_table().find(vid) == vid
             })
             .collect();
+
         (ty, int, float)
     }
 

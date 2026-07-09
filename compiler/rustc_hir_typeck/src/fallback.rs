@@ -64,7 +64,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     ///
     /// Returns `true` if *any* kind of fallback has occurred during this call.
     fn fallback_types(&self) -> bool {
-        let (unresolved_ty, unresolved_int, unresolved_float) = self.unresolved_variables();
+        let (unresolved_ty, unresolved_int, unresolved_float) = self.unresolved_root_variables();
 
         // Check if we have any unresolved variables. If not, no need for fallback.
         if unresolved_ty.is_empty() && unresolved_int.is_empty() && unresolved_float.is_empty() {
