@@ -322,7 +322,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn can_mangle_eh_personality(&self) -> bool {
         // https://github.com/llvm/llvm-project/pull/166095
-        llvm_util::get_version() > (22, 0, 0)
+        llvm_util::get_version() >= (22, 0, 0)
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
