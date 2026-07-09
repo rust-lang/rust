@@ -23,7 +23,7 @@ LL |     *x = *y;
    = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough
-  --> $DIR/region-lifetime-bounds-on-fns-where-clause.rs:14:5
+  --> $DIR/region-lifetime-bounds-on-fns-where-clause.rs:14:7
    |
 LL | fn c<'a,'b>(x: &mut &'a isize, y: &mut &'b isize) {
    |      -- -- lifetime `'b` defined here
@@ -31,7 +31,7 @@ LL | fn c<'a,'b>(x: &mut &'a isize, y: &mut &'b isize) {
    |      lifetime `'a` defined here
 ...
 LL |     a(x, y);
-   |     ^^^^^^^ argument requires that `'b` must outlive `'a`
+   |       ^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
    = note: requirement occurs because of a mutable reference to `&isize`

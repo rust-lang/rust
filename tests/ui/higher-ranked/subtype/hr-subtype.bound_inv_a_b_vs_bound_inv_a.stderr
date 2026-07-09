@@ -1,8 +1,8 @@
 error[E0308]: mismatched types
-  --> $DIR/hr-subtype.rs:54:13
+  --> $DIR/hr-subtype.rs:54:26
    |
 LL |               gimme::<$t1>(None::<$t2>);
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |                            ^^^^^^^^^^^ one type is more general than the other
 ...
 LL | / check! { bound_inv_a_b_vs_bound_inv_a: (for<'a,'b> fn(Inv<'a>, Inv<'b>),
 LL | | for<'a>    fn(Inv<'a>, Inv<'a>)) }
@@ -13,10 +13,10 @@ LL | | for<'a>    fn(Inv<'a>, Inv<'a>)) }
    = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
-  --> $DIR/hr-subtype.rs:54:13
+  --> $DIR/hr-subtype.rs:54:26
    |
 LL |               gimme::<$t1>(None::<$t2>);
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |                            ^^^^^^^^^^^ one type is more general than the other
 ...
 LL | / check! { bound_inv_a_b_vs_bound_inv_a: (for<'a,'b> fn(Inv<'a>, Inv<'b>),
 LL | | for<'a>    fn(Inv<'a>, Inv<'a>)) }

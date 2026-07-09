@@ -3,13 +3,14 @@ error[E0716]: temporary value dropped while borrowed
    |
 LL |   pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
    |              -- lifetime `'a` defined here
-LL | /     bar.call((
+LL |       bar.call((
+   |  ______________-
 LL | |         &id(()),
    | |          ^^^^^^ creates a temporary value which is freed while still in use
 LL | |     ));
-   | |      -- temporary value is freed at the end of this statement
-   | |______|
-   |        argument requires that borrow lasts for `'a`
+   | |     - - temporary value is freed at the end of this statement
+   | |_____|
+   |       argument requires that borrow lasts for `'a`
    |
 note: requirement that the value outlives `'a` introduced here
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL

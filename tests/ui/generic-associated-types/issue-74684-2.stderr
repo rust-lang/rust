@@ -25,10 +25,10 @@ LL | fn bug<'a, T: ?Sized + Fun<F<'a> = [u8]>>(t: Box<T>) -> &'static T::F<'a> {
 LL |     let a = [0; 1];
    |         - binding `a` declared here
 LL |     let x = T::identity(&a);
-   |             ------------^^-
-   |             |           |
-   |             |           borrowed value does not live long enough
-   |             argument requires that `a` is borrowed for `'a`
+   |                         ^^
+   |                         |
+   |                         borrowed value does not live long enough
+   |                         argument requires that `a` is borrowed for `'a`
 LL |     todo!()
 LL | }
    | - `a` dropped here while still borrowed

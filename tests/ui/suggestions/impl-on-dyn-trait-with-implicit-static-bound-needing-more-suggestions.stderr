@@ -33,7 +33,7 @@ LL |     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32> + 'a>) -> &'a () {
    |               |
    |               lifetime `'a` defined here
 LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^
+   |         ^^^
    |         |
    |         `val` escapes the function body here
    |         receiver requires that `'a` must outlive `'static`

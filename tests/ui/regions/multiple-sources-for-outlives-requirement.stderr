@@ -4,10 +4,10 @@ error[E0716]: temporary value dropped while borrowed
 LL | fn foo<'b>() {
    |        -- lifetime `'b` defined here
 LL |     outlives_indir::<'_, 'b, _>(&mut 1u32);
-   |     ---------------------------------^^^^-- temporary value is freed at the end of this statement
-   |     |                                |
-   |     |                                creates a temporary value which is freed while still in use
-   |     argument requires that borrow lasts for `'b`
+   |                                 -----^^^^ - temporary value is freed at the end of this statement
+   |                                 |    |
+   |                                 |    creates a temporary value which is freed while still in use
+   |                                 argument requires that borrow lasts for `'b`
    |
 note: requirements that the value outlives `'b` introduced here
   --> $DIR/multiple-sources-for-outlives-requirement.rs:1:23

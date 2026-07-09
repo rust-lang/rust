@@ -4,10 +4,10 @@ error[E0597]: `a` does not live long enough
 LL |     let a = CustomMarker(PhantomData);
    |         - binding `a` declared here
 LL |     method(a);
-   |     -------^-
-   |     |      |
-   |     |      borrowed value does not live long enough
-   |     argument requires that `a` is borrowed for `'static`
+   |            ^
+   |            |
+   |            borrowed value does not live long enough
+   |            argument requires that `a` is borrowed for `'static`
 LL |
 LL | }
    | - `a` dropped here while still borrowed

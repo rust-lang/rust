@@ -4,10 +4,10 @@ error[E0597]: `c` does not live long enough
 LL |     let c = 66;
    |         - binding `c` declared here
 LL |     some_fn::<&'static u32>(&c);
-   |     ------------------------^^-
-   |     |                       |
-   |     |                       borrowed value does not live long enough
-   |     argument requires that `c` is borrowed for `'static`
+   |                             ^^
+   |                             |
+   |                             borrowed value does not live long enough
+   |                             argument requires that `c` is borrowed for `'static`
 LL | }
    | - `c` dropped here while still borrowed
 
@@ -19,10 +19,10 @@ LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
 LL |     let c = 66;
    |         - binding `c` declared here
 LL |     some_fn::<&'a u32>(&c);
-   |     -------------------^^-
-   |     |                  |
-   |     |                  borrowed value does not live long enough
-   |     argument requires that `c` is borrowed for `'a`
+   |                        ^^
+   |                        |
+   |                        borrowed value does not live long enough
+   |                        argument requires that `c` is borrowed for `'a`
 LL | }
    | - `c` dropped here while still borrowed
 
@@ -35,10 +35,10 @@ LL |     let _closure = || {
 LL |         let c = 66;
    |             - binding `c` declared here
 LL |         some_fn::<&'a u32>(&c);
-   |         -------------------^^-
-   |         |                  |
-   |         |                  borrowed value does not live long enough
-   |         argument requires that `c` is borrowed for `'a`
+   |                            ^^
+   |                            |
+   |                            borrowed value does not live long enough
+   |                            argument requires that `c` is borrowed for `'a`
 LL |     };
    |     - `c` dropped here while still borrowed
 

@@ -55,17 +55,17 @@ LL |         unsafe { transmute(src) }
    |                  ^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/reject_lifetime_extension.rs:80:18
+  --> $DIR/reject_lifetime_extension.rs:80:30
    |
 LL |     fn call_extend_hrtb<'a>(src: &'a u8) -> &'static u8 {
    |                         --  --- `src` is a reference that is only valid in the function body
    |                         |
    |                         lifetime `'a` defined here
 LL |         unsafe { extend_hrtb(src) }
-   |                  ^^^^^^^^^^^^^^^^
-   |                  |
-   |                  `src` escapes the function body here
-   |                  argument requires that `'a` must outlive `'static`
+   |                              ^^^
+   |                              |
+   |                              `src` escapes the function body here
+   |                              argument requires that `'a` must outlive `'static`
    |
 note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/reject_lifetime_extension.rs:85:9

@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-95272.rs:11:5
+  --> $DIR/issue-95272.rs:11:10
    |
 LL | fn test<'a, 'b>(x: Cell<&'a ()>, y: Cell<&'b ()>) {
    |         --  -- lifetime `'b` defined here
@@ -7,7 +7,7 @@ LL | fn test<'a, 'b>(x: Cell<&'a ()>, y: Cell<&'b ()>) {
    |         lifetime `'a` defined here
 LL |     let f = check;
 LL |     f(x, y);
-   |     ^^^^^^^ argument requires that `'a` must outlive `'b`
+   |          ^ argument requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
    = note: requirement occurs because of the type `Cell<&()>`, which makes the generic argument `&()` invariant

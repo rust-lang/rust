@@ -1,15 +1,15 @@
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/hrtb-implied-3.rs:19:5
+  --> $DIR/hrtb-implied-3.rs:19:19
    |
 LL | fn fails(iter: &str) {
    |          ----  - let's call the lifetime of this reference `'1`
    |          |
    |          `iter` is a reference that is only valid in the function body
 LL |     trivial_bound(iter);
-   |     ^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     `iter` escapes the function body here
-   |     argument requires that `'1` must outlive `'static`
+   |                   ^^^^
+   |                   |
+   |                   `iter` escapes the function body here
+   |                   argument requires that `'1` must outlive `'static`
    |
 note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/hrtb-implied-3.rs:14:5

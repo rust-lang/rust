@@ -27,21 +27,15 @@ LL | fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c:
    = note: defining type: supply
 
 error: lifetime may not live long enough
-  --> $DIR/propagate-approximated-both-lower-bounds.rs:39:5
+  --> $DIR/propagate-approximated-both-lower-bounds.rs:42:9
    |
-LL |   fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
-   |             --      -- lifetime `'c` defined here
-   |             |
-   |             lifetime `'a` defined here
+LL | fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
+   |           --      -- lifetime `'c` defined here
+   |           |
+   |           lifetime `'a` defined here
 ...
-LL | /     establish_relationships(
-LL | |         cell_a,
-LL | |         cell_b,
-LL | |         cell_c,
-...  |
-LL | |         },
-LL | |     );
-   | |_____^ argument requires that `'a` must outlive `'c`
+LL |         cell_c,
+   |         ^^^^^^ argument requires that `'a` must outlive `'c`
    |
    = help: consider adding the following bound: `'a: 'c`
    = note: requirement occurs because of the type `Cell<&'?10 u32>`, which makes the generic argument `&'?10 u32` invariant
@@ -49,21 +43,15 @@ LL | |     );
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/propagate-approximated-both-lower-bounds.rs:39:5
+  --> $DIR/propagate-approximated-both-lower-bounds.rs:42:9
    |
-LL |   fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
-   |                 --  -- lifetime `'c` defined here
-   |                 |
-   |                 lifetime `'b` defined here
+LL | fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
+   |               --  -- lifetime `'c` defined here
+   |               |
+   |               lifetime `'b` defined here
 ...
-LL | /     establish_relationships(
-LL | |         cell_a,
-LL | |         cell_b,
-LL | |         cell_c,
-...  |
-LL | |         },
-LL | |     );
-   | |_____^ argument requires that `'b` must outlive `'c`
+LL |         cell_c,
+   |         ^^^^^^ argument requires that `'b` must outlive `'c`
    |
    = help: consider adding the following bound: `'b: 'c`
    = note: requirement occurs because of the type `Cell<&'?10 u32>`, which makes the generic argument `&'?10 u32` invariant
