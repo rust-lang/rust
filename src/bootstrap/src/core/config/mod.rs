@@ -30,7 +30,6 @@ pub mod toml;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use build_helper::exit;
 pub use config::*;
 use serde::de::Unexpected;
 use serde::{Deserialize, Deserializer};
@@ -41,8 +40,8 @@ pub use toml::change_id::ChangeId;
 pub use toml::rust::BootstrapOverrideLld;
 pub use toml::target::Target;
 
-use crate::Display;
 use crate::str::FromStr;
+use crate::{Display, exit};
 
 // We are using a decl macro instead of a derive proc macro here to reduce the compile time of bootstrap.
 #[macro_export]

@@ -26,7 +26,6 @@ use std::time::{Instant, SystemTime};
 use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
-use build_helper::exit;
 use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::build_stamp::BuildStamp;
@@ -2148,4 +2147,11 @@ pub fn prepare_behaviour_dump_dir(build: &Build) {
 
         t!(INITIALIZED.set(true));
     }
+}
+
+#[macro_export]
+macro_rules! exit {
+    ($code:expr) => {
+        $crate::utils::helpers::detail_exit($code, cfg!(test));
+    };
 }
