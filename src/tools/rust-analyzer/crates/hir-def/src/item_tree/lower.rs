@@ -397,7 +397,10 @@ impl UseTreeLowering<'_> {
                 Some(path) => {
                     match ModPath::from_src(self.db, path, span_for_range) {
                         Some(it) => Some(it),
-                        None => return None, // FIXME: report errors somewhere
+                        None => {
+                            // FIXME: report errors somewhere
+                            return None;
+                        }
                     }
                 }
             };

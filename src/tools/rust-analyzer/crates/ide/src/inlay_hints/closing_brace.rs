@@ -139,7 +139,8 @@ pub(super) fn hints(
                 _ => return None,
             }
         }
-    } else if let Some(mac) = ast::MacroCall::cast(node.clone()) {
+    } else {
+        let mac = ast::MacroCall::cast(node.clone())?;
         let last_token = mac.syntax().last_token()?;
         if last_token.kind() != T![;] && last_token.kind() != SyntaxKind::R_CURLY {
             return None;
@@ -150,8 +151,6 @@ pub(super) fn hints(
             format!("{}!", mac.path()?),
             mac.path().and_then(|it| it.segment()).map(|it| it.syntax().text_range()),
         )
-    } else {
-        return None;
     };
 
     if let Some(mut next) = closing_token.next_token() {

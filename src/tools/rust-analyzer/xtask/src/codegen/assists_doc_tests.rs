@@ -23,7 +23,7 @@ use super::check_doc_test;
         for assist in assists.iter() {
             for (idx, section) in assist.sections.iter().enumerate() {
                 let test_id =
-                    if idx == 0 { assist.id.clone() } else { format!("{}_{idx}", &assist.id) };
+                    if idx == 0 { assist.id.clone() } else { format!("{}_{idx}", assist.id) };
                 let test = format!(
                     r######"
 #[test]
@@ -35,8 +35,8 @@ r#####"
 {}"#####)
 }}
 "######,
-                    &test_id,
-                    &assist.id,
+                    test_id,
+                    assist.id,
                     reveal_hash_comments(&section.before),
                     reveal_hash_comments(&section.after)
                 );
@@ -117,7 +117,7 @@ impl Assist {
                         (doc.chars().next().unwrap().is_ascii_uppercase() && doc.ends_with('.'))
                             || !assist.sections.is_empty(),
                         "\n\n{}: assist docs should be proper sentences, with capitalization and a full stop at the end.\n\n{}\n\n",
-                        &assist.id,
+                        assist.id,
                         doc,
                     );
 

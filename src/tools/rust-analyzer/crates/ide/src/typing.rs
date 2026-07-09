@@ -326,10 +326,8 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     // Make sure dot is a part of call chain
     let receiver = if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
         field_expr.expr()?
-    } else if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent.clone()) {
-        method_call_expr.receiver()?
     } else {
-        return None;
+        ast::MethodCallExpr::cast(parent.clone())?.receiver()?
     };
 
     let receiver_is_multiline = receiver.syntax().text().find_char('\n').is_some();

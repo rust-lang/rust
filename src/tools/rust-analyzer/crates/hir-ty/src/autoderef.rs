@@ -207,11 +207,10 @@ where
                 } else {
                     (AutoderefKind::Builtin, ty)
                 }
-            } else if let Some(ty) = self.overloaded_deref_ty(self.state.cur_ty) {
+            } else {
+                let ty = self.overloaded_deref_ty(self.state.cur_ty)?;
                 // The overloaded deref check already normalizes the pointee type.
                 (AutoderefKind::Overloaded, ty)
-            } else {
-                return None;
             };
 
         self.state.steps.push(self.state.cur_ty, kind);

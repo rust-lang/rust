@@ -2731,7 +2731,7 @@ impl<'db> ExprCollector<'db> {
                 pats.push(self.collect_pat(first, binding_list));
                 binding_list.reject_new = true;
                 for rest in it {
-                    for (_, it) in binding_list.is_used.iter_mut() {
+                    for it in binding_list.is_used.values_mut() {
                         *it = false;
                     }
                     pats.push(self.collect_pat(rest, binding_list));

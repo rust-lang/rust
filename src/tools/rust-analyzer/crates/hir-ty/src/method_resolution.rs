@@ -678,7 +678,7 @@ impl TraitImpls {
         Arc::new(result)
     }
 
-    #[salsa::tracked(returns(ref))]
+    #[salsa::tracked(returns(as_deref))]
     pub fn for_block(db: &dyn HirDatabase, block: BlockId) -> Option<Box<Self>> {
         let _p = tracing::info_span!("inherent_impls_in_block_query").entered();
 
@@ -687,7 +687,7 @@ impl TraitImpls {
         if result.map.is_empty() { None } else { Some(Box::new(result)) }
     }
 
-    #[salsa::tracked(returns(ref))]
+    #[salsa::tracked(returns(deref))]
     pub fn for_crate_and_deps(db: &dyn HirDatabase, krate: Crate) -> Box<[Arc<Self>]> {
         krate.transitive_deps(db).iter().map(|&dep| Self::for_crate(db, dep).clone()).collect()
     }
@@ -830,7 +830,7 @@ impl TraitImpls {
         for_each: &mut dyn FnMut(&TraitImpls),
     ) {
         let blocks = std::iter::successors(block, |block| block.loc(db).module.block(db));
-        blocks.filter_map(|block| Self::for_block(db, block).as_deref()).for_each(&mut *for_each);
+        blocks.filter_map(|block| Self::for_block(db, block)).for_each(&mut *for_each);
         Self::for_crate_and_deps(db, krate).iter().map(|it| &**it).for_each(for_each);
     }
 
@@ -858,11 +858,11 @@ impl TraitImpls {
                 .take_while(move |&block| {
                     other_block.is_none_or(|other_block| other_block != block)
                 })
-                .filter_map(move |block| TraitImpls::for_block(db, block).as_deref())
+                .filter_map(move |block| TraitImpls::for_block(db, block))
         };
         if trait_block == type_block {
             blocks_iter(trait_block)
-                .filter_map(|block| TraitImpls::for_block(db, block).as_deref())
+                .filter_map(|block| TraitImpls::for_block(db, block))
                 .for_each(for_each);
         } else {
             for_each_block(trait_block, type_block).for_each(&mut *for_each);
