@@ -569,6 +569,7 @@ fn parse_source(
     let parsed = parser.parse_item(
         rustc_parse::parser::ForceCollect::No,
         rustc_parse::parser::AllowConstBlockItems::No,
+        rustc_parse::parser::StmtWouldBeAllowed::Yes,
     );
 
     let result = match parsed {

@@ -9,7 +9,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_expand::config::StripUnconfigured;
 use rustc_expand::configure;
 use rustc_feature::Features;
-use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
+use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser, StmtWouldBeAllowed};
 use rustc_session::Session;
 use rustc_span::{Span, sym};
 use smallvec::SmallVec;
@@ -110,8 +110,13 @@ impl CfgEval<'_> {
         let res: PResult<'_, Annotatable> = try {
             match annotatable {
                 Annotatable::Item(_) => {
-                    let item =
-                        parser.parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?.unwrap();
+                    let item = parser
+                        .parse_item(
+                            ForceCollect::Yes,
+                            AllowConstBlockItems::Yes,
+                            StmtWouldBeAllowed::NoOrUnknown,
+                        )?
+                        .unwrap();
                     Annotatable::Item(self.flat_map_item(item).pop().unwrap())
                 }
                 Annotatable::AssocItem(_, ctxt) => {

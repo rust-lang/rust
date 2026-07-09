@@ -68,7 +68,12 @@ impl<'a> Parser<'a> {
         // `parse_item` consumes the appropriate semicolons so any leftover is an error.
         loop {
             while self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {} // Eat all bad semicolons
-            let Some(item) = self.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)? else {
+            let Some(item) = self.parse_item(
+                ForceCollect::No,
+                AllowConstBlockItems::Yes,
+                StmtWouldBeAllowed::NoOrUnknown,
+            )?
+            else {
                 break;
             };
             items.push(item);
@@ -77,34 +82,9 @@ impl<'a> Parser<'a> {
         if !self.eat(term) {
             let token_str = super::token_descr(&self.token);
             if !self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {
-                let is_let = self.token.is_keyword(kw::Let);
-                let is_let_mut = is_let && self.look_ahead(1, |t| t.is_keyword(kw::Mut));
-                let let_has_ident = is_let && !is_let_mut && self.is_kw_followed_by_ident(kw::Let);
-
                 let msg = format!("expected item, found {token_str}");
                 let mut err = self.dcx().struct_span_err(self.token.span, msg);
-
-                let label = if is_let {
-                    "`let` cannot be used for global variables"
-                } else {
-                    "expected item"
-                };
-                err.span_label(self.token.span, label);
-
-                if is_let {
-                    if is_let_mut {
-                        err.help("consider using `static` and a `Mutex` instead of `let mut`");
-                    } else if let_has_ident {
-                        err.span_suggestion_short(
-                            self.token.span,
-                            "consider using `static` or `const` instead of `let`",
-                            "static",
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else {
-                        err.help("consider using `static` or `const` instead of `let`");
-                    }
-                }
+                err.span_label(self.token.span, "expected item");
                 err.note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
                 return Err(err);
             }
@@ -128,10 +108,11 @@ impl<'a> Parser<'a> {
         &mut self,
         force_collect: ForceCollect,
         allow_const_block_items: AllowConstBlockItems,
+        allow_suggest_stmt: StmtWouldBeAllowed,
     ) -> PResult<'a, Option<Box<Item>>> {
         let fn_parse_mode =
             FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true };
-        self.parse_item_(fn_parse_mode, force_collect, allow_const_block_items)
+        self.parse_item_(fn_parse_mode, force_collect, allow_const_block_items, allow_suggest_stmt)
             .map(|i| i.map(Box::new))
     }
 
@@ -140,6 +121,7 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
         const_block_items_allowed: AllowConstBlockItems,
+        allow_suggest_stmt: StmtWouldBeAllowed,
     ) -> PResult<'a, Option<Item>> {
         self.recover_vcs_conflict_marker();
         let attrs = self.parse_outer_attributes()?;
@@ -151,6 +133,7 @@ impl<'a> Parser<'a> {
             fn_parse_mode,
             force_collect,
             const_block_items_allowed,
+            allow_suggest_stmt,
         )
     }
 
@@ -163,9 +146,10 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
         allow_const_block_items: AllowConstBlockItems,
+        allow_suggest_stmt: StmtWouldBeAllowed,
     ) -> PResult<'a, Option<Item>> {
         if let Some(item) = self.eat_metavar_seq(MetaVarKind::Item, |this| {
-            this.parse_item(ForceCollect::Yes, allow_const_block_items)
+            this.parse_item(ForceCollect::Yes, allow_const_block_items, allow_suggest_stmt)
         }) {
             let mut item = item.expect("an actual item");
             attrs.prepend_to_nt_inner(&mut item.attrs);
@@ -180,6 +164,7 @@ impl<'a> Parser<'a> {
                 &mut attrs,
                 mac_allowed,
                 allow_const_block_items,
+                allow_suggest_stmt,
                 lo,
                 &vis,
                 &mut def,
@@ -254,11 +239,15 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses one of the items allowed by the flags.
+    ///
+    /// Also parses `let`, which isn’t an item but a statement, for diagnostic purposes.
+    /// That branch always errors.
     fn parse_item_kind(
         &mut self,
         attrs: &mut AttrVec,
         macros_allowed: bool,
         allow_const_block_items: AllowConstBlockItems,
+        allow_suggest_stmt: StmtWouldBeAllowed,
         lo: Span,
         vis: &Visibility,
         def: &mut Defaultness,
@@ -384,6 +373,9 @@ impl<'a> Parser<'a> {
         } else if let IsMacroRulesItem::Yes { has_bang } = self.is_macro_rules_item() {
             // MACRO_RULES ITEM
             self.parse_item_macro_rules(vis, has_bang)?
+        } else if self.token.is_keyword_case(kw::Let, case) {
+            // `let`, which is not an item, but might be erroneously used as if it is one.
+            return self.error_let_as_item(allow_suggest_stmt, fn_parse_mode, vis, def);
         } else if self.isnt_macro_invocation()
             && (self.token.is_ident_named(sym::import)
                 || self.token.is_ident_named(sym::using)
@@ -402,6 +394,7 @@ impl<'a> Parser<'a> {
                 attrs,
                 macros_allowed,
                 allow_const_block_items,
+                allow_suggest_stmt,
                 lo,
                 vis,
                 def,
@@ -418,6 +411,164 @@ impl<'a> Parser<'a> {
             return Ok(None);
         };
         Ok(Some(info))
+    }
+
+    /// Parse a `let` statement appearing where an item should and report the error.
+    ///
+    /// Precondition: The `let` token is the next token.
+    fn error_let_as_item(
+        &mut self,
+        // Should we suggest a fix that is a `let` statement?
+        allow_suggest_stmt: StmtWouldBeAllowed,
+        // We're not parsing a fn, but we do care about whether this item is an associated item,
+        // which happens to be available here.
+        fn_parse_mode: FnParseMode,
+        // `vis` and `def` are tokens that we might have parsed already.
+        vis: &Visibility,
+        def: &Defaultness,
+    ) -> PResult<'a, Option<ItemKind>> {
+        let let_token_span = self.token.span;
+
+        // Determine whether we are parsing an associated item, in which case we should not
+        // mention `static` but only `const`.
+        // (This is a slight abuse of `FnParseMode`.)
+        let must_be_associated_item = match fn_parse_mode.context {
+            FnContext::Free => false,
+            FnContext::Trait => true,
+            FnContext::Impl => true,
+        };
+
+        // Get further information by parsing the statement (if it is a valid let statement).
+        let stmt: Option<Stmt> = if self.may_recover() {
+            match self.parse_stmt_without_recovery(false, ForceCollect::No, false) {
+                Ok(Some(stmt)) => {
+                    // Eat the semicolon too.
+                    self.expect_semi()?;
+                    Some(stmt)
+                }
+                Ok(None) => unreachable!("let token but no statement??"),
+                Err(e) => {
+                    // If the statement is invalid, don't also emit that cascading error.
+                    e.cancel();
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        // Is the `let`’s pattern (if it parsed) known to be an Ident pattern, `foo` or `mut foo`
+        // (but not `ref foo` or any more complex pattern)?
+        let let_pattern_is_ident: Option<Mutability> =
+            if let Some(Stmt { kind: StmtKind::Let(ref local), .. }) = stmt {
+                match local.pat.kind {
+                    PatKind::Ident(BindingMode(ByRef::No, mutability), _, _) => Some(mutability),
+                    _ => None,
+                }
+            } else {
+                None
+            };
+
+        let error = match allow_suggest_stmt {
+            StmtWouldBeAllowed::Yes => {
+                // We are in a function, `const` block, or other context in which a `let`
+                // *would* be allowed, except that we must have parsed some item-modifier
+                // that prohibits it.
+
+                if !vis.span.is_empty() {
+                    self.dcx().create_err(diagnostics::LetWithModifier::Visibility(
+                        vis.span,
+                        vis.span.with_hi(let_token_span.lo()),
+                    ))
+                } else {
+                    match *def {
+                        // We could also emit `errors::FinalNotFollowedByItem`, but that is less
+                        // specific to the situation.
+                        Defaultness::Final(span) => {
+                            self.dcx().create_err(diagnostics::LetWithModifier::Final(
+                                span,
+                                span.with_hi(let_token_span.lo()),
+                                if let Some(Mutability::Not) = let_pattern_is_ident {
+                                    Some(diagnostics::FinalLetIsNotImmutability)
+                                } else {
+                                    None
+                                },
+                            ))
+                        }
+                        Defaultness::Default(span) => {
+                            self.dcx().create_err(diagnostics::LetWithModifier::Default(
+                                span,
+                                span.with_hi(let_token_span.lo()),
+                            ))
+                        }
+                        _ => {
+                            // Fallback case that should never need to be reached.
+                            // We are in a context which allows `let` statements, and yet
+                            // we parsed the `let` as an item. This indicates that some modifier
+                            // token was present before the `let`, but we didn’t find it above.
+                            self.dcx().struct_span_err(
+                                // Ideally we would point to the token *before* the `let`,
+                                // but we don’t know what that token is.
+                                let_token_span.shrink_to_lo(),
+                                "`let` statement cannot have modifiers that apply to items",
+                            )
+                        }
+                    }
+                }
+            }
+            StmtWouldBeAllowed::NoOrUnknown => {
+                let advice = match let_pattern_is_ident {
+                    Some(Mutability::Mut) => diagnostics::LetAsItemAdvice::UseMutex,
+                    Some(Mutability::Not) => {
+                        // FIXME: If the `let` doesn’t already have a type, we should include
+                        // addition of ": _" in the suggestion.
+                        if must_be_associated_item {
+                            diagnostics::LetAsItemAdvice::UseAssocConstSugg(let_token_span)
+                        } else {
+                            diagnostics::LetAsItemAdvice::UseStaticOrConstSugg(let_token_span)
+                        }
+                    }
+                    None => diagnostics::LetAsItemAdvice::UseStaticOrConstNoSugg(let_token_span),
+                };
+
+                self.dcx().create_err(diagnostics::LetAsItem { span: let_token_span, advice })
+            }
+        };
+
+        // FIXME: Ideally, we would have a `ItemKind::Err` that optionally defines a name but
+        // suppresses further errors and has no validity conditions. In lieu of that, we have to
+        // either synthesize some valid kind of item (here, a `static`), or abort parsing entirely.
+        if let Some(Stmt { kind: StmtKind::Let(box_local), .. }) = stmt
+            && let Local {
+                pat: Pat { kind: PatKind::Ident(BindingMode(_, Mutability::Not), ident, _), .. },
+                ty,
+                kind,
+                ..
+            } = *box_local
+            // Guard against conditions that would provoke further errors
+            && let FnContext::Free = fn_parse_mode.context
+            && let Defaultness::Implicit = def
+        {
+            // We can pretend we parsed a static item, which will behave mostly like a global
+            // `let` would if that were a thing that exists.
+            let guar = error.emit();
+            Ok(Some(ItemKind::Static(Box::new(StaticItem {
+                ident,
+                ty: ty.unwrap_or_else(|| self.mk_ty(DUMMY_SP, TyKind::Err(guar))),
+                safety: Safety::Default,
+                mutability: Mutability::Not,
+                expr: match kind {
+                    LocalKind::Decl => None,
+                    LocalKind::Init(expr) => Some(expr),
+                    LocalKind::InitElse(expr, _block) => Some(expr),
+                },
+                define_opaque: None,
+                eii_impls: ThinVec::new(),
+            }))))
+        } else {
+            // We are returning Err, aborting the parsing, because we don’t have a way to recover.
+            Err(error)
+        }
     }
 
     fn recover_import_as_use(&mut self) -> PResult<'a, Option<ItemKind>> {
@@ -997,23 +1148,13 @@ impl<'a> Parser<'a> {
                     }
                     // We have to bail or we'll potentially never make progress.
                     let non_item_span = self.token.span;
-                    let is_let = self.token.is_keyword(kw::Let);
 
                     let mut err =
                         self.dcx().struct_span_err(non_item_span, "non-item in item list");
                     self.consume_block(exp!(OpenBrace), exp!(CloseBrace), ConsumeClosingDelim::Yes);
-                    if is_let {
-                        err.span_suggestion_verbose(
-                            non_item_span,
-                            "consider using `const` instead of `let` for associated const",
-                            "const",
-                            Applicability::MachineApplicable,
-                        );
-                    } else {
-                        err.span_label(open_brace_span, "item list starts here")
-                            .span_label(non_item_span, "non-item starts here")
-                            .span_label(self.prev_token.span, "item list ends here");
-                    }
+                    err.span_label(open_brace_span, "item list starts here")
+                        .span_label(non_item_span, "non-item starts here")
+                        .span_label(self.prev_token.span, "item list ends here");
                     if is_unnecessary_semicolon {
                         err.span_suggestion(
                             semicolon_span,
@@ -1245,6 +1386,7 @@ impl<'a> Parser<'a> {
                 fn_parse_mode,
                 force_collect,
                 AllowConstBlockItems::DoesNotMatter, // due to `AssocItemKind::try_from` below
+                StmtWouldBeAllowed::NoOrUnknown,
             )?
             .map(|Item { attrs, id, span, vis, kind, tokens }| {
                 let kind = match AssocItemKind::try_from(kind) {
@@ -1503,6 +1645,7 @@ impl<'a> Parser<'a> {
                 fn_parse_mode,
                 force_collect,
                 AllowConstBlockItems::DoesNotMatter, // due to `ForeignItemKind::try_from` below
+                StmtWouldBeAllowed::NoOrUnknown,
             )?
             .map(|Item { attrs, id, span, vis, kind, tokens }| {
                 let kind = match ForeignItemKind::try_from(kind) {
@@ -2660,6 +2803,7 @@ impl<'a> Parser<'a> {
             let item = self.parse_item(
                 ForceCollect::No,
                 AllowConstBlockItems::DoesNotMatter, // self.token != kw::Const
+                StmtWouldBeAllowed::NoOrUnknown,
             )?;
             let mut item = item.unwrap().span;
             if self.token == token::Comma {
@@ -2735,6 +2879,16 @@ impl<'a> Parser<'a> {
             None
         }
     }
+}
+
+/// Whether the context this item is being parsed in would allow a statement instead of an item.
+///
+/// This information is used when reporting a parse error, to decide whether to make suggestions
+/// that are statements instead of items.
+#[derive(Copy, Clone, PartialEq)]
+pub enum StmtWouldBeAllowed {
+    Yes,
+    NoOrUnknown,
 }
 
 enum IsMacroRulesItem {

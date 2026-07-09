@@ -3,7 +3,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use rustc_ast::ast;
 use rustc_ast::token::TokenKind;
 use rustc_parse::exp;
-use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
+use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, StmtWouldBeAllowed};
 
 use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;
@@ -49,9 +49,11 @@ fn parse_cfg_match_inner<'a>(
         }
 
         while parser.token != TokenKind::CloseBrace && parser.token.kind != TokenKind::Eof {
-            let item = match parser
-                .parse_item(ForceCollect::No, AllowConstBlockItems::DoesNotMatter)
-            {
+            let item = match parser.parse_item(
+                ForceCollect::No,
+                AllowConstBlockItems::DoesNotMatter,
+                StmtWouldBeAllowed::NoOrUnknown,
+            ) {
                 Ok(Some(item_ptr)) => *item_ptr,
                 Ok(None) => continue,
                 Err(err) => {
