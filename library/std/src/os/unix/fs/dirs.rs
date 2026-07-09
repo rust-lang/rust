@@ -44,8 +44,8 @@ pub trait UserDirsExt: Sized + Sealed {
     /// | [`data_home`] | `XDG_DATA_HOME` | `$HOME/.local/share` |
     /// | [`state_home`] | `XDG_STATE_HOME` | `$HOME/.local/state` |
     /// | [`runtime_home`] | `XDG_RUNTIME_DIR` | (see method docs) |
-    /// | [`config_dirs`] | `XDG_CONFIG_DIRS` | \[`/etc/xdg`] |
-    /// | [`data_dirs`] | `XDG_DATA_DIRS` | \[`/usr/local/share/`, `/usr/share/`] |
+    /// | [`config_dirs`] | `XDG_CONFIG_DIRS` | \[`/etc/xdg`\] |
+    /// | [`data_dirs`] | `XDG_DATA_DIRS` | \[`/usr/local/share/`, `/usr/share/`\] |
     ///
     /// Note that `$HOME` here means [`env::home_dir`](home_dir), which uses
     /// `$HOME` if set and non-empty, but falls back to the system password
