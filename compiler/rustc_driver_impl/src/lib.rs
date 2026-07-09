@@ -606,7 +606,6 @@ fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
                 &sess.opts.unstable_opts.ls,
                 sess.cfg_version,
             ) {
-                // If the panic comes from the input being the wrong file, direct the user to .rmeta files
                 if path.extension().is_some_and(|extension| extension == "rs") {
                     let mut err = sess
                         .dcx()
@@ -617,9 +616,7 @@ fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
                     }
                     err.emit();
                 }
-
-                // Else, just panic (This shouldn't be reached);
-                panic!("{error}");
+                sess.dcx().fatal(error.to_string());
             }
             safe_println!("{}", String::from_utf8(v).unwrap());
         }

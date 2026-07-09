@@ -12,7 +12,7 @@ Allowed values are:
 
 - `root`: Crate info.
 - `lang_items`: Language items used and missing, if any.
-- `features`: Library features used.
+- `features`: Library features defined via the `#[stable]` and `#[unstable]` internal attributes.
 - `items`: All items (such as modules, functions...) in the crate, including attributes like their visibility
 - `all`: All of the above
 
