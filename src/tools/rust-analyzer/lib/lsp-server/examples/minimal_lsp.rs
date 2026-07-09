@@ -72,7 +72,7 @@ use lsp_types::{
     Contents, DefinitionRequest, Diagnostic, DiagnosticSeverity, DidChangeTextDocumentNotification,
     DidChangeTextDocumentParams, DidOpenTextDocumentNotification, DidOpenTextDocumentParams,
     DocumentFormattingParams, DocumentFormattingRequest, Hover, HoverProvider, HoverRequest,
-    InitializeParams, LspNotificationMethod, LspRequestMethod, MarkedString, Notification,
+    InitializeParams, LspNotificationMethod, LspRequestMethod, MarkupContent, Notification,
     Position, PublishDiagnosticsNotification, PublishDiagnosticsParams, Range, Request,
     ServerCapabilities, TextDocumentSync, TextEdit, Uri,
 };
@@ -157,7 +157,7 @@ fn handle_notification(
     note: &lsp_server::Notification,
     docs: &mut FxHashMap<Uri, String>,
 ) -> Result<()> {
-    let method: LspNotificationMethod = note.method.clone().into();
+    let method: LspNotificationMethod<'_> = note.method.as_str().into();
     match method {
         DidOpenTextDocumentNotification::METHOD => {
             let p: DidOpenTextDocumentParams = serde_json::from_value(note.params.clone())?;
@@ -191,7 +191,7 @@ fn handle_request(
     req: &ServerRequest,
     docs: &mut FxHashMap<Uri, String>,
 ) -> Result<()> {
-    let parsed: LspRequestMethod = req.method.clone().into();
+    let parsed: LspRequestMethod<'_> = req.method.as_str().into();
     match parsed {
         DefinitionRequest::METHOD => {
             send_ok(
@@ -218,9 +218,10 @@ fn handle_request(
         }
         HoverRequest::METHOD => {
             let hover = Hover {
-                contents: Contents::MarkedString(MarkedString::String(
-                    "Hello from *minimal_lsp*".into(),
-                )),
+                contents: Contents::MarkupContent(MarkupContent {
+                    value: "Hello from *minimal_lsp*".into(),
+                    kind: lsp_types::MarkupKind::Markdown,
+                }),
                 range: None,
             };
             send_ok(conn, req.id.clone(), &hover)?;
