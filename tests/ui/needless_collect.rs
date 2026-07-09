@@ -198,10 +198,6 @@ mod issue8055_regression {
         }
     }
 
-    #[expect(
-        clippy::needless_collect,
-        reason = "FIXME: proposed fix cannot determine type, see issue #17315"
-    )]
     fn foo() {
         Foo {
             inner: [].iter(),
@@ -289,29 +285,5 @@ mod collect_push_then_iter {
         v.push_front(5);
         v.push_back(6);
         v.into_iter().map(|x| x + 1).collect()
-    }
-}
-
-fn issue_17315() {
-    struct Foo<T> {
-        inner: T,
-        marker: core::marker::PhantomData<Self>,
-    }
-
-    impl<T: Iterator> Iterator for Foo<T> {
-        type Item = T::Item;
-        fn next(&mut self) -> Option<Self::Item> {
-            self.inner.next()
-        }
-    }
-
-    // not trigger needless_collect.
-    fn foo() {
-        Foo {
-            inner: [].iter(),
-            marker: core::marker::PhantomData,
-        }
-        .collect::<Vec<&i32>>()
-        .len();
     }
 }
