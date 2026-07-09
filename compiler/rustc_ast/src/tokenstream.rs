@@ -643,7 +643,7 @@ impl TokenStream {
 
     // If `vec` is not empty, try to glue `tt` onto its last token. The return
     // value indicates if gluing took place.
-    fn try_glue_to_last(vec: &mut Vec<TokenTree>, tt: &TokenTree) -> bool {
+    fn try_glue_to_last(vec: &mut [TokenTree], tt: &TokenTree) -> bool {
         if let Some(TokenTree::Token(last_tok, Spacing::Joint | Spacing::JointHidden)) = vec.last()
             && let TokenTree::Token(tok, spacing) = tt
             && let Some(glued_tok) = last_tok.glue(tok)
