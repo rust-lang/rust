@@ -333,6 +333,11 @@ impl<'tcx> LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
         if !item.span.in_derive_expansion() {
             return;
         }
+        // Derive-generated impls are marked `#[automatically_derived]`; don't inherit
+        // expectations into anything else that ends up inside a derive expansion.
+        if !tcx.hir_attrs(item.hir_id()).iter().any(|attr| attr.is_automatically_derived_attr()) {
+            return;
+        }
         // Find the item the impl was derived from through its self type.
         let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = impl_.self_ty.kind else { return };
         let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, def_id) = path.res else {
@@ -354,56 +359,17 @@ impl<'tcx> LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
             let Some(mut metas) = attr.meta_item_list() else { continue };
 
             // Detach a `reason` (RFC 2383) at the end, like `add` does.
-            let mut reason = None;
-            if let Some(tail_li) = metas.last()
-                && let Some(item) = tail_li.meta_item()
-                && let ast::MetaItemKind::NameValue(ref name_value) = item.kind
-                && item.path == sym::reason
-            {
-                if let ast::LitKind::Str(rationale, _) = name_value.kind {
-                    reason = Some(rationale);
-                }
+            let (reason, tail_is_reason) = match metas.last() {
+                Some(tail_li) => self.parse_tail_reason(tail_li, false),
+                None => (None, false),
+            };
+            if tail_is_reason {
                 metas.pop();
             }
 
             for (lint_index, li) in metas.iter_mut().enumerate() {
                 let sp = li.span();
-                let meta_item = match li {
-                    ast::MetaItemInner::MetaItem(meta_item) if meta_item.is_word() => meta_item,
-                    _ => continue,
-                };
-                let tool_ident = if meta_item.path.segments.len() > 1 {
-                    Some(meta_item.path.segments.remove(0).ident)
-                } else {
-                    None
-                };
-                let tool_name = tool_ident.map(|ident| ident.name);
-                let name = pprust::path_to_string(&meta_item.path);
-                let lint_result =
-                    self.store.check_lint_name(&name, tool_name, self.registered_tools);
-                let (ids, name) = match lint_result {
-                    CheckLintNameResult::Ok(ids) => {
-                        let name =
-                            meta_item.path.segments.last().expect("empty lint name").ident.name;
-                        (ids, name)
-                    }
-                    CheckLintNameResult::Tool(ids, _) => {
-                        let complete_name = format!("{}::{}", tool_ident.unwrap().name, name);
-                        (ids, Symbol::intern(&complete_name))
-                    }
-                    CheckLintNameResult::Renamed(ref replace) => {
-                        let CheckLintNameResult::Ok(ids) =
-                            self.store.check_lint_name(replace, None, self.registered_tools)
-                        else {
-                            panic!("renamed lint does not exist: {replace}");
-                        };
-                        (ids, Symbol::intern(replace))
-                    }
-                    CheckLintNameResult::MissingTool
-                    | CheckLintNameResult::NoTool
-                    | CheckLintNameResult::Removed(_)
-                    | CheckLintNameResult::NoLint(_) => continue,
-                };
+                let Some((ids, name, _)) = self.resolve_lint_name(li, false) else { continue };
 
                 let expect_id = StableLintExpectationId {
                     hir_id: adt_hir_id,
@@ -778,8 +744,196 @@ where
         };
     }
 
+    /// Parse a `reason` (RFC 2383) at the end of a lint level attribute's meta item
+    /// list. Returns the reason, and whether the tail item is a reason and should be
+    /// detached from the list before processing the lint names. With
+    /// `emit_diagnostics` set, malformed tail arguments are diagnosed.
+    fn parse_tail_reason(
+        &self,
+        tail_li: &ast::MetaItemInner,
+        emit_diagnostics: bool,
+    ) -> (Option<Symbol>, bool) {
+        if let Some(item) = tail_li.meta_item() {
+            match item.kind {
+                ast::MetaItemKind::Word => {} // actual lint names handled later
+                ast::MetaItemKind::NameValue(ref name_value) => {
+                    if item.path == sym::reason {
+                        if let ast::LitKind::Str(rationale, _) = name_value.kind {
+                            return (Some(rationale), true);
+                        }
+                        if emit_diagnostics {
+                            self.sess.dcx().emit_err(MalformedAttribute {
+                                span: name_value.span,
+                                sub: MalformedAttributeSub::ReasonMustBeStringLiteral(
+                                    name_value.span,
+                                ),
+                            });
+                        }
+                        return (None, true);
+                    } else if emit_diagnostics {
+                        self.sess.dcx().emit_err(MalformedAttribute {
+                            span: item.span,
+                            sub: MalformedAttributeSub::BadAttributeArgument(item.span),
+                        });
+                    }
+                }
+                ast::MetaItemKind::List(_) => {
+                    if emit_diagnostics {
+                        self.sess.dcx().emit_err(MalformedAttribute {
+                            span: item.span,
+                            sub: MalformedAttributeSub::BadAttributeArgument(item.span),
+                        });
+                    }
+                }
+            }
+        }
+        (None, false)
+    }
+
+    /// Resolve the lint name of a single item of a lint level attribute's meta item
+    /// list (e.g. `lint_name` and `tool::lint_name` in `#[allow(lint_name,
+    /// tool::lint_name)]`), handling tool lints as well as renamed and removed lints.
+    /// Returns the resolved lint ids, the (possibly tool-qualified or renamed) name to
+    /// report as the lint level source and the tool name, if any. With
+    /// `emit_diagnostics` set, malformed meta items and unknown, renamed and removed
+    /// lints are diagnosed; otherwise they are silently skipped.
+    fn resolve_lint_name(
+        &self,
+        li: &mut ast::MetaItemInner,
+        emit_diagnostics: bool,
+    ) -> Option<(&'s [LintId], Symbol, Option<Symbol>)> {
+        let sp = li.span();
+        let meta_item = match li {
+            ast::MetaItemInner::MetaItem(meta_item) if meta_item.is_word() => meta_item,
+            _ => {
+                if emit_diagnostics {
+                    let sub = if let Some(item) = li.meta_item()
+                        && let ast::MetaItemKind::NameValue(_) = item.kind
+                        && item.path == sym::reason
+                    {
+                        MalformedAttributeSub::ReasonMustComeLast(sp)
+                    } else {
+                        MalformedAttributeSub::BadAttributeArgument(sp)
+                    };
+
+                    self.sess.dcx().emit_err(MalformedAttribute { span: sp, sub });
+                }
+                return None;
+            }
+        };
+        let tool_ident = if meta_item.path.segments.len() > 1 {
+            Some(meta_item.path.segments.remove(0).ident)
+        } else {
+            None
+        };
+        let tool_name = tool_ident.map(|ident| ident.name);
+        let name = pprust::path_to_string(&meta_item.path);
+        let store = self.store;
+        let lint_result = store.check_lint_name(&name, tool_name, self.registered_tools);
+
+        let (ids, name) = match lint_result {
+            CheckLintNameResult::Ok(ids) => {
+                let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
+                (ids, name)
+            }
+
+            CheckLintNameResult::Tool(ids, new_lint_name) => {
+                let name = match new_lint_name {
+                    None => {
+                        let complete_name = &format!("{}::{}", tool_ident.unwrap().name, name);
+                        Symbol::intern(complete_name)
+                    }
+                    Some(new_lint_name) => {
+                        if emit_diagnostics {
+                            self.emit_span_lint(
+                                builtin::RENAMED_AND_REMOVED_LINTS,
+                                sp.into(),
+                                DeprecatedLintName {
+                                    name,
+                                    suggestion: sp,
+                                    replace: &new_lint_name,
+                                },
+                            );
+                        }
+                        Symbol::intern(&new_lint_name)
+                    }
+                };
+                (ids, name)
+            }
+
+            CheckLintNameResult::MissingTool => {
+                // If `MissingTool` is returned, then either the lint does not
+                // exist in the tool or the code was not compiled with the tool and
+                // therefore the lint was never added to the `LintStore`. To detect
+                // this is the responsibility of the lint tool.
+                return None;
+            }
+
+            CheckLintNameResult::NoTool => {
+                if emit_diagnostics {
+                    self.sess.dcx().emit_err(UnknownToolInScopedLint {
+                        span: tool_ident.map(|ident| ident.span),
+                        tool_name: tool_name.unwrap(),
+                        lint_name: pprust::path_to_string(&meta_item.path),
+                        is_nightly_build: self.sess.is_nightly_build(),
+                    });
+                }
+                return None;
+            }
+
+            CheckLintNameResult::Renamed(ref replace) => {
+                if emit_diagnostics && self.lint_added_lints {
+                    let suggestion = RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
+                    let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
+                    self.emit_span_lint(
+                        RENAMED_AND_REMOVED_LINTS,
+                        sp.into(),
+                        RenamedLint { name: name.as_str(), replace, suggestion },
+                    );
+                }
+
+                // If this lint was renamed, apply the new lint instead of ignoring the
+                // attribute. Ignore any errors or warnings that happen because the new
+                // name is inaccurate.
+                // NOTE: `new_name` already includes the tool name, so we don't
+                // have to add it again.
+                let CheckLintNameResult::Ok(ids) =
+                    store.check_lint_name(replace, None, self.registered_tools)
+                else {
+                    panic!("renamed lint does not exist: {replace}");
+                };
+
+                (ids, Symbol::intern(&replace))
+            }
+
+            CheckLintNameResult::Removed(ref reason) => {
+                if emit_diagnostics && self.lint_added_lints {
+                    let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
+                    self.emit_span_lint(
+                        RENAMED_AND_REMOVED_LINTS,
+                        sp.into(),
+                        RemovedLint { name: name.as_str(), reason },
+                    );
+                }
+                return None;
+            }
+
+            CheckLintNameResult::NoLint(suggestion) => {
+                if emit_diagnostics && self.lint_added_lints {
+                    let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
+                    let suggestion = suggestion.map(|(replace, from_rustc)| {
+                        UnknownLintSuggestion::WithSpan { suggestion: sp, replace, from_rustc }
+                    });
+                    self.emit_span_lint(UNKNOWN_LINTS, sp.into(), UnknownLint { name, suggestion });
+                }
+                return None;
+            }
+        };
+
+        Some((ids, name, tool_name))
+    }
+
     fn add(&mut self, attrs: &[impl AttributeExt], is_crate_node: bool) {
-        let sess = self.sess;
         for (attr_index, attr) in attrs.iter().enumerate() {
             if attr.is_automatically_derived_attr() {
                 self.provider.insert(
@@ -813,38 +967,10 @@ where
 
             // Before processing the lint names, look for a reason (RFC 2383)
             // at the end.
-            let mut reason = None;
-            if let Some(item) = tail_li.meta_item() {
-                match item.kind {
-                    ast::MetaItemKind::Word => {} // actual lint names handled later
-                    ast::MetaItemKind::NameValue(ref name_value) => {
-                        if item.path == sym::reason {
-                            if let ast::LitKind::Str(rationale, _) = name_value.kind {
-                                reason = Some(rationale);
-                            } else {
-                                sess.dcx().emit_err(MalformedAttribute {
-                                    span: name_value.span,
-                                    sub: MalformedAttributeSub::ReasonMustBeStringLiteral(
-                                        name_value.span,
-                                    ),
-                                });
-                            }
-                            // found reason, reslice meta list to exclude it
-                            metas.pop().unwrap();
-                        } else {
-                            sess.dcx().emit_err(MalformedAttribute {
-                                span: item.span,
-                                sub: MalformedAttributeSub::BadAttributeArgument(item.span),
-                            });
-                        }
-                    }
-                    ast::MetaItemKind::List(_) => {
-                        sess.dcx().emit_err(MalformedAttribute {
-                            span: item.span,
-                            sub: MalformedAttributeSub::BadAttributeArgument(item.span),
-                        });
-                    }
-                }
+            let (reason, tail_is_reason) = self.parse_tail_reason(tail_li, true);
+            if tail_is_reason {
+                // found reason, reslice meta list to exclude it
+                metas.pop().unwrap();
             }
 
             for (lint_index, li) in metas.iter_mut().enumerate() {
@@ -855,139 +981,8 @@ where
                 });
 
                 let sp = li.span();
-                let meta_item = match li {
-                    ast::MetaItemInner::MetaItem(meta_item) if meta_item.is_word() => meta_item,
-                    _ => {
-                        let sub = if let Some(item) = li.meta_item()
-                            && let ast::MetaItemKind::NameValue(_) = item.kind
-                            && item.path == sym::reason
-                        {
-                            MalformedAttributeSub::ReasonMustComeLast(sp)
-                        } else {
-                            MalformedAttributeSub::BadAttributeArgument(sp)
-                        };
-
-                        sess.dcx().emit_err(MalformedAttribute { span: sp, sub });
-                        continue;
-                    }
-                };
-                let tool_ident = if meta_item.path.segments.len() > 1 {
-                    Some(meta_item.path.segments.remove(0).ident)
-                } else {
-                    None
-                };
-                let tool_name = tool_ident.map(|ident| ident.name);
-                let name = pprust::path_to_string(&meta_item.path);
-                let lint_result =
-                    self.store.check_lint_name(&name, tool_name, self.registered_tools);
-
-                let (ids, name) = match lint_result {
-                    CheckLintNameResult::Ok(ids) => {
-                        let name =
-                            meta_item.path.segments.last().expect("empty lint name").ident.name;
-                        (ids, name)
-                    }
-
-                    CheckLintNameResult::Tool(ids, new_lint_name) => {
-                        let name = match new_lint_name {
-                            None => {
-                                let complete_name =
-                                    &format!("{}::{}", tool_ident.unwrap().name, name);
-                                Symbol::intern(complete_name)
-                            }
-                            Some(new_lint_name) => {
-                                self.emit_span_lint(
-                                    builtin::RENAMED_AND_REMOVED_LINTS,
-                                    sp.into(),
-                                    DeprecatedLintName {
-                                        name,
-                                        suggestion: sp,
-                                        replace: &new_lint_name,
-                                    },
-                                );
-                                Symbol::intern(&new_lint_name)
-                            }
-                        };
-                        (ids, name)
-                    }
-
-                    CheckLintNameResult::MissingTool => {
-                        // If `MissingTool` is returned, then either the lint does not
-                        // exist in the tool or the code was not compiled with the tool and
-                        // therefore the lint was never added to the `LintStore`. To detect
-                        // this is the responsibility of the lint tool.
-                        continue;
-                    }
-
-                    CheckLintNameResult::NoTool => {
-                        sess.dcx().emit_err(UnknownToolInScopedLint {
-                            span: tool_ident.map(|ident| ident.span),
-                            tool_name: tool_name.unwrap(),
-                            lint_name: pprust::path_to_string(&meta_item.path),
-                            is_nightly_build: sess.is_nightly_build(),
-                        });
-                        continue;
-                    }
-
-                    CheckLintNameResult::Renamed(ref replace) => {
-                        if self.lint_added_lints {
-                            let suggestion =
-                                RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
-                            let name =
-                                tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                            self.emit_span_lint(
-                                RENAMED_AND_REMOVED_LINTS,
-                                sp.into(),
-                                RenamedLint { name: name.as_str(), replace, suggestion },
-                            );
-                        }
-
-                        // If this lint was renamed, apply the new lint instead of ignoring the
-                        // attribute. Ignore any errors or warnings that happen because the new
-                        // name is inaccurate.
-                        // NOTE: `new_name` already includes the tool name, so we don't
-                        // have to add it again.
-                        let CheckLintNameResult::Ok(ids) =
-                            self.store.check_lint_name(replace, None, self.registered_tools)
-                        else {
-                            panic!("renamed lint does not exist: {replace}");
-                        };
-
-                        (ids, Symbol::intern(&replace))
-                    }
-
-                    CheckLintNameResult::Removed(ref reason) => {
-                        if self.lint_added_lints {
-                            let name =
-                                tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                            self.emit_span_lint(
-                                RENAMED_AND_REMOVED_LINTS,
-                                sp.into(),
-                                RemovedLint { name: name.as_str(), reason },
-                            );
-                        }
-                        continue;
-                    }
-
-                    CheckLintNameResult::NoLint(suggestion) => {
-                        if self.lint_added_lints {
-                            let name =
-                                tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                            let suggestion = suggestion.map(|(replace, from_rustc)| {
-                                UnknownLintSuggestion::WithSpan {
-                                    suggestion: sp,
-                                    replace,
-                                    from_rustc,
-                                }
-                            });
-                            self.emit_span_lint(
-                                UNKNOWN_LINTS,
-                                sp.into(),
-                                UnknownLint { name, suggestion },
-                            );
-                        }
-                        continue;
-                    }
+                let Some((ids, name, tool_name)) = self.resolve_lint_name(li, true) else {
+                    continue;
                 };
 
                 let src = LintLevelSource::Node { name, span: sp, reason };
