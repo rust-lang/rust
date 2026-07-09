@@ -63,7 +63,7 @@ pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
         _uwe: uw::_Unwind_Exception {
             exception_class: RUST_EXCEPTION_CLASS,
             exception_cleanup: Some(exception_cleanup),
-            private: [core::ptr::null(); uw::unwinder_private_data_size],
+            private: [core::ptr::null(); _],
         },
         canary: &CANARY,
         cause: data,
