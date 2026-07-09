@@ -885,6 +885,9 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         true,
     );
 
+    let def_id = cx.tcx.hir_node(cx.last_node_with_lint_attrs).as_owner().map(|owner| owner.def_id().to_def_id());
+    let opts = main_body_opts(def_id.and_then(|def_id| cx.tcx.doc_attribute_syntax(def_id))) - Options::ENABLE_SMART_PUNCTUATION;
+
     let mut doc = String::with_capacity(fragments.iter().map(|frag| frag.doc.as_str().len() + 1).sum());
 
     for fragment in &fragments {
@@ -912,7 +915,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
             cx,
             pulldown_cmark::Parser::new_with_broken_link_callback(
                 &doc,
-                main_body_opts() - Options::ENABLE_SMART_PUNCTUATION,
+                opts,
                 Some(&mut fake_broken_link_callback),
             )
             .into_offset_iter(),
@@ -933,6 +936,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
                 doc: &doc,
                 fragments: &fragments,
             },
+            opts,
         );
     }
 
@@ -944,7 +948,6 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     };
 
     // disable smart punctuation to pick up ['link'] more easily
-    let opts = main_body_opts() - Options::ENABLE_SMART_PUNCTUATION;
     let parser =
         pulldown_cmark::Parser::new_with_broken_link_callback(&doc, opts, Some(&mut full_fake_broken_link_callback));
 
@@ -1147,7 +1150,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 containers.push(Container::Blockquote);
                 if let Some((next_event, next_range)) = events.peek() {
                     let next_start = match next_event {
-                        End(TagEnd::BlockQuote) => next_range.end,
+                        End(TagEnd::BlockQuote(_)) => next_range.end,
                         _ => next_range.start,
                     };
                     if let Some(refdefrange) = looks_like_refdef(doc, range.start..next_start) &&
@@ -1171,7 +1174,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     }
                 }
             },
-            End(TagEnd::BlockQuote) => {
+            End(TagEnd::BlockQuote(_)) => {
                 blockquote_level -= 1;
                 containers.pop();
             },

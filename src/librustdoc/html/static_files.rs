@@ -78,6 +78,7 @@ static_files! {
     rustdoc_css => "static/css/rustdoc.css",
     noscript_css => "static/css/noscript.css",
     normalize_css => "static/css/normalize.css",
+    mathml_css => "static/css/mathml.css",
     main_js => "static/js/main.js",
     search_js => "static/js/search.js",
     stringdex_js => "static/js/stringdex.js",
@@ -109,6 +110,8 @@ static_files! {
     source_code_pro_license => "static/fonts/SourceCodePro-LICENSE.txt",
     nanum_barun_gothic_regular => "static/fonts/NanumBarunGothic.ttf.woff2",
     nanum_barun_gothic_license => "static/fonts/NanumBarunGothic-LICENSE.txt",
+    modified_noto_sans_math_regular => "static/fonts/ModifiedNotoSansMath-Regular.woff2",
+    modified_noto_sans_math_license => "static/fonts/ModifiedNotoSansMath-LICENSE.txt",
 }
 
 pub(crate) static SCRAPE_EXAMPLES_HELP_MD: &str = include_str!("static/scrape-examples-help.md");

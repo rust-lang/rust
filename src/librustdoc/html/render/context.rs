@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 use std::io;
@@ -70,6 +70,8 @@ pub(crate) struct Context<'tcx> {
     /// Contains information that needs to be saved and reset after rendering an item which is
     /// not a module.
     pub(crate) info: ContextInfo,
+    /// Set to `true` if a `$\TeX$` span is found.
+    pub(crate) contains_mathml: Cell<bool>,
 }
 
 /// This struct contains the information that needs to be reset between each
@@ -297,6 +299,7 @@ impl<'tcx> Context<'tcx> {
                 fmt::from_fn(|f| print_sidebar(self, it, f)),
                 content,
                 &self.shared.style_files,
+                &self.contains_mathml,
             )
         } else {
             if let Some(&(ref names, ty)) = self.cache().paths.get(&it.item_id.expect_def_id())
@@ -630,6 +633,7 @@ impl<'tcx> Context<'tcx> {
             shared: scx,
             types_with_notable_traits: RefCell::new(FxIndexSet::default()),
             info: ContextInfo::new(include_sources),
+            contains_mathml: Cell::new(false),
         };
 
         if emit.contains(&EmitType::HtmlNonStaticFiles) {
@@ -656,6 +660,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         self.deref_id_map.borrow_mut().clear();
         self.id_map.borrow_mut().clear();
         self.types_with_notable_traits.borrow_mut().clear();
+        self.contains_mathml.set(false);
         self.info
     }
 
@@ -702,7 +707,14 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         bar.render_into(&mut sidebar).unwrap();
 
-        let v = layout::render(&shared.layout, &page, sidebar, all.print(), &shared.style_files);
+        let v = layout::render(
+            &shared.layout,
+            &page,
+            sidebar,
+            all.print(),
+            &shared.style_files,
+            &Cell::new(false),
+        );
         shared.fs.write(final_file, v)?;
 
         // if to avoid writing help, settings files to doc root unless we're on the final invocation
@@ -756,6 +768,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                     Ok(())
                 }),
                 &shared.style_files,
+                &Cell::new(false),
             );
             shared.fs.write(settings_file, v)?;
 
@@ -787,6 +800,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                         </noscript>",
                 ),
                 &shared.style_files,
+                &Cell::new(false),
             );
             shared.fs.write(help_file, v)?;
         }
@@ -801,6 +815,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 "",
                 scrape_examples_help(shared),
                 &shared.style_files,
+                &Cell::new(false),
             );
             shared.fs.write(scrape_examples_help_file, v)?;
         }

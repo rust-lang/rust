@@ -1,6 +1,5 @@
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
-use rustc_resolve::rustdoc::main_body_opts;
 
 use rustc_resolve::rustdoc::pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
@@ -9,8 +8,8 @@ use super::{DOC_PARAGRAPHS_MISSING_PUNCTUATION, Fragments};
 const MSG: &str = "doc paragraphs should end with a terminal punctuation mark";
 const PUNCTUATION_SUGGESTION: char = '.';
 
-pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
-    for missing_punctuation in is_missing_punctuation(doc) {
+pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>, opts: Options) {
+    for missing_punctuation in is_missing_punctuation(doc, opts) {
         match missing_punctuation {
             MissingPunctuation::Fixable(offset) => {
                 // This ignores `#[doc]` attributes, which we do not handle.
@@ -45,7 +44,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
 
 #[must_use]
 /// If punctuation is missing, returns the offset where new punctuation should be inserted.
-fn is_missing_punctuation(doc_string: &str) -> Vec<MissingPunctuation> {
+fn is_missing_punctuation(doc_string: &str, opts: Options) -> Vec<MissingPunctuation> {
     // The colon is not exactly a terminal punctuation mark, but this is required for paragraphs that
     // introduce a table or a list for example.
     const TERMINAL_PUNCTUATION_MARKS: &[char] = &['.', '?', '!', '…', ':'];
@@ -56,7 +55,7 @@ fn is_missing_punctuation(doc_string: &str) -> Vec<MissingPunctuation> {
     let mut current_event_is_missing_punctuation = false;
 
     for (event, offset) in
-        Parser::new_ext(doc_string, main_body_opts() - Options::ENABLE_SMART_PUNCTUATION).into_offset_iter()
+        Parser::new_ext(doc_string, opts).into_offset_iter()
     {
         let last_event_was_missing_punctuation = current_event_is_missing_punctuation;
         current_event_is_missing_punctuation = false;

@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 
 use super::{
@@ -302,6 +304,8 @@ fn test_header() {
             content: input,
             links: &[],
             ids: &mut map,
+            contains_mathml: &Cell::new(false),
+            doc_syntax: None,
             error_codes: ErrorCodes::Yes,
             edition: DEFAULT_EDITION,
             playground: &None,
@@ -355,6 +359,8 @@ fn test_header_ids_multiple_blocks() {
             content: input,
             links: &[],
             ids: map,
+            contains_mathml: &Cell::new(false),
+            doc_syntax: None,
             error_codes: ErrorCodes::Yes,
             edition: DEFAULT_EDITION,
             playground: &None,
@@ -471,7 +477,9 @@ fn test_markdown_html_escape() {
     fn t(input: &str, expect: &str) {
         let mut idmap = IdMap::new();
         let mut output = String::new();
-        MarkdownItemInfo::new(input, &[], &mut idmap).write_into(&mut output).unwrap();
+        MarkdownItemInfo::new(input, &[], &mut idmap, &Cell::new(false), None)
+            .write_into(&mut output)
+            .unwrap();
         assert_eq!(output, format!("<p>{}</p>\n", expect), "original: {}", input);
     }
 
@@ -506,6 +514,8 @@ fn test_ascii_with_prepending_hashtag() {
             content: input,
             links: &[],
             ids: &mut map,
+            contains_mathml: &Cell::new(false),
+            doc_syntax: None,
             error_codes: ErrorCodes::Yes,
             edition: DEFAULT_EDITION,
             playground: &None,

@@ -4,8 +4,11 @@
 mod bare_urls;
 mod check_code_block_syntax;
 mod html_tags;
+mod math_syntax;
 mod redundant_explicit_links;
 mod unescaped_backticks;
+
+use rustc_hir::attrs::DocAttributeSyntax;
 
 use super::Pass;
 use crate::clean::*;
@@ -48,6 +51,12 @@ impl DocVisitor<'_> for Linter<'_, '_> {
             }
             if may_have_block_comment_or_html {
                 html_tags::visit_item(self.cx, item, hir_id, &dox);
+            }
+            if dox.contains('$')
+                && let Some(DocAttributeSyntax { tex_math_dollars: true, .. }) =
+                    self.cx.tcx.doc_attribute_syntax(item.item_id.expect_def_id())
+            {
+                math_syntax::visit_item(self.cx, item, hir_id, &dox);
             }
         }
 
