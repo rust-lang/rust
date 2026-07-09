@@ -2302,7 +2302,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self.check_param_uses_if_mcg(ct, tcx.hir_span(path_hir_id), false)
     }
 
-    /// Lower a [`hir::ConstArg`] to a (type-level) [`ty::Const`](Const).
+    /// Lower a [`hir::ConstArg`] to a (type-level) [`ty::Const`].
     #[instrument(skip(self), level = "debug")]
     pub fn lower_const_arg(&self, const_arg: &hir::ConstArg<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
         let tcx = self.tcx();
