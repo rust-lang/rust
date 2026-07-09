@@ -2,6 +2,10 @@
 
 use core::ffi::{c_int, c_void};
 
+// Use the unwinding crate as unwinder on Xous
+#[cfg(target_os = "xous")]
+use unwinding as _;
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum _Unwind_Reason_Code {
@@ -54,6 +58,12 @@ pub struct _Unwind_Exception {
     pub private: [_Unwind_Word; unwinder_private_data_size],
 }
 
+// Check the size of _Unwind_Exception against the source of thruth when using the unwinding crate.
+#[cfg(target_os = "xous")]
+const _: () = {
+    assert!(size_of::<unwinding::abi::UnwindException>() == size_of::<_Unwind_Exception>());
+};
+
 pub enum _Unwind_Context {}
 
 pub type _Unwind_Exception_Cleanup_Fn =
@@ -68,10 +78,7 @@ pub type _Unwind_Exception_Cleanup_Fn =
 // rustc_codegen_ssa::src::back::symbol_export, rustc_middle::middle::exported_symbols
 // and RFC 2841
 #[cfg_attr(
-    all(
-        feature = "llvm-libunwind",
-        any(target_os = "fuchsia", target_os = "linux", target_os = "xous")
-    ),
+    all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
     link(name = "unwind", kind = "static", modifiers = "-bundle")
 )]
 // Explicitly link the `unwind` library on WASI targets.
@@ -107,7 +114,7 @@ cfg_select! {
         pub const _UA_END_OF_STACK: c_int = 16;
 
         #[cfg_attr(
-            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
+            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
             link(name = "unwind", kind = "static", modifiers = "-bundle")
         )]
         unsafe extern "C" {
@@ -166,7 +173,7 @@ cfg_select! {
         pub const UNWIND_IP_REG: c_int = 15;
 
         #[cfg_attr(
-            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
+            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
             link(name = "unwind", kind = "static", modifiers = "-bundle")
         )]
         unsafe extern "C" {
@@ -246,14 +253,14 @@ cfg_select! {
     }
     _ => {
         #[cfg_attr(
-            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
+            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
             link(name = "unwind", kind = "static", modifiers = "-bundle")
         )]
         unsafe extern "C-unwind" {
             pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
         }
         #[cfg_attr(
-            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
+            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
             link(name = "unwind", kind = "static", modifiers = "-bundle")
         )]
         unsafe extern "C" {
