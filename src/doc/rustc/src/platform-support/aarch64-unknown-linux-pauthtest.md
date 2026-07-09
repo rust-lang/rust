@@ -109,29 +109,18 @@ Clang-based toolchain. In this case, no wrapper script is required,
 
 Introduction of `aarch64-unknown-linux-pauthtest` target needs to be propagated
 to various crates/repos, so that they can correctly recognise and handle it.
-Specifically:
+At the time of writing this document the following requires patching:
 * `cc-rs`: https://github.com/jchlanda/cc-rs/tree/jakub/cc-v1.2.28-pauthtest
-* `libc`: https://github.com/jchlanda/libc/tree/jakub/0.2.183-pauthtest
 * `backtrace`: https://github.com/jchlanda/backtrace-rs/tree/jakub/backtrace-v0.3.76-pauthtest
 
-The patched versions of `cc-rs` and `libc` will have to be registered through
-`[patch.crates-io]` section of `Cargo.toml` files both in:
-`<rust_root>/src/bootstrap/` and `<rust_root>/library/`. Check out `cc-rs` and
-`libc` to `<rust_root>/patches` and update config files. See attached diff for
-details:
+The patched versions of `cc-rs` will have to be registered through
+`[patch.crates-io]` section of `Cargo.toml` file in:
+`<rust_root>/src/bootstrap/`. Check out `cc-rs` to `<rust_root>/patches` and
+update config file. See attached diff for details:
 
 <details>
 
 ```diff
-diff --git a/library/Cargo.toml b/library/Cargo.toml
-index e30e6240942..fb5a12f0065 100644
---- a/library/Cargo.toml
-+++ b/library/Cargo.toml
-@@ -59,3 +59,4 @@ rustflags = ["-Cpanic=abort"]
- rustc-std-workspace-core = { path = 'rustc-std-workspace-core' }
- rustc-std-workspace-alloc = { path = 'rustc-std-workspace-alloc' }
- rustc-std-workspace-std = { path = 'rustc-std-workspace-std' }
-+libc = { path = '<rust_root>/patches/libc' }
 diff --git a/src/bootstrap/Cargo.toml b/src/bootstrap/Cargo.toml
 index e1725db60cf..46763cdf9a4 100644
 --- a/src/bootstrap/Cargo.toml
@@ -147,7 +136,7 @@ index e1725db60cf..46763cdf9a4 100644
 
 </details>
 
-In contrast to `cc-rs` and `libc`, which are external crates resolved from
+In contrast to `cc-rs`, which is an external crate resolved from
 [crates.io](https://crates.io/) and can be overridden using `[patch.crates-io]`,
 `backtrace` is included in the Rust repository as a git submodule under
 `<rust_root>/library/backtrace`. At the time of writing, the necessary change
