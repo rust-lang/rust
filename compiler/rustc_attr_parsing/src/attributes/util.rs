@@ -49,7 +49,7 @@ pub(crate) fn parse_single_integer(
         cx.adcx().expected_integer_literal(single.span());
         return None;
     };
-    Some(num.0)
+    Some(*num.0)
 }
 
 impl AcceptContext<'_, '_> {

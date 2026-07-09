@@ -126,7 +126,7 @@ impl SingleAttributeParser for RustcLegacyConstGenericsParser {
                 ..
             }) = possible_index
             {
-                parsed_indexes.push((index.0 as usize, possible_index.span()));
+                parsed_indexes.push((*index.0 as usize, possible_index.span()));
             } else {
                 cx.adcx().expected_integer_literal(possible_index.span());
                 errored = true;

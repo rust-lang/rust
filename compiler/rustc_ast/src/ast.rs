@@ -19,16 +19,17 @@
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 use std::borrow::{Borrow, Cow};
+use std::cmp::Ordering;
 use std::{cmp, fmt};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
-use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 pub use rustc_span::AttrId;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{
@@ -2242,6 +2243,78 @@ pub enum LitFloatType {
     Unsuffixed,
 }
 
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, StableHash)]
+pub struct IntVal(pub &'static u128);
+
+impl IntVal {
+    const ZERO: IntVal = IntVal(&0);
+    const ONE: IntVal = IntVal(&1);
+
+    pub fn new(val: u128) -> Self {
+        match val {
+            // assuming these literals are the most common
+            // we can avoid allocating for them
+            0 => Self::ZERO,
+            1 => Self::ONE,
+            // FIXME(panstromek) avoid leak (this is just an experiment)
+            v => Self(Box::leak(Box::new(v))),
+        }
+    }
+
+    pub fn get(&self) -> u128 {
+        *self.0
+    }
+}
+
+impl<S: Encoder> Encodable<S> for IntVal {
+    #[inline]
+    fn encode(&self, s: &mut S) {
+        { self.0 }.encode(s);
+    }
+}
+
+impl<D: Decoder> Decodable<D> for IntVal {
+    #[inline]
+    fn decode(d: &mut D) -> Self {
+        u128::decode(d).into()
+    }
+}
+
+impl fmt::Display for IntVal {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl From<IntVal> for u128 {
+    #[inline]
+    fn from(value: IntVal) -> Self {
+        value.get()
+    }
+}
+
+impl From<u128> for IntVal {
+    #[inline]
+    fn from(value: u128) -> Self {
+        Self::new(value)
+    }
+}
+
+impl PartialEq<u128> for IntVal {
+    #[inline]
+    fn eq(&self, other: &u128) -> bool {
+        *self.0 == *other
+    }
+}
+
+impl PartialOrd<u128> for IntVal {
+    #[inline]
+    fn partial_cmp(&self, other: &u128) -> Option<Ordering> {
+        self.0.partial_cmp(other)
+    }
+}
+
 /// This type is used within both `ast::MetaItemLit` and `hir::Lit`.
 ///
 /// Note that the entire literal (including the suffix) is considered when
@@ -2265,7 +2338,7 @@ pub enum LitKind {
     /// A character literal (`'a'`).
     Char(char),
     /// An integer literal (`1`).
-    Int(Pu128, LitIntType),
+    Int(IntVal, LitIntType),
     /// A float literal (`1.0`, `1f64` or `1E10f64`). The pre-suffix part is
     /// stored as a symbol rather than `f64` so that `LitKind` can impl `Eq`
     /// and `Hash`.
@@ -4413,11 +4486,11 @@ mod size_asserts {
     static_assert_size!(Item, 152);
     static_assert_size!(ItemKind, 88);
     static_assert_size!(Lifetime, 16);
-    static_assert_size!(LitKind, 24);
+    static_assert_size!(LitKind, 16);
     static_assert_size!(Local, 96);
-    static_assert_size!(MetaItem, 88);
-    static_assert_size!(MetaItemKind, 40);
-    static_assert_size!(MetaItemLit, 40);
+    static_assert_size!(MetaItem, 80);
+    static_assert_size!(MetaItemKind, 32);
+    static_assert_size!(MetaItemLit, 32);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 80);
     static_assert_size!(PatKind, 56);

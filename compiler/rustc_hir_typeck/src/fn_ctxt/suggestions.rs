@@ -4,7 +4,6 @@ use core::iter;
 
 use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -1880,7 +1879,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Provided expression needs to be a literal `0`.
-        let ExprKind::Lit(Spanned { node: rustc_ast::LitKind::Int(Pu128(0), _), span }) = expr.kind
+        let ExprKind::Lit(Spanned { node: rustc_ast::LitKind::Int(rustc_ast::IntVal(0), _), span }) =
+            expr.kind
         else {
             return false;
         };
