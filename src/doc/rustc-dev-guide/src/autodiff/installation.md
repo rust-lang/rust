@@ -18,6 +18,12 @@ Please run:
 rustup +nightly component add enzyme
 ```
 
+Older rustup versions are not aware of this component, so if you run into issues try updating rustup itself:
+```console
+rustup update
+rustup +nightly component add enzyme
+```
+
 ## Installation guide for Nix
 
 On [Nix], you can declare a nightly Rust toolchain with the Enzyme component using the [oxalica rust-overlay].
