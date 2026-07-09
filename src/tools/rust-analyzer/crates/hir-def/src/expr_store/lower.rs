@@ -2431,7 +2431,7 @@ impl<'db> ExprCollector<'db> {
                     expansion.statements().for_each(|stmt| this.collect_stmt(statements, stmt));
                     expansion.expr().and_then(|expr| match expr {
                         ast::Expr::MacroExpr(mac) => this.collect_macro_as_stmt(statements, mac),
-                        expr => Some(this.collect_expr(expr)),
+                        expr => this.maybe_collect_expr(expr),
                     })
                 }
                 None => None,
@@ -2468,8 +2468,7 @@ impl<'db> ExprCollector<'db> {
                     if let Some(expr) = self.collect_macro_as_stmt(statements, mac) {
                         statements.push(Statement::Expr { expr, has_semi })
                     }
-                } else {
-                    let expr = self.collect_expr_opt(expr);
+                } else if let Some(expr) = expr.and_then(|expr| self.maybe_collect_expr(expr)) {
                     statements.push(Statement::Expr { expr, has_semi });
                 }
             }
