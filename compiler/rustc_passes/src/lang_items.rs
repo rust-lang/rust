@@ -344,16 +344,15 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
                     (true, None)
                 };
                 (
-                    match &self.parent_item.unwrap().kind {
-                        ast::ItemKind::Impl(i) => {
-                            if i.of_trait.is_some() {
+                    match ctxt {
+                        visit::AssocCtxt::Impl { of_trait } => {
+                            if of_trait {
                                 Target::Method(MethodKind::TraitImpl)
                             } else {
                                 Target::Method(MethodKind::Inherent)
                             }
                         }
-                        ast::ItemKind::Trait(_) => Target::Method(MethodKind::Trait { body }),
-                        _ => unreachable!(),
+                        visit::AssocCtxt::Trait => Target::Method(MethodKind::Trait { body }),
                     },
                     generics,
                 )
