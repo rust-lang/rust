@@ -4,7 +4,9 @@ use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
+use std::path::Path;
 use std::path::PathBuf;
+use stdarch_gen_common::{Mode, run_generator};
 
 /// Complete lines of generated source.
 ///
@@ -148,8 +150,8 @@ fn gen_spec(in_file: String, ext_name: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn gen_bind(in_file: String, ext_name: &str) -> io::Result<()> {
-    let f = File::open(in_file.clone()).unwrap_or_else(|_| panic!("Failed to open {in_file}"));
+fn gen_bind(in_file: &str, ext_name: &str, out_path: &Path) -> io::Result<()> {
+    let f = File::open(in_file).unwrap_or_else(|_| panic!("Failed to open {in_file}"));
     let f = BufReader::new(f);
 
     let target: TargetFeature = TargetFeature::new(ext_name);
@@ -241,13 +243,7 @@ unsafe extern "unadjusted" {
     out.push_str("}\n");
     out.push_str(&function_str);
 
-    let out_path: PathBuf =
-        PathBuf::from(env::var("OUT_DIR").unwrap_or("crates/core_arch".to_string()))
-            .join("src")
-            .join("loongarch64")
-            .join(ext_name);
-    std::fs::create_dir_all(&out_path)?;
-
+    std::fs::create_dir_all(out_path)?;
     let mut file = File::create(out_path.join("generated.rs"))?;
     file.write_all(out.as_bytes())?;
     Ok(())
@@ -862,7 +858,7 @@ union v4df
     out.push('\n');
     out.push_str("int main(int argc, char *argv[])\n");
     out.push_str("{\n");
-    out.push_str("    printf(\"// This code is automatically generated. DO NOT MODIFY.\\n\");\n");
+    out.push_str("    printf(\"// Auto-generated tests. DO NOT MODIFY.\\n\");\n");
     out.push_str("    printf(\"// See crates/stdarch-gen-loongarch/README.md\\n\\n\");\n");
     out.push_str("    printf(\"use crate::{\\n\");\n");
     out.push_str("    printf(\"    core_arch::{loongarch64::*, simd::*},\\n\");\n");
@@ -1604,28 +1600,53 @@ static void {current_name}(void)
     (impl_function, call_function)
 }
 
-pub fn main() -> io::Result<()> {
+/// Runs the check/bless harness for `lsx`/`lasx` when invoked with
+/// no args or a bare ext name.
+pub fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
-    let in_file = args.get(1).cloned().expect("Input file missing!");
-    let in_file_path = PathBuf::from(&in_file);
-    let in_file_name = in_file_path
+    let arg_strs: Vec<&str> = args.iter().map(String::as_str).collect();
+    let harness_exts: Option<&[&str]> = match arg_strs.as_slice() {
+        [_] => Some(&["lsx", "lasx"]),
+        [_, "lsx"] => Some(&["lsx"]),
+        [_, "lasx"] => Some(&["lasx"]),
+        _ => None,
+    };
+    if let Some(exts) = harness_exts {
+        let crate_dir =
+            PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
+        let core_arch_src = crate_dir.join("../core_arch/src");
+        let mode = Mode::from_env();
+        for ext in exts {
+            let spec_rel = format!("crates/stdarch-gen-loongarch/{ext}.spec");
+            let committed = core_arch_src.join("loongarch64").join(ext);
+            run_generator(&committed, mode, |out_dir| {
+                gen_bind(&spec_rel, ext, out_dir)
+            })
+            .map_err(|e| e.to_string())?;
+        }
+        return Ok(());
+    }
+
+    let in_file = args[1].clone();
+    let in_file_name = PathBuf::from(&in_file)
         .file_name()
         .unwrap()
-        .to_os_string()
-        .into_string()
-        .unwrap();
-
+        .to_string_lossy()
+        .into_owned();
     let ext_name = if in_file_name.starts_with("lasx") {
         "lasx"
     } else {
         "lsx"
     };
-
     if in_file_name.ends_with(".h") {
-        gen_spec(in_file, ext_name)
-    } else if args.get(2).is_some() {
-        gen_test(in_file, ext_name)
-    } else {
-        gen_bind(in_file, ext_name)
+        return gen_spec(in_file, ext_name).map_err(|e| e.to_string());
     }
+    if let [_, _lsx_or_lasx, "test"] = arg_strs.as_slice() {
+        return gen_test(in_file, ext_name).map_err(|e| e.to_string());
+    }
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap_or("crates/core_arch".to_string()))
+        .join("src")
+        .join("loongarch64")
+        .join(ext_name);
+    gen_bind(&in_file, ext_name, &out_path).map_err(|e| e.to_string())
 }
