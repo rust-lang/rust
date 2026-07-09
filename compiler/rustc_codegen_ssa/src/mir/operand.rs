@@ -168,7 +168,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
             ConstValue::Slice { alloc_id, meta } => {
-                let BackendRepr::ScalarPair(a_scalar, _) = layout.backend_repr else {
+                let BackendRepr::ScalarPair { a: a_scalar, b: _, b_offset: _ } =
+                    layout.backend_repr
+                else {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
                 };
                 let a = Scalar::from_pointer(Pointer::new(alloc_id.into(), Size::ZERO), &bx.tcx());
@@ -222,12 +224,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let val = read_scalar(offset, size, s, bx.immediate_backend_type(layout));
                 OperandRef { val: OperandValue::Immediate(val), layout, move_annotation: None }
             }
-            BackendRepr::ScalarPair(
-                a @ abi::Scalar::Initialized { .. },
-                b @ abi::Scalar::Initialized { .. },
-            ) => {
+            BackendRepr::ScalarPair {
+                a: a @ abi::Scalar::Initialized { .. },
+                b: b @ abi::Scalar::Initialized { .. },
+                b_offset,
+            } => {
                 let (a_size, b_size) = (a.size(bx), b.size(bx));
-                let b_offset = (offset + a_size).align_to(b.default_align(bx).abi);
                 assert!(b_offset.bytes() > 0);
                 let a_val = read_scalar(
                     offset,
@@ -345,7 +347,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         llval: V,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        let val = if let BackendRepr::ScalarPair(..) = layout.backend_repr {
+        let val = if let BackendRepr::ScalarPair { .. } = layout.backend_repr {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}", llval, layout);
 
             // Deconstruct the immediate aggregate.
@@ -383,12 +385,15 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         } else {
             let (in_scalar, imm) = match (self.val, self.layout.backend_repr) {
                 // Extract a scalar component from a pair.
-                (OperandValue::Pair(a_llval, b_llval), BackendRepr::ScalarPair(a, b)) => {
+                (
+                    OperandValue::Pair(a_llval, b_llval),
+                    BackendRepr::ScalarPair { a, b, b_offset },
+                ) => {
                     if offset.bytes() == 0 {
                         assert_eq!(field.size, a.size(bx.cx()));
                         (Some(a), a_llval)
                     } else {
-                        assert_eq!(offset, a.size(bx.cx()).align_to(b.default_align(bx.cx()).abi));
+                        assert_eq!(offset, b_offset);
                         assert_eq!(field.size, b.size(bx.cx()));
                         (Some(b), b_llval)
                     }
@@ -419,7 +424,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                         imm
                     }
                 }
-                BackendRepr::ScalarPair(_, _)
+                BackendRepr::ScalarPair { a: _, b: _, b_offset: _ }
                 | BackendRepr::Memory { .. }
                 | BackendRepr::SimdScalableVector { .. } => bug!(),
             })
@@ -705,7 +710,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
         let val = match layout.backend_repr {
             BackendRepr::Memory { .. } if layout.is_zst() => OperandValueBuilder::ZeroSized,
             BackendRepr::Scalar(s) => OperandValueBuilder::Immediate(Either::Right(s)),
-            BackendRepr::ScalarPair(a, b) => {
+            BackendRepr::ScalarPair { a, b, b_offset: _ } => {
                 OperandValueBuilder::Pair(Either::Right(a), Either::Right(b))
             }
             BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => {
@@ -733,7 +738,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
             (OperandValue::Immediate(v), BackendRepr::SimdVector { .. }) => {
                 OperandValueBuilder::Vector(Either::Left(v))
             }
-            (OperandValue::Pair(a, b), BackendRepr::ScalarPair(_, _)) => {
+            (OperandValue::Pair(a, b), BackendRepr::ScalarPair { a: _, b: _, b_offset: _ }) => {
                 OperandValueBuilder::Pair(Either::Left(a), Either::Left(b))
             }
             (_, BackendRepr::Memory { .. }) => {
@@ -810,17 +815,18 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
                     bug!("Tried to insert {field_operand:?} into {variant:?}.{field:?} of {self:?}")
                 }
             },
-            (OperandValue::Pair(a, b), BackendRepr::ScalarPair(from_sa, from_sb)) => {
-                match &mut self.val {
-                    OperandValueBuilder::Pair(fst @ Either::Right(_), snd @ Either::Right(_)) => {
-                        update(fst, a, from_sa);
-                        update(snd, b, from_sb);
-                    }
-                    _ => bug!(
-                        "Tried to insert {field_operand:?} into {variant:?}.{field:?} of {self:?}"
-                    ),
+            (
+                OperandValue::Pair(a, b),
+                BackendRepr::ScalarPair { a: from_sa, b: from_sb, b_offset: _ },
+            ) => match &mut self.val {
+                OperandValueBuilder::Pair(fst @ Either::Right(_), snd @ Either::Right(_)) => {
+                    update(fst, a, from_sa);
+                    update(snd, b, from_sb);
                 }
-            }
+                _ => {
+                    bug!("Tried to insert {field_operand:?} into {variant:?}.{field:?} of {self:?}")
+                }
+            },
             (OperandValue::Ref(place), BackendRepr::Memory { .. }) => match &mut self.val {
                 OperandValueBuilder::Vector(val @ Either::Right(())) => {
                     let ibty = bx.cx().immediate_backend_type(self.layout);
@@ -1008,10 +1014,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 bx.store_with_flags(val, dest.val.llval, dest.val.align, flags);
             }
             OperandValue::Pair(a, b) => {
-                let BackendRepr::ScalarPair(a_scalar, b_scalar) = dest.layout.backend_repr else {
+                let BackendRepr::ScalarPair { a: _, b: _, b_offset } = dest.layout.backend_repr
+                else {
                     bug!("store_with_flags: invalid ScalarPair layout: {:#?}", dest.layout);
                 };
-                let b_offset = a_scalar.size(bx).align_to(b_scalar.default_align(bx).abi);
 
                 let val = bx.from_immediate(a);
                 let align = dest.val.align;

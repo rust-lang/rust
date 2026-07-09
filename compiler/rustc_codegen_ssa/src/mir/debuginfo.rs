@@ -611,7 +611,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // be marked as a `LocalVariable` for MSVC debuggers to visualize
                         // their data correctly. (See #81894 & #88625)
                         let var_ty_layout = self.cx.layout_of(var_ty);
-                        if let BackendRepr::ScalarPair(_, _) = var_ty_layout.backend_repr {
+                        if let BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } =
+                            var_ty_layout.backend_repr
+                        {
                             VariableKind::LocalVariable
                         } else {
                             VariableKind::ArgumentVariable(arg_index)
