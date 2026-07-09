@@ -11,8 +11,8 @@ use crate::{env, mem};
 ///
 /// A note of caution, however: multiple of these directory paths may be the
 /// same as each other, so you should not assume that a file written relative
-/// to the [config](Self::config) directory will not conflict with the same
-/// relative path in the [data](Self::data) directory, for example. Aliasing
+/// to the [config](Self::config_home) directory will not conflict with the same
+/// relative path in the [data](Self::data_home) directory, for example. Aliasing
 /// directories in this way is the common practice of some operating systems,
 /// so it is important that a program still works correctly even if user paths
 /// alias each other.
@@ -100,6 +100,11 @@ impl UserDirs {
     /// a default path for file selection dialogs, not for automatically
     /// accessed file paths. Use one of [`config_home`], [`data_home`],
     /// [`state_home`], or [`cache_home`] instead as appropriate for the file.
+    ///
+    /// [`config_home`]: Self::config_home
+    /// [`data_home`]: Self::data_home
+    /// [`state_home`]: Self::state_home
+    /// [`cache_home`]: Self::cache_home
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn user_home(&self) -> Option<&Path> {
         self.home.user.as_deref()
@@ -144,7 +149,7 @@ impl UserDirs {
     ///
     /// "State" files are data that should persist between application restarts,
     /// but which is not important nor portable enough to the user to be stored
-    /// in the [data](Self::data) directory. Common examples include history
+    /// in the [data](Self::data_home) directory. Common examples include history
     /// (such as logs, recently used files, etc) and any current state of the
     /// application that should be reused (such as view, layout, open files,
     /// undo history, etc).
