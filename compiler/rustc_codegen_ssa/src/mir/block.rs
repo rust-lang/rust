@@ -11,6 +11,9 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
+use rustc_middle::ptrauth::{
+    build_fn_ptr_type_discriminator_input_from_instance, compute_fn_ptr_type_discriminator,
+};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
@@ -684,12 +687,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     virtual_drop,
                 )
             }
-            _ => (
-                false,
-                bx.get_fn_addr(drop_fn, bx.sess().pointer_authentication_functions()),
-                bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
-                drop_fn,
-            ),
+            _ => {
+                let mut schema = bx.sess().pointer_authentication_functions().clone();
+
+                if let Some(ref mut s) = schema
+                    && bx.sess().pointer_authentication_fn_ptr_type_discrimination()
+                {
+                    let disc_input =
+                        build_fn_ptr_type_discriminator_input_from_instance(bx.tcx(), drop_fn);
+                    let disc = compute_fn_ptr_type_discriminator(bx.tcx(), &disc_input) as u16;
+
+                    s.constant_discriminator = disc;
+                }
+                (
+                    false,
+                    bx.get_fn_addr(drop_fn, schema),
+                    bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
+                    drop_fn,
+                )
+            }
         };
 
         // We generate a null check for the drop_fn. This saves a bunch of relocations being
@@ -1102,13 +1118,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         )
                         .unwrap();
 
-                        (
-                            None,
-                            Some(bx.get_fn_addr(
+                        let mut schema = bx.sess().pointer_authentication_functions().clone();
+
+                        if let Some(ref mut s) = schema
+                            && bx.sess().pointer_authentication_fn_ptr_type_discrimination()
+                        {
+                            let disc_input = build_fn_ptr_type_discriminator_input_from_instance(
+                                bx.tcx(),
                                 instance,
-                                bx.sess().pointer_authentication_functions(),
-                            )),
-                        )
+                            );
+                            let disc =
+                                compute_fn_ptr_type_discriminator(bx.tcx(), &disc_input) as u16;
+
+                            s.constant_discriminator = disc;
+                        };
+
+                        (None, Some(bx.get_fn_addr(instance, schema)))
                     }
                     _ => (Some(instance), None),
                 }
@@ -1422,7 +1447,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let fn_ptr = match (instance, llfn) {
             (Some(instance), None) => {
-                bx.get_fn_addr(instance, bx.sess().pointer_authentication_functions())
+                let mut schema = bx.sess().pointer_authentication_functions().clone();
+
+                if let Some(ref mut s) = schema
+                    && bx.sess().pointer_authentication_fn_ptr_type_discrimination()
+                {
+                    let disc_input =
+                        build_fn_ptr_type_discriminator_input_from_instance(bx.tcx(), instance);
+                    let disc = compute_fn_ptr_type_discriminator(bx.tcx(), &disc_input) as u16;
+
+                    s.constant_discriminator = disc;
+                }
+
+                bx.get_fn_addr(instance, schema)
             }
             (_, Some(llfn)) => llfn,
             _ => span_bug!(fn_span, "no instance or llfn for call"),

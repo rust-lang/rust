@@ -2,6 +2,9 @@
 
 use rustc_hir::LangItem;
 use rustc_hir::attrs::PeImportNameType;
+use rustc_middle::ptrauth::{
+    build_fn_ptr_type_discriminator_input_from_instance, compute_fn_ptr_type_discriminator,
+};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
@@ -117,11 +120,19 @@ pub(crate) fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = bx.tcx();
     let def_id = tcx.require_lang_item(li, span);
     let instance = ty::Instance::mono(tcx, def_id);
-    (
-        bx.fn_abi_of_instance(instance, ty::List::empty()),
-        bx.get_fn_addr(instance, tcx.sess.pointer_authentication_functions()),
-        instance,
-    )
+    let mut schema = bx.sess().pointer_authentication_functions().clone();
+
+    if let Some(ref mut s) = schema
+        && bx.sess().pointer_authentication_fn_ptr_type_discrimination()
+    {
+        // It is unlikely that any of LangItem will follow the extern C/System ABI, but it future
+        // proofs the implementation.
+        let disc_input = build_fn_ptr_type_discriminator_input_from_instance(tcx, instance);
+        let disc = compute_fn_ptr_type_discriminator(tcx, &disc_input) as u16;
+
+        s.constant_discriminator = disc;
+    }
+    (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance, schema), instance)
 }
 
 pub(crate) fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(

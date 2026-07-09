@@ -42,7 +42,9 @@ The computation is structured into three conceptual stages:
 
 - Public API
   - `FnPtrTypeDiscriminatorInput`
-  - `build_fn_ptr_type_discriminator_input`
+  - `build_fn_ptr_type_discriminator_input_from_instance`
+  - `build_fn_ptr_type_discriminator_input_from_sig`
+  - `build_fn_ptr_type_discriminator_input_from_ty`
   - `compute_fn_ptr_type_discriminator`
 
 - Signature extraction
@@ -68,7 +70,7 @@ function types only. It does NOT attempt to model full type system rules.
 */
 
 use rustc_abi::ExternAbi;
-use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, Unnormalized};
 use rustc_span::sym;
 
 use crate::ptrauth::llvm_siphash::llvm_pointer_auth_stable_siphash;
@@ -84,7 +86,7 @@ pub struct FnPtrTypeDiscriminatorInput<'tcx> {
 }
 
 impl<'tcx> FnPtrTypeDiscriminatorInput<'tcx> {
-    pub fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
+    fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
         FnPtrTypeDiscriminatorInput {
             inputs: sig.inputs(),
             output: sig.output(),
@@ -93,10 +95,7 @@ impl<'tcx> FnPtrTypeDiscriminatorInput<'tcx> {
         }
     }
 
-    pub fn from_sig_tys(
-        sig: ty::FnSigTys<TyCtxt<'tcx>>,
-        header: &ty::FnHeader<TyCtxt<'tcx>>,
-    ) -> Self {
+    fn from_sig_tys(sig: ty::FnSigTys<TyCtxt<'tcx>>, header: &ty::FnHeader<TyCtxt<'tcx>>) -> Self {
         FnPtrTypeDiscriminatorInput {
             inputs: sig.inputs(),
             output: sig.output(),
@@ -137,7 +136,7 @@ pub fn extract_fn_ptr_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Option<
 ///
 /// FnDef is only accepted for convenience; the discriminator is still computed
 /// from the instantiated function signature.
-pub fn build_fn_ptr_type_discriminator_input<'tcx>(
+pub fn build_fn_ptr_type_discriminator_input_from_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<FnPtrTypeDiscriminatorInput<'tcx>> {
@@ -158,6 +157,37 @@ pub fn build_fn_ptr_type_discriminator_input<'tcx>(
 
         _ => None,
     }
+}
+
+/// Builds type discrimination input from a monomorphized function instance.
+///
+/// The instance's signature is instantiated using its generic arguments and
+/// normalized before constructing the canonical discriminator input. Unlike
+/// `build_fn_ptr_type_discriminator_input_from_ty`, this function cannot fail
+/// because an `Instance` always represents a callable item with a well-defined
+/// function signature.
+pub fn build_fn_ptr_type_discriminator_input_from_instance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> FnPtrTypeDiscriminatorInput<'tcx> {
+    let sig = tcx
+        .instantiate_and_normalize_erasing_regions(
+            instance.args,
+            ty::TypingEnv::fully_monomorphized(),
+            tcx.fn_sig(instance.def_id()),
+        )
+        .skip_binder();
+
+    FnPtrTypeDiscriminatorInput::from_sig(sig)
+}
+
+/// Builds type discrimination input from a function signature.
+///
+/// The signature is assumed to already be instantiated and normalized.
+pub fn build_fn_ptr_type_discriminator_input_from_sig<'tcx>(
+    sig: ty::FnSig<'tcx>,
+) -> FnPtrTypeDiscriminatorInput<'tcx> {
+    FnPtrTypeDiscriminatorInput::from_sig(sig)
 }
 
 pub fn compute_fn_ptr_type_discriminator<'tcx>(

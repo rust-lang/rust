@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
 use rustc_index::IndexVec;
 use rustc_middle::ptrauth::{
-    build_fn_ptr_type_discriminator_input, compute_fn_ptr_type_discriminator,
+    build_fn_ptr_type_discriminator_input_from_ty, compute_fn_ptr_type_discriminator,
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
@@ -144,8 +144,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Bx::Value {
         let tcx = bx.tcx();
 
-        let src_input = build_fn_ptr_type_discriminator_input(tcx, info.src_ty);
-        let dst_input = build_fn_ptr_type_discriminator_input(tcx, info.dst_ty);
+        let src_input = build_fn_ptr_type_discriminator_input_from_ty(tcx, info.src_ty);
+        let dst_input = build_fn_ptr_type_discriminator_input_from_ty(tcx, info.dst_ty);
 
         let src_disc = match src_input {
             Some(src) => compute_fn_ptr_type_discriminator(tcx, &src),
@@ -690,7 +690,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                                 if let Some(ref mut s) = schema {
                                     if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
-                                        if let Some(input) = build_fn_ptr_type_discriminator_input(
+                                        if let Some(input) = build_fn_ptr_type_discriminator_input_from_ty(
                                             bx.tcx(),
                                             operand.layout.ty,
                                         ) {
@@ -718,9 +718,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     ty::ClosureKind::FnOnce,
                                 );
                                 OperandValue::Immediate(
+                                    // A closure coerced to a function pointer retains the Rust
+                                    // ABI. Pointer authentication only applies to extern
+                                    // "C"/System ABI function pointer, hence pass None to
+                                    // `get_fn_addr`.
                                     bx.cx().get_fn_addr(
                                         instance,
-                                        bx.sess().pointer_authentication_functions(),
+                                        None,
                                     ),
                                 )
                             }
@@ -946,8 +950,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(def_id)),
                         args: ty::GenericArgs::empty(),
                     };
-                    let fn_ptr =
-                        bx.get_fn_addr(instance, bx.sess().pointer_authentication_functions());
+                    // This is the address of a compiler-generated TLS shim function. It is not an
+                    // externally visible function pointer and does not require function pointer
+                    // authentication signing.
+                    let fn_ptr = bx.get_fn_addr(instance, None);
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
                     let fn_ty = bx.fn_decl_backend_type(fn_abi);
                     let fn_attrs = if bx.tcx().def_kind(instance.def_id()).has_codegen_attrs() {

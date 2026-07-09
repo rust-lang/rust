@@ -464,6 +464,18 @@ The following categories are supported (all present in tree):
   * pauth-extern-weak-global.rs
   * pauth-init-fini.rs
   * pauth-attr-special-funcs.rs
+  * pauth-fn-ptr-type-discrimination-deeply-nested.rs
+  * pauth-fn-ptr-type-discrimination-encoder.rs
+  * pauth-fn-ptr-type-discrimination-fn-ptr-return-type.rs
+  * pauth-fn-ptr-type-discrimination-option-callback.rs
+  * pauth-fn-ptr-type-discrimination-option-return.rs
+  * pauth-fn-ptr-type-discrimination-option.rs
+  * pauth-fn-ptr-type-discrimination-running-test.rs
+  * pauth-fn-ptr-type-discrimination-rust-array.rs
+  * pauth-fn-ptr-type-discrimination-simd.rs
+  * pauth-fn-ptr-type-discrimination-struct-members.rs
+  * pauth-fn-ptr-type-discrimination-struct-name.rs
+  * pauth-drop-terminator (implemented in run-make)
 * End-to-end execution tests
   * Rust-driven quicksort (pauth-quicksort-rust-driver)
   * C-driven quicksort (pauth-quicksort-c-driver)
@@ -472,7 +484,6 @@ The following categories are supported (all present in tree):
   * pauth-static-link-warning
   * enable_pointer_authentication_validation.rs
   * invalid_target_pointer_authentication.rs
-  * type_discrimination_not_supported_pointer_authentication.rs
   * incompatible_pauth.rs
 
 All tests from `assembly-llvm`, `codegen-llvm`, `codegen-units`, `coverage`,
@@ -493,13 +504,24 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/codegen-llvm/pauth/pauth-extern-c-direct-indirect-call.rs \
   tests/codegen-llvm/pauth/pauth-extern-weak-global.rs \
   tests/codegen-llvm/pauth/pauth-init-fini.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-deeply-nested.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-encoder.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-fn-ptr-return-type.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option-callback.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option-return.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-running-test.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-rust-array.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-simd.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-struct-members.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-struct-name.rs \
   tests/run-make/pauth-quicksort-rust-driver \
   tests/run-make/pauth-quicksort-c-driver \
   tests/run-make/pauth-static-link-warning \
+  tests/run-make/pauth-drop-terminator \
   tests/ui/statics/crt-static-pauthtest.rs \
   tests/ui/pointer_authentication/enable_pointer_authentication_validation.rs \
   tests/ui/pointer_authentication/invalid_target_pointer_authentication.rs \
-  tests/ui/pointer_authentication/type_discrimination_not_supported_pointer_authentication.rs \
   tests/ui/target_modifiers/incompatible_pauth.rs
 ```
 

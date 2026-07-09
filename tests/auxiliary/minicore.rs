@@ -368,7 +368,7 @@ pub trait CoerceUnsized<T: PointeeSized> {}
 impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
 
 #[lang = "drop"]
-trait Drop {
+pub trait Drop {
     fn drop(&mut self);
 }
 

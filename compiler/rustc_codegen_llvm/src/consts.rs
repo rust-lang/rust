@@ -15,7 +15,7 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mono::MonoItem;
 use rustc_middle::ptrauth::{
-    build_fn_ptr_type_discriminator_input, compute_fn_ptr_type_discriminator,
+    build_fn_ptr_type_discriminator_input_from_ty, compute_fn_ptr_type_discriminator,
 };
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};

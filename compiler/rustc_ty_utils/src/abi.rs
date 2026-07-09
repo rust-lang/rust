@@ -6,7 +6,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, find_attr};
 use rustc_middle::bug;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
-use rustc_middle::ptrauth::{FnPtrTypeDiscriminatorInput, compute_fn_ptr_type_discriminator};
+use rustc_middle::ptrauth::{
+    build_fn_ptr_type_discriminator_input_from_sig, compute_fn_ptr_type_discriminator,
+};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
@@ -635,7 +637,10 @@ fn fn_abi_new_uncached<'tcx>(
         ),
         ptrauth_type_discriminator: if tcx.sess.pointer_authentication_fn_ptr_type_discrimination()
         {
-            compute_fn_ptr_type_discriminator(tcx, &FnPtrTypeDiscriminatorInput::from_sig(sig))
+            compute_fn_ptr_type_discriminator(
+                tcx,
+                &build_fn_ptr_type_discriminator_input_from_sig(sig),
+            )
         } else {
             0
         },
