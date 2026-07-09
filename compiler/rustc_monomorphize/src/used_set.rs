@@ -1,26 +1,28 @@
-//! Cross-crate used-set consumption for `-Z dead-fn-used-set=<file>`.
+//! Cross-crate used-set: the producer ([`emit_used_sets`]) and consumer ([`UsedSet`]) for
+//! `-Zdead-fn-emit-used-set` / `-Zdead-fn-used-set`.
 //!
 //! In its binary-only form (see [`super::dead_fn_elim`]) the pass is a no-op: a binary's
-//! monomorphization collector is already exact, so nothing it emits is unreachable.
+//! monomorphization collector is already exact, so nothing it emits is unreachable. The
+//! *cross-crate* form addresses the real slack: a library is compiled before its callers and
+//! must conservatively emit its whole `pub` closure, most of which no final binary calls.
 //!
-//! The *cross-crate* form addresses the real slack. A library is compiled before its
-//! callers and must conservatively emit its whole `pub` closure, most of which no final
-//! binary calls. Once a binary is linked, the set of a dependency's functions it actually
-//! reaches is *link-truth*: the defined function symbols present in the final executable
-//! (`nm`). Feeding that set back on the library's (re)compilation via `-Zdead-fn-used-set`
-//! lets the library keep only those symbols (plus what soundness requires) and drop the
-//! rest before `partition()`.
+//! **Producer** ([`emit_used_sets`], run on the *binary* at `--emit=metadata`, before any
+//! codegen): walk the binary's MIR and record every extern `fn` it references. This is the
+//! set of a dependency's functions the binary actually reaches — computed without codegen, so
+//! it can drive a *first-build* speedup. The binary's monomorphization collector cannot be
+//! used here: it filters to local `DefId`s and never lists non-generic extern fns.
 //!
-//! Identity is by **mangled symbol name**, matching link-truth exactly: a non-generic `pub`
-//! function is codegen'd in the *dependency's* CGU and appears in the final binary as a
-//! defined symbol, so `nm <binary>` names precisely the reachable set. (The binary's own
-//! monomorphization collector does *not* list these — it only monomorphizes generics — which
-//! is why the used-set must come from the link, not the collector.)
+//! **Consumer** ([`UsedSet`], run on each *library*): keep only the used-set functions (plus
+//! what soundness requires) and drop the rest before `partition()`.
 //!
-//! File format (one mangled symbol per line, `#`-comments and blanks ignored):
+//! **Identity** is the `local_hash` half of [`DefPathHash`] — the def-path fingerprint within
+//! a crate. It is stable across compilations, unlike the mangled symbol name, whose crate
+//! disambiguator differs between the probe compile and the dependency's own compile.
+//!
+//! File format (one 16-hex `local_hash` per line, `#`-comments and blanks ignored):
 //! ```text
-//! # used-set for `deplib`, from `nm -j <binary>`
-//! _RNvCseMk9t9oSu0C_6deplib8used_one
+//! # used-set for `deplib` (MIR probe, DefPathHash local_hash)
+//! 98912570aa6ef455
 //! ```
 
 use std::collections::BTreeMap;
