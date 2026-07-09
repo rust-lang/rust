@@ -1740,6 +1740,7 @@ symbols! {
         rust_analyzer,
         rust_begin_unwind,
         rust_cold_cc,
+        rust_dash_call: "rust-call",
         rust_eh_personality,
         rust_future,
         rust_logo,
