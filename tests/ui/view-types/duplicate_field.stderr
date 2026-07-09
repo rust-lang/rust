@@ -1,0 +1,34 @@
+error: field `bar` is already part of the view
+  --> $DIR/duplicate_field.rs:13:38
+   |
+LL |     _foo: &mut view_type!(Foo.{ bar, bar }),
+   |                                 ---  ^^^
+   |                                 |
+   |                                 field `bar` is declared as viewed here
+
+error: field `0` is already part of the view
+  --> $DIR/duplicate_field.rs:15:38
+   |
+LL |     _pair: &mut view_type!(Pair.{ 0, 0 }),
+   |                                   -  ^
+   |                                   |
+   |                                   field `0` is declared as viewed here
+
+error: field `bar` is already part of the view
+  --> $DIR/duplicate_field.rs:21:44
+   |
+LL |     fn f(self: &mut view_type!(Self.{ bar, bar })) {}
+   |                                       ---  ^^^
+   |                                       |
+   |                                       field `bar` is declared as viewed here
+
+error: field `0` is already part of the view
+  --> $DIR/duplicate_field.rs:26:42
+   |
+LL |     fn f(self: &mut view_type!(Self.{ 0, 0 })) {}
+   |                                       -  ^
+   |                                       |
+   |                                       field `0` is declared as viewed here
+
+error: aborting due to 4 previous errors
+
