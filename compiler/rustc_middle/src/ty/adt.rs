@@ -335,6 +335,17 @@ impl From<AdtKind> for DataTypeKind {
     }
 }
 
+impl AdtKind {
+    pub fn article(self) -> &'static str {
+        match self {
+            AdtKind::Struct => "a",
+            // https://english.stackexchange.com/a/266324
+            AdtKind::Union => "a",
+            AdtKind::Enum => "an",
+        }
+    }
+}
+
 impl AdtDefData {
     /// Creates a new `AdtDefData`.
     pub(super) fn new(
@@ -452,6 +463,14 @@ impl<'tcx> AdtDef<'tcx> {
             AdtKind::Struct => "struct",
             AdtKind::Union => "union",
             AdtKind::Enum => "enum",
+        }
+    }
+
+    /// Returns a description of this abstract data type with the article.
+    pub fn article(self) -> &'static str {
+        match self.adt_kind() {
+            AdtKind::Struct | AdtKind::Union => "a",
+            AdtKind::Enum => "an",
         }
     }
 

@@ -1053,6 +1053,12 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
             visit_opt!(visitor, visit_ident, *variant);
             try_visit!(visitor.visit_ident(*field));
         }
+        TyKind::View(ty, fields) => {
+            try_visit!(visitor.visit_ty_unambig(ty));
+            for field in fields {
+                try_visit!(visitor.visit_ident(*field));
+            }
+        }
     }
     V::Result::output()
 }
