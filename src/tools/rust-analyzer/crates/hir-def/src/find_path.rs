@@ -13,6 +13,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     ModuleDefId, ModuleIdLt,
+    attrs::crate_supports_no_std,
     import_map::ImportMap,
     item_scope::ItemInNs,
     nameres::DefMap,
@@ -59,7 +60,9 @@ pub fn find_path(
 
     let from_def_map = from.def_map(db);
 
-    cfg.prefer_no_std = cfg.prefer_no_std || from_def_map.is_no_std();
+    let from_crate = from.krate(db);
+    cfg.prefer_no_std =
+        cfg.prefer_no_std || from_def_map.is_no_std() || crate_supports_no_std(db, from_crate);
 
     find_path_inner(
         &FindPathCtx {
@@ -69,7 +72,7 @@ pub fn find_path(
             ignore_local_imports,
             is_std_item: item_module.krate(db).data(db).origin.is_lang(),
             from,
-            from_crate: from.krate(db),
+            from_crate,
             crate_root: from_def_map.crate_root(db),
             from_def_map,
             fuel: Cell::new(FIND_PATH_FUEL),
@@ -1485,10 +1488,41 @@ pub mod fmt {
             "#]],
         );
 
-        // Should also work (on a best-effort basis) if `no_std` is conditional.
+        // Should also work (on a best-effort basis) if `no_std` is conditionally enabled.
         check_found_path(
             r#"
 //- /main.rs crate:main deps:core,std
+#![cfg_attr(not(test), no_std)]
+
+$0
+
+//- /std.rs crate:std deps:core
+
+pub mod fmt {
+    pub use core::fmt::Error;
+}
+
+//- /zzz.rs crate:core
+
+pub mod fmt {
+    pub struct Error;
+}
+        "#,
+            "core::fmt::Error",
+            expect![[r#"
+                Plain  (imports ✔): core::fmt::Error
+                Plain  (imports ✖): core::fmt::Error
+                ByCrate(imports ✔): core::fmt::Error
+                ByCrate(imports ✖): core::fmt::Error
+                BySelf (imports ✔): core::fmt::Error
+                BySelf (imports ✖): core::fmt::Error
+            "#]],
+        );
+
+        // Should also work (on a best-effort basis) if `no_std` is conditionally disabled.
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:core,std cfg:test
 #![cfg_attr(not(test), no_std)]
 
 $0
