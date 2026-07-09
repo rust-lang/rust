@@ -954,13 +954,13 @@ pub enum SucceededInErased<I: Interner> {
 }
 
 #[derive_where(Clone, Debug; I: Interner)]
-pub enum GoalStalledOnReason<I: Interner> {
+pub enum GoalStalledOnOpaques<I: Interner> {
     /// This goal got stalled in `compute_goal_fast_path`. Usually this means
     /// the goal is stalled on not that much, only one or two variables, and
     /// definitely nothing to do with opaque types. So we don't store that information.
-    FastPath,
-    Other {
-        num_opaques: usize,
+    No,
+    Yes {
+        num_opaques_in_storage: usize,
         previously_succeeded_in_erased: SucceededInErased<I>,
     },
 }
@@ -973,7 +973,7 @@ pub struct GoalStalledOn<I: Interner> {
     /// The certainty that will be returned on subsequent evaluations if this
     /// goal remains stalled.
     pub stalled_certainty: Certainty,
-    pub reason: GoalStalledOnReason<I>,
+    pub opaques: GoalStalledOnOpaques<I>,
 }
 
 /// For some goals we can trivially answer some questions without going through

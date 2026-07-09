@@ -7,7 +7,7 @@
 
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{
-    Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnReason,
+    Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnOpaques,
     SucceededInErased,
 };
 use rustc_type_ir::{InferCtxtLike, Interner};
@@ -43,7 +43,7 @@ where
     }
 
     // If the goal isn't stalled, we should definitely run it.
-    let Some(&GoalStalledOn { ref reason, ref stalled_vars, ref sub_roots, stalled_certainty }) =
+    let Some(&GoalStalledOn { ref opaques, ref stalled_vars, ref sub_roots, stalled_certainty }) =
         stalled_on
     else {
         return MayMakeProgress;
@@ -61,14 +61,18 @@ where
         return MayMakeProgress;
     }
 
-    match reason {
-        GoalStalledOnReason::FastPath => {
-            // fastpath is never because of opaques, we can skip this check
-        }
-        &GoalStalledOnReason::Other { num_opaques, ref previously_succeeded_in_erased } => {
+    match opaques {
+        GoalStalledOnOpaques::No => {}
+        &GoalStalledOnOpaques::Yes {
+            num_opaques_in_storage,
+            ref previously_succeeded_in_erased,
+        } => {
             // If any opaques changed in the opaque type storage,
             // rerunning might make progress so we should rerun.
-            if delegate.opaque_types_storage_num_entries().needs_reevaluation(num_opaques) {
+            if delegate
+                .opaque_types_storage_num_entries()
+                .needs_reevaluation(num_opaques_in_storage)
+            {
                 // Unless this goal previously succeeded in erased mode.
                 // If the stalled goal successfully evaluated while erasing opaque types,
                 // and the current state of the opaque type storage is not different in a way that is
