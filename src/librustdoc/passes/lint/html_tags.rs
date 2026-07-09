@@ -104,21 +104,31 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                         Applicability::MaybeIncorrect,
                     );
                 } else if let HtmlDiagMode::Unopened { possible_pair: Some(possible_pair) } = mode {
-                    let (reason_display_name, reason_range) = match possible_pair.reason {
+                    let (reason_display_text, reason_range) = match possible_pair.reason {
+                        HtmlOrMarkdownTag::Markdown(tag @ TagEnd::Paragraph, range)
+                            if dox.as_bytes().get(range.end) == Some(&b'>') =>
+                        {
+                            (
+                                format!(
+                                    "because the Markdown {} is interrupted by this block quote",
+                                    markdown_tag_name(tag)
+                                ),
+                                range.end..range.end,
+                            )
+                        }
                         HtmlOrMarkdownTag::Markdown(
-                            tag @ (TagEnd::Paragraph | TagEnd::Table),
+                            tag @ (TagEnd::Paragraph | TagEnd::TableCell),
                             range,
-                        ) if dox.as_bytes().get(range.end) == Some(&b'>') => (
-                            format!(
-                                "Markdown {}, which is interrupted by a block quote",
-                                markdown_tag_name(tag)
-                            ),
-                            range,
+                        ) => (
+                            format!("because the Markdown {} ends here", markdown_tag_name(tag)),
+                            range.end..range.end,
                         ),
                         HtmlOrMarkdownTag::Markdown(tag, range) => {
-                            (format!("Markdown {}", markdown_tag_name(tag)), range)
+                            (format!("because of this Markdown {}", markdown_tag_name(tag)), range)
                         }
-                        HtmlOrMarkdownTag::Html(name, range) => (format!("HTML `{name}`"), range),
+                        HtmlOrMarkdownTag::Html(name, range) => {
+                            (format!("because of this HTML `{name}`"), range)
+                        }
                     };
                     if let HtmlOrMarkdownTag::Html(_, unclosed_tag_range) =
                         possible_pair.unclosed_tag
@@ -129,10 +139,8 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                             &item.attrs.doc_strings,
                         )
                     {
-                        lint.span_label(
-                            unclosed_tag_span,
-                            format!("does not match this unclosed tag"),
-                        );
+                        lint.span_label(sp, "this unopened tag");
+                        lint.span_label(unclosed_tag_span, "does not match this unclosed tag");
                     }
                     if let Some((reason_span, _)) = source_span_for_markdown_range(
                         tcx,
@@ -140,10 +148,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                         &reason_range,
                         &item.attrs.doc_strings,
                     ) {
-                        lint.span_label(
-                            reason_span,
-                            format!("because of this {reason_display_name}"),
-                        );
+                        lint.span_label(reason_span, reason_display_text);
                     }
                 }
             }),

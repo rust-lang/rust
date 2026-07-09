@@ -215,6 +215,7 @@ pub fn v() {}
 
 /// *Improperly <span> nested* HTML</span>
 //~^ ERROR unopened HTML tag `span`
+//~| NOTE this unopened tag
 //~| NOTE does not match this unclosed tag
 //~| NOTE because of this Markdown emphasis
 pub fn w() {}
@@ -226,6 +227,7 @@ pub fn x() {}
 
 /// <em>Improperly <span> nested</em> HTML</span>
 //~^ ERROR unopened HTML tag `span`
+//~| NOTE this unopened tag
 //~| NOTE does not match this unclosed tag
 //~| NOTE because of this HTML `em`
 pub fn y() {}
@@ -234,8 +236,9 @@ pub fn y() {}
 ///
 /// HTML </em> emphasis
 //~^ ERROR unopened HTML tag `em`
-//~^^^^ NOTE does not match this unclosed tag
-//~| NOTE because of this Markdown paragraph
+//~| NOTE this unopened tag
+//~^^^^^ NOTE does not match this unclosed tag
+//~^^^^^ NOTE because the Markdown paragraph ends here
 pub fn z() {}
 
 /// <script>
@@ -281,6 +284,26 @@ pub fn no_error_12() {}
 /// >
 /// </svg>
 //~^ ERROR unopened HTML tag `svg`
-//~^^^^^^^ NOTE does not match this unclosed tag
-//~^^^^^^^^^ NOTE because of this Markdown paragraph
+//~| NOTE this unopened tag
+//~^^^^^^^^ NOTE does not match this unclosed tag
+//~^^^^^ NOTE because the Markdown paragraph is interrupted by this block quote
 pub struct Diagram;
+
+/// |      left        |    right     |
+/// |------------------|--------------|
+/// | <i>`one|two`</i> | `three|four` |
+//~^ ERROR unopened HTML tag `i`
+//~| NOTE this unopened tag
+//~| NOTE does not match this unclosed tag
+//~| NOTE because the Markdown table cell ends here
+pub struct Table1;
+
+/// |  one  | two |
+/// |-------|-----|
+/// | <div> | foo |
+/// </div>
+//~^ ERROR unopened HTML tag `div`
+//~| NOTE this unopened tag
+//~^^^^ NOTE does not match this unclosed tag
+//~^^^^^ NOTE because the Markdown table cell ends here
+pub struct Table2;

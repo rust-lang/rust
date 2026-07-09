@@ -155,13 +155,13 @@ error: unopened HTML tag `span`
   --> $DIR/invalid-html-tags.rs:216:36
    |
 LL | /// *Improperly <span> nested* HTML</span>
-   |     --------------------------     ^^^^^^^
+   |     --------------------------     ^^^^^^^ this unopened tag
    |     |           |
    |     |           does not match this unclosed tag
    |     because of this Markdown emphasis
 
 error: improperly nested Markdown emphasis
-  --> $DIR/invalid-html-tags.rs:222:22
+  --> $DIR/invalid-html-tags.rs:223:22
    |
 LL | /// <span>Improperly *nested </span> HTML*
    |     -----------------^^^^^^^^^^^^^^^^^^^^^
@@ -169,40 +169,53 @@ LL | /// <span>Improperly *nested </span> HTML*
    |     because of this HTML `span`
 
 error: unopened HTML tag `span`
-  --> $DIR/invalid-html-tags.rs:227:43
+  --> $DIR/invalid-html-tags.rs:228:43
    |
 LL | /// <em>Improperly <span> nested</em> HTML</span>
-   |     ---------------------------------     ^^^^^^^
+   |     ---------------------------------     ^^^^^^^ this unopened tag
    |     |              |
    |     |              does not match this unclosed tag
    |     because of this HTML `em`
 
 error: unopened HTML tag `em`
-  --> $DIR/invalid-html-tags.rs:235:10
+  --> $DIR/invalid-html-tags.rs:237:10
    |
-LL |   /// Improperly <em> nested
-   |       -          ---- does not match this unclosed tag
-   |  _____|
-   | |
-LL | | ///
-   | |_- because of this Markdown paragraph
-LL |   /// HTML </em> emphasis
-   |            ^^^^^
+LL | /// Improperly <em> nested
+   |                ---- does not match this unclosed tag
+LL | ///
+   | - because the Markdown paragraph ends here
+LL | /// HTML </em> emphasis
+   |          ^^^^^ this unopened tag
 
 error: unopened HTML tag `svg`
-  --> $DIR/invalid-html-tags.rs:282:5
+  --> $DIR/invalid-html-tags.rs:285:5
    |
-LL |   /// Figure 1: an X
-   |  _____-
-LL | | /// <svg viewBox="0 0 10 10">
-   | |     ---- does not match this unclosed tag
-LL | | /// <path
-LL | | ///     d="M0 10L10 0M10 10L0 0"
-LL | | ///     stroke="black"
-LL | | /// >
-   | |____- because of this Markdown paragraph, which is interrupted by a block quote
-LL |   /// </svg>
-   |       ^^^^^^
+LL | /// <svg viewBox="0 0 10 10">
+   |     ---- does not match this unclosed tag
+...
+LL | /// >
+   |     - because the Markdown paragraph is interrupted by this block quote
+LL | /// </svg>
+   |     ^^^^^^ this unopened tag
 
-error: aborting due to 29 previous errors
+error: unopened HTML tag `i`
+  --> $DIR/invalid-html-tags.rs:294:19
+   |
+LL | /// | <i>`one|two`</i> | `three|four` |
+   |       ---    -    ^^^^ this unopened tag
+   |       |      |
+   |       |      because the Markdown table cell ends here
+   |       does not match this unclosed tag
+
+error: unopened HTML tag `div`
+  --> $DIR/invalid-html-tags.rs:304:5
+   |
+LL | /// | <div> | foo |
+   |       ----- - because the Markdown table cell ends here
+   |       |
+   |       does not match this unclosed tag
+LL | /// </div>
+   |     ^^^^^^ this unopened tag
+
+error: aborting due to 31 previous errors
 
