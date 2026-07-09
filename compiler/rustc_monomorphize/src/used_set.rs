@@ -147,15 +147,22 @@ pub(crate) fn emit_used_sets(tcx: TyCtxt<'_>, dir: &Path) {
         per_crate.entry(name).or_default().insert(local_hash);
     }
 
+    // The used-set of a dependency is the *union* over every crate that calls it: `Main`'s
+    // probe names `a::f`, but `b::used` is called from inside `a`'s body, so only `a`'s probe
+    // names it. Each crate therefore *appends* its references; duplicate lines are harmless
+    // (the consumer dedups into a set). Append is used rather than read-modify-write so the
+    // parallel crate compilations writing the same file do not race.
+    use std::io::Write;
     let mut wrote = 0;
     for (crate_name, hashes) in &per_crate {
         let path = dir.join(format!("{crate_name}.usedset"));
-        let mut body =
-            format!("# used-set for `{crate_name}` — {} entries (MIR probe, DefPathHash local_hash)\n", hashes.len());
+        let mut body = String::new();
         for h in hashes {
             body.push_str(&format!("{h:016x}\n"));
         }
-        if std::fs::write(&path, body).is_ok() {
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path)
+            && f.write_all(body.as_bytes()).is_ok()
+        {
             wrote += 1;
         }
     }
