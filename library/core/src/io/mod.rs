@@ -8,6 +8,7 @@ mod io_slice;
 mod seek;
 mod size_hint;
 mod util;
+mod write;
 
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
 pub use self::borrowed_buf::{BorrowedBuf, BorrowedCursor};
@@ -24,14 +25,20 @@ pub use self::{
     io_slice::{IoSlice, IoSliceMut},
     seek::{Seek, SeekFrom},
     util::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink},
+    write::Write,
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
+    cursor::{
+        WriteThroughCursor, slice_write, slice_write_all, slice_write_all_vectored,
+        slice_write_vectored,
+    },
     error::{Custom, CustomOwner, OsFunctions},
     seek::stream_len_default,
     size_hint::SizeHint,
     util::{chain, take},
+    write::default_write_vectored,
 };
 
 /// Marks that a type `T` can have IO traits such as [`Seek`], [`Write`], etc. automatically
@@ -48,7 +55,7 @@ pub use self::{
 // FIXME(#74481): Hard-links required to link from `core` to `std`
 /// [file]: ../../std/fs/struct.File.html
 /// [arc]: ../../alloc/sync/struct.Arc.html
-/// [`Write`]: ../../std/io/trait.Write.html
+/// [`Write`]: crate::io::Write
 /// [`Seek`]: crate::io::Seek
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
