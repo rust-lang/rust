@@ -190,6 +190,10 @@ pub struct RegionHighlightMode<'tcx> {
     /// instead of the ordinary behavior.
     highlight_regions: [Option<(ty::Region<'tcx>, usize)>; 3],
 
+    /// If set to `true`, types that include regions will always be included in the output, while
+    /// other types will be free to be trimmed.
+    pub keep_regions: bool,
+
     /// If enabled, when printing a "free region" that originated from
     /// the given `ty::BoundRegionKind`, print it as "`'1`". Free regions that would ordinarily
     /// have names print as normal.
@@ -208,6 +212,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
         region: Option<ty::Region<'tcx>>,
         number: Option<usize>,
     ) {
+        self.keep_regions = true;
         if let Some(k) = region
             && let Some(n) = number
         {
@@ -223,6 +228,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
                 bug!("can only highlight {} placeholders at a time", num_slots,)
             });
         *first_avail_slot = Some((region, number));
+        self.keep_regions = true;
     }
 
     /// Convenience wrapper for `highlighting_region`.
@@ -2330,12 +2336,27 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     }
 
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
+        let has_regions = self.region_highlight_mode.keep_regions
+            && ty.has_type_flags(ty::TypeFlags::HAS_REGIONS);
         match ty.kind() {
-            ty::Tuple(tys) if tys.len() == 0 && self.should_truncate() => {
+            ty::Tuple(tys) if tys.len() == 0 => {
                 // Don't truncate `()`.
+                self.pretty_print_type(ty)
+            }
+
+            ty::Adt(def, args)
+                if args.types().next().is_none()
+                    && args.consts().next().is_none()
+                    && args.types().count() < 2
+                    && self.should_truncate()
+                    && self.tcx.item_name(def.did()).as_str().len() < 5 =>
+            {
+                // Don't fully truncate types that have "short names" and at most one type param.
+                // FIXME: only mention the name instead of the path?
                 self.printed_type_count += 1;
                 self.pretty_print_type(ty)
             }
+
             ty::Adt(..)
             | ty::Foreign(_)
             | ty::Pat(..)
@@ -2351,17 +2372,17 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Tuple(_)
             | ty::Alias(..)
-            | ty::Param(_)
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Error(_)
-                if self.should_truncate() =>
+                if self.should_truncate() && !has_regions =>
             {
                 // We only truncate types that we know are likely to be much longer than 3 chars.
                 // There's no point in replacing `i32` or `!`.
                 write!(self, "_")?;
                 Ok(())
             }
+            ty::Ref(r, ..) if self.should_truncate() && has_regions => self.pretty_print_type(ty),
             _ => {
                 self.printed_type_count += 1;
                 self.pretty_print_type(ty)
