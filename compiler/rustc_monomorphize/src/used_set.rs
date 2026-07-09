@@ -29,19 +29,21 @@ use std::path::Path;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::mono::MonoItem;
-use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 
-/// A parsed used-set: the mangled symbol names a final binary links from this crate.
+/// A parsed used-set: the crate-local `DefPathHash` hashes a downstream binary reaches in
+/// this crate. Keyed on the *local_hash* half of `DefPathHash`, which identifies an item by
+/// its def-path within the crate and is stable across compilations (unlike the mangled
+/// symbol name, whose crate-disambiguator changes between `cargo check` and `cargo build`).
 pub(crate) struct UsedSet {
-    symbols: FxHashSet<String>,
+    local_hashes: FxHashSet<u64>,
 }
 
 impl UsedSet {
-    /// Parse a used-set file (one mangled symbol per line). Returns `None` (and warns) if the
-    /// file cannot be read, so a missing/corrupt used-set degrades to the sound fallback of
-    /// keeping the full `pub` closure rather than miscompiling.
+    /// Parse a used-set file (one 16-hex local_hash per line). Returns `None` (and warns) if
+    /// the file cannot be read, so a missing/corrupt used-set degrades to the sound fallback
+    /// of keeping the full `pub` closure rather than miscompiling.
     pub(crate) fn load(tcx: TyCtxt<'_>, path: &Path) -> Option<UsedSet> {
         let contents = match std::fs::read_to_string(path) {
             Ok(c) => c,
@@ -54,30 +56,24 @@ impl UsedSet {
                 return None;
             }
         };
-        let symbols: FxHashSet<String> = contents
+        let local_hashes: FxHashSet<u64> = contents
             .lines()
             .map(str::trim)
             .filter(|l| !l.is_empty() && !l.starts_with('#'))
-            // Take the first whitespace-delimited field, so raw `nm` output
-            // (`<addr> T <sym>`) as well as bare-symbol lists both parse.
-            .filter_map(|l| l.split_whitespace().last())
-            .map(str::to_owned)
+            .filter_map(|l| u64::from_str_radix(l, 16).ok())
             .collect();
-        Some(UsedSet { symbols })
+        Some(UsedSet { local_hashes })
     }
 
-    /// Is this crate's function in the binary's used-set? Keyed on the item's mangled symbol
-    /// name, which is what `nm` reports for the final binary.
+    /// Is this crate's function in the binary's used-set? Keyed on the def-path-stable
+    /// `local_hash`, so it matches regardless of the crate disambiguator differences between
+    /// the probe compile and this one.
     pub(crate) fn contains(&self, tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        // Only non-generic fns have a stable, callable mono symbol; generics are handled by
-        // the collector and are never offered to `contains` (see the caller's guard).
-        let instance = Instance::mono(tcx, def_id);
-        let sym = MonoItem::Fn(instance).symbol_name(tcx).name;
-        self.symbols.contains(sym)
+        self.local_hashes.contains(&tcx.def_path_hash(def_id).local_hash().as_u64())
     }
 
     pub(crate) fn len(&self) -> usize {
-        self.symbols.len()
+        self.local_hashes.len()
     }
 }
 
@@ -131,29 +127,31 @@ pub(crate) fn emit_used_sets(tcx: TyCtxt<'_>, dir: &Path) {
         }
     }
 
-    // Group by defining crate; key each entry by the extern fn's mangled symbol name, so it
-    // matches what the dependency's own compile produces (and what the consumer checks).
-    let mut per_crate: BTreeMap<String, std::collections::BTreeSet<String>> = BTreeMap::new();
+    // Group by defining crate; key each entry by the extern fn's def-path-stable `local_hash`
+    // (the low half of its `DefPathHash`). This is stable across compilations — unlike the
+    // mangled symbol, whose crate disambiguator differs between the probe compile and the
+    // dependency's own compile — so the consumer matches it reliably.
+    let mut per_crate: BTreeMap<String, std::collections::BTreeSet<u64>> = BTreeMap::new();
     for &did in &externs {
         if did.krate == LOCAL_CRATE || tcx.def_kind(did) != rustc_hir::def::DefKind::Fn {
             continue;
         }
-        // Only non-generic fns have a stable, callable mono symbol usable as an identity.
+        // Only non-generic fns are eliminable candidates; generics are handled by the collector.
         if tcx.generics_of(did).count() != 0 {
             continue;
         }
         let name = tcx.crate_name(did.krate).to_string();
-        let sym = MonoItem::Fn(Instance::mono(tcx, did)).symbol_name(tcx).name.to_string();
-        per_crate.entry(name).or_default().insert(sym);
+        let local_hash = tcx.def_path_hash(did).local_hash().as_u64();
+        per_crate.entry(name).or_default().insert(local_hash);
     }
 
     let mut wrote = 0;
-    for (crate_name, syms) in &per_crate {
+    for (crate_name, hashes) in &per_crate {
         let path = dir.join(format!("{crate_name}.usedset"));
-        let mut body = format!("# used-set for `{crate_name}` — {} symbols (MIR probe)\n", syms.len());
-        for s in syms {
-            body.push_str(s);
-            body.push('\n');
+        let mut body =
+            format!("# used-set for `{crate_name}` — {} entries (MIR probe, DefPathHash local_hash)\n", hashes.len());
+        for h in hashes {
+            body.push_str(&format!("{h:016x}\n"));
         }
         if std::fs::write(&path, body).is_ok() {
             wrote += 1;

@@ -53,6 +53,21 @@ pub(crate) fn run_analysis(tcx: TyCtxt<'_>, mono_items: &[MonoItem<'_>]) {
     // A used-set file (`-Zdead-fn-used-set`) carries the `DefPathHash`es a downstream binary
     // reaches in *this* crate. When present, it seeds the BFS for a library crate: `pub`
     // functions the binary never calls become eliminable. This is the cross-crate case.
+    // Resumable codegen: metadata is written *before* this point (at codegen start), which
+    // unblocks Cargo to compile the downstream binary via pipelining. If `-Zdead-fn-wait-used-
+    // set=N` is set, block here up to N seconds for that binary's frontend to produce the
+    // used-set — so this library's frontend runs once and only its (pruned) codegen is deferred.
+    if let (Some(path), Some(secs)) = (
+        tcx.sess.opts.unstable_opts.dead_fn_used_set.as_deref(),
+        tcx.sess.opts.unstable_opts.dead_fn_wait_used_set,
+    ) && !path.exists()
+    {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(secs as u64);
+        while !path.exists() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+    }
+
     let used_set = tcx
         .sess
         .opts
@@ -180,13 +195,22 @@ fn collect_seeds(tcx: TyCtxt<'_>, used_set: Option<&crate::used_set::UsedSet>) -
             continue;
         }
         let def_id = local_def_id.to_def_id();
-        // Cross-crate: a `pub` fn that is in `reachable_set` only by visibility becomes a
+        // Cross-crate: a free `pub fn` in `reachable_set` only by visibility becomes a
         // *candidate* for elimination when the binary does not use it — so do not seed it.
-        // Soundness is still enforced downstream by `is_safe_to_eliminate`, which keeps every
-        // linker-visible / lang / vtable / drop-glue / generic item regardless of the used-set;
-        // the used-set can only ever narrow the visibility-reachable, provably-droppable slice.
+        // Soundness is still enforced downstream by `is_safe_to_eliminate` (keeps linker-
+        // visible / lang / vtable / drop-glue / generic items); the used-set only narrows the
+        // provably-droppable slice.
+        //
+        // Trait-impl associated methods are excluded from candidacy entirely: a downstream
+        // crate can invoke them via a trait bound, `dyn` dispatch, or a `fmt`/fn-pointer table
+        // built in *its* code — none of which appear in this crate's MIR, and which the
+        // used-set probe (a direct-call MIR walk) cannot fully observe. Keeping every `pub`
+        // trait-impl method is the conservative, sound floor for cross-crate elimination.
+        let is_trait_impl_method = tcx.def_kind(def_id) == DefKind::AssocFn
+            && tcx.associated_item(def_id).trait_item_def_id().is_some();
         if let Some(used) = used_set
-            && tcx.def_kind(def_id).is_fn_like()
+            && tcx.def_kind(def_id) == DefKind::Fn
+            && !is_trait_impl_method
             && is_locally_safe_to_eliminate(tcx, def_id)
             && !used.contains(tcx, def_id)
         {
