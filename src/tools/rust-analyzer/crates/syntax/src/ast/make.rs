@@ -1373,7 +1373,6 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
     tokens::SOURCE_FILE
         .tree()
         .syntax()
-        .clone_for_update()
         .descendants_with_tokens()
         .filter_map(|it| it.into_token())
         .find(|it| it.kind() == kind)
@@ -1394,43 +1393,10 @@ pub mod tokens {
         )
     });
 
-    pub fn semicolon() -> SyntaxToken {
-        SOURCE_FILE
-            .tree()
-            .syntax()
-            .clone_for_update()
-            .descendants_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == SEMICOLON)
-            .unwrap()
-    }
-
-    pub fn single_space() -> SyntaxToken {
-        SOURCE_FILE
-            .tree()
-            .syntax()
-            .clone_for_update()
-            .descendants_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == WHITESPACE && it.text() == " ")
-            .unwrap()
-    }
-
-    pub fn crate_kw() -> SyntaxToken {
-        SOURCE_FILE
-            .tree()
-            .syntax()
-            .clone_for_update()
-            .descendants_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == CRATE_KW)
-            .unwrap()
-    }
-
     pub fn whitespace(text: &str) -> SyntaxToken {
         assert!(text.trim().is_empty());
         let sf = SourceFile::parse(text, Edition::CURRENT).ok().unwrap();
-        sf.syntax().clone_for_update().first_child_or_token().unwrap().into_token().unwrap()
+        sf.syntax().first_child_or_token().unwrap().into_token().unwrap()
     }
 
     pub fn doc_comment(text: &str) -> SyntaxToken {
@@ -1453,41 +1419,6 @@ pub mod tokens {
             .filter_map(|it| it.into_token())
             .find(|it| it.kind() == IDENT)
             .unwrap()
-    }
-
-    pub fn single_newline() -> SyntaxToken {
-        let res = SOURCE_FILE
-            .tree()
-            .syntax()
-            .clone_for_update()
-            .descendants_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == WHITESPACE && it.text() == "\n")
-            .unwrap();
-        res.detach();
-        res
-    }
-
-    pub fn blank_line() -> SyntaxToken {
-        SOURCE_FILE
-            .tree()
-            .syntax()
-            .clone_for_update()
-            .descendants_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == WHITESPACE && it.text() == "\n\n")
-            .unwrap()
-    }
-
-    pub struct WsBuilder(SourceFile);
-
-    impl WsBuilder {
-        pub fn new(text: &str) -> WsBuilder {
-            WsBuilder(SourceFile::parse(text, Edition::CURRENT).ok().unwrap())
-        }
-        pub fn ws(&self) -> SyntaxToken {
-            self.0.syntax().first_child_or_token().unwrap().into_token().unwrap()
-        }
     }
 }
 

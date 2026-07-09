@@ -232,7 +232,7 @@ fn eager_macro_recur(
                         let syntax_node = parse.syntax_node();
                         ExpandResult {
                             value: Some((
-                                syntax_node.clone_for_update(),
+                                syntax_node.clone(),
                                 offset + syntax_node.text_range().len(),
                             )),
                             err: err.clone().or_else(|| err2.clone()),
