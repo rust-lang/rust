@@ -136,9 +136,7 @@ pub(crate) fn args_known_to_outlive_alias_params<'tcx>(
         {
             args_known_to_outlive_opaque_params(tcx, opaque_def_id.expect_local())
         }
-        DefKind::AssocTy | DefKind::TyAlias => {
-            args_known_to_outlive_associated_type_params(tcx, def_id)
-        }
+        DefKind::AssocTy | DefKind::TyAlias => args_known_to_outlive_non_opaque_params(tcx, def_id),
         kind => {
             bug!("improper def_kind {kind:?} passed to `live_args_for_alias_from_outlives_bounds`")
         }
@@ -279,14 +277,14 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
 }
 
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
-pub(crate) fn args_known_to_outlive_associated_type_params<'tcx>(
+pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, Vec<(ty::Region<'tcx>, Vec<ty::GenericArg<'tcx>>)>> {
     let self_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
     let param_env = tcx.param_env(def_id);
     tracing::debug!(?param_env);
-    let wf_tys = FxIndexSet::default();
+    let wf_tys = tcx.assumed_wf_types(def_id).iter().map(|(ty, _)| *ty).collect::<FxIndexSet<_>>();
     let mut result = Vec::new();
     for outlived_arg in self_identity_args.iter() {
         let Some(outlived_region) = outlived_arg.as_region() else {
