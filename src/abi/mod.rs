@@ -756,7 +756,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 let ptr = ptr.get_addr(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable);
 
-                let is_null = fx.bcx.ins().icmp_imm(IntCC::Equal, drop_fn, 0);
+                let is_null = fx.bcx.ins().icmp_imm_u(IntCC::Equal, drop_fn, 0);
                 let target_block = fx.get_block(target);
                 let continued = fx.bcx.create_block();
                 fx.bcx.ins().brif(is_null, target_block, &[], continued, &[]);

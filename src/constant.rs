@@ -206,9 +206,10 @@ pub(crate) fn codegen_const_value<'tcx>(
                     }
                 };
                 let val = if offset.bytes() != 0 {
-                    fx.bcx
-                        .ins()
-                        .iadd_imm(base_addr, fx.tcx.truncate_to_target_usize(offset.bytes()) as i64)
+                    fx.bcx.ins().iadd_imm_u(
+                        base_addr,
+                        fx.tcx.truncate_to_target_usize(offset.bytes()) as i64,
+                    )
                 } else {
                     base_addr
                 };

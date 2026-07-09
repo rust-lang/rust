@@ -130,10 +130,10 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
                 let mask_lane = match mask_lane_clif_ty {
                     types::I32 | types::F32 => {
-                        fx.bcx.ins().band_imm(mask_lane, 0x8000_0000u64 as i64)
+                        fx.bcx.ins().band_imm_u(mask_lane, 0x8000_0000u64 as i64)
                     }
                     types::I64 | types::F64 => {
-                        fx.bcx.ins().band_imm(mask_lane, 0x8000_0000_0000_0000u64 as i64)
+                        fx.bcx.ins().band_imm_u(mask_lane, 0x8000_0000_0000_0000u64 as i64)
                     }
                     _ => unreachable!(),
                 };
@@ -324,8 +324,8 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let zero = fx.bcx.ins().iconst(types::I8, 0);
             for i in 0..16 {
                 let b_lane = b.value_lane(fx, i).load_scalar(fx);
-                let is_zero = fx.bcx.ins().band_imm(b_lane, 0x80);
-                let a_idx = fx.bcx.ins().band_imm(b_lane, 0xf);
+                let is_zero = fx.bcx.ins().band_imm_u(b_lane, 0x80);
+                let a_idx = fx.bcx.ins().band_imm_u(b_lane, 0xf);
                 let a_idx = fx.bcx.ins().uextend(fx.pointer_type, a_idx);
                 let a_lane = a.value_lane_dyn(fx, a_idx).load_scalar(fx);
                 let res = fx.bcx.ins().select(is_zero, zero, a_lane);
@@ -335,9 +335,9 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             if intrinsic == "llvm.x86.avx2.pshuf.b" {
                 for i in 16..32 {
                     let b_lane = b.value_lane(fx, i).load_scalar(fx);
-                    let is_zero = fx.bcx.ins().band_imm(b_lane, 0x80);
-                    let b_lane_masked = fx.bcx.ins().band_imm(b_lane, 0xf);
-                    let a_idx = fx.bcx.ins().iadd_imm(b_lane_masked, 16);
+                    let is_zero = fx.bcx.ins().band_imm_u(b_lane, 0x80);
+                    let b_lane_masked = fx.bcx.ins().band_imm_u(b_lane, 0xf);
+                    let a_idx = fx.bcx.ins().iadd_imm_u(b_lane_masked, 16);
                     let a_idx = fx.bcx.ins().uextend(fx.pointer_type, a_idx);
                     let a_lane = a.value_lane_dyn(fx, a_idx).load_scalar(fx);
                     let res = fx.bcx.ins().select(is_zero, zero, a_lane);
@@ -388,9 +388,9 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 b_low: Value,
                 control: Value,
             ) -> Value {
-                let a_or_b = fx.bcx.ins().band_imm(control, 0b0010);
-                let high_or_low = fx.bcx.ins().band_imm(control, 0b0001);
-                let is_zero = fx.bcx.ins().band_imm(control, 0b1000);
+                let a_or_b = fx.bcx.ins().band_imm_u(control, 0b0010);
+                let high_or_low = fx.bcx.ins().band_imm_u(control, 0b0001);
+                let is_zero = fx.bcx.ins().band_imm_u(control, 0b1000);
 
                 let zero = fx.bcx.ins().iconst(types::I64, 0);
                 let zero = fx.bcx.ins().iconcat(zero, zero);
@@ -404,7 +404,7 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let control0 = imm8;
             let res_low = select4(fx, a_high, a_low, b_high, b_low, control0);
 
-            let control1 = fx.bcx.ins().ushr_imm(imm8, 4);
+            let control1 = fx.bcx.ins().ushr_imm_u(imm8, 4);
             let res_high = select4(fx, a_high, a_low, b_high, b_low, control1);
 
             ret.place_typed_lane(fx, fx.tcx.types.u128, 0).to_ptr().store(
@@ -497,8 +497,8 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                     let a_lane = fx.bcx.ins().uextend(lane_ty.double_width().unwrap(), a_lane);
                     let b_lane = fx.bcx.ins().uextend(lane_ty.double_width().unwrap(), b_lane);
                     let sum = fx.bcx.ins().iadd(a_lane, b_lane);
-                    let num_plus_one = fx.bcx.ins().iadd_imm(sum, 1);
-                    let res = fx.bcx.ins().ushr_imm(num_plus_one, 1);
+                    let num_plus_one = fx.bcx.ins().iadd_imm_u(sum, 1);
+                    let res = fx.bcx.ins().ushr_imm_u(num_plus_one, 1);
                     fx.bcx.ins().ireduce(lane_ty, res)
                 },
             );
@@ -579,7 +579,7 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
                 let (val, has_overflow) = fx.bcx.ins().sadd_overflow(mul0, mul1);
 
-                let rhs_ge_zero = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, mul1, 0);
+                let rhs_ge_zero = fx.bcx.ins().icmp_imm_s(IntCC::SignedGreaterThanOrEqual, mul1, 0);
 
                 let min = fx.bcx.ins().iconst(types::I16, i64::from(i16::MIN as u16));
                 let max = fx.bcx.ins().iconst(types::I16, i64::from(i16::MAX as u16));
@@ -649,9 +649,9 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 let b_lane = fx.bcx.ins().sextend(types::I32, b_lane);
 
                 let mul: Value = fx.bcx.ins().imul(a_lane, b_lane);
-                let shifted = fx.bcx.ins().ushr_imm(mul, 14);
-                let incremented = fx.bcx.ins().iadd_imm(shifted, 1);
-                let shifted_again = fx.bcx.ins().ushr_imm(incremented, 1);
+                let shifted = fx.bcx.ins().ushr_imm_u(mul, 14);
+                let incremented = fx.bcx.ins().iadd_imm_u(shifted, 1);
+                let shifted_again = fx.bcx.ins().ushr_imm_u(incremented, 1);
 
                 let res_lane = fx.bcx.ins().ireduce(types::I16, shifted_again);
                 let res_lane = CValue::by_val(res_lane, ret_lane_layout);
@@ -1279,7 +1279,7 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let all_zero1 = fx.bcx.ins().bor(zero2, zero3);
             let all_zero = fx.bcx.ins().bor(all_zero0, all_zero1);
 
-            let res = fx.bcx.ins().icmp_imm(IntCC::Equal, all_zero, 0);
+            let res = fx.bcx.ins().icmp_imm_u(IntCC::Equal, all_zero, 0);
             let res = CValue::by_val(
                 fx.bcx.ins().uextend(types::I32, res),
                 fx.layout_of(fx.tcx.types.i32),

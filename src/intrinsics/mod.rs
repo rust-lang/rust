@@ -229,10 +229,10 @@ fn simd_reduce_bool<'tcx>(
     assert!(ret.layout().ty.is_bool());
 
     let res_val = val.value_lane(fx, 0).load_scalar(fx);
-    let mut res_val = fx.bcx.ins().band_imm(res_val, 1); // mask to boolean
+    let mut res_val = fx.bcx.ins().band_imm_u(res_val, 1); // mask to boolean
     for lane_idx in 1..lane_count {
         let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
-        let lane = fx.bcx.ins().band_imm(lane, 1); // mask to boolean
+        let lane = fx.bcx.ins().band_imm_u(lane, 1); // mask to boolean
         res_val = f(fx, res_val, lane);
     }
     let res_val = if fx.bcx.func.dfg.value_type(res_val) != types::I8 {
@@ -551,8 +551,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let elem_ty = generic_args.type_at(0);
             let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
             assert_eq!(args.len(), 3);
-            let byte_amount =
-                if elem_size != 1 { fx.bcx.ins().imul_imm(count, elem_size as i64) } else { count };
+            let byte_amount = if elem_size != 1 {
+                fx.bcx.ins().imul_imm_u(count, elem_size as i64)
+            } else {
+                count
+            };
 
             // FIXME emit_small_memmove
             fx.bcx.call_memmove(fx.target_config, dst, src, byte_amount);
@@ -567,8 +570,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let elem_ty = generic_args.type_at(0);
             let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
             assert_eq!(args.len(), 3);
-            let byte_amount =
-                if elem_size != 1 { fx.bcx.ins().imul_imm(count, elem_size as i64) } else { count };
+            let byte_amount = if elem_size != 1 {
+                fx.bcx.ins().imul_imm_u(count, elem_size as i64)
+            } else {
+                count
+            };
 
             // FIXME make the copy actually volatile when using emit_small_mem{cpy,move}
             if intrinsic == sym::volatile_copy_nonoverlapping_memory {
@@ -672,7 +678,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let pointee_ty = base.layout().ty.builtin_deref(true).unwrap();
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
             let ptr_diff = if pointee_size != 1 {
-                fx.bcx.ins().imul_imm(offset, pointee_size as i64)
+                fx.bcx.ins().imul_imm_u(offset, pointee_size as i64)
             } else {
                 offset
             };
@@ -698,7 +704,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap();
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
             let count = if pointee_size != 1 {
-                fx.bcx.ins().imul_imm(count, pointee_size as i64)
+                fx.bcx.ins().imul_imm_u(count, pointee_size as i64)
             } else {
                 count
             };
@@ -832,10 +838,16 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 let usize_layout = fx.layout_of(fx.tcx.types.usize);
                 // Because diff_bytes ULE isize::MAX, this would be fine as signed,
                 // but unsigned is slightly easier to codegen, so might as well.
-                CValue::by_val(fx.bcx.ins().udiv_imm(diff_bytes, pointee_size as i64), usize_layout)
+                CValue::by_val(
+                    fx.bcx.ins().udiv_imm_u(diff_bytes, pointee_size as i64),
+                    usize_layout,
+                )
             } else {
                 let isize_layout = fx.layout_of(fx.tcx.types.isize);
-                CValue::by_val(fx.bcx.ins().sdiv_imm(diff_bytes, pointee_size as i64), isize_layout)
+                CValue::by_val(
+                    fx.bcx.ins().sdiv_imm_u(diff_bytes, pointee_size as i64),
+                    isize_layout,
+                )
             };
             ret.write_cvalue(fx, val);
         }
@@ -1506,7 +1518,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 let returns = vec![AbiParam::new(types::I32)];
                 let args = &[lhs_ref, rhs_ref, bytes_val];
                 let cmp = fx.lib_call("memcmp", params, returns, args)[0];
-                fx.bcx.ins().icmp_imm(IntCC::Equal, cmp, 0)
+                fx.bcx.ins().icmp_imm_u(IntCC::Equal, cmp, 0)
             };
             ret.write_cvalue(fx, CValue::by_val(is_eq_value, ret.layout()));
         }

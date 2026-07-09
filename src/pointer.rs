@@ -41,7 +41,7 @@ impl Pointer {
         match self.base {
             PointerBase::Addr(base_addr) => {
                 let offset: i64 = self.offset.into();
-                if offset == 0 { base_addr } else { fx.bcx.ins().iadd_imm(base_addr, offset) }
+                if offset == 0 { base_addr } else { fx.bcx.ins().iadd_imm_s(base_addr, offset) }
             }
             PointerBase::Stack(stack_slot) => {
                 fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, self.offset)
@@ -71,7 +71,7 @@ impl Pointer {
                         fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap())
                     }
                 };
-                let addr = fx.bcx.ins().iadd_imm(base_addr, new_offset);
+                let addr = fx.bcx.ins().iadd_imm_s(base_addr, new_offset);
                 Pointer { base: PointerBase::Addr(addr), offset: Offset32::new(0) }
             } else {
                 panic!(
@@ -114,7 +114,9 @@ impl Pointer {
     ) -> Value {
         match self.base {
             PointerBase::Addr(base_addr) => fx.bcx.ins().load(ty, flags, base_addr, self.offset),
-            PointerBase::Stack(stack_slot) => fx.bcx.ins().stack_load(ty, stack_slot, self.offset),
+            PointerBase::Stack(stack_slot) => {
+                fx.bcx.ins().stack_load(fx.pointer_type, ty, stack_slot, self.offset)
+            }
             PointerBase::Dangling(_align) => unreachable!(),
         }
     }
@@ -125,7 +127,7 @@ impl Pointer {
                 fx.bcx.ins().store(flags, value, base_addr, self.offset);
             }
             PointerBase::Stack(stack_slot) => {
-                fx.bcx.ins().stack_store(value, stack_slot, self.offset);
+                fx.bcx.ins().stack_store(fx.pointer_type, value, stack_slot, self.offset);
             }
             PointerBase::Dangling(_align) => unreachable!(),
         }

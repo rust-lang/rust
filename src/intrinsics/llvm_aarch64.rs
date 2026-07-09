@@ -422,7 +422,7 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             for i in 0..8 {
                 let idx_lane = idx.value_lane(fx, i).load_scalar(fx);
                 let is_zero =
-                    fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThanOrEqual, idx_lane, 16);
+                    fx.bcx.ins().icmp_imm_u(IntCC::UnsignedGreaterThanOrEqual, idx_lane, 16);
                 let t_idx = fx.bcx.ins().uextend(fx.pointer_type, idx_lane);
                 let t_lane = t.value_lane_dyn(fx, t_idx).load_scalar(fx);
                 let res = fx.bcx.ins().select(is_zero, zero, t_lane);
@@ -436,7 +436,7 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             for i in 0..16 {
                 let idx_lane = idx.value_lane(fx, i).load_scalar(fx);
                 let is_zero =
-                    fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThanOrEqual, idx_lane, 16);
+                    fx.bcx.ins().icmp_imm_u(IntCC::UnsignedGreaterThanOrEqual, idx_lane, 16);
                 let t_idx = fx.bcx.ins().uextend(fx.pointer_type, idx_lane);
                 let t_lane = t.value_lane_dyn(fx, t_idx).load_scalar(fx);
                 let res = fx.bcx.ins().select(is_zero, zero, t_lane);
@@ -1035,7 +1035,7 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
                 b,
                 ret,
                 &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane| {
-                    let rot = fx.bcx.ins().rotl_imm(b_lane, 1);
+                    let rot = fx.bcx.ins().rotl_imm_u(b_lane, 1);
                     fx.bcx.ins().bxor(a_lane, rot)
                 },
             );
@@ -1162,7 +1162,7 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
                     let a_lane = fx.bcx.ins().sextend(product_ty, a_lane);
                     let b_lane = fx.bcx.ins().sextend(product_ty, b_lane);
                     let product = fx.bcx.ins().imul(a_lane, b_lane);
-                    let product = fx.bcx.ins().sshr_imm(product, shift);
+                    let product = fx.bcx.ins().sshr_imm_u(product, shift);
                     let max = fx.bcx.ins().iconst(product_ty, max);
                     let result = fx.bcx.ins().smin(product, max);
                     fx.bcx.ins().ireduce(result_ty, result)
