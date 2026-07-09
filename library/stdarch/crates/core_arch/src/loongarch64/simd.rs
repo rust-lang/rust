@@ -35,16 +35,26 @@ impl_simd_ext!(u8x16, u8);
 impl_simd_ext!(u8x32, u8);
 impl_simd_ext!(i16x8, i16);
 impl_simd_ext!(i16x16, i16);
+impl_simd_ext!(i16x32, i16);
 impl_simd_ext!(u16x8, u16);
 impl_simd_ext!(u16x16, u16);
+impl_simd_ext!(u16x32, u16);
 impl_simd_ext!(i32x4, i32);
 impl_simd_ext!(i32x8, i32);
+impl_simd_ext!(i32x16, i32);
 impl_simd_ext!(u32x4, u32);
 impl_simd_ext!(u32x8, u32);
+impl_simd_ext!(u32x16, u32);
 impl_simd_ext!(i64x2, i64);
 impl_simd_ext!(i64x4, i64);
+impl_simd_ext!(i64x8, i64);
 impl_simd_ext!(u64x2, u64);
 impl_simd_ext!(u64x4, u64);
+impl_simd_ext!(u64x8, u64);
+impl_simd_ext!(i128x2, i128);
+impl_simd_ext!(u128x2, u128);
+impl_simd_ext!(i128x4, i128);
+impl_simd_ext!(u128x4, u128);
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
@@ -110,6 +120,42 @@ pub(super) const unsafe fn simd_fnmsub<T: Copy>(a: T, b: T, c: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_frecip_s<T: Copy>(a: T) -> T {
+    is::simd_div(is::simd_splat(1.0f32), a)
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_frecip_d<T: Copy>(a: T) -> T {
+    is::simd_div(is::simd_splat(1.0f64), a)
+}
+
+#[inline(always)]
+pub(super) unsafe fn simd_frsqrt_s<T: Copy>(a: T) -> T {
+    ls::simd_frecip_s(is::simd_fsqrt(a))
+}
+
+#[inline(always)]
+pub(super) unsafe fn simd_frsqrt_d<T: Copy>(a: T) -> T {
+    ls::simd_frecip_d(is::simd_fsqrt(a))
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_ld<const I: i32, T: Copy>(a: *const i8) -> T {
+    let a = a.offset(I as isize) as *const T;
+    core::ptr::read_unaligned(a)
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_ldx<T: Copy>(a: *const i8, b: i64) -> T {
+    let a = a.offset(b as isize) as *const T;
+    core::ptr::read_unaligned(a)
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(super) const unsafe fn simd_madd<T: Copy>(a: T, b: T, c: T) -> T {
     is::simd_add(a, is::simd_mul(b, c))
 }
@@ -118,6 +164,18 @@ pub(super) const unsafe fn simd_madd<T: Copy>(a: T, b: T, c: T) -> T {
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(super) const unsafe fn simd_msub<T: Copy>(a: T, b: T, c: T) -> T {
     is::simd_sub(a, is::simd_mul(b, c))
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_muh<T: Copy, W: Copy + const SimdExt>(a: T, b: T) -> T {
+    let a: W = is::simd_cast(a);
+    let b: W = is::simd_cast(b);
+    let p = is::simd_mul(a, b);
+    is::simd_cast(is::simd_shr(
+        p,
+        ls::simd_splat((size_of::<W::Elem>() * 8 / 2) as i64),
+    ))
 }
 
 #[inline(always)]
@@ -140,6 +198,15 @@ pub(super) const unsafe fn simd_orn<T: Copy + const SimdExt>(a: T, b: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_rotr<T: Copy + const SimdExt>(a: T, b: T) -> T {
+    let m = (size_of::<T::Elem>() * 8 - 1) as i64;
+    let r = is::simd_and(b, ls::simd_splat(m));
+    let l = is::simd_and(is::simd_sub(ls::simd_splat(m + 1), r), ls::simd_splat(m));
+    is::simd_or(is::simd_shr(a, r), is::simd_shl(a, l))
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(super) const unsafe fn simd_shl<T: Copy + const SimdExt>(a: T, b: T) -> T {
     let m = (size_of::<T::Elem>() * 8 - 1) as i64;
     is::simd_shl(a, is::simd_and(b, ls::simd_splat(m)))
@@ -156,6 +223,20 @@ pub(super) const unsafe fn simd_shr<T: Copy + const SimdExt>(a: T, b: T) -> T {
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(super) const unsafe fn simd_splat<T: Copy + const SimdExt>(a: i64) -> T {
     T::splat(a)
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_st<const I: i32, T: Copy>(a: T, b: *mut i8) {
+    let b = b.offset(I as isize) as *mut T;
+    core::ptr::write_unaligned(b, a);
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_stx<T: Copy>(a: T, b: *mut i8, c: i64) {
+    let b = b.offset(c as isize) as *mut T;
+    core::ptr::write_unaligned(b, a);
 }
 
 macro_rules! impl_vv {
@@ -191,6 +272,36 @@ macro_rules! impl_gv {
 
 pub(super) use impl_gv;
 
+macro_rules! impl_ggv {
+    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $gty:ty, $xty:ty, unsafe) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub unsafe fn $name(a: $gty, b: $xty) -> $oty {
+            let r: $ity = $op(a, b);
+            transmute(r)
+        }
+    };
+}
+
+pub(super) use impl_ggv;
+
+macro_rules! impl_gsv {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty, $ibs:expr, const, unsafe) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[rustc_legacy_const_generics(1)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub unsafe fn $name<const IMM: i32>(a: $gty) -> $oty {
+            static_assert_simm_bits!(IMM, $ibs);
+            let r: $ity = $op::<IMM, _>(a);
+            transmute(r)
+        }
+    };
+}
+
+pub(super) use impl_gsv;
+
 macro_rules! impl_sv {
     ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $ibs:expr) => {
         #[inline]
@@ -223,9 +334,50 @@ macro_rules! impl_vvv {
             }
         }
     };
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ty, $wty:ty) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub fn $name(a: $oty, b: $oty) -> $oty {
+            unsafe {
+                let a: $ity = transmute(a);
+                let b: $ity = transmute(b);
+                let r: $ity = $op::<$ity, $wty>(a, b);
+                transmute(r)
+            }
+        }
+    };
 }
 
 pub(super) use impl_vvv;
+
+macro_rules! impl_vgg {
+    ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $gty:ty, $xty:ty, unsafe) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub unsafe fn $name(a: $oty, b: $gty, c: $xty) {
+            $op(a, b, c);
+        }
+    };
+}
+
+pub(super) use impl_vgg;
+
+macro_rules! impl_vgs {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty, $ibs:expr, const, unsafe) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[rustc_legacy_const_generics(2)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub unsafe fn $name<const IMM: i32>(a: $oty, b: $gty) {
+            static_assert_simm_bits!(IMM, $ibs);
+            $op::<IMM, _>(a, b);
+        }
+    };
+}
+
+pub(super) use impl_vgs;
 
 macro_rules! impl_vuv {
     ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident) => {
