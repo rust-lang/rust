@@ -27,6 +27,14 @@ fn main() {
 
     let _start_time = Instant::now();
 
+    // Always print backtraces to provide richer errors, to help debug hard-to-reproduce panics
+    // when the user didn't specify RUST_BACKTRACE
+    if std::env::var("RUST_BACKTRACE").is_err() {
+        unsafe {
+            std::env::set_var("RUST_BACKTRACE", "1");
+        }
+    }
+
     let default_panic_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         default_panic_hook(info);
