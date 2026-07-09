@@ -1409,6 +1409,22 @@ pub(crate) struct CoerceSharedMissingField {
 
 #[derive(Diagnostic)]
 #[diag(
+    "implementing `{$trait_name}` requires source fields omitted from the target to be `Copy` or \
+     `Reborrow`"
+)]
+pub(crate) struct CoerceSharedOmittedSourceFieldNotCopyOrReborrow<'tcx> {
+    #[primary_span]
+    #[label("source field `{$field_name}` has type `{$field_ty}`")]
+    pub span: Span,
+    #[label("required by this `CoerceShared` implementation")]
+    pub impl_span: Span,
+    pub trait_name: &'static str,
+    pub field_name: Symbol,
+    pub field_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(
     "implementing `{$trait_name}` requires source and target structs to use the same field style"
 )]
 pub(crate) struct CoerceSharedFieldStyleMismatch {

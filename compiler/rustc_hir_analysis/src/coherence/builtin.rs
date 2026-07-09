@@ -24,7 +24,7 @@ use rustc_trait_selection::traits::misc::{
     ConstParamTyImplementationError, CopyImplementationError, InfringingFieldsReason,
     type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
 };
-use rustc_trait_selection::traits::{self, FulfillmentError, ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
 use tracing::debug;
 
 use crate::diagnostics;
@@ -532,7 +532,7 @@ pub(crate) fn reborrow_info<'tcx>(
                 Unnormalized::new_wip(field.ty),
             )
             .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
-        if assert_field_type_is_reborrow(
+        if field_type_is_reborrow(
             tcx,
             &infcx,
             reborrow_trait,
@@ -540,9 +540,7 @@ pub(crate) fn reborrow_info<'tcx>(
             param_env,
             field.ty,
             field.span,
-        )
-        .is_ok()
-        {
+        ) {
             // Field implements Reborrow, check remaining fields.
             continue;
         }
@@ -552,29 +550,6 @@ pub(crate) fn reborrow_info<'tcx>(
     }
 
     Ok(())
-}
-
-fn assert_field_type_is_reborrow<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    infcx: &InferCtxt<'tcx>,
-    reborrow_trait: DefId,
-    impl_did: LocalDefId,
-    param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
-    span: Span,
-) -> Result<(), Vec<FulfillmentError<'tcx>>> {
-    if ty.ref_mutability() == Some(ty::Mutability::Mut) {
-        // Mutable references are Reborrow but not really.
-        return Ok(());
-    }
-    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
-    let cause = traits::ObligationCause::misc(span, impl_did);
-    let obligation =
-        Obligation::new(tcx, cause, param_env, ty::TraitRef::new(tcx, reborrow_trait, [ty]));
-    ocx.register_obligation(obligation);
-    let errors = ocx.evaluate_obligations_error_on_ambiguity();
-
-    if !errors.is_empty() { Err(errors) } else { Ok(()) }
 }
 
 #[derive(Clone, Copy)]
@@ -906,6 +881,11 @@ struct CoerceSharedFieldPair<'tcx> {
     target: ReborrowDataField<'tcx>,
 }
 
+struct CoerceSharedFields<'tcx> {
+    pairs: Vec<CoerceSharedFieldPair<'tcx>>,
+    unpaired_sources: Vec<ReborrowDataField<'tcx>>,
+}
+
 #[derive(Clone, Copy)]
 enum CoerceSharedFieldPairError<'tcx> {
     FieldStyleMismatch,
@@ -947,7 +927,7 @@ fn collect_coerce_shared_field_pairs<'tcx>(
     source_args: ty::GenericArgsRef<'tcx>,
     target_def: ty::AdtDef<'tcx>,
     target_args: ty::GenericArgsRef<'tcx>,
-) -> Result<Vec<CoerceSharedFieldPair<'tcx>>, CoerceSharedFieldPairError<'tcx>> {
+) -> Result<CoerceSharedFields<'tcx>, CoerceSharedFieldPairError<'tcx>> {
     let source_variant = source_def.non_enum_variant();
     let target_variant = target_def.non_enum_variant();
     if source_variant.ctor_kind() != target_variant.ctor_kind() {
@@ -959,29 +939,39 @@ fn collect_coerce_shared_field_pairs<'tcx>(
     let target_fields = collect_reborrow_data_fields(tcx, target_def, target_args);
 
     if by_position {
-        target_fields
-            .into_iter()
-            .zip(source_fields.into_iter().map(Some).chain(std::iter::repeat(None)))
-            .map(|(target, source)| {
-                let source =
-                    source.ok_or(CoerceSharedFieldPairError::MissingSourceField { target })?;
-                Ok(CoerceSharedFieldPair { source, target })
-            })
-            .collect()
-    } else {
-        target_fields
-            .into_iter()
-            .map(|target| {
-                let source = source_fields
-                    .iter()
-                    .find(|source| {
-                        tcx.hygienic_eq(target.ident, source.ident, source_variant.def_id)
-                    })
-                    .ok_or(CoerceSharedFieldPairError::MissingSourceField { target })?;
+        let mut source_fields = source_fields.into_iter();
+        let mut pairs = Vec::with_capacity(target_fields.len());
 
-                Ok(CoerceSharedFieldPair { source: *source, target })
+        for target in target_fields {
+            let source = source_fields
+                .next()
+                .ok_or(CoerceSharedFieldPairError::MissingSourceField { target })?;
+            pairs.push(CoerceSharedFieldPair { source, target });
+        }
+
+        Ok(CoerceSharedFields { pairs, unpaired_sources: source_fields.collect() })
+    } else {
+        let mut pairs = Vec::with_capacity(target_fields.len());
+
+        for target in &target_fields {
+            let source = source_fields
+                .iter()
+                .find(|source| tcx.hygienic_eq(target.ident, source.ident, source_variant.def_id))
+                .ok_or(CoerceSharedFieldPairError::MissingSourceField { target: *target })?;
+
+            pairs.push(CoerceSharedFieldPair { source: *source, target: *target });
+        }
+
+        let unpaired_sources = source_fields
+            .into_iter()
+            .filter(|source| {
+                !target_fields.iter().any(|target| {
+                    tcx.hygienic_eq(target.ident, source.ident, source_variant.def_id)
+                })
             })
-            .collect()
+            .collect();
+
+        Ok(CoerceSharedFields { pairs, unpaired_sources })
     }
 }
 
@@ -1034,14 +1024,14 @@ fn validate_coerce_shared_fields<'tcx>(
     target_def: ty::AdtDef<'tcx>,
     target_args: ty::GenericArgsRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let field_pairs = match collect_coerce_shared_field_pairs(
+    let fields = match collect_coerce_shared_field_pairs(
         tcx,
         source_def,
         source_args,
         target_def,
         target_args,
     ) {
-        Ok(field_pairs) => field_pairs,
+        Ok(fields) => fields,
         Err(CoerceSharedFieldPairError::FieldStyleMismatch) => {
             return Err(tcx
                 .dcx()
@@ -1058,7 +1048,7 @@ fn validate_coerce_shared_fields<'tcx>(
         }
     };
 
-    for field_pair in field_pairs {
+    for field_pair in fields.pairs {
         validate_coerce_shared_field(
             tcx,
             infcx,
@@ -1070,6 +1060,20 @@ fn validate_coerce_shared_fields<'tcx>(
             diagnostic_context,
             field_pair.source,
             field_pair.target,
+        )?;
+    }
+
+    let reborrow_trait = tcx.require_lang_item(LangItem::Reborrow, span);
+    for source in fields.unpaired_sources {
+        validate_coerce_shared_unpaired_source_field(
+            tcx,
+            infcx,
+            impl_did,
+            param_env,
+            reborrow_trait,
+            trait_name,
+            diagnostic_context,
+            source,
         )?;
     }
 
@@ -1242,6 +1246,47 @@ fn validate_coerce_shared_field<'tcx>(
     )
 }
 
+fn validate_coerce_shared_unpaired_source_field<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    impl_did: LocalDefId,
+    param_env: ty::ParamEnv<'tcx>,
+    reborrow_trait: DefId,
+    trait_name: &'static str,
+    diagnostic_context: CoerceSharedDiagnosticContext,
+    mut source: ReborrowDataField<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
+    source.ty = ocx
+        .deeply_normalize(
+            &traits::ObligationCause::misc(source.span, impl_did),
+            param_env,
+            Unnormalized::new_wip(source.ty),
+        )
+        .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
+
+    if field_type_is_reborrow(
+        tcx,
+        infcx,
+        reborrow_trait,
+        impl_did,
+        param_env,
+        source.ty,
+        source.span,
+    ) || field_type_is_copy(tcx, infcx, impl_did, param_env, source.ty, source.span)
+    {
+        return Ok(());
+    }
+
+    Err(tcx.dcx().emit_err(diagnostics::CoerceSharedOmittedSourceFieldNotCopyOrReborrow {
+        span: source.span,
+        impl_span: diagnostic_context.impl_span,
+        trait_name,
+        field_name: source.name,
+        field_ty: source.ty,
+    }))
+}
+
 fn validate_field_tys_satisfy_coerce_shared_relation<'tcx>(
     tcx: TyCtxt<'tcx>,
     infcx: &InferCtxt<'tcx>,
@@ -1350,6 +1395,51 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
 
     ocx.evaluate_obligations_error_on_ambiguity().is_empty()
         && ocx.resolve_regions(impl_did, param_env, []).is_empty()
+}
+
+fn field_type_is_reborrow<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    reborrow_trait: DefId,
+    impl_did: LocalDefId,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    span: Span,
+) -> bool {
+    if ty.ref_mutability() == Some(ty::Mutability::Mut) {
+        // Mutable references are Reborrow but not really.
+        return true;
+    }
+
+    let ocx = ObligationCtxt::new(infcx);
+    let cause = traits::ObligationCause::misc(span, impl_did);
+    ocx.register_obligation(Obligation::new(
+        tcx,
+        cause,
+        param_env,
+        ty::TraitRef::new(tcx, reborrow_trait, [ty]),
+    ));
+    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+}
+
+fn field_type_is_copy<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    impl_did: LocalDefId,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    span: Span,
+) -> bool {
+    let copy_trait = tcx.require_lang_item(LangItem::Copy, span);
+    let ocx = ObligationCtxt::new(infcx);
+    let cause = traits::ObligationCause::misc(span, impl_did);
+    ocx.register_obligation(Obligation::new(
+        tcx,
+        cause,
+        param_env,
+        ty::TraitRef::new(tcx, copy_trait, [ty]),
+    ));
+    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
 }
 
 fn assert_field_type_is_copy<'tcx>(
