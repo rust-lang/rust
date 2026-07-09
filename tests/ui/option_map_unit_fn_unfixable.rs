@@ -1,6 +1,6 @@
 //@no-rustfix
 #![warn(clippy::option_map_unit_fn)]
-#![allow(clippy::unnecessary_wraps, clippy::unnecessary_map_on_constructor)] // only fires before the fix
+#![expect(clippy::unnecessary_map_on_constructor)]
 
 fn do_nothing<T>(_: T) {}
 

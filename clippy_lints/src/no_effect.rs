@@ -341,10 +341,15 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
         | ExprKind::Type(inner, _)
         | ExprKind::Unary(_, inner)
         | ExprKind::Field(inner, _)
-        | ExprKind::AddrOf(_, _, inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
+        | ExprKind::AddrOf(_, _, inner)
+        // accessing a field of type `!` makes the statement unreachable in
+        // the eye of the type checker, so don't remove it
+        if !cx.typeck_results().expr_ty(expr).is_never() => {
+            reduce_expression(cx, inner).or_else(|| Some(vec![inner]))
+        }
         ExprKind::Cast(inner, _) if expr_type_is_certain(cx, inner) => {
             reduce_expression(cx, inner).or_else(|| Some(vec![inner]))
-        },
+        }
         ExprKind::Struct(_, fields, ref base) => {
             if has_drop(cx, cx.typeck_results().expr_ty(expr)) {
                 None

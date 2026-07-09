@@ -357,9 +357,8 @@ fn is_mixed_projection_predicate<'tcx>(
                 },
             }
         }
-    } else {
-        false
     }
+    false
 }
 
 fn referent_used_exactly_once<'tcx>(

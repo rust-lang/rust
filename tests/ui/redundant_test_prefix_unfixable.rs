@@ -1,6 +1,5 @@
 //@no-rustfix: name conflicts
 
-#![allow(dead_code)]
 #![warn(clippy::redundant_test_prefix)]
 
 fn main() {

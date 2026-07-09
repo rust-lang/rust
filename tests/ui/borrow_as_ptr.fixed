@@ -65,3 +65,9 @@ fn issue15389() {
         let _ = &var as *const u32;
     };
 }
+
+fn issue17197() {
+    let x = 0u32;
+    // implicit cast doesn't lint in proc-macros
+    proc_macros::with_span!(span let _: *const _ = &x;);
+}
