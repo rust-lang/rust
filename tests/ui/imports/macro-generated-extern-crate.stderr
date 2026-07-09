@@ -10,7 +10,7 @@ LL |     Local::custom();
    = help: items from traits can only be used if the trait is in scope
 help: trait `MyTrait` which provides `custom` is implemented but not in scope; perhaps you want to import it
    |
-LL + use crate::_::_my_crate::MyTrait;
+LL + use macro_generated_extern_crate::MyTrait;
    |
 
 error: aborting due to 1 previous error
