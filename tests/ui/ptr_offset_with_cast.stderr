@@ -1,5 +1,5 @@
 error: use of `offset` with a `usize` cast to an `isize`
-  --> tests/ui/ptr_offset_with_cast.rs:12:17
+  --> tests/ui/ptr_offset_with_cast.rs:13:17
    |
 LL |         let _ = ptr.offset(offset_usize as isize);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +         let _ = ptr.add(offset_usize);
    |
 
 error: use of `wrapping_offset` with a `usize` cast to an `isize`
-  --> tests/ui/ptr_offset_with_cast.rs:17:17
+  --> tests/ui/ptr_offset_with_cast.rs:18:17
    |
 LL |         let _ = ptr.wrapping_offset(offset_usize as isize);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +         let _ = ptr.wrapping_add(offset_usize);
    |
 
 error: use of `offset` with a `usize` cast to an `isize`
-  --> tests/ui/ptr_offset_with_cast.rs:25:17
+  --> tests/ui/ptr_offset_with_cast.rs:26:17
    |
 LL |         let _ = (&ptr).offset(offset_usize as isize);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +         let _ = (&ptr).add(offset_usize);
    |
 
 error: use of `wrapping_offset` with a `usize` cast to an `isize`
-  --> tests/ui/ptr_offset_with_cast.rs:27:17
+  --> tests/ui/ptr_offset_with_cast.rs:28:17
    |
 LL |         let _ = (&ptr).wrapping_offset(offset_usize as isize);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
