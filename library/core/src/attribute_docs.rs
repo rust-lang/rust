@@ -228,7 +228,7 @@ mod cfg_attribute {}
 /// ```rust
 /// #[cfg_attr(
 ///     all(feature = "system", feature = "disk"),
-///     doc = "For module documentation, both `system`, and `disk` need to be enabled.",
+///     doc = "For module documentation, both `system` and `disk` need to be enabled.",
 /// )]
 /// mod my_module {
 ///     // ...
@@ -532,7 +532,7 @@ mod used_attribute {}
 
 #[doc(attribute = "ignore")]
 //
-/// The `ignore` attribute is used alongside the `test` attribute to prevent this test to be run by default.
+/// The `ignore` attribute is used alongside the `test` attribute to prevent this test from being run by default.
 /// The `ignore` attribute may only be applied to functions annotated with the `test` attribute.
 ///
 /// Example:
@@ -558,10 +558,8 @@ mod ignore_attribute {}
 #[doc(attribute = "expect")]
 //
 /// The `#[expect]` attribute declares that a particular lint is expected to be emitted.
-/// It is an equivalent of the `allow` attribute, except that it will fail compilation if the `expect`ed lint
+/// It is an equivalent of the `allow` attribute, except that it will warn on compilation if the `expect`ed lint
 /// wasn't emitted.
-///
-/// `expect` can be overridden by `warn`, `allow`, `deny`, and `forbid`.
 ///
 /// Example:
 ///
@@ -572,13 +570,14 @@ mod ignore_attribute {}
 ///
 /// Here is an example where the `expect`ed lint is not emitted:
 ///
-/// ```rust,compile_fail
+/// ```rust
+/// #[deny(unfulfilled_lint_expectations)]
 /// #[expect(unused_variables)]
 /// let name = "rust-lang";
 /// println!("{name}");
-/// ````
+/// ```
 ///
-/// In the example above the variable is used, so the `expect` is unfufilled this warning is emitted:
+/// In the example above the variable is used, so the `expect` is unfulfilled this warning is emitted:
 ///
 /// ```text
 /// warning: this lint expectation is unfulfilled
@@ -610,7 +609,7 @@ mod ignore_attribute {}
 ///
 /// ```rust
 /// // The lint group is fulfilled as the variables are unused.
-/// #[expect(unused)]
+/// #![expect(unused)]
 /// let x = 10;
 /// let y = 12;
 /// ```
