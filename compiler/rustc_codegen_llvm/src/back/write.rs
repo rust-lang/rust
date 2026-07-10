@@ -625,6 +625,7 @@ pub(crate) unsafe fn llvm_optimize(
         Some(llvm::SanitizerOptions {
             sanitize_address: config.sanitizer.contains(SanitizerSet::ADDRESS),
             sanitize_address_recover: config.sanitizer_recover.contains(SanitizerSet::ADDRESS),
+            sanitize_alloc_token: config.sanitizer.contains(SanitizerSet::ALLOCTOKEN),
             sanitize_cfi: config.sanitizer.contains(SanitizerSet::CFI),
             sanitize_dataflow: config.sanitizer.contains(SanitizerSet::DATAFLOW),
             sanitize_dataflow_abilist: sanitize_dataflow_abilist_ptrs.as_ptr(),

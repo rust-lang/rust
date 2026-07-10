@@ -21,7 +21,8 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{
-    BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
+    AllocTokenScheme, BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo,
+    FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_session::{PointerAuthSchema, Session};
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
@@ -362,6 +363,65 @@ pub(crate) unsafe fn create_module<'ll>(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Override,
                 "kcfi-arity",
+                1,
+            );
+        }
+    }
+
+    // Add the "alloc-token-*" module flags if LLVM AllocToken is enabled. (See
+    // https://github.com/llvm/llvm-project/pull/156838.)
+    if sess.is_sanitizer_alloc_token_enabled() {
+        // Both pointer-split and type-hash-pointer-split heap partitioning schemes use the
+        // TypeHashPointerSplit token identifier derivation mode; they differ only in the maximum
+        // number of tokens (see below).
+        llvm::add_module_flag_str(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "alloc-token-mode",
+            "typehashpointersplit",
+        );
+        // The pointer-split heap partitioning scheme sets the maximum number of tokens to two
+        // (i.e., `-Zsanitizer-alloc-token-max` is ignored), so that the token identifier is the
+        // partition number: token identifier 0 for the partition not containing pointers, and token
+        // identifier 1 for the partition containing pointers.
+        //
+        // The type-hash-pointer-split heap partitioning scheme uses a configurable maximum number
+        // of tokens (i.e., `-Zsanitizer-alloc-token-max`, defaulting to the same value as Clang,
+        // i.e., the number of tokens bounded by `SIZE_MAX`, when not set), so that the token
+        // identifier is derived from a stable hash of the allocated type name within each
+        // partition, providing per-type token identifiers.
+        let max = match sess.opts.unstable_opts.sanitizer_alloc_token_scheme {
+            None | Some(AllocTokenScheme::PointerSplit) => Some(2),
+            Some(AllocTokenScheme::TypeHashPointerSplit) => {
+                sess.opts.unstable_opts.sanitizer_alloc_token_max
+            }
+        };
+        if let Some(max) = max {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "alloc-token-max",
+                max,
+            );
+        }
+        // Extended coverage is enabled by default so the `AllocTokenPass` rewrites the annotated
+        // calls (e.g., `__rust_alloc`) to token-enabled versions of these allocation functions
+        // (e.g., `__alloc_token_...__rust_alloc(size, align, token_id)`).
+        if sess.opts.unstable_opts.sanitizer_alloc_token_extended.unwrap_or(true) {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "alloc-token-extended",
+                1,
+            );
+        }
+        // The fast ABI encodes the token identifier in the allocation function name (e.g.,
+        // `__alloc_token_0___rust_alloc`) instead of appending a token identifier argument.
+        if sess.opts.unstable_opts.sanitizer_alloc_token_fast_abi == Some(true) {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "alloc-token-fast-abi",
                 1,
             );
         }

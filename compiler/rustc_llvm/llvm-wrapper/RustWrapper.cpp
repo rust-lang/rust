@@ -393,6 +393,7 @@ enum class LLVMRustAttributeKind {
   SanitizeRealtimeBlocking = 48,
   Convergent = 49,
   NoFree = 50,
+  SanitizeAllocToken = 51,
 };
 
 static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
@@ -493,6 +494,13 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
     return Attribute::Convergent;
   case LLVMRustAttributeKind::NoFree:
     return Attribute::NoFree;
+  case LLVMRustAttributeKind::SanitizeAllocToken:
+#if LLVM_VERSION_GE(22, 0)
+    return Attribute::SanitizeAllocToken;
+#else
+    report_fatal_error(
+        "SanitizeAllocToken attribute requires LLVM 22 or higher");
+#endif
   }
   report_fatal_error("bad LLVMRustAttributeKind");
 }

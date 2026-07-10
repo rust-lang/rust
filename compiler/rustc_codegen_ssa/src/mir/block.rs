@@ -11,6 +11,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout, ValidityRequirement};
@@ -213,6 +214,35 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         };
         let caller_attrs = caller_attrs.as_deref();
 
+        // Compute the allocation token hint (i.e., the contents of the `!alloc_token` metadata)
+        // for calls to allocation functions, for LLVM AllocToken and heap partitioning support.
+        let alloc_token_hint = if tcx.sess.is_sanitizer_alloc_token_enabled()
+            && let Some(callee) = instance
+            && tcx.codegen_instance_attrs(callee.def).flags.intersects(
+                CodegenFnAttrFlags::ALLOCATOR
+                    | CodegenFnAttrFlags::ALLOCATOR_ZEROED
+                    | CodegenFnAttrFlags::REALLOCATOR,
+            ) {
+            // If the caller is a typed allocation function (i.e., a function annotated with the
+            // `#[rustc_alloc_token_hint]` attribute), its type parameter identifies the allocated
+            // type; otherwise, the allocated type is unknown and a conservative allocation token
+            // hint is used.
+            if caller_attrs
+                .is_some_and(|attrs| attrs.flags.contains(CodegenFnAttrFlags::ALLOC_TOKEN_HINT))
+                && let Some(ty) = fx.instance.args.types().next()
+            {
+                Some(rustc_sanitizers::alloc_token::hint_for_ty(
+                    tcx,
+                    ty,
+                    rustc_sanitizers::alloc_token::AllocTokenHintOptions::empty(),
+                ))
+            } else {
+                Some(rustc_sanitizers::alloc_token::hint_for_unknown_ty())
+            }
+        } else {
+            None
+        };
+
         if !fn_abi.can_unwind {
             unwind = mir::UnwindAction::Unreachable;
         }
@@ -266,6 +296,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 self.funclet(fx),
                 instance,
             );
+            if let Some(hint) = &alloc_token_hint {
+                bx.set_alloc_token_hint(invokeret, hint);
+            }
             if fx.mir[self.bb].is_cleanup {
                 bx.apply_attrs_to_cleanup_callsite(invokeret);
             }
@@ -295,6 +328,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 self.funclet(fx),
                 instance,
             );
+            if let Some(hint) = &alloc_token_hint {
+                bx.set_alloc_token_hint(llret, hint);
+            }
             if fx.mir[self.bb].is_cleanup {
                 bx.apply_attrs_to_cleanup_callsite(llret);
             }

@@ -319,6 +319,7 @@ pub(crate) enum AttributeKind {
     SanitizeRealtimeBlocking = 48,
     Convergent = 49,
     NoFree = 50,
+    SanitizeAllocToken = 51,
 }
 
 /// LLVMIntPredicate
@@ -476,6 +477,7 @@ pub(crate) enum OptStage {
 pub(crate) struct SanitizerOptions {
     pub sanitize_address: bool,
     pub sanitize_address_recover: bool,
+    pub sanitize_alloc_token: bool,
     pub sanitize_cfi: bool,
     pub sanitize_dataflow: bool,
     pub sanitize_dataflow_abilist: *const *const c_char,
