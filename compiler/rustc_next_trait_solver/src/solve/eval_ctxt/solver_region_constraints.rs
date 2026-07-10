@@ -125,6 +125,7 @@ where
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn eagerly_handle_placeholders(&mut self) -> Result<Certainty, NoSolution> {
         let constraint = self.delegate.get_solver_region_constraint();
+        let constraint = rustc_type_ir::region_constraint::evaluate_solver_constraint(&constraint);
 
         let smallest_universe = self.max_input_universe.index();
         let largest_universe = self.delegate.universe().index();
@@ -137,7 +138,8 @@ where
                 eagerly_handle_placeholders_in_universe(&**self.delegate, constraint, u)
             });
 
-        self.delegate.overwrite_solver_region_constraint(constraint.clone());
+        self.delegate.overwrite_solver_region_constraint(constraint.clone().canonical_form());
+        debug!("final constraint={:?}", constraint.clone().canonical_form());
 
         if constraint.is_false() {
             Err(NoSolution)
