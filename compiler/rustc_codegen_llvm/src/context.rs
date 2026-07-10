@@ -367,6 +367,59 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
+    // Add the "alloc-token-*" module flags if LLVM AllocToken is enabled. (See
+    // https://github.com/llvm/llvm-project/pull/156838.)
+    if sess.is_sanitizer_alloc_token_enabled() {
+        // Both pointer-split and type-hash-pointer-split heap partitioning schemes use the
+        // TypeHashPointerSplit token identifier derivation mode; they differ only in the maximum
+        // number of tokens (see below).
+        llvm::add_module_flag_str(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "alloc-token-mode",
+            "typehashpointersplit",
+        );
+        // The pointer-split heap partitioning scheme sets the maximum number of tokens to two
+        // (i.e., `-Zsanitizer-alloc-token-max` is ignored), so that the token identifier is the
+        // partition number: token identifier 0 for the partition not containing pointers, and token
+        // identifier 1 for the partition containing pointers.
+        //
+        // The type-hash-pointer-split heap partitioning scheme uses a configurable maximum number
+        // of tokens (i.e., `-Zsanitizer-alloc-token-max`, defaulting to the same value as Clang,
+        // i.e., the number of tokens bounded by `SIZE_MAX`, when not set), so that the token
+        // identifier is derived from a stable hash of the allocated type name within each
+        // partition, providing per-type token identifiers.
+        if let Some(max) = sess.alloc_token_max() {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "alloc-token-max",
+                max,
+            );
+        }
+        // Extended coverage is enabled by default so the `AllocTokenPass` rewrites the annotated
+        // calls (e.g., `__rust_alloc`) to token-enabled versions of these allocation functions
+        // (e.g., `__alloc_token_...__rust_alloc(size, align, token_id)`).
+        if sess.opts.unstable_opts.sanitizer_alloc_token_extended.unwrap_or(true) {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "alloc-token-extended",
+                1,
+            );
+        }
+        // The fast ABI encodes the token identifier in the allocation function name (e.g.,
+        // `__alloc_token_0___rust_alloc`) instead of appending a token identifier argument.
+        if sess.opts.unstable_opts.sanitizer_alloc_token_fast_abi == Some(true) {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "alloc-token-fast-abi",
+                1,
+            );
+        }
+    }
+
     // Control Flow Guard is currently only supported by MSVC and LLVM on Windows.
     if sess.target.is_like_msvc
         || (sess.target.options.os == Os::Windows

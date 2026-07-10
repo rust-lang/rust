@@ -35,9 +35,10 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo,
-    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
-    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
+    self, AllocTokenScheme, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions,
+    CrateType, DebugInfo, ErrorOutputType, FunctionReturn, Input, InstrumentCoverage,
+    InstrumentMcount, NATIVE_CPU, OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption,
+    SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -588,6 +589,15 @@ impl Session {
 
     pub fn is_sanitizer_alloc_token_enabled(&self) -> bool {
         self.sanitizers().contains(SanitizerSet::ALLOCTOKEN)
+    }
+
+    pub fn alloc_token_max(&self) -> Option<u32> {
+        match self.opts.unstable_opts.sanitizer_alloc_token_scheme {
+            None | Some(AllocTokenScheme::PointerSplit) => Some(2),
+            Some(AllocTokenScheme::TypeHashPointerSplit) => {
+                self.opts.unstable_opts.sanitizer_alloc_token_max
+            }
+        }
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {

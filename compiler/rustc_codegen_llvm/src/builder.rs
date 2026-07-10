@@ -22,6 +22,7 @@ use rustc_middle::ty::layout::{
     TyAndLayout,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_sanitizers::alloc_token::AllocTokenHint;
 use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
@@ -1534,6 +1535,33 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             PassMode::Ignore | PassMode::Indirect { .. } => self.ret_void(),
             PassMode::Direct(_) | PassMode::Pair { .. } | PassMode::Cast { .. } => self.ret(call),
         }
+    }
+
+    fn set_alloc_token_hint(&mut self, call: &'ll Value, hint: &AllocTokenHint) {
+        // Attach `!alloc_token !{<type-name>, <contains-pointer>}` metadata to the allocation
+        // call, for LLVM AllocToken and heap partitioning support. (See
+        // https://github.com/llvm/llvm-project/pull/156838.)
+        let args = [
+            self.cx.create_metadata(hint.type_name.as_bytes()),
+            llvm::LLVMValueAsMetadata(self.cx.const_bool(hint.contains_pointer)),
+        ];
+        let id = self.get_md_kind_id("alloc_token");
+        let md = unsafe { llvm::LLVMMDNodeInContext2(self.cx.llcx, args.as_ptr(), args.len()) };
+        self.set_metadata(call, id, md);
+    }
+
+    fn get_alloc_token_id(&mut self, hint: &AllocTokenHint) -> &'ll Value {
+        // Build the same `!{<type-name>, <contains-pointer>}` metadata used for `!alloc_token`
+        // metadata (see `set_alloc_token_hint`), and pass it to the `llvm.alloc.token.id`
+        // intrinsic to query the token identifier for it at compile time. (See
+        // https://github.com/llvm/llvm-project/pull/156842.)
+        let args = [
+            self.cx.create_metadata(hint.type_name.as_bytes()),
+            llvm::LLVMValueAsMetadata(self.cx.const_bool(hint.contains_pointer)),
+        ];
+        let md = unsafe { llvm::LLVMMDNodeInContext2(self.cx.llcx, args.as_ptr(), args.len()) };
+        let md_value = self.get_metadata_value(md);
+        self.call_intrinsic("llvm.alloc.token.id", &[self.cx.type_isize()], &[md_value])
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
