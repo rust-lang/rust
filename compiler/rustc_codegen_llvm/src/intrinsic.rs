@@ -402,7 +402,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let ptr = args[0].immediate();
                 let locality = fn_args.const_at(1).to_leaf().to_i32();
                 self.call_intrinsic(
-                    "llvm.prefetch",
+                    "llvm.prefetch.p0",
                     &[self.val_ty(ptr)],
                     &[
                         ptr,
