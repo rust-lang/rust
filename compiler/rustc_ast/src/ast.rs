@@ -1378,15 +1378,6 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
-/// Track whether under `feature(min_generic_const_args)` this anon const
-/// was explicitly disambiguated as an anon const or not through the use of
-/// `const { ... }` syntax.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, Walkable)]
-pub enum MgcaDisambiguation {
-    AnonConst,
-    Direct,
-}
-
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
 /// These are usually found nested inside types (e.g., array lengths)
@@ -1396,7 +1387,6 @@ pub enum MgcaDisambiguation {
 pub struct AnonConst {
     pub id: NodeId,
     pub value: Box<Expr>,
-    pub mgca_disambiguation: MgcaDisambiguation,
 }
 
 /// An expression.
@@ -1627,6 +1617,7 @@ impl Expr {
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::While(..)
             | ExprKind::Yield(YieldKind::Postfix(..))
+            | ExprKind::DirectConstArg(..)
             | ExprKind::Err(_)
             | ExprKind::Dummy => prefix_attrs_precedence(&self.attrs),
         }
@@ -1919,6 +1910,9 @@ pub enum ExprKind {
     FormatArgs(Box<FormatArgs>),
 
     UnsafeBinderCast(UnsafeBinderCastKind, Box<Expr>, Option<Box<Ty>>),
+
+    /// An mGCA `direct_const_arg!()` expression.
+    DirectConstArg(Box<Expr>),
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err(ErrorGuaranteed),
@@ -2566,6 +2560,8 @@ pub enum TyKind {
     FieldOf(Box<Ty>, Option<Ident>, Ident),
     /// A view of a type. `T.{ field_1, field_2 }`.
     View(Box<Ty>, #[visitable(ignore)] ThinVec<Ident>),
+    /// An mGCA `direct_const_arg!()` expression.
+    DirectConstArg(Box<Expr>),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.
@@ -3065,6 +3061,9 @@ impl FnDecl {
     ///
     /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `FnDeclFlags::NO_SPLATTED_ARG_INDEX`.
     pub const NO_SPLATTED_ARG_INDEX: u8 = u8::MAX;
+
+    /// The maximum valid splatted argument index.
+    pub const MAX_VALID_SPLATTED_ARG_INDEX: u8 = Self::NO_SPLATTED_ARG_INDEX - 1;
 
     /// Returns a splatted argument index, if any are present.
     pub fn splatted(&self) -> Option<u8> {

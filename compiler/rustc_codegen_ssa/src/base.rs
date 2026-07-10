@@ -1,7 +1,7 @@
-use std::cmp;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use std::{cmp, iter};
 
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
@@ -9,17 +9,17 @@ use rustc_ast::expand::allocator::{
     ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorMethodInput,
     AllocatorTy,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::attrs::{DebuggerVisualizerType, OptimizeAttr};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::attrs::{DebuggerVisualizerType, EiiDecl, EiiImpl, OptimizeAttr};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemId, Target, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
-use rustc_middle::middle::dependency_format::Dependencies;
+use rustc_middle::middle::dependency_format::{Dependencies, Linkage};
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::BinOp;
@@ -50,7 +50,8 @@ use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{
-    CachedModuleCodegen, CodegenLintLevelSpecs, CrateInfo, ModuleCodegen, errors, meth, mir,
+    CachedModuleCodegen, CodegenLintLevelSpecs, CrateInfo, EiiLinkageImplInfo, EiiLinkageInfo,
+    ModuleCodegen, errors, meth, mir,
 };
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
@@ -877,12 +878,16 @@ pub fn codegen_crate<
 /// Returns whether a call from the current crate to the [`Instance`] would produce a call
 /// from `compiler_builtins` to a symbol the linker must resolve.
 ///
-/// Such calls from `compiler_bultins` are effectively impossible for the linker to handle. Some
+/// Such calls from `compiler_builtins` are effectively impossible for the linker to handle. Some
 /// linkers will optimize such that dead calls to unresolved symbols are not an error, but this is
-/// not guaranteed. So we used this function in codegen backends to ensure we do not generate any
+/// not guaranteed. So we use this function in codegen backends to ensure we do not generate any
 /// unlinkable calls.
 ///
 /// Note that calls to LLVM intrinsics are uniquely okay because they won't make it to the linker.
+/// Note also that calls to foreign items that are actually exported by the local crate are also
+/// okay. This situation arises because compiler-builtins calls functions in core that are
+/// `#[inline]` wrappers for `extern "C"` declarations in core, which resolve to a symbol exported
+/// by compiler-builtins.
 pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
@@ -895,11 +900,84 @@ pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
         }
     }
 
+    fn is_extern_call_to_local_crate<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
+        tcx.is_foreign_item(instance.def_id())
+            && tcx.exported_non_generic_symbols(LOCAL_CRATE).iter().any(|(sym, _info)| {
+                sym.symbol_name_for_local_instance(tcx) == tcx.symbol_name(instance)
+            })
+    }
+
     let def_id = instance.def_id();
     !def_id.is_local()
         && tcx.is_compiler_builtins(LOCAL_CRATE)
         && !is_llvm_intrinsic(tcx, def_id)
         && !tcx.should_codegen_locally(instance)
+        && !is_extern_call_to_local_crate(tcx, instance)
+}
+
+fn collect_eii_linkage(tcx: TyCtxt<'_>) -> Vec<EiiLinkageInfo> {
+    #[derive(Debug)]
+    struct FoundImpl {
+        imp: EiiImpl,
+        impl_crate: CrateNum,
+    }
+
+    #[derive(Debug)]
+    struct FoundEii {
+        decl: EiiDecl,
+        impls: FxIndexMap<DefId, FoundImpl>,
+    }
+
+    let mut eiis = FxIndexMap::<DefId, FoundEii>::default();
+
+    for &cnum in tcx.crates(()).iter().chain(iter::once(&LOCAL_CRATE)) {
+        for (&did, &(decl, ref impls)) in tcx.externally_implementable_items(cnum) {
+            eiis.entry(did)
+                .or_insert_with(|| FoundEii { decl, impls: Default::default() })
+                .impls
+                .extend(
+                    impls
+                        .into_iter()
+                        .map(|(&did, &imp)| (did, FoundImpl { imp, impl_crate: cnum })),
+                );
+        }
+    }
+
+    eiis.into_iter()
+        .filter_map(|(_, FoundEii { decl, impls })| {
+            let mut explicit_impls = Vec::new();
+            let mut default_impl = None;
+
+            for (impl_did, FoundImpl { imp, impl_crate }) in impls {
+                let impl_info = EiiLinkageImplInfo { span: tcx.def_span(impl_did), impl_crate };
+                if imp.is_default {
+                    default_impl = Some(impl_info);
+                } else {
+                    explicit_impls.push(impl_info);
+                }
+            }
+
+            // Link time check is only needed when there may be a default impl in a dylib.
+            // Other cases emit an error in `rustc_passes` already.
+            if let Some(default_impl) = default_impl {
+                Some(EiiLinkageInfo {
+                    name: decl.name.name,
+                    impls: explicit_impls,
+                    default_impl: Some(default_impl),
+                })
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn eii_linkage_needed(dependency_formats: &Dependencies) -> bool {
+    dependency_formats.values().any(|formats| {
+        formats
+            .iter()
+            .any(|&linkage| matches!(linkage, Linkage::Dynamic | Linkage::IncludedFromDylib))
+    })
 }
 
 impl CrateInfo {
@@ -913,6 +991,12 @@ impl CrateInfo {
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let windows_subsystem = find_attr!(tcx, crate, WindowsSubsystem(kind) => *kind);
+        let dependency_formats = Arc::clone(tcx.dependency_formats(()));
+        let eii_linkage = if eii_linkage_needed(&dependency_formats) {
+            collect_eii_linkage(tcx)
+        } else {
+            Vec::new()
+        };
 
         // This list is used when generating the command line to pass through to
         // system linker. The linker expects undefined symbols on the left of the
@@ -957,7 +1041,8 @@ impl CrateInfo {
             crate_name: UnordMap::with_capacity(n_crates),
             used_crates,
             used_crate_source: UnordMap::with_capacity(n_crates),
-            dependency_formats: Arc::clone(tcx.dependency_formats(())),
+            dependency_formats,
+            eii_linkage,
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
             lint_level_specs: CodegenLintLevelSpecs::from_tcx(tcx),

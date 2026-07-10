@@ -1,6 +1,3 @@
-//@ known-bug: unknown
-//@ run-pass
-
 #![feature(view_types, view_type_macro)]
 #![allow(unused)]
 
@@ -10,8 +7,9 @@ struct S {
     foo: (),
 }
 
-// We expect  errors here, since `S` has no field `bar`.
 fn f(_: view_type!(S.{ bar })) {}
+//~^ ERROR no field `bar` on type `S`
 fn g(_: view_type!(S.{ foo, bar })) {}
+//~^ ERROR no field `bar` on type `S`
 
 fn main() {}
