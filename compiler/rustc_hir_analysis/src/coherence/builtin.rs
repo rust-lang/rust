@@ -34,42 +34,28 @@ pub(super) fn check_trait<'tcx>(
     impl_def_id: LocalDefId,
     impl_header: ty::ImplTraitHeader<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let lang_items = tcx.lang_items();
-    let checker = Checker { tcx, trait_def_id, impl_def_id, impl_header };
-    checker.check(lang_items.drop_trait(), visit_implementation_of_drop)?;
-    checker.check(lang_items.async_drop_trait(), visit_implementation_of_drop)?;
-    checker.check(lang_items.copy_trait(), visit_implementation_of_copy)?;
-    checker.check(lang_items.unpin_trait(), visit_implementation_of_unpin)?;
-    checker.check(lang_items.const_param_ty_trait(), |checker| {
-        visit_implementation_of_const_param_ty(checker)
-    })?;
-    checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)?;
-    checker.check(lang_items.reborrow(), visit_implementation_of_reborrow)?;
-    checker.check(lang_items.coerce_shared(), visit_implementation_of_coerce_shared)?;
-    checker
-        .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn)?;
-    checker.check(
-        lang_items.coerce_pointee_validated_trait(),
-        visit_implementation_of_coerce_pointee_validity,
-    )?;
-    Ok(())
+    let checker = Checker { tcx, impl_def_id, impl_header };
+    match tcx.as_lang_item(trait_def_id) {
+        Some(LangItem::Drop) => visit_implementation_of_drop(&checker),
+        Some(LangItem::AsyncDrop) => visit_implementation_of_drop(&checker),
+        Some(LangItem::Copy) => visit_implementation_of_copy(&checker),
+        Some(LangItem::Unpin) => visit_implementation_of_unpin(&checker),
+        Some(LangItem::ConstParamTy) => visit_implementation_of_const_param_ty(&checker),
+        Some(LangItem::CoerceUnsized) => visit_implementation_of_coerce_unsized(&checker),
+        Some(LangItem::Reborrow) => visit_implementation_of_reborrow(&checker),
+        Some(LangItem::CoerceShared) => visit_implementation_of_coerce_shared(&checker),
+        Some(LangItem::DispatchFromDyn) => visit_implementation_of_dispatch_from_dyn(&checker),
+        Some(LangItem::CoercePointeeValidated) => {
+            visit_implementation_of_coerce_pointee_validity(&checker)
+        }
+        _ => Ok(()),
+    }
 }
 
 struct Checker<'tcx> {
     tcx: TyCtxt<'tcx>,
-    trait_def_id: DefId,
     impl_def_id: LocalDefId,
     impl_header: ty::ImplTraitHeader<'tcx>,
-}
-
-impl<'tcx> Checker<'tcx> {
-    fn check(
-        &self,
-        trait_def_id: Option<DefId>,
-        f: impl FnOnce(&Self) -> Result<(), ErrorGuaranteed>,
-    ) -> Result<(), ErrorGuaranteed> {
-        if Some(self.trait_def_id) == trait_def_id { f(self) } else { Ok(()) }
-    }
 }
 
 fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
