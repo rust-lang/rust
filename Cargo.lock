@@ -3867,6 +3867,7 @@ dependencies = [
  "rustc_metadata",
  "rustc_middle",
  "rustc_mir_transform",
+ "rustc_sanitizers",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",

@@ -41,6 +41,9 @@
 #include "llvm/Transforms/IPO/Internalize.h"
 #include "llvm/Transforms/IPO/LowerTypeTests.h"
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
+#if LLVM_VERSION_GE(22, 0)
+#include "llvm/Transforms/Instrumentation/AllocToken.h"
+#endif
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/DataFlowSanitizer.h"
 #include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
@@ -582,6 +585,7 @@ enum class LLVMRustOptStage {
 struct LLVMRustSanitizerOptions {
   bool SanitizeAddress;
   bool SanitizeAddressRecover;
+  bool SanitizeAllocToken;
   bool SanitizeCFI;
   bool SanitizeDataFlow;
   char **SanitizeDataFlowABIList;
@@ -823,6 +827,25 @@ extern "C" LLVMRustResult LLVMRustOptimize(
         MPM.addPass(ModuleThreadSanitizerPass());
         MPM.addPass(createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
       });
+    }
+
+    if (SanitizerOptions->SanitizeAllocToken) {
+#if LLVM_VERSION_GE(22, 0)
+      // The `AllocTokenPass` already runs in the default optimization
+      // pipelines, but with `-Cno-prepopulate-passes` (e.g., used by codegen
+      // tests), none of those default optimization pipelines run; only the
+      // `OptimizerLastEPCallbacks` registered here are invoked directly, so the
+      // pass still needs to be registered here for that case.
+      if (NoPrepopulatePasses) {
+        OptimizerLastEPCallbacks.push_back([](ModulePassManager &MPM,
+                                              OptimizationLevel Level,
+                                              ThinOrFullLTOPhase phase) {
+          MPM.addPass(AllocTokenPass(AllocTokenOptions()));
+        });
+      }
+#else
+      report_fatal_error("-Zsanitizer=alloc-token requires LLVM 22 or higher");
+#endif
     }
 
     if (SanitizerOptions->SanitizeAddress ||
