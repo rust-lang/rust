@@ -721,6 +721,7 @@ auto:
         --enable-full-tools
         --enable-profiler
         --disable-docs
+        --set rust.codegen-units=1
       SCRIPT: python x.py -j1 dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
