@@ -443,7 +443,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::Use
                 | DefKind::ForeignMod
                 | DefKind::AnonConst
-                | DefKind::InlineConst
                 | DefKind::Field
                 | DefKind::LifetimeParam
                 | DefKind::GlobalAsm

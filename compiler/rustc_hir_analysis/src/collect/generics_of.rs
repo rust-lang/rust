@@ -162,13 +162,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ty::AnonConstKind::GCE => Some(parent_did),
 
                 // Field defaults are allowed to use generic parameters, e.g. `field: u32 = /*defid: N + 1*/`
-                ty::AnonConstKind::NonTypeSystem
+                ty::AnonConstKind::NonTypeSystemAnon
                     if matches!(tcx.parent_hir_node(hir_id), Node::TyPat(_) | Node::Field(_)) =>
                 {
                     Some(parent_did)
                 }
                 // Default to no generic parameters for other kinds of anon consts
-                ty::AnonConstKind::NonTypeSystem => None,
+                ty::AnonConstKind::NonTypeSystemAnon => None,
+                ty::AnonConstKind::NonTypeSystemInline => span_bug!(
+                    tcx.def_span(def_id),
+                    "a DefKind::AnonConst with a HIR parent of hir::Node::AnonConst should never be an AnonConstKind::NonTypeSystemInline"
+                ),
             }
         }
         Node::ConstBlock(_)
