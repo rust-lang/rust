@@ -45,6 +45,7 @@ pub mod hardwired {
             DUPLICATE_FEATURES,
             DUPLICATE_MACRO_ATTRIBUTES,
             ELIDED_LIFETIMES_IN_PATHS,
+            EMPTY_CFG_PREDICATE,
             EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
             EXPORTED_PRIVATE_DEPENDENCIES,
             FFI_UNWIND_CALLS,
@@ -5534,4 +5535,32 @@ declare_lint! {
     Allow,
     "usage of `unsafe` code and other potentially unsound constructs",
     @eval_always = true
+}
+
+declare_lint! {
+    /// The `empty_cfg_predicate` lint detects the use of empty `cfg` predicate lists.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(empty_cfg_predicate)]
+    /// #[cfg(any())]
+    /// fn foo() {}
+    ///
+    /// #[cfg(all())]
+    /// fn bar() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The meaning of `cfg(any())` and `cfg(all())` is not immediately obvious;
+    /// `cfg(false)` and `cfg(true)` respectively may be used instead.
+    /// This used to be a common pattern before `cfg(true)` and `cfg(false)`
+    /// were added to the language in Rust 1.88
+    pub EMPTY_CFG_PREDICATE,
+    Warn,
+    "detects use of empty `cfg(any())` and `cfg(all())`",
+    @msrv = "1.88.0";
 }

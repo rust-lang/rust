@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(empty_cfg_predicate)]
 
 #[cfg(all(windows))]
 //~^ non_minimal_cfg

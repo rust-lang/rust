@@ -19,10 +19,10 @@ LL | #![deny(unused_features)]
    |         ^^^^^^^^^^^^^^^
 
 error: feature `slice_ptr_get` is declared but not used
-  --> $DIR/unused-library-features.rs:11:28
+  --> $DIR/unused-library-features.rs:11:27
    |
-LL | #![cfg_attr(all(), feature(slice_ptr_get))]
-   |                            ^^^^^^^^^^^^^
+LL | #![cfg_attr(true, feature(slice_ptr_get))]
+   |                           ^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

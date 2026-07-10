@@ -5,12 +5,12 @@
 
 // Used language features
 #![feature(decl_macro)]
-#![cfg_attr(all(), feature(rustc_attrs))]
+#![cfg_attr(true, feature(rustc_attrs))]
 
 // Used library features
 #![feature(error_iter)]
 //[bfail]~^ ERROR feature `error_iter` is declared but not used
-#![cfg_attr(all(), feature(allocator_api))]
+#![cfg_attr(true, feature(allocator_api))]
 //[bfail]~^ ERROR feature `allocator_api` is declared but not used
 
 macro m() {}

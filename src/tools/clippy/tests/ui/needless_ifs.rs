@@ -68,7 +68,7 @@ fn main() {
     }
 
     if true {
-        #[cfg(any())]
+        #[cfg(false)]
         foo;
     }
 

@@ -1,0 +1,33 @@
+error: use of empty `cfg(any())`
+  --> $DIR/empty-cfg-predicate.rs:11:7
+   |
+LL | #[cfg(any())]
+   |       ^^^^^
+   |
+   = note: this used to be a common pattern before `cfg(true)` and `cfg(false)` were added to the language in Rust 1.88
+note: the lint level is defined here
+  --> $DIR/empty-cfg-predicate.rs:8:9
+   |
+LL | #![deny(empty_cfg_predicate)]
+   |         ^^^^^^^^^^^^^^^^^^^
+help: consider using a boolean literal
+   |
+LL - #[cfg(any())]
+LL + #[cfg(false)]
+   |
+
+error: use of empty `cfg(all())`
+  --> $DIR/empty-cfg-predicate.rs:15:7
+   |
+LL | #[cfg(all())]
+   |       ^^^^^
+   |
+   = note: this used to be a common pattern before `cfg(true)` and `cfg(false)` were added to the language in Rust 1.88
+help: consider using a boolean literal
+   |
+LL - #[cfg(all())]
+LL + #[cfg(true)]
+   |
+
+error: aborting due to 2 previous errors
+

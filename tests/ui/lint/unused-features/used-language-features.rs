@@ -5,7 +5,7 @@
 
 // Used language features
 #![feature(decl_macro)]
-#![cfg_attr(all(), feature(rustc_attrs))]
+#![cfg_attr(true, feature(rustc_attrs))]
 
 macro m() {}
 pub fn use_decl_macro() {
