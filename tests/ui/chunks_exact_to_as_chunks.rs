@@ -1,5 +1,5 @@
 #![warn(clippy::chunks_exact_to_as_chunks)]
-#![allow(unused)]
+#![allow(unused, clippy::redundant_closure_call)]
 
 fn main() {
     let slice = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -40,4 +40,46 @@ fn main() {
     } else {
         slice.chunks_exact(y)
     };
+
+    fn foo<const N: usize>(slice: &[u8]) {
+        // Should trigger - passing const parameters directly is allowed
+
+        let _ = slice.chunks_exact(N);
+        //~^ chunks_exact_to_as_chunks
+        let _ = slice.chunks_exact({
+            //~^ chunks_exact_to_as_chunks
+            const fn bar<const M: usize>() -> usize {
+                M
+            }
+            bar::<5>()
+        });
+
+        // Should NOT trigger - expressions with const parameters are not allowed
+
+        let _ = slice.chunks_exact(N * 2);
+        let _ = slice.chunks_exact(size_of::<A<N>>());
+        let _ = slice.chunks_exact(A::<N>::A);
+        let _ = slice.chunks_exact((|| N)());
+        let _ = slice.chunks_exact({
+            const fn bar<const M: usize>() -> usize {
+                M
+            }
+            bar::<N>()
+        });
+    }
+    struct A<const N: usize>;
+    impl<const N: usize> A<N> {
+        const A: usize = N + 1;
+    }
+
+    trait Trait {
+        const C: usize;
+    }
+    fn bar<T: Trait>(slice: &[u8]) {
+        // Should NOT trigger - expressions in const arguments referencing generic parameters are not
+        // allowed
+
+        let _ = slice.chunks_exact(T::C);
+        let _ = slice.chunks_exact(size_of::<T>());
+    }
 }

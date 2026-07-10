@@ -9,7 +9,7 @@ use clippy_utils::{parent_item_name, peel_ref_operators, sym};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, Expr, ExprKind, PatExprKind, PatKind, RustcVersion, StabilityLevel, StableSince};
+use rustc_hir::{BinOpKind, Expr, ExprKind, PatExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
@@ -298,21 +298,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) -> bool {
         if item.is_fn() {
             let sig = cx.tcx.fn_sig(item.def_id).skip_binder();
             let ty = sig.skip_binder();
-            ty.inputs().len() == 1
-                && cx.tcx.lookup_stability(item.def_id).is_none_or(|stability| {
-                    if let StabilityLevel::Stable { since, .. } = stability.level {
-                        let version = match since {
-                            StableSince::Version(version) => version,
-                            StableSince::Current => RustcVersion::CURRENT,
-                            StableSince::Err(_) => return false,
-                        };
-
-                        msrv.meets(cx, version)
-                    } else {
-                        // Unstable fn, check if the feature is enabled.
-                        cx.tcx.features().enabled(stability.feature) && msrv.current(cx).is_none()
-                    }
-                })
+            ty.inputs().len() == 1 && msrv.is_stable(cx, item.def_id)
         } else {
             false
         }
@@ -336,10 +322,13 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) -> bool {
                     .filter_by_name_unhygienic(sym::is_empty)
                     .any(|item| is_is_empty_and_stable(cx, item, msrv))
             }),
-            &ty::Alias(_, ty::AliasTy {
-                kind: ty::Projection { def_id },
-                ..
-            }) => has_is_empty_impl(cx, def_id, msrv),
+            &ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { def_id },
+                    ..
+                },
+            ) => has_is_empty_impl(cx, def_id, msrv),
             ty::Adt(id, _) => {
                 has_is_empty_impl(cx, id.did(), msrv)
                     || (cx.tcx.recursion_limit().value_within_limit(depth)

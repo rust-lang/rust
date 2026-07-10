@@ -168,6 +168,7 @@ impl<'hir> MapFunc<'hir> {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 fn emit_lint<'tcx>(
     cx: &LateContext<'tcx>,
     span: Span,
@@ -176,7 +177,16 @@ fn emit_lint<'tcx>(
     in_some_or_ok: bool,
     map_func: MapFunc<'tcx>,
     recv: &Expr<'_>,
+    msrv: Msrv,
 ) {
+    let required_msrv = match (flavor, op) {
+        (Flavor::Option, Op::Ne) => msrvs::IS_NONE_OR,
+        _ => msrvs::OPTION_RESULT_IS_VARIANT_AND,
+    };
+    if !msrv.meets(cx, required_msrv) {
+        return;
+    }
+
     let mut app = Applicability::MachineApplicable;
     let recv = snippet_with_applicability(cx, recv.span, "_", &mut app);
 
@@ -201,7 +211,7 @@ fn emit_lint<'tcx>(
     );
 }
 
-pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>) {
+pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
     if let Some(parent_expr) = get_parent_expr(cx, expr)
         && let ExprKind::Binary(op, left, right) = parent_expr.kind
         && op.span.eq_ctxt(expr.span)
@@ -222,7 +232,7 @@ pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 && cx.typeck_results().expr_ty(recv).is_diag_item(cx, flavor.diag_sym())
                 && let Ok(map_func) = MapFunc::try_from(map_expr)
             {
-                emit_lint(cx, parent_expr.span, op, flavor, bool_cst, map_func, recv);
+                emit_lint(cx, parent_expr.span, op, flavor, bool_cst, map_func, recv, msrv);
                 return;
             }
         }
@@ -263,13 +273,13 @@ pub(super) fn check_or<'tcx>(
         return;
     };
 
-    if !msrv.meets(cx, msrvs::IS_NONE_OR) {
-        return;
-    }
-
     let Ok(map_func) = MapFunc::try_from(some_arg) else {
         return;
     };
+
+    if !msrv.meets(cx, msrvs::IS_NONE_OR) {
+        return;
+    }
 
     span_lint_and_then(
         cx,
