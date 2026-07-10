@@ -1,3 +1,4 @@
+// ignore-tidy-file-linelength
 //@ add-minicore
 // ignore-tidy-linelength
 //@ revisions: O0_PAUTH O3_PAUTH
