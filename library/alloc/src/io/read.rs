@@ -1,5 +1,5 @@
 use core::cmp;
-use core::mem::MaybeUninit;
+use core::mem::{DropGuard, MaybeUninit};
 
 use crate::io::{
     BorrowedBuf, BorrowedCursor, Bytes, Chain, Error, IoSliceMut, Result, Take, bytes, chain, take,
@@ -709,19 +709,6 @@ pub const DEFAULT_BUF_SIZE: usize = cfg_select! {
     _ => { 8 * 1024 }
 };
 
-struct Guard<'a> {
-    buf: &'a mut Vec<u8>,
-    len: usize,
-}
-
-impl Drop for Guard<'_> {
-    fn drop(&mut self) {
-        unsafe {
-            self.buf.set_len(self.len);
-        }
-    }
-}
-
 /// Several `read_to_string` and `read_line` methods in the standard library will
 /// append data into a `String` buffer, but we need to be pretty careful when
 /// doing this. The implementation will just call `.as_mut_vec()` and then
@@ -747,15 +734,20 @@ pub unsafe fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 where
     F: FnOnce(&mut Vec<u8>) -> Result<usize>,
 {
-    let mut g = Guard { len: buf.len(), buf: unsafe { buf.as_mut_vec() } };
-    let ret = f(g.buf);
+    let len_original = buf.len();
+    // SAFETY: invalid UTF-8 discarded before return or unwind
+    let buf_vec = unsafe { buf.as_mut_vec() };
+    let mut g = DropGuard::new((len_original, buf_vec), |(len, buf)| unsafe {
+        buf.set_len(len);
+    });
+    let ret = f(g.1);
 
     // SAFETY: the caller promises to only append data to `buf`
-    let appended = unsafe { g.buf.get_unchecked(g.len..) };
+    let appended = unsafe { g.1.get_unchecked(g.0..) };
     if str::from_utf8(appended).is_err() {
         ret.and_then(|_| Err(Error::INVALID_UTF8))
     } else {
-        g.len = g.buf.len();
+        g.0 = g.1.len();
         ret
     }
 }
