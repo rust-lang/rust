@@ -1242,7 +1242,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     containers.pop();
                 }
                 if check_doc_markdown {
-                    if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone()) {
+                    if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone())
+                    .or_else(|| span_of_fragments(fragments.fragments)) {
                         span_lint_and_help(
                             cx,
                             DOC_MARKDOWN,
@@ -1254,15 +1255,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         text_to_check.clear();
                     } else {
                         for (text, range, assoc_code_level) in text_to_check.drain(..) {
-                            markdown::check(
-                                cx,
-                                valid_idents,
-                                &text,
-                                &fragments,
-                                range,
-                                assoc_code_level,
-                                blockquote_level,
-                            );
+                            markdown::check(cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level);
                         }
                     }
                 }
