@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![warn(clippy::single_component_path_imports)]
-#![allow(unused_imports)]
 
 // #7106: use statements exporting a macro within a crate should not trigger lint
 // #7923: normal `use` statements of macros should also not trigger the lint

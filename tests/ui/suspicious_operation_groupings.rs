@@ -1,5 +1,5 @@
 #![warn(clippy::suspicious_operation_groupings)]
-#![allow(dead_code, unused_parens, clippy::eq_op, clippy::manual_midpoint)]
+#![expect(clippy::eq_op, clippy::manual_midpoint)]
 
 struct Vec3 {
     x: f64,

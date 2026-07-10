@@ -1,4 +1,4 @@
-#![allow(clippy::needless_ifs, dead_code, unused_must_use, clippy::double_ended_iterator_last)]
+#![warn(clippy::chars_last_cmp, clippy::chars_next_cmp)]
 
 fn main() {}
 

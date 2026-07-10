@@ -1,5 +1,5 @@
 #![warn(clippy::stable_sort_primitive)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 
 fn main() {
     // positive examples

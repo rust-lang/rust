@@ -1,7 +1,6 @@
 //@aux-build:proc_macros.rs
 
 #![warn(clippy::struct_field_names)]
-#![allow(unused)]
 
 #[macro_use]
 extern crate proc_macros;
