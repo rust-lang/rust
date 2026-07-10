@@ -296,6 +296,7 @@ impl<I: Interner> RegionConstraint<I> {
     pub fn is_true(&self) -> bool {
         match self {
             Self::And(and) => and.is_empty(),
+            Self::Or(or) if or.len() == 1 => or[0].is_true(),
             _ => false,
         }
     }
@@ -470,6 +471,40 @@ impl<I: Interner> RegionConstraint<I> {
 
         this.iter().all(|c1| other.iter().any(|c2| c1 == c2))
             && other.iter().all(|c2| this.iter().any(|c1| c1 == c2))
+    }
+
+    pub fn split_shared_constraints(self) -> (Vec<Self>, Self) {
+        use RegionConstraint::*;
+
+        let canonical = self.canonical_form();
+
+        let ands = canonical.unwrap_or();
+
+        let Some(fst) = ands.get(0) else {
+            return (vec![], Or(ands));
+        };
+
+        let mut shared_constraints = fst.clone().unwrap_and().to_vec();
+
+        for and in ands.clone() {
+            let constraints = and.unwrap_and();
+            shared_constraints.retain(|c| constraints.iter().any(|c2| c == c2));
+        }
+
+        let or = Or(ands
+            .into_iter()
+            .map(|and| {
+                And(and
+                    .unwrap_and()
+                    .into_iter()
+                    .filter(|c| shared_constraints.iter().all(|s_c| c != s_c))
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice())
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice());
+
+        (shared_constraints, or.canonical_form())
     }
 
     fn is_leaf_constraint(&self) -> bool {
