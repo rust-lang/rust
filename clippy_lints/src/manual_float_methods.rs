@@ -122,7 +122,6 @@ fn is_not_const(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | DefKind::TyParam => true,
 
         DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::Const { .. }
         | DefKind::ConstParam
         | DefKind::Static { .. }
