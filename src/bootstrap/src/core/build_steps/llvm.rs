@@ -14,7 +14,6 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs};
 
-use build_helper::exit;
 use build_helper::git::PathFreshness;
 
 use crate::core::build_steps::llvm;
@@ -25,7 +24,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, trace};
+use crate::{CLang, GitRepo, Kind, exit, trace};
 
 #[derive(Clone)]
 pub struct LlvmResult {

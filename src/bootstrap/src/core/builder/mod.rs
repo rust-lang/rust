@@ -21,16 +21,20 @@ use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
 use crate::core::builder::cli_paths::CLIStepPath;
+use crate::core::builder::step_stack::StepRecord;
+pub use crate::core::builder::step_stack::StepStack;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
+use crate::utils::tracing::format_location;
 use crate::{Build, Crate, trace};
 
 mod cargo;
 mod cli_paths;
+mod step_stack;
 #[cfg(test)]
 mod tests;
 
@@ -1112,6 +1116,7 @@ impl<'a> Builder<'a> {
             Subcommand::Perf { .. } => (Kind::Perf, &paths[..]),
         };
 
+        StepStack::with_current(|stack| stack.clear());
         Self::new_internal(build, kind, paths.to_owned())
     }
 
@@ -1574,6 +1579,12 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
                 graph.register_step_execution(&step, parent, self.config.dry_run());
             }
 
+            // The location has to be gathered in this function, to be correctly propagated with
+            // #[track_caller].
+            let location = format_location(*std::panic::Location::caller());
+            StepStack::with_current(|stack| {
+                stack.push(StepRecord { info: pretty_print_step(&step), location });
+            });
             stack.push(Box::new(step.clone()));
         }
 
@@ -1599,7 +1610,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
                     "step",
                     step_name = pretty_step_name::<S>(),
                     args = step_debug_args(&step),
-                    location = crate::utils::tracing::format_location(*std::panic::Location::caller())
+                    location = format_location(*std::panic::Location::caller())
                 );
                 span.entered()
             };
@@ -1626,6 +1637,10 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
             let mut stack = self.stack.borrow_mut();
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
+
+            StepStack::with_current(|stack| {
+                stack.pop();
+            });
         }
         self.cache.put(step, out.clone());
         out

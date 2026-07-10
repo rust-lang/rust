@@ -38,7 +38,7 @@ use crate::utils::helpers::{
 };
 use crate::{
     CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode,
-    debug, trace,
+    debug, exit, trace,
 };
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
@@ -2066,7 +2066,7 @@ impl Step for Sysroot {
                         sysroot_lib_rustlib_src_rust.display(),
                     );
                 }
-                build_helper::exit!(1);
+                exit!(1);
             }
         }
 
@@ -2084,7 +2084,7 @@ impl Step for Sysroot {
                     builder.src.display(),
                     e,
                 );
-                build_helper::exit!(1);
+                exit!(1);
             }
         }
 

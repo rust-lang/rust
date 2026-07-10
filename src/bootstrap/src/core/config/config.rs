@@ -22,7 +22,6 @@ use std::sync::{Arc, Mutex};
 use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
-use build_helper::exit;
 use build_helper::git::{GitConfig, PathFreshness, check_path_modifications};
 use serde::Deserialize;
 #[cfg(feature = "tracing")]
@@ -58,8 +57,10 @@ use crate::core::download::{
 };
 use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
-use crate::utils::helpers::{exe, get_host_target};
-use crate::{CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, t};
+use crate::utils::helpers::{exe, fail, get_host_target};
+use crate::{
+    CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, exit, helpers, t,
+};
 
 /// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
@@ -2241,7 +2242,7 @@ fn postprocess_toml(
             }
         }
         eprintln!("failed to parse override `{option}`: `{err}");
-        exit!(2)
+        exit!(2);
     }
     toml.merge(None, &mut Default::default(), override_toml, ReplaceOpt::Override);
 }
@@ -2263,8 +2264,6 @@ pub fn check_stage0_version(
     src_dir: &Path,
     exec_ctx: &ExecutionContext,
 ) {
-    use build_helper::util::fail;
-
     if exec_ctx.dry_run() {
         return;
     }
