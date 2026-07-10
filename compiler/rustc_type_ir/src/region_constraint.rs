@@ -460,6 +460,10 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 
     let assumptions = infcx.get_placeholder_assumptions(u);
 
+    // Do this before rewriting type outlives constraints: alias/env matching below needs to
+    // see placeholders equated with current-universe region variables in the same conjunction.
+    let constraint = normalize_equated_region_vars(infcx, constraint, u);
+
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints
     //     involving things from `u` or type outlives constraints not involving things from `u`
     //
@@ -494,6 +498,115 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 
     // 5. actually evaluate the constraint to eagerly error on false
     evaluate_solver_constraint(&constraint)
+}
+
+fn normalize_equated_region_vars<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    constraint: RegionConstraint<I>,
+    u: UniverseIndex,
+) -> RegionConstraint<I> {
+    use RegionConstraint::*;
+
+    match constraint {
+        Ambiguity | RegionOutlives(..) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
+            constraint
+        }
+        Or(constraints) => Or(constraints
+            .into_iter()
+            .map(|constraint| normalize_equated_region_vars(infcx, constraint, u))
+            .collect()),
+        And(constraints) => {
+            let constraint = And(constraints
+                .into_iter()
+                .map(|constraint| normalize_equated_region_vars(infcx, constraint, u))
+                .collect());
+
+            let mut region_outlives = vec![];
+            collect_conjunctive_region_outlives(&constraint, &mut region_outlives);
+
+            let mut replacements = vec![];
+            for (r1, r2) in region_outlives.iter().copied() {
+                if let Some(partner) = equated_non_var_partner(infcx, &region_outlives, r1, r2, u) {
+                    replacements.push((r1, partner));
+                }
+
+                if let Some(partner) = equated_non_var_partner(infcx, &region_outlives, r2, r1, u) {
+                    replacements.push((r2, partner));
+                }
+            }
+
+            if replacements.is_empty() {
+                constraint
+            } else {
+                constraint.fold_with(&mut EquatedRegionVarReplacer { cx: infcx.cx(), replacements })
+            }
+        }
+    }
+}
+
+fn equated_non_var_partner<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    region_outlives: &[(I::Region, I::Region)],
+    candidate: I::Region,
+    partner: I::Region,
+    u: UniverseIndex,
+) -> Option<I::Region> {
+    if is_current_universe_region_var(infcx, candidate, u)
+        && !is_region_var::<I>(partner)
+        && region_outlives
+            .iter()
+            .any(|(outlives, outlived)| *outlives == partner && *outlived == candidate)
+    {
+        Some(partner)
+    } else {
+        None
+    }
+}
+
+fn collect_conjunctive_region_outlives<I: Interner>(
+    constraint: &RegionConstraint<I>,
+    out: &mut Vec<(I::Region, I::Region)>,
+) {
+    use RegionConstraint::*;
+
+    match constraint {
+        RegionOutlives(r1, r2) => out.push((*r1, *r2)),
+        And(constraints) => {
+            for constraint in constraints.iter() {
+                collect_conjunctive_region_outlives(constraint, out);
+            }
+        }
+        Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) | Or(..) => {}
+    }
+}
+
+fn is_current_universe_region_var<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    region: I::Region,
+    u: UniverseIndex,
+) -> bool {
+    is_region_var::<I>(region) && max_universe(infcx, region) == u
+}
+
+fn is_region_var<I: Interner>(region: I::Region) -> bool {
+    matches!(region.kind(), RegionKind::ReVar(_))
+}
+
+struct EquatedRegionVarReplacer<I: Interner> {
+    cx: I,
+    replacements: Vec<(I::Region, I::Region)>,
+}
+
+impl<I: Interner> TypeFolder<I> for EquatedRegionVarReplacer<I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_region(&mut self, r: I::Region) -> I::Region {
+        // If a region variable has multiple non-var partners, the remaining folded
+        // constraints still relate those partners, so first-match only affects representation.
+        self.replacements.iter().find_map(|(from, to)| (*from == r).then_some(*to)).unwrap_or(r)
+    }
 }
 
 /// Filter our region constraints to not include constraints between region variables from `u` and
