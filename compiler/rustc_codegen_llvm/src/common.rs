@@ -4,10 +4,11 @@ use std::borrow::Borrow;
 
 use libc::{c_char, c_uint};
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _};
+use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _, Size};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;
@@ -321,6 +322,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         layout: abi::Scalar,
         llty: &'ll Type,
         ptrauth_schema: Option<PointerAuthSchema>,
+        ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
     ) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
@@ -355,6 +357,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                                 alloc.inner(),
                                 IsStatic::No,
                                 IsInitOrFini::No,
+                                ptrauth_discriminators,
                             );
                             let alloc = alloc.inner();
                             let value = match alloc.mutability {
@@ -394,6 +397,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                             alloc.inner(),
                             IsStatic::No,
                             IsInitOrFini::No,
+                            None,
                         );
                         self.static_addr_of_impl(init, alloc.inner().align, None)
                     }
