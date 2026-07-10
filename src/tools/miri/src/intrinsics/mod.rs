@@ -135,23 +135,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(EmulateItemResult::AlreadyJumped);
             }
 
-            // Raw memory accesses
-            "volatile_load" => {
-                let [place] = check_intrinsic_arg_count(args)?;
-                let place = this.deref_pointer(place)?;
-                this.copy_op(&place, dest)?;
-            }
-            "volatile_store" => {
-                let [place, dest] = check_intrinsic_arg_count(args)?;
-                let place = this.deref_pointer(place)?;
-                this.copy_op(dest, &place)?;
-            }
-
-            "volatile_set_memory" => {
-                let [ptr, val_byte, count] = check_intrinsic_arg_count(args)?;
-                this.write_bytes_intrinsic(ptr, val_byte, count, "volatile_set_memory")?;
-            }
-
             // Memory model / provenance manipulation
             "ptr_mask" => {
                 let [ptr, mask] = check_intrinsic_arg_count(args)?;
