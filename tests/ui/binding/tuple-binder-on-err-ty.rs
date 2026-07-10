@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/34334>.
+//! Test tuple pattern syntax doesn't ICE on erroneous type.
+
 fn main () {
     let sr: Vec<(u32, _, _) = vec![];
     //~^ ERROR expected one of

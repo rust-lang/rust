@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/35423>.
+//! This used to ICE.
 //@ run-pass
+
 fn main () {
     let x = 4;
     match x {
