@@ -657,9 +657,6 @@ pub struct MiriMachine<'tcx> {
     /// Cache for `mangle_internal_symbol`.
     pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
 
-    /// Always prefer the intrinsic fallback body over the native Miri implementation.
-    pub force_intrinsic_fallback: bool,
-
     /// Whether floating-point operations can behave non-deterministically.
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
@@ -838,7 +835,6 @@ impl<'tcx> MiriMachine<'tcx> {
             pthread_condvar_sanity: Cell::new(false),
             allocator_shim_symbols: Self::allocator_shim_symbols(tcx),
             mangle_internal_symbol_cache: Default::default(),
-            force_intrinsic_fallback: config.force_intrinsic_fallback,
             float_nondet: config.float_nondet,
             float_rounding_error: config.float_rounding_error,
             short_fd_operations: config.short_fd_operations,
@@ -1074,7 +1070,6 @@ impl VisitProvenance for MiriMachine<'_> {
             pthread_condvar_sanity: _,
             allocator_shim_symbols: _,
             mangle_internal_symbol_cache: _,
-            force_intrinsic_fallback: _,
             float_nondet: _,
             float_rounding_error: _,
             short_fd_operations: _,
