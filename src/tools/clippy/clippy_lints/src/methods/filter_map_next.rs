@@ -1,42 +1,33 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
 use super::FILTER_MAP_NEXT;
 
-pub(super) fn check<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    recv: &'tcx hir::Expr<'_>,
-    arg: &'tcx hir::Expr<'_>,
-    msrv: Msrv,
-) {
-    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) {
-        if !msrv.meets(cx, msrvs::ITERATOR_FIND_MAP) {
-            return;
-        }
-
-        let msg = "called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
-                   `.find_map(..)` instead";
-        let filter_snippet = snippet(cx, arg.span, "..");
-        if filter_snippet.lines().count() <= 1 {
-            let iter_snippet = snippet(cx, recv.span, "..");
-            span_lint_and_sugg(
-                cx,
-                FILTER_MAP_NEXT,
-                expr.span,
-                msg,
-                "try",
-                format!("{iter_snippet}.find_map({filter_snippet})"),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            span_lint(cx, FILTER_MAP_NEXT, expr.span, msg);
-        }
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>, msrv: Msrv) {
+    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) && msrv.meets(cx, msrvs::ITERATOR_FIND_MAP)
+    {
+        span_lint_and_then(
+            cx,
+            FILTER_MAP_NEXT,
+            expr.span,
+            "called `filter_map(..).next()` on an `Iterator`",
+            |diag| {
+                let mut app = Applicability::MachineApplicable;
+                let iter_snippet = snippet_with_applicability(cx, recv.span, "_", &mut app);
+                let filter_snippet = snippet_with_applicability(cx, arg.span, "..", &mut app);
+                diag.span_suggestion_verbose(
+                    expr.span,
+                    "use `.find_map(..)` instead",
+                    format!("{iter_snippet}.find_map({filter_snippet})"),
+                    app,
+                );
+            },
+        );
     }
 }

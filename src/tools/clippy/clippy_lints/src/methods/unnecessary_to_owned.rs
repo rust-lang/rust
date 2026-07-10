@@ -544,19 +544,15 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                         }
 
                         let mut trait_clauses =
-                            cx.tcx
-                                .param_env(callee_def_id)
-                                .caller_bounds()
-                                .iter()
-                                .filter(|clause| {
-                                    if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
-                                        && trait_predicate.trait_ref.self_ty() == param_ty
-                                    {
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                });
+                            cx.tcx.param_env(callee_def_id).caller_bounds().iter().filter(|clause| {
+                                if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
+                                    && trait_predicate.trait_ref.self_ty() == param_ty
+                                {
+                                    true
+                                } else {
+                                    false
+                                }
+                            });
 
                         let new_subst = cx
                             .tcx

@@ -1,18 +1,7 @@
-#![allow(
-    clippy::missing_safety_doc,
-    clippy::extra_unused_lifetimes,
-    clippy::extra_unused_type_parameters,
-    clippy::needless_lifetimes
-)]
 #![warn(clippy::new_without_default)]
+#![expect(clippy::extra_unused_lifetimes, clippy::missing_safety_doc)]
 
 pub struct Foo;
-
-impl Default for Foo {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl Foo {
     pub fn new() -> Foo {
@@ -22,19 +11,25 @@ impl Foo {
     }
 }
 
-pub struct Bar;
-
-impl Default for Bar {
+impl Default for Foo {
     fn default() -> Self {
         Self::new()
     }
 }
+
+pub struct Bar;
 
 impl Bar {
     pub fn new() -> Self {
         //~^ new_without_default
 
         Bar
+    }
+}
+
+impl Default for Bar {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -96,17 +91,17 @@ pub struct LtKo<'a> {
     foo: &'a bool,
 }
 
-impl<'c> Default for LtKo<'c> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<'c> LtKo<'c> {
     pub fn new() -> LtKo<'c> {
         //~^ new_without_default
 
         unimplemented!()
+    }
+}
+
+impl<'c> Default for LtKo<'c> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -136,17 +131,17 @@ impl PrivateItem {
 
 pub struct Const;
 
-impl Default for Const {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Const {
     pub const fn new() -> Const {
         //~^ new_without_default
         Const
     } // While Default is not const, it can still call const functions, so we should lint this
+}
+
+impl Default for Const {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 pub struct IgnoreGenericNew;
@@ -202,12 +197,6 @@ pub struct NewNotEqualToDerive {
     foo: i32,
 }
 
-impl Default for NewNotEqualToDerive {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl NewNotEqualToDerive {
     // This `new` implementation is not equal to a derived `Default`, so do not suggest deriving.
     pub fn new() -> Self {
@@ -217,14 +206,14 @@ impl NewNotEqualToDerive {
     }
 }
 
-// see #6933
-pub struct FooGenerics<T>(std::marker::PhantomData<T>);
-impl<T> Default for FooGenerics<T> {
+impl Default for NewNotEqualToDerive {
     fn default() -> Self {
         Self::new()
     }
 }
 
+// see #6933
+pub struct FooGenerics<T>(std::marker::PhantomData<T>);
 impl<T> FooGenerics<T> {
     pub fn new() -> Self {
         //~^ new_without_default
@@ -233,13 +222,13 @@ impl<T> FooGenerics<T> {
     }
 }
 
-pub struct BarGenerics<T>(std::marker::PhantomData<T>);
-impl<T: Copy> Default for BarGenerics<T> {
+impl<T> Default for FooGenerics<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
+pub struct BarGenerics<T>(std::marker::PhantomData<T>);
 impl<T: Copy> BarGenerics<T> {
     pub fn new() -> Self {
         //~^ new_without_default
@@ -248,15 +237,15 @@ impl<T: Copy> BarGenerics<T> {
     }
 }
 
+impl<T: Copy> Default for BarGenerics<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub mod issue7220 {
     pub struct Foo<T> {
         _bar: *mut T,
-    }
-
-    impl<T> Default for Foo<T> {
-        fn default() -> Self {
-            Self::new()
-        }
     }
 
     impl<T> Foo<T> {
@@ -264,6 +253,12 @@ pub mod issue7220 {
             //~^ new_without_default
 
             todo!()
+        }
+    }
+
+    impl<T> Default for Foo<T> {
+        fn default() -> Self {
+            Self::new()
         }
     }
 }
@@ -303,15 +298,6 @@ where
     _kv: Option<(K, V)>,
 }
 
-impl<K, V> Default for MyStruct<K, V>
-where
-    K: std::hash::Hash + Eq + PartialEq,
- {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<K, V> MyStruct<K, V>
 where
     K: std::hash::Hash + Eq + PartialEq,
@@ -322,16 +308,18 @@ where
     }
 }
 
-// From issue #14552, but with `#[cfg]`s that are actually `true` in the uitest context
-
-pub struct NewWithCfg;
-#[cfg(not(test))]
-impl Default for NewWithCfg {
+impl<K, V> Default for MyStruct<K, V>
+where
+    K: std::hash::Hash + Eq + PartialEq,
+ {
     fn default() -> Self {
         Self::new()
     }
 }
 
+// From issue #14552, but with `#[cfg]`s that are actually `true` in the uitest context
+
+pub struct NewWithCfg;
 impl NewWithCfg {
     #[cfg(not(test))]
     pub fn new() -> Self {
@@ -340,15 +328,14 @@ impl NewWithCfg {
     }
 }
 
-pub struct NewWith2Cfgs;
 #[cfg(not(test))]
-#[cfg(panic = "unwind")]
-impl Default for NewWith2Cfgs {
+impl Default for NewWithCfg {
     fn default() -> Self {
         Self::new()
     }
 }
 
+pub struct NewWith2Cfgs;
 impl NewWith2Cfgs {
     #[cfg(not(test))]
     #[cfg(panic = "unwind")]
@@ -358,13 +345,15 @@ impl NewWith2Cfgs {
     }
 }
 
-pub struct NewWithExtraneous;
-impl Default for NewWithExtraneous {
+#[cfg(not(test))]
+#[cfg(panic = "unwind")]
+impl Default for NewWith2Cfgs {
     fn default() -> Self {
         Self::new()
     }
 }
 
+pub struct NewWithExtraneous;
 impl NewWithExtraneous {
     #[inline]
     pub fn new() -> Self {
@@ -373,20 +362,26 @@ impl NewWithExtraneous {
     }
 }
 
-pub struct NewWithCfgAndExtraneous;
-#[cfg(not(test))]
-impl Default for NewWithCfgAndExtraneous {
+impl Default for NewWithExtraneous {
     fn default() -> Self {
         Self::new()
     }
 }
 
+pub struct NewWithCfgAndExtraneous;
 impl NewWithCfgAndExtraneous {
     #[cfg(not(test))]
     #[inline]
     pub fn new() -> Self {
         //~^ new_without_default
         unimplemented!()
+    }
+}
+
+#[cfg(not(test))]
+impl Default for NewWithCfgAndExtraneous {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -418,16 +413,6 @@ pub mod issue16255 {
         marker: PhantomData<T>,
     }
 
-    impl<T> Default for Foo<T>
-    where
-        T: Display,
-        T: Clone,
-     {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
     impl<T> Foo<T>
     where
         T: Display,
@@ -441,8 +426,28 @@ pub mod issue16255 {
         }
     }
 
+    impl<T> Default for Foo<T>
+    where
+        T: Display,
+        T: Clone,
+     {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     pub struct Bar<T> {
         marker: PhantomData<T>,
+    }
+
+    impl<T> Bar<T> {
+        pub fn new() -> Self
+        //~^ new_without_default
+        where
+            T: Clone,
+        {
+            Self { marker: PhantomData }
+        }
     }
 
     impl<T> Default for Bar<T>
@@ -453,14 +458,30 @@ pub mod issue16255 {
             Self::new()
         }
     }
+}
 
-    impl<T> Bar<T> {
-        pub fn new() -> Self
-        //~^ new_without_default
-        where
-            T: Clone,
-        {
-            Self { marker: PhantomData }
+pub mod issue17361 {
+    //! This test ensures that attributes applied to the impl block
+    //! containing `fn new()` do not get mistakenly applied to the
+    //! newly generated `Default` trait impl. This has been the
+    //! case because the `Default` trait impl was inserted right
+    //! before the existing impl block, but after the attributes.
+
+    #![deny(clippy::unwrap_used, reason = "check that expect below stays put")]
+
+    pub struct S;
+
+    #[expect(clippy::unwrap_used, reason = "without it, new() fails to compile")]
+    impl S {
+        pub fn new() -> S {
+            //~^ new_without_default
+            std::hint::black_box(Some(S)).unwrap()
+        }
+    }
+
+    impl Default for S {
+        fn default() -> Self {
+            Self::new()
         }
     }
 }

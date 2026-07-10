@@ -42,9 +42,8 @@ pub fn main() {
             process::exit(clippy_lints::explain(
                 &lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"),
             ));
-        } else {
-            show_help();
         }
+        show_help();
         return;
     }
 

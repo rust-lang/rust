@@ -1,5 +1,5 @@
-#![allow(clippy::boxed_local, clippy::needless_pass_by_value)]
-#![allow(clippy::disallowed_names)]
+#![warn(clippy::redundant_allocation)]
+#![expect(clippy::boxed_local, clippy::disallowed_names, clippy::needless_pass_by_value)]
 
 pub struct MyStruct;
 
