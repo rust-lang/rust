@@ -64,8 +64,10 @@ define_config! {
         ehcont_guard: Option<bool> = "ehcont-guard",
         new_symbol_mangling: Option<bool> = "new-symbol-mangling",
         annotate_moves_size_limit: Option<u64> = "annotate-moves-size-limit",
-        profile_generate: Option<String> = "profile-generate",
-        profile_use: Option<String> = "profile-use",
+        // FIXME: Remove this option at the end of 2026
+        profile_generate: Option<PathBuf> = "profile-generate",
+        // FIXME: Remove this option at the end of 2026
+        profile_use: Option<PathBuf> = "profile-use",
         // ignored; this is set from an env var set by bootstrap.py
         download_rustc: Option<StringOrBool> = "download-rustc",
         lto: Option<String> = "lto",

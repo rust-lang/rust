@@ -3,8 +3,8 @@ use std::ffi::c_uint;
 use std::{assert_matches, iter, ptr};
 
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, Integer,
-    NumScalableVectors, Primitive, Size, WrappingRange,
+    AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, NumScalableVectors,
+    Primitive, Size, WrappingRange,
 };
 use rustc_codegen_ssa::RetagInfo;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
@@ -315,11 +315,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Primitive::Pointer(_) => {
                         // Pointers are always OK.
                     }
-                    Primitive::Int(Integer::I128, _) => {
-                        // FIXME: maybe we should support these? At least on 32-bit powerpc
-                        // the logic in LLVM does not handle i128 correctly though.
-                        bug!("the va_arg intrinsic does not support `i128`/`u128`")
-                    }
                     Primitive::Int(..) => {
                         let int_width = self.cx().size_of(result_layout.ty).bits();
                         let target_c_int_width = self.cx().sess().target.options.c_int_width;
@@ -388,16 +383,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         IntrinsicResult::WroteIntoPlace
                     };
                 }
-            }
-            sym::volatile_store => {
-                let dst = args[0].deref(self.cx());
-                args[1].val.volatile_store(self, dst);
-                return IntrinsicResult::Operand(OperandValue::ZeroSized);
-            }
-            sym::unaligned_volatile_store => {
-                let dst = args[0].deref(self.cx());
-                args[1].val.unaligned_volatile_store(self, dst);
-                return IntrinsicResult::Operand(OperandValue::ZeroSized);
             }
             sym::prefetch_read_data
             | sym::prefetch_write_data

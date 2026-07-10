@@ -8,6 +8,7 @@ use crate::environment::Environment;
 use crate::metrics::{load_metrics, record_metrics};
 use crate::timer::TimerSection;
 use crate::training::{BoltProfile, LlvmPGOProfile, RustcPGOProfile};
+use crate::utils::io::normalize_path;
 
 #[derive(Default)]
 pub struct CmdBuilder {
@@ -132,22 +133,28 @@ impl Bootstrap {
     }
 
     pub fn llvm_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
-        self.cmd = self
-            .cmd
-            .arg("--llvm-profile-generate")
-            .env("LLVM_PROFILE_DIR", profile_dir.join("prof-%p").as_str());
+        self.cmd = self.cmd.arg("--set").arg(format!(
+            r#"pgo.llvm.generate="{}""#,
+            normalize_path(&profile_dir.join("prof-%p")).as_str()
+        ));
         self
     }
 
     pub fn llvm_pgo_optimize(mut self, profile: Option<&LlvmPGOProfile>) -> Self {
         if let Some(prof) = profile {
-            self.cmd = self.cmd.arg("--llvm-profile-use").arg(prof.0.as_str());
+            self.cmd = self
+                .cmd
+                .arg("--set")
+                .arg(format!(r#"pgo.llvm.use="{}""#, normalize_path(&prof.0).as_str()));
         }
         self
     }
 
     pub fn rustc_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
-        self.cmd = self.cmd.arg("--rust-profile-generate").arg(profile_dir.as_str());
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.rustc.generate="{}""#, normalize_path(profile_dir).as_str()));
         self
     }
 
@@ -162,7 +169,10 @@ impl Bootstrap {
     }
 
     pub fn rustc_pgo_optimize(mut self, profile: &RustcPGOProfile) -> Self {
-        self.cmd = self.cmd.arg("--rust-profile-use").arg(profile.0.as_str());
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.rustc.use="{}""#, normalize_path(&profile.0).as_str()));
         self
     }
 
