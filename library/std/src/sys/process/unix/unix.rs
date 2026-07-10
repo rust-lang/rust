@@ -193,10 +193,10 @@ impl Command {
         cvt(libc::fork())
     }
 
-    // On QNX Neutrino, fork can fail with EBADF in case "another thread might have opened
+    // On QNX SDP, fork can fail with EBADF in case "another thread might have opened
     // or closed a file descriptor while the fork() was occurring".
     // Documentation says "... or try calling fork() again". This is what we do here.
-    // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
+    // See also https://www.qnx.com/developers/docs/7.1/com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
     #[cfg(any(target_os = "nto", target_os = "qnx"))]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         use crate::sys::io::errno;
@@ -553,10 +553,10 @@ impl Command {
             }
         }
 
-        // On QNX Neutrino, posix_spawnp can fail with EBADF in case "another thread might have opened
+        // On QNX SDP, posix_spawnp can fail with EBADF in case "another thread might have opened
         // or closed a file descriptor while the posix_spawn() was occurring".
         // Documentation says "... or try calling posix_spawn() again". This is what we do here.
-        // See also http://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/p/posix_spawn.html
+        // See also https://www.qnx.com/developers/docs/7.1/com.qnx.doc.neutrino.lib_ref/topic/p/posix_spawn.html
         #[cfg(any(target_os = "nto", target_os = "qnx"))]
         unsafe fn retrying_libc_posix_spawnp(
             pid: *mut pid_t,
@@ -756,7 +756,7 @@ impl Command {
             if self.get_setsid() {
                 cfg_select! {
                     all(target_os = "linux", target_env = "gnu") => {
-                        flags |= libc::POSIX_SPAWN_SETSID;
+                        flags |= libc::POSIX_SPAWN_SETSID as i32;
                     }
                     _ => {
                         return Ok(None);

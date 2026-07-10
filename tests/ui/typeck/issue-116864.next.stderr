@@ -1,0 +1,23 @@
+error[E0277]: expected an `FnOnce(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+  --> $DIR/issue-116864.rs:28:1
+   |
+LL | / async fn foo<BAZ>(_: BAZ, mut cb: impl for<'any> FnMutFut<&'any BAZ::Param, ()>)
+...  |
+LL | | where
+LL | |     BAZ: Baz<Param = i32>,
+   | |__________________________^ expected an `FnOnce(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+   |
+   = note: expected a closure with signature `for<'any> fn(&'any i32)`
+              found a closure with signature `fn(&<BAZ as Baz>::Param)`
+note: required for `impl for<'any> FnMutFut<&'any BAZ::Param, ()>` to implement `for<'any> FnMutFut<&'any i32, ()>`
+  --> $DIR/issue-116864.rs:20:20
+   |
+LL | impl<P, F, FUT, R> FnMutFut<P, R> for F
+   |                    ^^^^^^^^^^^^^^     ^
+LL | where
+LL |     F: FnMut(P) -> FUT,
+   |                    --- unsatisfied trait bound introduced here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

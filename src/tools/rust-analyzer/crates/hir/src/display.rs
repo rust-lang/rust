@@ -217,7 +217,7 @@ fn write_function<'db>(f: &mut HirFormatter<'_, 'db>, func_id: FunctionId) -> Re
             first = false;
         }
 
-        let pat_id = body.params[param.idx - body.self_param().is_some() as usize];
+        let pat_id = body.params[param.idx - body.self_param.is_some() as usize].user_written;
         let pat_str = body.pretty_print_pat(db, owner, pat_id, true, f.edition());
         f.write_str(&pat_str)?;
 

@@ -5,7 +5,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::environment::{Environment, executable_extension};
 use crate::exec::cmd;
-use crate::utils::io::{copy_directory, find_file_in_dir, unpack_archive};
+use crate::utils::io::{copy_directory, find_file_in_dir, normalize_path, unpack_archive};
 
 /// Run tests on optimized dist artifacts.
 pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
@@ -94,9 +94,9 @@ compiletest-allow-stage0=true
 [target.{host_triple}]
 llvm-config = "{llvm_config}"
 "#,
-        rustc = rustc_path.to_string().replace('\\', "/"),
-        cargo = cargo_path.to_string().replace('\\', "/"),
-        llvm_config = llvm_config.to_string().replace('\\', "/")
+        rustc = normalize_path(&rustc_path),
+        cargo = normalize_path(&cargo_path),
+        llvm_config = normalize_path(&llvm_config)
     );
     log::info!("Using following `bootstrap.toml` for running tests:\n{config_content}");
 

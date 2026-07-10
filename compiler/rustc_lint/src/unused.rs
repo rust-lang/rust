@@ -417,13 +417,19 @@ trait UnusedDelimLint {
             }
             // either function/method call, or something this lint doesn't care about
             ref call_or_other => {
-                let (args_to_check, ctx) = match *call_or_other {
-                    Call(_, ref args) => (&args[..], UnusedDelimsCtx::FunctionArg),
-                    MethodCall(ref call) => (&call.args[..], UnusedDelimsCtx::MethodArg),
+                let (args_to_check, ctx, callee_from_expansion) = match *call_or_other {
+                    Call(ref callee, ref args) => {
+                        (&args[..], UnusedDelimsCtx::FunctionArg, callee.span.from_expansion())
+                    }
+                    MethodCall(ref call) => (
+                        &call.args[..],
+                        UnusedDelimsCtx::MethodArg,
+                        call.seg.ident.span.from_expansion(),
+                    ),
                     Closure(ref closure)
                         if matches!(closure.fn_decl.output, FnRetTy::Default(_)) =>
                     {
-                        (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody)
+                        (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody, false)
                     }
                     // actual catch-all arm
                     _ => {
@@ -438,6 +444,11 @@ trait UnusedDelimLint {
                     return;
                 }
                 for arg in args_to_check {
+                    // Whether an expression is wrapped in a block can change which `macro_rules!`
+                    // arm is taken. Don't report the braces as unused in that case. (Issue #158747)
+                    if callee_from_expansion && Self::block_wraps_expanded_expr(arg) {
+                        continue;
+                    }
                     self.check_unused_delims_expr(cx, arg, ctx, false, None, None, false);
                 }
                 return;
@@ -515,6 +526,20 @@ trait UnusedDelimLint {
             None,
             false,
         );
+    }
+
+    // Returns true for a user-written block whose only expression came from a macro expansion.
+    fn block_wraps_expanded_expr(value: &ast::Expr) -> bool {
+        if let ast::ExprKind::Block(ref block, None) = value.kind
+            && block.rules == ast::BlockCheckMode::Default
+            && !value.span.from_expansion()
+            && let [stmt] = block.stmts.as_slice()
+            && let ast::StmtKind::Expr(ref expr) = stmt.kind
+        {
+            expr.span.from_expansion()
+        } else {
+            false
+        }
     }
 }
 

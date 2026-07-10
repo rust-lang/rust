@@ -210,6 +210,7 @@ impl<O> AssertKind<O> {
                 LangItem::PanicGenFnNonePanic
             }
             NullPointerDereference => LangItem::PanicNullPointerDereference,
+            NullReferenceConstructed => LangItem::PanicNullReferenceConstructed,
             InvalidEnumConstruction(_) => LangItem::PanicInvalidEnumConstruction,
             ResumedAfterDrop(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumedDrop,
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
@@ -287,6 +288,7 @@ impl<O> AssertKind<O> {
                 )
             }
             NullPointerDereference => write!(f, "\"null pointer dereference occurred\""),
+            NullReferenceConstructed => write!(f, "\"null reference produced\""),
             InvalidEnumConstruction(source) => {
                 write!(f, "\"trying to construct an enum from an invalid value {{}}\", {source:?}")
             }
@@ -387,6 +389,7 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
                 write!(f, "coroutine resumed after panicking")
             }
             NullPointerDereference => write!(f, "null pointer dereference occurred"),
+            NullReferenceConstructed => write!(f, "null reference produced"),
             InvalidEnumConstruction(source) => {
                 write!(f, "trying to construct an enum from an invalid value `{source:#?}`")
             }
@@ -689,7 +692,7 @@ pub enum TerminatorEdges<'mir, 'tcx> {
     Double(BasicBlock, BasicBlock),
     /// Special action for `Yield`, `Call` and `InlineAsm` terminators.
     AssignOnReturn {
-        return_: Box<[BasicBlock]>,
+        return_: SmallVec<[BasicBlock; 1]>,
         /// The cleanup block, if it exists.
         cleanup: Option<BasicBlock>,
         place: CallReturnPlaces<'mir, 'tcx>,
@@ -783,7 +786,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 ref targets,
                 unwind,
             } => TerminatorEdges::AssignOnReturn {
-                return_: targets.to_owned(),
+                return_: targets.iter().copied().collect(),
                 cleanup: unwind.cleanup_block(),
                 place: CallReturnPlaces::InlineAsm(operands),
             },

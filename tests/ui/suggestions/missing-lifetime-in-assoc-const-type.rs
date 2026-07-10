@@ -9,6 +9,11 @@ trait ZstAssert: Sized {
     const D: T = T { a: &(), b: &() }; //~ ERROR implicit elided lifetime not allowed here
 }
 
+const A: &str = "";
+const B: S = S { s: &() };
+const C: &'_ str = "";
+const D: T = T { a: &(), b: &() };
+
 struct S<'a> {
     s: &'a (),
 }

@@ -789,6 +789,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // `#[track_caller]` adds an implicit argument.
                 (LangItem::PanicNullPointerDereference, vec![location])
             }
+            AssertKind::NullReferenceConstructed => {
+                // It's `fn panic_null_reference_constructed()`,
+                // `#[track_caller]` adds an implicit argument.
+                (LangItem::PanicNullReferenceConstructed, vec![location])
+            }
             AssertKind::InvalidEnumConstruction(source) => {
                 let source = self.codegen_operand(bx, source).immediate();
                 // It's `fn panic_invalid_enum_construction(source: u128)`,

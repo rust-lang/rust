@@ -244,6 +244,10 @@ const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     // tidy-alphabetical-start
     ("inferno", "CDDL-1.0"),
     ("option-ext", "MPL-2.0"),
+    ("terminfo", "WTFPL"),
+    ("wasite", "Apache-2.0 OR BSL-1.0 OR MIT"),
+    ("wezterm-bidi", "MIT AND Unicode-DFS-2016"),
+    ("whoami", "Apache-2.0 OR BSL-1.0 OR MIT"),
     // tidy-alphabetical-end
 ];
 

@@ -2549,4 +2549,26 @@ fn main() {
         "#,
         );
     }
+
+    #[test]
+    fn async_fn_param() {
+        check(
+            r#"
+async fn get_double_async(num$0: u32) -> u32 {
+                       // ^^^
+    num
+ // ^^^ read
+}
+        "#,
+        );
+        check(
+            r#"
+async fn get_double_async((num$0,): (u32,)) -> u32 {
+                        // ^^^
+    num
+ // ^^^ read
+}
+        "#,
+        );
+    }
 }

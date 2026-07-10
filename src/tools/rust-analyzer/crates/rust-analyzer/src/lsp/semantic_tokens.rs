@@ -1,170 +1,261 @@
 //! Semantic Tokens helpers
 
-use std::ops;
+use std::{fmt, ops, slice::Iter};
 
-use lsp_types::{
-    Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
-    SemanticTokensEdit,
-};
+use lsp_types::{Range, SemanticTokenModifiers, SemanticTokens, SemanticTokensEdit};
 
-macro_rules! define_semantic_token_types {
+macro_rules! declare_enum {
     (
-        standard {
-            $($standard:ident),*$(,)?
+        $(#[$attrs:meta])*
+        $visibility:vis enum $name:ident {
+            $($variant:ident),* $(,)?
         }
-        custom {
-            $(($custom:ident, $string:literal) $(=> $fallback:ident)?),*$(,)?
-        }
-
     ) => {
-        pub(crate) mod types {
-            use super::SemanticTokenType;
-            $(pub(crate) const $standard: SemanticTokenType = SemanticTokenType::$standard;)*
-            $(pub(crate) const $custom: SemanticTokenType = SemanticTokenType::new($string);)*
+        $(#[$attrs])*
+        $visibility enum $name {
+            $($variant,)*
         }
 
-        pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
-            $(self::types::$standard,)*
-            $(self::types::$custom),*
-        ];
-
-        pub(crate) fn standard_fallback_type(token: SemanticTokenType) -> Option<SemanticTokenType> {
-            use self::types::*;
-            $(
-                if token == $custom {
-                    None $(.or(Some(self::types::$fallback)))?
-                } else
-            )*
-            { Some(token )}
+        impl $name {
+            pub(crate) fn iter() -> Iter<'static, Self> {
+                static ITEMS: &[$name] = &[
+                    $(
+                        $name::$variant,
+                    )*
+                ];
+                ITEMS.iter()
+            }
         }
     };
 }
 
-define_semantic_token_types![
-    standard {
-        COMMENT,
-        DECORATOR,
-        ENUM_MEMBER,
-        ENUM,
-        FUNCTION,
-        INTERFACE,
-        KEYWORD,
-        MACRO,
-        METHOD,
-        NAMESPACE,
-        NUMBER,
-        OPERATOR,
-        PARAMETER,
-        PROPERTY,
-        STRING,
-        STRUCT,
-        TYPE_PARAMETER,
-        VARIABLE,
-        TYPE,
+declare_enum! {
+    #[repr(u32)]
+    #[derive(Debug, PartialEq, Clone, Copy)]
+    pub(crate) enum SupportedType {
+        Comment,
+        Decorator,
+        EnumMember,
+        Enum,
+        Function,
+        Interface,
+        Keyword,
+        Macro,
+        Method,
+        Namespace,
+        Number,
+        Operator,
+        Parameter,
+        Property,
+        String,
+        Struct,
+        TypeParameter,
+        Variable,
+        Type,
+        Label,
+        Angle,
+        Arithmetic,
+        AttributeBracket,
+        Attribute,
+        Bitwise,
+        Boolean,
+        Brace,
+        Bracket,
+        BuiltinAttribute,
+        BuiltinType,
+        Char,
+        Colon,
+        Comma,
+        Comparison,
+        ConstParameter,
+        Const,
+        DeriveHelper,
+        Derive,
+        Dot,
+        EscapeSequence,
+        FormatSpecifier,
+        Generic,
+        InvalidEscapeSequence,
+        Lifetime,
+        Logical,
+        MacroBang,
+        Negation,
+        Parenthesis,
+        ProcMacro,
+        Punctuation,
+        SelfKeyword,
+        SelfTypeKeyword,
+        Semicolon,
+        Static,
+        ToolModule,
+        TypeAlias,
+        Union,
+        UnresolvedReference,
     }
-
-    custom {
-        (ANGLE, "angle"),
-        (ARITHMETIC, "arithmetic") => OPERATOR,
-        (ATTRIBUTE_BRACKET, "attributeBracket") => DECORATOR,
-        (ATTRIBUTE, "attribute") => DECORATOR,
-        (BITWISE, "bitwise") => OPERATOR,
-        (BOOLEAN, "boolean"),
-        (BRACE, "brace"),
-        (BRACKET, "bracket"),
-        (BUILTIN_ATTRIBUTE, "builtinAttribute") => DECORATOR,
-        (BUILTIN_TYPE, "builtinType") => TYPE,
-        (CHAR, "character") => STRING,
-        (COLON, "colon"),
-        (COMMA, "comma"),
-        (COMPARISON, "comparison") => OPERATOR,
-        (CONST_PARAMETER, "constParameter"),
-        (CONST, "const") => VARIABLE,
-        (DERIVE_HELPER, "deriveHelper") => DECORATOR,
-        (DERIVE, "derive") => DECORATOR,
-        (DOT, "dot"),
-        (ESCAPE_SEQUENCE, "escapeSequence") => STRING,
-        (FORMAT_SPECIFIER, "formatSpecifier") => STRING,
-        (GENERIC, "generic") => TYPE_PARAMETER,
-        (INVALID_ESCAPE_SEQUENCE, "invalidEscapeSequence") => STRING,
-        (LABEL, "label"),
-        (LIFETIME, "lifetime"),
-        (LOGICAL, "logical") => OPERATOR,
-        (MACRO_BANG, "macroBang") => MACRO,
-        (NEGATION, "negation") => OPERATOR,
-        (PARENTHESIS, "parenthesis"),
-        (PROC_MACRO, "procMacro") => MACRO,
-        (PUNCTUATION, "punctuation"),
-        (SELF_KEYWORD, "selfKeyword") => KEYWORD,
-        (SELF_TYPE_KEYWORD, "selfTypeKeyword") => KEYWORD,
-        (SEMICOLON, "semicolon"),
-        (STATIC, "static") => VARIABLE,
-        (TOOL_MODULE, "toolModule") => DECORATOR,
-        (TYPE_ALIAS, "typeAlias") => TYPE,
-        (UNION, "union") => TYPE,
-        (UNRESOLVED_REFERENCE, "unresolvedReference"),
-    }
-];
-
-macro_rules! count_tts {
-    () => {0usize};
-    ($_head:tt $($tail:tt)*) => {1usize + count_tts!($($tail)*)};
-}
-macro_rules! define_semantic_token_modifiers {
-    (
-        standard {
-            $($standard:ident),*$(,)?
-        }
-        custom {
-            $(($custom:ident, $string:literal)),*$(,)?
-        }
-
-    ) => {
-        pub(crate) mod modifiers {
-            use super::SemanticTokenModifier;
-
-            $(pub(crate) const $standard: SemanticTokenModifier = SemanticTokenModifier::$standard;)*
-            $(pub(crate) const $custom: SemanticTokenModifier = SemanticTokenModifier::new($string);)*
-        }
-
-        pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
-            $(SemanticTokenModifier::$standard,)*
-            $(self::modifiers::$custom),*
-        ];
-
-        const LAST_STANDARD_MOD: usize = count_tts!($($standard)*);
-    };
 }
 
-define_semantic_token_modifiers![
-    standard {
-        ASYNC,
-        DOCUMENTATION,
-        DECLARATION,
-        STATIC,
-        DEFAULT_LIBRARY,
-        DEPRECATED,
+declare_enum! {
+    #[repr(u32)]
+    #[derive(Debug, PartialEq, Clone, Copy)]
+    pub(crate) enum SupportedModifiers {
+        Async,
+        Documentation,
+        Declaration,
+        Static,
+        DefaultLibrary,
+        Deprecated,
+        Associated,
+        AttributeModifier,
+        Callable,
+        Constant,
+        Consuming,
+        ControlFlow,
+        CrateRoot,
+        Injected,
+        IntraDocLink,
+        Library,
+        MacroModifier,
+        Mutable,
+        ProcMacroModifier,
+        Public,
+        Reference,
+        TraitModifier,
+        Unsafe,
     }
-    custom {
-        (ASSOCIATED, "associated"),
-        (ATTRIBUTE_MODIFIER, "attribute"),
-        (CALLABLE, "callable"),
-        (CONSTANT, "constant"),
-        (CONSUMING, "consuming"),
-        (CONTROL_FLOW, "controlFlow"),
-        (CRATE_ROOT, "crateRoot"),
-        (INJECTED, "injected"),
-        (INTRA_DOC_LINK, "intraDocLink"),
-        (LIBRARY, "library"),
-        (MACRO_MODIFIER, "macro"),
-        (MUTABLE, "mutable"),
-        (PROC_MACRO_MODIFIER, "procMacro"),
-        (PUBLIC, "public"),
-        (REFERENCE, "reference"),
-        (TRAIT_MODIFIER, "trait"),
-        (UNSAFE, "unsafe"),
+}
+
+impl fmt::Display for SupportedType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let string = match self {
+            SupportedType::Comment => ::lsp_types::SemanticTokenTypes::Comment.as_str(),
+            SupportedType::Decorator => ::lsp_types::SemanticTokenTypes::Decorator.as_str(),
+            SupportedType::EnumMember => ::lsp_types::SemanticTokenTypes::EnumMember.as_str(),
+            SupportedType::Enum => ::lsp_types::SemanticTokenTypes::Enum.as_str(),
+            SupportedType::Function => ::lsp_types::SemanticTokenTypes::Function.as_str(),
+            SupportedType::Interface => ::lsp_types::SemanticTokenTypes::Interface.as_str(),
+            SupportedType::Keyword => ::lsp_types::SemanticTokenTypes::Keyword.as_str(),
+            SupportedType::Macro => ::lsp_types::SemanticTokenTypes::Macro.as_str(),
+            SupportedType::Method => ::lsp_types::SemanticTokenTypes::Method.as_str(),
+            SupportedType::Namespace => ::lsp_types::SemanticTokenTypes::Namespace.as_str(),
+            SupportedType::Number => ::lsp_types::SemanticTokenTypes::Number.as_str(),
+            SupportedType::Operator => ::lsp_types::SemanticTokenTypes::Operator.as_str(),
+            SupportedType::Parameter => ::lsp_types::SemanticTokenTypes::Parameter.as_str(),
+            SupportedType::Property => ::lsp_types::SemanticTokenTypes::Property.as_str(),
+            SupportedType::String => ::lsp_types::SemanticTokenTypes::String.as_str(),
+            SupportedType::Struct => ::lsp_types::SemanticTokenTypes::Struct.as_str(),
+            SupportedType::TypeParameter => ::lsp_types::SemanticTokenTypes::TypeParameter.as_str(),
+            SupportedType::Variable => ::lsp_types::SemanticTokenTypes::Variable.as_str(),
+            SupportedType::Type => ::lsp_types::SemanticTokenTypes::Type.as_str(),
+            SupportedType::Label => ::lsp_types::SemanticTokenTypes::Label.as_str(),
+            SupportedType::Angle => "angle",
+            SupportedType::Arithmetic => "arithmetic",
+            SupportedType::AttributeBracket => "attributeBracket",
+            SupportedType::Attribute => "attribute",
+            SupportedType::Bitwise => "bitwise",
+            SupportedType::Boolean => "boolean",
+            SupportedType::Brace => "brace",
+            SupportedType::Bracket => "bracket",
+            SupportedType::BuiltinAttribute => "builtinAttribute",
+            SupportedType::BuiltinType => "builtinType",
+            SupportedType::Char => "character",
+            SupportedType::Colon => "colon",
+            SupportedType::Comma => "comma",
+            SupportedType::Comparison => "comparison",
+            SupportedType::ConstParameter => "constParameter",
+            SupportedType::Const => "const",
+            SupportedType::DeriveHelper => "deriveHelper",
+            SupportedType::Derive => "derive",
+            SupportedType::Dot => "dot",
+            SupportedType::EscapeSequence => "escapeSequence",
+            SupportedType::FormatSpecifier => "formatSpecifier",
+            SupportedType::Generic => "generic",
+            SupportedType::InvalidEscapeSequence => "invalidEscapeSequence",
+            SupportedType::Lifetime => "lifetime",
+            SupportedType::Logical => "logical",
+            SupportedType::MacroBang => "macroBang",
+            SupportedType::Negation => "negation",
+            SupportedType::Parenthesis => "parenthesis",
+            SupportedType::ProcMacro => "procMacro",
+            SupportedType::Punctuation => "punctuation",
+            SupportedType::SelfKeyword => "selfKeyword",
+            SupportedType::SelfTypeKeyword => "selfTypeKeyword",
+            SupportedType::Semicolon => "semicolon",
+            SupportedType::Static => "static",
+            SupportedType::ToolModule => "toolModule",
+            SupportedType::TypeAlias => "typeAlias",
+            SupportedType::Union => "union",
+            SupportedType::UnresolvedReference => "unresolvedReference",
+        };
+        f.write_str(string)
     }
+}
+
+pub(crate) fn standard_fallback_type(token: SupportedType) -> Option<SupportedType> {
+    Some(match token {
+        SupportedType::Comment => SupportedType::Comment,
+        SupportedType::Decorator => SupportedType::Decorator,
+        SupportedType::EnumMember => SupportedType::EnumMember,
+        SupportedType::Enum => SupportedType::Enum,
+        SupportedType::Function => SupportedType::Function,
+        SupportedType::Interface => SupportedType::Interface,
+        SupportedType::Keyword => SupportedType::Keyword,
+        SupportedType::Macro => SupportedType::Macro,
+        SupportedType::Method => SupportedType::Method,
+        SupportedType::Namespace => SupportedType::Namespace,
+        SupportedType::Number => SupportedType::Number,
+        SupportedType::Operator => SupportedType::Operator,
+        SupportedType::Parameter => SupportedType::Parameter,
+        SupportedType::Property => SupportedType::Property,
+        SupportedType::String => SupportedType::String,
+        SupportedType::Struct => SupportedType::Struct,
+        SupportedType::TypeParameter => SupportedType::TypeParameter,
+        SupportedType::Variable => SupportedType::Variable,
+        SupportedType::Type => SupportedType::Type,
+        SupportedType::Label => SupportedType::Label,
+        _ => return None,
+    })
+}
+
+impl fmt::Display for SupportedModifiers {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let string = match self {
+            SupportedModifiers::Async => SemanticTokenModifiers::Async.as_str(),
+            SupportedModifiers::Documentation => SemanticTokenModifiers::Documentation.as_str(),
+            SupportedModifiers::Declaration => SemanticTokenModifiers::Declaration.as_str(),
+            SupportedModifiers::Static => SemanticTokenModifiers::Static.as_str(),
+            SupportedModifiers::DefaultLibrary => SemanticTokenModifiers::DefaultLibrary.as_str(),
+            SupportedModifiers::Deprecated => SemanticTokenModifiers::Deprecated.as_str(),
+            SupportedModifiers::Associated => "associated",
+            SupportedModifiers::AttributeModifier => "attribute",
+            SupportedModifiers::Callable => "callable",
+            SupportedModifiers::Constant => "constant",
+            SupportedModifiers::Consuming => "consuming",
+            SupportedModifiers::ControlFlow => "controlFlow",
+            SupportedModifiers::CrateRoot => "crateRoot",
+            SupportedModifiers::Injected => "injected",
+            SupportedModifiers::IntraDocLink => "intraDocLink",
+            SupportedModifiers::Library => "library",
+            SupportedModifiers::MacroModifier => "macro",
+            SupportedModifiers::Mutable => "mutable",
+            SupportedModifiers::ProcMacroModifier => "procMacro",
+            SupportedModifiers::Public => "public",
+            SupportedModifiers::Reference => "reference",
+            SupportedModifiers::TraitModifier => "trait",
+            SupportedModifiers::Unsafe => "unsafe",
+        };
+        f.write_str(string)
+    }
+}
+
+const STANDARD_MOD: [SupportedModifiers; 6] = [
+    SupportedModifiers::Async,
+    SupportedModifiers::Documentation,
+    SupportedModifiers::Declaration,
+    SupportedModifiers::Static,
+    SupportedModifiers::DefaultLibrary,
+    SupportedModifiers::Deprecated,
 ];
+const LAST_STANDARD_MOD: usize = STANDARD_MOD.len() - 1;
 
 #[derive(Default)]
 pub(crate) struct ModifierSet(pub(crate) u32);
@@ -176,9 +267,9 @@ impl ModifierSet {
     }
 }
 
-impl ops::BitOrAssign<SemanticTokenModifier> for ModifierSet {
-    fn bitor_assign(&mut self, rhs: SemanticTokenModifier) {
-        let idx = SUPPORTED_MODIFIERS.iter().position(|it| it == &rhs).unwrap();
+impl ops::BitOrAssign<SupportedModifiers> for ModifierSet {
+    fn bitor_assign(&mut self, rhs: SupportedModifiers) {
+        let idx = SupportedModifiers::iter().position(|it| *it == rhs).unwrap();
         self.0 |= 1 << idx;
     }
 }
@@ -190,12 +281,12 @@ pub(crate) struct SemanticTokensBuilder {
     id: String,
     prev_line: u32,
     prev_char: u32,
-    data: Vec<SemanticToken>,
+    data: Vec<lsp_types::SemanticToken>,
 }
 
 impl SemanticTokensBuilder {
     pub(crate) fn new(id: String) -> Self {
-        SemanticTokensBuilder { id, prev_line: 0, prev_char: 0, data: Default::default() }
+        SemanticTokensBuilder { id, prev_line: 0, prev_char: 0, data: Vec::new() }
     }
 
     /// Push a new token onto the builder
@@ -213,7 +304,7 @@ impl SemanticTokensBuilder {
         // A token cannot be multiline
         let token_len = range.end.character - range.start.character;
 
-        let token = SemanticToken {
+        let token = lsp_types::SemanticToken {
             delta_line: push_line,
             delta_start: push_char,
             length: token_len,
@@ -232,7 +323,10 @@ impl SemanticTokensBuilder {
     }
 }
 
-pub(crate) fn diff_tokens(old: &[SemanticToken], new: &[SemanticToken]) -> Vec<SemanticTokensEdit> {
+pub(crate) fn diff_tokens(
+    old: &[lsp_types::SemanticToken],
+    new: &[lsp_types::SemanticToken],
+) -> Vec<SemanticTokensEdit> {
     let offset = new.iter().zip(old.iter()).take_while(|&(n, p)| n == p).count();
 
     let (_, old) = old.split_at(offset);
@@ -258,16 +352,16 @@ pub(crate) fn diff_tokens(old: &[SemanticToken], new: &[SemanticToken]) -> Vec<S
     }
 }
 
-pub(crate) fn type_index(ty: SemanticTokenType) -> u32 {
-    SUPPORTED_TYPES.iter().position(|it| *it == ty).unwrap() as u32
+pub(crate) fn type_index(kind: SupportedType) -> u32 {
+    kind as u32
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn from(t: (u32, u32, u32, u32, u32)) -> SemanticToken {
-        SemanticToken {
+    fn from(t: (u32, u32, u32, u32, u32)) -> lsp_types::SemanticToken {
+        lsp_types::SemanticToken {
             delta_line: t.0,
             delta_start: t.1,
             length: t.2,

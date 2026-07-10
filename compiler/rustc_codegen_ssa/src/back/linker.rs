@@ -1286,9 +1286,24 @@ impl<'a> Linker for EmLinker<'a> {
 
         self.cc_arg("-s");
 
+        // Emscripten exposes the program entry point under the JS name `_main`
+        // regardless of the underlying wasm symbol (which is `__main_argc_argv`
+        // per the wasm C ABI in the tool-conventions BasicCABI spec), bridging
+        // the two internally. So the entry symbol must be requested as `_main`
+        // here rather than as a `_`-prefixed form of its wasm name.
+        let entry_name = self.sess.target.entry_name.as_ref();
         let mut arg = OsString::from("EXPORTED_FUNCTIONS=");
         let encoded = serde_json::to_string(
-            &symbols.iter().map(|sym| "_".to_owned() + &sym.name).collect::<Vec<_>>(),
+            &symbols
+                .iter()
+                .map(|sym| {
+                    if sym.name == entry_name {
+                        "_main".to_owned()
+                    } else {
+                        "_".to_owned() + &sym.name
+                    }
+                })
+                .collect::<Vec<_>>(),
         )
         .unwrap();
         debug!("{encoded}");

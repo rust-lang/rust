@@ -1630,7 +1630,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         });
 
         // Edge case: it's possible that `'from_region` is an unnameable placeholder.
-        let path = if let Some(unnameable) = due_to_placeholder_outlives
+        let mut path = if let Some(unnameable) = due_to_placeholder_outlives
             && unnameable != from_region
         {
             // We ignore the extra edges due to unnameable placeholders to get
@@ -1799,10 +1799,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 if let ConstraintCategory::ClosureUpvar(f) = p.category { Some(f) } else { None }
             })
         {
-            OutlivesConstraint {
-                category: ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field)),
-                ..path[best_choice]
-            }
+            path[best_choice].category =
+                ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
+            path[best_choice]
         } else {
             path[best_choice]
         };

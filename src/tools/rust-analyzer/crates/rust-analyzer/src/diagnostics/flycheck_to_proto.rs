@@ -22,8 +22,8 @@ fn diagnostic_severity(
     code: Option<&crate::flycheck::DiagnosticCode>,
 ) -> Option<lsp_types::DiagnosticSeverity> {
     let res = match level {
-        DiagnosticLevel::Ice => lsp_types::DiagnosticSeverity::ERROR,
-        DiagnosticLevel::Error => lsp_types::DiagnosticSeverity::ERROR,
+        DiagnosticLevel::Ice => lsp_types::DiagnosticSeverity::Error,
+        DiagnosticLevel::Error => lsp_types::DiagnosticSeverity::Error,
         DiagnosticLevel::Warning => match code {
             // HACK: special case for `warnings` rustc lint.
             Some(code)
@@ -31,7 +31,7 @@ fn diagnostic_severity(
                     lint == "warnings" || ide_db::helpers::lint_eq_or_in_group(&code.code, lint)
                 }) =>
             {
-                lsp_types::DiagnosticSeverity::HINT
+                lsp_types::DiagnosticSeverity::Hint
             }
             // HACK: special case for `warnings` rustc lint.
             Some(code)
@@ -39,12 +39,12 @@ fn diagnostic_severity(
                     lint == "warnings" || ide_db::helpers::lint_eq_or_in_group(&code.code, lint)
                 }) =>
             {
-                lsp_types::DiagnosticSeverity::INFORMATION
+                lsp_types::DiagnosticSeverity::Information
             }
-            _ => lsp_types::DiagnosticSeverity::WARNING,
+            _ => lsp_types::DiagnosticSeverity::Warning,
         },
-        DiagnosticLevel::Note => lsp_types::DiagnosticSeverity::INFORMATION,
-        DiagnosticLevel::Help => lsp_types::DiagnosticSeverity::HINT,
+        DiagnosticLevel::Note => lsp_types::DiagnosticSeverity::Information,
+        DiagnosticLevel::Help => lsp_types::DiagnosticSeverity::Hint,
         _ => return None,
     };
     Some(res)
@@ -192,7 +192,7 @@ fn map_rust_child_diagnostic(
         return MappedRustChildDiagnostic::MessageLine(rd.message.clone());
     }
 
-    let mut edit_map: FxHashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = FxHashMap::default();
+    let mut edit_map: FxHashMap<lsp_types::Uri, Vec<lsp_types::TextEdit>> = FxHashMap::default();
     let mut suggested_replacements = Vec::new();
     let mut is_preferred = true;
     for &span in &spans {
@@ -239,7 +239,7 @@ fn map_rust_child_diagnostic(
             action: lsp_ext::CodeAction {
                 title: message.clone(),
                 group: None,
-                kind: Some(lsp_types::CodeActionKind::QUICKFIX),
+                kind: Some(lsp_types::CodeActionKind::QuickFix),
                 edit: Some(lsp_ext::SnippetWorkspaceEdit {
                     // FIXME: there's no good reason to use edit_map here....
                     changes: Some(edit_map),
@@ -263,7 +263,7 @@ fn map_rust_child_diagnostic(
 
 #[derive(Debug)]
 pub(crate) struct MappedRustDiagnostic {
-    pub(crate) url: lsp_types::Url,
+    pub(crate) url: lsp_types::Uri,
     pub(crate) diagnostic: lsp_types::Diagnostic,
     pub(crate) fix: Option<Box<Fix>>,
 }
@@ -351,10 +351,10 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         match &*code.code {
             "dead_code" | "unknown_lints" | "unreachable_code" | "unused_attributes"
             | "unused_imports" | "unused_macros" | "unused_variables" => {
-                tag = Some(lsp_types::DiagnosticTag::UNNECESSARY);
+                tag = Some(lsp_types::DiagnosticTag::Unnecessary);
             }
             "deprecated" => {
-                tag = Some(lsp_types::DiagnosticTag::DEPRECATED);
+                tag = Some(lsp_types::DiagnosticTag::Deprecated);
             }
             _ => {}
         }
@@ -418,13 +418,13 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             let diagnostic = lsp_types::Diagnostic {
                 range: secondary_location.range,
                 // downgrade to hint if we're pointing at the macro
-                severity: Some(lsp_types::DiagnosticSeverity::HINT),
-                code: code.map(ToOwned::to_owned).map(lsp_types::NumberOrString::String),
+                severity: Some(lsp_types::DiagnosticSeverity::Hint),
+                code: code.map(ToOwned::to_owned).map(lsp_types::Code::String),
                 code_description: code_description.clone(),
                 source: Some(source.to_owned()),
                 message: message.clone(),
                 related_information: Some(information_for_additional_diagnostic),
-                tags: tag.clone().map(|tag| vec![tag]),
+                tags: tag.map(|tag| vec![tag]),
                 data: Some(serde_json::json!({ "rendered": rendered })),
             };
             diagnostics.push(MappedRustDiagnostic {
@@ -440,7 +440,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             diagnostic: lsp_types::Diagnostic {
                 range: primary_location.range,
                 severity,
-                code: code.map(ToOwned::to_owned).map(lsp_types::NumberOrString::String),
+                code: code.map(ToOwned::to_owned).map(lsp_types::Code::String),
                 code_description: code_description.clone(),
                 source: Some(source.to_owned()),
                 message,
@@ -452,7 +452,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                         .collect::<Vec<_>>();
                     if info.is_empty() { None } else { Some(info) }
                 },
-                tags: tag.clone().map(|tag| vec![tag]),
+                tags: tag.map(|tag| vec![tag]),
                 data: Some(serde_json::json!({ "rendered": rendered })),
             },
             fix: None,
@@ -471,8 +471,8 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 fix: sub.suggested_fix.clone(),
                 diagnostic: lsp_types::Diagnostic {
                     range: sub.related.location.range,
-                    severity: Some(lsp_types::DiagnosticSeverity::HINT),
-                    code: code.map(ToOwned::to_owned).map(lsp_types::NumberOrString::String),
+                    severity: Some(lsp_types::DiagnosticSeverity::Hint),
+                    code: code.map(ToOwned::to_owned).map(lsp_types::Code::String),
                     code_description: code_description.clone(),
                     source: Some(source.to_owned()),
                     message: sub.related.message.clone(),
@@ -494,7 +494,7 @@ fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescripti
             && chars.next().is_none()
     })
     .and_then(|code| {
-        lsp_types::Url::parse(&format!("https://doc.rust-lang.org/error-index.html#{code}"))
+        lsp_types::Uri::parse(&format!("https://doc.rust-lang.org/error-index.html#{code}"))
             .ok()
             .map(|href| lsp_types::CodeDescription { href })
     })
@@ -502,7 +502,7 @@ fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescripti
 
 fn clippy_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
     code.and_then(|code| {
-        lsp_types::Url::parse(&format!(
+        lsp_types::Uri::parse(&format!(
             "https://rust-lang.github.io/rust-clippy/master/index.html#{code}"
         ))
         .ok()

@@ -121,7 +121,7 @@ fn check_validity_requirement_lax<'tcx>(
     let valid = !this.is_uninhabited() // definitely UB if uninhabited
         && match this.backend_repr {
             BackendRepr::Scalar(s) => scalar_allows_raw_init(s),
-            BackendRepr::ScalarPair(s1, s2) => {
+            BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
                 scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2)
             }
             BackendRepr::SimdVector { element: s, count } => count == 0 || scalar_allows_raw_init(s),

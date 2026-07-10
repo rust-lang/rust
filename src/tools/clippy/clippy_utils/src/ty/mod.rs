@@ -525,7 +525,7 @@ fn is_uninit_value_valid_for_layout<'tcx>(cx: &LateContext<'tcx>, layout: TyAndL
 
     match layout.layout.backend_repr {
         BackendRepr::Scalar(s) => s.is_uninit_valid(),
-        BackendRepr::ScalarPair(a, b) => a.is_uninit_valid() && b.is_uninit_valid(),
+        BackendRepr::ScalarPair { a, b, b_offset: _ } => a.is_uninit_valid() && b.is_uninit_valid(),
         BackendRepr::SimdVector { element, count } => count == 0 || element.is_uninit_valid(),
         BackendRepr::SimdScalableVector { element, .. } => element.is_uninit_valid(),
         // Here validity is determined by the structural fields instead.
@@ -762,22 +762,22 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
 fn sig_from_bounds<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
-    predicates: impl IntoIterator<Item = ty::Clause<'tcx>>,
+    clauses: impl IntoIterator<Item = ty::Clause<'tcx>>,
     predicates_id: Option<DefId>,
 ) -> Option<ExprFnSig<'tcx>> {
     let mut inputs = None;
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
-    for pred in predicates {
-        match pred.kind().skip_binder() {
+    for clause in clauses {
+        match clause.kind().skip_binder() {
             ty::ClauseKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id()))
                     && p.self_ty() == ty =>
             {
-                let i = pred.kind().rebind(p.trait_ref.args.type_at(1));
+                let i = clause.kind().rebind(p.trait_ref.args.type_at(1));
                 if inputs.is_some_and(|inputs| i != inputs) {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
@@ -792,7 +792,7 @@ fn sig_from_bounds<'tcx>(
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = Some(pred.kind().rebind(p.term.expect_type()));
+                output = Some(clause.kind().rebind(p.term.expect_type()));
             },
             _ => (),
         }

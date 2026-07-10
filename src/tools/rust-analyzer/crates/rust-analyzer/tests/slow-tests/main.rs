@@ -20,23 +20,19 @@ mod ratoml;
 mod support;
 mod testdir;
 
-use std::{collections::HashMap, path::PathBuf, time::Instant};
+use std::{path::PathBuf, time::Instant};
 
 use ide_db::FxHashMap;
 use lsp_types::{
-    CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
-    DocumentFormattingParams, DocumentRangeFormattingParams, FileRename, FormattingOptions,
-    GotoDefinitionParams, HoverParams, InlayHint, InlayHintLabel, InlayHintParams,
-    PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
-    TextDocumentPositionParams, WorkDoneProgressParams,
-    notification::DidOpenTextDocument,
-    request::{
-        CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
-        InlayHintRequest, InlayHintResolveRequest, RangeFormatting, WillRenameFiles,
-        WorkspaceSymbolRequest,
-    },
+    CodeActionContext, CodeActionParams, CodeActionRequest, CompletionParams, CompletionRequest,
+    DidOpenTextDocumentNotification, DidOpenTextDocumentParams, DocumentFormattingParams,
+    DocumentFormattingRequest, DocumentRangeFormattingParams, DocumentRangeFormattingRequest,
+    FileRename, FormattingOptions, HoverParams, HoverRequest, InlayHint, InlayHintParams,
+    InlayHintRequest, InlayHintResolveRequest, Label, LanguageKind, PartialResultParams, Position,
+    Range, RenameFilesParams, TextDocumentItem, TextDocumentPositionParams, TypeDefinitionParams,
+    TypeDefinitionRequest, WillRenameFilesRequest, WorkDoneProgressParams, WorkspaceSymbolRequest,
 };
-use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams};
+use rust_analyzer::lsp::ext::{OnEnterRequest, RunnablesParams, RunnablesRequest};
 use serde_json::json;
 use stdx::format_to_acc;
 
@@ -68,8 +64,8 @@ use std::collections::Spam;
     .server()
     .wait_until_workspace_is_loaded();
 
-    let res = server.send_request::<Completion>(CompletionParams {
-        text_document_position: TextDocumentPositionParams::new(
+    let res = server.send_request::<CompletionRequest>(CompletionParams {
+        text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/lib.rs"),
             Position::new(0, 23),
         ),
@@ -112,13 +108,13 @@ fn f() {
     let hint = hints.pop().unwrap();
     assert!(hint.data.is_some());
     assert!(
-        matches!(&hint.label, InlayHintLabel::LabelParts(parts) if parts[1].location.is_none())
+        matches!(&hint.label, Label::InlayHintLabelPartList(parts) if parts[1].location.is_none())
     );
     let res = server.send_request::<InlayHintResolveRequest>(hint);
     let hint = serde_json::from_value::<InlayHint>(res).unwrap();
     assert!(hint.data.is_none());
     assert!(
-        matches!(&hint.label, InlayHintLabel::LabelParts(parts) if parts[1].location.is_some())
+        matches!(&hint.label, Label::InlayHintLabelPartList(parts) if parts[1].location.is_some())
     );
 }
 
@@ -160,8 +156,8 @@ use dependency2::Spam;
     .server()
     .wait_until_workspace_is_loaded();
 
-    let res = server.send_request::<Completion>(CompletionParams {
-        text_document_position: TextDocumentPositionParams::new(
+    let res = server.send_request::<CompletionRequest>(CompletionParams {
+        text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/lib.rs"),
             Position::new(5, 18),
         ),
@@ -171,8 +167,8 @@ use dependency2::Spam;
     });
     assert!(res.to_string().contains("SpecialHashMap"), "{}", res.to_string());
 
-    let res = server.send_request::<Completion>(CompletionParams {
-        text_document_position: TextDocumentPositionParams::new(
+    let res = server.send_request::<CompletionRequest>(CompletionParams {
+        text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/lib.rs"),
             Position::new(6, 18),
         ),
@@ -199,8 +195,8 @@ use dependency2::Spam;
 
     std::thread::sleep(std::time::Duration::from_secs(3));
 
-    let res = server.send_request::<Completion>(CompletionParams {
-        text_document_position: TextDocumentPositionParams::new(
+    let res = server.send_request::<CompletionRequest>(CompletionParams {
+        text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/lib.rs"),
             Position::new(5, 18),
         ),
@@ -210,8 +206,8 @@ use dependency2::Spam;
     });
     assert!(!res.to_string().contains("SpecialHashMap"));
 
-    let res = server.send_request::<Completion>(CompletionParams {
-        text_document_position: TextDocumentPositionParams::new(
+    let res = server.send_request::<CompletionRequest>(CompletionParams {
+        text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/lib.rs"),
             Position::new(6, 18),
         ),
@@ -256,7 +252,7 @@ fn main() {}
     .server()
     .wait_until_workspace_is_loaded();
 
-    server.request::<Runnables>(
+    server.request::<RunnablesRequest>(
         RunnablesParams { text_document: server.doc_id("foo/tests/spam.rs"), position: None },
         json!([
           {
@@ -407,7 +403,7 @@ mod tests {
     .wait_until_workspace_is_loaded();
 
     for runnable in ["consumer", "dependency", "devdependency"] {
-        server.request::<Runnables>(
+        server.request::<RunnablesRequest>(
             RunnablesParams {
                 text_document: server.doc_id(&format!("{runnable}/src/lib.rs")),
                 position: None,
@@ -472,7 +468,7 @@ fn otherpkg() {}
     .server()
     .wait_until_workspace_is_loaded();
 
-    server.request::<Runnables>(
+    server.request::<RunnablesRequest>(
         RunnablesParams { text_document: server.doc_id("foo/mainpkg/src/main.rs"), position: None },
         json!([
             "{...}",
@@ -497,7 +493,7 @@ fn otherpkg() {}
         ]),
     );
 
-    server.request::<Runnables>(
+    server.request::<RunnablesRequest>(
         RunnablesParams { text_document: server.doc_id("foo/otherpkg/src/lib.rs"), position: None },
         json!([
             "{...}",
@@ -547,7 +543,7 @@ pub use std::collections::HashMap;
     )
     .wait_until_workspace_is_loaded();
 
-    server.request::<Formatting>(
+    server.request::<DocumentFormattingRequest>(
         DocumentFormattingParams {
             text_document: server.doc_id("src/lib.rs"),
             options: FormattingOptions {
@@ -556,7 +552,6 @@ pub use std::collections::HashMap;
                 insert_final_newline: None,
                 trim_final_newlines: None,
                 trim_trailing_whitespace: None,
-                properties: HashMap::new(),
             },
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
@@ -600,13 +595,12 @@ pub use std::collections::HashMap;
     )
     .wait_until_workspace_is_loaded();
 
-    server.request::<Formatting>(
+    server.request::<DocumentFormattingRequest>(
         DocumentFormattingParams {
             text_document: server.doc_id("src/lib.rs"),
             options: FormattingOptions {
                 tab_size: 4,
                 insert_spaces: false,
-                properties: HashMap::new(),
                 insert_final_newline: None,
                 trim_final_newlines: None,
                 trim_trailing_whitespace: None,
@@ -651,7 +645,7 @@ fn main() {}
     )
     .wait_until_workspace_is_loaded();
 
-    server.request::<Formatting>(
+    server.request::<DocumentFormattingRequest>(
         DocumentFormattingParams {
             text_document: server.doc_id("src/lib.rs"),
             options: FormattingOptions {
@@ -660,7 +654,6 @@ fn main() {}
                 insert_final_newline: None,
                 trim_final_newlines: None,
                 trim_trailing_whitespace: None,
-                properties: HashMap::new(),
             },
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
@@ -707,7 +700,7 @@ fn main() {
     .server()
     .wait_until_workspace_is_loaded();
 
-    server.request::<RangeFormatting>(
+    server.request::<DocumentRangeFormattingRequest>(
         DocumentRangeFormattingParams {
             range: Range {
                 end: Position { line: 1, character: 0 },
@@ -720,7 +713,6 @@ fn main() {
                 insert_final_newline: None,
                 trim_final_newlines: None,
                 trim_trailing_whitespace: None,
-                properties: HashMap::new(),
             },
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
@@ -928,17 +920,17 @@ fn main() {{}}
     .wait_until_workspace_is_loaded();
 
     for i in 0..10 {
-        server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+        server.notification::<DidOpenTextDocumentNotification>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri: server.doc_id(&format!("src/m{i}.rs")).uri,
-                language_id: "rust".to_owned(),
+                language_id: LanguageKind::Rust,
                 version: 0,
                 text: "/// Docs\nfn foo() {}".to_owned(),
             },
         });
     }
     let start = Instant::now();
-    server.request::<OnEnter>(
+    server.request::<OnEnterRequest>(
         TextDocumentPositionParams {
             text_document: server.doc_id("src/m0.rs"),
             position: Position { line: 0, character: 5 },
@@ -976,7 +968,7 @@ version = \"0.0.0\"
     .server()
     .wait_until_workspace_is_loaded();
 
-    server.request::<OnEnter>(
+    server.request::<OnEnterRequest>(
         TextDocumentPositionParams {
             text_document: server.doc_id("src/main.rs"),
             position: Position { line: 0, character: 8 },
@@ -1089,8 +1081,8 @@ fn main() {
     });
     assert!(res.to_string().contains("&str"));
 
-    server.request::<GotoTypeDefinition>(
-        GotoDefinitionParams {
+    server.request::<TypeDefinitionRequest>(
+        TypeDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
                 server.doc_id("src/main.rs"),
                 Position::new(28, 9),
@@ -1115,8 +1107,8 @@ fn main() {
         }]),
     );
 
-    server.request::<GotoTypeDefinition>(
-        GotoDefinitionParams {
+    server.request::<TypeDefinitionRequest>(
+        TypeDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
                 server.doc_id("src/main.rs"),
                 Position::new(29, 9),
@@ -1308,8 +1300,8 @@ use crate::old_folder::nested::foo as bar;
     let server =
         Project::with_fixture(code).tmp_dir(tmp_dir).server().wait_until_workspace_is_loaded();
 
-    //rename same level file
-    server.request::<WillRenameFiles>(
+    // rename same level file
+    server.request::<WillRenameFilesRequest>(
         RenameFilesParams {
             files: vec![FileRename {
                 old_uri: base_path.join("src/old_file.rs").to_str().unwrap().to_owned(),
@@ -1343,8 +1335,8 @@ use crate::old_folder::nested::foo as bar;
         }),
     );
 
-    //rename file from mod.rs to foo.rs
-    server.request::<WillRenameFiles>(
+    // rename file from mod.rs to foo.rs
+    server.request::<WillRenameFilesRequest>(
         RenameFilesParams {
             files: vec![FileRename {
                 old_uri: base_path.join("src/from_mod/mod.rs").to_str().unwrap().to_owned(),
@@ -1354,8 +1346,8 @@ use crate::old_folder::nested::foo as bar;
         json!(null),
     );
 
-    //rename file from foo.rs to mod.rs
-    server.request::<WillRenameFiles>(
+    // rename file from foo.rs to mod.rs
+    server.request::<WillRenameFilesRequest>(
         RenameFilesParams {
             files: vec![FileRename {
                 old_uri: base_path.join("src/to_mod/foo.rs").to_str().unwrap().to_owned(),
@@ -1365,8 +1357,8 @@ use crate::old_folder::nested::foo as bar;
         json!(null),
     );
 
-    //rename same level file
-    server.request::<WillRenameFiles>(
+    // rename same level file
+    server.request::<WillRenameFilesRequest>(
         RenameFilesParams {
             files: vec![FileRename {
                 old_uri: base_path.join("src/old_folder").to_str().unwrap().to_owned(),
@@ -1568,7 +1560,7 @@ fn test<T: Trait>() {
     .server()
     .wait_until_workspace_is_loaded();
 
-    let res = server.send_request::<rust_analyzer::lsp::ext::EvaluatePredicate>(
+    let res = server.send_request::<rust_analyzer::lsp::ext::EvaluatePredicateRequest>(
         rust_analyzer::lsp::ext::EvaluatePredicateParams {
             text: "T: Trait".to_owned(),
             text_document: server.doc_id("src/lib.rs"),
@@ -1607,7 +1599,7 @@ fn test() {
     .server()
     .wait_until_workspace_is_loaded();
 
-    let res = server.send_request::<rust_analyzer::lsp::ext::GetFailedObligations>(
+    let res = server.send_request::<rust_analyzer::lsp::ext::GetFailedObligationsRequest>(
         rust_analyzer::lsp::ext::GetFailedObligationsParams {
             text_document: server.doc_id("src/lib.rs"),
             position: Position::new(4, 19),

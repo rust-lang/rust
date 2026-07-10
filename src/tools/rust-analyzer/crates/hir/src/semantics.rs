@@ -522,7 +522,7 @@ impl<'db> SemanticsImpl<'db> {
                         let file_id = declaration_tree_id.file_id();
                         let in_file = InFile::new(file_id, declaration);
                         let node = in_file.to_node(self.db);
-                        let root = find_root(node.syntax());
+                        let root = node.syntax().tree_top();
                         self.cache(root, file_id);
                         Some(in_file.with_value(node.syntax().clone()))
                     }
@@ -531,7 +531,7 @@ impl<'db> SemanticsImpl<'db> {
             }
             HirFileId::MacroFile(macro_file) => {
                 let node = macro_file.loc(self.db).to_node(self.db);
-                let root = find_root(&node.value);
+                let root = node.value.tree_top();
                 self.cache(root, node.file_id);
                 Some(node)
             }
@@ -544,7 +544,7 @@ impl<'db> SemanticsImpl<'db> {
         let def_map = module.id.def_map(self.db);
         let definition = def_map[module.id].origin.definition_source(self.db);
         let definition = definition.map(|it| it.node());
-        let root_node = find_root(&definition.value);
+        let root_node = definition.value.tree_top();
         self.cache(root_node, definition.file_id);
         definition
     }
@@ -1067,7 +1067,8 @@ impl<'db> SemanticsImpl<'db> {
                         && let Some(p) = first.parent()
                     {
                         let range = first.text_range().cover(last.text_range());
-                        let node = find_root(&p)
+                        let node = p
+                            .tree_top()
                             .covering_element(range)
                             .ancestors()
                             .take_while(|it| it.text_range() == range)
@@ -1577,7 +1578,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
         self.wrap_node_infile(node).original_ast_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
-                self.cache(find_root(value.syntax()), file_id.into());
+                self.cache(value.syntax().tree_top(), file_id.into());
                 value
             },
         )
@@ -1589,7 +1590,7 @@ impl<'db> SemanticsImpl<'db> {
         let InFile { file_id, .. } = self.find_file(node);
         InFile::new(file_id, node).original_syntax_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
-                self.cache(find_root(&value), file_id.into());
+                self.cache(value.tree_top(), file_id.into());
                 value
             },
         )
@@ -2171,7 +2172,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn source<Def: HasSource>(&self, def: Def) -> Option<InFile<Def::Ast>> {
         // FIXME: source call should go through the parse cache
         let res = def.source(self.db)?;
-        self.cache(find_root(res.value.syntax()), res.file_id);
+        self.cache(res.value.syntax().tree_top(), res.file_id);
         Some(res)
     }
 
@@ -2375,7 +2376,7 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Wraps the node in a [`InFile`] with the file id it belongs to.
     fn find_file<'node>(&self, node: &'node SyntaxNode) -> InFile<&'node SyntaxNode> {
-        let root_node = find_root(node);
+        let root_node = node.tree_top();
         let file_id = self.lookup(&root_node).unwrap_or_else(|| {
             panic!(
                 "\n\nFailed to lookup {:?} in this Semantics.\n\
@@ -2461,7 +2462,7 @@ impl<'db> SemanticsImpl<'db> {
             }
         };
         let adt_source = adt_ast_id.to_in_file_node(self.db);
-        self.cache(adt_source.value.syntax().ancestors().last().unwrap(), adt_source.file_id);
+        self.cache(adt_source.value.syntax().tree_top(), adt_source.file_id);
         ToDef::to_def(self, adt_source.as_ref())
     }
 
@@ -2700,10 +2701,6 @@ impl ToDef for ast::IdentPat {
     fn to_def(sema: &SemanticsImpl<'_>, src: InFile<&Self>) -> Option<Self::Def> {
         sema.with_ctx(|ctx| ctx.bind_pat_to_def(src, sema))
     }
-}
-
-fn find_root(node: &SyntaxNode) -> SyntaxNode {
-    node.ancestors().last().unwrap()
 }
 
 /// `SemanticsScope` encapsulates the notion of a scope (the set of visible

@@ -45,7 +45,7 @@ pub(crate) fn has_impossible_predicates(tcx: TyCtxt<'_>, def_id: DefId) -> bool 
                 // Only consider global clauses to simplify.
                 TypeFlags::HAS_FREE_LOCAL_NAMES
                 // Clauses that refer to alias constants as they cause cycles.
-                | TypeFlags::HAS_CT_PROJECTION,
+                | TypeFlags::HAS_CONST_ALIAS,
             )
         });
     let predicates: Vec<_> = traits::elaborate(tcx, predicates).collect();

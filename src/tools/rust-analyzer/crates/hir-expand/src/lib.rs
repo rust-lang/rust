@@ -53,7 +53,7 @@ use crate::{
     },
     db::ExpandDatabase,
     mod_path::ModPath,
-    proc_macro::{CustomProcMacroExpander, ProcMacroKind},
+    proc_macro::{CustomProcMacroExpander, ProcMacroKind, ProcMacros},
     span_map::{ExpansionSpanMap, SpanMap},
 };
 
@@ -176,7 +176,7 @@ impl ExpandErrorKind {
                 kind: RenderedExpandError::DISABLED,
             },
             &ExpandErrorKind::MissingProcMacroExpander(def_crate) => {
-                match db.proc_macros_for_crate(def_crate).as_ref().and_then(|it| it.get_error()) {
+                match ProcMacros::get_for_crate(db, def_crate).and_then(|it| it.get_error()) {
                     Some(e) => RenderedExpandError {
                         message: e.to_string(),
                         error: e.is_hard_error(),
@@ -1126,6 +1126,16 @@ impl HirFileId {
         match self {
             HirFileId::FileId(it) => Some(it),
             HirFileId::MacroFile(_) => None,
+        }
+    }
+
+    pub fn syntax_context(self, db: &dyn ExpandDatabase, edition: Edition) -> SyntaxContext {
+        match self {
+            HirFileId::FileId(_) => SyntaxContext::root(edition),
+            HirFileId::MacroFile(m) => {
+                let kind = &m.loc(db).kind;
+                db.macro_arg_considering_derives(m, kind).2.ctx
+            }
         }
     }
 }

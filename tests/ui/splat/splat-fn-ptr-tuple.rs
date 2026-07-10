@@ -1,3 +1,6 @@
+//! Test using `#[splat]` on tuple arguments of pointers to simple functions.
+//! Currently ICEs, but if we fix it, we'll want to know and update this test to pass.
+
 //@ failure-status: 101
 
 //@ normalize-stderr: ".*error:.*compiler/([^:]+):\d{1,}:\d{1,}:(.*)" -> "error: compiler/$1:LL:CC:$2"
@@ -10,9 +13,6 @@
 //@ normalize-stderr: ".*note: Some details are omitted.*\n" -> ""
 //@ normalize-stderr: ".*--> .*/splat-fn-ptr-tuple.rs:\d{1,}:\d{1,}.*\n" -> ""
 
-//! Test using `#[splat]` on tuple arguments of simple functions.
-//! Currently ICEs, but if we fix it, we'll want to know and update this test to pass.
-
 #![allow(incomplete_features)]
 #![feature(splat)]
 
@@ -24,10 +24,10 @@ fn main() {
     // FIXME(splat): not currently supported, can be supported when we no longer require a DefId in
     // MIR lowering
     // FIXME(rustfmt): the attribute gets deleted by rustfmt
-    // Functions
     #[rustfmt::skip]
     let fn_ptr: fn(#[splat] (u32, i8)) = tuple_args;
-    fn_ptr(1, 2); //~ ERROR no splatted def for function or method callee
+    fn_ptr(1, 2); //~ ERROR splatted FnPtr side-tables are not yet implemented
+    // The ICE means that code after this line is not fully checked
     fn_ptr(1u32, 2i8);
 
     // FIXME(splat): should splatted functions be callable with tupled and un-tupled arguments?
@@ -39,15 +39,8 @@ fn main() {
     fn_ptr(1, 2, 3.5);
     fn_ptr(1u32, 2i8, 3.5f64);
 
-    // Function pointers
+    // Bug #158603 regression test
     #[rustfmt::skip]
-    let fn_ptr: *const fn(#[splat] (u32, i8)) = tuple_args as *const fn(#[splat] (u32, i8));
-    (*fn_ptr)(1, 2);
-    (*fn_ptr)(1u32, 2i8);
-
-    #[rustfmt::skip]
-    let fn_ptr: *const fn(#[splat] (u32, i8), f64) =
-        splat_non_terminal_arg as *const fn(#[splat] (u32, i8), f64);
-    (*fn_ptr)(1, 2, 3.5);
-    (*fn_ptr)(1u32, 2i8, 3.5f64);
+    let x: fn(#[splat] (i32,)) = None.unwrap();
+    x(1);
 }

@@ -230,7 +230,7 @@ fn project_and_unify_term<'cx, 'tcx>(
     let InferOk { value: actual, obligations: new } =
         selcx.infcx.replace_opaque_types_with_inference_vars(
             actual,
-            obligation.cause.body_id,
+            obligation.cause.body_def_id,
             obligation.cause.span,
             obligation.param_env,
         );
@@ -557,7 +557,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
 
         let nested_cause = ObligationCause::new(
             cause.span,
-            cause.body_id,
+            cause.body_def_id,
             // FIXME(inherent_associated_types): Since we can't pass along the self type to the
             // cause code, inherent projections will be printed with identity instantiation in
             // diagnostics which is not ideal.
@@ -757,7 +757,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
 ) {
-    assemble_candidates_from_predicates(
+    assemble_candidates_from_clauses(
         selcx,
         obligation,
         candidate_set,
@@ -856,39 +856,39 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         }
         _ => return,
     };
-    let env_predicates = data
+    let env_clauses = data
         .projection_bounds()
         .filter(|bound| bound.item_def_id() == obligation.predicate.expect_projection_def_id())
         .map(|p| p.with_self_ty(tcx, object_ty).upcast(tcx));
 
-    assemble_candidates_from_predicates(
+    assemble_candidates_from_clauses(
         selcx,
         obligation,
         candidate_set,
         ProjectionCandidate::Object,
-        env_predicates,
+        env_clauses,
         false,
     );
 }
 
 #[instrument(
     level = "debug",
-    skip(selcx, candidate_set, ctor, env_predicates, potentially_unnormalized_candidates)
+    skip(selcx, candidate_set, ctor, env_clauses, potentially_unnormalized_candidates)
 )]
-fn assemble_candidates_from_predicates<'cx, 'tcx>(
+fn assemble_candidates_from_clauses<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
     ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionCandidate<'tcx>,
-    env_predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+    env_clauses: impl Iterator<Item = ty::Clause<'tcx>>,
     potentially_unnormalized_candidates: bool,
 ) {
     let infcx = selcx.infcx;
     let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
-    for predicate in env_predicates {
-        let bound_predicate = predicate.kind();
-        if let ty::ClauseKind::Projection(data) = predicate.kind().skip_binder() {
-            let data = bound_predicate.rebind(data);
+    for clause in env_clauses {
+        let bound_clause = clause.kind();
+        if let ty::ClauseKind::Projection(data) = clause.kind().skip_binder() {
+            let data = bound_clause.rebind(data);
             if data.item_def_id() != obligation.predicate.expect_projection_def_id() {
                 continue;
             }
@@ -2149,7 +2149,7 @@ fn assoc_term_own_obligations<'cx, 'tcx>(
         } else {
             ObligationCause::new(
                 obligation.cause.span,
-                obligation.cause.body_id,
+                obligation.cause.body_def_id,
                 ObligationCauseCode::WhereClause(def_id, span),
             )
         };

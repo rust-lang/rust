@@ -90,7 +90,8 @@ pub(super) fn can_match_erased_ty<'tcx>(
     // deal with rigid aliases, making sure we do so correctly
     // everywhere is effort, so we're just using `No` everywhere
     // for now. This should change soon.
-    let outlives_ty = ty::set_aliases_to_non_rigid(tcx, outlives_ty).skip_normalization();
+    let (outlives_ty, erased_ty) =
+        ty::set_aliases_to_non_rigid(tcx, (outlives_ty, erased_ty)).skip_normalization();
     if outlives_ty == erased_ty {
         // pointless micro-optimization
         true

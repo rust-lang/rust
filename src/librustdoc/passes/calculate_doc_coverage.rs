@@ -11,6 +11,7 @@ use serde::Serialize;
 use tracing::debug;
 
 use crate::clean;
+use crate::config::OutputFormat;
 use crate::core::DocContext;
 use crate::html::markdown::{ErrorCodes, find_testable_code};
 use crate::passes::Pass;
@@ -131,8 +132,7 @@ impl CoverageCalculator<'_, '_> {
 
     fn print_results(&self) {
         let output_format = self.ctx.output_format;
-        // In this case we want to ensure that the `OutputFormat` is JSON and NOT the `DocContext`.
-        if output_format.is_json() {
+        if output_format == OutputFormat::CoverageJson {
             println!("{}", self.to_json());
             return;
         }

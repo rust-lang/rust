@@ -1696,9 +1696,9 @@ impl<'a> Parser<'a> {
             if self.may_recover() { self.parse_where_clause()? } else { WhereClause::default() };
 
         let rhs = match (self.eat(exp!(Eq)), const_arg) {
-            (true, true) => ConstItemRhsKind::TypeConst {
-                rhs: Some(self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?),
-            },
+            (true, true) => {
+                ConstItemRhsKind::TypeConst { rhs: Some(self.parse_expr_anon_const()?) }
+            }
             (true, false) => ConstItemRhsKind::Body { rhs: Some(self.parse_expr()?) },
             (false, true) => ConstItemRhsKind::TypeConst { rhs: None },
             (false, false) => ConstItemRhsKind::Body { rhs: None },
@@ -1918,11 +1918,8 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             };
 
-            let disr_expr = if this.eat(exp!(Eq)) {
-                Some(this.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?)
-            } else {
-                None
-            };
+            let disr_expr =
+                if this.eat(exp!(Eq)) { Some(this.parse_expr_anon_const()?) } else { None };
 
             let span = vlo.to(this.prev_token.span);
             if ident.name == kw::Underscore {
@@ -2143,7 +2140,7 @@ impl<'a> Parser<'a> {
                 if p.token == token::Eq {
                     let mut snapshot = p.create_snapshot_for_diagnostic();
                     snapshot.bump();
-                    match snapshot.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst) {
+                    match snapshot.parse_expr_anon_const() {
                         Ok(const_expr) => {
                             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
                             p.psess.gated_spans.gate(sym::default_field_values, sp);
@@ -2372,7 +2369,7 @@ impl<'a> Parser<'a> {
         }
         let default = if self.token == token::Eq {
             self.bump();
-            let const_expr = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
+            let const_expr = self.parse_expr_anon_const()?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
             self.psess.gated_spans.gate(sym::default_field_values, sp);
             Some(const_expr)
@@ -3424,6 +3421,7 @@ impl<'a> Parser<'a> {
                 let (pat, colon) = this.parse_fn_param_pat_colon()?;
                 if !colon {
                     let mut err = this.unexpected().unwrap_err();
+                    let pat_span = pat.span;
                     return if let Some(ident) = this.parameter_without_type(
                         &mut err,
                         pat,
@@ -3432,7 +3430,9 @@ impl<'a> Parser<'a> {
                         fn_parse_mode,
                     ) {
                         let guar = err.emit();
-                        Ok((dummy_arg(ident, guar), Trailing::No, UsePreAttrPos::No))
+                        let mut arg = dummy_arg(ident, guar);
+                        arg.span = pat_span;
+                        Ok((arg, Trailing::No, UsePreAttrPos::No))
                     } else {
                         Err(err)
                     };

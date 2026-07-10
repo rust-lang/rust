@@ -205,9 +205,9 @@ fn check_test_attrs(path: &Path, text: &str) {
     }
     if let Some((line, _)) = text
         .lines()
-        .tuple_windows()
+        .array_windows()
         .enumerate()
-        .find(|(_, (a, b))| b.contains("#[should_panic") && !a.contains("FIXME"))
+        .find(|(_, [a, b])| b.contains("#[should_panic") && !a.contains("FIXME"))
     {
         panic!(
             "\ndon't add `#[should_panic]` tests, see:\n\n    {}\n\n   {}:{line}\n",

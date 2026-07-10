@@ -3877,7 +3877,7 @@ pub enum DelegationSelfTyPropagationKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
 pub struct DelegationInfo {
     pub call_expr_id: HirId,
-    pub call_path_res: Option<DefId>,
+    pub call_path_res: DefId,
 
     /// Id of the child segment in delegation: `reuse Trait::foo`,
     /// `child_seg_id` points to `foo`.
@@ -3960,6 +3960,8 @@ pub enum TyKind<'hir, Unambig = ()> {
     ///
     /// The optional ident is the variant when an enum is passed `field_of!(Enum, Variant.field)`.
     FieldOf(&'hir Ty<'hir>, &'hir TyFieldPath),
+    /// A view of a type. `T.{ field_1, field_2 }`.
+    View(&'hir Ty<'hir>, &'hir [Ident]),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     ///
