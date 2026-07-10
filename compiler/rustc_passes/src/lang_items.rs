@@ -70,9 +70,13 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 // Known lang item
                 Some(lang_item) => {
                     if actual_target != lang_item.target() {
-                        self.tcx
-                            .dcx()
-                            .delayed_bug("lang item target is checked in attribute parser");
+                        let a = format!(
+                            "lang item target is checked in attribute parser {:?} {:?} {:?}",
+                            lang_item.target(),
+                            actual_target,
+                            lang_item
+                        );
+                        self.tcx.dcx().delayed_bug(a);
                         return;
                     }
                     // Weak lang items are handled separately
@@ -314,8 +318,16 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &'ast ast::ForeignItem) {
+        let target = match &i.kind {
+            rustc_ast::ForeignItemKind::Static(_) => Target::ForeignStatic,
+            rustc_ast::ForeignItemKind::Fn(_) => Target::Fn,
+            rustc_ast::ForeignItemKind::TyAlias(_) => Target::ForeignTy,
+            rustc_ast::ForeignItemKind::MacCall(_) => {
+                unreachable!("macros should have been expanded")
+            }
+        };
         self.check_for_lang(
-            Target::Fn,
+            target,
             self.resolver.owners[&i.id].def_id,
             &i.attrs,
             i.span,

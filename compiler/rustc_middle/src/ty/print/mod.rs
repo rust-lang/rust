@@ -396,7 +396,8 @@ impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::ShimKind<'tcx> {
             ty::ShimKind::DropGlue(_, None) => cx.write_str("shim(None)"),
             ty::ShimKind::DropGlue(_, Some(ty)) => cx.write_str(&format!("shim(Some({ty}))")),
             ty::ShimKind::Clone(_, ty) => cx.write_str(&format!("shim({ty})")),
-            ty::ShimKind::FnPtrAddr(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::FnPtrAsPtr(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::FnPtrFromPtr(_, ty) => cx.write_str(&format!("shim({ty})")),
             ty::ShimKind::FutureDropPoll(_, proxy_ty, impl_ty) => {
                 cx.write_str(&format!("dropshim({proxy_ty}-{impl_ty})"))
             }

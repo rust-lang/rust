@@ -5,7 +5,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_ast::ImplPolarity;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{FieldDef, Item, ItemKind, Node};
+use rustc_hir::{FieldDef, Item, ItemKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::impl_lint_pass;
@@ -227,7 +227,7 @@ fn contains_pointer_like<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> b
                 ty::RawPtr(_, _) => {
                     return true;
                 },
-                ty::Adt(adt_def, _) if cx.tcx.is_diagnostic_item(sym::NonNull, adt_def.did()) => {
+                ty::Adt(adt_def, _) if cx.tcx.is_lang_item(adt_def.did(), LangItem::NonNull) => {
                     return true;
                 },
                 _ => (),
