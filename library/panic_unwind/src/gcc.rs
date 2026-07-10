@@ -60,11 +60,7 @@ struct Exception {
 
 pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     let exception = Box::new(Exception {
-        _uwe: uw::_Unwind_Exception {
-            exception_class: RUST_EXCEPTION_CLASS,
-            exception_cleanup: Some(exception_cleanup),
-            private: [core::ptr::null(); _],
-        },
+        _uwe: uw::_Unwind_Exception::new(RUST_EXCEPTION_CLASS, Some(exception_cleanup)),
         canary: &CANARY,
         cause: data,
     });

@@ -24,11 +24,7 @@ fn panic(data: Box<dyn Any + Send>) -> u32 {
     }
 
     let exception = Box::new(Exception {
-        _uwe: uw::_Unwind_Exception {
-            exception_class: miri_exception_class(),
-            exception_cleanup: Some(exception_cleanup),
-            private: [core::ptr::null(); _],
-        },
+        _uwe: uw::_Unwind_Exception::new(miri_exception_class(), Some(exception_cleanup)),
         cause: data,
     });
     let exception_param = Box::into_raw(exception) as *mut uw::_Unwind_Exception;
