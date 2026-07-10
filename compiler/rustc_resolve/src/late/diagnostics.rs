@@ -32,7 +32,7 @@ use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
 use super::NoConstantGenericsReason;
-use crate::error_helper::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
+use crate::diagnostics::impls::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::{
     AliasPossibility, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes, LifetimeRibKind,
     LifetimeUseSet, QSelf, RibKind,
