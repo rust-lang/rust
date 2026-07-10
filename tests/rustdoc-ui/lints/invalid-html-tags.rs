@@ -164,8 +164,8 @@ pub fn r() {}
 
 /// > <br>
 /// > <img
-//~^ ERROR incomplete HTML tag `img`
 /// > href="#broken"
+//~^^ ERROR incomplete HTML tag `img`
 pub fn s() {}
 
 /// <br>
