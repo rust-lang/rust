@@ -184,7 +184,7 @@ pub use crate::borrow::ToOwned;
 pub use crate::boxed::Box;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
-pub use crate::string::{String, ToString};
+pub use crate::string::{ToString, global::String};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::vec::Vec;

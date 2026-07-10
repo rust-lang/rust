@@ -77,6 +77,8 @@ LL |     match "str".to_owned() {
 LL |         "str" => {}
    |         ^^^^^ expected `String`, found `&str`
    |
+   = note: expected struct `String`
+           found reference `&'static str`
 help: consider converting the `String` to a `&str` using `.as_str()`
    |
 LL |     match "str".to_owned().as_str() {

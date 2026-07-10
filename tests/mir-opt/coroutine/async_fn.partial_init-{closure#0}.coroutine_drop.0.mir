@@ -7,7 +7,7 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
     let mut _2: std::future::ResumeTy;
     let _3: u32;
     let mut _4: !;
-    let mut _6: std::string::String;
+    let mut _6: std::string::generic::String;
     let mut _7: !;
     let mut _8: {async block@$DIR/async_fn.rs:80:50: 80:55};
     let mut _9: {async block@$DIR/async_fn.rs:80:50: 80:55};
@@ -33,7 +33,7 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
             debug _x => _5;
         }
         scope 3 {
-            let _5: (std::string::String, !);
+            let _5: (std::string::generic::String, !);
             let mut _11: {async block@$DIR/async_fn.rs:80:50: 80:55};
             scope 4 {
                 debug __awaitee => (((*_1) as variant#3).2: {async block@$DIR/async_fn.rs:80:50: 80:55});
@@ -58,7 +58,7 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
 
     bb2: {
         nop;
-        drop((((*_1) as variant#3).1: std::string::String)) -> [return: bb3, unwind: bb8];
+        drop((((*_1) as variant#3).1: std::string::generic::String)) -> [return: bb3, unwind: bb8];
     }
 
     bb3: {
@@ -84,7 +84,7 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
 
     bb7 (cleanup): {
         nop;
-        drop((((*_1) as variant#3).1: std::string::String)) -> [return: bb8, unwind terminate(cleanup)];
+        drop((((*_1) as variant#3).1: std::string::generic::String)) -> [return: bb8, unwind terminate(cleanup)];
     }
 
     bb8 (cleanup): {

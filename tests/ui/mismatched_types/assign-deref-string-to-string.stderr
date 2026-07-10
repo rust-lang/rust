@@ -6,6 +6,9 @@ LL |     let mut a = String::new();
 LL |     for i in v {
 LL |         a = *i.to_string();
    |             ^^^^^^^^^^^^^^ expected `String`, found `str`
+   |
+   = note: expected struct `String`
+                found type `str`
 
 error: aborting due to 1 previous error
 

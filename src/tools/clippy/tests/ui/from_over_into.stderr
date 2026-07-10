@@ -6,7 +6,7 @@ LL | impl Into<StringWrapper> for String {
    |
    = note: `-D clippy::from-over-into` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::from_over_into)]`
-help: replace the `Into` implementation with `From<std::string::String>`
+help: replace the `Into` implementation with `From<std::string::generic::String>`
    |
 LL ~ impl From<String> for StringWrapper {
 LL |
@@ -20,7 +20,7 @@ error: an implementation of `From` is preferred since it gives you `Into<_>` for
 LL | impl Into<SelfType> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace the `Into` implementation with `From<std::string::String>`
+help: replace the `Into` implementation with `From<std::string::generic::String>`
    |
 LL ~ impl From<String> for SelfType {
 LL |

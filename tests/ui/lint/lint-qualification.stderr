@@ -28,19 +28,7 @@ LL +     bar();
    |
 
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:19:13
-   |
-LL |     let _ = std::string::String::new();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: remove the unnecessary path segments
-   |
-LL -     let _ = std::string::String::new();
-LL +     let _ = String::new();
-   |
-
-error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:21:12
+  --> $DIR/lint-qualification.rs:19:12
    |
 LL |     let _: std::vec::Vec<String> = std::vec::Vec::<String>::new();
    |            ^^^^^^^^^^^^^^^^^^^^^
@@ -52,7 +40,7 @@ LL +     let _: Vec<String> = std::vec::Vec::<String>::new();
    |
 
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:21:36
+  --> $DIR/lint-qualification.rs:19:36
    |
 LL |     let _: std::vec::Vec<String> = std::vec::Vec::<String>::new();
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +52,7 @@ LL +     let _: std::vec::Vec<String> = Vec::<String>::new();
    |
 
 error: unused import: `std::fmt`
-  --> $DIR/lint-qualification.rs:25:9
+  --> $DIR/lint-qualification.rs:23:9
    |
 LL |     use std::fmt;
    |         ^^^^^^^^
@@ -76,7 +64,7 @@ LL | #![deny(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:30:13
+  --> $DIR/lint-qualification.rs:28:13
    |
 LL |     let _ = <bool as std::default::Default>::default(); // issue #121999 (modified)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,5 +75,5 @@ LL -     let _ = <bool as std::default::Default>::default(); // issue #121999 (m
 LL +     let _ = <bool as Default>::default(); // issue #121999 (modified)
    |
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 

@@ -1,8 +1,8 @@
 warning: the item `String` is imported redundantly
   --> $DIR/use-redundant-issue-71450.rs:26:13
    |
-LL |         use std::string::String;
-   |             ^^^^^^^^^^^^^^^^^^^
+LL |         use std::prelude::rust_2024::String;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    |
