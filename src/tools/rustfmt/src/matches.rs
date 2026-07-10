@@ -394,7 +394,7 @@ fn flatten_arm_body<'a>(
     }
 }
 
-fn rewrite_match_body(
+pub(crate) fn rewrite_match_body(
     context: &RewriteContext<'_>,
     body: &Box<ast::Expr>,
     pats_str: &str,
