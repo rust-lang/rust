@@ -237,7 +237,6 @@ mod cfg_attribute {}
 ///
 /// For more information, see the Reference on [the `cfg_attr` attribute].
 ///
-/// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
 /// [the `cfg_attr` attribute]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
 mod cfg_attr_attribute {}
 
