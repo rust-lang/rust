@@ -367,7 +367,7 @@ fn thir_abstract_const<'tcx>(
         // we want to look into them or treat them as opaque projections.
         //
         // Right now we do neither of that and simply always fail to unify them.
-        DefKind::AnonConst | DefKind::InlineConst => (),
+        DefKind::AnonConst => (),
         _ => return Ok(None),
     }
 

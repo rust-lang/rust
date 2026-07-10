@@ -322,10 +322,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir_body_owner_kind(self, def_id: impl Into<DefId>) -> BodyOwnerKind {
         let def_id = def_id.into();
         match self.def_kind(def_id) {
-            DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::AnonConst => {
+            DefKind::Const { .. } | DefKind::AssocConst { .. } => {
                 BodyOwnerKind::Const { inline: false }
             }
-            DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
+            DefKind::AnonConst => BodyOwnerKind::Const {
+                inline: self.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline,
+            },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
             DefKind::Closure | DefKind::SyntheticCoroutineBody => BodyOwnerKind::Closure,
             DefKind::Static { safety: _, mutability, nested: false } => {
@@ -1106,12 +1108,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }) => Some(*param_id),
             _ => None,
         }
-    }
-
-    pub fn is_type_system_inline_const(self, def_id: impl IntoQueryKey<DefId>) -> bool {
-        let def_id = def_id.into_query_key();
-        debug_assert_eq!(self.def_kind(def_id), DefKind::InlineConst);
-        self.anon_const_kind(def_id) != ty::AnonConstKind::NonTypeSystem
     }
 
     pub fn hir_maybe_get_struct_pattern_shorthand_field(self, expr: &Expr<'_>) -> Option<Symbol> {
