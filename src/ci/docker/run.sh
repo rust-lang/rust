@@ -365,6 +365,6 @@ if [ -f /.dockerenv ]; then
   docker cp checkout:/checkout/obj $objdir
 fi
 
-if isCI; then
-    cat $objdir/${SUMMARY_FILE} >> "${GITHUB_STEP_SUMMARY}"
-fi
+#if isCI; then
+#    cat $objdir/${SUMMARY_FILE} >> "${GITHUB_STEP_SUMMARY}"
+#fi
