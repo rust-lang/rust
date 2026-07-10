@@ -1,23 +1,23 @@
 error[E0277]: the trait bound `for<'a> (): Trait2<'a>` is not satisfied
-  --> $DIR/issue-35570.rs:8:40
+  --> $DIR/assoc-type-projection-in-dyn-and-fn.rs:12:40
    |
 LL | fn _ice(param: Box<dyn for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
    |                                        ^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Trait2<'a>` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/issue-35570.rs:4:1
+  --> $DIR/assoc-type-projection-in-dyn-and-fn.rs:8:1
    |
 LL | trait Trait2<'a> {
    | ^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `for<'a> (): Trait2<'a>` is not satisfied
-  --> $DIR/issue-35570.rs:8:16
+  --> $DIR/assoc-type-projection-in-dyn-and-fn.rs:12:16
    |
 LL | fn _ice(param: Box<dyn for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Trait2<'a>` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/issue-35570.rs:4:1
+  --> $DIR/assoc-type-projection-in-dyn-and-fn.rs:8:1
    |
 LL | trait Trait2<'a> {
    | ^^^^^^^^^^^^^^^^

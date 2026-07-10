@@ -1,5 +1,5 @@
 warning: methods `foo` and `bar` are never used
-  --> $DIR/issue-34503.rs:5:12
+  --> $DIR/obligation-error-propagation.rs:9:12
    |
 LL |     trait Foo<T> {
    |           --- methods in this trait

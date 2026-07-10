@@ -1,3 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/35570>.
+//! Test associated type projection under `for<'a>` binder in the return
+//! type of fn parameter and inside trait object doesn't ICE.
+
 use std::mem;
 
 trait Trait1<T> {}
