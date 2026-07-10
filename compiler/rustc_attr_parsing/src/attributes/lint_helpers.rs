@@ -30,7 +30,7 @@ impl NoArgsAttributeParser for RustcPubTransparentParser {
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPubTransparent;
 
-    fn finalize_check(cx: &FinalizeContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
         // `#[rustc_pub_transparent]` may only be applied to `#[repr(transparent)]` types.
         let is_transparent = find_attr!(
             cx.parsed_attrs,

@@ -18,8 +18,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::context::{
-    ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckFn, FinalizeContext, FinalizeFn, FinalizeOutput,
-    SharedContext,
+    ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext,
+    FinalizeFn, FinalizeOutput, SharedContext,
 };
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
@@ -466,7 +466,6 @@ impl<'sess> AttributeParser<'sess> {
                     has_lint_been_emitted: AtomicBool::new(false),
                 },
                 all_attrs: &attr_paths,
-                parsed_attrs: &[],
             });
             if let Some(attr) = attr {
                 attributes.push(Attribute::Parsed(attr));
@@ -477,10 +476,10 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         // Now that all attributes have been parsed, run the deferred checks. These can
-        // inspect the fully parsed attributes via `FinalizeContext::parsed_attrs`.
+        // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
         for (check, attr_span) in deferred_checks {
             check(
-                &FinalizeContext {
+                &FinalizeCheckContext {
                     shared: SharedContext {
                         cx: self,
                         target_span,

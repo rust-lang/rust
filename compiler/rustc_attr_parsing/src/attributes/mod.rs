@@ -26,7 +26,7 @@ use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
-use crate::context::{AcceptContext, FinalizeCheckFn, FinalizeContext};
+use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::UnusedMultiple;
 use crate::target_checking::AllowedTargets;
@@ -123,7 +123,7 @@ pub(crate) trait AttributeParser: Default + 'static {
     /// span it should be reported at.
     ///
     /// Running after finalization means the check can inspect the fully parsed attributes
-    /// via [`FinalizeContext::parsed_attrs`], which are not yet all available during
+    /// via [`FinalizeCheckContext::parsed_attrs`], which are not yet all available during
     /// [`finalize`](Self::finalize). This is queried right before `finalize` consumes the
     /// parser state.
     ///
@@ -162,13 +162,14 @@ pub(crate) trait SingleAttributeParser: 'static {
     /// Converts a single syntactical attribute to a single semantic attribute, or [`AttributeKind`]
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind>;
 
-    /// Optional cross-attribute validation, run once during finalization after all
-    /// attributes on the item have been parsed. Unlike [`convert`](Self::convert), this
-    /// has access to the sibling attributes via [`FinalizeContext::all_attrs`], so it can
-    /// reject incompatible combinations. `attr_span` is the span of this attribute.
+    /// Optional cross-attribute validation, run once *after* all attributes on the item
+    /// have been finalized. Unlike [`convert`](Self::convert), this has access to the
+    /// sibling attributes via [`FinalizeCheckContext::all_attrs`] and the fully parsed
+    /// attributes via [`FinalizeCheckContext::parsed_attrs`], so it can reject incompatible
+    /// combinations. `attr_span` is the span of this attribute.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_cx: &FinalizeContext<'_, '_>, _attr_span: Span) {}
+    fn finalize_check(_cx: &FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
 }
 
 /// Use in combination with [`SingleAttributeParser`].
@@ -287,13 +288,14 @@ pub(crate) trait NoArgsAttributeParser: 'static {
     /// Create the [`AttributeKind`] given attribute's [`Span`].
     const CREATE: fn(Span) -> AttributeKind;
 
-    /// Optional cross-attribute validation, run once during finalization after all
-    /// attributes on the item have been parsed. Has access to the sibling attributes via
-    /// [`FinalizeContext::all_attrs`], so it can reject incompatible combinations.
+    /// Optional cross-attribute validation, run once *after* all attributes on the item
+    /// have been finalized. Has access to the sibling attributes via
+    /// [`FinalizeCheckContext::all_attrs`] and the fully parsed attributes via
+    /// [`FinalizeCheckContext::parsed_attrs`], so it can reject incompatible combinations.
     /// `attr_span` is the span of this attribute.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_cx: &FinalizeContext<'_, '_>, _attr_span: Span) {}
+    fn finalize_check(_cx: &FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
 }
 
 pub(crate) struct WithoutArgs<T: NoArgsAttributeParser>(PhantomData<T>);
@@ -317,7 +319,7 @@ impl<T: NoArgsAttributeParser> SingleAttributeParser for WithoutArgs<T> {
         Some(T::CREATE(cx.attr_span))
     }
 
-    fn finalize_check(cx: &FinalizeContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
         T::finalize_check(cx, attr_span)
     }
 }
@@ -354,13 +356,14 @@ pub(crate) trait CombineAttributeParser: 'static {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item>;
 
-    /// Optional cross-attribute validation, run once during finalization after all
-    /// attributes on the item have been parsed. Has access to the sibling attributes via
-    /// [`FinalizeContext::all_attrs`], so it can reject incompatible combinations.
+    /// Optional cross-attribute validation, run once *after* all attributes on the item
+    /// have been finalized. Has access to the sibling attributes via
+    /// [`FinalizeCheckContext::all_attrs`] and the fully parsed attributes via
+    /// [`FinalizeCheckContext::parsed_attrs`], so it can reject incompatible combinations.
     /// `attr_span` is the span of the first attribute that was encountered.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_cx: &FinalizeContext<'_, '_>, _attr_span: Span) {}
+    fn finalize_check(_cx: &FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
 }
 
 /// Use in combination with [`CombineAttributeParser`].
