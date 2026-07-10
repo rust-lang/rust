@@ -2916,7 +2916,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // Do not use lower_anon_const_to_const_arg, as that attempts to represent the body
                 // directly. Instead, force an anon const.
                 let def_id = self.local_def_id(anon_const.id);
-                assert_eq!(DefKind::InlineConst, self.tcx.def_kind(def_id));
+                assert_eq!(DefKind::AnonConst, self.tcx.def_kind(def_id));
                 let lowered_anon = self.lower_anon_const_to_anon_const(anon_const, span);
                 ConstArg {
                     hir_id: self.lower_node_id(node_id),

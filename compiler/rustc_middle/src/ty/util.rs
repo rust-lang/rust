@@ -598,7 +598,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// type-checking context, i.e. closure, coroutine or inline const.
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
         match self.def_kind(def_id) {
-            DefKind::InlineConst => !self.is_type_system_inline_const(def_id),
+            DefKind::AnonConst => {
+                self.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline
+            }
             DefKind::Closure | DefKind::SyntheticCoroutineBody => true,
             DefKind::Mod
             | DefKind::Struct
@@ -622,7 +624,6 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::ExternCrate
             | DefKind::Use
             | DefKind::ForeignMod
-            | DefKind::AnonConst
             | DefKind::OpaqueTy
             | DefKind::Field
             | DefKind::LifetimeParam
