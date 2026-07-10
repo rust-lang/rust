@@ -203,6 +203,7 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_assumptions)
     }
 
+    #[instrument(level = "debug", skip(self, outlives_env, span))]
     pub fn destructure_solver_region_constraints_for_regionck(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
@@ -229,6 +230,15 @@ impl<'tcx> InferCtxt<'tcx> {
         assert!(self.next_trait_solver());
 
         let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
+        debug!(?constraint);
+        // we destructure type outlives' before calling `destructure_solver_region_constraints`
+        // so that we dont get more or constraints made after splitting
+        let constraint =
+            rustc_type_ir::region_constraint::destructure_type_outlives_constraints_in_root(
+                self,
+                constraint,
+                &assumptions,
+            );
         debug!(?constraint);
         let (and_constraints, or_constraints) = constraint.split_shared_constraints();
         debug!(?and_constraints, ?or_constraints);
@@ -268,6 +278,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, conversion, span))]
     pub fn destructure_solver_region_constraints_for_borrowck(
         &self,
         // this is always ConstraintConversion but lol
