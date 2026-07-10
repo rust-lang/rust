@@ -30,11 +30,9 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
     cx: &CodegenCx<'ll, '_>,
     instance: Instance<'tcx>,
     llfn: &'ll llvm::Value,
-    schema: &PointerAuthSchema,
+    ptrauth_schema: PointerAuthSchema,
 ) -> &'ll llvm::Value {
-    if cx.tcx.sess.pointer_authentication_functions().is_none() {
-        return llfn;
-    }
+    assert!(cx.tcx.sess.pointer_authentication_functions().is_some());
 
     // Only free functions or methods
     let def_id = instance.def_id();
@@ -54,7 +52,7 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
         return llfn;
     }
 
-    let addr_diversity = match schema.is_address_discriminated {
+    let addr_diversity = match ptrauth_schema.is_address_discriminated {
         PointerAuthAddressDiscriminator::HardwareAddress(true) => Some(llfn),
         PointerAuthAddressDiscriminator::HardwareAddress(false) => None,
         PointerAuthAddressDiscriminator::Synthetic(val) => {
@@ -63,7 +61,12 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
             Some(unsafe { llvm::LLVMConstIntToPtr(llval, llty) })
         }
     };
-    const_ptr_auth(llfn, schema.key as u32, schema.constant_discriminator as u64, addr_diversity)
+    const_ptr_auth(
+        llfn,
+        ptrauth_schema.key as u32,
+        ptrauth_schema.constant_discriminator as u64,
+        addr_diversity,
+    )
 }
 
 /*
@@ -179,11 +182,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self,
         global_alloc: GlobalAlloc<'tcx>,
         need_symbol_name: bool,
-        schema: Option<&PointerAuthSchema>,
+        ptrauth_schema: Option<PointerAuthSchema>,
     ) -> Result<&'ll Value, u64> {
         let alloc = match global_alloc {
             GlobalAlloc::Function { instance, .. } => {
-                return Ok(self.get_fn_addr(instance, schema));
+                return Ok(self.get_fn_addr(instance, ptrauth_schema));
             }
             GlobalAlloc::Static(def_id) => {
                 assert!(self.tcx.is_static(def_id));
@@ -405,7 +408,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         cv: Scalar,
         layout: abi::Scalar,
         llty: &'ll Type,
-        schema: Option<&PointerAuthSchema>,
+        ptrauth_schema: Option<PointerAuthSchema>,
     ) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
@@ -422,7 +425,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                 let (prov, offset) = ptr.prov_and_relative_offset();
                 let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                 let base_addr_space = global_alloc.address_space(self);
-                let base_addr = match self.alloc_to_backend(global_alloc, false, schema) {
+                let base_addr = match self.alloc_to_backend(global_alloc, false, ptrauth_schema) {
                     Ok(base_addr) => base_addr,
                     Err(base_addr) => {
                         let val = base_addr.wrapping_add(offset.bytes());
