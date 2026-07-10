@@ -300,8 +300,8 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         let qself_is_none = delegation.qself.is_none();
 
         let parent_args = if let [.., parent_segment, _] = &delegation.path.segments[..] {
-            let res = self.get_resolution_id(parent_segment.id)?;
-            if matches!(tcx.def_kind(res), DefKind::Trait | DefKind::TraitAlias) {
+            let (_, kind) = self.get_resolution(parent_segment.id)?;
+            if matches!(kind, DefKind::Trait | DefKind::TraitAlias) {
                 sig_parent_params = &tcx.generics_of(sig_parent).own_params;
                 self.get_user_args(parent_segment)
                     .map(|args| ParentSegmentArgs::Specified(args))

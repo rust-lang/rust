@@ -1226,12 +1226,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> Option<(&'a Option<Box<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a tuple struct/variant pattern?
-            if let Some(partial_res) = self.get_partial_res(expr.id) {
-                if let Some(res) = partial_res.full_res()
-                    && !res.expected_in_tuple_struct_pat()
-                {
-                    return None;
-                }
+            if let Some(res) = self.get_full_res(expr.id)
+                && !res.expected_in_tuple_struct_pat()
+            {
+                return None;
             }
             return Some((qself, path));
         }
@@ -1248,12 +1246,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> Option<(&'a Option<Box<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a unit struct/variant pattern?
-            if let Some(partial_res) = self.get_partial_res(expr.id) {
-                if let Some(res) = partial_res.full_res()
-                    && !res.expected_in_unit_struct_pat()
-                {
-                    return None;
-                }
+            if let Some(res) = self.get_full_res(expr.id)
+                && !res.expected_in_unit_struct_pat()
+            {
+                return None;
             }
             return Some((qself, path));
         }

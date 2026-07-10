@@ -50,6 +50,7 @@ pub(super) struct DelegationResolution {
 
 pub(super) mod resolver {
     use rustc_ast::NodeId;
+    use rustc_hir::def::{DefKind, Res};
     use rustc_hir::def_id::{DefId, LocalDefId};
     use rustc_middle::ty::TyCtxt;
     use rustc_span::ErrorGuaranteed;
@@ -95,10 +96,14 @@ pub(super) mod resolver {
         }
 
         #[inline]
-        pub(crate) fn get_resolution_id(&self, id: NodeId) -> Result<DefId, ErrorGuaranteed> {
-            self.0.get_partial_res(id).and_then(|r| r.expect_full_res().opt_def_id()).ok_or_else(
-                || self.tcx().dcx().delayed_bug(format!("failed to resolve node {id:?}")),
-            )
+        pub(crate) fn get_resolution(
+            &self,
+            id: NodeId,
+        ) -> Result<(DefId, DefKind), ErrorGuaranteed> {
+            let Res::Def(kind, id) = self.0.expect_full_res(id) else {
+                return Err(self.tcx().dcx().delayed_bug(format!("failed to resolve node {id:?}")));
+            };
+            Ok((id, kind))
         }
     }
 }
@@ -149,7 +154,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             // FIXME(splat): use `sig.splatted()` once FnSig has it
             param_info: ParamInfo { param_count, c_variadic: sig.c_variadic(), splatted: None },
             source: delegation.source,
-            call_path_res: self.get_resolution_id(delegation.id)?,
+            call_path_res: self.get_resolution(delegation.id).map(|(id, _)| id)?,
             sig_mapping: self.create_self_mapping(
                 delegation,
                 span,
@@ -306,7 +311,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         // Check that delegation path resolves to a trait AssocFn, not to a free method.
         // After previous check we are sure that `sig_id` and `delegation.id`
         // point to the same function.
-        let id = self.get_resolution_id(delegation.id)?;
-        Ok(tcx.def_kind(id) == DefKind::AssocFn && tcx.def_kind(tcx.parent(id)) == DefKind::Trait)
+        let (id, kind) = self.get_resolution(delegation.id)?;
+        Ok(kind == DefKind::AssocFn && tcx.def_kind(tcx.parent(id)) == DefKind::Trait)
     }
 }

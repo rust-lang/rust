@@ -583,8 +583,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_path_simple_eii(&mut self, id: NodeId, path: &Path) -> Option<DefId> {
-        let res = self.get_partial_res(id)?;
-        let Some(did) = res.expect_full_res().opt_def_id() else {
+        let Some(did) = self.expect_full_res(id).opt_def_id() else {
             self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
             return None;
         };
@@ -1280,13 +1279,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let span = self.lower_span(i.span);
         let (effective_ident, impl_kind) = if is_in_trait_impl {
-            let trait_item_def_id = self
-                .get_partial_res(i.id)
-                .and_then(|r| r.expect_full_res().opt_def_id())
-                .ok_or_else(|| {
-                    self.dcx()
-                        .span_delayed_bug(span, "could not resolve trait item being implemented")
-                });
+            let trait_item_def_id = self.expect_full_res(i.id).opt_def_id().ok_or_else(|| {
+                self.dcx().span_delayed_bug(span, "could not resolve trait item being implemented")
+            });
             let effective_ident = self.check_pin_drop_sugar_impl_item(i, ident, trait_item_def_id);
             (effective_ident, ImplItemImplKind::Trait { defaultness, trait_item_def_id })
         } else {
@@ -1802,8 +1797,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let kind = match &r.kind {
             RestrictionKind::Unrestricted => hir::RestrictionKind::Unrestricted,
             RestrictionKind::Restricted { path, id, shorthand: _ } => {
-                let res = self.get_partial_res(*id);
-                if let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) {
+                let res = self.expect_full_res(*id);
+                if let Some(did) = res.opt_def_id() {
                     hir::RestrictionKind::Restricted(self.arena.alloc(hir::Path {
                         res: did,
                         segments: self.arena.alloc_from_iter(path.segments.iter().map(|segment| {
@@ -1910,8 +1905,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             return;
         };
         let define_opaque = define_opaque.iter().filter_map(|(id, path)| {
-            let res = self.get_partial_res(*id);
-            let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) else {
+            let res = self.expect_full_res(*id);
+            let Some(did) = res.opt_def_id() else {
                 self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
                 return None;
             };
@@ -2013,8 +2008,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bounds,
             }) => {
                 let rbp = if bound_generic_params.is_empty()
-                    && let Some(res) =
-                        self.get_partial_res(bounded_ty.id).and_then(|r| r.full_res())
+                    && let Some(res) = self.get_full_res(bounded_ty.id)
                     && let Res::Def(DefKind::TyParam, def_id) = res
                     && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
                 {

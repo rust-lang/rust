@@ -589,8 +589,7 @@ struct SelfResolver<'a, 'b, 'hir> {
 
 impl SelfResolver<'_, '_, '_> {
     fn try_replace_id(&mut self, id: NodeId) {
-        if let Some(res) = self.ctxt.get_partial_res(id)
-            && let Some(Res::Local(sig_id)) = res.full_res()
+        if let Some(Res::Local(sig_id)) = self.ctxt.get_full_res(id)
             && sig_id == self.path_id
         {
             self.overwrites.push(id);
