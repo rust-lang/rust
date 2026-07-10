@@ -829,7 +829,9 @@ impl str {
     /// string. It must also be on the boundary of a UTF-8 code point.
     ///
     /// The two slices returned go from the start of the string slice to `mid`,
-    /// and from `mid` to the end of the string slice.
+    /// and from `mid` to the end of the string slice. The `mid` byte is the
+    /// first byte of the second slice: the first slice covers `0..mid` and the
+    /// second slice covers `mid..self.len()`.
     ///
     /// To get mutable string slices instead, see the [`split_at_mut`]
     /// method.
@@ -869,7 +871,9 @@ impl str {
     /// string. It must also be on the boundary of a UTF-8 code point.
     ///
     /// The two slices returned go from the start of the string slice to `mid`,
-    /// and from `mid` to the end of the string slice.
+    /// and from `mid` to the end of the string slice. The `mid` byte is the
+    /// first byte of the second slice: the first slice covers `0..mid` and the
+    /// second slice covers `mid..self.len()`.
     ///
     /// To get immutable string slices instead, see the [`split_at`] method.
     ///
@@ -914,7 +918,9 @@ impl str {
     /// method returns `None` if that’s not the case.
     ///
     /// The two slices returned go from the start of the string slice to `mid`,
-    /// and from `mid` to the end of the string slice.
+    /// and from `mid` to the end of the string slice. The `mid` byte is the
+    /// first byte of the second slice: the first slice covers `0..mid` and the
+    /// second slice covers `mid..self.len()`.
     ///
     /// To get mutable string slices instead, see the [`split_at_mut_checked`]
     /// method.
@@ -954,7 +960,9 @@ impl str {
     /// method returns `None` if that’s not the case.
     ///
     /// The two slices returned go from the start of the string slice to `mid`,
-    /// and from `mid` to the end of the string slice.
+    /// and from `mid` to the end of the string slice. The `mid` byte is the
+    /// first byte of the second slice: the first slice covers `0..mid` and the
+    /// second slice covers `mid..self.len()`.
     ///
     /// To get immutable string slices instead, see the [`split_at_checked`] method.
     ///
