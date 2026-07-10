@@ -55,7 +55,6 @@ fn expand<'cx>(
                         .into_iter()
                         .map(|ident| PathSegment::from_ident(ident))
                         .collect(),
-                    tokens: None,
                 },
                 args: Box::new(DelimArgs {
                     dspan: DelimSpan::from_single(sp),

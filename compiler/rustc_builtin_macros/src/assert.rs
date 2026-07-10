@@ -41,7 +41,6 @@ pub(crate) fn expand_assert<'cx>(
                     .into_iter()
                     .map(|ident| PathSegment::from_ident(ident))
                     .collect(),
-                tokens: None,
             }
         } else {
             // Before edition 2021, we call `panic!()` unqualified,

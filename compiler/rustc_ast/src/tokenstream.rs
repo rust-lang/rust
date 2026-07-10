@@ -92,6 +92,22 @@ impl TokenTree {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct WithTokens<T> {
+    pub node: T,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+impl<T> WithTokens<T> {
+    pub fn new(node: T) -> WithTokens<T> {
+        WithTokens { node, tokens: None }
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> WithTokens<U> {
+        WithTokens { node: f(self.node), tokens: self.tokens }
+    }
+}
+
 /// A lazy version of [`AttrTokenStream`], which defers creation of an actual
 /// `AttrTokenStream` until it is needed.
 #[derive(Clone)]

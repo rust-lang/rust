@@ -53,9 +53,8 @@ pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
         id: ast::DUMMY_NODE_ID,
         kind: PatKind::Ident(BindingMode::NONE, ident, None),
         span: ident.span,
-        tokens: None,
     });
-    let ty = Ty { kind: TyKind::Err(guar), span: ident.span, id: ast::DUMMY_NODE_ID, tokens: None };
+    let ty = Ty { kind: TyKind::Err(guar), span: ident.span, id: ast::DUMMY_NODE_ID };
     Param {
         attrs: AttrVec::default(),
         id: ast::DUMMY_NODE_ID,
@@ -88,12 +87,7 @@ impl RecoverQPath for Ty {
         Some(Box::new(self.clone()))
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
-        Self {
-            span: path.span,
-            kind: TyKind::Path(qself, path),
-            id: ast::DUMMY_NODE_ID,
-            tokens: None,
-        }
+        Self { span: path.span, kind: TyKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
     }
 }
 
@@ -103,12 +97,7 @@ impl RecoverQPath for Pat {
         self.to_ty()
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
-        Self {
-            span: path.span,
-            kind: PatKind::Path(qself, path),
-            id: ast::DUMMY_NODE_ID,
-            tokens: None,
-        }
+        Self { span: path.span, kind: PatKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
     }
 }
 
@@ -982,11 +971,7 @@ impl<'a> Parser<'a> {
             // }
             debug!(?maybe_struct_name, ?self.token);
             let mut snapshot = self.create_snapshot_for_diagnostic();
-            let path = Path {
-                segments: ThinVec::new(),
-                span: self.prev_token.span.shrink_to_lo(),
-                tokens: None,
-            };
+            let path = Path { segments: ThinVec::new(), span: self.prev_token.span.shrink_to_lo() };
             let struct_expr = snapshot.parse_expr_struct(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
@@ -1858,7 +1843,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, T> {
         self.expect(exp!(PathSep))?;
 
-        let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP, tokens: None };
+        let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP };
         self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
         path.span = ty_span.to(self.prev_token.span);
 
@@ -2401,12 +2386,7 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(PatternMethodParamWithoutBody { span: pat.span });
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
-        let pat = Box::new(Pat {
-            kind: PatKind::Wild,
-            span: pat.span,
-            id: ast::DUMMY_NODE_ID,
-            tokens: None,
-        });
+        let pat = Box::new(Pat { kind: PatKind::Wild, span: pat.span, id: ast::DUMMY_NODE_ID });
         Ok((pat, ty))
     }
 
@@ -2811,7 +2791,6 @@ impl<'a> Parser<'a> {
                                                     PathSegment::from_ident(*old_ident),
                                                     PathSegment::from_ident(*ident),
                                                 ],
-                                                tokens: None,
                                             },
                                         );
                                         first_pat = self.mk_pat(new_span, path);
@@ -2822,7 +2801,7 @@ impl<'a> Parser<'a> {
                                         segments.push(PathSegment::from_ident(*ident));
                                         let path = PatKind::Path(
                                             old_qself.clone(),
-                                            Path { span: new_span, segments, tokens: None },
+                                            Path { span: new_span, segments },
                                         );
                                         first_pat = self.mk_pat(new_span, path);
                                         show_sugg = true;

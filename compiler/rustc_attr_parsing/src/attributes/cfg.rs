@@ -1,7 +1,7 @@
 use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenstream::DelimSpan;
+use rustc_ast::tokenstream::{DelimSpan, WithTokens};
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_errors::{Applicability, Diagnostic, PResult, msg};
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
@@ -319,7 +319,7 @@ pub fn parse_cfg_attr(
     sess: &Session,
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
-) -> Option<(CfgEntry, Vec<(AttrItem, Span)>)> {
+) -> Option<(CfgEntry, Vec<(WithTokens<AttrItem>, Span)>)> {
     match cfg_attr.get_normal_item().args.unparsed_ref().unwrap() {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
             check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
@@ -393,7 +393,7 @@ fn parse_cfg_attr_internal<'a>(
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
     attribute: &Attribute,
-) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
+) -> PResult<'a, (CfgEntry, Vec<(WithTokens<ast::AttrItem>, Span)>)> {
     // Parse cfg predicate
     let pred_start = parser.token.span;
     let meta = MetaItemOrLitParser::parse_single(

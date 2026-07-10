@@ -515,7 +515,7 @@ impl MetaItem {
                     iter.next();
                 }
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
-                Path { span, segments, tokens: None }
+                Path { span, segments }
             }
             Some(TokenTree::Delimited(
                 _span,
@@ -747,7 +747,7 @@ fn mk_attr(
 ) -> Attribute {
     mk_attr_from_item(
         g,
-        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args), tokens: None },
+        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args) },
         None,
         style,
         span,

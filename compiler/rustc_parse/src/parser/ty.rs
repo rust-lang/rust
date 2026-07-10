@@ -871,7 +871,6 @@ impl<'a> Parser<'a> {
         let inherited_vis = rustc_ast::Visibility {
             span: rustc_span::DUMMY_SP,
             kind: rustc_ast::VisibilityKind::Inherited,
-            tokens: None,
         };
         let span_start = self.token.span;
         let ast::FnHeader { ext, safety, .. } = self.parse_fn_front_matter(
@@ -1458,7 +1457,6 @@ impl<'a> Parser<'a> {
                             }
                         ))),
                     }],
-                    tokens: None,
                 })
             }
             Err(diag) => {
@@ -1643,6 +1641,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> Box<Ty> {
-        Box::new(Ty { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
+        Box::new(Ty { kind, span, id: ast::DUMMY_NODE_ID })
     }
 }

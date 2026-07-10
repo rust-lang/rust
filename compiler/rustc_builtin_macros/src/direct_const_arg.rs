@@ -28,12 +28,7 @@ pub(crate) fn expand<'cx>(
             attrs: Default::default(),
             tokens: None,
         })),
-        ty: Some(Box::new(ast::Ty {
-            id,
-            kind: ast::TyKind::DirectConstArg(expr),
-            span,
-            tokens: None,
-        })),
+        ty: Some(Box::new(ast::Ty { id, kind: ast::TyKind::DirectConstArg(expr), span })),
         ..Default::default()
     }))
 }
