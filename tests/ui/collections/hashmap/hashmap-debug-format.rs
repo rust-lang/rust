@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3559>.
+//! Test hashmap debug format doesn't ICE.
 //@ run-pass
+
 use std::collections::HashMap;
 
 fn check_strs(actual: &str, expected: &str) -> bool {
