@@ -188,34 +188,30 @@ cfg_select! {
     }
 }
 
-cfg_select! {
-    all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm") => {
-        // 32-bit ARM Apple (except for watchOS armv7k specifically) uses SjLj and
-        // does not provide _Unwind_Backtrace()
-        unsafe extern "C-unwind" {
-            pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
-        }
-
-        pub use _Unwind_SjLj_RaiseException as _Unwind_RaiseException;
-    }
-    _ => {
-        #[cfg_attr(
-            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
-            link(name = "unwind", kind = "static", modifiers = "-bundle")
-        )]
-        unsafe extern "C-unwind" {
-            pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
-        }
-        #[cfg_attr(
-            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
-            link(name = "unwind", kind = "static", modifiers = "-bundle")
-        )]
-        unsafe extern "C" {
-            pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
-                                     trace_argument: *mut c_void)
-                                     -> _Unwind_Reason_Code;
-        }
-    }
+#[cfg_attr(
+    all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
+    link(name = "unwind", kind = "static", modifiers = "-bundle")
+)]
+unsafe extern "C-unwind" {
+    // 32-bit ARM Apple (except for watchOS armv7k specifically) uses SjLj
+    #[cfg_attr(
+        all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm"),
+        link_name = "_Unwind_SjLj_RaiseException"
+    )]
+    pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
+}
+#[cfg_attr(
+    all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
+    link(name = "unwind", kind = "static", modifiers = "-bundle")
+)]
+unsafe extern "C" {
+    // 32-bit ARM Apple (except for watchOS armv7k specifically) does not
+    // provide _Unwind_Backtrace()
+    #[cfg(not(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm")))]
+    pub fn _Unwind_Backtrace(
+        trace: _Unwind_Trace_Fn,
+        trace_argument: *mut c_void,
+    ) -> _Unwind_Reason_Code;
 }
 
 cfg_select! {
