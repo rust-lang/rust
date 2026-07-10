@@ -1,4 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/36474>.
+//! This used to trigger LLVM assertion when compiled with opt level 3.
+//@ compile-flags: -Copt-level=3
 //@ run-pass
+
 fn main() {
     remove_axis(&3, 0);
 }
