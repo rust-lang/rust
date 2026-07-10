@@ -39,15 +39,12 @@ use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
+use crate::diagnostics::impls::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
 use crate::{
     BindingError, BindingKey, Decl, DelegationFnSig, Finalize, IdentKey, LateDecl, LocalModule,
     Module, ModuleOrUniformRoot, ParentScope, PathResult, Res, ResolutionError, Resolver, Segment,
-    Stage, TyCtxt, UseError, Used, path_names_to_string, rustdoc, with_owner,
+    Stage, TyCtxt, UseError, Used, diagnostics, path_names_to_string, rustdoc, with_owner,
 };
-
-mod diagnostics;
-
-use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
 
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
@@ -82,7 +79,7 @@ enum AnonConstKind {
 }
 
 impl PatternSource {
-    fn descr(self) -> &'static str {
+    pub(crate) fn descr(self) -> &'static str {
         match self {
             PatternSource::Match => "match binding",
             PatternSource::Let => "let binding",
@@ -301,13 +298,13 @@ impl<'ra, R> Rib<'ra, R> {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum LifetimeUseSet {
+pub(crate) enum LifetimeUseSet {
     One { use_span: Span, use_ctxt: visit::LifetimeCtxt },
     Many,
 }
 
 #[derive(Copy, Clone, Debug)]
-enum LifetimeRibKind {
+pub(crate) enum LifetimeRibKind {
     // -- Ribs introducing named lifetimes
     //
     /// This rib declares generic parameters.
@@ -376,7 +373,7 @@ impl LifetimeRibKind {
 }
 
 #[derive(Copy, Clone, Debug)]
-enum LifetimeBinderKind {
+pub(crate) enum LifetimeBinderKind {
     FnPtrType,
     PolyTrait,
     WhereBound,
@@ -392,7 +389,7 @@ enum LifetimeBinderKind {
 }
 
 impl LifetimeBinderKind {
-    fn descr(self) -> &'static str {
+    pub(crate) fn descr(self) -> &'static str {
         use LifetimeBinderKind::*;
         match self {
             FnPtrType => "type",
@@ -408,14 +405,14 @@ impl LifetimeBinderKind {
 }
 
 #[derive(Debug)]
-struct LifetimeRib {
-    kind: LifetimeRibKind,
+pub(crate) struct LifetimeRib {
+    pub(crate) kind: LifetimeRibKind,
     // We need to preserve insertion order for async fns.
-    bindings: FxIndexMap<Ident, (NodeId, LifetimeRes)>,
+    pub(crate) bindings: FxIndexMap<Ident, (NodeId, LifetimeRes)>,
 }
 
 impl LifetimeRib {
-    fn new(kind: LifetimeRibKind) -> LifetimeRib {
+    pub(crate) fn new(kind: LifetimeRibKind) -> LifetimeRib {
         LifetimeRib { bindings: Default::default(), kind }
     }
 }
@@ -462,7 +459,7 @@ pub(crate) enum PathSource<'a, 'ast, 'ra> {
 }
 
 impl PathSource<'_, '_, '_> {
-    fn namespace(self) -> Namespace {
+    pub(crate) fn namespace(self) -> Namespace {
         match self {
             PathSource::Type
             | PathSource::Trait(_)
@@ -481,7 +478,7 @@ impl PathSource<'_, '_, '_> {
         }
     }
 
-    fn defer_to_typeck(self) -> bool {
+    pub(crate) fn defer_to_typeck(self) -> bool {
         match self {
             PathSource::Type
             | PathSource::Expr(..)
@@ -500,7 +497,7 @@ impl PathSource<'_, '_, '_> {
         }
     }
 
-    fn descr_expected(self) -> &'static str {
+    pub(crate) fn descr_expected(self) -> &'static str {
         match &self {
             PathSource::DefineOpaques => "type alias or associated type with opaqaue types",
             PathSource::Type => "type",
@@ -544,7 +541,7 @@ impl PathSource<'_, '_, '_> {
         }
     }
 
-    fn is_call(self) -> bool {
+    pub(crate) fn is_call(self) -> bool {
         matches!(self, PathSource::Expr(Some(&Expr { kind: ExprKind::Call(..), .. })))
     }
 
@@ -652,7 +649,7 @@ impl PathSource<'_, '_, '_> {
         }
     }
 
-    fn error_code(self, has_unexpected_resolution: bool) -> ErrCode {
+    pub(crate) fn error_code(self, has_unexpected_resolution: bool) -> ErrCode {
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => E0404,
             (PathSource::Trait(_), false) => E0405,
@@ -726,112 +723,112 @@ pub(crate) struct UnnecessaryQualification<'ra> {
 #[derive(Default, Debug)]
 pub(crate) struct DiagMetadata<'ast> {
     /// The current trait's associated items' ident, used for diagnostic suggestions.
-    current_trait_assoc_items: Option<&'ast [Box<AssocItem>]>,
+    pub(crate) current_trait_assoc_items: Option<&'ast [Box<AssocItem>]>,
 
     /// The current self type if inside an impl (used for better errors).
     pub(crate) current_self_type: Option<&'ast Ty>,
 
     /// The current self item if inside an ADT (used for better errors).
-    current_self_item: Option<NodeId>,
+    pub(crate) current_self_item: Option<NodeId>,
 
     /// The current item being evaluated (used for suggestions and more detail in errors).
     pub(crate) current_item: Option<&'ast Item>,
 
     /// When processing generic arguments and encountering an unresolved ident not found,
     /// suggest introducing a type or const param depending on the context.
-    currently_processing_generic_args: bool,
+    pub(crate) currently_processing_generic_args: bool,
 
     /// The current enclosing (non-closure) function (used for better errors).
-    current_function: Option<(FnKind<'ast>, Span)>,
+    pub(crate) current_function: Option<(FnKind<'ast>, Span)>,
 
     /// A list of labels as of yet unused. Labels will be removed from this map when
     /// they are used (in a `break` or `continue` statement)
-    unused_labels: FxIndexMap<NodeId, Span>,
+    pub(crate) unused_labels: FxIndexMap<NodeId, Span>,
 
     /// Only used for better errors on `let <pat>: <expr, not type>;`.
-    current_let_binding: Option<(Span, Option<Span>, Option<Span>)>,
+    pub(crate) current_let_binding: Option<(Span, Option<Span>, Option<Span>)>,
 
-    current_pat: Option<&'ast Pat>,
+    pub(crate) current_pat: Option<&'ast Pat>,
 
     /// Used to detect possible `if let` written without `let` and to provide structured suggestion.
-    in_if_condition: Option<&'ast Expr>,
+    pub(crate) in_if_condition: Option<&'ast Expr>,
 
     /// Used to detect possible new binding written without `let` and to provide structured suggestion.
-    in_assignment: Option<&'ast Expr>,
-    is_assign_rhs: bool,
+    pub(crate) in_assignment: Option<&'ast Expr>,
+    pub(crate) is_assign_rhs: bool,
 
     /// If we are setting an associated type in trait impl, is it a non-GAT type?
-    in_non_gat_assoc_type: Option<bool>,
+    pub(crate) in_non_gat_assoc_type: Option<bool>,
 
     /// Used to detect possible `.` -> `..` typo when calling methods.
-    in_range: Option<(&'ast Expr, &'ast Expr)>,
+    pub(crate) in_range: Option<(&'ast Expr, &'ast Expr)>,
 
     /// If we are currently in a trait object definition. Used to point at the bounds when
     /// encountering a struct or enum.
-    current_trait_object: Option<&'ast [ast::GenericBound]>,
+    pub(crate) current_trait_object: Option<&'ast [ast::GenericBound]>,
 
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
-    current_where_predicate: Option<&'ast WherePredicate>,
+    pub(crate) current_where_predicate: Option<&'ast WherePredicate>,
 
     /// Whether we are visiting an associated type equality binding like `Trait<Assoc = &T>`.
-    in_assoc_ty_binding: bool,
+    pub(crate) in_assoc_ty_binding: bool,
 
-    current_type_path: Option<&'ast Ty>,
-
-    /// The current impl items (used to suggest).
-    current_impl_items: Option<&'ast [Box<AssocItem>]>,
+    pub(crate) current_type_path: Option<&'ast Ty>,
 
     /// The current impl items (used to suggest).
-    current_impl_item: Option<&'ast AssocItem>,
+    pub(crate) current_impl_items: Option<&'ast [Box<AssocItem>]>,
+
+    /// The current impl items (used to suggest).
+    pub(crate) current_impl_item: Option<&'ast AssocItem>,
 
     /// When processing impl trait
-    currently_processing_impl_trait: Option<(TraitRef, Ty)>,
+    pub(crate) currently_processing_impl_trait: Option<(TraitRef, Ty)>,
 
     /// Accumulate the errors due to missed lifetime elision,
     /// and report them all at once for each function.
-    current_elision_failures: Vec<(MissingLifetime, Either<NodeId, Range<NodeId>>)>,
+    pub(crate) current_elision_failures: Vec<(MissingLifetime, Either<NodeId, Range<NodeId>>)>,
 }
 
-struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
-    r: &'a mut Resolver<'ra, 'tcx>,
+pub(crate) struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
+    pub(crate) r: &'a mut Resolver<'ra, 'tcx>,
 
     /// The module that represents the current item scope.
-    parent_scope: ParentScope<'ra>,
+    pub(crate) parent_scope: ParentScope<'ra>,
 
     /// The current set of local scopes for types and values.
-    ribs: PerNS<Vec<Rib<'ra>>>,
+    pub(crate) ribs: PerNS<Vec<Rib<'ra>>>,
 
     /// Previous popped `rib`, only used for diagnostic.
-    last_block_rib: Option<Rib<'ra>>,
+    pub(crate) last_block_rib: Option<Rib<'ra>>,
 
     /// The current set of local scopes, for labels.
-    label_ribs: Vec<Rib<'ra, NodeId>>,
+    pub(crate) label_ribs: Vec<Rib<'ra, NodeId>>,
 
     /// The current set of local scopes for lifetimes.
-    lifetime_ribs: Vec<LifetimeRib>,
+    pub(crate) lifetime_ribs: Vec<LifetimeRib>,
 
     /// We are looking for lifetimes in an elision context.
     /// The set contains all the resolutions that we encountered so far.
     /// They will be used to determine the correct lifetime for the fn return type.
     /// The `LifetimeElisionCandidate` is used for diagnostics, to suggest introducing named
     /// lifetimes.
-    lifetime_elision_candidates: Option<Vec<(LifetimeRes, LifetimeElisionCandidate)>>,
+    pub(crate) lifetime_elision_candidates: Option<Vec<(LifetimeRes, LifetimeElisionCandidate)>>,
 
     /// The trait that the current context can refer to.
-    current_trait_ref: Option<(Module<'ra>, TraitRef)>,
+    pub(crate) current_trait_ref: Option<(Module<'ra>, TraitRef)>,
 
     /// Fields used to add information to diagnostic errors.
-    diag_metadata: Box<DiagMetadata<'ast>>,
+    pub(crate) diag_metadata: Box<DiagMetadata<'ast>>,
 
     /// State used to know whether to ignore resolution errors for function bodies.
     ///
     /// In particular, rustdoc uses this to avoid giving errors for `cfg()` items.
     /// In most cases this will be `None`, in which case errors will always be reported.
     /// If it is `true`, then it will be updated when entering a nested function or trait body.
-    in_func_body: bool,
+    pub(crate) in_func_body: bool,
 
     /// Count the number of places a lifetime is used.
-    lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
+    pub(crate) lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
 }
 
 impl<'ra, 'tcx> AsRef<Resolver<'ra, 'tcx>> for LateResolutionVisitor<'_, '_, 'ra, 'tcx> {
@@ -1563,7 +1560,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         )
     }
 
-    fn resolve_path(
+    pub(crate) fn resolve_path(
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
@@ -2738,7 +2735,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     /// Determine whether or not a label from the `rib_index`th label rib is reachable.
-    fn is_label_valid_from_rib(&self, rib_index: usize) -> bool {
+    pub(crate) fn is_label_valid_from_rib(&self, rib_index: usize) -> bool {
         let ribs = &self.label_ribs[rib_index + 1..];
         ribs.iter().all(|rib| !rib.kind.is_label_barrier())
     }
@@ -3123,7 +3120,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 if let GenericParamKind::Lifetime = param.kind
                     && let Some(&original) = seen_lifetimes.get(&ident)
                 {
-                    let guar = diagnostics::signal_lifetime_shadowing(
+                    let guar = diagnostics::impls::signal_lifetime_shadowing(
                         self.r.tcx.sess,
                         original,
                         param.ident,
@@ -4808,13 +4805,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         partial_res
     }
 
-    fn self_type_is_available(&mut self) -> bool {
+    pub(crate) fn self_type_is_available(&mut self) -> bool {
         let binding = self
             .maybe_resolve_ident_in_lexical_scope(Ident::with_dummy_span(kw::SelfUpper), TypeNS);
         if let Some(LateDecl::RibDef(res)) = binding { res != Res::Err } else { false }
     }
 
-    fn self_value_is_available(&mut self, self_span: Span) -> bool {
+    pub(crate) fn self_value_is_available(&mut self, self_span: Span) -> bool {
         let ident = Ident::new(kw::SelfLower, self_span);
         let binding = self.maybe_resolve_ident_in_lexical_scope(ident, ValueNS);
         if let Some(LateDecl::RibDef(res)) = binding { res != Res::Err } else { false }
@@ -4839,7 +4836,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
-    fn resolve_qpath_anywhere(
+    pub(crate) fn resolve_qpath_anywhere(
         &mut self,
         qself: &Option<Box<QSelf>>,
         path: &[Segment],
@@ -5041,7 +5038,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             if let Ok((_, orig_span)) = self.resolve_label(label.ident) {
-                diagnostics::signal_label_shadowing(self.r.tcx.sess, orig_span, label.ident)
+                diagnostics::impls::signal_label_shadowing(self.r.tcx.sess, orig_span, label.ident)
             }
 
             self.with_label_rib(RibKind::Normal, |this| {
