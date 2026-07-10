@@ -465,9 +465,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we encountered an `_` type or an error type during autoderef, this is
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
-            // Ended up encountering a type variable when doing autoderef,
-            // but it may not be a type variable after processing obligations
-            // in our local `FnCtxt`, so don't call `structurally_resolve_type`.
+            // We care about the opt_bad_ty given the inference state at the point of computing the auto deref chain,
+            // so we don't call structurally_resolve_type as it processes obligations in our local FnCtxt,
+            // potentially making inference progress.
             let ty = &bad_ty.ty;
             let ty = self
                 .probe_instantiate_query_response(span, &orig_values, ty)
@@ -502,7 +502,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // (see https://github.com/rust-lang/rust/issues/143349)
             } else if let ty::Infer(ty::TyVar(ty_id)) = *ty.kind()
                 && let ty_id = self.sub_unification_table_root_var(ty_id)
-                && let root_ty = Ty::new_var(self.tcx, ty_id)
                 && self
                     .diverging_type_vars
                     .borrow()
@@ -515,6 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     TraitMethodOnCoercedNeverType,
                 );
+                let root_ty = Ty::new_var(self.tcx, ty_id);
                 self.demand_eqtype(span, root_ty, self.tcx.types.never);
             } else {
                 let guar = match *ty.kind() {
