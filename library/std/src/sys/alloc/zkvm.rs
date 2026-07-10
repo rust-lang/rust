@@ -1,15 +1,18 @@
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::Layout;
 use crate::sys::pal::abi;
 
-#[stable(feature = "alloc_system_type", since = "1.28.0")]
-unsafe impl GlobalAlloc for System {
-    #[inline]
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        unsafe { abi::sys_alloc_aligned(layout.size(), layout.align()) }
-    }
+#[inline]
+pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+    unsafe { abi::sys_alloc_aligned(layout.size(), layout.align()) }
+}
 
-    #[inline]
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        // this allocator never deallocates memory
-    }
+#[inline]
+pub unsafe fn dealloc(_ptr: *mut u8, _layout: Layout) {
+    // this allocator never deallocates memory
+}
+
+#[inline]
+pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+    // SAFETY: this is just a `pub` wrapper.
+    unsafe { super::realloc_fallback(ptr, layout, new_size) }
 }
