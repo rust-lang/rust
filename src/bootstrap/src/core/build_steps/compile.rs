@@ -2278,15 +2278,15 @@ impl Step for Assemble {
             if let Some(_llvm_config) = builder.llvm_config(builder.config.host_target) {
                 let target_libdir =
                     builder.sysroot_target_libdir(target_compiler, target_compiler.host);
-                for p in offload_install.offload_paths() {
-                    let libname = p.file_name().unwrap();
-                    let dst_lib = target_libdir.join(libname);
+
+                let offload_libdir = builder.offload_out(build_compiler.host).join("lib");
+
+                for p in offload_install.artifact_paths_with_symlink_targets() {
+                    let relative = t!(p.strip_prefix(&offload_libdir));
+                    let dst_lib = target_libdir.join(relative);
+                    t!(fs::create_dir_all(dst_lib.parent().unwrap()));
                     builder.resolve_symlink_and_copy(&p, &dst_lib);
                 }
-                // FIXME(offload): Add amdgcn-amd-amdhsa and nvptx64-nvidia-cuda folder
-                // This one is slightly more tricky, since we have the same file twice, in two
-                // subfolders for amdgcn and nvptx64. We'll likely find two more in the future, once
-                // Intel and Spir-V support lands in offload.
             }
         }
 
