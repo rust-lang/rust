@@ -2351,16 +2351,43 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             }
 
             ty::Adt(def, args)
-                if args.types().next().is_none()
-                    && args.consts().next().is_none()
+                if self.should_truncate()
+                    && args.consts().count() < 2
                     && args.types().count() < 2
-                    && self.should_truncate()
-                    && self.tcx.item_name(def.did()).as_str().len() < 5 =>
+                    && {
+                        // We ensure that if there's at most a single type parameter and that type
+                        // *doesn't* have any parameters, to avoid printing all the names in cases
+                        // like `Foo<Foo<Foo<Foo<...>>>`, instead truncating those always to
+                        // `Foo<...>`.
+                        if let Some(arg) = args.types().next() {
+                            if let ty::Adt(_, arg_args) = arg.kind() {
+                                if arg_args.consts().next().is_none()
+                                    && arg_args.types().next().is_none()
+                                {
+                                    // Single param type with no type or const parameters:
+                                    // `Foo<Bar<'a>>`.
+                                    true
+                                } else {
+                                    // Single param type with multiple type or const parameters:
+                                    // `Foo<Bar<Baz, Qux>>`. We don't want to recurse into those,
+                                    // we'll replace the whole thing with `...`.
+                                    false
+                                }
+                            } else {
+                                // Single type param that *isn't* a type with parameters, like a
+                                // primitive: `Foo<i32>`.
+                                true
+                            }
+                        } else {
+                            // No type param: `Foo`.
+                            true
+                        }
+                    }
+                    && self.tcx.item_name(def.did()).as_str().len() < 7 =>
             {
-                // Don't fully truncate types that have "short names" and at most one type param.
-                // FIXME: only mention the name instead of the path?
-                self.printed_type_count += 1;
-                self.pretty_print_type(ty)
+                // Don't fully truncate types that have "short names" and at most one type or const
+                // param. We do use the short path for them (only item name instad of full path).
+                with_forced_trimmed_paths!(self.pretty_print_type(ty))
             }
 
             ty::Alias(_, alias)
