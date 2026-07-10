@@ -333,7 +333,11 @@ enum LifetimeRibKind {
     AnonymousCreateParameter { binder: NodeId, report_in_path: bool },
 
     /// Replace all anonymous lifetimes by provided lifetime.
-    Elided(LifetimeRes),
+    Elided {
+        res: LifetimeRes,
+        /// Always report those lifetimes as an error if in a path
+        error_in_path: bool,
+    },
 
     // -- Barrier ribs that stop lifetime lookup, or continue it but produce an error later.
     //
@@ -341,11 +345,6 @@ enum LifetimeRibKind {
     /// rule out things like `where T: Foo<'_>`. Does not imply an
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
     AnonymousReportError,
-
-    /// Resolves elided lifetimes to `'static` if there are no other lifetimes in scope,
-    /// otherwise give a warning that the previous behavior of introducing a new early-bound
-    /// lifetime is a bug and will be removed (if `emit_lint` is enabled).
-    StaticIfNoLifetimeInScope { lint_id: NodeId, emit_lint: bool },
 
     /// Signal we cannot find which should be the anonymous lifetime.
     ElisionFailure,
@@ -368,6 +367,12 @@ enum LifetimeRibKind {
 
     /// Lifetimes cannot be elided in `impl Trait` types without `#![feature(anonymous_lifetime_in_impl_trait)]`.
     ImplTrait,
+}
+impl LifetimeRibKind {
+    /// Convenience function for creating non-erroring `Elided` variants.
+    fn elided(res: LifetimeRes) -> LifetimeRibKind {
+        LifetimeRibKind::Elided { res, error_in_path: false }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -1162,7 +1167,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                             this.last_block_rib = None;
                             // Resolve the function body, potentially inside the body of an async closure
                             this.with_lifetime_rib(
-                                LifetimeRibKind::Elided(LifetimeRes::Infer),
+                                LifetimeRibKind::elided(LifetimeRes::Infer),
                                 |this| this.visit_block(body),
                             );
 
@@ -1190,7 +1195,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         this.with_lifetime_rib(
                             match binder {
                                 ClosureBinder::NotPresent => {
-                                    LifetimeRibKind::Elided(LifetimeRes::Infer)
+                                    LifetimeRibKind::elided(LifetimeRes::Infer)
                                 }
                                 ClosureBinder::For { .. } => LifetimeRibKind::AnonymousReportError,
                             },
@@ -1202,7 +1207,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         let previous_state = replace(&mut this.in_func_body, true);
                         // Resolve the function body, potentially inside the body of an async closure
                         this.with_lifetime_rib(
-                            LifetimeRibKind::Elided(LifetimeRes::Infer),
+                            LifetimeRibKind::elided(LifetimeRes::Infer),
                             |this| this.visit_expr(body),
                         );
 
@@ -1380,9 +1385,8 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         }
                         LifetimeRibKind::AnonymousCreateParameter { .. }
                         | LifetimeRibKind::AnonymousReportError
-                        | LifetimeRibKind::StaticIfNoLifetimeInScope { .. }
                         | LifetimeRibKind::ImplTrait
-                        | LifetimeRibKind::Elided(_)
+                        | LifetimeRibKind::Elided { .. }
                         | LifetimeRibKind::ElisionFailure
                         | LifetimeRibKind::ConcreteAnonConst(_)
                         | LifetimeRibKind::ConstParamTy => {}
@@ -1786,7 +1790,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     // lifetime would be illegal.
                                     LifetimeRibKind::Item
                                     | LifetimeRibKind::AnonymousReportError
-                                    | LifetimeRibKind::StaticIfNoLifetimeInScope { .. }
                                     | LifetimeRibKind::ElisionFailure => Some(LifetimeUseSet::Many),
                                     // An anonymous lifetime is legal here, and bound to the right
                                     // place, go ahead.
@@ -1800,11 +1803,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     }),
                                     // Only report if eliding the lifetime would have the same
                                     // semantics.
-                                    LifetimeRibKind::Elided(r) => Some(if res == r {
-                                        LifetimeUseSet::One { use_span: ident.span, use_ctxt }
-                                    } else {
-                                        LifetimeUseSet::Many
-                                    }),
+                                    LifetimeRibKind::Elided { res: r, error_in_path } => {
+                                        Some(if res == r && !error_in_path {
+                                            LifetimeUseSet::One { use_span: ident.span, use_ctxt }
+                                        } else {
+                                            LifetimeUseSet::Many
+                                        })
+                                    }
                                     LifetimeRibKind::Generics { .. }
                                     | LifetimeRibKind::ConstParamTy => None,
                                     LifetimeRibKind::ConcreteAnonConst(_) => {
@@ -1845,12 +1850,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     return;
                 }
                 LifetimeRibKind::AnonymousCreateParameter { .. }
-                | LifetimeRibKind::Elided(_)
+                | LifetimeRibKind::Elided { .. }
                 | LifetimeRibKind::Generics { .. }
                 | LifetimeRibKind::ElisionFailure
                 | LifetimeRibKind::AnonymousReportError
-                | LifetimeRibKind::ImplTrait
-                | LifetimeRibKind::StaticIfNoLifetimeInScope { .. } => {}
+                | LifetimeRibKind::ImplTrait => {}
             }
         }
 
@@ -1888,48 +1892,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     let res = self.create_fresh_lifetime(lifetime.ident, binder, kind);
                     self.record_lifetime_use(lifetime.id, res, elision_candidate);
                     return;
-                }
-                LifetimeRibKind::StaticIfNoLifetimeInScope { lint_id: node_id, emit_lint } => {
-                    let mut lifetimes_in_scope = vec![];
-                    for rib in self.lifetime_ribs[..i].iter().rev() {
-                        lifetimes_in_scope.extend(rib.bindings.iter().map(|(ident, _)| ident.span));
-                        // Consider any anonymous lifetimes, too
-                        if let LifetimeRibKind::AnonymousCreateParameter { binder, .. } = rib.kind
-                            && let Some(extra) = self.r.extra_lifetime_params_map.get(&binder)
-                        {
-                            lifetimes_in_scope.extend(extra.iter().map(|(ident, _, _)| ident.span));
-                        }
-                        if let LifetimeRibKind::Item = rib.kind {
-                            break;
-                        }
-                    }
-                    if lifetimes_in_scope.is_empty() {
-                        self.record_lifetime_use(
-                            lifetime.id,
-                            LifetimeRes::Static,
-                            elision_candidate,
-                        );
-                        return;
-                    } else if emit_lint {
-                        let lt_span = if elided {
-                            lifetime.ident.span.shrink_to_hi()
-                        } else {
-                            lifetime.ident.span
-                        };
-                        let code = if elided { "'static " } else { "'static" };
-
-                        self.r.lint_buffer.buffer_lint(
-                            lint::builtin::ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
-                            node_id,
-                            lifetime.ident.span,
-                            crate::diagnostics::AssociatedConstElidedLifetime {
-                                elided,
-                                code,
-                                span: lt_span,
-                                lifetimes_in_scope: lifetimes_in_scope.into(),
-                            },
-                        );
-                    }
                 }
                 LifetimeRibKind::AnonymousReportError => {
                     let guar = if elided {
@@ -2047,7 +2009,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     self.record_lifetime_err(lifetime.id, guar);
                     return;
                 }
-                LifetimeRibKind::Elided(res) => {
+                LifetimeRibKind::Elided { res, .. } => {
                     self.record_lifetime_use(lifetime.id, res, elision_candidate);
                     return;
                 }
@@ -2317,7 +2279,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     //     impl Foo for std::cell::Ref<u32> // note lack of '_
                     //     async fn foo(_: std::cell::Ref<u32>) { ... }
                     LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. }
-                    | LifetimeRibKind::StaticIfNoLifetimeInScope { .. } => {
+                    | LifetimeRibKind::Elided { error_in_path: true, .. } => {
                         let sess = self.r.tcx.sess;
                         let subdiag = elided_lifetime_in_path_suggestion(
                             sess.source_map(),
@@ -2353,7 +2315,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         }
                         break;
                     }
-                    LifetimeRibKind::Elided(res) => {
+                    LifetimeRibKind::Elided { res, error_in_path: false } => {
                         let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
                             self.record_lifetime_use(
@@ -2480,7 +2442,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 if fn_id == this.r.current_owner.id {
                     this.r.current_owner.lifetime_elision_allowed = true;
                 }
-                LifetimeRibKind::Elided(*res)
+                LifetimeRibKind::elided(*res)
             } else {
                 LifetimeRibKind::ElisionFailure
             };
@@ -2540,7 +2502,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
         for (pat, _) in inputs.clone() {
             debug!("resolving bindings in pat = {pat:?}");
-            self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+            self.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
                 if let Some(pat) = pat {
                     this.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
                 }
@@ -2966,7 +2928,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 ident, ty, expr, define_opaque, eii_impls, ..
             }) => {
                 self.with_static_rib(def_kind, |this| {
-                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
+                    this.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
                     });
                     if let Some(expr) = expr {
@@ -3004,8 +2966,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         this.visit_generics(generics);
 
                         this.with_lifetime_rib(
-                            LifetimeRibKind::Elided(LifetimeRes::Static),
-                            |this| {
+                            LifetimeRibKind::elided(LifetimeRes::Static),
+                            |this: &mut LateResolutionVisitor<'a, 'ast, 'ra, 'tcx>| {
                                 if rhs_kind.is_type_const()
                                     && !this.r.features.generic_const_parameter_types()
                                 {
@@ -3040,7 +3002,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     DUMMY_SP,
                     |this| {
                         this.with_lifetime_rib(
-                            LifetimeRibKind::Elided(LifetimeRes::Infer),
+                            LifetimeRibKind::elided(LifetimeRes::Infer),
                             |this| {
                                 this.with_constant_rib(
                                     IsRepeatExpr::No,
@@ -3401,9 +3363,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     generics.span,
                     |this| {
                         this.with_lifetime_rib(
-                            LifetimeRibKind::StaticIfNoLifetimeInScope {
-                                lint_id: item.id,
-                                emit_lint: false,
+                            LifetimeRibKind::Elided {
+                                res: LifetimeRes::Static,
+                                error_in_path: true,
                             },
                             |this| {
                                 this.visit_generics(generics);
@@ -3620,67 +3582,47 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     generics.span,
                     |this| {
                         this.with_lifetime_rib(
-                            // Until these are a hard error, we need to create them within the
-                            // correct binder, Otherwise the lifetimes of this assoc const think
-                            // they are lifetimes of the trait.
-                            LifetimeRibKind::AnonymousCreateParameter {
-                                binder: item.id,
-                                report_in_path: true,
+                            LifetimeRibKind::Elided {
+                                res: LifetimeRes::Static,
+                                error_in_path: true,
                             },
                             |this| {
-                                this.with_lifetime_rib(
-                                    LifetimeRibKind::StaticIfNoLifetimeInScope {
-                                        lint_id: item.id,
-                                        // In impls, it's not a hard error yet due to backcompat.
-                                        emit_lint: true,
-                                    },
-                                    |this| {
-                                        // If this is a trait impl, ensure the const
-                                        // exists in trait
-                                        this.check_trait_item(
-                                            item.id,
-                                            *ident,
-                                            *ident,
-                                            &item.kind,
-                                            ValueNS,
-                                            item.span,
-                                            seen_trait_items,
-                                            |i, s, c| ConstNotMemberOfTrait(i, s, c),
-                                        );
+                                // If this is a trait impl, ensure the const
+                                // exists in trait
+                                this.check_trait_item(
+                                    item.id,
+                                    *ident,
+                                    *ident,
+                                    &item.kind,
+                                    ValueNS,
+                                    item.span,
+                                    seen_trait_items,
+                                    |i, s, c| ConstNotMemberOfTrait(i, s, c),
+                                );
 
-                                        this.visit_generics(generics);
-                                        if rhs_kind.is_type_const()
-                                            && !this
-                                                .r
-                                                .tcx
-                                                .features()
-                                                .generic_const_parameter_types()
-                                        {
-                                            this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
-                                                this.with_rib(
-                                                    ValueNS,
-                                                    RibKind::ConstParamTy,
-                                                    |this| {
-                                                        this.with_lifetime_rib(
-                                                            LifetimeRibKind::ConstParamTy,
-                                                            |this| this.visit_ty(ty),
-                                                        )
-                                                    },
-                                                )
-                                            });
-                                        } else {
-                                            this.visit_ty(ty);
-                                        }
-                                        // We allow arbitrary const expressions inside of associated consts,
-                                        // even if they are potentially not const evaluatable.
-                                        //
-                                        // Type parameters can already be used and as associated consts are
-                                        // not used as part of the type system, this is far less surprising.
-                                        this.resolve_const_item_rhs(rhs_kind, None);
-                                    },
-                                )
+                                this.visit_generics(generics);
+                                if rhs_kind.is_type_const()
+                                    && !this.r.tcx.features().generic_const_parameter_types()
+                                {
+                                    this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
+                                        this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
+                                            this.with_lifetime_rib(
+                                                LifetimeRibKind::ConstParamTy,
+                                                |this| this.visit_ty(ty),
+                                            )
+                                        })
+                                    });
+                                } else {
+                                    this.visit_ty(ty);
+                                }
+                                // We allow arbitrary const expressions inside of associated consts,
+                                // even if they are potentially not const evaluatable.
+                                //
+                                // Type parameters can already be used and as associated consts are
+                                // not used as part of the type system, this is far less surprising.
+                                this.resolve_const_item_rhs(rhs_kind, None);
                             },
-                        );
+                        )
                     },
                 );
                 self.resolve_define_opaques(define_opaque);
@@ -3902,7 +3844,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn resolve_static_body(&mut self, expr: &'ast Expr, item: Option<(Ident, ConstantItemKind)>) {
-        self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+        self.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
             this.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, item, |this| {
                 this.visit_expr(expr)
             });
@@ -3914,7 +3856,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         rhs_kind: &'ast ConstItemRhsKind,
         item: Option<(Ident, ConstantItemKind)>,
     ) {
-        self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| match rhs_kind {
+        self.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| match rhs_kind {
             ConstItemRhsKind::TypeConst { rhs: Some(anon_const) } => {
                 this.resolve_anon_const(anon_const, AnonConstKind::ConstArg(IsRepeatExpr::No));
             }
@@ -3942,7 +3884,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         // Create lifetimes not with `LifetimeRibKind::Generics` but with `LifetimeRibKind::Elided`,
         // as we are not processing generic params but generic args in a future call (#156342, #156758).
-        self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+        self.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
             if let Some(qself) = &delegation.qself {
                 this.visit_ty(&qself.ty);
             }
@@ -3977,7 +3919,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
             //As we lower target_expr_template body to a body of a function we need a label rib (#148889)
             this.with_label_rib(RibKind::FnOrCoroutine, |this| {
-                this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                this.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
                     this.visit_block(body);
                 });
             });
@@ -3986,7 +3928,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     fn resolve_params(&mut self, params: &'ast [Param]) {
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
-        self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+        self.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
             for Param { pat, .. } in params {
                 this.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
             }
@@ -5207,7 +5149,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
 
         self.with_constant_rib(is_repeat_expr, may_use_generics, None, |this| {
-            this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+            this.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
                 resolve_expr(this);
             });
         });
