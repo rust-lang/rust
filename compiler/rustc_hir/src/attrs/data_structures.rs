@@ -1636,6 +1636,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_strict_coherence]`.
     RustcStrictCoherence(Span),
 
+    /// Represents `#[rustc_test_entrypoint_marker]`
+    RustcTestEntrypointMarker,
+
     /// Represents `#[rustc_test_marker]`
     RustcTestMarker(Symbol),
 
