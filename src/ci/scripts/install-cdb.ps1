@@ -2,6 +2,15 @@
 # Note: only the first three parts of the version should be specified here.
 $CDB_VERSION = "10.0.22621"
 
+# This script installs the given version of cdb.
+# Unfortunately this is more complext than it could be due to limitations of using winsdksetup.exe via the CLI.
+# We need to uninstall the old version (using the MSI installer instead of winsdksetup.exe)
+# then install the version we want.
+# Further complicating this are problem with the way Github's aarch64 runners are (or aren't) setup.
+#
+# If this script is breaking CI, feel free to disable it and skip any failing debug tests until
+# someone comes a long to fix.
+
 switch -Wildcard ($env:CI_JOB_NAME) {
     "*x86_64*" { $arch="x64"; break }
     "*i686*" { $arch="x86"; break }
@@ -47,7 +56,6 @@ if ($version_str -match 'cdb version ([0-9]+\.[0-9]+\.[0-9]+)\..*') {
         if ($data -Like 'SDK Debuggers *') {
             $cdb_guid = $name
             # Uninstall it, if possible
-            $ErrorActionPreference = 'Stop'
             if ($cdb_guid) {
                 Write-Output "Uninstalling cdb ($cdb_guid)"
                 Start-Process MsiExec.exe -ArgumentList "/x $cdb_guid /quiet IGNOREDEPENDENCIES=ALL" -Wait

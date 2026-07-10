@@ -172,7 +172,7 @@ jobs:
       - name: install cdb
         run: src/ci/scripts/install-cdb.ps1
         shell: pwsh
-        if: contains(matrix.full_name, 'msvc')
+        if: env.NEEDS_CDB == 1
 
       - name: install clang
         run: src/ci/scripts/install-clang.sh
