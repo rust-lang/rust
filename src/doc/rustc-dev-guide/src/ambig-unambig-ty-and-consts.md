@@ -57,7 +57,7 @@ fn foo() {
 
 The only generic arguments which remain ambiguous after lowering are inferred generic arguments (`_`) in path segments. In the above example it is not clear at parse time whether the `_` argument to `Foo` is an inferred type argument, or an inferred const argument.
 
-In ambig AST positions, inferred argumentsd are parsed as an [`ast::GenericArg::Ty`] wrapping a [`ast::Ty::Infer`]. Then during AST lowering when lowering an `ast::GenericArg::Ty` we check if it is an inferred type and if so lower to a [`hir::GenericArg::Infer`].
+In ambig AST positions, inferred arguments are parsed as an [`ast::GenericArg::Ty`] wrapping a [`ast::Ty::Infer`]. Then during AST lowering when lowering an `ast::GenericArg::Ty` we check if it is an inferred type and if so lower to a [`hir::GenericArg::Infer`].
 
 In unambig AST positions, inferred arguments are parsed as either `ast::Ty::Infer` or [`ast::AnonConst`]. The `AnonConst` case is quite strange, we use [`ast::ExprKind::Underscore`] to represent the "body" of the "anon const" although in reality we do not actually lower this to an anon const in the HIR.
 
