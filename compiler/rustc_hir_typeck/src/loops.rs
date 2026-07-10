@@ -84,11 +84,6 @@ pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir
         CheckLoopVisitor { tcx, cx_stack: vec![Normal], block_breaks: Default::default() };
     let cx = match tcx.def_kind(def_id) {
         DefKind::AnonConst => AnonConst,
-        DefKind::InlineConst => {
-            // only type system inline consts are typeck roots
-            debug_assert!(tcx.is_type_system_inline_const(def_id));
-            ConstBlock
-        }
         _ => Fn,
     };
     check.with_context(cx, |v| v.visit_body(body));
