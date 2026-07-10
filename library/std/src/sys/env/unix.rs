@@ -49,7 +49,19 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 
     static ENVIRON: LazyLock<Environ> = LazyLock::new(|| {
         Environ(unsafe {
-            libc::dlsym(libc::RTLD_DEFAULT, c"environ".as_ptr()) as *mut *const *const c_char
+            let dynamic =
+                libc::dlsym(libc::RTLD_DEFAULT, c"environ".as_ptr()) as *mut *const *const c_char;
+            if !dynamic.is_null() {
+                dynamic
+            } else {
+                // Reading an `extern_weak` static yields the symbol's address
+                // (null if unresolved), not its contents.
+                unsafe extern "C" {
+                    #[linkage = "extern_weak"]
+                    static environ: *mut *const *const c_char;
+                }
+                environ
+            }
         })
     });
     ENVIRON.0
