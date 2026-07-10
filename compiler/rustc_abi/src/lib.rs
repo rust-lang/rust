@@ -2063,8 +2063,7 @@ impl Niche {
         let distance_end_zero = max_value - v.end;
         // FIXME: this ought to work for `bool` too, but that seems to be hitting a miscompilation
         // <https://github.com/rust-lang/rust/pull/155473#issuecomment-4302036343>
-        let is_bool = size.bytes() == 1 && v == WrappingRange { start: 0, end: 1 };
-        if count == 1 && !is_bool {
+        if count == 1 && v != (WrappingRange { start: 0, end: 1 }) {
             // We only need one, so just pick the one closest to zero.
             // Not only does that obviously use zero if it's possible, but it also
             // simplifies testing things like `Option<char>`, since looking for `-1`
