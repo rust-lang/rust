@@ -1165,6 +1165,7 @@ bitflags::bitflags! {
         const SAFESTACK = 1 << 11;
         const DATAFLOW = 1 << 12;
         const REALTIME = 1 << 13;
+        const ALLOCTOKEN = 1 << 14;
     }
 }
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
@@ -1212,6 +1213,7 @@ impl SanitizerSet {
     pub fn as_str(self) -> Option<&'static str> {
         Some(match self {
             SanitizerSet::ADDRESS => "address",
+            SanitizerSet::ALLOCTOKEN => "alloc-token",
             SanitizerSet::CFI => "cfi",
             SanitizerSet::DATAFLOW => "dataflow",
             SanitizerSet::KCFI => "kcfi",
@@ -1258,6 +1260,7 @@ impl FromStr for SanitizerSet {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "address" => SanitizerSet::ADDRESS,
+            "alloc-token" => SanitizerSet::ALLOCTOKEN,
             "cfi" => SanitizerSet::CFI,
             "dataflow" => SanitizerSet::DATAFLOW,
             "kcfi" => SanitizerSet::KCFI,
