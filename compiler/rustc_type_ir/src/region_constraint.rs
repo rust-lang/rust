@@ -657,6 +657,11 @@ fn pull_region_outlives_constraints_out_of_universe<
             constraint
         }
         RegionOutlives(region_1, region_2) => {
+            if region_1 == region_2 {
+                // Reflexive constraints are always satisfied, even if the region is from `u`.
+                return RegionConstraint::new_true();
+            }
+
             let region_1_u = max_universe(infcx, region_1);
             let region_2_u = max_universe(infcx, region_2);
 
