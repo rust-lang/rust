@@ -199,6 +199,7 @@ error: fn_abi_of(test_unsized) = FnAbi {
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_discriminator: None,
        }
   --> $DIR/debug.rs:37:1
    |
