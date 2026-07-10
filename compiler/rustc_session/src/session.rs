@@ -586,6 +586,10 @@ impl Session {
         &self.opts.unstable_opts.coverage_options
     }
 
+    pub fn is_sanitizer_alloc_token_enabled(&self) -> bool {
+        self.sanitizers().contains(SanitizerSet::ALLOCTOKEN)
+    }
+
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
         self.sanitizers().contains(SanitizerSet::CFI)
     }
@@ -1541,6 +1545,27 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // KCFI arity indicator requires KCFI.
     if sess.is_sanitizer_kcfi_arity_enabled() && !sess.is_sanitizer_kcfi_enabled() {
         sess.dcx().emit_err(diagnostics::SanitizerKcfiArityRequiresKcfi);
+    }
+
+    // Maximum number of tokens requires AllocToken.
+    if sess.opts.unstable_opts.sanitizer_alloc_token_max.is_some()
+        && !sess.is_sanitizer_alloc_token_enabled()
+    {
+        sess.dcx().emit_err(diagnostics::SanitizerAllocTokenMaxRequiresAllocToken);
+    }
+
+    // Heap partitioning scheme requires AllocToken.
+    if sess.opts.unstable_opts.sanitizer_alloc_token_scheme.is_some()
+        && !sess.is_sanitizer_alloc_token_enabled()
+    {
+        sess.dcx().emit_err(diagnostics::SanitizerAllocTokenSchemeRequiresAllocToken);
+    }
+
+    // Fast ABI requires AllocToken.
+    if sess.opts.unstable_opts.sanitizer_alloc_token_fast_abi.is_some()
+        && !sess.is_sanitizer_alloc_token_enabled()
+    {
+        sess.dcx().emit_err(diagnostics::SanitizerAllocTokenFastAbiRequiresAllocToken);
     }
 
     // LLVM CFI pointer generalization requires CFI or KCFI.

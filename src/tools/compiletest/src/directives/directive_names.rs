@@ -185,6 +185,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-rust-lld",
     "needs-rustc-debug-assertions",
     "needs-sanitizer-address",
+    "needs-sanitizer-alloc-token",
     "needs-sanitizer-cfi",
     "needs-sanitizer-dataflow",
     "needs-sanitizer-hwaddress",
