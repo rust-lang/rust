@@ -511,7 +511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && !self.tcx.features().arbitrary_self_types();
 
                         let mut err = self.err_ctxt().emit_inference_failure_err(
-                            self.body_id,
+                            self.body_def_id,
                             err_span,
                             ty.into(),
                             TypeAnnotationNeeded::E0282,
@@ -811,7 +811,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
             let container_id = item.container_id(self.tcx);
-            let def_scope = self.tcx.adjust_ident_and_get_scope(name, container_id, self.body_id).1;
+            let def_scope =
+                self.tcx.adjust_ident_and_get_scope(name, container_id, self.body_def_id).1;
             item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
         } else {
             true
@@ -994,12 +995,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // We use `DeepRejectCtxt` here which may return false positive on where clauses
         // with alias self types. We need to later on reject these as inherent candidates
         // in `consider_probe`.
-        let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
-            let bound_predicate = predicate.kind();
-            match bound_predicate.skip_binder() {
+        let bounds = self.param_env.caller_bounds().iter().filter_map(|clause| {
+            let bound_clause = clause.kind();
+            match bound_clause.skip_binder() {
                 ty::ClauseKind::Trait(trait_predicate) => DeepRejectCtxt::relate_rigid_rigid(tcx)
                     .types_may_unify(param_ty, trait_predicate.trait_ref.self_ty())
-                    .then(|| bound_predicate.rebind(trait_predicate.trait_ref)),
+                    .then(|| bound_clause.rebind(trait_predicate.trait_ref)),
                 ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::TypeOutlives(_)
                 | ty::ClauseKind::Projection(_)

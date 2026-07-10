@@ -778,7 +778,7 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::InlineAsm(a) => {
                 // FIXME: Print `builtin # asm` once macro `asm` uses `builtin_syntax`.
-                self.word("asm!");
+                self.word(format!("{}!", a.asm_macro.macro_name()));
                 self.print_inline_asm(a);
             }
             ast::ExprKind::FormatArgs(fmt) => {
@@ -882,6 +882,12 @@ impl<'a> State<'a> {
                 self.popen();
                 self.word("/*DUMMY*/");
                 self.pclose();
+            }
+            ast::ExprKind::DirectConstArg(expr) => {
+                self.word_nbsp("core::direct_const_arg!");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose()
             }
         }
 

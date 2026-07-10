@@ -22,7 +22,6 @@ use std::sync::{Arc, Mutex};
 use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
-use build_helper::exit;
 use build_helper::git::{GitConfig, PathFreshness, check_path_modifications};
 use serde::Deserialize;
 #[cfg(feature = "tracing")]
@@ -41,6 +40,7 @@ use crate::core::config::toml::dist::Dist;
 use crate::core::config::toml::gcc::Gcc;
 use crate::core::config::toml::install::Install;
 use crate::core::config::toml::llvm::Llvm;
+use crate::core::config::toml::pgo::{Pgo, PgoConfig};
 use crate::core::config::toml::rust::{
     BootstrapOverrideLld, Rust, RustOptimize, check_incompatible_options_for_ci_rustc,
     parse_codegen_backends,
@@ -57,8 +57,10 @@ use crate::core::download::{
 };
 use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
-use crate::utils::helpers::{exe, get_host_target};
-use crate::{CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, t};
+use crate::utils::helpers::{exe, fail, get_host_target};
+use crate::{
+    CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, exit, helpers, t,
+};
 
 /// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
@@ -190,6 +192,7 @@ pub struct Config {
     pub llvm_cxxflags: Option<String>,
     pub llvm_ldflags: Option<String>,
     pub llvm_use_libcxx: bool,
+    pub llvm_pgo: LlvmPgoConfig,
 
     // gcc codegen options
     pub gcc_ci_mode: GccCiMode,
@@ -225,17 +228,14 @@ pub struct Config {
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: Option<bool>,
     pub rust_annotate_moves_size_limit: Option<u64>,
-    pub rust_profile_use: Option<String>,
-    pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
     pub rust_validate_mir_opts: Option<u32>,
     pub rust_std_features: BTreeSet<String>,
     pub rust_break_on_ice: bool,
     pub rust_parallel_frontend_threads: Option<u32>,
     pub rust_rustflags: Vec<String>,
+    pub rust_pgo: PgoConfig,
 
-    pub llvm_profile_use: Option<String>,
-    pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
     pub enable_bolt_settings: bool,
 
@@ -456,8 +456,20 @@ impl Config {
 
         // Now load the TOML config, as soon as possible
         let (mut toml, toml_path) = load_toml_config(&src, flags_config, &get_toml);
-
         postprocess_toml(&mut toml, &src, toml_path.clone(), &exec_ctx, &flags_set, &get_toml);
+        let TomlConfig {
+            change_id: toml_change_id,
+            build: toml_build,
+            install: toml_install,
+            llvm: toml_llvm,
+            gcc: toml_gcc,
+            rust: toml_rust,
+            target: toml_target,
+            dist: toml_dist,
+            pgo: toml_pgo,
+            profile: _,
+            include: _,
+        } = toml;
 
         // Now override TOML values with flags, to make sure that we won't later override flags with
         // TOML values by accident instead, because flags have higher priority.
@@ -523,7 +535,7 @@ impl Config {
             ccache: build_ccache,
             exclude: build_exclude,
             compiletest_allow_stage0: build_compiletest_allow_stage0,
-        } = toml.build.unwrap_or_default();
+        } = toml_build.unwrap_or_default();
 
         let Install {
             prefix: install_prefix,
@@ -533,7 +545,7 @@ impl Config {
             libdir: install_libdir,
             mandir: install_mandir,
             datadir: install_datadir,
-        } = toml.install.unwrap_or_default();
+        } = toml_install.unwrap_or_default();
 
         let Rust {
             optimize: rust_optimize,
@@ -595,7 +607,7 @@ impl Config {
             std_features: rust_std_features,
             break_on_ice: rust_break_on_ice,
             rustflags: rust_rustflags,
-        } = toml.rust.unwrap_or_default();
+        } = toml_rust.unwrap_or_default();
 
         let Llvm {
             optimize: llvm_optimize,
@@ -627,7 +639,7 @@ impl Config {
             enable_warnings: llvm_enable_warnings,
             download_ci_llvm: llvm_download_ci_llvm,
             build_config: llvm_build_config,
-        } = toml.llvm.unwrap_or_default();
+        } = toml_llvm.unwrap_or_default();
 
         let Dist {
             sign_folder: dist_sign_folder,
@@ -637,12 +649,57 @@ impl Config {
             compression_profile: dist_compression_profile,
             include_mingw_linker: dist_include_mingw_linker,
             vendor: dist_vendor,
-        } = toml.dist.unwrap_or_default();
+        } = toml_dist.unwrap_or_default();
 
         let Gcc {
             download_ci_gcc: gcc_download_ci_gcc,
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
-        } = toml.gcc.unwrap_or_default();
+        } = toml_gcc.unwrap_or_default();
+
+        let Pgo { rustc: pgo_rustc, llvm: pgo_llvm } = toml_pgo.unwrap_or_default();
+
+        // Backcompat: flags have priority over config
+        if flags_rust_profile_use.is_some() || flags_rust_profile_generate.is_some() {
+            eprintln!(
+                "WARNING: the `--rust-profile-generate` and `--rust-profile-use` flags have been deprecated. Configure PGO through the config file instead, in the [pgo.rustc] section."
+            );
+        }
+        if rust_profile_use.is_some() || rust_profile_generate.is_some() {
+            eprintln!(
+                "WARNING: the `rust.profile-generate` and `rust.profile-use` config options have been deprecated. Configure PGO through the config file instead, in the [pgo.rustc] section."
+            );
+        }
+        if flags_llvm_profile_use.is_some() || flags_llvm_profile_generate {
+            eprintln!(
+                "WARNING: the `--llvm-profile-generate` and `--llvm-profile-use` flags have been deprecated. Configure PGO through the config file instead, in the [pgo.llvm] section."
+            );
+        }
+
+        let mut pgo_rustc = pgo_rustc.unwrap_or_default();
+        pgo_rustc.use_profile =
+            flags_rust_profile_use.or(pgo_rustc.use_profile).or(rust_profile_use);
+        pgo_rustc.generate_profile =
+            flags_rust_profile_generate.or(pgo_rustc.generate_profile).or(rust_profile_generate);
+        if pgo_rustc.use_profile.is_some() && pgo_rustc.generate_profile.is_some() {
+            panic!("Cannot use and generate rust PGO profiles at the same time");
+        }
+
+        let pgo_llvm = pgo_llvm.unwrap_or_default();
+        let pgo_llvm = LlvmPgoConfig {
+            use_profile: flags_llvm_profile_use.or(pgo_llvm.use_profile),
+            generate_profile: if flags_llvm_profile_generate {
+                Some(if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
+                    LlvmPgoGenerationMode::Directory(PathBuf::from(llvm_profile_dir))
+                } else {
+                    LlvmPgoGenerationMode::Implicit
+                })
+            } else {
+                pgo_llvm.generate_profile.map(LlvmPgoGenerationMode::Directory)
+            },
+        };
+        if pgo_llvm.use_profile.is_some() && pgo_llvm.generate_profile.is_some() {
+            panic!("Cannot use and generate LLVM PGO profiles at the same time");
+        }
 
         if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
             panic!(
@@ -877,7 +934,7 @@ impl Config {
         // Linux targets for which the user explicitly overrode the used linker
         let mut targets_with_user_linker_override = HashSet::new();
 
-        if let Some(t) = toml.target {
+        if let Some(t) = toml_target {
             for (triple, cfg) in t {
                 let TomlTarget {
                     cc: target_cc,
@@ -1337,7 +1394,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             cargo_info,
             cargo_native_static: build_cargo_native_static.unwrap_or(false),
             ccache,
-            change_id: toml.change_id.inner,
+            change_id: toml_change_id.inner,
             channel,
             ci_env,
             clippy_info,
@@ -1428,10 +1485,9 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             ),
             llvm_offload: llvm_offload.unwrap_or(false),
             llvm_optimize: llvm_optimize.unwrap_or(true),
+            llvm_pgo: pgo_llvm,
             llvm_plugins: llvm_plugin.unwrap_or(false),
             llvm_polly: llvm_polly.unwrap_or(false),
-            llvm_profile_generate: flags_llvm_profile_generate,
-            llvm_profile_use: flags_llvm_profile_use,
             llvm_release_debuginfo: llvm_release_debuginfo.unwrap_or(false),
             llvm_static_stdcpp: llvm_static_libstdcpp.unwrap_or(false),
             llvm_targets,
@@ -1496,8 +1552,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .or(rust_overflow_checks)
                 .unwrap_or(rust_debug == Some(true)),
             rust_parallel_frontend_threads: rust_parallel_frontend_threads.map(threads_from_config),
-            rust_profile_generate: flags_rust_profile_generate.or(rust_profile_generate),
-            rust_profile_use: flags_rust_profile_use.or(rust_profile_use),
+            rust_pgo: pgo_rustc,
             rust_randomize_layout: rust_randomize_layout.unwrap_or(false),
             rust_remap_debuginfo: rust_remap_debuginfo.unwrap_or(false),
             rust_rpath: rust_rpath.unwrap_or(true),
@@ -2030,6 +2085,20 @@ fn compute_src_directory(src_dir: Option<PathBuf>, exec_ctx: &ExecutionContext) 
     None
 }
 
+#[derive(Clone)]
+pub enum LlvmPgoGenerationMode {
+    /// Enable PGO instrumentation that will write profiles into a default path.
+    Implicit,
+    /// Enable PGO instrumentation that will write profiles into the specified directory.
+    Directory(PathBuf),
+}
+
+#[derive(Clone)]
+pub struct LlvmPgoConfig {
+    pub use_profile: Option<PathBuf>,
+    pub generate_profile: Option<LlvmPgoGenerationMode>,
+}
+
 /// Loads bootstrap TOML config and returns the config together with a path from where
 /// it was loaded.
 /// `src` is the source root directory, and `config_path` is an optionally provided path to the
@@ -2173,7 +2242,7 @@ fn postprocess_toml(
             }
         }
         eprintln!("failed to parse override `{option}`: `{err}");
-        exit!(2)
+        exit!(2);
     }
     toml.merge(None, &mut Default::default(), override_toml, ReplaceOpt::Override);
 }
@@ -2195,8 +2264,6 @@ pub fn check_stage0_version(
     src_dir: &Path,
     exec_ctx: &ExecutionContext,
 ) {
-    use build_helper::util::fail;
-
     if exec_ctx.dry_run() {
         return;
     }

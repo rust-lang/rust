@@ -40,7 +40,7 @@ use rustc_session::Session;
 use rustc_session::config::{CrateType, OutputFilenames, OutputType};
 use rustc_session::cstore::{self, CrateSource};
 use rustc_session::lint::builtin::LINKER_MESSAGES;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 
 pub mod assert_module_sources;
 pub mod back;
@@ -255,6 +255,19 @@ impl SymbolExport {
     }
 }
 
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct EiiLinkageImplInfo {
+    pub span: Span,
+    pub impl_crate: CrateNum,
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct EiiLinkageInfo {
+    pub name: Symbol,
+    pub impls: Vec<EiiLinkageImplInfo>,
+    pub default_impl: Option<EiiLinkageImplInfo>,
+}
+
 /// Misc info we load from metadata to persist beyond the tcx.
 ///
 /// Note: though `CrateNum` is only meaningful within the same tcx, information within `CrateInfo`
@@ -281,6 +294,9 @@ pub struct CrateInfo {
     pub used_crate_source: UnordMap<CrateNum, Arc<CrateSource>>,
     pub used_crates: Vec<CrateNum>,
     pub dependency_formats: Arc<Dependencies>,
+    /// EII implementations used by the link-time duplicate check, so `-Zno-link` can serialize the data needed by a
+    /// later `-Zlink-only` invocation.
+    pub eii_linkage: Vec<EiiLinkageInfo>,
     pub windows_subsystem: Option<WindowsSubsystemKind>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
     pub lint_level_specs: CodegenLintLevelSpecs,

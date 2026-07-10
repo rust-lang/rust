@@ -12,6 +12,7 @@ mod fulfill;
 pub mod misc;
 pub mod normalize;
 pub mod outlives_bounds;
+pub mod outlives_for_liveness;
 pub mod project;
 pub mod query;
 #[allow(hidden_glob_reexports)]
@@ -249,6 +250,25 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
     }
 }
 
+fn set_projection_term_to_non_rigid<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: impl IntoIterator<Item = ty::Clause<'tcx>>,
+) -> impl Iterator<Item = ty::Clause<'tcx>> {
+    predicates.into_iter().map(move |clause| {
+        if let ty::ClauseKind::Projection(projection_pred) = clause.kind().skip_binder() {
+            clause
+                .kind()
+                .rebind(ty::ProjectionPredicate {
+                    projection_term: projection_pred.projection_term,
+                    term: ty::set_aliases_to_non_rigid(tcx, projection_pred.term).skip_norm_wip(),
+                })
+                .upcast(tcx)
+        } else {
+            clause
+        }
+    })
+}
+
 #[instrument(level = "debug", skip(tcx, elaborated_env))]
 fn do_normalize_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -272,10 +292,36 @@ fn do_normalize_predicates<'tcx>(
     let span = cause.span;
     let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    // FIXME: `elaborated_env` is not really rigid. We do this to be
+    // consistent with the old solver.
+    let elaborated_env = if tcx.next_trait_solver_globally()
+        && !tcx.disable_param_env_normalization_hack()
+    {
+        let elaborated_env = ty::set_aliases_to_rigid(tcx, elaborated_env);
+        let elaborated_env = set_projection_term_to_non_rigid(tcx, elaborated_env.caller_bounds());
+        ty::ParamEnv::new(tcx.mk_clauses_from_iter(elaborated_env))
+    } else {
+        elaborated_env
+    };
     let predicates = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(predicates));
-    // FIXME: opaque types in param env might be in defining scope but we're
-    // using non body analysis for here. So the rigidness marker is wrong.
-    let predicates = ty::set_aliases_to_non_rigid(tcx, predicates).skip_norm_wip();
+    let predicates = if tcx.next_trait_solver_globally() {
+        if !tcx.disable_param_env_normalization_hack() {
+            let predicates: Vec<_> = set_projection_term_to_non_rigid(tcx, predicates).collect();
+            // FIXME(type_alias_impl_trait): opaque types in param env might be
+            // in defining scope but we're using non body analysis here.
+            // So the rigidness marker is wrong.
+            ty::set_opaques_to_non_rigid(tcx, predicates).skip_norm_wip()
+        } else {
+            // Param env is used in different typing modes but itself
+            // is normalized in `non_body_analysis`.
+            // That not only makes the rigidness of opaques types wrong,
+            // other aliases can be indirectly affected as well.
+            // So we conservatively set everything to be non-rigid.
+            ty::set_aliases_to_non_rigid(tcx, predicates).skip_norm_wip()
+        }
+    } else {
+        predicates
+    };
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
@@ -300,7 +346,7 @@ fn do_normalize_predicates<'tcx>(
     //
     // This is required by trait-system-refactor-initiative#166. The new solver encounters
     // this more frequently as we entirely ignore outlives predicates with the old solver.
-    let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
+    let _errors = infcx.resolve_regions(cause.body_def_id, elaborated_env, []);
     match infcx.fully_resolve(predicates) {
         Ok(predicates) => Ok(predicates),
         Err(fixup_err) => {
@@ -341,9 +387,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     // can be sure that no errors should occur.
     let mut predicates: Vec<_> = util::elaborate(
         tcx,
-        unnormalized_env.caller_bounds().into_iter().map(|predicate| {
+        unnormalized_env.caller_bounds().into_iter().map(|clause| {
             if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
-                return predicate;
+                return clause;
             }
 
             struct ConstNormalizer<'tcx>(TyCtxt<'tcx>);
@@ -407,7 +453,7 @@ pub fn normalize_param_env_or_error<'tcx>(
             // compatibility. Eventually when lazy norm is implemented this can just be removed.
             // We do not normalize types here as there is no backwards compatibility requirement
             // for us to do so.
-            predicate.fold_with(&mut ConstNormalizer(tcx))
+            clause.fold_with(&mut ConstNormalizer(tcx))
         }),
     )
     .collect();
@@ -882,6 +928,10 @@ pub fn provide(providers: &mut Providers) {
         specialization_enabled_in: specialize::specialization_enabled_in,
         instantiate_and_check_impossible_predicates,
         is_impossible_associated_item,
+        live_args_for_alias_from_outlives_bounds:
+            outlives_for_liveness::live_args_for_alias_from_outlives_bounds,
+        args_known_to_outlive_alias_params:
+            outlives_for_liveness::args_known_to_outlive_alias_params,
         ..*providers
     };
 }

@@ -27,7 +27,7 @@ use crate::{
 
 mod closure;
 
-#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",

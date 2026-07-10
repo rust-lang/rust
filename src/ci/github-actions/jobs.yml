@@ -380,6 +380,8 @@ auto:
   - name: optional-x86_64-gnu-parallel-frontend
     # This test can be flaky, so do not cancel CI if it fails, for now.
     continue_on_error: true
+    env:
+      DOCKER_SCRIPT: optional-x86_64-gnu-parallel-frontend.sh
     <<: *job-linux-4c
 
   # This job ensures commits landing on nightly still pass the full
@@ -474,7 +476,7 @@ auto:
   - name: dist-x86_64-apple
     env:
       SCRIPT: >-
-        ./x.py dist bootstrap
+        ./x.py dist bootstrap enzyme
         --include-default-paths
         --host=x86_64-apple-darwin
         --target=x86_64-apple-darwin

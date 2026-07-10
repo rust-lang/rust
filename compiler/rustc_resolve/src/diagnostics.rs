@@ -1662,28 +1662,6 @@ pub(crate) struct UnusedQualifications {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "{$elided ->
-        [true] `&` without an explicit lifetime name cannot be used here
-        *[false] `'_` cannot be used here
-    }"
-)]
-pub(crate) struct AssociatedConstElidedLifetime {
-    #[suggestion(
-        "use the `'static` lifetime",
-        style = "verbose",
-        code = "{code}",
-        applicability = "machine-applicable"
-    )]
-    pub span: Span,
-
-    pub code: &'static str,
-    pub elided: bool,
-    #[note("cannot automatically infer `'static` because of other lifetimes in scope")]
-    pub lifetimes_in_scope: MultiSpan,
-}
-
-#[derive(Diagnostic)]
 #[diag("lifetime parameter `{$ident}` only used once")]
 pub(crate) struct SingleUseLifetime {
     #[label("this lifetime...")]

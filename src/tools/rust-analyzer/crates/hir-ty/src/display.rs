@@ -746,26 +746,33 @@ impl<'db> HirDisplay<'db> for Const<'db> {
             ConstKind::Value(value) => render_const_scalar_from_valtree(f, value.ty, value.value),
             ConstKind::Unevaluated(unev) => {
                 let c = unev.def.0;
-                match c {
-                    GeneralConstId::ConstId(id) => match &ConstSignature::of(f.db, id).name {
-                        Some(name) => {
-                            f.start_location_link(id.into());
-                            write!(f, "{}", name.display(f.db, f.edition()))?;
-                            f.end_location_link();
+                let generic_def = match c {
+                    GeneralConstId::ConstId(id) => {
+                        match &ConstSignature::of(f.db, id).name {
+                            Some(name) => {
+                                f.start_location_link(id.into());
+                                write!(f, "{}", name.display(f.db, f.edition()))?;
+                                f.end_location_link();
+                            }
+                            None => f.write_str("_")?,
                         }
-                        None => f.write_str("_")?,
-                    },
+                        Some(id.into())
+                    }
                     GeneralConstId::StaticId(id) => {
                         let name = &StaticSignature::of(f.db, id).name;
                         f.start_location_link(id.into());
                         write!(f, "{}", name.display(f.db, f.edition()))?;
                         f.end_location_link();
+                        Some(id.into())
                     }
                     GeneralConstId::AnonConstId(_) => {
-                        f.write_str(if f.display_kind.is_source_code() { "_" } else { "{const}" })?
+                        f.write_str(if f.display_kind.is_source_code() { "_" } else { "{const}" })?;
+                        None
                     }
                 };
-                hir_fmt_generics(f, unev.args.as_slice(), c.generic_def(f.db), None)?;
+                if let Some(generic_def) = generic_def {
+                    hir_fmt_generics(f, unev.args.as_slice(), Some(generic_def), None)?;
+                }
                 Ok(())
             }
             ConstKind::Error(..) => f.write_char('_'),

@@ -1,6 +1,6 @@
 //! Compiled declarative macro expanders (`macro_rules!` and `macro`)
 
-use std::{cell::OnceCell, ops::ControlFlow};
+use std::ops::ControlFlow;
 
 use base_db::Crate;
 use span::{Edition, Span, SyntaxContext};
@@ -32,7 +32,7 @@ impl DeclarativeMacroExpander {
     pub fn expand(
         &self,
         db: &dyn ExpandDatabase,
-        tt: tt::TopSubtree,
+        tt: &tt::TopSubtree,
         call_id: MacroCallId,
         span: Span,
     ) -> ExpandResult<(tt::TopSubtree, Option<u32>)> {
@@ -46,7 +46,7 @@ impl DeclarativeMacroExpander {
                 .mac
                 .expand(
                     db,
-                    &tt,
+                    tt,
                     |s| {
                         s.ctx =
                             apply_mark(db, s.ctx, call_id.into(), self.transparency, self.edition)
@@ -61,7 +61,7 @@ impl DeclarativeMacroExpander {
     pub fn expand_unhygienic(
         &self,
         db: &dyn ExpandDatabase,
-        tt: tt::TopSubtree,
+        tt: &tt::TopSubtree,
         call_style: MacroCallStyle,
         call_site: Span,
     ) -> ExpandResult<tt::TopSubtree> {
@@ -72,7 +72,7 @@ impl DeclarativeMacroExpander {
             ),
             None => self
                 .mac
-                .expand(db, &tt, |_| (), call_style, call_site)
+                .expand(db, tt, |_| (), call_style, call_site)
                 .map(TupleExt::head)
                 .map_err(Into::into),
         }
@@ -91,10 +91,10 @@ impl DeclarativeMacroExpander {
         let root = root.syntax_node();
 
         let transparency = |node: ast::AnyHasAttrs| {
-            let cfg_options = OnceCell::new();
+            let mut cfg_options = None;
             expand_cfg_attr(
                 node.attrs(),
-                || cfg_options.get_or_init(|| def_crate.cfg_options(db)),
+                || cfg_options.get_or_insert_with(|| def_crate.cfg_options(db)),
                 |attr, _| {
                     if let ast::Meta::KeyValueMeta(attr) = attr
                         && attr.path().is1("rustc_macro_transparency")

@@ -171,7 +171,7 @@ pub fn load_workspace_into_db(
             .map(|(crate_id, path)| {
                 (
                     crate_id,
-                    path.map_or_else(Err, |(_, path)| {
+                    path.and_then(|(_, path)| {
                         proc_macro_server.as_ref().map_err(Clone::clone).and_then(
                             |proc_macro_server| load_proc_macro(proc_macro_server, &path, &[]),
                         )

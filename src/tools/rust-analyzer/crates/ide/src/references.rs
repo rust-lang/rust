@@ -79,8 +79,8 @@ pub struct Declaration {
 //
 // Special handling for constructors:
 // - When the cursor is on `{`, `(`, or `;` in a struct/enum definition
-// - When the cursor is on the type name in a struct/enum definition
 // These cases will show only constructor/initialization usages of the type
+// (for example, `S { .. }`, `S(..)`, or `S`) instead of every type reference.
 //
 // | Editor  | Shortcut |
 // |---------|----------|

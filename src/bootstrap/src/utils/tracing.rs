@@ -66,7 +66,6 @@ macro_rules! trace_io {
     }
 }
 
-#[cfg(feature = "tracing")]
 pub fn format_location(location: std::panic::Location<'static>) -> String {
     format!("{}:{}", location.file(), location.line())
 }

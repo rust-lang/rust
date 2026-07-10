@@ -117,7 +117,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::MissingFields) -> Option<Vec
             });
 
             let old_field_list = field_list_parent.record_expr_field_list()?;
-            let root = old_field_list.syntax().ancestors().last()?;
+            let root = old_field_list.syntax().tree_top();
             let (editor, _) = SyntaxEditor::new(root);
             let make = editor.make();
 
@@ -178,7 +178,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::MissingFields) -> Option<Vec
             let missing_fields = ctx.sema.record_pattern_missing_fields(field_list_parent);
 
             let old_field_list = field_list_parent.record_pat_field_list()?;
-            let root = old_field_list.syntax().ancestors().last()?;
+            let root = old_field_list.syntax().tree_top();
             let (editor, _) = SyntaxEditor::new(root);
             let make = editor.make();
 

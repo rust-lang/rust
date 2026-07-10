@@ -580,7 +580,7 @@ impl<'db> SourceAnalyzer<'db> {
     ) -> Option<Type<'db>> {
         let binding = match self.body_or_sig.as_ref()? {
             BodyOrSig::Sig { .. } | BodyOrSig::VariantFields { .. } => return None,
-            BodyOrSig::Body { body, .. } => body.self_param()?,
+            BodyOrSig::Body { body, .. } => body.self_param?.formal,
         };
         let ty = self.infer()?.binding_ty(binding);
         Some(self.ty(ty))
@@ -1155,7 +1155,7 @@ impl<'db> SourceAnalyzer<'db> {
         let parent = path.syntax().parent();
         let parent = || parent.clone();
 
-        let mut prefer_value_ns = false;
+        let mut prefer_value_ns = parent().and_then(ast::PathExpr::cast).is_some();
         let resolved = (|| {
             let infer = self.infer()?;
             if let Some(path_expr) = parent().and_then(ast::PathExpr::cast) {

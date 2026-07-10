@@ -1812,6 +1812,28 @@ impl char {
         ToCasefold(CaseMappingIter::new(conversions::to_casefold(self)))
     }
 
+    /// Returns the code point value as a `u32`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(char_to_u32)]
+    ///
+    /// let ascii = 'a';
+    /// let heart = '❤';
+    ///
+    /// assert_eq!(ascii.to_u32(), 97_u32);
+    /// assert_eq!(heart.to_u32(), 0x2764_u32);
+    /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[unstable(feature = "char_to_u32", issue = "158938")]
+    #[rustc_const_unstable(feature = "char_to_u32", issue = "158938")]
+    #[inline(always)]
+    pub const fn to_u32(self) -> u32 {
+        self as u32
+    }
+
     /// Checks if the value is within the ASCII range.
     ///
     /// # Examples

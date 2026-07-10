@@ -79,7 +79,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_, '_>
 
     let function = ctx.sema.to_def(&ast_func)?;
 
-    let def_file_editor = SyntaxEditor::new(ast_func.syntax().ancestors().last().unwrap()).0;
+    let def_file_editor = SyntaxEditor::new(ast_func.syntax().tree_top()).0;
     let params = get_fn_params(ctx.sema.db, function, &param_list, def_file_editor.make())?;
 
     let mut file_editors = FxHashMap::default();
@@ -255,7 +255,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
         return None;
     }
     let syntax = call_info.node.syntax().clone();
-    let editor = SyntaxEditor::new(syntax.ancestors().last().unwrap()).0;
+    let editor = SyntaxEditor::new(syntax.tree_top()).0;
     let params = get_fn_params(ctx.sema.db, function, &param_list, editor.make())?;
 
     if call_info.arguments.len() != params.len() {
@@ -1570,11 +1570,8 @@ async fn foo(arg: u32) -> u32 {
 }
 fn spawn<T>(_: T) {}
 fn main() {
-    spawn({
-        let arg = 42;
-        async move {
-            bar(arg).await * 2
-        }
+    spawn(async move {
+        bar(42).await * 2
     });
 }
 "#,
@@ -1605,12 +1602,9 @@ async fn foo(arg: u32) -> u32 {
 }
 fn spawn<T>(_: T) {}
 fn main() {
-    spawn({
-        let arg = 42;
-        async move {
-            bar(arg).await;
-            42
-        }
+    spawn(async move {
+        bar(42).await;
+        42
     });
 }
 "#,
@@ -1645,11 +1639,10 @@ fn spawn<T>(_: T) {}
 fn main() {
     let var = 42;
     spawn({
-        let x = var;
         let y = var + 1;
         let z: &u32 = &var;
         async move {
-            bar(x).await;
+            bar(var).await;
             y + y + *z
         }
     });

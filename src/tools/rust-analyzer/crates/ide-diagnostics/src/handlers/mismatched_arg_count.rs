@@ -539,4 +539,21 @@ pub fn repro<T: A>() {
 "#,
         );
     }
+
+    #[test]
+    fn cfg_inside_macro_inside_arg() {
+        check_diagnostics(
+            r#"
+fn foo() {}
+
+macro_rules! make_X {
+    () => { #[cfg(false)] X };
+}
+
+fn main() {
+    foo(make_X!());
+}
+        "#,
+        );
+    }
 }

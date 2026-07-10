@@ -13,8 +13,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs, iter};
 
-use build_helper::exit;
-
 use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
 use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
@@ -44,7 +42,7 @@ use crate::utils::helpers::{
     up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify};
+use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify, exit};
 
 mod compiletest;
 pub mod failed_tests;

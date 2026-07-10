@@ -39,8 +39,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         tcx,
         thir: &*thir,
         typeck_results,
-        // FIXME(#132279): We're in a body, should handle opaques.
-        typing_env: ty::TypingEnv::non_body_analysis(tcx, def_id),
+        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def_id),
         hir_source: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
         pattern_arena: &pattern_arena,

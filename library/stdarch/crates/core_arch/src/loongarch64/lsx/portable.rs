@@ -227,11 +227,25 @@ impl_vv!("lsx", lsx_vneg_w, is::simd_neg, m128i, i32x4);
 impl_vv!("lsx", lsx_vneg_d, is::simd_neg, m128i, i64x2);
 impl_vv!("lsx", lsx_vfsqrt_s, is::simd_fsqrt, m128, f32x4);
 impl_vv!("lsx", lsx_vfsqrt_d, is::simd_fsqrt, m128d, f64x2);
+impl_vv!("lsx", lsx_vfrsqrt_s, ls::simd_frsqrt_s, m128, f32x4);
+impl_vv!("lsx", lsx_vfrsqrt_d, ls::simd_frsqrt_d, m128d, f64x2);
+impl_vv!("lsx", lsx_vfrecip_s, ls::simd_frecip_s, m128, f32x4);
+impl_vv!("lsx", lsx_vfrecip_d, ls::simd_frecip_d, m128d, f64x2);
+impl_vv!("lsx", lsx_vfrintrp_s, is::simd_ceil, m128, f32x4);
+impl_vv!("lsx", lsx_vfrintrp_d, is::simd_ceil, m128d, f64x2);
+impl_vv!("lsx", lsx_vfrintrm_s, is::simd_floor, m128, f32x4);
+impl_vv!("lsx", lsx_vfrintrm_d, is::simd_floor, m128d, f64x2);
+impl_vv!("lsx", lsx_vfrintrz_s, is::simd_trunc, m128, f32x4);
+impl_vv!("lsx", lsx_vfrintrz_d, is::simd_trunc, m128d, f64x2);
 
 impl_gv!("lsx", lsx_vreplgr2vr_b, ls::simd_splat, m128i, i8x16, i32);
 impl_gv!("lsx", lsx_vreplgr2vr_h, ls::simd_splat, m128i, i16x8, i32);
 impl_gv!("lsx", lsx_vreplgr2vr_w, ls::simd_splat, m128i, i32x4, i32);
 impl_gv!("lsx", lsx_vreplgr2vr_d, ls::simd_splat, m128i, i64x2, i64);
+
+impl_ggv!("lsx", lsx_vldx, simd_ldx, m128i, i8x16, *const i8, i64, unsafe);
+
+impl_gsv!("lsx", lsx_vld, simd_ld, m128i, i8x16, *const i8, 12, const, unsafe);
 
 impl_sv!("lsx", lsx_vrepli_b, ls::simd_splat, m128i, i8x16, 10);
 impl_sv!("lsx", lsx_vrepli_h, ls::simd_splat, m128i, i16x8, 10);
@@ -328,6 +342,10 @@ impl_vvv!("lsx", lsx_vsrl_b, ls::simd_shr, m128i, u8x16);
 impl_vvv!("lsx", lsx_vsrl_h, ls::simd_shr, m128i, u16x8);
 impl_vvv!("lsx", lsx_vsrl_w, ls::simd_shr, m128i, u32x4);
 impl_vvv!("lsx", lsx_vsrl_d, ls::simd_shr, m128i, u64x2);
+impl_vvv!("lsx", lsx_vrotr_b, ls::simd_rotr, m128i, u8x16);
+impl_vvv!("lsx", lsx_vrotr_h, ls::simd_rotr, m128i, u16x8);
+impl_vvv!("lsx", lsx_vrotr_w, ls::simd_rotr, m128i, u32x4);
+impl_vvv!("lsx", lsx_vrotr_d, ls::simd_rotr, m128i, u64x2);
 impl_vvv!("lsx", lsx_vbitclr_b, ls::simd_bitclr, m128i, u8x16);
 impl_vvv!("lsx", lsx_vbitclr_h, ls::simd_bitclr, m128i, u16x8);
 impl_vvv!("lsx", lsx_vbitclr_w, ls::simd_bitclr, m128i, u32x4);
@@ -368,6 +386,14 @@ impl_vvv!("lsx", lsx_vabsd_bu, ls::simd_absd, m128i, u8x16);
 impl_vvv!("lsx", lsx_vabsd_hu, ls::simd_absd, m128i, u16x8);
 impl_vvv!("lsx", lsx_vabsd_wu, ls::simd_absd, m128i, u32x4);
 impl_vvv!("lsx", lsx_vabsd_du, ls::simd_absd, m128i, u64x2);
+impl_vvv!("lsx", lsx_vmuh_b, simd_muh, m128i, i8x16, i16x16);
+impl_vvv!("lsx", lsx_vmuh_h, simd_muh, m128i, i16x8, i32x8);
+impl_vvv!("lsx", lsx_vmuh_w, simd_muh, m128i, i32x4, i64x4);
+impl_vvv!("lsx", lsx_vmuh_d, simd_muh, m128i, i64x2, i128x2);
+impl_vvv!("lsx", lsx_vmuh_bu, simd_muh, m128i, u8x16, u16x16);
+impl_vvv!("lsx", lsx_vmuh_hu, simd_muh, m128i, u16x8, u32x8);
+impl_vvv!("lsx", lsx_vmuh_wu, simd_muh, m128i, u32x4, u64x4);
+impl_vvv!("lsx", lsx_vmuh_du, simd_muh, m128i, u64x2, u128x2);
 impl_vvv!("lsx", lsx_vpickev_b, simd_pickev_b, m128i, i8x16);
 impl_vvv!("lsx", lsx_vpickev_h, simd_pickev_h, m128i, i16x8);
 impl_vvv!("lsx", lsx_vpickev_w, simd_pickev_w, m128i, i32x4);
@@ -393,6 +419,10 @@ impl_vvv!("lsx", lsx_vpackod_h, simd_packod_h, m128i, i16x8);
 impl_vvv!("lsx", lsx_vpackod_w, simd_packod_w, m128i, i32x4);
 impl_vvv!("lsx", lsx_vpackod_d, simd_packod_d, m128i, i64x2);
 
+impl_vgg!("lsx", lsx_vstx, simd_stx, m128i, i8x16, *mut i8, i64, unsafe);
+
+impl_vgs!("lsx", lsx_vst, simd_st, m128i, i8x16, *mut i8, 12, const, unsafe);
+
 impl_vuv!("lsx", lsx_vslli_b, is::simd_shl, m128i, i8x16);
 impl_vuv!("lsx", lsx_vslli_h, is::simd_shl, m128i, i16x8);
 impl_vuv!("lsx", lsx_vslli_w, is::simd_shl, m128i, i32x4);
@@ -405,6 +435,10 @@ impl_vuv!("lsx", lsx_vsrli_b, is::simd_shr, m128i, u8x16);
 impl_vuv!("lsx", lsx_vsrli_h, is::simd_shr, m128i, u16x8);
 impl_vuv!("lsx", lsx_vsrli_w, is::simd_shr, m128i, u32x4);
 impl_vuv!("lsx", lsx_vsrli_d, is::simd_shr, m128i, u64x2);
+impl_vuv!("lsx", lsx_vrotri_b, ls::simd_rotr, m128i, u8x16);
+impl_vuv!("lsx", lsx_vrotri_h, ls::simd_rotr, m128i, u16x8);
+impl_vuv!("lsx", lsx_vrotri_w, ls::simd_rotr, m128i, u32x4);
+impl_vuv!("lsx", lsx_vrotri_d, ls::simd_rotr, m128i, u64x2);
 impl_vuv!("lsx", lsx_vaddi_bu, is::simd_add, m128i, u8x16, 5);
 impl_vuv!("lsx", lsx_vaddi_hu, is::simd_add, m128i, u16x8, 5);
 impl_vuv!("lsx", lsx_vaddi_wu, is::simd_add, m128i, u32x4, 5);

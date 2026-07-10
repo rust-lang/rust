@@ -38,7 +38,7 @@ use crate::utils::helpers::{
 };
 use crate::{
     CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode,
-    debug, trace,
+    debug, exit, trace,
 };
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
@@ -1293,12 +1293,10 @@ pub fn rustc_cargo(
         cargo.rustflag("-Clink-args=-Wl,--icf=all");
     }
 
-    if builder.config.rust_profile_use.is_some() && builder.config.rust_profile_generate.is_some() {
-        panic!("Cannot use and generate PGO profiles at the same time");
-    }
-    let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
+    let is_collecting = if let Some(path) = &builder.config.rust_pgo.generate_profile {
         if build_compiler.stage == 1 {
-            cargo.rustflag(&format!("-Cprofile-generate={path}"));
+            cargo
+                .rustflag(&format!("-Cprofile-generate={}", path.to_str().expect("non-UTF8 path")));
             // Apparently necessary to avoid overflowing the counters during
             // a Cargo build profile
             cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
@@ -1306,9 +1304,9 @@ pub fn rustc_cargo(
         } else {
             false
         }
-    } else if let Some(path) = &builder.config.rust_profile_use {
+    } else if let Some(path) = &builder.config.rust_pgo.use_profile {
         if build_compiler.stage == 1 {
-            cargo.rustflag(&format!("-Cprofile-use={path}"));
+            cargo.rustflag(&format!("-Cprofile-use={}", path.to_str().expect("non-UTF8 path")));
             if builder.is_verbose() {
                 cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
             }
@@ -1464,7 +1462,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     // found. This is to avoid the linker errors about undefined references to
     // `__llvm_profile_instrument_memop` when linking `rustc_driver`.
     let mut llvm_linker_flags = String::new();
-    if builder.config.llvm_profile_generate
+    if builder.config.llvm_pgo.generate_profile.is_some()
         && target.is_msvc()
         && let Some(ref clang_cl_path) = builder.config.llvm_clang_cl
     {
@@ -2068,7 +2066,7 @@ impl Step for Sysroot {
                         sysroot_lib_rustlib_src_rust.display(),
                     );
                 }
-                build_helper::exit!(1);
+                exit!(1);
             }
         }
 
@@ -2086,7 +2084,7 @@ impl Step for Sysroot {
                     builder.src.display(),
                     e,
                 );
-                build_helper::exit!(1);
+                exit!(1);
             }
         }
 
