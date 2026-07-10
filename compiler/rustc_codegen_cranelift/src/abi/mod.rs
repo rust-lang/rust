@@ -139,13 +139,19 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         mut returns: Vec<AbiParam>,
         args: &[Value],
     ) -> Cow<'_, [Value]> {
-        // Pass i128 arguments by-ref on Windows.
+        // On x86_64 Windows f128 is passed and returned indirectly (sret in LLVM terminology).
+        let indirect_f128 =
+            self.tcx.sess.target.is_like_windows && self.tcx.sess.target.arch == Arch::X86_64;
+
+        // Pass i128 (and, on x86_64 Windows, f128) arguments by-ref.
         let (params, args): (Vec<_>, Cow<'_, [_]>) = if self.tcx.sess.target.is_like_windows {
             let (params, args): (Vec<_>, Vec<_>) = params
                 .into_iter()
                 .zip(args)
                 .map(|(param, &arg)| {
-                    if param.value_type == types::I128 {
+                    if param.value_type == types::I128
+                        || (indirect_f128 && param.value_type == types::F128)
+                    {
                         let arg_ptr = self.create_stack_slot(16, 16);
                         arg_ptr.store(self, arg, MemFlags::trusted());
                         (AbiParam::new(self.pointer_type), arg_ptr.get_addr(self))
@@ -161,6 +167,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         };
 
         let ret_single_i128 = returns.len() == 1 && returns[0].value_type == types::I128;
+        let ret_single_f128 = returns.len() == 1 && returns[0].value_type == types::F128;
         if ret_single_i128 && self.tcx.sess.target.is_like_windows {
             // Return i128 using the vector ABI on Windows
             returns[0].value_type = types::I64X2;
@@ -168,8 +175,11 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             let ret = self.lib_call_unadjusted(name, params, returns, &args)[0];
 
             Cow::Owned(vec![codegen_bitcast(self, types::I128, ret)])
-        } else if ret_single_i128 && self.tcx.sess.target.arch == Arch::S390x {
-            // Return i128 using a return area pointer on s390x.
+        } else if (ret_single_i128 && self.tcx.sess.target.arch == Arch::S390x)
+            || (ret_single_f128 && indirect_f128)
+        {
+            // Return x86_64 Windows f128 and s390x i128 indirectly (sret in LLVM terminology).
+            let ret_ty = returns[0].value_type;
             let mut params = params;
             let mut args = args.to_vec();
 
@@ -179,7 +189,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
             self.lib_call_unadjusted(name, params, vec![], &args);
 
-            Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())])
+            Cow::Owned(vec![ret_ptr.load(self, ret_ty, MemFlags::trusted())])
         } else {
             Cow::Borrowed(self.lib_call_unadjusted(name, params, returns, &args))
         }
