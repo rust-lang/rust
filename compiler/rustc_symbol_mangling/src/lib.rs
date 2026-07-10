@@ -93,7 +93,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mono::{InstantiationMode, MonoItem};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Instance, InstanceKind, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 use tracing::debug;
 
@@ -148,6 +148,10 @@ pub fn typeid_for_trait_ref<'tcx>(
     trait_ref: ty::ExistentialTraitRef<'tcx>,
 ) -> String {
     v0::mangle_typeid_for_trait_ref(tcx, trait_ref)
+}
+
+pub fn typeid_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
+    v0::mangle_typeid_for_ty(tcx, ty)
 }
 
 pub fn symbol_name_from_attrs<'tcx>(

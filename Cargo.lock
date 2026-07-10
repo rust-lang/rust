@@ -4706,6 +4706,7 @@ dependencies = [
  "rustc_hir",
  "rustc_middle",
  "rustc_span",
+ "rustc_symbol_mangling",
  "rustc_target",
  "rustc_trait_selection",
  "tracing",
