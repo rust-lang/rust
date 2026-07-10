@@ -721,7 +721,7 @@ auto:
         --enable-full-tools
         --enable-profiler
         --disable-docs
-      SCRIPT: python x.py dist bootstrap --include-default-paths
+      SCRIPT: python x.py -j1 dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows
