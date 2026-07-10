@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/33941>.
+//! Test iterator type mismatch prints pretty error message.
+//! This used to emit many duplicated, unhelpful error messages.
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver

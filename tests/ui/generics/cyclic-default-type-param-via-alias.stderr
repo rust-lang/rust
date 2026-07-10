@@ -1,17 +1,17 @@
 error[E0391]: cycle detected when computing type of `Foo::T`
-  --> $DIR/issue-34373.rs:7:34
+  --> $DIR/cyclic-default-type-param-via-alias.rs:10:34
    |
 LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
    |                                  ^^^^^^^^^^
    |
 note: ...which requires expanding type alias `DefaultFoo`...
-  --> $DIR/issue-34373.rs:9:19
+  --> $DIR/cyclic-default-type-param-via-alias.rs:12:19
    |
 LL | type DefaultFoo = Foo;
    |                   ^^^
    = note: ...which again requires computing type of `Foo::T`, completing the cycle
 note: cycle used when checking that `Foo` is well-formed
-  --> $DIR/issue-34373.rs:7:1
+  --> $DIR/cyclic-default-type-param-via-alias.rs:10:1
    |
 LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
