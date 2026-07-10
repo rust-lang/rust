@@ -19,7 +19,7 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 
 use miri::Immediate::{Scalar, ScalarPair, Uninit};
-use miri::*;
+use miri::{interpret, *};
 use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
 use rustc_interface::interface;
@@ -486,22 +486,21 @@ impl<'tcx> PrirodaContext<'tcx> {
             None => {
                 local_desc.value = "<dead>".to_string();
             }
-            Some(Either::Left(_)) => {
-                local_desc.value = "<indirect>".to_string();
-            }
-            Some(Either::Right(imm)) => {
-                match imm {
-                    Scalar(_) => {
-                        local_desc.value = "<immediate>".to_string();
-                    }
-                    ScalarPair(_, _) => {
-                        local_desc.value = "<immediate-pair>".to_string();
-                    }
+            Some(Either::Right(Uninit)) => local_desc.value = "<uninit>".to_string(),
 
-                    Uninit => {
-                        local_desc.value = "<uninit>".to_string();
+            Some(Either::Left(_) | Either::Right(_)) => {
+                match self.ecx.local_to_op(local, None).report_err() {
+                    Ok(op) => {
+                        local_desc.value = match op.as_mplace_or_imm() {
+                            Either::Right(imm) => format!("{imm}"),
+                            Either::Left(_) => "<indirect>".to_string(),
+                        };
                     }
-                };
+                    Err(err) => {
+                        local_desc.value =
+                            format!("<error: {}>", interpret::format_interp_error(err));
+                    }
+                }
             }
         };
 
