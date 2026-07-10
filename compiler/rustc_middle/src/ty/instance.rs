@@ -1,6 +1,6 @@
+use std::ops::ControlFlow;
 use std::{assert_matches, fmt};
 
-use rustc_abi::Layout;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -17,8 +17,8 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Print};
 use crate::ty::{
-    self, AssocContainer, EarlyBinder, GenericArg, GenericArgs, GenericArgsRef, ParamTy, Ty,
-    TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, AssocContainer, EarlyBinder, GenericArgs, GenericArgsRef, ParamTy, Ty, TyCtxt,
+    TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
@@ -34,13 +34,6 @@ use crate::ty::{
 pub struct Instance<'tcx> {
     pub def: InstanceKind<'tcx>,
     pub args: GenericArgsRef<'tcx>,
-}
-
-pub type InstanceArgs<'tcx> = ty::List<InstanceArg<'tcx>>;
-
-pub enum InstanceArg<'tcx> {
-    Mono(GenericArg<'tcx>),
-    Poly(ParamTy, Layout<'tcx>),
 }
 
 /// Describes why a `ReifyShim` was created. This is needed to distinguish a ReifyShim created to
@@ -999,21 +992,100 @@ impl<'tcx> Instance<'tcx> {
             return *self;
         }
         let generics = tcx.generics_of(def_id);
+        let clauses: Vec<_> = tcx
+            .predicates_of(def_id)
+            .instantiate_identity(tcx)
+            .into_iter()
+            .map(|(c, _)| c.skip_norm_wip())
+            .collect();
         let args =
             tcx.mk_args_from_iter(self.args.iter().enumerate().map(
                 |(idx, arg)| match arg.kind() {
                     ty::GenericArgKind::Type(ty) => {
                         let param_ty = ParamTy::for_def(generics.param_at(idx, tcx));
-                        let layout_result =
-                            tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty));
-                        let param_layout = ty::ParamLayout(layout_result.unwrap().layout);
-                        let erased_ty = tcx.mk_ty_from_kind(ty::Erased(param_ty, param_layout));
-                        erased_ty.into()
+                        if is_ty_param_polymorphizable(tcx, &clauses, param_ty) {
+                            let layout_result = tcx
+                                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty));
+                            let param_layout = ty::ParamLayout(layout_result.unwrap().layout);
+                            let erased_ty = tcx.mk_ty_from_kind(ty::Erased(param_ty, param_layout));
+                            erased_ty.into()
+                        } else {
+                            arg
+                        }
                     }
                     ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Const(_) => arg,
                 },
             ));
         Self { def: self.def, args }
+    }
+}
+
+#[instrument(level = "debug", ret, skip(tcx))]
+fn is_ty_param_polymorphizable<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    clauses: &[ty::Clause<'tcx>],
+    param_ty: ParamTy,
+) -> bool {
+    let mut found_copy_bound = false;
+    for clause in clauses {
+        // FIXME: is skip_binder appropriate?
+        match clause.kind().skip_binder() {
+            ty::ClauseKind::Trait(trait_predicate) => {
+                let is_for_param = trait_predicate.self_ty().is_param(param_ty.index);
+                if is_for_param && tcx.is_lang_item(trait_predicate.def_id(), LangItem::Copy) {
+                    found_copy_bound = true;
+                    debug!(?found_copy_bound);
+                } else if is_for_param
+                    && tcx.is_lang_item(trait_predicate.def_id(), LangItem::Sized)
+                {
+                    // FIXME: what about rest of Sized hierarchy?
+                    debug!("found Sized bound -> doesn't matter");
+                } else if has_param(param_ty, trait_predicate) {
+                    debug!("polymorphization disqualified by {clause:?}");
+                    return false;
+                }
+            }
+            ty::ClauseKind::Projection(projection_predicate) => {
+                if has_param(param_ty, projection_predicate) {
+                    debug!("polymorphization disqualified by {clause:?}");
+                    return false;
+                }
+            }
+            ty::ClauseKind::ConstArgHasType(_, ty) => {
+                if has_param(param_ty, ty) {
+                    debug!("polymorphization disqualified by {clause:?}");
+                    return false;
+                }
+            }
+            ty::ClauseKind::RegionOutlives(..)
+            // TODO: maybe disqualify T: 'static since that's needed for TypeId on stable?
+            // might allow ignoring TypeId for now without breaking stuff.
+            | ty::ClauseKind::TypeOutlives(..)
+            | ty::ClauseKind::WellFormed(..)
+            | ty::ClauseKind::HostEffect(..)
+            | ty::ClauseKind::ConstEvaluatable(..)
+            | ty::ClauseKind::UnstableFeature(..) => {}
+        }
+    }
+    found_copy_bound
+}
+
+fn has_param<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(param_ty: ParamTy, t: T) -> bool {
+    t.visit_with(&mut HasParamVisitor { param_ty }).is_break()
+}
+
+struct HasParamVisitor {
+    param_ty: ParamTy,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasParamVisitor {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+        if t.is_param(self.param_ty.index) {
+            return ControlFlow::Break(());
+        }
+        t.super_visit_with(self)
     }
 }
 
