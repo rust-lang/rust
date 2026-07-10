@@ -10,6 +10,8 @@ use rustc_span::{Ident, Span, Spanned, Symbol};
 use crate::Res;
 use crate::late::PatternSource;
 
+pub(crate) mod impls;
+
 #[derive(Diagnostic)]
 #[diag("can't use {$is_self ->
         [true] `Self`
