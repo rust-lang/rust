@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/35976>.
+//! This used to emit spurious `Sized` bound unsatisfied error when trait
+//! was not imported, instead of suggestion to import it.
 //@ edition:2015
 //@ revisions: imported unimported
 //@[imported] check-pass
