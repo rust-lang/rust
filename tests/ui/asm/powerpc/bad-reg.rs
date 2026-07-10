@@ -11,7 +11,7 @@
 //@[powerpcspe] compile-flags: --target powerpc-unknown-linux-gnuspe
 //@[powerpcspe] needs-llvm-components: powerpc
 //@ ignore-backends: gcc
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![crate_type = "rlib"]
 #![feature(no_core, repr_simd, asm_experimental_arch)]

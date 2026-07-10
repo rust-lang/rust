@@ -1,5 +1,5 @@
 //@ run-pass
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 //
 // Tests that the Rust lexer accepts Unicode Pattern_White_Space characters.
 //
