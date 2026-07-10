@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3979>.
+//! Test calling nested supertrait's method in default method body works.
 //@ check-pass
 
 trait A {

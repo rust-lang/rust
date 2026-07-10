@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3979>.
+//! Test calling supertrait's method in default method body works.
 //@ run-pass
+
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 

@@ -1,5 +1,5 @@
 error: expected `{`, found identifier `foo`
-  --> $DIR/issue-39848.rs:3:21
+  --> $DIR/macro-adjacent-ident-on-token.rs:6:21
    |
 LL |         if $tgt.has_$field() {}
    |                     ^^^^^^ expected `{`
@@ -8,7 +8,7 @@ LL |     get_opt!(bar, foo);
    |     ------------------ in this macro invocation
    |
 note: the `if` expression is missing a block after this condition
-  --> $DIR/issue-39848.rs:3:12
+  --> $DIR/macro-adjacent-ident-on-token.rs:6:12
    |
 LL |         if $tgt.has_$field() {}
    |            ^^^^^^^^^
