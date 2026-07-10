@@ -469,6 +469,10 @@ auto:
   - name: x86_64-gnu-miri
     <<: *job-linux-4c
 
+  - name: optional-x86_64-gnu-autodiff
+    continue_on_error: true
+    <<: *job-linux-4c
+
   ####################
   #  macOS Builders  #
   ####################
