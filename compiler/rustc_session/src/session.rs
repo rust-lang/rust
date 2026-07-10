@@ -94,6 +94,7 @@ pub enum PointerAuthARM8_3Key {
 }
 
 /// Forms of extra discrimination.
+#[derive(Clone, Debug, PartialEq)]
 pub enum PointerAuthDiscrimination {
     /// No additional discrimination.
     None,
@@ -106,6 +107,7 @@ pub enum PointerAuthDiscrimination {
 }
 
 /// Types of address discrimination.
+#[derive(Clone, Debug)]
 pub enum PointerAuthAddressDiscriminator {
     /// Enable/disable hardware address discrimination.
     HardwareAddress(bool),
@@ -114,6 +116,7 @@ pub enum PointerAuthAddressDiscriminator {
     Synthetic(u64),
 }
 
+#[derive(Clone, Debug)]
 pub struct PointerAuthSchema {
     pub is_address_discriminated: PointerAuthAddressDiscriminator,
     pub discrimination_kind: PointerAuthDiscrimination,
@@ -1183,12 +1186,26 @@ impl Session {
         self.pointer_auth_config.is_some()
     }
 
-    pub fn pointer_authentication_functions(&self) -> Option<&PointerAuthSchema> {
-        self.pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.as_ref())
+    pub fn pointer_authentication_functions(&self) -> Option<PointerAuthSchema> {
+        self.pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.clone())
     }
 
-    pub fn pointer_authentication_init_fini(&self) -> Option<&PointerAuthSchema> {
-        self.pointer_auth_config.as_ref().and_then(|cfg| cfg.init_fini.as_ref())
+    pub fn pointer_authentication_init_fini(&self) -> Option<PointerAuthSchema> {
+        self.pointer_auth_config.as_ref().and_then(|cfg| cfg.init_fini.clone())
+    }
+
+    pub fn pointer_authentication_fn_ptr_type_discrimination(&self) -> bool {
+        self.pointer_auth_config
+            .as_ref()
+            .and_then(|cfg| cfg.function_pointers.as_ref())
+            .is_some_and(|schema| schema.discrimination_kind == PointerAuthDiscrimination::Type)
+    }
+
+    pub fn pointer_authentication_fn_ptr_key(&self) -> Option<PointerAuthARM8_3Key> {
+        self.pointer_auth_config
+            .as_ref()
+            .and_then(|cfg| cfg.function_pointers.as_ref())
+            .map(|schema| schema.key)
     }
 }
 

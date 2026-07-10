@@ -83,6 +83,7 @@ error: fn_abi_of(extern_c) = FnAbi {
            fixed_count: 1,
            conv: C,
            can_unwind: false,
+           ptrauth_discriminator: 0,
        }
   --> $DIR/pass-indirectly-attr.rs:20:1
    |
@@ -174,6 +175,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
            fixed_count: 1,
            conv: Rust,
            can_unwind: false,
+           ptrauth_discriminator: 0,
        }
   --> $DIR/pass-indirectly-attr.rs:27:1
    |
