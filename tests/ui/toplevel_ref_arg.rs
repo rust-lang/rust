@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::toplevel_ref_arg)]
-#![allow(clippy::uninlined_format_args, unused, clippy::useless_vec)]
+#![expect(clippy::uninlined_format_args, clippy::useless_vec)]
 
 extern crate proc_macros;
 use proc_macros::{external, inline_macros};

@@ -1,7 +1,6 @@
 #![warn(clippy::unit_return_expecting_ord)]
-#![allow(clippy::needless_return)]
+#![expect(clippy::needless_return, clippy::useless_vec)]
 #![allow(clippy::unused_unit)]
-#![allow(clippy::useless_vec)]
 
 struct Struct {
     field: isize,
