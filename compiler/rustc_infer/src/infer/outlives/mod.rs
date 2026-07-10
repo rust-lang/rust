@@ -16,7 +16,6 @@ use crate::infer::lexical_region_resolve;
 use crate::infer::region_constraints::ConstraintKind;
 
 pub mod env;
-pub mod for_liveness;
 pub mod obligations;
 pub mod test_type_match;
 pub(crate) mod verify;

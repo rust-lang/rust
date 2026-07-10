@@ -2,8 +2,6 @@
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ [edition2015] edition: 2015
 //@ [edition2024] edition: 2024
-//@ [polonius_alpha] known-bug: #153215
-//@ [polonius_alpha] check-pass
 //@ [polonius_alpha] edition: 2024
 //@ [polonius_alpha] compile-flags: -Zpolonius=next
 
@@ -43,7 +41,7 @@ fn dangle_ref() -> &'static [i32; 3] {
     let mut res = &[4, 5, 6];
     let x = [1, 2, 3];
     hide_ref(&mut res).swap(hide_ref(&mut &x));
-    res //[edition2024]~ ERROR cannot return value referencing local variable `x`
+    res //[edition2024,polonius_alpha]~ ERROR cannot return value referencing local variable `x`
 }
 
 // Here we are hiding `'b` making the caller believe that `Rc<RefCell<&'s T>>`
@@ -59,7 +57,7 @@ fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap +
 fn dangle_rc_refcell() -> &'static [i32; 3] {
     let long = Rc::new(RefCell::new(&[4, 5, 6]));
     let x = [1, 2, 3];
-    let short = Rc::new(RefCell::new(&x)); //[edition2024]~ ERROR `x` does not live long enough
+    let short = Rc::new(RefCell::new(&x)); //[edition2024,polonius_alpha]~ ERROR `x` does not live long enough
     hide_rc_refcell(long.clone()).swap(hide_rc_refcell(short));
     let res: &'static [i32; 3] = *long.borrow();
     res
