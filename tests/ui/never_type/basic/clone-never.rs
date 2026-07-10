@@ -4,6 +4,6 @@
 fn main() {
     let x = panic!();
     x.clone();
-    //~^ WARN [trait_method_on_coerced_never_type]
+    //~^ WARN [method_call_on_diverging_infer_var]
     //~| WARN previously accepted
 }

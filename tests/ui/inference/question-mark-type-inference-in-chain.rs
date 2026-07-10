@@ -33,10 +33,10 @@ pub fn error1(lines: &[&str]) -> Result<Vec<Version>> {
     let mut tags = lines.iter().map(|e| parse(e)).collect()?;
 
     tags.sort();
-    //~^ WARN trait method call on a coerced never type
+    //~^ WARN method call on a diverging inference variable
     //~| WARN previously accepted
     //~| NOTE for more information, see issue
-    //~| NOTE `#[warn(trait_method_on_coerced_never_type)]` (part of `#[warn(future_incompatible)]`) on by default
+    //~| NOTE `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
     //~| ERROR no method named `sort` found for type `!` in the current scope [E0599]
     //~| HELP consider providing a type annotation
     //~| NOTE method not found in `!`
@@ -64,7 +64,7 @@ pub fn error3(lines: &[&str]) -> Result<Vec<Version>> {
     //~| NOTE: in this expansion of desugaring of operator `?`
     //~| NOTE: in this expansion of desugaring of operator `?`
     tags.sort();
-    //~^ WARN trait method call on a coerced never type
+    //~^ WARN method call on a diverging inference variable
     //~| WARN previously accepted
     //~| NOTE for more information, see issue
     //~| ERROR no method named `sort` found for type `!` in the current scope [E0599]

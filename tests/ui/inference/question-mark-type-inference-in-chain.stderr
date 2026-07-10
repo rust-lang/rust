@@ -1,4 +1,4 @@
-warning: trait method call on a coerced never type
+warning: method call on a diverging inference variable
   --> $DIR/question-mark-type-inference-in-chain.rs:35:10
    |
 LL |     tags.sort();
@@ -7,7 +7,7 @@ LL |     tags.sort();
    = help: consider providing a type annotation
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
-   = note: `#[warn(trait_method_on_coerced_never_type)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
 
 error[E0599]: no method named `sort` found for type `!` in the current scope
   --> $DIR/question-mark-type-inference-in-chain.rs:35:10
@@ -37,7 +37,7 @@ LL |     let mut tags = lines.iter().map(|e| parse(e)).collect::<Vec<_>>()?;
    |
    = help: the nightly-only, unstable trait `Try` is not implemented for `Vec<std::result::Result<Version, Error>>`
 
-warning: trait method call on a coerced never type
+warning: method call on a diverging inference variable
   --> $DIR/question-mark-type-inference-in-chain.rs:66:10
    |
 LL |     tags.sort();
@@ -84,7 +84,7 @@ error: aborting due to 5 previous errors; 2 warnings emitted
 Some errors have detailed explanations: E0277, E0283, E0599.
 For more information about an error, try `rustc --explain E0277`.
 Future incompatibility report: Future breakage diagnostic:
-warning: trait method call on a coerced never type
+warning: method call on a diverging inference variable
   --> $DIR/question-mark-type-inference-in-chain.rs:35:10
    |
 LL |     tags.sort();
@@ -93,10 +93,10 @@ LL |     tags.sort();
    = help: consider providing a type annotation
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
-   = note: `#[warn(trait_method_on_coerced_never_type)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
-warning: trait method call on a coerced never type
+warning: method call on a diverging inference variable
   --> $DIR/question-mark-type-inference-in-chain.rs:66:10
    |
 LL |     tags.sort();
@@ -105,5 +105,5 @@ LL |     tags.sort();
    = help: consider providing a type annotation
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
-   = note: `#[warn(trait_method_on_coerced_never_type)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
 

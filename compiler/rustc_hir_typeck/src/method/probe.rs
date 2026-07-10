@@ -12,7 +12,7 @@ use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, query};
-use rustc_lint::builtin::TRAIT_METHOD_ON_COERCED_NEVER_TYPE;
+use rustc_lint::builtin::METHOD_CALL_ON_DIVERGING_INFER_VAR;
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
@@ -396,9 +396,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         struct MissingTypeAnnot;
 
         #[derive(Diagnostic)]
-        #[diag("trait method call on a coerced never type")]
+        #[diag("method call on a diverging inference variable")]
         #[help("consider providing a type annotation")]
-        struct TraitMethodOnCoercedNeverType;
+        struct MethodCallOnDivergingInferenceVariable;
 
         let mut orig_values = OriginalQueryValues::default();
         let predefined_opaques_in_body = if self.next_trait_solver() {
@@ -509,10 +509,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .any(|&candidate_id| self.sub_unification_table_root_var(candidate_id) == ty_id)
             {
                 self.tcx.emit_node_span_lint(
-                    TRAIT_METHOD_ON_COERCED_NEVER_TYPE,
+                    METHOD_CALL_ON_DIVERGING_INFER_VAR,
                     scope_expr_id,
                     span,
-                    TraitMethodOnCoercedNeverType,
+                    MethodCallOnDivergingInferenceVariable,
                 );
                 let root_ty = Ty::new_var(self.tcx, ty_id);
                 self.demand_eqtype(span, root_ty, self.tcx.types.never);

@@ -40,27 +40,27 @@ fn temp<T>() -> Result<T, ()> { todo!() }
 fn main() -> Result<(), ()> {
     let x = loop {};
     x.method();
-    //~^ WARN [trait_method_on_coerced_never_type]
+    //~^ WARN [method_call_on_diverging_infer_var]
     //~| WARN previously accepted
 
     { loop {} }.method();
-    //~^ WARN [trait_method_on_coerced_never_type]
+    //~^ WARN [method_call_on_diverging_infer_var]
     //~| WARN previously accepted
 
     let e = match loop {} {
         y => y.method(),
-        //~^ WARN [trait_method_on_coerced_never_type]
+        //~^ WARN [method_call_on_diverging_infer_var]
         //~| WARN previously accepted
     };
 
     let error = match loop {} {
         error => (&error).anyhow_kind().new(error),
-        //~^ WARN [trait_method_on_coerced_never_type]
+        //~^ WARN [method_call_on_diverging_infer_var]
         //~| WARN previously accepted
     };
 
     let res = temp()?;
     res.method();
-    //~^ WARN [trait_method_on_coerced_never_type]
+    //~^ WARN [method_call_on_diverging_infer_var]
     //~| WARN previously accepted
 }
