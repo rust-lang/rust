@@ -44,4 +44,29 @@ mod complex_Self_doesnt_map {
     //~^ ERROR: mismatched types
 }
 
+// FIXME(fn_delegation): support heuristics to wrap return value
+// with complex type (`Box<Rc<Self>>`).
+mod return_type_self_mapping_produces_error {
+    trait MyAdd {
+        fn add(self, other: Self) -> Self;
+    }
+
+    impl MyAdd for usize {
+        fn add(self, other: Self) -> Self { self + other }
+    }
+
+    #[derive(Eq, PartialEq, Debug)]
+    struct W(Box<usize>);
+    reuse impl MyAdd for W { //~ ERROR: mismatched types
+        println!("{self:?}");
+        let _x = 213;
+
+        self.0
+    }
+
+    pub fn check() {
+        assert_eq!(W(Box::new(5)).add(W(Box::new(5))), W(Box::new(10)));
+    }
+}
+
 fn main() {}
