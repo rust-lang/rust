@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/35139>.
+
 use std::fmt;
 
 pub trait MethodType {

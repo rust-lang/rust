@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3447>.
+//! This used to overflow stack.
 //@ run-pass
+
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
