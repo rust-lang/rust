@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ only-pauthtest
 //@ revisions: O0_PAUTH O3_PAUTH O0_NO_PAUTH O3_NO_PAUTH
 //@ add-minicore
