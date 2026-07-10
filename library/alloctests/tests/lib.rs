@@ -25,7 +25,6 @@
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(slice_partition_dedup)]
-#![feature(string_from_utf8_lossy_owned)]
 #![feature(string_remove_matches)]
 #![feature(const_btree_len)]
 #![feature(const_trait_impl)]
