@@ -29,8 +29,8 @@ use rustc_middle::ty::print::{
     PrintTraitRefExt as _, with_forced_trimmed_paths,
 };
 use rustc_middle::ty::{
-    self, GenericArgKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, Unnormalized, Upcast,
+    self, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::CrateNum;
@@ -916,11 +916,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref())
                         .flatten()
                 {
-                    let (_, format_args) = self.on_unimplemented_components(
+                    let (_, mut format_args) = self.on_unimplemented_components(
                         trait_ref,
                         main_obligation,
                         diag.long_ty_path(),
+                        false,
                     );
+                    if let ty::Adt(def, args) = trait_ref.self_ty().skip_binder().kind() {
+                        for param in self.tcx.generics_of(def.did()).own_params.iter() {
+                            match param.kind {
+                                GenericParamDefKind::Type { .. }
+                                | GenericParamDefKind::Const { .. } => {
+                                    format_args
+                                        .generic_args
+                                        .push((param.name, args[param.index as usize].to_string()));
+                                }
+                                _ => continue,
+                            }
+                        }
+                    }
                     let CustomDiagnostic { message, label, notes, parent_label: _ } =
                         command.eval(None, &format_args);
 
