@@ -208,6 +208,7 @@ impl PanicStrategy {
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum Sanitizer {
     Address,
+    AllocToken,
     Cfi,
     Dataflow,
     Kcfi,

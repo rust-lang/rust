@@ -11,6 +11,7 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Inline;
     base.static_position_independent_executables = true;
     base.supported_sanitizers = SanitizerSet::ADDRESS
+        | SanitizerSet::ALLOCTOKEN
         | SanitizerSet::CFI
         | SanitizerSet::KCFI
         | SanitizerSet::DATAFLOW
