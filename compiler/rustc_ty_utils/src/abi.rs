@@ -6,6 +6,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, find_attr};
 use rustc_middle::bug;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
+use rustc_middle::ptrauth::ptrauth_compute_fn_ptr_type_discriminator_for;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
@@ -632,6 +633,11 @@ fn fn_abi_new_uncached<'tcx>(
             determined_fn_def_id,
             sig.abi(),
         ),
+        ptrauth_discriminator: if tcx.sess.pointer_authentication_fn_ptr_type_discrimination() {
+            ptrauth_compute_fn_ptr_type_discriminator_for(tcx, sig).unwrap_or(0).into()
+        } else {
+            0
+        },
     };
     fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi());
     debug!("fn_abi_new_uncached = {:?}", fn_abi);

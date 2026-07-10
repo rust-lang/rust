@@ -247,7 +247,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
         cv: Scalar,
         layout: abi::Scalar,
         ty: Type<'gcc>,
-        _schema: Option<&PointerAuthSchema>,
+        _ptrauth_schema: Option<PointerAuthSchema>,
     ) -> RValue<'gcc> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
