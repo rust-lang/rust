@@ -4,11 +4,12 @@ use std::borrow::Borrow;
 
 use libc::{c_char, c_uint};
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _};
+use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _, Size};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_crate_store::DllImport;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;
@@ -183,6 +184,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         global_alloc: GlobalAlloc<'tcx>,
         need_symbol_name: bool,
         ptrauth_schema: Option<PointerAuthSchema>,
+        ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
     ) -> Result<&'ll Value, u64> {
         let alloc = match global_alloc {
             GlobalAlloc::Function { instance, .. } => {
@@ -229,7 +231,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             }
         };
 
-        let init = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
+        let init = const_alloc_to_llvm(
+            self,
+            alloc.inner(),
+            IsStatic::No,
+            IsInitOrFini::No,
+            ptrauth_discriminators,
+        );
         let alloc = alloc.inner();
 
         if need_symbol_name {
@@ -409,6 +417,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         layout: abi::Scalar,
         llty: &'ll Type,
         ptrauth_schema: Option<PointerAuthSchema>,
+        ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
     ) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
@@ -425,7 +434,12 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                 let (prov, offset) = ptr.prov_and_relative_offset();
                 let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                 let base_addr_space = global_alloc.address_space(self);
-                let base_addr = match self.alloc_to_backend(global_alloc, false, ptrauth_schema) {
+                let base_addr = match self.alloc_to_backend(
+                    global_alloc,
+                    false,
+                    ptrauth_schema,
+                    ptrauth_discriminators,
+                ) {
                     Ok(base_addr) => base_addr,
                     Err(base_addr) => {
                         let val = base_addr.wrapping_add(offset.bytes());
