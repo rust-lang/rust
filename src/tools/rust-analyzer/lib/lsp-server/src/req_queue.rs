@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{ErrorCode, Request, RequestId, Response, ResponseError};
+use crate::{ErrorCode, Request, RequestId, Response, ResponseError, msg::ResponseKind};
 
 /// Manages the set of pending requests, both incoming and outgoing.
 #[derive(Debug)]
@@ -47,7 +47,7 @@ impl<I> Incoming<I> {
             message: "canceled by client".to_owned(),
             data: None,
         };
-        Some(Response { id, result: None, error: Some(error) })
+        Some(Response { id, response_kind: ResponseKind::Err { error } })
     }
 
     pub fn complete(&mut self, id: &RequestId) -> Option<I> {
