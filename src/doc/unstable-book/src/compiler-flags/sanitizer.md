@@ -13,6 +13,7 @@ The tracking issues for this feature are:
 
 * [#39699](https://github.com/rust-lang/rust/issues/39699).
 * [#89653](https://github.com/rust-lang/rust/issues/89653).
+* [#159111](https://github.com/rust-lang/rust/issues/159111).
 
 ------------------------
 
@@ -31,6 +32,8 @@ This feature allows for use of one of following sanitizers:
   * [ThreadSanitizer](#threadsanitizer) a fast data race detector.
 
 * Those that apart from testing, may be used in production:
+  * [AllocToken](#alloctoken) LLVM AllocToken provides token identifiers to
+    the allocator for heap partitioning.
   * [ControlFlowIntegrity](#controlflowintegrity) LLVM Control Flow Integrity
     (CFI) provides forward-edge control flow protection.
   * [DataFlowSanitizer](#dataflowsanitizer) a generic dynamic data flow analysis
@@ -45,7 +48,8 @@ This feature allows for use of one of following sanitizers:
   * [ShadowCallStack](#shadowcallstack) provides backward-edge control flow
     protection (aarch64 only).
 
-To enable a sanitizer compile with `-Zsanitizer=address`, `-Zsanitizer=cfi`,
+To enable a sanitizer compile with `-Zsanitizer=address`,
+`-Zsanitizer=alloc-token`, `-Zsanitizer=cfi`,
 `-Zsanitizer=dataflow`,`-Zsanitizer=hwaddress`, `-Zsanitizer=leak`,
 `-Zsanitizer=memory`, `-Zsanitizer=memtag`, `-Zsanitizer=realtime`,
 `-Zsanitizer=shadow-call-stack` or `-Zsanitizer=thread`. You might also need the
@@ -224,6 +228,281 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
   Shadow gap:              cc
 ==39249==ABORTING
 ```
+
+# AllocToken
+
+The LLVM AllocToken support in the Rust compiler provides token identifiers
+for heap partitioning for both Rust-compiled code only and for C or C++ and
+Rust-compiled code mixed-language binaries, also known as “mixed binaries”
+(i.e., for when C or C++ and Rust-compiled code share the same virtual
+address space and memory allocator), by classifying allocated types and
+passing token identifiers to the allocator (i.e., by rewriting allocation
+calls to token-enabled versions of the allocation functions, prefixed with
+`__alloc_token_`, with the token identifier appended as the last argument).
+
+LLVM AllocToken can be enabled with `-Zsanitizer=alloc-token` and requires a
+token-enabled memory allocator (i.e., an allocator that implements the
+token-enabled allocator interface and uses token identifiers to separate
+allocations into partitions) for heap partitioning. Allocators that do not
+use token identifiers degrade gracefully (i.e., programs remain correct,
+without heap partitioning).
+
+The pointer-split heap partitioning scheme is the default heap partitioning
+scheme for the Rust compiler. It separates allocations into two partitions:
+one containing pointers and another not containing pointers, with default or
+unknown being the partition containing pointers. It uses the
+TypeHashPointerSplit token identifier derivation mode with the maximum number
+of tokens set to two (i.e., `-Zsanitizer-alloc-token-max` is ignored), so that
+the token identifier is the partition number: token identifier 0 for the
+partition not containing pointers, and token identifier 1 for the partition
+containing pointers.
+
+The type-hash-pointer-split heap partitioning scheme additionally separates
+allocations by the allocated type within each partition, providing per-type
+token identifiers. It uses a configurable maximum number of tokens (i.e.,
+`-Zsanitizer-alloc-token-max`, defaulting to the same value as Clang, i.e.,
+the number of tokens bounded by `SIZE_MAX`, when not set).
+
+The heap partitioning scheme can be selected with the
+`-Zsanitizer-alloc-token-scheme` option with either `pointer-split` or
+`type-hash-pointer-split` values.
+
+Non-standard allocation functions (e.g., the Rust allocator interface
+functions, such as `__rust_alloc`) are instrumented by default; this can be
+turned off with the `-Zsanitizer-alloc-token-extended=no` option. The token
+identifier can be encoded in the allocation function name instead of being
+appended as an argument with the `-Zsanitizer-alloc-token-fast-abi` option.
+
+It is recommended to rebuild the standard library with allocation token
+instrumentation enabled by using the Cargo build-std feature (i.e.,
+`-Zbuild-std`) when enabling it, so that allocations performed by the standard
+library are instrumented with allocation token hints.
+
+See the [Clang AllocToken documentation][clang-alloctoken] for more details.
+
+## Example 1: Separating allocations of types containing pointers from allocations of types not containing pointers
+
+```rust,ignore (making doc tests pass cross-platform is hard)
+pub struct Buffer {
+    data: [u8; 4096],
+}
+
+pub struct Node {
+    next: *mut Node,
+    value: u64,
+}
+
+fn main() {
+    // Allocations of types not containing pointers (i.e., `Buffer`) are placed
+    // in partition 0.
+    let buffer = Box::new(Buffer { data: [1; 4096] });
+
+    // Allocations of types containing pointers (i.e., `Node`) are placed in
+    // partition 1.
+    let node = Box::new(Node {
+        next: core::ptr::null_mut(),
+        value: 1,
+    });
+
+    std::hint::black_box((buffer, node));
+}
+```
+Fig. 1. Example allocations of a type not containing pointers (i.e., `Buffer`)
+and a type containing pointers (i.e., `Node`).
+
+```shell
+$ RUSTFLAGS="-Zsanitizer=alloc-token --emit=llvm-ir" cargo build -Zbuild-std --target x86_64-unknown-linux-gnu --release
+$ grep 'call.*@__alloc_token' target/x86_64-unknown-linux-gnu/release/deps/rust_heap_partitioning_1-*.ll
+  %0 = tail call noalias noundef dereferenceable_or_null(4096) ptr @__alloc_token_…__rust_alloc(i64 noundef 4096, i64 noundef 1, i64 0) #11, !noalias !20, !alloc_token !23
+  %1 = tail call noalias noundef align 8 dereferenceable_or_null(16) ptr @__alloc_token_…__rust_alloc(i64 noundef 16, i64 noundef 8, i64 1) #11, !alloc_token !25
+```
+Fig. 2. Build of Fig. 1 with LLVM AllocToken enabled, and the rewritten
+allocation calls in the emitted LLVM IR.
+
+When LLVM AllocToken is enabled, allocation calls are rewritten to
+token-enabled versions of the allocation functions, with the partition number
+as the token identifier (i.e., token identifier 0 for the partition not
+containing pointers, and token identifier 1 for the partition containing
+pointers), and a token-enabled memory allocator places the allocations in
+separate heap partitions, so that attempts to use attacker-controlled data
+allocations (e.g., `Buffer`) to control the heap layout around, corrupt, or
+reclaim the memory of objects containing pointers (e.g., `Node`) across
+partitions are mitigated.
+
+
+## Example 2: Querying token identifiers with the alloc_token_infer intrinsic
+
+```rust,ignore (making doc tests pass cross-platform is hard)
+#![allow(dead_code)]
+#![allow(internal_features)]
+#![feature(core_intrinsics)]
+
+use core::intrinsics::alloc_token_infer;
+
+pub struct Buffer {
+    data: [u8; 4096],
+}
+
+pub struct Node {
+    next: *mut Node,
+    value: u64,
+}
+
+fn main() {
+    // Allocations of types not containing pointers (i.e., `Buffer`) are placed
+    // in partition 0.
+    println!("Buffer: partition {}", alloc_token_infer::<Buffer>());
+
+    // Allocations of types containing pointers (i.e., `Node`) are placed in
+    // partition 1.
+    println!("Node: partition {}", alloc_token_infer::<Node>());
+}
+```
+Fig. 3. Querying the token identifier for a given type at compile time with
+the `alloc_token_infer` intrinsic (i.e., the Rust equivalent of the Clang
+`__builtin_infer_alloc_token` builtin).
+
+```shell
+$ RUSTFLAGS="-Zsanitizer=alloc-token" cargo run -Zbuild-std --target x86_64-unknown-linux-gnu --release
+   ...
+   Compiling rust-heap-partitioning-2 v0.1.0 (/home/rcvalle/rust-heap-partitioning-examples/rust-heap-partitioning-2)
+    Finished `release` profile [optimized] target(s) in 31.77s
+     Running `target/x86_64-unknown-linux-gnu/release/rust-heap-partitioning-2`
+Buffer: partition 0
+Node: partition 1
+```
+Fig. 4. Build and execution of Fig. 3 with LLVM AllocToken enabled.
+
+The `alloc_token_infer` intrinsic allows allocator and arena implementers to
+query the token identifier for a given type at compile time, so it can be
+passed to a token-enabled allocator interface directly.
+
+
+## Example 3: Separating allocations of types containing pointers from allocations of types not containing pointers with a token-enabled memory allocator in a mixed binary
+
+TCMalloc implements the token-enabled allocator interface using the fast ABI
+(i.e., the token identifier is encoded in the allocation function name, such
+as `__alloc_token_0_malloc` and `__alloc_token_1_malloc`, instead of being
+appended as an argument) with the maximum number of tokens set to two (i.e.,
+the pointer-split heap partitioning scheme), and must be built with allocation
+token instrumentation enabled:
+
+```shell
+$ git clone https://github.com/google/tcmalloc
+$ cd tcmalloc
+$ bazel build --copt=-fsanitize=alloc-token --copt=-fsanitize-alloc-token-fast-abi --copt=-falloc-token-max=2 --copt=-DALLOC_TOKEN_MAX=2 //tcmalloc:tcmalloc
+```
+Fig. 5. Build of TCMalloc with allocation token instrumentation enabled.
+
+```ignore (cannot-test-this-because-uses-custom-build)
+#include <stdlib.h>
+
+struct buffer {
+    char data[4096];
+};
+
+struct node {
+    struct node *next;
+    unsigned long value;
+};
+
+void *
+alloc_buffer(void)
+{
+    /* Allocations of types not containing pointers (i.e., `struct buffer`) are
+       placed in partition 0. */
+    return malloc(sizeof(struct buffer));
+}
+
+void *
+alloc_node(void)
+{
+    /* Allocations of types containing pointers (i.e., `struct node`) are placed
+       in partition 1. */
+    return malloc(sizeof(struct node));
+}
+```
+Fig. 6. Example C library.
+
+```ignore (cannot-test-this-because-uses-custom-build)
+pub struct Buffer {
+    data: [u8; 4096],
+}
+
+pub struct Node {
+    next: *mut Node,
+    value: u64,
+}
+
+#[link(name = "foo")]
+extern "C" {
+    fn alloc_buffer() -> *mut u8;
+    fn alloc_node() -> *mut u8;
+}
+
+fn main() {
+    // Allocations of types not containing pointers (i.e., `Buffer`) are placed
+    // in partition 0.
+    let buffer = Box::new(Buffer { data: [1; 4096] });
+
+    // Allocations of types containing pointers (i.e., `Node`) are placed in
+    // partition 1.
+    let node = Box::new(Node {
+        next: core::ptr::null_mut(),
+        value: 1,
+    });
+
+    let c_buffer = unsafe { alloc_buffer() };
+    let c_node = unsafe { alloc_node() };
+
+    println!("Rust Buffer allocation: {:p}", &*buffer);
+    println!("Rust Node allocation:   {:p}", &*node);
+    println!("C buffer allocation:    {:p}", c_buffer);
+    println!("C node allocation:      {:p}", c_node);
+
+    std::hint::black_box((buffer, node, c_buffer, c_node));
+}
+```
+Fig. 7. Example allocations of types not containing pointers (i.e., `Buffer`
+and `struct buffer`) and types containing pointers (i.e., `Node` and `struct
+node`) by both C- and Rust-compiled code in a mixed binary.
+
+Building this example requires Clang and LLVM 22 or higher (for allocation
+token instrumentation of the C-compiled code and the `AllocTokenPass`), a
+TCMalloc built with allocation token instrumentation enabled (see Fig. 5),
+and a Rust compiler with LLVM AllocToken and heap partitioning support. The
+`Makefile` in this example builds the C library with the Clang
+`-fsanitize=alloc-token`, `-fsanitize-alloc-token-fast-abi`, and
+`-falloc-token-max=2` options, the Rust-compiled code with the equivalent
+`-Zsanitizer=alloc-token` and `-Zsanitizer-alloc-token-fast-abi` options, and
+links both against the TCMalloc built in Fig. 5 (i.e., set `TCMALLOC_LIB` to
+its output directory), so that C or C++ and Rust-compiled code share the same
+token-enabled memory allocator and heap partitioning for the whole program.
+
+```shell
+$ make
+mkdir -p target/release
+clang -I. -Isrc -Wall -fsanitize=alloc-token -fsanitize-alloc-token-fast-abi -falloc-token-max=2 --target=x86_64-unknown-linux-gnu -c src/foo.c -o target/release/libfoo.o
+llvm-ar rcs target/release/libfoo.a target/release/libfoo.o
+RUSTFLAGS="-L./target/release -L/opt/tcmalloc -Clink-arg=-ltcmalloc -Clink-arg=-lstdc++ -Clink-arg=-lm -Clinker=clang -Clink-arg=-fuse-ld=lld -Zsanitizer=alloc-token -Zsanitizer-alloc-token-fast-abi" cargo build -Zbuild-std --release --target x86_64-unknown-linux-gnu
+   ...
+   Compiling rust-heap-partitioning-3 v0.1.0 (/workdir/rust-heap-partitioning-3)
+   ...
+    Finished `release` profile [optimized] target(s) in 1m 02s
+$ TCMALLOC_HEAP_PARTITIONING=1 ./target/x86_64-unknown-linux-gnu/release/rust-heap-partitioning-3
+Rust Buffer allocation: 0x32ad7fe00000
+Rust Node allocation:   0x3b293fc000c0
+C buffer allocation:    0x32ad7fe01000
+C node allocation:      0x3b293fc000b0
+```
+Fig. 8. Build and execution of Figs. 6 and 7 with LLVM AllocToken enabled.
+
+When LLVM AllocToken is enabled and a single token-enabled memory allocator
+serves all compiled code in the mixed binary, allocations of types not
+containing pointers (i.e., `Buffer` and `struct buffer`) and allocations of
+types containing pointers (i.e., `Node` and `struct node`) are placed in
+separate heap partitions (i.e., the printed allocation addresses are in
+separate memory regions), for both the C- and Rust-compiled code (see Fig. 8).
 
 # ControlFlowIntegrity
 
@@ -1014,6 +1293,7 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 
 * [Sanitizers project page](https://github.com/google/sanitizers/wiki/)
 * [AddressSanitizer in Clang][clang-asan]
+* [AllocToken in Clang][clang-alloctoken]
 * [ControlFlowIntegrity in Clang][clang-cfi]
 * [DataFlowSanitizer in Clang][clang-dataflow]
 * [HWAddressSanitizer in Clang][clang-hwasan]
@@ -1024,6 +1304,7 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 * [ThreadSanitizer in Clang][clang-tsan]
 * [RealtimeSanitizer in Clang][clang-rtsan]
 
+[clang-alloctoken]: https://clang.llvm.org/docs/AllocToken.html
 [clang-asan]: https://clang.llvm.org/docs/AddressSanitizer.html
 [clang-cfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html
 [clang-dataflow]: https://clang.llvm.org/docs/DataFlowSanitizer.html
