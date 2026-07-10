@@ -69,6 +69,7 @@ error: fn_abi_of(i8) = FnAbi {
                SysV64,
            ),
            can_unwind: false,
+           ptrauth_discriminator: 0,
        }
   --> $DIR/x86-64-sysv64-arg-ext.rs:13:1
    |
@@ -146,6 +147,7 @@ error: fn_abi_of(u8) = FnAbi {
                SysV64,
            ),
            can_unwind: false,
+           ptrauth_discriminator: 0,
        }
   --> $DIR/x86-64-sysv64-arg-ext.rs:19:1
    |
@@ -223,6 +225,7 @@ error: fn_abi_of(i16) = FnAbi {
                SysV64,
            ),
            can_unwind: false,
+           ptrauth_discriminator: 0,
        }
   --> $DIR/x86-64-sysv64-arg-ext.rs:25:1
    |
@@ -300,6 +303,7 @@ error: fn_abi_of(u16) = FnAbi {
                SysV64,
            ),
            can_unwind: false,
+           ptrauth_discriminator: 0,
        }
   --> $DIR/x86-64-sysv64-arg-ext.rs:31:1
    |
@@ -377,6 +381,7 @@ error: fn_abi_of(i32) = FnAbi {
                SysV64,
            ),
            can_unwind: false,
+           ptrauth_discriminator: 0,
        }
   --> $DIR/x86-64-sysv64-arg-ext.rs:37:1
    |
@@ -454,6 +459,7 @@ error: fn_abi_of(u32) = FnAbi {
                SysV64,
            ),
            can_unwind: false,
+           ptrauth_discriminator: 0,
        }
   --> $DIR/x86-64-sysv64-arg-ext.rs:43:1
    |
