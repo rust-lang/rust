@@ -2363,6 +2363,22 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                 self.pretty_print_type(ty)
             }
 
+            ty::Alias(_, alias)
+                if self.should_truncate()
+                    && let ty::AliasTyKind::Opaque { def_id } = alias.kind
+                    && self.region_highlight_mode.keep_regions
+                    && self
+                        .tcx
+                        .explicit_item_bounds(def_id)
+                        .iter_instantiated_copied(self.tcx, alias.args)
+                        .map(Unnormalized::skip_norm_wip)
+                        .any(|(value, _)| value.has_bound_vars()) =>
+            {
+                // `<impl for<'a> Trait as Trait>`
+                self.printed_type_count += 1;
+                self.pretty_print_type(ty)
+            }
+
             ty::Adt(..)
             | ty::Foreign(_)
             | ty::Pat(..)
@@ -2388,7 +2404,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                 write!(self, "_")?;
                 Ok(())
             }
-            ty::Ref(r, ..) if self.should_truncate() && has_regions => self.pretty_print_type(ty),
+            ty::Ref(..) if self.should_truncate() && has_regions => self.pretty_print_type(ty),
             _ => {
                 self.printed_type_count += 1;
                 self.pretty_print_type(ty)
