@@ -973,6 +973,18 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
+            // We intentionally do not apply pointer authentication (and/or function type
+            // discriminators to the EH personality function).
+            //
+            // Although `get_fn_addr` normally produces a signed function pointer for
+            // externally-callable functions, the EH personality is not an indirect call
+            // target in the SSA sense. Instead, it is a compile-time constant attached to
+            // the Function object (via LLVM's `setPersonalityFn`) and consumed only by
+            // exception handling metadata generation (landing pads / unwind tables).
+            // LLVM never loads or invokes the personality via a function pointer value;
+            // it is not part of the program's call graph or data flow.
+            // It's backend's responsibility to apply ABI-specific personality signing
+            // when emitting the pointer in the object file.
             Some(def_id) if name.is_none() => self.get_fn_addr(
                 ty::Instance::expect_resolve(
                     tcx,
@@ -981,7 +993,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     ty::List::empty(),
                     DUMMY_SP,
                 ),
-                tcx.sess.pointer_authentication_functions(),
+                None,
             ),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");
