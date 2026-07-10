@@ -1297,7 +1297,7 @@ pub fn rustc_cargo(
         panic!("Cannot use and generate PGO profiles at the same time");
     }
     let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
-        if build_compiler.stage == 1 {
+        if build_compiler.stage >= 1 {
             cargo.rustflag(&format!("-Cprofile-generate={path}"));
             // Apparently necessary to avoid overflowing the counters during
             // a Cargo build profile
@@ -1307,7 +1307,7 @@ pub fn rustc_cargo(
             false
         }
     } else if let Some(path) = &builder.config.rust_profile_use {
-        if build_compiler.stage == 1 {
+        if build_compiler.stage >= 1 {
             cargo.rustflag(&format!("-Cprofile-use={path}"));
             if builder.is_verbose() {
                 cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
