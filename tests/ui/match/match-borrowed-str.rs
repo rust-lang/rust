@@ -1,6 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3574>.
+//! Test pattern-matching on `&str` doesn't ICE.
 //@ run-pass
-// rustc --test match_borrowed_str.rs.rs && ./match_borrowed_str.rs
-
 
 fn compare(x: &str, y: &str) -> bool {
     match x {
