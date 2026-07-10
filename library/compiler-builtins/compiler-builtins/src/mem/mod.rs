@@ -6,6 +6,7 @@
 // memcpy/memmove/memset have optimized implementations on some architectures
 #[cfg_attr(all(feature = "arch", target_arch = "x86_64"), path = "x86_64.rs")]
 mod impls;
+mod memchr_impl;
 
 intrinsics! {
     #[mem_builtin]
@@ -66,5 +67,14 @@ intrinsics! {
     #[mem_builtin]
     pub unsafe extern "C" fn strlen(s: *const core::ffi::c_char) -> usize {
         impls::c_string_length(s)
+    }
+
+    #[mem_builtin]
+    pub unsafe extern "C" fn memchr(
+        s: *const core::ffi::c_void,
+        c: core::ffi::c_int,
+        n: usize
+    ) -> *mut core::ffi::c_void {
+        memchr_impl::memchr(s, c, n)
     }
 }

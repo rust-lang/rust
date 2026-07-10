@@ -9,6 +9,7 @@
 #![feature(linkage)]
 #![feature(repr_simd)]
 #![feature(macro_metavar_expr_concat)]
+#![feature(portable_simd)]
 #![feature(rustc_attrs)]
 #![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
