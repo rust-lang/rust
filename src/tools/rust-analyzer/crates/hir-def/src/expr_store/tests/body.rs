@@ -715,6 +715,51 @@ fn foo() -> i64 {
                 }
             }"#]],
     );
+    pretty_print(
+        r#"
+fn foo() -> i64 {
+    #[cfg(true)]
+    {
+        5
+    }
+    #[cfg(false)]
+    {
+        4
+    }
+    #[cfg(false)]
+    {
+        3
+    }
+}
+    "#,
+        expect![[r#"
+            fn foo() {
+                {
+                    5
+                }
+            }"#]],
+    );
+    pretty_print(
+        r#"
+macro_rules! m {
+    () => {
+        { 5 }
+        #[cfg(false)]
+        { 4 }
+    };
+}
+
+fn foo() -> i64 {
+    m!()
+}
+    "#,
+        expect![[r#"
+            fn foo() {
+                {
+                    5
+                }
+            }"#]],
+    );
 }
 
 #[test]
