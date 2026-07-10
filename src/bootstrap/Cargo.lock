@@ -61,6 +61,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha2",
+ "shlex",
  "sysinfo",
  "tar",
  "tempfile",

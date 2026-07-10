@@ -130,17 +130,66 @@ pub fn parse_value_from_args<'a>(args: &'a [OsString], key: &str) -> Option<&'a 
 
 /// Collect all the command line arguments, including the arguments from any `@argfile`
 pub fn collect_args() -> Vec<OsString> {
-    let mut args = Vec::with_capacity(env::args_os().len());
-    for arg in env::args_os().skip(1) {
-        if let Some(s) = arg.to_str()
-            && let Some(path) = s.strip_prefix('@')
-        {
-            args.extend(args_from_argfile(Path::new(path)));
+    collect_args_from(env::args_os().skip(1))
+}
+
+pub(crate) fn collect_args_from(args: impl IntoIterator<Item = OsString>) -> Vec<OsString> {
+    // The shim must inspect the same expanded arguments that rustc receives.
+    let mut expander = ArgExpander::default();
+    for arg in args {
+        expander.arg(arg);
+    }
+    expander.args
+}
+
+#[derive(Default)]
+struct ArgExpander {
+    shell_argfiles: bool,
+    next_is_unstable_option: bool,
+    args: Vec<OsString>,
+}
+
+impl ArgExpander {
+    fn arg(&mut self, arg: OsString) {
+        if let Some(argfile) = arg.to_str().and_then(|arg| arg.strip_prefix('@')) {
+            match argfile.split_once(':') {
+                Some(("shell", path)) if self.shell_argfiles => {
+                    for arg in shell_args_from_argfile(Path::new(path)) {
+                        self.push(arg);
+                    }
+                }
+                _ => {
+                    for arg in args_from_argfile(Path::new(argfile)) {
+                        self.push(arg);
+                    }
+                }
+            }
         } else {
-            args.push(arg)
+            self.push(arg);
         }
     }
-    args
+
+    fn push(&mut self, arg: OsString) {
+        if let Some(arg) = arg.to_str() {
+            if self.next_is_unstable_option {
+                self.inspect_unstable_option(arg);
+                self.next_is_unstable_option = false;
+            } else if let Some(option) = arg.strip_prefix("-Z") {
+                if option.is_empty() {
+                    self.next_is_unstable_option = true;
+                } else {
+                    self.inspect_unstable_option(option);
+                }
+            }
+        }
+        self.args.push(arg);
+    }
+
+    fn inspect_unstable_option(&mut self, option: &str) {
+        if option == "shell-argfiles" {
+            self.shell_argfiles = true;
+        }
+    }
 }
 
 /// Reads all the arguments from argfile given by `path`.
@@ -153,4 +202,15 @@ fn args_from_argfile(path: &Path) -> Vec<OsString> {
         lines
     }
     collect_lines(path).expect("read args from argfile {path:?}")
+}
+
+fn shell_args_from_argfile(path: &Path) -> Vec<OsString> {
+    let contents = std::fs::read_to_string(path).unwrap_or_else(|err| {
+        panic!("failed to read shell args from argfile {}: {err}", path.display())
+    });
+    shlex::split(&contents)
+        .unwrap_or_else(|| panic!("failed to parse shell args from argfile {}", path.display()))
+        .into_iter()
+        .map(OsString::from)
+        .collect()
 }
