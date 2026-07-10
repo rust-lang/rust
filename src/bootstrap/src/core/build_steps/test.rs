@@ -46,6 +46,8 @@ use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envif
 
 mod compiletest;
 pub mod failed_tests;
+#[cfg(test)]
+mod tests;
 
 /// Runs `cargo test` on various internal tools used by bootstrap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1958,6 +1960,11 @@ impl Coverage {
     const SUITE: &'static str = "coverage";
     const ALL_MODES: &[CompiletestMode] =
         &[CompiletestMode::CoverageMap, CompiletestMode::CoverageRun];
+
+    fn skips_all_modes(skip: &[PathBuf]) -> bool {
+        let path = Path::new(Self::PATH);
+        skip.iter().any(|skip| path.starts_with(skip) || path.ends_with(skip))
+    }
 }
 
 impl Step for Coverage {
@@ -1983,6 +1990,10 @@ impl Step for Coverage {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        if Self::skips_all_modes(&run.builder.config.skip) {
+            return;
+        }
+
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
         let target = run.target;
 
@@ -2015,13 +2026,6 @@ impl Step for Coverage {
         modes.retain(|mode| {
             !run.builder.config.skip.iter().any(|skip| skip == Path::new(mode.as_str()))
         });
-
-        // FIXME(Zalathar): Make these commands skip all coverage tests, as expected:
-        // - `./x test --skip=tests`
-        // - `./x test --skip=tests/coverage`
-        // - `./x test --skip=coverage`
-        // Skip handling currently doesn't have a way to know that skipping the coverage
-        // suite should also skip the `coverage-map` and `coverage-run` aliases.
 
         for mode in modes {
             run.builder.ensure(Coverage { compiler, target, mode });
