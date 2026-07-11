@@ -847,7 +847,8 @@ unsafe fn write_quad(buf: &mut [MaybeUninit<u8>], offset: usize, quad: u64) {
 /// Encodes the 16 least-significant decimals of n into `buf[OFFSET .. OFFSET +
 /// 16 ]`.
 fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
-    // Callers pass a remainder modulo 10^16 and reserve sixteen output bytes.
+    // SAFETY: Every caller passes a remainder produced by division by 10^16,
+    // and every used `OFFSET` specialization reserves sixteen bytes in `buf`.
     unsafe {
         core::hint::assert_unchecked(n < 10_000_000_000_000_000);
         core::hint::assert_unchecked(OFFSET <= buf.len() - 16);
