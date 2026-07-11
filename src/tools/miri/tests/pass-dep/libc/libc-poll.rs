@@ -18,6 +18,7 @@ fn main() {
     test_poll_readiness_update();
     test_poll_negative_fd_interest();
     test_poll_invalid_non_negative_fd_interest();
+    test_poll_zero_timeout();
 }
 
 /// Test that the readiness written into the `revents` field on an interest
@@ -139,4 +140,22 @@ fn test_poll_invalid_non_negative_fd_interest() {
     // Ensure that the `revents` has correctly been set to POLLNVAL since this file
     // descriptor should not exist.
     assert_eq!(interests[0].revents, libc::POLLNVAL);
+}
+
+/// Test that calling `poll` with a zero timeout doesn't block the thread
+/// (or at least not for too long).
+fn test_poll_zero_timeout() {
+    let mut fds = [-1, -1];
+    unsafe { errno_check(libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr())) };
+
+    let mut interests = [libc::pollfd { fd: fds[0], events: libc::POLLIN, revents: 0 }];
+    let before = Instant::now();
+    let ready = unsafe {
+        errno_result(libc::poll(interests.as_mut_ptr(), interests.len() as libc::nfds_t, 0))
+            .unwrap()
+    };
+    assert_eq!(ready, 0);
+    // The `poll` should not block; since CI can be slow
+    // we just assert that it didn't block for more than 100ms.
+    assert!(before.elapsed() < Duration::from_millis(100))
 }
