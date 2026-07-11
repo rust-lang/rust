@@ -55,10 +55,6 @@ fn codegen_field<'tcx>(
     }
 }
 
-fn scalar_pair_convert_b_offset(b_offset: Size) -> Offset32 {
-    Offset32::new(b_offset.bytes().try_into().unwrap())
-}
-
 /// A read-only value
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct CValue<'tcx>(CValueInner, TyAndLayout<'tcx>);
@@ -161,7 +157,7 @@ impl<'tcx> CValue<'tcx> {
                     BackendRepr::ScalarPair { a, b, b_offset } => (a, b, b_offset),
                     _ => unreachable!("load_scalar_pair({:?})", self),
                 };
-                let b_offset = scalar_pair_convert_b_offset(b_offset);
+                let b_offset = Offset32::new(b_offset.bytes().try_into().unwrap());
                 let clif_ty1 = scalar_to_clif_type(fx.tcx, a_scalar);
                 let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar);
                 let flags = MemFlagsData::new().with_notrap();
@@ -186,7 +182,7 @@ impl<'tcx> CValue<'tcx> {
         match self.0 {
             CValueInner::ByVal(_) => unreachable!(),
             CValueInner::ByValPair(val1, val2) => match layout.backend_repr {
-                BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } => {
+                BackendRepr::ScalarPair { .. } => {
                     let val = match field.as_u32() {
                         0 => val1,
                         1 => val2,
@@ -577,7 +573,7 @@ impl<'tcx> CPlace<'tcx> {
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
                 let (data1, data2) = match from.1.backend_repr {
-                    BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } => {
+                    BackendRepr::ScalarPair { .. } => {
                         CValue(from.0, dst_layout).load_scalar_pair(fx)
                     }
                     _ => {
@@ -604,7 +600,7 @@ impl<'tcx> CPlace<'tcx> {
                     }
                     CValueInner::ByValPair(val1, val2) => match from.layout().backend_repr {
                         BackendRepr::ScalarPair { a: _, b: _, b_offset } => {
-                            let b_offset = scalar_pair_convert_b_offset(b_offset);
+                            let b_offset = Offset32::new(b_offset.bytes().try_into().unwrap());
                             to_ptr.store(fx, val1, flags);
                             to_ptr.offset(fx, b_offset).store(fx, val2, flags);
                         }
@@ -623,7 +619,7 @@ impl<'tcx> CPlace<'tcx> {
                                 return;
                             }
                             BackendRepr::ScalarPair { a: _, b: _, b_offset } => {
-                                let b_offset = scalar_pair_convert_b_offset(b_offset);
+                                let b_offset = Offset32::new(b_offset.bytes().try_into().unwrap());
                                 let (val1, val2) = from.load_scalar_pair(fx);
                                 to_ptr.store(fx, val1, flags);
                                 to_ptr.offset(fx, b_offset).store(fx, val2, flags);

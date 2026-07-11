@@ -580,9 +580,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let meta = if let BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } =
-                ptr.layout().backend_repr
-            {
+            let meta = if let BackendRepr::ScalarPair { .. } = ptr.layout().backend_repr {
                 Some(ptr.load_scalar_pair(fx).1)
             } else {
                 None
@@ -596,9 +594,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let meta = if let BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } =
-                ptr.layout().backend_repr
-            {
+            let meta = if let BackendRepr::ScalarPair { .. } = ptr.layout().backend_repr {
                 Some(ptr.load_scalar_pair(fx).1)
             } else {
                 None
