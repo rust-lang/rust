@@ -73,6 +73,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2024 "rpit-lifetime-capture"),
     };
+    @msrv = "1.82";
 }
 
 declare_lint! {
