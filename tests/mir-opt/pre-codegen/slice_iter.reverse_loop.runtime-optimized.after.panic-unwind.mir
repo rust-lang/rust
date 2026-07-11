@@ -310,6 +310,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb17: {
+        // DBG: _35 = const {transmute(0x0000000000000000): Option<&T>};
         StorageDead(_20);
         StorageDead(_35);
         StorageDead(_14);

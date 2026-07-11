@@ -306,7 +306,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         )
     }
 
-    fn parse_place(&self, expr_id: ExprId) -> PResult<Place<'tcx>> {
+    pub(super) fn parse_place(&self, expr_id: ExprId) -> PResult<Place<'tcx>> {
         self.parse_place_inner(expr_id).map(|(x, _)| x)
     }
 

@@ -9,10 +9,11 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     let mut _35: &impl Fn(usize, &T);
     let mut _36: (usize, &T);
     let _37: ();
+    let mut _38: std::marker::PhantomData<&T>;
     scope 1 {
         debug (((iter: Enumerate<std::slice::Iter<'_, T>>).0: std::slice::Iter<'_, T>).0: std::ptr::NonNull<T>) => _8;
         debug (((iter: Enumerate<std::slice::Iter<'_, T>>).0: std::slice::Iter<'_, T>).1: *const T) => _11;
-        debug (((iter: Enumerate<std::slice::Iter<'_, T>>).0: std::slice::Iter<'_, T>).2: std::marker::PhantomData<&T>) => const ZeroSized: PhantomData<&T>;
+        debug (((iter: Enumerate<std::slice::Iter<'_, T>>).0: std::slice::Iter<'_, T>).2: std::marker::PhantomData<&T>) => _38;
         debug ((iter: Enumerate<std::slice::Iter<'_, T>>).1: usize) => _12;
         let _33: usize;
         let _34: &T;
@@ -174,6 +175,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb3: {
         StorageDead(_3);
         StorageLive(_12);
+        // DBG: _38 = const ZeroSized: PhantomData<&T>;
         _12 = const 0_usize;
         goto -> bb4;
     }
@@ -215,6 +217,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb7: {
         StorageDead(_15);
+        // DBG: _27 = const {transmute(0x0000000000000000): Option<&T>};
         StorageDead(_18);
         goto -> bb10;
     }
@@ -226,6 +229,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb9: {
+        // DBG: _27 = const {transmute(0x0000000000000000): Option<&T>};
         StorageDead(_20);
         goto -> bb10;
     }
@@ -241,6 +245,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _21 = discriminant(_22);
         _23 = Eq(copy _21, const 0_isize);
         assume(move _23);
+        // DBG: _32 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: Option<(usize, &T)>;
         StorageDead(_23);
         StorageDead(_21);
         StorageDead(_30);
@@ -307,4 +312,8 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_32);
         goto -> bb4;
     }
+}
+
+ALLOC0 (size: 16, align: 8) {
+    __ __ __ __ __ __ __ __ 00 00 00 00 00 00 00 00 │ ░░░░░░░░........
 }

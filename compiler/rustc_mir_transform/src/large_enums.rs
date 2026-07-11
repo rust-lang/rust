@@ -159,7 +159,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                     patch.add_statement(location, stmt);
                 }
 
-                st.make_nop(true);
+                st.kind = StatementKind::Nop;
             }
         }
 

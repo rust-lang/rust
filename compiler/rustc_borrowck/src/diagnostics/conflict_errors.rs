@@ -22,7 +22,7 @@ use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
     FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind,
     Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement, StatementKind,
-    Terminator, TerminatorKind, VarBindingForm, VarDebugInfoContents,
+    Terminator, TerminatorKind, VarBindingForm,
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
@@ -591,10 +591,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         move_span: Span,
         err: &mut Diag<'infcx>,
     ) {
-        let var_info = self.body.var_debug_info.iter().find(|info| match info.value {
-            VarDebugInfoContents::Place(ref p) => p == place,
-            _ => false,
-        });
+        let var_info = self.body.var_debug_info.iter().find(|info| *place == info.place);
         let Some(var_info) = var_info else { return };
         let arg_name = var_info.name;
         struct MatchArgFinder {

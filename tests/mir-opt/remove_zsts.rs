@@ -17,8 +17,14 @@ const MYSTERY: usize = 280_usize.isqrt() - 260_usize.isqrt();
 // EMIT_MIR remove_zsts.remove_generic_array.RemoveZsts.diff
 fn remove_generic_array<T: Copy>(x: T) {
     // CHECK-LABEL: fn remove_generic_array
-    // CHECK: debug a => const ZeroSized: [T; 0];
-    // CHECK: debug b => const ZeroSized: [T; 0];
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK-NOT: = [];
+    // CHECK-NOT: ; 1]
+    // CHECK: [[a]] = const ZeroSized: [T; 0];
+    // CHECK-NOT: = [];
+    // CHECK-NOT: ; 1]
+    // CHECK: [[b]] = const ZeroSized: [T; 0];
     // CHECK-NOT: = [];
     // CHECK-NOT: ; 1]
     let a = [x; 0];

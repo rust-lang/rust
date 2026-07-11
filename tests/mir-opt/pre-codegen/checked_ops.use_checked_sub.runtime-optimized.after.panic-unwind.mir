@@ -39,6 +39,7 @@ fn use_checked_sub(_1: u32, _2: u32) -> () {
     }
 
     bb3: {
+        // DBG: _5 = const Option::<u32>::None;
         StorageDead(_3);
         goto -> bb4;
     }
@@ -47,4 +48,8 @@ fn use_checked_sub(_1: u32, _2: u32) -> () {
         StorageDead(_5);
         return;
     }
+}
+
+ALLOC0 (size: 8, align: 4) {
+    00 00 00 00 __ __ __ __                         │ ....░░░░
 }

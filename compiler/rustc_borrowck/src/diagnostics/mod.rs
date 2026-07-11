@@ -16,7 +16,7 @@ use rustc_infer::traits::SelectionError;
 use rustc_middle::mir::{
     AggregateKind, CallSource, ConstOperand, ConstraintCategory, FakeReadCause, Local, LocalInfo,
     LocalKind, Location, Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement,
-    StatementKind, Terminator, TerminatorKind, VarDebugInfoContents, find_self_call,
+    StatementKind, Terminator, TerminatorKind, find_self_call,
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -203,21 +203,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.local_names.get_or_init(|| {
             let mut local_names = IndexVec::from_elem(None, &self.body.local_decls);
             for var_debug_info in &self.body.var_debug_info {
-                if let VarDebugInfoContents::Place(place) = var_debug_info.value {
-                    if let Some(local) = place.as_local() {
-                        if let Some(prev_name) = local_names[local]
-                            && var_debug_info.name != prev_name
-                        {
-                            span_bug!(
-                                var_debug_info.source_info.span,
-                                "local {:?} has many names (`{}` vs `{}`)",
-                                local,
-                                prev_name,
-                                var_debug_info.name
-                            );
-                        }
-                        local_names[local] = Some(var_debug_info.name);
+                if let Some(local) = var_debug_info.place.as_local() {
+                    if let Some(prev_name) = local_names[local]
+                        && var_debug_info.name != prev_name
+                    {
+                        span_bug!(
+                            var_debug_info.source_info.span,
+                            "local {:?} has many names (`{}` vs `{}`)",
+                            local,
+                            prev_name,
+                            var_debug_info.name
+                        );
                     }
+                    local_names[local] = Some(var_debug_info.name);
                 }
             }
             local_names

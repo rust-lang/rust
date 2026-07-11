@@ -258,18 +258,13 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     expected: "string".to_string(),
                 });
             };
-            let operand = self.parse_operand(operand)?;
-            let value = match operand {
-                Operand::Constant(c) => VarDebugInfoContents::Const(*c),
-                Operand::Copy(p) | Operand::Move(p) => VarDebugInfoContents::Place(p),
-                Operand::RuntimeChecks(_) => unreachable!(),
-            };
+            let place = self.parse_place(operand)?;
             let dbginfo = VarDebugInfo {
                 name,
                 source_info: SourceInfo { span, scope: self.source_scope },
                 composite: None,
                 argument_index: None,
-                value,
+                place,
             };
             self.body.var_debug_info.push(dbginfo);
         }

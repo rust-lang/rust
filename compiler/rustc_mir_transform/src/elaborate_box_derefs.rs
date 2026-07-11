@@ -124,39 +124,37 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
         visitor.patch.apply(body);
 
         for debug_info in body.var_debug_info.iter_mut() {
-            if let VarDebugInfoContents::Place(place) = &mut debug_info.value {
-                let mut new_projections: Option<Vec<_>> = None;
+            let mut new_projections: Option<Vec<_>> = None;
 
-                for (base, elem) in place.iter_projections() {
-                    let base_ty = base.ty(&body.local_decls, tcx).ty;
+            for (base, elem) in debug_info.place.iter_projections() {
+                let base_ty = base.ty(&body.local_decls, tcx).ty;
 
-                    if let PlaceElem::Deref = elem
-                        && let Some(boxed_ty) = base_ty.boxed_ty()
-                    {
-                        // Clone the projections before us, since now we need to mutate them.
-                        let new_projections =
-                            new_projections.get_or_insert_with(|| base.projection.to_vec());
+                if let PlaceElem::Deref = elem
+                    && let Some(boxed_ty) = base_ty.boxed_ty()
+                {
+                    // Clone the projections before us, since now we need to mutate them.
+                    let new_projections =
+                        new_projections.get_or_insert_with(|| base.projection.to_vec());
 
-                        let (unique_ty, nonnull_ty, ptr_ty) =
-                            build_ptr_tys(tcx, boxed_ty, unique_def, nonnull_def);
+                    let (unique_ty, nonnull_ty, ptr_ty) =
+                        build_ptr_tys(tcx, boxed_ty, unique_def, nonnull_def);
 
-                        new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
-                        // While we can't project into a pattern type in a basic block,
-                        // this is debug info where it's fine.
-                        let pat_ty = Ty::new_pat(tcx, ptr_ty, tcx.mk_pat(PatternKind::NotNull));
-                        new_projections.push(PlaceElem::Field(FieldIdx::ZERO, pat_ty));
-                        new_projections.push(PlaceElem::Field(FieldIdx::ZERO, ptr_ty));
-                        new_projections.push(PlaceElem::Deref);
-                    } else if let Some(new_projections) = new_projections.as_mut() {
-                        // Keep building up our projections list once we've started it.
-                        new_projections.push(elem);
-                    }
+                    new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
+                    // While we can't project into a pattern type in a basic block,
+                    // this is debug info where it's fine.
+                    let pat_ty = Ty::new_pat(tcx, ptr_ty, tcx.mk_pat(PatternKind::NotNull));
+                    new_projections.push(PlaceElem::Field(FieldIdx::ZERO, pat_ty));
+                    new_projections.push(PlaceElem::Field(FieldIdx::ZERO, ptr_ty));
+                    new_projections.push(PlaceElem::Deref);
+                } else if let Some(new_projections) = new_projections.as_mut() {
+                    // Keep building up our projections list once we've started it.
+                    new_projections.push(elem);
                 }
+            }
 
-                // Store the mutated projections if we actually changed something.
-                if let Some(new_projections) = new_projections {
-                    place.projection = tcx.mk_place_elems(&new_projections);
-                }
+            // Store the mutated projections if we actually changed something.
+            if let Some(new_projections) = new_projections {
+                debug_info.place.projection = tcx.mk_place_elems(&new_projections);
             }
         }
     }

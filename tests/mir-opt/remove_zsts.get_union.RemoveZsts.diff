@@ -11,6 +11,7 @@
 -         _0 = Foo { x: move _1 };
 -         StorageDead(_1);
 +         nop;
++         // DBG: _1 = const ();
 +         nop;
 +         _0 = Foo { x: const () };
 +         nop;

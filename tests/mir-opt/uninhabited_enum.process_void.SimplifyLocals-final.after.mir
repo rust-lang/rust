@@ -3,11 +3,13 @@
 fn process_void(_1: *const Void) -> () {
     debug input => _1;
     let mut _0: ();
+    let _2: Void;
     scope 1 {
-        debug _input => const ZeroSized: Void;
+        debug _input => _2;
     }
 
     bb0: {
+        // DBG: _2 = const ZeroSized: Void;
         return;
     }
 }

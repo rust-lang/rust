@@ -39,7 +39,7 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
                     )
                     | StatementKind::FakeRead(..)
                     | StatementKind::BackwardIncompatibleDropHint { .. } => {
-                        statement.make_nop(true)
+                        statement.kind = StatementKind::Nop
                     }
                     StatementKind::Assign((
                         _,

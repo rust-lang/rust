@@ -11,15 +11,24 @@ struct Point {
 // EMIT_MIR const_debuginfo.main.SingleUseConsts.diff
 fn main() {
     // CHECK-LABEL: fn main(
-    // CHECK: debug x => const 1_u8;
-    // CHECK: debug y => const 2_u8;
-    // CHECK: debug z => const 3_u8;
-    // CHECK: debug sum => const 6_u8;
-    // CHECK: debug s => const "hello, world!";
-    // CHECK: debug f => {{_.*}};
-    // CHECK: debug o => const Option::<u16>::Some(99_u16);
-    // CHECK: debug p => const Point
-    // CHECK: debug a => const 64_u32;
+    // CHECK: debug x => [[x:_.*]];
+    // CHECK: debug y => [[y:_.*]];
+    // CHECK: debug z => [[z:_.*]];
+    // CHECK: debug sum => [[sum:_.*]];
+    // CHECK: debug s => [[s:_.*]];
+    // CHECK: debug f => [[f:_.*]];
+    // CHECK: debug o => [[o:_.*]];
+    // CHECK: debug p => [[p:_.*]];
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: DBG: [[x]] = const 1_u8;
+    // CHECK: DBG: [[y]] = const 2_u8;
+    // CHECK: DBG: [[z]] = const 3_u8;
+    // CHECK: DBG: [[sum]] = const 6_u8;
+    // CHECK: DBG: [[s]] = const "hello, world!";
+    // CHECK: [[f]] = {{.*}};
+    // CHECK: DBG: [[o]] = const Option::<u16>::Some(99_u16);
+    // CHECK: DBG: [[p]] = const Point
+    // CHECK: DBG: [[a]] = const 64_u32;
     let x = 1u8;
     let y = 2u8;
     let z = 3u8;

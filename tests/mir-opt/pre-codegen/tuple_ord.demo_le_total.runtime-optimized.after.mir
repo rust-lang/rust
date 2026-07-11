@@ -48,6 +48,7 @@ fn demo_le_total(_1: &(u16, i16), _2: &(u16, i16)) -> bool {
     }
 
     bb2: {
+        // DBG: _7 = const ControlFlow::<bool>::Continue(());
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);

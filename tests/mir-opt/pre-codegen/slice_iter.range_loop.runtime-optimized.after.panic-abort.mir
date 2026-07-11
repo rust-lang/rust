@@ -62,6 +62,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb2: {
+        // DBG: _8 = const Option::<usize>::None;
         StorageDead(_6);
         StorageDead(_8);
         drop(_2) -> [return: bb3, unwind unreachable];
@@ -102,4 +103,8 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_8);
         goto -> bb1;
     }
+}
+
+ALLOC0 (size: 16, align: 8) {
+    00 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
 }
