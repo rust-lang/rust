@@ -27,6 +27,9 @@ pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
         "signal" => true,
         // needed at least on macOS to avoid file-based fallback in getrandom
         "getentropy" | "getrandom" => true,
+        // `futimens` is set up as a weak symbol in `init_extern_statics` (on Android), so we
+        // allow it here too (it exists on all our Unix targets).
+        "futimens" => true,
         // Give specific OSes a chance to allow their symbols.
         _ =>
             match *target_os {
@@ -543,6 +546,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     args,
                 )?;
                 let result = this.fdatasync(fd)?;
+                this.write_scalar(result, dest)?;
+            }
+            "futimens" => {
+                let [fd, times] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.futimens(fd, times)?;
                 this.write_scalar(result, dest)?;
             }
             "readlink" => {
