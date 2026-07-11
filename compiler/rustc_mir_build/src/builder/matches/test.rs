@@ -176,6 +176,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Compare the two values using `<T as std::cmp::PartialEq>::eq`.
                 // (Interestingly this means that, for `str`, exhaustiveness analysis
                 // relies for soundness on the `PartialEq` impl for `str` to be correct!)
+                //
+                // The aggregate comparisons call the built-in `PartialEq` impls for
+                // arrays and slices, which can be trusted not to panic, so they are
+                // asserted not to unwind. An unwind edge here would be a breaking
+                // change: string equality tests have always had one, but the
+                // aggregate tests replace a series of `SwitchInt`s that never could
+                // unwind, and the extra edge would make borrow-checking stricter.
+                let can_unwind = matches!(test.kind, TestKind::StringEq { .. });
                 self.non_scalar_compare(
                     block,
                     success_block,
@@ -184,6 +192,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     inner_ty,
                     expected_value_operand,
                     Operand::Copy(actual_value_ref_place),
+                    can_unwind,
                 );
             }
 
@@ -423,6 +432,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// `compared_ty` is the *inner* type (e.g. `str`, `[u8; 64]`);
     /// `expect` and `val` must already be references to that type.
+    ///
+    /// When `can_unwind` is false, the call is given `UnwindAction::Unreachable`
+    /// and no unwind edge, asserting that the `PartialEq::eq` implementation
+    /// cannot panic. This matters beyond codegen: an unwinding call would make
+    /// borrow-checking of the surrounding match stricter, because the unwind
+    /// path can create drop-order conflicts that the ordinary path does not
+    /// have.
     fn non_scalar_compare(
         &mut self,
         block: BasicBlock,
@@ -432,6 +448,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         compared_ty: Ty<'tcx>,
         expect: Operand<'tcx>,
         val: Operand<'tcx>,
+        can_unwind: bool,
     ) {
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, source_info.span);
         let method =
@@ -463,12 +480,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 .into(),
                 destination: eq_result,
                 target: Some(eq_block),
-                unwind: UnwindAction::Continue,
+                unwind: if can_unwind { UnwindAction::Continue } else { UnwindAction::Unreachable },
                 call_source: CallSource::MatchCmp,
                 fn_span: source_info.span,
             },
         );
-        self.diverge_from(block);
+        if can_unwind {
+            self.diverge_from(block);
+        }
 
         // check the result
         self.cfg.terminate(
