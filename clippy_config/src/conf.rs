@@ -796,6 +796,7 @@ define_Conf! {
         filter_map_next,
         from_over_into,
         if_then_some_else_none,
+        implicit_saturating_sub,
         index_refutable_slice,
         inefficient_to_string,
         io_other_error,
