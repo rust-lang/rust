@@ -1,7 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/36744>.
+//! This tests for an ICE (and, if ignored, subsequent LLVM abort) when
+//! a lifetime-parametric fn is passed into a context whose expected
+//! type has a differing lifetime parameterization.
 //@ run-pass
-// This tests for an ICE (and, if ignored, subsequent LLVM abort) when
-// a lifetime-parametric fn is passed into a context whose expected
-// type has a differing lifetime parameterization.
 
 struct A<'a> {
     _a: &'a i32,
