@@ -3,9 +3,18 @@
 //@ run-pass
 #![allow(non_upper_case_globals)]
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+static mut drop_count: usize = 0;
 
-static drop_count: AtomicUsize = AtomicUsize::new(0);
+fn increment_drop_count() {
+    unsafe {
+        let drop_count = &raw mut drop_count;
+        drop_count.write(drop_count.read() + 1);
+    }
+}
+
+fn get_drop_count() -> usize {
+    unsafe { (&raw const drop_count).read() }
+}
 
 struct Foo {
     dropped: bool
@@ -17,7 +26,7 @@ impl Drop for Foo {
         assert!(!self.dropped);
         self.dropped = true;
         // And record the fact that we dropped for verification later
-        drop_count.fetch_add(1, Ordering::Relaxed);
+        increment_drop_count();
     }
 }
 
@@ -27,7 +36,7 @@ pub fn main() {
         let _a = Foo{ dropped: false };
     }
     // Check that we dropped already (as expected from a `{ expr }`).
-    assert_eq!(drop_count.load(Ordering::Relaxed), 1);
+    assert_eq!(get_drop_count(), 1);
 
     // An `if false {} else { expr }` statement should compile the same as `{ expr }`.
     if false {
@@ -36,5 +45,5 @@ pub fn main() {
         let _a = Foo{ dropped: false };
     }
     // Check that we dropped already (as expected from a `{ expr }`).
-    assert_eq!(drop_count.load(Ordering::Relaxed), 2);
+    assert_eq!(get_drop_count(), 2);
 }
