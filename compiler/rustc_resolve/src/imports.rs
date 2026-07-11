@@ -821,7 +821,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ) => {
                     self.per_ns(|this, ns| {
                         match import_decls[ns] {
-                            PendingDecl::Ready(Some(import_decl)) => {
+                            PendingDecl::Ready(Some(decl)) => {
+                                // We need the `target`, `source` can be extracted.
+                                let import_decl = this.new_import_decl(decl, import);
                                 if import_decl.is_assoc_item()
                                     && !this.features.import_trait_associated_functions()
                                 {
@@ -1151,11 +1153,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Some(import),
             );
             let pending_decl = match binding_result {
-                Ok(binding) => {
-                    // We need the `target`, `source` can be extracted.
-                    let import_decl = this.new_import_decl(binding, import);
-                    PendingDecl::Ready(Some(import_decl))
-                }
+                Ok(binding) => PendingDecl::Ready(Some(binding)),
                 Err(Determinacy::Determined) => PendingDecl::Ready(None),
                 Err(Determinacy::Undetermined) => {
                     indeterminate_count += 1;

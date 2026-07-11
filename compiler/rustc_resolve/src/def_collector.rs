@@ -221,7 +221,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             i.span,
             |this, feed| {
                 if let Some(ext) = opt_syn_ext {
-                    this.r.local_macro_map.insert(feed.def_id(), self.r.arenas.alloc_macro(ext));
+                    this.r.local_macro_map.insert(feed.def_id(), this.r.arenas.alloc_macro(ext));
                 }
 
                 this.with_parent(feed.def_id(), |this| {

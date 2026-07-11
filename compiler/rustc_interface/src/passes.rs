@@ -791,7 +791,7 @@ fn resolver_for_lowering_raw<'tcx>(
     &'tcx Steal<ast::Crate>,
     &'tcx ty::ResolverGlobalCtxt,
 ) {
-    let arenas = Resolver::arenas();
+    let arenas = WorkerLocal::new(|_| Resolver::arenas());
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
     let mut resolver = Resolver::new(

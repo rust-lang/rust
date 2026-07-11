@@ -14,6 +14,7 @@ use rustc_ast::{
     StmtKind, TraitAlias, TyAlias,
 };
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
@@ -32,7 +33,7 @@ use tracing::debug;
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::DefCollector;
 use crate::error_helper::{OnUnknownData, StructCtor};
-use crate::imports::{ImportData, ImportKind};
+use crate::imports::{ImportData, ImportKind, NameResolution, NameResolutionRef};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
@@ -73,46 +74,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.arenas.new_def_decl(res, vis.to_def_id(), span, expn_id, Some(parent.to_module()));
         let ident = IdentKey::new(orig_ident);
         self.plant_decl_into_local_module(ident, orig_ident.span, ns, decl);
-    }
-
-    /// Create a name definition from the given components, and put it into the extern module.
-    fn define_extern(
-        &self,
-        parent: ExternModule<'ra>,
-        ident: IdentKey,
-        orig_ident_span: Span,
-        ns: Namespace,
-        child_index: usize,
-        res: Res,
-        vis: Visibility<DefId>,
-        span: Span,
-        expansion: LocalExpnId,
-        ambiguity: Option<(Decl<'ra>, bool)>,
-    ) {
-        let decl = self.arenas.alloc_decl(DeclData {
-            kind: DeclKind::Def(res),
-            ambiguity: CmCell::new(ambiguity),
-            initial_vis: vis,
-            ambiguity_vis_max: CmCell::new(None),
-            ambiguity_vis_min: CmCell::new(None),
-            span,
-            expansion,
-            parent_module: Some(parent.to_module()),
-        });
-        // Even if underscore names cannot be looked up, we still need to add them to modules,
-        // because they can be fetched by glob imports from those modules, and bring traits
-        // into scope both directly and through glob imports.
-        let key =
-            BindingKey::new_disambiguated(ident, ns, || (child_index + 1).try_into().unwrap()); // 0 indicates no underscore
-        if self
-            .resolution_or_default(parent.to_module(), key, orig_ident_span)
-            .borrow_mut_unchecked()
-            .non_glob_decl
-            .replace(decl)
-            .is_some()
-        {
-            span_bug!(span, "an external binding was already defined");
-        }
     }
 
     /// Walks up the tree of definitions starting at `def_id`,
@@ -347,11 +308,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn build_reduced_graph_external(&self, module: ExternModule<'ra>) {
+    pub(crate) fn build_reduced_graph_external(
+        &self,
+        module: ExternModule<'ra>,
+    ) -> FxIndexMap<BindingKey, NameResolutionRef<'ra>> {
+        let mut resolutions = FxIndexMap::default();
         let def_id = module.def_id();
         let children = self.tcx.module_children(def_id);
         for (i, child) in children.iter().enumerate() {
-            self.build_reduced_graph_for_external_crate_res(child, module, i, None)
+            self.build_reduced_graph_for_external_crate_res(
+                child,
+                module,
+                i,
+                None,
+                &mut resolutions,
+            )
         }
         for (i, child) in
             self.cstore().ambig_module_children_untracked(self.tcx, def_id).enumerate()
@@ -361,8 +332,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 module,
                 children.len() + i,
                 Some(&child.second),
+                &mut resolutions,
             )
         }
+        resolutions
     }
 
     /// Builds the reduced graph for a single item in an external crate.
@@ -372,6 +345,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent: ExternModule<'ra>,
         child_index: usize,
         ambig_child: Option<&ModChild>,
+        resolutions: &mut FxIndexMap<BindingKey, NameResolutionRef<'ra>>,
     ) {
         let child_span = |this: &Self, reexport_chain: &[Reexport], res: def::Res<_>| {
             this.def_span(
@@ -395,19 +369,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         });
 
         // Record primary definitions.
-        let define_extern = |ns| {
-            self.define_extern(
-                parent,
-                ident,
-                orig_ident.span,
-                ns,
-                child_index,
-                res,
-                vis,
+        let mut define_extern = |ns| {
+            let orig_ident_span = orig_ident.span;
+            let decl = self.arenas.alloc_decl(DeclData {
+                kind: DeclKind::Def(res),
+                ambiguity: CmCell::new(ambig),
+                initial_vis: vis,
+                ambiguity_vis_max: CmCell::new(None),
+                ambiguity_vis_min: CmCell::new(None),
                 span,
                 expansion,
-                ambig,
-            )
+                parent_module: Some(parent.to_module()),
+            });
+            let resolution = self.arenas.alloc_name_resolution(NameResolution {
+                non_glob_decl: Some(decl),
+                orig_ident_span,
+                single_imports: Default::default(),
+                ..
+            });
+
+            let key =
+                BindingKey::new_disambiguated(ident, ns, || (child_index + 1).try_into().unwrap());
+            if resolutions.insert(key, resolution).is_some() {
+                span_bug!(span, "an external binding was already defined");
+            }
         };
         match res {
             Res::Def(
