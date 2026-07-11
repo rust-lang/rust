@@ -4,6 +4,7 @@ from typing import Generator, Dict, List, TYPE_CHECKING, Optional
 from enum import Flag, auto
 
 from lldb import (
+    SBAddress,
     SBData,
     SBError,
     eBasicTypeLong,
@@ -1380,6 +1381,18 @@ def StdRcSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     return "strong={}, weak={}".format(strong, weak)
 
 
+_REF_COUNTS_TYPE = None
+
+
+def _get_or_init_ref_counts_type(target):
+    global _REF_COUNTS_TYPE
+
+    if _REF_COUNTS_TYPE is None:
+        _REF_COUNTS_TYPE = target.FindFirstType("alloc::raw_rc::RefCounts")
+
+    return _REF_COUNTS_TYPE
+
+
 class StdRcSyntheticProvider:
     """Pretty-printer for alloc::rc::Rc<T> and alloc::sync::Arc<T>
 
@@ -1396,12 +1409,32 @@ class StdRcSyntheticProvider:
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque, is_atomic: bool = False):
         self.valobj = valobj
 
-        self.ptr = unwrap_unique_or_non_null(self.valobj.GetChildMemberWithName("ptr"))
+        ptr = (
+            self.valobj.GetChildMemberWithName("raw_rc")
+            .GetChildMemberWithName("weak")
+            .GetChildMemberWithName("ptr")
+            .GetChildMemberWithName("pointer")
+        )
 
-        self.value = self.ptr.GetChildMemberWithName("data" if is_atomic else "value")
+        self.value = ptr.deref.Clone("value")
 
-        self.strong = unwrap_scalar_wrappers(self.ptr.GetChildMemberWithName("strong"))
-        self.weak = unwrap_scalar_wrappers(self.ptr.GetChildMemberWithName("weak"))
+        target = valobj.GetTarget()
+        ref_counts_type = _get_or_init_ref_counts_type(target)
+        ref_counts_address = ptr.GetValueAsUnsigned() - ref_counts_type.size
+
+        ref_counts_value = target.CreateValueFromAddress(
+            "ref_counts",
+            SBAddress(ref_counts_address, target),
+            ref_counts_type,
+        )
+
+        self.strong = unwrap_scalar_wrappers(
+            ref_counts_value.GetChildMemberWithName("strong")
+        )
+
+        self.weak = unwrap_scalar_wrappers(
+            ref_counts_value.GetChildMemberWithName("weak")
+        )
 
         self.value_builder = ValueBuilder(valobj)
 
