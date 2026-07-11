@@ -1171,7 +1171,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
 
         // These have no wf checks
         DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::ExternCrate
         | DefKind::Macro(..)
         | DefKind::Use

@@ -336,10 +336,12 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::Static { .. }
         | DefKind::Const { .. }
         | DefKind::AssocConst { .. }
-        | DefKind::AnonConst
-        | DefKind::InlineConst => {
+        | DefKind::AnonConst => {
             // Non-type-system inline consts should be caught by `if tcx.is_typeck_child` above
-            debug_assert!(kind != DefKind::InlineConst || tcx.is_type_system_inline_const(item));
+            debug_assert!(
+                kind != DefKind::AnonConst
+                    || tcx.anon_const_kind(item) != ty::AnonConstKind::NonTypeSystemInline
+            );
 
             collector.collect_taits_declared_in_body();
         }

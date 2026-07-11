@@ -1956,7 +1956,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             | DefKind::ForeignTy
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::InlineConst
             | DefKind::LifetimeParam
             | DefKind::Macro(_)
             | DefKind::Mod
