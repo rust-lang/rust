@@ -7394,6 +7394,7 @@ Released 2018-09-13
 [`repr_packed_without_abi`]: https://rust-lang.github.io/rust-clippy/master/index.html#repr_packed_without_abi
 [`reserve_after_initialization`]: https://rust-lang.github.io/rust-clippy/master/index.html#reserve_after_initialization
 [`rest_pat_in_fully_bound_structs`]: https://rust-lang.github.io/rust-clippy/master/index.html#rest_pat_in_fully_bound_structs
+[`rest_pattern_accessible_field`]: https://rust-lang.github.io/rust-clippy/master/index.html#rest_pattern_accessible_field
 [`result_expect_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_expect_used
 [`result_filter_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_filter_map
 [`result_large_err`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
@@ -7559,6 +7560,7 @@ Released 2018-09-13
 [`unnecessary_operation`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_operation
 [`unnecessary_option_map_or_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_option_map_or_else
 [`unnecessary_owned_empty_strings`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_owned_empty_strings
+[`unnecessary_rest_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_rest_pattern
 [`unnecessary_result_map_or_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_result_map_or_else
 [`unnecessary_safety_comment`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_safety_comment
 [`unnecessary_safety_doc`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_safety_doc
