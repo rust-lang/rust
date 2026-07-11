@@ -47,7 +47,7 @@ impl EarlyParsedState {
             attributes.push(Attribute::Parsed(AttributeKind::CfgTrace(self.cfg_trace)));
         }
         if !self.cfg_attr_trace.is_empty() {
-            attributes.push(Attribute::Parsed(AttributeKind::CfgAttrTrace(self.cfg_attr_trace)));
+            attributes.push(Attribute::Parsed(AttributeKind::CfgAttrTrace));
         }
     }
 }

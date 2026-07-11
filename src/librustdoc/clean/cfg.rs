@@ -845,8 +845,6 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     let mut changed_auto_active_status = None;
 
-    let mut cfg_attr_trace = Vec::new();
-    let mut is_automatically_derived = false;
     // We get all `doc(auto_cfg)`, `cfg` and `target_feature` attributes.
     for attr in attrs {
         if let Attribute::Parsed(AttributeKind::Doc(d)) = attr {
@@ -891,17 +889,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                 for (new_cfg, _) in cfgs {
                     cfg_info.current_cfg &= Cfg(new_cfg.clone());
                 }
-            } else if let hir::Attribute::Parsed(AttributeKind::CfgAttrTrace(cfgs)) = attr {
-                cfg_attr_trace.push(cfgs);
-            } else if matches!(attr, hir::Attribute::Parsed(AttributeKind::AutomaticallyDerived)) {
-                is_automatically_derived = true;
             }
-        }
-    }
-
-    if is_automatically_derived {
-        for (new_cfg, _) in cfg_attr_trace.into_iter().flatten() {
-            cfg_info.current_cfg &= Cfg(new_cfg.clone());
         }
     }
 

@@ -910,20 +910,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         span,
                         path,
                     };
-                    let cfg_attrs = if let Annotatable::Item(ref item) = item {
-                        item.attrs
-                            .iter()
-                            .filter(|attr| {
-                                // FIXME(GuillaumeGomez): Should we convert the `cfg_attr_trace`
-                                // attributes into `cfg_trace` to prevent having to handle two
-                                // different attributes for the same information?
-                                attr.name().is_some_and(|name| name == sym::cfg_attr_trace)
-                                    && self.cx.call_site().overlaps(attr.span)
-                            })
-                            .cloned()
-                            .collect::<Vec<_>>()
-                    } else {
-                        Vec::new()
+                    let cfg_attrs = match item {
+                        Annotatable::Item(ref item) => {
+                            self.propagate_cfg_attr_predicate_to_expanded_item(item)
+                        }
+                        Annotatable::Stmt(ref stmt) if let StmtKind::Item(ref item) = stmt.kind => {
+                            self.propagate_cfg_attr_predicate_to_expanded_item(item)
+                        }
+                        _ => unreachable!(),
                     };
                     let mut items = match expander.expand(self.cx, span, &meta, item, is_const) {
                         ExpandResult::Ready(items) => items,
@@ -938,8 +932,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                     if !cfg_attrs.is_empty() {
                         for item in &mut items {
-                            if let Annotatable::Item(item) = item {
-                                item.attrs.extend(cfg_attrs.clone());
+                            match item {
+                                Annotatable::Item(item) => {
+                                    item.attrs.extend(cfg_attrs.clone());
+                                }
+                                Annotatable::Stmt(stmt) => {
+                                    if let StmtKind::Item(item) = &mut stmt.kind {
+                                        item.attrs.extend(cfg_attrs.clone());
+                                    }
+                                }
+                                _ => unreachable!(),
                             }
                         }
                     }
@@ -1024,6 +1026,45 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }))
             }
         })
+    }
+
+    fn propagate_cfg_attr_predicate_to_expanded_item(
+        &self,
+        item: &rustc_ast::Item,
+    ) -> Vec<rustc_ast::Attribute> {
+        item.attrs
+            .iter()
+            .filter(|attr| {
+                // FIXME(GuillaumeGomez): Find a better way to propagate `cfg_attr` to expanded items
+                // as it doesn't work nicely with `include!` and equivalents...
+                // We need to filter to ensure only the `cfg_attr`s from which the item was expanded
+                // are taken into account.
+                attr.name().is_some_and(|name| name == sym::cfg_attr_trace)
+                    && attr.span.contains(self.cx.call_site())
+            })
+            .map(|attr| {
+                let mut attr = attr.clone();
+                if let rustc_ast::AttrKind::Normal(attr) = &mut attr.kind {
+                    let cfg = if let rustc_ast::ast::AttrItemKind::Parsed(
+                        EarlyParsedAttribute::CfgAttrTrace(cfg),
+                    ) = &mut attr.item.args
+                    {
+                        std::mem::replace(
+                            cfg,
+                            rustc_ast::attr::data_structures::CfgEntry::Bool(
+                                false,
+                                rustc_span::DUMMY_SP,
+                            ),
+                        )
+                    } else {
+                        unreachable!()
+                    };
+                    attr.item.args =
+                        rustc_ast::ast::AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg));
+                }
+                attr
+            })
+            .collect::<Vec<_>>()
     }
 
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
