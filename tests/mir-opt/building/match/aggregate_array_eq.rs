@@ -1,8 +1,14 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ compile-flags: -Zmir-opt-level=0
 
-// Verify that matching against a constant array pattern produces a single
+// Verify that matching against an array/slice pattern that was expanded from
+// a constant (a named constant or a byte-string literal) produces a single
 // `PartialEq::eq` call rather than element-by-element comparisons.
+//
+// Hand-written array patterns must keep the element-by-element comparisons:
+// they only borrow the scrutinee for as long as `PartialEq::eq` would, but
+// user intent is respected before the MIR boundary.
+//
 // In const contexts, the aggregate comparison must NOT be used because
 // `PartialEq` is not const-stable.
 
@@ -13,7 +19,23 @@ pub fn array_match(x: [u8; 4]) -> bool {
     // CHECK-LABEL: fn array_match(
     // CHECK: <[u8; 4] as PartialEq>::eq
     // CHECK-NOT: switchInt(copy _1[
+    const EXPECTED: [u8; 4] = [1, 2, 3, 4];
+    matches!(x, EXPECTED)
+}
+
+// EMIT_MIR aggregate_array_eq.handwritten_array_match.built.after.mir
+pub fn handwritten_array_match(x: [u8; 4]) -> bool {
+    // CHECK-LABEL: fn handwritten_array_match(
+    // CHECK-NOT: PartialEq
+    // CHECK: switchInt
     matches!(x, [1, 2, 3, 4])
+}
+
+// EMIT_MIR aggregate_array_eq.slice_match.built.after.mir
+pub fn slice_match(x: &[u8]) -> bool {
+    // CHECK-LABEL: fn slice_match(
+    // CHECK: <[u8] as PartialEq>::eq
+    matches!(x, b"ABCD")
 }
 
 pub enum MyEnum {
@@ -45,7 +67,8 @@ pub const fn const_array_match(x: [u8; 4]) -> bool {
     // CHECK-LABEL: fn const_array_match(
     // CHECK-NOT: PartialEq
     // CHECK: switchInt
-    matches!(x, [1, 2, 3, 4])
+    const EXPECTED: [u8; 4] = [1, 2, 3, 4];
+    matches!(x, EXPECTED)
 }
 
 // EMIT_MIR aggregate_array_eq.const_try_from_matched.built.after.mir
