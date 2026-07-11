@@ -28,7 +28,7 @@ fn slice_match(_1: &[u8]) -> bool {
 
     bb2: {
         _2 = &(*_1);
-        _3 = <[u8] as PartialEq>::eq(copy _2, const b"ABCD") -> [return: bb6, unwind: bb10];
+        _3 = <[u8] as PartialEq>::eq(copy _2, const b"ABCD") -> [return: bb6, unwind unreachable];
     }
 
     bb3: {
@@ -59,9 +59,5 @@ fn slice_match(_1: &[u8]) -> bool {
 
     bb9: {
         return;
-    }
-
-    bb10 (cleanup): {
-        resume;
     }
 }
