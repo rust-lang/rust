@@ -3,10 +3,9 @@
 //@ run-pass
 #![allow(non_upper_case_globals)]
 
-// FIXME(static_mut_refs): use raw pointers instead of references
-#![allow(static_mut_refs)]
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static mut drop_count: usize = 0;
+static drop_count: AtomicUsize = AtomicUsize::new(0);
 
 struct Foo {
     dropped: bool
@@ -18,7 +17,7 @@ impl Drop for Foo {
         assert!(!self.dropped);
         self.dropped = true;
         // And record the fact that we dropped for verification later
-        unsafe { drop_count += 1; }
+        drop_count.fetch_add(1, Ordering::Relaxed);
     }
 }
 
@@ -28,7 +27,7 @@ pub fn main() {
         let _a = Foo{ dropped: false };
     }
     // Check that we dropped already (as expected from a `{ expr }`).
-    unsafe { assert_eq!(drop_count, 1); }
+    assert_eq!(drop_count.load(Ordering::Relaxed), 1);
 
     // An `if false {} else { expr }` statement should compile the same as `{ expr }`.
     if false {
@@ -37,5 +36,5 @@ pub fn main() {
         let _a = Foo{ dropped: false };
     }
     // Check that we dropped already (as expected from a `{ expr }`).
-    unsafe { assert_eq!(drop_count, 2); }
+    assert_eq!(drop_count.load(Ordering::Relaxed), 2);
 }

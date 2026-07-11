@@ -4,58 +4,57 @@
 // Ensures that destructors are run for expressions of the form "let _ = e;"
 // where `e` is a type which requires a destructor.
 
-// FIXME(static_mut_refs): use raw pointers instead of references
-#![allow(static_mut_refs)]
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct Foo;
 struct Bar { x: isize }
 struct Baz(isize);
 enum FooBar { _Foo(Foo), _Bar(usize) }
 
-static mut NUM_DROPS: usize = 0;
+static NUM_DROPS: AtomicUsize = AtomicUsize::new(0);
 
 impl Drop for Foo {
     fn drop(&mut self) {
-        unsafe { NUM_DROPS += 1; }
+        NUM_DROPS.fetch_add(1, Ordering::Relaxed);
     }
 }
 impl Drop for Bar {
     fn drop(&mut self) {
-        unsafe { NUM_DROPS += 1; }
+        NUM_DROPS.fetch_add(1, Ordering::Relaxed);
     }
 }
 impl Drop for Baz {
     fn drop(&mut self) {
-        unsafe { NUM_DROPS += 1; }
+        NUM_DROPS.fetch_add(1, Ordering::Relaxed);
     }
 }
 impl Drop for FooBar {
     fn drop(&mut self) {
-        unsafe { NUM_DROPS += 1; }
+        NUM_DROPS.fetch_add(1, Ordering::Relaxed);
     }
 }
 
 fn main() {
-    assert_eq!(unsafe { NUM_DROPS }, 0);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 0);
     { let _x = Foo; }
-    assert_eq!(unsafe { NUM_DROPS }, 1);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 1);
     { let _x = Bar { x: 21 }; }
-    assert_eq!(unsafe { NUM_DROPS }, 2);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 2);
     { let _x = Baz(21); }
-    assert_eq!(unsafe { NUM_DROPS }, 3);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 3);
     { let _x = FooBar::_Foo(Foo); }
-    assert_eq!(unsafe { NUM_DROPS }, 5);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 5);
     { let _x = FooBar::_Bar(42); }
-    assert_eq!(unsafe { NUM_DROPS }, 6);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 6);
 
     { let _ = Foo; }
-    assert_eq!(unsafe { NUM_DROPS }, 7);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 7);
     { let _ = Bar { x: 21 }; }
-    assert_eq!(unsafe { NUM_DROPS }, 8);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 8);
     { let _ = Baz(21); }
-    assert_eq!(unsafe { NUM_DROPS }, 9);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 9);
     { let _ = FooBar::_Foo(Foo); }
-    assert_eq!(unsafe { NUM_DROPS }, 11);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 11);
     { let _ = FooBar::_Bar(42); }
-    assert_eq!(unsafe { NUM_DROPS }, 12);
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 12);
 }

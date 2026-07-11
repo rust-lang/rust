@@ -2,20 +2,16 @@
 
 //@ run-pass
 
-// FIXME(static_mut_refs): use raw pointers instead of references
-#![allow(static_mut_refs)]
-
 use std::mem;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static mut DROP_COUNT: usize = 0;
+static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 struct Fragment;
 
 impl Drop for Fragment {
     fn drop(&mut self) {
-        unsafe {
-            DROP_COUNT += 1;
-        }
+        DROP_COUNT.fetch_add(1, Ordering::Relaxed);
     }
 }
 
@@ -28,7 +24,5 @@ fn main() {
                 true
             }).collect();
     }
-    unsafe {
-        assert_eq!(DROP_COUNT, 3);
-    }
+    assert_eq!(DROP_COUNT.load(Ordering::Relaxed), 3);
 }

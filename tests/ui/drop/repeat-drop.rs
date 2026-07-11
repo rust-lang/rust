@@ -3,27 +3,24 @@
 
 #![allow(dropping_references, dropping_copy_types)]
 
-// FIXME(static_mut_refs): use raw pointers instead of references
-#![allow(static_mut_refs)]
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static mut CHECK: usize = 0;
+static CHECK: AtomicUsize = AtomicUsize::new(0);
 
 struct DropChecker(usize);
 
 impl Drop for DropChecker {
     fn drop(&mut self) {
-        unsafe {
-            if CHECK != self.0 - 1 {
-                panic!("Found {}, should have found {}", CHECK, self.0 - 1);
-            }
-            CHECK = self.0;
+        let old = CHECK.swap(self.0, Ordering::Relaxed);
+        if old != self.0 - 1 {
+            panic!("Found {}, should have found {}", old, self.0 - 1);
         }
     }
 }
 
 macro_rules! check_drops {
     ($l:literal) => {
-        unsafe { assert_eq!(CHECK, $l) }
+        assert_eq!(CHECK.load(Ordering::Relaxed), $l)
     };
 }
 
@@ -36,7 +33,7 @@ impl Drop for DropPanic {
 }
 
 fn value_zero() {
-    unsafe { CHECK = 0 };
+    CHECK.store(0, Ordering::Relaxed);
     let foo = DropChecker(1);
     let v: [DropChecker; 0] = [foo; 0];
     check_drops!(1);
@@ -45,7 +42,7 @@ fn value_zero() {
 }
 
 fn value_one() {
-    unsafe { CHECK = 0 };
+    CHECK.store(0, Ordering::Relaxed);
     let foo = DropChecker(1);
     let v: [DropChecker; 1] = [foo; 1];
     check_drops!(0);
@@ -56,7 +53,7 @@ fn value_one() {
 const DROP_CHECKER: DropChecker = DropChecker(1);
 
 fn const_zero() {
-    unsafe { CHECK = 0 };
+    CHECK.store(0, Ordering::Relaxed);
     let v: [DropChecker; 0] = [DROP_CHECKER; 0];
     check_drops!(0);
     std::mem::drop(v);
@@ -64,7 +61,7 @@ fn const_zero() {
 }
 
 fn const_one() {
-    unsafe { CHECK = 0 };
+    CHECK.store(0, Ordering::Relaxed);
     let v: [DropChecker; 1] = [DROP_CHECKER; 1];
     check_drops!(0);
     std::mem::drop(v);
@@ -72,7 +69,7 @@ fn const_one() {
 }
 
 fn const_generic_zero<const N: usize>() {
-    unsafe { CHECK = 0 };
+    CHECK.store(0, Ordering::Relaxed);
     let v: [DropChecker; N] = [DROP_CHECKER; N];
     check_drops!(0);
     std::mem::drop(v);
@@ -80,7 +77,7 @@ fn const_generic_zero<const N: usize>() {
 }
 
 fn const_generic_one<const N: usize>() {
-    unsafe { CHECK = 0 };
+    CHECK.store(0, Ordering::Relaxed);
     let v: [DropChecker; N] = [DROP_CHECKER; N];
     check_drops!(0);
     std::mem::drop(v);
@@ -90,7 +87,7 @@ fn const_generic_one<const N: usize>() {
 // Make sure that things are allowed to promote as expected
 
 fn allow_promote() {
-    unsafe { CHECK = 0 };
+    CHECK.store(0, Ordering::Relaxed);
     let foo = DropChecker(1);
     let v: &'static [DropChecker; 0] = &[foo; 0];
     check_drops!(1);
@@ -100,7 +97,7 @@ fn allow_promote() {
 
 // Verify that unwinding in the drop causes the right things to drop in the right order
 fn on_unwind() {
-    unsafe { CHECK = 0 };
+    CHECK.store(0, Ordering::Relaxed);
     std::panic::catch_unwind(|| {
         let panic = DropPanic;
         let _local = DropChecker(2);
