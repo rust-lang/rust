@@ -1880,7 +1880,7 @@ impl<'tcx> Pick<'tcx> {
 }
 
 impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
-    fn select_trait_candidate(
+    fn select_trait_candidate_for_diagnostics(
         &self,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
@@ -1920,7 +1920,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     xform_self_ty,
                     self_ty,
                 );
-                match self.select_trait_candidate(trait_ref) {
+                match self.select_trait_candidate_for_diagnostics(trait_ref) {
                     Ok(Some(traits::ImplSource::UserDefined(ref impl_data))) => {
                         // If only a single impl matches, make the error message point
                         // to that impl.
@@ -2089,7 +2089,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         ocx.register_obligation(obligation);
                     } else {
                         result = ProbeResult::NoMatch;
-                        if let Ok(Some(candidate)) = self.select_trait_candidate(trait_ref) {
+                        if let Ok(Some(candidate)) =
+                            self.select_trait_candidate_for_diagnostics(trait_ref)
+                        {
                             for nested_obligation in candidate.nested_obligations() {
                                 if !self.infcx.predicate_may_hold(&nested_obligation) {
                                     possibly_unsatisfied_predicates.push((

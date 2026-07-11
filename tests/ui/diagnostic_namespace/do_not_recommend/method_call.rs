@@ -33,6 +33,6 @@ fn main() {
 
         let _ = l.clone();
         //~^ERROR no method named `clone` found for struct `LocalType<T>` in the current scope [E0599]
-        
+
     }
 }
