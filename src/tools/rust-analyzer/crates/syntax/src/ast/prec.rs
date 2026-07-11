@@ -578,7 +578,7 @@ impl Expr {
 
 impl ast::Type {
     pub fn needs_parens_in(&self, parent: &SyntaxNode) -> bool {
-        if !matches!(self, ast::Type::DynTraitType(_)) {
+        if !matches!(self, ast::Type::DynTraitType(_) | ast::Type::ImplTraitType(_)) {
             return false;
         }
         let kind = parent.kind();
