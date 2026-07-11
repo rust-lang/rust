@@ -39,13 +39,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let fds_arr_mplace = this.deref_pointer_as(fds, fds_arr_layout)?;
         let mut fds_arr_iter = this.project_array_fields(&fds_arr_mplace)?;
 
-        let deadline = if timeout.is_positive() {
-            let timeout_duration = Duration::from_millis(u64::try_from(timeout).unwrap());
-            Some(this.machine.monotonic_clock.now().add_lossy(timeout_duration).into())
-        } else {
-            None
-        };
-
         // The provided interests indexed by the file descriptor they're for.
         let mut interests = BTreeMap::<FdNum, PollInterest<'tcx>>::new();
         // Counts the number of poll interests that are invalid because they're for
@@ -105,9 +98,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.write_scalar(Scalar::from_u16(revents), &revents_field)?;
         }
 
-        if invalid_interests > 0 || watcher.ready_count() > 0 {
-            // Some interests are already fulfilled. We thus don't need to
-            // block the thread and can just return here.
+        if timeout == 0 || invalid_interests > 0 || watcher.ready_count() > 0 {
+            // Some interests are already fulfilled or a zero timeout was provided.
+            // We thus don't need to block the thread and can just return here.
 
             let count = this.write_ready_events(watcher.clone(), interests)?;
             // The Linux implementation also counts invalid interests as fulfilled.
@@ -125,6 +118,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // None of the interests are currently fulfilled; we thus need to
         // block the thread until any interest gets fulfilled.
         watcher.add_blocked_thread(this.machine.threads.active_thread());
+
+        let deadline = if timeout.is_positive() {
+            let timeout_duration = Duration::from_millis(u64::try_from(timeout).unwrap());
+            Some(this.machine.monotonic_clock.now().add_lossy(timeout_duration).into())
+        } else {
+            // Negative timeout means block indefinitely.
+            None
+        };
 
         let dest = dest.clone();
         this.block_thread(
