@@ -1,5 +1,5 @@
 error: missing documentation for a struct
-  --> $DIR/deny-cmd.rs:7:1
+  --> $DIR/deny-cmd.rs:8:1
    |
 LL | pub struct Foo;
    | ^^^^^^^^^^^^^^
