@@ -10,8 +10,8 @@ use crate::exec::{Bootstrap, cmd};
 use crate::tests::run_tests;
 use crate::timer::Timer;
 use crate::training::{
-    gather_bolt_profiles, gather_llvm_profiles, gather_rustc_profiles, llvm_benchmarks,
-    rustc_benchmarks,
+    gather_bolt_profiles, gather_llvm_profiles, gather_rustc_profiles, gather_rustdoc_profiles,
+    llvm_benchmarks, rustc_benchmarks,
 };
 use crate::utils::artifact_size::print_binary_sizes;
 use crate::utils::io::{copy_directory, reset_directory};
@@ -239,44 +239,50 @@ fn execute_pipeline(
     // Stage 1: Build PGO instrumented rustc
     // We use a normal build of LLVM, because gathering PGO profiles for LLVM and `rustc` at the
     // same time can cause issues, because the host and in-tree LLVM versions can diverge.
-    let rustc_pgo_profile = timer.section("Stage 1 (Rustc PGO)", |stage| {
-        let rustc_profile_dir_root = env.artifact_dir().join("rustc-pgo");
+    let (rustc_pgo_profile, rustdoc_pgo_profile) =
+        timer.section("Stage 1 (Rustc + rustdoc PGO)", |stage| {
+            let rustc_profile_dir_root = env.artifact_dir().join("rustc-pgo");
 
-        stage.section("Build PGO instrumented rustc and LLVM", |section| {
-            // Rustc and rustdoc profiles are gathered together into the same directory, because
-            // they are executed together within a single rustc-perf invocation.
-            // Their profiles are then merged together into a single PGO profile.
-            let mut builder = Bootstrap::build(env)
-                .rustc_pgo_instrument(&rustc_profile_dir_root)
-                .rustdoc_pgo_instrument(&rustc_profile_dir_root);
+            stage.section("Build PGO instrumented rustc and LLVM", |section| {
+                // Rustc and rustdoc profiles are gathered together into the same directory, because
+                // they are executed together within a single rustc-perf invocation.
+                // Their profiles are then merged together into a single PGO profile.
+                let mut builder = Bootstrap::build(env)
+                    .rustc_pgo_instrument(&rustc_profile_dir_root)
+                    .rustdoc_pgo_instrument(&rustc_profile_dir_root);
 
-            if env.supports_shared_llvm() {
-                // This first LLVM that we build will be thrown away after this stage, and it
-                // doesn't really need LTO. Without LTO, it builds in ~1 minute thanks to sccache,
-                // with LTO it takes almost 10 minutes. It makes the followup Rustc PGO
-                // instrumented/optimized build a bit slower, but it seems to be worth it.
-                builder = builder.without_llvm_lto();
-            }
+                if env.supports_shared_llvm() {
+                    // This first LLVM that we build will be thrown away after this stage, and it
+                    // doesn't really need LTO. Without LTO, it builds in ~1 minute thanks to sccache,
+                    // with LTO it takes almost 10 minutes. It makes the followup Rustc PGO
+                    // instrumented/optimized build a bit slower, but it seems to be worth it.
+                    builder = builder.without_llvm_lto();
+                }
 
-            builder.run(section)
+                builder.run(section)
+            })?;
+
+            let rustc_profile = stage.section("Gather rustc profiles", |_| {
+                gather_rustc_profiles(env, &rustc_profile_dir_root)
+            })?;
+            let rustdoc_profile = stage.section("Gather rustdoc profiles", |_| {
+                gather_rustdoc_profiles(env, &rustc_profile_dir_root)
+            })?;
+            print_free_disk_space()?;
+
+            stage.section("Build PGO optimized rustc", |section| {
+                let mut cmd = Bootstrap::build(env)
+                    .rustc_pgo_optimize(&rustc_profile)
+                    .rustdoc_pgo_optimize(&rustdoc_profile);
+                if env.use_bolt() {
+                    cmd = cmd.with_rustc_bolt_ldflags();
+                }
+
+                cmd.run(section)
+            })?;
+
+            Ok((rustc_profile, rustdoc_profile))
         })?;
-
-        let profile = stage
-            .section("Gather profiles", |_| gather_rustc_profiles(env, &rustc_profile_dir_root))?;
-        print_free_disk_space()?;
-
-        stage.section("Build PGO optimized rustc", |section| {
-            let mut cmd =
-                Bootstrap::build(env).rustc_pgo_optimize(&profile).rustdoc_pgo_optimize(&profile);
-            if env.use_bolt() {
-                cmd = cmd.with_rustc_bolt_ldflags();
-            }
-
-            cmd.run(section)
-        })?;
-
-        Ok(profile)
-    })?;
 
     // Stage 2: Gather LLVM PGO profiles
     // Here we build a PGO instrumented LLVM, reusing the previously PGO optimized rustc.
@@ -393,7 +399,7 @@ fn execute_pipeline(
     let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
         .rustc_pgo_optimize(&rustc_pgo_profile)
-        .rustdoc_pgo_optimize(&rustc_pgo_profile);
+        .rustdoc_pgo_optimize(&rustdoc_pgo_profile);
 
     // if LLVM is not built we'll have PGO optimized rustc
     dist = if env.supports_shared_llvm() || !env.build_llvm() {

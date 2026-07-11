@@ -7,7 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use crate::environment::Environment;
 use crate::metrics::{load_metrics, record_metrics};
 use crate::timer::TimerSection;
-use crate::training::{BoltProfile, LlvmPGOProfile, RustcPGOProfile};
+use crate::training::{BoltProfile, LlvmPGOProfile, RustcPGOProfile, RustdocPGOProfile};
 use crate::utils::io::normalize_path;
 
 #[derive(Default)]
@@ -185,7 +185,7 @@ impl Bootstrap {
         self
     }
 
-    pub fn rustdoc_pgo_optimize(mut self, profile: &RustcPGOProfile) -> Self {
+    pub fn rustdoc_pgo_optimize(mut self, profile: &RustdocPGOProfile) -> Self {
         self.cmd =
             self.cmd.arg("--set").arg(format!(r#"pgo.rustdoc.use="{}""#, profile.0.as_str()));
         self
