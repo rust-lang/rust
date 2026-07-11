@@ -2433,18 +2433,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         Some(path)
     }
 
-    /// Shortens a candidate import path to use `super::` (up to 1 level) or `self::` (same module)
-    /// relative to the current scope, if possible. Only applies to crate-local items and
-    /// only when the resulting path is actually shorter than the original.
     fn shorten_candidate_path(
         &self,
         suggestion: &mut ImportSuggestion,
         current_module: Module<'ra>,
     ) {
+        self.shorten_import_path(suggestion.did, &mut suggestion.path, current_module);
+    }
+
+    /// Shortens an import path to use `super::` (up to 1 level) or `self::` (same module)
+    /// relative to the current scope, if possible. Only applies to crate-local items and
+    /// only when the resulting path is actually shorter than the original.
+    fn shorten_import_path(
+        &self,
+        did: Option<DefId>,
+        path: &mut Path,
+        current_module: Module<'ra>,
+    ) {
         const MAX_SUPER_PATH_ITEMS_IN_SUGGESTION: usize = 1;
 
         // Only shorten local items.
-        if suggestion.did.is_none_or(|did| !did.is_local()) {
+        if did.is_none_or(|did| !did.is_local()) {
             return;
         }
 
@@ -2457,12 +2466,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // doesn't start with `Crate`, prepend it (edition 2015 paths are relative
         // to the crate root without an explicit `crate::` prefix).
         let candidate_names = {
-            let filtered_segments: Vec<_> = suggestion
-                .path
-                .segments
-                .iter()
-                .filter(|segment| segment.ident.name != kw::PathRoot)
-                .collect();
+            let filtered_segments: Vec<_> =
+                path.segments.iter().filter(|segment| segment.ident.name != kw::PathRoot).collect();
 
             let mut candidate_names: Vec<Symbol> =
                 filtered_segments.iter().map(|segment| segment.ident.name).collect();
@@ -2511,11 +2516,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Only apply if the result is strictly shorter than the original path.
-        if new_segments.len() >= suggestion.path.segments.len() {
+        if new_segments.len() >= path.segments.len() {
             return;
         }
 
-        suggestion.path = Path { span: suggestion.path.span, segments: new_segments };
+        *path = Path { span: path.span, segments: new_segments };
     }
 
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
@@ -2710,38 +2715,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             None
                         };
 
-                        if let Some(module_path) = module_path {
+                        module_path.map(|module_path| {
                             // `import.module_path` is relative to the import's module, not to the
                             // failing use site.
-                            let mut suggestion = ImportSuggestion {
-                                did: res_def_id,
-                                descr: "",
-                                path: Path {
-                                    span: ident.span,
-                                    segments: module_path
-                                        .into_iter()
-                                        .chain(std::iter::once(ident.name))
-                                        .map(|name| {
-                                            ast::PathSegment::from_ident(Ident::with_dummy_span(
-                                                name,
-                                            ))
-                                        })
-                                        .collect(),
-                                    tokens: None,
-                                },
-                                accessible: true,
-                                doc_visible: true,
-                                via_import: false,
-                                note: None,
-                                is_stable: true,
+                            let mut path = Path {
+                                span: ident.span,
+                                segments: module_path
+                                    .into_iter()
+                                    .chain(std::iter::once(ident.name))
+                                    .map(|name| {
+                                        ast::PathSegment::from_ident(Ident::with_dummy_span(name))
+                                    })
+                                    .collect(),
                             };
-                            // Reuse the existing relative shortening policy. The fields above
-                            // other than `did` and `path` are not used by this helper.
-                            self.shorten_candidate_path(&mut suggestion, parent_scope.module);
-                            Some(suggestion.path.segments.iter().map(|seg| seg.ident).collect())
-                        } else {
-                            None
-                        }
+                            self.shorten_import_path(res_def_id, &mut path, parent_scope.module);
+                            path.segments.iter().map(|seg| seg.ident).collect()
+                        })
                     } else {
                         // Don't include `{{root}}` in suggestions - it's an internal symbol
                         // that should never be shown to users.
