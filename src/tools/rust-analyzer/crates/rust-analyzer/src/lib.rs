@@ -60,6 +60,7 @@ pub mod tracing {
 pub mod config;
 mod global_state;
 pub mod lsp;
+pub mod session;
 
 use self::lsp::ext as lsp_ext;
 
