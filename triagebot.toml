@@ -1466,6 +1466,14 @@ cc = ["@jieyouxu"]
 
 # Content-based mentions
 
+[mentions."miri"]
+type = "content"
+trigger_files = ["library"]
+message = """
+Any special-casing of Miri in the standard library requires review.
+"""
+cc = ["@rust-lang/miri"]
+
 [mentions."#[miri::intrinsic_fallback_is_spec]"]
 type = "content"
 message = """
