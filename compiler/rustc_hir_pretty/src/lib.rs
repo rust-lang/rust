@@ -1739,7 +1739,7 @@ impl<'a> State<'a> {
                 self.print_expr_cond_paren(result, self.precedence(result) < ExprPrecedence::Jump);
             }
             hir::ExprKind::InlineAsm(asm) => {
-                self.word("asm!");
+                self.word(format!("{}!", asm.asm_macro.macro_name()));
                 self.print_inline_asm(asm);
             }
             hir::ExprKind::OffsetOf(container, fields) => {
