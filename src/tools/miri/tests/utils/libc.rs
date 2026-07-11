@@ -201,24 +201,19 @@ pub mod epoll {
     /// This is done by creating a new epoll instance, adding the
     /// fd to the epoll interests and then performing a zero-timeout
     /// wait.
-    pub fn current_epoll_readiness<const N: usize>(fd: i32, interests: i32) -> c_int {
+    pub fn current_epoll_readiness(fd: i32, interests: i32) -> c_int {
         let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
         // Add fd with all possible interests to epoll instance.
         epoll_ctl_add(epfd, fd, interests).unwrap();
 
-        let mut array: [libc::epoll_event; N] = [libc::epoll_event { events: 0, u64: 0 }; N];
+        let mut out: libc::epoll_event = libc::epoll_event { events: 0, u64: 0 };
         let num = errno_result(unsafe {
             // Use zero-timeout to just query without waiting.
-            libc::epoll_wait(epfd, array.as_mut_ptr(), N.try_into().unwrap(), 0)
+            libc::epoll_wait(epfd, &raw mut out, /* size of out */ 1, /* don't wait */ 0)
         })
         .expect("epoll_wait returned an error");
 
-        let mut readiness = 0;
-        let events = &mut array[..num.try_into().unwrap()];
-        events.iter().for_each(|e| {
-            readiness |= e.events.cast_signed();
-        });
-        readiness
+        if num == 0 { 0 } else { out.events.cast_signed() }
     }
 }
 
