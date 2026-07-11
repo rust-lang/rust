@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/34373>.
+//! Test cyclic default type param through alias doesn't ICE.
+
 #![allow(warnings)]
 //@ ignore-parallel-frontend query cycle
 trait Trait<T> {
