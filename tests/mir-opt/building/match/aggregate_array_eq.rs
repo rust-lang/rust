@@ -3,7 +3,8 @@
 
 // Verify that matching against an array/slice pattern that was expanded from
 // a constant (a named constant or a byte-string literal) produces a single
-// `PartialEq::eq` call rather than element-by-element comparisons.
+// `PartialEq::eq` call rather than element-by-element comparisons. The call
+// must be marked as non-unwinding.
 //
 // Hand-written array patterns must keep the element-by-element comparisons:
 // they only borrow the scrutinee for as long as `PartialEq::eq` would, but
@@ -18,6 +19,7 @@
 pub fn array_match(x: [u8; 4]) -> bool {
     // CHECK-LABEL: fn array_match(
     // CHECK: <[u8; 4] as PartialEq>::eq
+    // CHECK-SAME: unwind unreachable
     // CHECK-NOT: switchInt(copy _1[
     const EXPECTED: [u8; 4] = [1, 2, 3, 4];
     matches!(x, EXPECTED)
@@ -35,6 +37,7 @@ pub fn handwritten_array_match(x: [u8; 4]) -> bool {
 pub fn slice_match(x: &[u8]) -> bool {
     // CHECK-LABEL: fn slice_match(
     // CHECK: <[u8] as PartialEq>::eq
+    // CHECK-SAME: unwind unreachable
     matches!(x, b"ABCD")
 }
 
