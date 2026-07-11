@@ -60,9 +60,8 @@ fn return_str() -> str where str: Sized { //~ ERROR
     *"Sized".to_string().into_boxed_str()
 }
 
-// This is currently accepted because the function pointer isn't
-// considered global.
-fn global_hr(x: fn(&())) where fn(&()): Foo { // OK
+// The higher-ranked function pointer bound is global after normalization.
+fn global_hr(x: fn(&())) where fn(&()): Foo { //~ ERROR
     x.test();
 }
 

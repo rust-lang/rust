@@ -10,11 +10,12 @@ LL | pub struct Structure<C: Tec + Bar<5>> {
    |                             ++++++++
 
 error[E0277]: the trait bound `C: Bar<5>` is not satisfied
-  --> $DIR/projections-in-super-trait-bound-unsatisfied.rs:17:13
+  --> $DIR/projections-in-super-trait-bound-unsatisfied.rs:16:1
    |
-LL |     _field: C::BarType,
-   |             ^^^^^^^^^^ the trait `Bar<5>` is not implemented for `C`
+LL | pub struct Structure<C: Tec> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar<5>` is not implemented for `C`
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider further restricting type parameter `C` with trait `Bar`
    |
 LL | pub struct Structure<C: Tec + Bar<5>> {

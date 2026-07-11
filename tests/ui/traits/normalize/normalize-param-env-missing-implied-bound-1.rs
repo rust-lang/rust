@@ -1,4 +1,3 @@
-//@ check-pass
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
@@ -37,5 +36,6 @@ trait Trait<P: WithAssoc>: Supertrait<P::As> {
 }
 
 fn hrtb<T: for<'a> Trait<&'a ()>>() {}
+//~^ ERROR the type `&'a ()` does not fulfill the required lifetime
 
 pub fn main() {}

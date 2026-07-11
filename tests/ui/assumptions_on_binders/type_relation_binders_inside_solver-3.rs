@@ -1,4 +1,3 @@
-//@ check-pass
 //@ compile-flags: -Znext-solver -Zassumptions-on-binders
 
 #![crate_type = "lib"]
@@ -16,6 +15,7 @@ fn mk() -> for<'b> fn(&'b ()) { loop {} }
 fn ice()
 where
     (for<'b> fn(&'b ())): Trait
+    //~^ ERROR the trait bound `for<'b> fn(&'b ()): Trait` is not satisfied
 {
     req_trait(mk());
 }

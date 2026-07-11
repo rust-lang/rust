@@ -14,5 +14,6 @@ pub(crate) const B: usize = 5;
 pub trait Tec: Bar<B> {}
 
 pub struct Structure<C: Tec> { //~ ERROR the trait bound `C: Bar<5>` is not satisfied
-    _field: C::BarType, //~ ERROR the trait bound `C: Bar<5>` is not satisfied
+    //~| ERROR the trait bound `C: Bar<5>` is not satisfied
+    _field: C::BarType,
 }

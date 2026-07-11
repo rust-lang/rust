@@ -63,13 +63,10 @@ LL | trait Foo<T>: Super<Assoc = T> + Sized
    |                                +++++++
 
 error[E0271]: type mismatch resolving `<Self as Super>::Assoc == ()`
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:14:30
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:10:1
    |
 LL | trait Foo<T>: Super<Assoc = T>
-   |           - found this type parameter
-...
-LL |     <Self as Mirror>::Assoc: Clone,
-   |                              ^^^^^ expected `()`, found type parameter `T`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found type parameter `T`
    |
    = note:   expected unit type `()`
            found type parameter `T`
@@ -80,12 +77,13 @@ LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |               ----------   ^^^^^^     ^
    |               |
    |               unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:14:30
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:10:1
    |
-LL |     <Self as Mirror>::Assoc: Clone,
-   |                              ^^^^^ doesn't have a size known at compile-time
+LL | trait Foo<T>: Super<Assoc = T>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
 note: required for `Self` to implement `Mirror`
   --> $DIR/unhandled-crate-mod-issue-144888.rs:31:28
@@ -94,6 +92,7 @@ LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |      -                     ^^^^^^     ^
    |      |
    |      unsatisfied trait bound implicitly introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider further restricting `Self`
    |
 LL | trait Foo<T>: Super<Assoc = T> + Sized
@@ -146,7 +145,7 @@ LL |     fn transmute(&self) where Self: Sized {}
    |                         +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<Self as Super>::Assoc == ()`
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:14:30
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:16:30
    |
 LL | trait Foo<T>: Super<Assoc = T>
    |           - found this type parameter
@@ -163,10 +162,9 @@ LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |               ----------   ^^^^^^     ^
    |               |
    |               unsatisfied trait bound introduced here
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/unhandled-crate-mod-issue-144888.rs:14:30
+  --> $DIR/unhandled-crate-mod-issue-144888.rs:16:30
    |
 LL |     <Self as Mirror>::Assoc: Clone,
    |                              ^^^^^ doesn't have a size known at compile-time

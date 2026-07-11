@@ -16,6 +16,8 @@ where
 fn caller()
 where
     (for<'a> fn(&'a ())): Foo,
+    //[quiet]~^ ERROR the trait bound `for<'a> fn(&'a ()): Foo` is not satisfied
+    //[verbose]~^^ ERROR the trait bound `for<Region(
 {
     called()
     //[quiet]~^ ERROR the trait bound `for<'b> fn(&'b ()): Foo` is not satisfied

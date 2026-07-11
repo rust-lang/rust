@@ -1,5 +1,3 @@
-//@ check-pass
-
 trait Identity<Q> {
     type T;
 }
@@ -24,6 +22,7 @@ impl Holds for X {
 impl<Q> Clone for X
 where
     <S as Identity<Q>>::T: Clone,
+    //~^ ERROR the trait bound `S: Clone` is not satisfied
     X: Holds<Q = Q>,
 {
     fn clone(&self) -> Self {

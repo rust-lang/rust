@@ -1,0 +1,35 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/normalize-global-bounds.rs:15:5
+   |
+LL |     <T as Trait>::Assoc: Copy,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0277]: the trait bound `Inner<for<'a> fn(&'a ())>: Impossible` is not satisfied
+  --> $DIR/normalize-global-bounds.rs:21:5
+   |
+LL |     Inner<fn(&())>: Impossible,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Impossible` is not implemented for `Inner<for<'a> fn(&'a ())>`
+  --> $DIR/normalize-global-bounds.rs:10:1
+   |
+LL | struct Inner<T>(T);
+   | ^^^^^^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/normalize-global-bounds.rs:8:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
