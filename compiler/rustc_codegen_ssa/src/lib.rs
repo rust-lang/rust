@@ -216,7 +216,6 @@ bitflags::bitflags! {
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Symbol,
-    pub filename: Option<Symbol>,
     pub cfg: Option<CfgEntry>,
     pub verbatim: bool,
     pub dll_imports: Vec<cstore::DllImport>,
@@ -226,7 +225,6 @@ impl From<&cstore::NativeLib> for NativeLib {
     fn from(lib: &cstore::NativeLib) -> Self {
         NativeLib {
             kind: lib.kind,
-            filename: lib.filename,
             name: lib.name,
             cfg: lib.cfg.clone(),
             verbatim: lib.verbatim.unwrap_or(false),
