@@ -4,7 +4,7 @@ use rustc_abi::FieldIdx;
 use rustc_middle::mir::{Pinnedness, Place, PlaceElem, ProjectionElem};
 use rustc_middle::span_bug;
 use rustc_middle::thir::{Ascription, DerefPatBorrowMode, FieldPat, Pat, PatKind};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
 
 use crate::builder::Builder;
@@ -18,33 +18,6 @@ use crate::builder::matches::{
 /// unlikely to be more expensive than a `PartialEq::eq` call.
 const AGGREGATE_EQ_MIN_LEN: usize = 4;
 
-/// Checks whether every pattern in `elements` is a `PatKind::Constant` and,
-/// if so, reconstructs a single aggregate `ty::Value` that represents the whole
-/// array or slice. Returns `None` when any element is not a constant or the
-/// sequence is too short to benefit from an aggregate comparison.
-fn try_reconstruct_aggregate_constant<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    aggregate_ty: Ty<'tcx>,
-    elements: &[Pat<'tcx>],
-) -> Option<ty::Value<'tcx>> {
-    // Short arrays are not worth an aggregate comparison.
-    if elements.len() < AGGREGATE_EQ_MIN_LEN {
-        return None;
-    }
-    let branches = elements
-        .iter()
-        .map(|pat| {
-            if let PatKind::Constant { value } = pat.kind {
-                Some(ty::Const::new_value(tcx, value.valtree, value.ty))
-            } else {
-                None
-            }
-        })
-        .collect::<Option<Vec<_>>>()?;
-    let valtree = ty::ValTree::from_branches(tcx, branches);
-    Some(ty::Value { ty: aggregate_ty, valtree })
-}
-
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Check if we can use aggregate `PartialEq::eq` comparisons for constant array/slice patterns.
     /// This is not possible in const contexts, because `PartialEq` is not const-stable yet.
@@ -52,6 +25,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let in_const_context = self.tcx.is_const_fn(self.def_id.to_def_id())
             || !self.tcx.hir_body_owner_kind(self.def_id).is_fn_or_closure();
         !in_const_context
+    }
+
+    /// If the given array or slice pattern node was expanded from a constant
+    /// by `const_to_pat` and an aggregate comparison is both possible and
+    /// worthwhile, returns the original constant value, so that the scrutinee
+    /// can be compared against it as a whole via `PartialEq::eq`.
+    ///
+    /// Note that this deliberately does not apply to hand-written array or
+    /// slice patterns, which only ever match element by element.
+    fn aggregate_const_value(
+        &self,
+        pattern: &Pat<'tcx>,
+        element_count: usize,
+    ) -> Option<ty::Value<'tcx>> {
+        let value = pattern.extra.as_deref()?.expanded_const_value?;
+        if element_count < AGGREGATE_EQ_MIN_LEN || !self.can_use_aggregate_eq() {
+            return None;
+        }
+        Some(value)
     }
 }
 
@@ -386,15 +378,11 @@ impl<'tcx> InterPat<'tcx> {
                     _ => None,
                 };
                 if let Some(array_len) = array_len {
-                    // When all elements are constants and there is no `..`
-                    // subpattern, compare the whole array at once via
+                    // If this pattern was expanded from a constant, compare
+                    // the whole array against that constant at once via
                     // `PartialEq::eq` rather than element by element.
-                    if slice.is_none()
-                        && suffix.is_empty()
-                        && cx.can_use_aggregate_eq()
-                        && let Some(aggregate_value) =
-                            try_reconstruct_aggregate_constant(cx.tcx, pattern.ty, prefix)
-                    {
+                    if let Some(aggregate_value) = cx.aggregate_const_value(pattern, prefix.len()) {
+                        debug_assert!(slice.is_none() && suffix.is_empty());
                         Some(TestableCase::Constant {
                             value: aggregate_value,
                             kind: PatConstKind::Aggregate,
@@ -425,16 +413,12 @@ impl<'tcx> InterPat<'tcx> {
                 }
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                // When there is no `..`, all elements are constants, and
-                // there are at least two of them, collapse the individual
-                // element subpairs into a single aggregate comparison that
-                // is performed after the length check.
-                if slice.is_none()
-                    && suffix.is_empty()
-                    && cx.can_use_aggregate_eq()
-                    && let Some(aggregate_value) =
-                        try_reconstruct_aggregate_constant(cx.tcx, pattern.ty, prefix)
-                {
+                // If this pattern was expanded from a constant, compare the
+                // whole slice against that constant at once via
+                // `PartialEq::eq` after the length check, rather than
+                // element by element.
+                if let Some(aggregate_value) = cx.aggregate_const_value(pattern, prefix.len()) {
+                    debug_assert!(slice.is_none() && suffix.is_empty());
                     subpats.push(InterPat {
                         place,
                         testable_case: Some(TestableCase::Constant {

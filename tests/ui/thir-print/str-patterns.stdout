@@ -48,6 +48,7 @@ Thir {
                         expanded_const: Some(
                             DefId(0:4 ~ str_patterns[fc71]::CONSTANT),
                         ),
+                        expanded_const_value: None,
                         ascriptions: [],
                     },
                 ),
