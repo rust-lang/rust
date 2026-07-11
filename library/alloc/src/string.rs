@@ -668,7 +668,6 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(string_from_utf8_lossy_owned)]
     /// // some bytes, in a vector
     /// let sparkle_heart = vec![240, 159, 146, 150];
     ///
@@ -680,7 +679,6 @@ impl String {
     /// Incorrect bytes:
     ///
     /// ```
-    /// #![feature(string_from_utf8_lossy_owned)]
     /// // some invalid bytes
     /// let input: Vec<u8> = b"Hello \xF0\x90\x80World".into();
     /// let output = String::from_utf8_lossy_owned(input);
@@ -689,7 +687,7 @@ impl String {
     /// ```
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "string_from_utf8_lossy_owned", issue = "129436")]
+    #[stable(feature = "string_from_utf8_lossy_owned", since = "CURRENT_RUSTC_VERSION")]
     pub fn from_utf8_lossy_owned(v: Vec<u8>) -> String {
         if let Cow::Owned(string) = String::from_utf8_lossy(&v) {
             string
@@ -2252,7 +2250,6 @@ impl FromUtf8Error {
     /// # Examples
     ///
     /// ```
-    /// #![feature(string_from_utf8_lossy_owned)]
     /// // some invalid bytes
     /// let input: Vec<u8> = b"Hello \xF0\x90\x80World".into();
     ///
@@ -2269,7 +2266,7 @@ impl FromUtf8Error {
     /// ```
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "string_from_utf8_lossy_owned", issue = "129436")]
+    #[stable(feature = "string_from_utf8_lossy_owned", since = "CURRENT_RUSTC_VERSION")]
     pub fn into_utf8_lossy(self) -> String {
         const REPLACEMENT: &str = "\u{FFFD}";
 
