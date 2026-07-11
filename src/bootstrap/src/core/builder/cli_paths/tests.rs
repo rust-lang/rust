@@ -173,8 +173,11 @@ declare_tests!(
     (x_test_rustdoc, "test rustdoc"),
     (x_test_rustdoc_html, "test rustdoc-html"),
     (x_test_skip_coverage, "test --skip=coverage"),
+    (x_test_skip_coverage_map, "test --skip=coverage-map"),
+    (x_test_skip_coverage_run, "test --skip=coverage-run"),
     // FIXME(Zalathar): This doesn't skip the coverage-map or coverage-run tests.
     (x_test_skip_tests, "test --skip=tests"),
+    (x_test_skip_tests_coverage, "test --skip=tests/coverage"),
     // From `src/ci/docker/scripts/stage_2_test_set2.sh`.
     (
         x_test_skip_tests_etc,
