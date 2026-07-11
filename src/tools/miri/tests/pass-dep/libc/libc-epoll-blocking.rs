@@ -25,6 +25,7 @@ fn main() {
     test_epoll_race();
     wakeup_on_new_interest();
     multiple_events_wake_multiple_threads();
+    waiting_threads_unblocked_after_epoll_close();
 }
 
 // This test allows edge-triggered epoll_wait to block and then unblock
@@ -224,4 +225,35 @@ fn multiple_events_wake_multiple_threads() {
 
     // In both modes we should get both events across the two threads.
     assert!(expected == [e1, e2] || expected == [e2, e1]);
+}
+
+/// Test that threads which are waiting on an epoll are unblocked when a registered interest
+/// is fulfilled, even when the epoll file _descriptor_ they block on got closed in the
+/// mean time.
+fn waiting_threads_unblocked_after_epoll_close() {
+    // Create an epoll instance.
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
+
+    // Create a socketpair instance.
+    let mut fds = [-1, -1];
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
+
+    // Add `fds[0]` to epoll with readable interest.
+    epoll_ctl_add(epfd, fds[0], EPOLLIN | EPOLLET_OR_ZERO).unwrap();
+
+    let t1 = thread::spawn(move || {
+        // Sleep 10ms to make sure the other thread is blocked.
+        thread::sleep(Duration::from_millis(10));
+
+        // Close epoll file descriptor.
+        unsafe { errno_check(libc::close(epfd)) };
+
+        // Write some data into `fds[1]` which should make `fds[0]` readable.
+        write_all(fds[1], b"abcde").unwrap();
+    });
+
+    // Indefinitely block until `fds[0]` becomes readable.
+    check_epoll_wait(epfd, &[Ev { events: EPOLLIN, data: fds[0] }], -1);
+
+    t1.join().unwrap();
 }
