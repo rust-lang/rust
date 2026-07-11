@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_middle::ty::RegionVid;
@@ -45,7 +45,6 @@ impl ReverseSccGraph {
 
     /// Find all universal regions that are required to outlive the given SCC.
     pub(super) fn upper_bounds(&self, scc0: ConstraintSccIndex) -> impl Iterator<Item = RegionVid> {
-        let mut duplicates = FxIndexSet::default();
         graph::depth_first_search(&self.graph, scc0)
             .flat_map(move |scc1| {
                 self.scc_regions
@@ -53,6 +52,5 @@ impl ReverseSccGraph {
                     .map_or(&[][..], |range| &self.universal_regions[range.clone()])
             })
             .copied()
-            .filter(move |r| duplicates.insert(*r))
     }
 }
