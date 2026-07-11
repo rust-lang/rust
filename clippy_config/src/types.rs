@@ -706,3 +706,12 @@ pub enum InherentImplLintScope {
     File,
     Module,
 }
+
+/// Represents the ordering requirement for associated items in trait impls.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TraitImplItemOrder {
+    Alphabetical,
+    TraitItemOrdering,
+    AlphabeticalOrTraitItemOrdering,
+}
