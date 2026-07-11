@@ -1,10 +1,10 @@
-use core::alloc::Allocator;
+use core::alloc::{AllocError, Allocator};
 use core::cell::UnsafeCell;
 use core::mem::{self, DropGuard};
 use core::num::NonZeroUsize;
 use core::ptr::{self, NonNull};
 
-use crate::raw_rc::rc_layout::RcLayout;
+use crate::raw_rc::rc_layout::{RcLayout, RcLayoutExt};
 use crate::raw_rc::rc_value_pointer::RcValuePointer;
 use crate::raw_rc::{RefCounter, RefCounts, rc_alloc};
 
@@ -253,6 +253,123 @@ where
         // SAFETY: Caller guarantees `self` is non-dangling, so `self.ptr` must point to the value
         // location in a valid reference-counted allocation.
         unsafe { RcValuePointer::from_value_ptr(self.ptr.cast()) }
+    }
+}
+
+impl<T, A> RawWeak<T, A> {
+    pub(crate) const fn new_dangling_in(alloc: A) -> Self {
+        unsafe { Self::from_raw_parts(NonNull::without_provenance(DANGLING_WEAK_ADDRESS), alloc) }
+    }
+
+    pub(crate) fn new_dangling() -> Self
+    where
+        A: Default,
+    {
+        Self::new_dangling_in(A::default())
+    }
+
+    pub(crate) fn try_new_uninit_in<const STRONG_COUNT: usize>(alloc: A) -> Result<Self, AllocError>
+    where
+        A: Allocator,
+    {
+        rc_alloc::try_allocate_uninit_in::<A, STRONG_COUNT>(&alloc, T::RC_LAYOUT)
+            .map(|ptr| unsafe { Self::from_raw_parts(ptr.as_ptr().cast(), alloc) })
+    }
+
+    pub(crate) fn try_new_uninit<const STRONG_COUNT: usize>() -> Result<Self, AllocError>
+    where
+        A: Allocator + Default,
+    {
+        rc_alloc::try_allocate_uninit::<A, STRONG_COUNT>(T::RC_LAYOUT)
+            .map(|(ptr, alloc)| unsafe { Self::from_raw_parts(ptr.as_ptr().cast(), alloc) })
+    }
+
+    pub(crate) fn try_new_zeroed_in<const STRONG_COUNT: usize>(alloc: A) -> Result<Self, AllocError>
+    where
+        A: Allocator,
+    {
+        rc_alloc::try_allocate_zeroed_in::<A, STRONG_COUNT>(&alloc, T::RC_LAYOUT)
+            .map(|ptr| unsafe { Self::from_raw_parts(ptr.as_ptr().cast(), alloc) })
+    }
+
+    pub(crate) fn try_new_zeroed<const STRONG_COUNT: usize>() -> Result<Self, AllocError>
+    where
+        A: Allocator + Default,
+    {
+        rc_alloc::try_allocate_zeroed::<A, STRONG_COUNT>(T::RC_LAYOUT)
+            .map(|(ptr, alloc)| unsafe { Self::from_raw_parts(ptr.as_ptr().cast(), alloc) })
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_uninit_in<const STRONG_COUNT: usize>(alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unsafe {
+            Self::from_raw_parts(
+                rc_alloc::allocate_uninit_in::<A, STRONG_COUNT>(&alloc, T::RC_LAYOUT)
+                    .as_ptr()
+                    .cast(),
+                alloc,
+            )
+        }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_uninit<const STRONG_COUNT: usize>() -> Self
+    where
+        A: Allocator + Default,
+    {
+        let (ptr, alloc) = rc_alloc::allocate_uninit::<A, STRONG_COUNT>(T::RC_LAYOUT);
+
+        unsafe { Self::from_raw_parts(ptr.as_ptr().cast(), alloc) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_zeroed_in<const STRONG_COUNT: usize>(alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unsafe {
+            Self::from_raw_parts(
+                rc_alloc::allocate_zeroed_in::<A, STRONG_COUNT>(&alloc, T::RC_LAYOUT)
+                    .as_ptr()
+                    .cast(),
+                alloc,
+            )
+        }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_zeroed<const STRONG_COUNT: usize>() -> Self
+    where
+        A: Allocator + Default,
+    {
+        let (ptr, alloc) = rc_alloc::allocate_zeroed::<A, STRONG_COUNT>(T::RC_LAYOUT);
+
+        unsafe { Self::from_raw_parts(ptr.as_ptr().cast(), alloc) }
+    }
+
+    /// Consumes the `RawWeak` object and returns the contained value, assuming the value is
+    /// initialized.
+    ///
+    /// # Safety
+    ///
+    /// - `self` is non-dangling.
+    /// - The value pointed to by `self` is initialized.
+    /// - The strong reference count is zero.
+    pub(super) unsafe fn assume_init_into_inner<R>(mut self) -> T
+    where
+        A: Allocator,
+        R: RefCounter,
+    {
+        unsafe {
+            let result = self.ptr.read();
+
+            self.drop_unchecked::<R>();
+
+            result
+        }
     }
 }
 
