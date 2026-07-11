@@ -1,0 +1,21 @@
+error: expected type, found `direct_const_arg!()` constant
+  --> $DIR/ice-double-definition-block-impl-header-issue-159127.rs:4:5
+   |
+LL |     core::direct_const_arg!({
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/ice-double-definition-block-impl-header-issue-159127.rs:4:29
+   |
+LL |       core::direct_const_arg!({
+   |  _____________________________^
+LL | |     //~^ ERROR: expected type, found `direct_const_arg!()` constant
+LL | |     //~| ERROR: complex const arguments must be placed inside of a `const` block
+LL | |         fn foo() {}
+LL | |         reuse foo as bar;
+LL | |         reuse bar as baz;
+LL | |     })
+   | |______^
+
+error: aborting due to 2 previous errors
+
