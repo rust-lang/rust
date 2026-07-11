@@ -187,6 +187,9 @@ pub fn ty_tuple(types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
 
     ty_from_text(&format!("({contents})"))
 }
+pub fn ty_paren(ty: ast::Type) -> ast::Type {
+    ty_from_text(&format!("({ty})"))
+}
 pub fn ty_ref(target: ast::Type, exclusive: bool) -> ast::Type {
     ty_from_text(&if exclusive { format!("&mut {target}") } else { format!("&{target}") })
 }

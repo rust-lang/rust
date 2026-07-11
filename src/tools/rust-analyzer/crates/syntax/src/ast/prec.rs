@@ -575,3 +575,15 @@ impl Expr {
         }
     }
 }
+
+impl ast::Type {
+    pub fn needs_parens_in(&self, parent: &SyntaxNode) -> bool {
+        if !matches!(self, ast::Type::DynTraitType(_) | ast::Type::ImplTraitType(_)) {
+            return false;
+        }
+        let kind = parent.kind();
+        ast::CastExpr::can_cast(kind)
+            || ast::RefType::can_cast(kind)
+            || ast::PtrType::can_cast(kind)
+    }
+}
