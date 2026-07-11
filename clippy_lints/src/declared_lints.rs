@@ -97,6 +97,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::default_instead_of_iter_empty::DEFAULT_INSTEAD_OF_ITER_EMPTY_INFO,
     crate::default_numeric_fallback::DEFAULT_NUMERIC_FALLBACK_INFO,
     crate::default_union_representation::DEFAULT_UNION_REPRESENTATION_INFO,
+    crate::definition_in_module_root::DEFINITION_IN_MODULE_ROOT_INFO,
     crate::dereference::EXPLICIT_AUTO_DEREF_INFO,
     crate::dereference::EXPLICIT_DEREF_METHODS_INFO,
     crate::dereference::NEEDLESS_BORROW_INFO,
