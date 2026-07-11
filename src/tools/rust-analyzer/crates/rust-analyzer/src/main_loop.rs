@@ -995,10 +995,14 @@ impl GlobalState {
                     }
 
                     let path = VfsPath::from(path);
-                    // if the file is in mem docs, it's managed by the client via notifications
-                    // so only set it if its not in there
-                    if !self.mem_docs.contains(&path)
-                        && (is_changed || vfs.file_id(&path).is_none())
+                    // If the file is in mem docs, it's managed by the client via
+                    // notifications so only set it if its not in there. Library files are
+                    // exempt from that authority as they are considered immutable, for
+                    // them disk is always the source of truth.
+                    let is_library = self.source_root_config.path_is_library(&path);
+                    let client_is_authoritative = !is_library && self.mem_docs.contains(&path);
+                    if !client_is_authoritative
+                        && (is_changed || is_library || vfs.file_id(&path).is_none())
                     {
                         vfs.set_file_contents(path, contents);
                     }
