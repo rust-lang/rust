@@ -99,6 +99,21 @@ pub(super) fn debug_struct_new<'a, 'b>(
     DebugStruct { fmt, result, has_fields: false }
 }
 
+fn debug_struct_field_non_pretty<F>(
+    fmt: &mut fmt::Formatter<'_>,
+    prefix: &str,
+    name: &str,
+    value_fmt: F,
+) -> fmt::Result
+where
+    F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+{
+    fmt.write_str(prefix)?;
+    fmt.write_str(name)?;
+    fmt.write_str(": ")?;
+    value_fmt(fmt)
+}
+
 impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// Adds a new field to the generated struct output.
     ///
@@ -156,11 +171,23 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
                 writer.write_str(",\n")
             } else {
                 let prefix = if self.has_fields { ", " } else { " { " };
-                self.fmt.write_str(prefix)?;
-                self.fmt.write_str(name)?;
-                self.fmt.write_str(": ")?;
-                value_fmt(self.fmt)
+                debug_struct_field_non_pretty(self.fmt, prefix, name, value_fmt)
             }
+        });
+
+        self.has_fields = true;
+        self
+    }
+
+    /// Adds a new field to the generated struct output in non-pretty mode.
+    ///
+    /// Fast path version of [`Self::field`] that allows skipping the pretty mode check.
+    /// It's the caller's responsibility to verify non-pretty mode is configured
+    /// prior to calling this function.
+    pub(super) fn field_non_pretty(&mut self, name: &str, value: &dyn fmt::Debug) -> &mut Self {
+        self.result = self.result.and_then(|_| {
+            let prefix = if self.has_fields { ", " } else { " { " };
+            debug_struct_field_non_pretty(self.fmt, prefix, name, |f| value.fmt(f))
         });
 
         self.has_fields = true;
@@ -246,6 +273,18 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
             self.result = self.result.and_then(|_| {
                 if self.is_pretty() { self.fmt.write_str("}") } else { self.fmt.write_str(" }") }
             });
+        }
+        self.result
+    }
+
+    /// Finishes output in non-pretty mode and returns any error encountered.
+    ///
+    /// Fast path version of [`Self::finish`] that allows skipping the pretty mode check.
+    /// It's the caller's responsibility to verify non-pretty mode is configured
+    /// prior to calling this function.
+    pub(super) fn finish_non_pretty(&mut self) -> fmt::Result {
+        if self.has_fields {
+            self.result = self.result.and_then(|_| self.fmt.write_str(" }"));
         }
         self.result
     }

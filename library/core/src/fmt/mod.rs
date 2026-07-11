@@ -564,6 +564,27 @@ pub struct Formatter<'a> {
     buf: &'a mut (dyn Write + 'a),
 }
 
+// The fixed-arity derive helpers check `$formatter.alternate()` ("pretty mode") once
+// so that in the common case (non-alternate mode) we can use the fast path
+// that does not require re-checking it once for every field.
+macro_rules! debug_struct_fixed_fields {
+    (
+        $formatter:ident,
+        $name:expr,
+        $(($field_name:expr, $value:expr)),+ $(,)?
+    ) => {{
+        if $formatter.alternate() {
+            let mut builder = builders::debug_struct_new($formatter, $name);
+            $(builder.field($field_name, $value);)+
+            builder.finish()
+        } else {
+            let mut builder = builders::debug_struct_new($formatter, $name);
+            $(builder.field_non_pretty($field_name, $value);)+
+            builder.finish_non_pretty()
+        }
+    }};
+}
+
 impl<'a> Formatter<'a> {
     /// Creates a new formatter with given [`FormattingOptions`].
     ///
@@ -2460,9 +2481,7 @@ impl<'a> Formatter<'a> {
         name1: &str,
         value1: &dyn Debug,
     ) -> Result {
-        let mut builder = builders::debug_struct_new(self, name);
-        builder.field(name1, value1);
-        builder.finish()
+        debug_struct_fixed_fields!(self, name, (name1, value1))
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2478,10 +2497,7 @@ impl<'a> Formatter<'a> {
         name2: &str,
         value2: &dyn Debug,
     ) -> Result {
-        let mut builder = builders::debug_struct_new(self, name);
-        builder.field(name1, value1);
-        builder.field(name2, value2);
-        builder.finish()
+        debug_struct_fixed_fields!(self, name, (name1, value1), (name2, value2))
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2499,11 +2515,7 @@ impl<'a> Formatter<'a> {
         name3: &str,
         value3: &dyn Debug,
     ) -> Result {
-        let mut builder = builders::debug_struct_new(self, name);
-        builder.field(name1, value1);
-        builder.field(name2, value2);
-        builder.field(name3, value3);
-        builder.finish()
+        debug_struct_fixed_fields!(self, name, (name1, value1), (name2, value2), (name3, value3))
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2523,12 +2535,14 @@ impl<'a> Formatter<'a> {
         name4: &str,
         value4: &dyn Debug,
     ) -> Result {
-        let mut builder = builders::debug_struct_new(self, name);
-        builder.field(name1, value1);
-        builder.field(name2, value2);
-        builder.field(name3, value3);
-        builder.field(name4, value4);
-        builder.finish()
+        debug_struct_fixed_fields!(
+            self,
+            name,
+            (name1, value1),
+            (name2, value2),
+            (name3, value3),
+            (name4, value4),
+        )
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2550,13 +2564,15 @@ impl<'a> Formatter<'a> {
         name5: &str,
         value5: &dyn Debug,
     ) -> Result {
-        let mut builder = builders::debug_struct_new(self, name);
-        builder.field(name1, value1);
-        builder.field(name2, value2);
-        builder.field(name3, value3);
-        builder.field(name4, value4);
-        builder.field(name5, value5);
-        builder.finish()
+        debug_struct_fixed_fields!(
+            self,
+            name,
+            (name1, value1),
+            (name2, value2),
+            (name3, value3),
+            (name4, value4),
+            (name5, value5),
+        )
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.

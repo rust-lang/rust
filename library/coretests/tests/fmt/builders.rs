@@ -188,6 +188,42 @@ mod debug_struct {
 
         assert_eq!("Foo {\n    bar: true,\n    baz: false,\n}", format!("{Foo:#?}"))
     }
+
+    #[test]
+    fn test_derived_helpers_match_builder() {
+        fn assert_matches_builder(builder: &dyn fmt::Debug, derived: &dyn fmt::Debug) {
+            assert_eq!(format!("{builder:?}"), format!("{derived:?}"));
+            assert_eq!(format!("{builder:#?}"), format!("{derived:#?}"));
+        }
+
+        macro_rules! check_arity {
+            ($name:ident { $($field:ident: $value:expr),+ $(,)? }) => {{
+                #[derive(Debug)]
+                struct $name {
+                    $($field: u8),+
+                }
+
+                struct ViaBuilder<'a>(&'a $name);
+
+                impl fmt::Debug for ViaBuilder<'_> {
+                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        f.debug_struct(stringify!($name))
+                            $(.field(stringify!($field), &self.0.$field))+
+                            .finish()
+                    }
+                }
+
+                let value = $name { $($field: $value),+ };
+                assert_matches_builder(&ViaBuilder(&value), &value);
+            }};
+        }
+
+        check_arity!(One { a: 1 });
+        check_arity!(Two { a: 1, b: 2 });
+        check_arity!(Three { a: 1, b: 2, c: 3 });
+        check_arity!(Four { a: 1, b: 2, c: 3, d: 4 });
+        check_arity!(Five { a: 1, b: 2, c: 3, d: 4, e: 5 });
+    }
 }
 
 mod debug_tuple {
