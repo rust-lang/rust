@@ -1,7 +1,7 @@
 use rustc_errors::{Applicability, DiagArgValue, E0232, E0264, MultiSpan};
 use rustc_hir::AttrPath;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag("`{$name}` attribute cannot be used at crate level")]
@@ -823,4 +823,13 @@ pub(crate) struct UnknownExternLangItem {
     #[primary_span]
     pub span: Span,
     pub lang_item: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("tool `{$tool}` is {$reason} and cannot be registered")]
+pub(crate) struct ToolReserved {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) tool: Ident,
+    pub(crate) reason: &'static str,
 }

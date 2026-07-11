@@ -9,7 +9,7 @@ use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::TypeTree;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, Path, ast};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir::LangItem;
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
@@ -1313,8 +1313,11 @@ pub enum AttributeKind {
     /// Represents `#[reexport_test_harness_main]`
     ReexportTestHarnessMain(Symbol),
 
-    /// Represents `#[register_tool]`
-    RegisterTool(ThinVec<Ident>),
+    /// Represents `#[register_attribute_tool]`, `#[register_lint_tool]` and `#[register_tool]`
+    RegisterTool {
+        attr_tools: FxIndexSet<Ident>,
+        lint_tools: FxIndexSet<Ident>,
+    },
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr {

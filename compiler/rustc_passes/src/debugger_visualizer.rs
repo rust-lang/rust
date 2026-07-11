@@ -16,7 +16,7 @@ use crate::diagnostics::DebugVisualizerUnreadable;
 impl DebuggerVisualizerCollector<'_> {
     fn check_for_debugger_visualizer(&mut self, attrs: &[ast::Attribute]) {
         if let Some(Attribute::Parsed(AttributeKind::DebuggerVisualizer(visualizers))) =
-            AttributeParser::parse_limited(&self.sess, attrs, &[sym::debugger_visualizer])
+            AttributeParser::parse_limited_sym(&self.sess, attrs, &[sym::debugger_visualizer])
         {
             for DebugVisualizer { span, visualizer_type, path } in visualizers {
                 let file = match resolve_path(&self.sess, path.as_str(), span) {

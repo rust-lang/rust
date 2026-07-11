@@ -1528,10 +1528,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }));
                 }
                 Scope::ExternPreludeFlags => {}
-                Scope::ToolPrelude => {
+                Scope::ToolAttributePrelude => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
                     suggestions.extend(
-                        this.registered_tools
+                        this.registered_attr_tools
                             .iter()
                             .map(|ident| TypoSuggestion::new(ident.name, ident.span, res)),
                     );
@@ -4148,7 +4148,7 @@ impl OnUnknownData {
     ) -> Option<OnUnknownData> {
         if r.features.diagnostic_on_unknown()
             && let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
-                AttributeParser::parse_limited(
+                AttributeParser::parse_limited_sym(
                     r.tcx.sess,
                     attrs,
                     &[sym::diagnostic, sym::on_unknown],

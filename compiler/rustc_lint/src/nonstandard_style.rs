@@ -160,7 +160,7 @@ impl NonCamelCaseTypes {
 impl EarlyLintPass for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         let has_repr_c = matches!(
-            AttributeParser::parse_limited(cx.sess(), &it.attrs, &[sym::repr]),
+            AttributeParser::parse_limited_sym(cx.sess(), &it.attrs, &[sym::repr]),
             Some(Attribute::Parsed(AttributeKind::Repr { reprs, ..})) if reprs.iter().any(|(r, _)| r == &ReprAttr::ReprC)
         );
 

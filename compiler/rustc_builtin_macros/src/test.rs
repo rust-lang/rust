@@ -476,7 +476,7 @@ fn should_ignore_message(i: &ast::Item) -> Option<Symbol> {
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     if let Some(Attribute::Parsed(AttributeKind::ShouldPanic { reason, .. })) =
-        AttributeParser::parse_limited(cx.sess, &i.attrs, &[sym::should_panic])
+        AttributeParser::parse_limited_sym(cx.sess, &i.attrs, &[sym::should_panic])
     {
         ShouldPanic::Yes(reason)
     } else {

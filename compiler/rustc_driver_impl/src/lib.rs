@@ -724,13 +724,13 @@ fn print_crate_info(
                 let crate_name = passes::get_crate_name(sess, attrs);
                 let lint_store = crate::unerased_lint_store(sess);
                 let features = rustc_expand::config::features(sess, attrs, crate_name);
-                let registered_tools = rustc_resolve::registered_tools_ast(sess.dcx(), attrs, sess);
+                let registered_lint_tools = rustc_resolve::registered_lint_tools_ast(sess, attrs);
                 let builder = rustc_lint::LintLevelsBuilder::crate_root(
                     sess,
                     &features,
                     true,
                     lint_store,
-                    &registered_tools,
+                    &registered_lint_tools,
                     attrs,
                 );
                 for lint in lint_store.get_lints() {

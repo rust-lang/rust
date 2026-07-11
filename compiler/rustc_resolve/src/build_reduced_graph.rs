@@ -1138,7 +1138,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let mut import_all = None;
         let mut single_imports = ThinVec::new();
         if let Some(Attribute::Parsed(AttributeKind::MacroUse { span, arguments })) =
-            AttributeParser::parse_limited(self.r.tcx.sess, &item.attrs, &[sym::macro_use])
+            AttributeParser::parse_limited_sym(self.r.tcx.sess, &item.attrs, &[sym::macro_use])
         {
             if self.parent_scope.module.expect_local().parent.is_some() {
                 self.r.dcx().emit_err(diagnostics::ExternCrateLoadingMacroNotAtCrateRoot {

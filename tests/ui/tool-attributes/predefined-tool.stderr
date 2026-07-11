@@ -1,0 +1,38 @@
+error: tool `clippy` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:3:18
+   |
+LL | #![register_tool(clippy)]
+   |                  ^^^^^^
+
+error: tool `miri` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:4:28
+   |
+LL | #![register_attribute_tool(miri)]
+   |                            ^^^^
+
+error: tool `rustfmt` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:5:23
+   |
+LL | #![register_lint_tool(rustfmt)]
+   |                       ^^^^^^^
+
+error: tool `diagnostic` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:6:18
+   |
+LL | #![register_tool(diagnostic)]
+   |                  ^^^^^^^^^^
+
+error: tool `rust_analyzer` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:7:28
+   |
+LL | #![register_attribute_tool(rust_analyzer)]
+   |                            ^^^^^^^^^^^^^
+
+error: tool `rustc` is reserved and cannot be registered
+  --> $DIR/predefined-tool.rs:8:18
+   |
+LL | #![register_tool(rustc)]
+   |                  ^^^^^
+
+error: aborting due to 6 previous errors
+

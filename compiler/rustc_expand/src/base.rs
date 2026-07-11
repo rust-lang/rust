@@ -1115,8 +1115,11 @@ pub trait ResolverExpand {
         cfg_span: Span,
     );
 
-    /// Tools registered with `#![register_tool]` and used by tool attributes and lints.
-    fn registered_tools(&self) -> &RegisteredTools;
+    /// Tools registered with `#![register_tool]` or `#![register_attribute_tool]`.
+    fn registered_attr_tools(&self) -> &RegisteredTools;
+
+    /// Tools registered with `#![register_tool]` or `#![register_lint_tool]`.
+    fn registered_lint_tools(&self) -> &RegisteredTools;
 
     /// Mark this invocation id as a glob delegation.
     fn register_glob_delegation(&mut self, invoc_id: LocalExpnId);
@@ -1143,7 +1146,7 @@ pub trait LintStoreExpand {
         &self,
         sess: &Session,
         features: &Features,
-        registered_tools: &RegisteredTools,
+        registered_lint_tools: &RegisteredTools,
         node_id: NodeId,
         attrs: &[Attribute],
         items: &[Box<Item>],
