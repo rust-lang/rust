@@ -2,13 +2,13 @@ use std::ops::ControlFlow;
 
 use ast::visit::Visitor;
 use hir::def::DefKind;
-use rustc_ast as ast;
-use rustc_ast::*;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_ast::{self as ast, Delegation, DelegationSource, NodeId};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
+use rustc_middle::ty::Ty;
 use rustc_middle::{span_bug, ty};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Span, kw};
 
 use crate::delegation::generics::GenericsGenerationResults;
 use crate::delegation::resolution::resolver::DelegationResolver;
@@ -34,7 +34,7 @@ pub(super) struct ParamInfo {
 #[derive(Default)]
 pub(super) struct SigMapping {
     pub map_return: bool,
-    pub arguments_to_map: FxHashSet<usize>,
+    pub arguments_to_map: FxIndexSet<usize>,
 }
 
 pub(super) struct DelegationResolution {
@@ -150,7 +150,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             param_info: ParamInfo { param_count, c_variadic: sig.c_variadic(), splatted: None },
             source: delegation.source,
             call_path_res: self.get_resolution_id(delegation.id)?,
-            sig_mapping: self.create_self_mapping(
+            sig_mapping: self.create_sig_mapping(
                 delegation,
                 span,
                 should_generate_block,
@@ -210,6 +210,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             let err = DelegationBlockSpecifiedWhenNoParams { span: block.span };
             return Err(tcx.dcx().emit_err(err));
         }
+
         struct DefinitionsFinder<'a, 'hir> {
             resolver: &'a DelegationResolver<'a, 'hir>,
         }
@@ -238,7 +239,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         }
     }
 
-    fn create_self_mapping(
+    fn create_sig_mapping(
         &self,
         delegation: &Delegation,
         span: Span,
@@ -253,14 +254,17 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         }
 
         if self.can_perform_self_mapping(delegation, parent)? {
+            // FIXME(fn_delegation): support heuristics for mapping of complex
+            // return types: `Self` -> `Box<Arc<Rc<Self>>>`
             mapping.map_return = sig.output().is_param(0);
 
+            let self_param = Ty::new_param(self.tcx(), 0, kw::SelfUpper);
             let arguments_to_map = sig
                 .inputs()
                 .iter()
                 .enumerate()
                 .skip(1) // Already checked above.
-                .filter_map(|(idx, param)| param.is_param(0).then_some(idx));
+                .filter_map(|(idx, param)| param.contains(self_param).then_some(idx));
 
             mapping.arguments_to_map.extend(arguments_to_map);
         }
