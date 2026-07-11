@@ -1,17 +1,20 @@
 //@ run-pass
 // Test method calls with self as an argument
 
-// FIXME(static_mut_refs): use raw pointers instead of references
-#![allow(static_mut_refs)]
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static mut COUNT: usize = 1;
+static COUNT: AtomicUsize = AtomicUsize::new(1);
+
+fn multiply_count(factor: usize) {
+    COUNT.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| Some(count * factor)).unwrap();
+}
 
 #[derive(Copy, Clone)]
 struct Foo;
 
 impl Foo {
     fn foo(self, x: &Foo) {
-        unsafe { COUNT *= 2; }
+        multiply_count(2);
         // Test internal call.
         Foo::bar(&self);
         Foo::bar(x);
@@ -24,15 +27,15 @@ impl Foo {
     }
 
     fn bar(&self) {
-        unsafe { COUNT *= 3; }
+        multiply_count(3);
     }
 
     fn baz(self) {
-        unsafe { COUNT *= 5; }
+        multiply_count(5);
     }
 
     fn qux(self: Box<Foo>) {
-        unsafe { COUNT *= 7; }
+        multiply_count(7);
     }
 }
 
@@ -45,5 +48,5 @@ fn main() {
 
     x.foo(&x);
 
-    unsafe { assert_eq!(COUNT, 2*3*3*3*5*5*5*7*7*7); }
+    assert_eq!(COUNT.load(Ordering::Relaxed), 2*3*3*3*5*5*5*7*7*7);
 }

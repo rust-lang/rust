@@ -1,28 +1,35 @@
 //@ run-pass
 #![allow(unused_must_use)]
 // Test that we are able to reinitialize box with moved referent
-// FIXME(static_mut_refs): use raw pointers instead of references
-#![allow(static_mut_refs)]
 
-static mut ORDER: [usize; 3] = [0, 0, 0];
-static mut INDEX: usize = 0;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static ORDER: [AtomicUsize; 3] = [const { AtomicUsize::new(0) }; 3];
+static INDEX: AtomicUsize = AtomicUsize::new(0);
+
+fn push_order(value: usize) {
+    let index = INDEX.fetch_add(1, Ordering::Relaxed);
+    ORDER[index].store(value, Ordering::Relaxed);
+}
+
+fn order() -> [usize; 3] {
+    [
+        ORDER[0].load(Ordering::Relaxed),
+        ORDER[1].load(Ordering::Relaxed),
+        ORDER[2].load(Ordering::Relaxed),
+    ]
+}
 
 struct Dropee (usize);
 
 impl Drop for Dropee {
     fn drop(&mut self) {
-        unsafe {
-            ORDER[INDEX] = self.0;
-            INDEX = INDEX + 1;
-        }
+        push_order(self.0);
     }
 }
 
 fn add_sentintel() {
-    unsafe {
-        ORDER[INDEX] = 2;
-        INDEX = INDEX + 1;
-    }
+    push_order(2);
 }
 
 fn main() {
@@ -31,7 +38,5 @@ fn main() {
     add_sentintel();
     *x = Dropee(3); // re-initialize `*x`
     {x}; // drop value
-    unsafe {
-        assert_eq!(ORDER, [1, 2, 3]);
-    }
+    assert_eq!(order(), [1, 2, 3]);
 }

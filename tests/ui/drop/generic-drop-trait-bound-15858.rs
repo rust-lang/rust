@@ -1,9 +1,9 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/15858
 
 //@ run-pass
-// FIXME(static_mut_refs): use raw pointers instead of references
-#![allow(static_mut_refs)]
-static mut DROP_RAN: bool = false;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static DROP_RAN: AtomicBool = AtomicBool::new(false);
 
 trait Bar {
     fn do_something(&mut self); //~ WARN method `do_something` is never used
@@ -20,9 +20,7 @@ struct Foo<B: Bar>(#[allow(dead_code)] B);
 
 impl<B: Bar> Drop for Foo<B> {
     fn drop(&mut self) {
-        unsafe {
-            DROP_RAN = true;
-        }
+        DROP_RAN.store(true, Ordering::Relaxed);
     }
 }
 
@@ -31,7 +29,5 @@ fn main() {
     {
        let _x: Foo<BarImpl> = Foo(BarImpl);
     }
-    unsafe {
-        assert_eq!(DROP_RAN, true);
-    }
+    assert_eq!(DROP_RAN.load(Ordering::Relaxed), true);
 }

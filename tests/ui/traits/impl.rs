@@ -3,13 +3,15 @@
 
 //@ aux-build:traitimpl.rs
 
-// FIXME(static_mut_refs): use raw pointers instead of references
-#![allow(static_mut_refs)]
-
 extern crate traitimpl;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use traitimpl::Bar;
 
-static mut COUNT: usize = 1;
+static COUNT: AtomicUsize = AtomicUsize::new(1);
+
+fn multiply_count(factor: usize) {
+    COUNT.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| Some(count * factor)).unwrap();
+}
 
 trait T {
     fn t(&self) {} //~ WARN method `t` is never used
@@ -17,10 +19,10 @@ trait T {
 
 impl<'a> dyn T+'a {
     fn foo(&self) {
-        unsafe { COUNT *= 2; }
+        multiply_count(2);
     }
     fn bar() {
-        unsafe { COUNT *= 3; }
+        multiply_count(3);
     }
 }
 
@@ -36,7 +38,7 @@ fn main() {
     <dyn T>::foo(x);
     <dyn T>::bar();
 
-    unsafe { assert_eq!(COUNT, 12); }
+    assert_eq!(COUNT.load(Ordering::Relaxed), 12);
 
     // Cross-crait case
     let x: &dyn Bar = &Foo;
