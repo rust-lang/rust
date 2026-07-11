@@ -23,7 +23,7 @@ fn try_from_matched(_1: [u8; 4]) -> Result<MyEnum, ()> {
         _2 = &_1;
         PlaceMention(_2);
         _9 = &(*_2);
-        _10 = <[u8; 4] as PartialEq>::eq(copy _9, const &*b"ABCD") -> [return: bb19, unwind: bb26];
+        _10 = <[u8; 4] as PartialEq>::eq(copy _9, const &*b"ABCD") -> [return: bb19, unwind unreachable];
     }
 
     bb1: {
@@ -44,7 +44,7 @@ fn try_from_matched(_1: [u8; 4]) -> Result<MyEnum, ()> {
 
     bb4: {
         _7 = &(*_2);
-        _8 = <[u8; 4] as PartialEq>::eq(copy _7, const &*b"EFGH") -> [return: bb18, unwind: bb26];
+        _8 = <[u8; 4] as PartialEq>::eq(copy _7, const &*b"EFGH") -> [return: bb18, unwind unreachable];
     }
 
     bb5: {
@@ -61,7 +61,7 @@ fn try_from_matched(_1: [u8; 4]) -> Result<MyEnum, ()> {
 
     bb8: {
         _5 = &(*_2);
-        _6 = <[u8; 4] as PartialEq>::eq(copy _5, const &*b"IJKL") -> [return: bb17, unwind: bb26];
+        _6 = <[u8; 4] as PartialEq>::eq(copy _5, const &*b"IJKL") -> [return: bb17, unwind unreachable];
     }
 
     bb9: {
@@ -78,7 +78,7 @@ fn try_from_matched(_1: [u8; 4]) -> Result<MyEnum, ()> {
 
     bb12: {
         _3 = &(*_2);
-        _4 = <[u8; 4] as PartialEq>::eq(copy _3, const &*b"MNOP") -> [return: bb16, unwind: bb26];
+        _4 = <[u8; 4] as PartialEq>::eq(copy _3, const &*b"MNOP") -> [return: bb16, unwind unreachable];
     }
 
     bb13: {
@@ -149,9 +149,5 @@ fn try_from_matched(_1: [u8; 4]) -> Result<MyEnum, ()> {
     bb25: {
         StorageDead(_2);
         return;
-    }
-
-    bb26 (cleanup): {
-        resume;
     }
 }
