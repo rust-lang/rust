@@ -523,17 +523,7 @@ fn normalize_equated_region_vars<Infcx: InferCtxtLike<Interner = I>, I: Interner
 
             let mut region_outlives = vec![];
             collect_conjunctive_region_outlives(&constraint, &mut region_outlives);
-
-            let mut replacements = vec![];
-            for (r1, r2) in region_outlives.iter().copied() {
-                if let Some(partner) = equated_non_var_partner(infcx, &region_outlives, r1, r2, u) {
-                    replacements.push((r1, partner));
-                }
-
-                if let Some(partner) = equated_non_var_partner(infcx, &region_outlives, r2, r1, u) {
-                    replacements.push((r2, partner));
-                }
-            }
+            let replacements = compute_equated_region_var_replacements(infcx, &region_outlives, u);
 
             if replacements.is_empty() {
                 constraint
@@ -544,23 +534,67 @@ fn normalize_equated_region_vars<Infcx: InferCtxtLike<Interner = I>, I: Interner
     }
 }
 
-fn equated_non_var_partner<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+fn compute_equated_region_var_replacements<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
     region_outlives: &[(I::Region, I::Region)],
-    candidate: I::Region,
-    partner: I::Region,
     u: UniverseIndex,
-) -> Option<I::Region> {
-    if is_current_universe_region_var(infcx, candidate, u)
-        && !is_region_var::<I>(partner)
-        && region_outlives
-            .iter()
-            .any(|(outlives, outlived)| *outlives == partner && *outlived == candidate)
-    {
-        Some(partner)
-    } else {
-        None
+) -> Vec<(I::Region, I::Region)> {
+    compute_equated_region_var_replacements_from(
+        region_outlives,
+        |r| is_current_universe_region_var(infcx, r, u),
+        is_region_var::<I>,
+    )
+}
+
+fn compute_equated_region_var_replacements_from<R>(
+    region_outlives: &[(R, R)],
+    mut is_current_universe_region_var: impl FnMut(R) -> bool,
+    mut is_region_var: impl FnMut(R) -> bool,
+) -> Vec<(R, R)>
+where
+    R: Copy + Eq + std::hash::Hash,
+{
+    let mut equated_regions_builder = TransitiveRelationBuilder::default();
+    let mut has_equated_regions = false;
+    for (r1, r2) in region_outlives.iter().copied() {
+        // Paired outlives constraints represent region equality. Build a transitive relation so
+        // current-universe variables equated through other variables still find a non-var partner.
+        if has_reverse_region_outlives_edge(region_outlives, r1, r2) {
+            equated_regions_builder.add(r1, r2);
+            equated_regions_builder.add(r2, r1);
+            has_equated_regions = true;
+        }
     }
+
+    if !has_equated_regions {
+        return vec![];
+    }
+
+    let equated_regions = equated_regions_builder.freeze();
+    let mut candidates = IndexSet::new();
+    for (r1, r2) in region_outlives.iter().copied() {
+        if is_current_universe_region_var(r1) {
+            candidates.insert(r1);
+        }
+
+        if is_current_universe_region_var(r2) {
+            candidates.insert(r2);
+        }
+    }
+
+    candidates
+        .into_iter()
+        .filter_map(|candidate| {
+            std::iter::once(candidate)
+                .chain(equated_regions.reachable_from(candidate))
+                .find(|r| !is_region_var(*r))
+                .map(|partner| (candidate, partner))
+        })
+        .collect()
+}
+
+fn has_reverse_region_outlives_edge<R: Eq>(region_outlives: &[(R, R)], r1: R, r2: R) -> bool {
+    region_outlives.iter().any(|(outlives, outlived)| outlives == &r2 && outlived == &r1)
 }
 
 fn collect_conjunctive_region_outlives<I: Interner>(
@@ -606,6 +640,33 @@ impl<I: Interner> TypeFolder<I> for EquatedRegionVarReplacer<I> {
         // If a region variable has multiple non-var partners, the remaining folded
         // constraints still relate those partners, so first-match only affects representation.
         self.replacements.iter().find_map(|(from, to)| (*from == r).then_some(*to)).unwrap_or(r)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::compute_equated_region_var_replacements_from;
+
+    #[test]
+    fn equated_region_var_replacements_follow_transitive_region_var_chains() {
+        const REVAR_1: u8 = 1;
+        const REVAR_2: u8 = 2;
+        const PLACEHOLDER: u8 = 3;
+
+        let region_outlives = [
+            (REVAR_1, REVAR_2),
+            (REVAR_2, REVAR_1),
+            (REVAR_2, PLACEHOLDER),
+            (PLACEHOLDER, REVAR_2),
+        ];
+
+        let replacements = compute_equated_region_var_replacements_from(
+            &region_outlives,
+            |r| matches!(r, REVAR_1 | REVAR_2),
+            |r| matches!(r, REVAR_1 | REVAR_2),
+        );
+
+        assert_eq!(replacements, vec![(REVAR_1, PLACEHOLDER), (REVAR_2, PLACEHOLDER)]);
     }
 }
 
