@@ -1,9 +1,13 @@
 use core::alloc::{AllocError, Allocator};
 use core::cell::UnsafeCell;
+use core::fmt::{self, Debug, Formatter};
+use core::marker::Unsize;
 use core::mem::{self, DropGuard};
 use core::num::NonZeroUsize;
+use core::ops::{CoerceUnsized, DispatchFromDyn};
 use core::ptr::{self, NonNull};
 
+use crate::alloc::Global;
 use crate::raw_rc::rc_layout::{RcLayout, RcLayoutExt};
 use crate::raw_rc::rc_value_pointer::RcValuePointer;
 use crate::raw_rc::{RefCounter, RefCounts, rc_alloc};
@@ -433,6 +437,38 @@ impl<T, A> RawWeak<[T], A> {
     {
         Self::allocate(length, rc_alloc::allocate_zeroed::<A, STRONG_COUNT>)
     }
+}
+
+impl<T, U, A> CoerceUnsized<RawWeak<U, A>> for RawWeak<T, A>
+where
+    T: Unsize<U> + ?Sized,
+    U: ?Sized,
+{
+}
+
+impl<T, A> Debug for RawWeak<T, A>
+where
+    T: ?Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str("(Weak)")
+    }
+}
+
+impl<T, A> Default for RawWeak<T, A>
+where
+    A: Default,
+{
+    fn default() -> Self {
+        Self::new_dangling()
+    }
+}
+
+impl<T, U> DispatchFromDyn<RawWeak<U, Global>> for RawWeak<T, Global>
+where
+    T: Unsize<U> + ?Sized,
+    U: ?Sized,
+{
 }
 
 // We choose `NonZeroUsize::MAX` as the address for dangling weak pointers because:
