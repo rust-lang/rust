@@ -7,6 +7,25 @@ LL |     #[sanitize(address = "off")]
    = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
 
+error[E0658]: SIMD types are experimental and possibly buggy
+  --> $DIR/attr-on-mac-call.rs:106:12
+   |
+LL |     #[repr(simd)]
+   |            ^^^^
+   |
+   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
+   = help: add `#![feature(repr_simd)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `#[repr(simd)]` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:106:5
+   |
+LL |     #[repr(simd)]
+   |     ^^^^^^^^^^^^^
+   |
+   = help: `#[repr(simd)]` can only be applied to structs
+   = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
+
 error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![register_tool]`
   --> $DIR/attr-on-mac-call.rs:110:5
    |
@@ -322,15 +341,6 @@ LL |     #[repr(Rust)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
 
-warning: `#[repr(simd)]` attribute cannot be used on macro calls
-  --> $DIR/attr-on-mac-call.rs:106:5
-   |
-LL |     #[repr(simd)]
-   |     ^^^^^^^^^^^^^
-   |
-   = help: `#[repr(simd)]` can only be applied to structs
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
+error: aborting due to 4 previous errors; 30 warnings emitted
 
-error: aborting due to 2 previous errors; 31 warnings emitted
-
+For more information about this error, try `rustc --explain E0658`.
