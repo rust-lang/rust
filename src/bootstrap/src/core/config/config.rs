@@ -236,6 +236,7 @@ pub struct Config {
     pub rust_rustflags: Vec<String>,
     pub rust_pgo: PgoConfig,
     pub rustdoc_pgo: PgoConfig,
+    pub cargo_pgo: PgoConfig,
 
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
     pub enable_bolt_settings: bool,
@@ -657,7 +658,7 @@ impl Config {
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
         } = toml_gcc.unwrap_or_default();
 
-        let Pgo { rustc: pgo_rustc, llvm: pgo_llvm, rustdoc: pgo_rustdoc } =
+        let Pgo { rustc: pgo_rustc, llvm: pgo_llvm, rustdoc: pgo_rustdoc, cargo: pgo_cargo } =
             toml_pgo.unwrap_or_default();
 
         // Backcompat: flags have priority over config
@@ -703,10 +704,16 @@ impl Config {
             panic!("Cannot use and generate LLVM PGO profiles at the same time");
         }
 
-        let pgo_rustdoc = pgo_rustdoc.unwrap_or_default();
-        if pgo_rustdoc.use_profile.is_some() && pgo_rustdoc.generate_profile.is_some() {
-            panic!("Cannot use and generate rustdoc PGO profiles at the same time");
-        }
+        let init_pgo = |pgo: Option<PgoConfig>, name: &str| -> PgoConfig {
+            let pgo_config = pgo.unwrap_or_default();
+            if pgo_config.use_profile.is_some() && pgo_config.generate_profile.is_some() {
+                panic!("Cannot use and generate {name} PGO profiles at the same time");
+            }
+            pgo_config
+        };
+
+        let pgo_rustdoc = init_pgo(pgo_rustdoc, "rustdoc");
+        let pgo_cargo = init_pgo(pgo_cargo, "cargo");
 
         if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
             panic!(
@@ -1400,6 +1407,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
             cargo_info,
             cargo_native_static: build_cargo_native_static.unwrap_or(false),
+            cargo_pgo: pgo_cargo,
             ccache,
             change_id: toml_change_id.inner,
             channel,
