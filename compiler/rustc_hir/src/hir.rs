@@ -4495,6 +4495,7 @@ pub struct PolyTraitRef<'hir> {
 pub struct FieldDef<'hir> {
     pub span: Span,
     pub vis_span: Span,
+    pub mut_restriction: &'hir MutRestriction<'hir>,
     pub ident: Ident,
     #[stable_hash(ignore)]
     pub hir_id: HirId,
@@ -4748,6 +4749,12 @@ impl fmt::Display for Constness {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct ImplRestriction<'hir> {
+    pub kind: RestrictionKind<'hir>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
+pub struct MutRestriction<'hir> {
     pub kind: RestrictionKind<'hir>,
     pub span: Span,
 }
