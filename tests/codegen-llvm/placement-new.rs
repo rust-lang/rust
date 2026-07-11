@@ -22,9 +22,11 @@ pub fn box_default_inplace() -> Box<(String, String)> {
 #[no_mangle]
 pub fn rc_default_inplace() -> Rc<(String, String)> {
     // CHECK-NOT: alloca
-    // CHECK: [[RC:%.*]] = {{.*}}call {{.*}}__rust_alloc(
+    // CHECK: [[RC:%.*]] = {{.*}}call {{.*}}__rust_alloc(i[[#BITS:]]
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: ret ptr [[RC]]
+    // CHECK: [[DATA:%.*]] = getelementptr inbounds{{( nuw)?}} i8, ptr [[RC]], i[[#BITS]] [[#div(BITS,4)]]
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: ret ptr [[DATA]]
     Rc::default()
 }
 
