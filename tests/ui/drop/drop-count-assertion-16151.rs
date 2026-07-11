@@ -2,15 +2,25 @@
 //@ run-pass
 
 use std::mem;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
-static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
+static mut DROP_COUNT: usize = 0;
+
+fn increment_drop_count() {
+    unsafe {
+        let drop_count = &raw mut DROP_COUNT;
+        drop_count.write(drop_count.read() + 1);
+    }
+}
+
+fn drop_count() -> usize {
+    unsafe { (&raw const DROP_COUNT).read() }
+}
 
 struct Fragment;
 
 impl Drop for Fragment {
     fn drop(&mut self) {
-        DROP_COUNT.fetch_add(1, Ordering::Relaxed);
+        increment_drop_count();
     }
 }
 
@@ -23,5 +33,5 @@ fn main() {
                 true
             }).collect();
     }
-    assert_eq!(DROP_COUNT.load(Ordering::Relaxed), 3);
+    assert_eq!(drop_count(), 3);
 }
