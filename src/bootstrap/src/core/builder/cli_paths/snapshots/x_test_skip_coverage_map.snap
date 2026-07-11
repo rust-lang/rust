@@ -13,7 +13,6 @@ expression: test --skip=coverage-map
     - Suite(test::tests/crashes)
 [Test] test::Coverage
     targets: [aarch64-unknown-linux-gnu]
-    - Set({test::coverage-run})
     - Suite(test::tests/coverage)
 [Test] test::MirOpt
     targets: [aarch64-unknown-linux-gnu]
