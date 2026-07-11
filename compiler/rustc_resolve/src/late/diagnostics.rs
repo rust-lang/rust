@@ -3981,9 +3981,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         span: lifetime_ref.ident.span,
                         name: lifetime_ref.ident.name,
                         param_kind: diagnostics::ParamKindInNonTrivialAnonConst::Lifetime,
-                        help: self.r.tcx.sess.is_nightly_build(),
+                        help: self.r.tcx.sess.is_nightly_build()
+                            && !self.r.features.min_generic_const_args(),
                         is_gca: self.r.features.generic_const_args(),
                         help_gca: self.r.features.generic_const_args(),
+                        help_suggest_gca: self.r.tcx.sess.is_nightly_build()
+                            && !self.r.features.generic_const_args(),
                     })
                     .emit()
             }

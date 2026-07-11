@@ -51,5 +51,19 @@ LL -     ( $test:$tt ) => {};
 LL +     ( $test:tt ) => {};
    |
 
-error: aborting due to 4 previous errors
+error: missing fragment specifier
+  --> $DIR/macro-missing-fragment.rs:21:15
+   |
+LL |     ( $($test:$tt),* ) => {};
+   |               ^
+   |
+   = note: fragment specifiers must be provided
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+help: fragment specifiers should not be prefixed with `$`
+   |
+LL -     ( $($test:$tt),* ) => {};
+LL +     ( $($test:tt),* ) => {};
+   |
+
+error: aborting due to 5 previous errors
 
