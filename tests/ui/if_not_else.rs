@@ -93,3 +93,71 @@ fn issue15924() {
         println!(":(");
     }
 }
+
+mod issue17373 {
+    macro_rules! ht_is_packed {
+        ($ht:expr) => {
+            ($ht).u & 4 != 0
+        };
+    }
+    struct HashTable {
+        u: u32,
+    }
+    impl HashTable {
+        fn check(&mut self) {
+            if ht_is_packed!(self) {
+                println!("Packed");
+            } else {
+                println!("Not packed");
+            }
+        }
+    }
+
+    macro_rules! is_active {
+        ($x:expr) => {
+            ($x).state != 3
+        };
+    }
+    struct Widget {
+        state: u32,
+    }
+    impl Widget {
+        fn check(&self) {
+            if is_active!(self) {
+                println!("active");
+            } else {
+                println!("inactive");
+            }
+        }
+    }
+
+    macro_rules! not_ready {
+        ($x:expr) => {
+            !($x).ready
+        };
+    }
+    struct Task {
+        ready: bool,
+    }
+    impl Task {
+        fn check(&self) {
+            if not_ready!(self) {
+                println!("waiting");
+            } else {
+                println!("go");
+            }
+        }
+    }
+
+    macro_rules! wrap_if {
+        ($cond:expr, $t:block, $e:block) => {
+            if $cond $t else $e
+        };
+    }
+    fn wrap_if_macro() {
+        let x = 0;
+        fn a() {}
+        fn b() {}
+        wrap_if!(x != 0, { a() }, { b() });
+    }
+}
