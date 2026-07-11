@@ -108,12 +108,19 @@ fn on_enter_in_comment(
     Some(edit)
 }
 
+// for lack of a better place to put this function
+fn escape_snippet_bits(text: &mut String) {
+    stdx::replace(text, '\\', "\\\\");
+    stdx::replace(text, '$', "\\$");
+}
+
 fn on_enter_in_braces(l_curly: SyntaxToken, position: FilePosition) -> Option<TextEdit> {
     if l_curly.text_range().end() != position.offset {
         return None;
     }
 
-    let (r_curly, content) = brace_contents_on_same_line(&l_curly)?;
+    let (r_curly, mut content) = brace_contents_on_same_line(&l_curly)?;
+    escape_snippet_bits(&mut content);
     let indent = IndentLevel::from_token(&l_curly);
     Some(TextEdit::replace(
         TextRange::new(position.offset, r_curly.text_range().start()),
@@ -681,6 +688,24 @@ use path::{$0
     Thing
 };
             "#,
+        );
+    }
+
+    #[test]
+    fn escapes_dollar_sign_in_brace_contents() {
+        do_check(
+            r#"
+fn f() {
+    const {$0$bar};
+}
+"#,
+            r#"
+fn f() {
+    const {
+        $0\$bar
+    };
+}
+"#,
         );
     }
 }
