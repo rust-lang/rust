@@ -1,4 +1,4 @@
-#![attr = Feature([mut_restriction#0])]
+#![attr = Feature([mut_restriction#0, unsafe_fields#0])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
