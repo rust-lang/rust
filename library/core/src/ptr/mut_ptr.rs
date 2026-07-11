@@ -1256,9 +1256,10 @@ impl<T: PointeeSized> *mut T {
     ///
     /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
     #[inline(always)]
     #[track_caller]
-    pub unsafe fn read_volatile(self) -> T
+    pub const unsafe fn read_volatile(self) -> T
     where
         T: Sized,
     {
@@ -1430,9 +1431,10 @@ impl<T: PointeeSized> *mut T {
     ///
     /// [`ptr::write_volatile`]: crate::ptr::write_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
     #[inline(always)]
     #[track_caller]
-    pub unsafe fn write_volatile(self, val: T)
+    pub const unsafe fn write_volatile(self, val: T)
     where
         T: Sized,
     {

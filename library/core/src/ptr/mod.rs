@@ -2061,6 +2061,9 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// Note that volatile memory operations where T is a zero-sized type are noops and may be ignored.
 ///
+/// When invoked during const evaluation, this behaves like a regular read. In particular, such
+/// reads must always follow the first of the two cases above.
+///
 /// [allocation]: crate::ptr#allocated-object
 /// [atomic]: crate::sync::atomic#memory-model-for-atomic-accesses
 ///
@@ -2116,9 +2119,10 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// ```
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
+#[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
 #[track_caller]
 #[rustc_diagnostic_item = "ptr_read_volatile"]
-pub unsafe fn read_volatile<T>(src: *const T) -> T {
+pub const unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
         ub_checks::assert_unsafe_precondition!(
@@ -2169,6 +2173,9 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// dropped when operating on Rust memory. Additionally, it does not drop `src`. Semantically, `src`
 /// is moved into the location pointed to by `dst`.
 ///
+/// When invoked during const evaluation, this behaves like a regular write. In particular, such
+/// reads must always follow the first of the two cases above.
+///
 /// [allocation]: crate::ptr#allocated-object
 /// [atomic]: crate::sync::atomic#memory-model-for-atomic-accesses
 ///
@@ -2218,9 +2225,10 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
+#[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
 #[rustc_diagnostic_item = "ptr_write_volatile"]
 #[track_caller]
-pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
+pub const unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
         ub_checks::assert_unsafe_precondition!(
