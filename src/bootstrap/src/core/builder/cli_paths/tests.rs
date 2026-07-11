@@ -178,10 +178,7 @@ declare_tests!(
     (x_test_skip_tests, "test --skip=tests"),
     (x_test_skip_tests_coverage, "test --skip=tests/coverage"),
     // From `src/ci/docker/scripts/stage_2_test_set2.sh`.
-    (
-        x_test_skip_tests_etc,
-        "test --skip=tests --skip=coverage-map --skip=coverage-run --skip=library --skip=tidyselftest"
-    ),
+    (x_test_skip_tests_etc, "test --skip=tests --skip=library --skip=tidyselftest"),
     (x_test_tests, "test tests"),
     (x_test_tests_skip_coverage, "test tests --skip=coverage"),
     (x_test_tests_ui, "test tests/ui"),
