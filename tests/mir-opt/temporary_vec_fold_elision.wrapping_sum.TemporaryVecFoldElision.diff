@@ -1,0 +1,86 @@
+- // MIR for `wrapping_sum` before TemporaryVecFoldElision
++ // MIR for `wrapping_sum` after TemporaryVecFoldElision
+  
+  fn wrapping_sum(_1: &[u64]) -> u64 {
+      debug nums => _1;
+      let mut _0: u64;
+      let _2: std::vec::Vec<u64>;
+      let mut _3: std::iter::Map<std::iter::Enumerate<std::iter::Copied<std::iter::Filter<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20}>>>, {closure@$DIR/temporary_vec_fold_elision.rs:11:14: 11:26}>;
+      let mut _4: std::iter::Enumerate<std::iter::Copied<std::iter::Filter<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20}>>>;
+      let mut _5: std::iter::Copied<std::iter::Filter<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20}>>;
+      let mut _6: std::iter::Filter<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20}>;
+      let mut _7: std::slice::Iter<'_, u64>;
+      let mut _8: &[u64];
+      let mut _9: {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20};
+      let mut _10: {closure@$DIR/temporary_vec_fold_elision.rs:11:14: 11:26};
+      let mut _11: std::vec::IntoIter<u64>;
+      let mut _12: std::vec::Vec<u64>;
+      scope 1 {
+          debug values => _2;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = copy _1;
+          _7 = core::slice::<impl [u64]>::iter(move _8) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_8);
+          StorageLive(_9);
+          _9 = {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20};
+          _6 = <std::slice::Iter<'_, u64> as Iterator>::filter::<{closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20}>(move _7, move _9) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_9);
+          StorageDead(_7);
+          _5 = <Filter<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20}> as Iterator>::copied::<'_, u64>(move _6) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_6);
+          _4 = <Copied<Filter<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20}>> as Iterator>::enumerate(move _5) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_5);
+          StorageLive(_10);
+          _10 = {closure@$DIR/temporary_vec_fold_elision.rs:11:14: 11:26};
+          _3 = <Enumerate<Copied<Filter<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20}>>> as Iterator>::map::<u64, {closure@$DIR/temporary_vec_fold_elision.rs:11:14: 11:26}>(move _4, move _10) -> [return: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+          StorageDead(_10);
+          StorageDead(_4);
+-         _2 = <Map<Enumerate<Copied<Filter<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20}>>>, {closure@$DIR/temporary_vec_fold_elision.rs:11:14: 11:26}> as Iterator>::collect::<Vec<u64>>(move _3) -> [return: bb6, unwind unreachable];
++         _0 = <Map<Enumerate<Copied<Filter<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:8:17: 8:20}>>>, {closure@$DIR/temporary_vec_fold_elision.rs:11:14: 11:26}> as Iterator>::fold::<u64, fn(u64, u64) -> u64 {core::num::<impl u64>::wrapping_add}>(move _3, const 0_u64, core::num::<impl u64>::wrapping_add) -> [return: bb8, unwind unreachable];
+      }
+  
+      bb6: {
+          StorageDead(_3);
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = move _2;
+          _11 = <Vec<u64> as IntoIterator>::into_iter(move _12) -> [return: bb7, unwind unreachable];
+      }
+  
+      bb7: {
+          StorageDead(_12);
+          _0 = <std::vec::IntoIter<u64> as Iterator>::fold::<u64, fn(u64, u64) -> u64 {core::num::<impl u64>::wrapping_add}>(move _11, const 0_u64, core::num::<impl u64>::wrapping_add) -> [return: bb8, unwind unreachable];
+      }
+  
+      bb8: {
++         StorageDead(_3);
+          StorageDead(_11);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

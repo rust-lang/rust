@@ -204,6 +204,7 @@ declare_passes! {
     mod single_use_consts : SingleUseConsts;
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
+    mod temporary_vec : TemporaryVecFoldElision;
     mod ssa_range_prop: SsaRangePropagation;
     mod unreachable_enum_branching : UnreachableEnumBranching;
     mod unreachable_prop : UnreachablePropagation;
@@ -730,6 +731,9 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &instsimplify::InstSimplify::BeforeInline,
             // Perform inlining of `#[rustc_force_inline]`-annotated callees.
             &inline::ForceInline,
+            // Fuse a narrow set of non-escaping temporary `Vec` pipelines while the iterator
+            // method calls are still visible.
+            &temporary_vec::TemporaryVecFoldElision,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
             // Inlining may have introduced a lot of redundant code and a large move pattern.

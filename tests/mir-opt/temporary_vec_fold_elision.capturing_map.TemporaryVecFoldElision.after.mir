@@ -1,0 +1,62 @@
+// MIR for `capturing_map` after TemporaryVecFoldElision
+
+fn capturing_map(_1: &[u64], _2: u64) -> u64 {
+    debug nums => _1;
+    debug offset => _2;
+    let mut _0: u64;
+    let _3: std::vec::Vec<u64>;
+    let mut _4: std::iter::Map<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:18:44: 18:47}>;
+    let mut _5: std::slice::Iter<'_, u64>;
+    let mut _6: &[u64];
+    let mut _7: {closure@$DIR/temporary_vec_fold_elision.rs:18:44: 18:47};
+    let mut _8: &u64;
+    let mut _9: std::vec::IntoIter<u64>;
+    let mut _10: std::vec::Vec<u64>;
+    scope 1 {
+        debug values => _3;
+    }
+
+    bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = copy _1;
+        _5 = core::slice::<impl [u64]>::iter(move _6) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        StorageDead(_6);
+        StorageLive(_7);
+        StorageLive(_8);
+        _8 = &_2;
+        _7 = {closure@$DIR/temporary_vec_fold_elision.rs:18:44: 18:47} { offset: move _8 };
+        StorageDead(_8);
+        _4 = <std::slice::Iter<'_, u64> as Iterator>::map::<u64, {closure@$DIR/temporary_vec_fold_elision.rs:18:44: 18:47}>(move _5, move _7) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        StorageDead(_7);
+        StorageDead(_5);
+        _3 = <Map<std::slice::Iter<'_, u64>, {closure@$DIR/temporary_vec_fold_elision.rs:18:44: 18:47}> as Iterator>::collect::<Vec<u64>>(move _4) -> [return: bb3, unwind unreachable];
+    }
+
+    bb3: {
+        StorageDead(_4);
+        StorageLive(_9);
+        StorageLive(_10);
+        _10 = move _3;
+        _9 = <Vec<u64> as IntoIterator>::into_iter(move _10) -> [return: bb4, unwind unreachable];
+    }
+
+    bb4: {
+        StorageDead(_10);
+        _0 = <std::vec::IntoIter<u64> as Iterator>::fold::<u64, fn(u64, u64) -> u64 {core::num::<impl u64>::wrapping_add}>(move _9, const 0_u64, core::num::<impl u64>::wrapping_add) -> [return: bb5, unwind unreachable];
+    }
+
+    bb5: {
+        StorageDead(_9);
+        StorageDead(_3);
+        return;
+    }
+}
