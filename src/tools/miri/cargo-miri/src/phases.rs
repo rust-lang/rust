@@ -1,10 +1,11 @@
 //! Implements the various phases of `cargo miri run/test`.
 
-use std::env;
+use std::ffi::OsString;
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::BufReader;
 use std::path::{self, Path, PathBuf};
 use std::process::Command;
+use std::{env, fs};
 
 use rustc_version::VersionMeta;
 
@@ -438,6 +439,13 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
         // Ideally we'd entirely skip them... but we have no good way of doing that here.
         // So we run the tests natively on the host instead.
         eprintln!("warning: unit tests of `proc-macro` crates are executed outside Miri");
+        // We also create a marker file next to the binary to indicate that this is a proc macro
+        // crate. We use this later when cargo asks us to run the tests.
+        for filename in out_filenames() {
+            let mut filename = OsString::from(filename);
+            filename.push(".proc-macro-test");
+            File::create(filename).expect("failed to create .proc-macro-test marker file");
+        }
     }
 
     let mut cmd = miri();
@@ -542,15 +550,9 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
 
     let Ok(info) = serde_json::from_reader::<_, CrateRunInfo>(file) else {
         // Sometimes cargo invokes us on proc macro tests even though those are actual binaries.
-        // So read the magic number to check whether this is indeed a binary, and if so, run it.
-        // FIXME: this is a hack! We shouldn't have to do this.
-        // Cargo issue: https://github.com/rust-lang/cargo/issues/17200
-        let mut file = File::open(&binary).unwrap(); // this already worked above
-        let mut magic = [0u8; 4];
-        if file.read_exact(&mut magic).is_ok() && magic == [0x7F, b'E', b'L', b'F'] {
-            eprintln!(
-                "warning: executing a test outside Miri that we believe to be a proc macro test"
-            );
+        // So check if the proc-macro-test marker file exists next to this file, and if so,
+        // just run the file as a binary.
+        if fs::exists(format!("{binary}.proc-macro-test")).is_ok_and(|b| b) {
             let mut cmd = Command::new(&binary);
             cmd.args(&binary_args);
             exec(cmd);
