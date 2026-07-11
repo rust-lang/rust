@@ -4,7 +4,6 @@
 // Drop works for union itself.
 
 use std::mem::ManuallyDrop;
-use std::sync::atomic::{AtomicU8, Ordering};
 
 struct S;
 
@@ -12,27 +11,40 @@ union U {
     a: ManuallyDrop<S>
 }
 
+static mut CHECK: u8 = 0;
+
+fn add_to_check(value: u8) {
+    unsafe {
+        let check = &raw mut CHECK;
+        check.write(check.read() + value);
+    }
+}
+
+fn check() -> u8 {
+    unsafe { (&raw const CHECK).read() }
+}
+
 impl Drop for S {
     fn drop(&mut self) {
-        CHECK.fetch_add(10, Ordering::Relaxed);
+        add_to_check(10);
     }
 }
 
 impl Drop for U {
     fn drop(&mut self) {
-        CHECK.fetch_add(1, Ordering::Relaxed);
+        add_to_check(1);
     }
 }
-
-static CHECK: AtomicU8 = AtomicU8::new(0);
 
 fn main() {
     unsafe {
         let mut u = U { a: ManuallyDrop::new(S) };
-        assert_eq!(CHECK.load(Ordering::Relaxed), 0);
+        assert_eq!(check(), 0);
         u = U { a: ManuallyDrop::new(S) };
-        assert_eq!(CHECK.load(Ordering::Relaxed), 1); // union itself is assigned, union is dropped, field is not dropped
+        // The union itself is assigned and dropped, but its field is not.
+        assert_eq!(check(), 1);
         *u.a = S;
-        assert_eq!(CHECK.load(Ordering::Relaxed), 11); // union field is assigned, field is dropped
+        // Assigning the union field drops the old field value.
+        assert_eq!(check(), 11);
     }
 }
