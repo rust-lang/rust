@@ -2,7 +2,7 @@
 
 use std::env;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Read};
 use std::path::{self, Path, PathBuf};
 use std::process::Command;
 
@@ -540,9 +540,23 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     let file = BufReader::new(file);
     let binary_args = binary_args.collect::<Vec<_>>();
 
-    let info: CrateRunInfo = serde_json::from_reader(file).unwrap_or_else(|_| {
-        show_error!("file {:?} contains outdated or invalid JSON; try `cargo clean`", binary)
-    });
+    let Ok(info) = serde_json::from_reader::<_, CrateRunInfo>(file) else {
+        // Sometimes cargo invokes us on proc macro tests even though those are actual binaries.
+        // So read the magic number to check whether this is indeed a binary, and if so, run it.
+        // FIXME: this is a hack! We shouldn't have to do this.
+        // Cargo issue: https://github.com/rust-lang/cargo/issues/17200
+        let mut file = File::open(&binary).unwrap(); // this already worked above
+        let mut magic = [0u8; 4];
+        if file.read_exact(&mut magic).is_ok() && magic == [0x7F, b'E', b'L', b'F'] {
+            eprintln!(
+                "warning: executing a test outside Miri that we believe to be a proc macro test"
+            );
+            let mut cmd = Command::new(&binary);
+            cmd.args(&binary_args);
+            exec(cmd);
+        }
+        show_error!("file {binary:?} contains outdated or invalid JSON; try `cargo clean`")
+    };
 
     let mut cmd = miri();
 
