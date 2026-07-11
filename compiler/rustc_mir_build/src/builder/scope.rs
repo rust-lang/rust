@@ -87,6 +87,7 @@ use interpret::ErrorHandled;
 use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
@@ -136,7 +137,7 @@ struct Scope {
     /// end of the vector (top of the stack) first.
     drops: Vec<DropData>,
 
-    moved_locals: Vec<Local>,
+    moved_locals: GrowableBitSet<Local>,
 
     /// The drop index that will drop everything in and below this scope on an
     /// unwind path.
@@ -493,7 +494,7 @@ impl<'tcx> Scopes<'tcx> {
             source_scope: vis_scope,
             region_scope,
             drops: vec![],
-            moved_locals: vec![],
+            moved_locals: GrowableBitSet::new_empty(),
             cached_unwind_block: None,
             cached_coroutine_drop_block: None,
         });
@@ -1560,13 +1561,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         });
 
         for local in locals_moved {
-            // check if we have a Drop for this operand and -- if so
-            // -- add it to the list of moved operands. Note that this
-            // local might not have been an operand created for this
-            // call, it could come from other places too.
-            if scope.drops.iter().any(|drop| drop.local == local && drop.kind == DropKind::Value) {
-                scope.moved_locals.push(local);
-            }
+            // Mark this operand as moved, to skip dropping it when exiting this scope.
+            //
+            // Note we only mark it in the innermost scope: this local might not have been an
+            // operand created for this scope, it could come from other places too.
+            // If that's the case, marking as moved in the innermost scope will do nothing,
+            // which is correct in case of non-trivial control flow between scopes.
+            scope.moved_locals.insert(local);
         }
     }
 
@@ -1867,7 +1868,7 @@ where
                 // path, then don't generate the drop. (We only take this into
                 // account for non-unwind paths so as not to disturb the
                 // caching mechanism.)
-                if scope.moved_locals.contains(&local) {
+                if scope.moved_locals.contains(local) {
                     continue;
                 }
 
@@ -1911,7 +1912,7 @@ where
                 // path, then don't generate the drop. (We only take this into
                 // account for non-unwind paths so as not to disturb the
                 // caching mechanism.)
-                if scope.moved_locals.contains(&local) {
+                if scope.moved_locals.contains(local) {
                     continue;
                 }
 
