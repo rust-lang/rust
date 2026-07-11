@@ -664,11 +664,6 @@ fn index_ast<'tcx>(
 
 #[instrument(level = "trace", skip(tcx))]
 fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
-    // Queries that borrow `resolver_for_lowering`.
-    tcx.ensure_done().output_filenames(());
-    tcx.ensure_done().early_lint_checks(());
-    tcx.ensure_done().debugger_visualizers(LOCAL_CRATE);
-    tcx.ensure_done().get_lang_items(());
     let ast_index = tcx.index_ast(());
     let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 

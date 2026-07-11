@@ -2242,7 +2242,8 @@ rustc_queries! {
         desc { "fetch intrinsic name if `{}` is an intrinsic", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
-    /// Returns the lang items defined in another crate by loading it from metadata.
+    /// Returns the lang items defined in all crates by loading them from metadata of dependencies
+    /// and collecting the ones from the current crate.
     query get_lang_items(_: ()) -> &'tcx LanguageItems {
         arena_cache
         eval_always
