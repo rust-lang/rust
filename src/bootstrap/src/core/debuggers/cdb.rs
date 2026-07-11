@@ -16,7 +16,7 @@ pub(crate) fn discover_cdb(target: TargetSelection) -> Option<Cdb> {
     let cdb_arch = if cfg!(target_arch = "x86") {
         "x86"
     } else if cfg!(target_arch = "x86_64") {
-        "x64"
+        if target.starts_with("i686") { "x86" } else { "x64" }
     } else if cfg!(target_arch = "aarch64") {
         "arm64"
     } else if cfg!(target_arch = "arm") {
