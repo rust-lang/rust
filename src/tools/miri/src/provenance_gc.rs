@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashSet;
 
@@ -47,6 +49,15 @@ where
 impl<T: VisitProvenance> VisitProvenance for Vec<T> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         self.iter().for_each(|el| el.visit_provenance(visit));
+    }
+}
+
+impl<K: VisitProvenance, V: VisitProvenance> VisitProvenance for BTreeMap<K, V> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        self.iter().for_each(|(key, value)| {
+            key.visit_provenance(visit);
+            value.visit_provenance(visit);
+        });
     }
 }
 
