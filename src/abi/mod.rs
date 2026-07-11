@@ -139,41 +139,50 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         mut returns: Vec<AbiParam>,
         args: &[Value],
     ) -> Cow<'_, [Value]> {
+        // FIXME any way to reuse the abi adjustment code in rustc_target?
+
         // Pass i128 arguments by-ref on Windows.
-        let (params, args): (Vec<_>, Cow<'_, [_]>) = if self.tcx.sess.target.is_like_windows {
-            let (params, args): (Vec<_>, Vec<_>) = params
-                .into_iter()
-                .zip(args)
-                .map(|(param, &arg)| {
-                    if param.value_type == types::I128 {
-                        let arg_ptr = self.create_stack_slot(16, 16);
-                        arg_ptr.store(self, arg, MemFlagsData::trusted());
-                        (AbiParam::new(self.pointer_type), arg_ptr.get_addr(self))
-                    } else {
-                        (param, arg)
-                    }
-                })
-                .unzip();
+        let (params, args): (Vec<_>, Cow<'_, [_]>) =
+            if self.tcx.sess.target.is_like_windows || self.tcx.sess.target.arch == Arch::S390x {
+                let (params, args): (Vec<_>, Vec<_>) = params
+                    .into_iter()
+                    .zip(args)
+                    .map(|(param, &arg)| {
+                        if param.value_type == types::I128
+                            || (self.tcx.sess.target.arch == Arch::S390x
+                                && param.value_type == types::F128)
+                        {
+                            let arg_ptr = self.create_stack_slot(16, 16);
+                            arg_ptr.store(self, arg, MemFlagsData::trusted());
+                            (AbiParam::new(self.pointer_type), arg_ptr.get_addr(self))
+                        } else {
+                            (param, arg)
+                        }
+                    })
+                    .unzip();
 
-            (params, args.into())
-        } else {
-            (params, args.into())
-        };
+                (params, args.into())
+            } else {
+                (params, args.into())
+            };
 
-        let ret_single_i128 = returns.len() == 1 && returns[0].value_type == types::I128;
-        if ret_single_i128 && self.tcx.sess.target.is_like_windows {
+        if self.tcx.sess.target.is_like_windows
+            && matches!(*returns, [AbiParam { value_type: types::I128, .. }])
+        {
             // Return i128 using the vector ABI on Windows
             returns[0].value_type = types::I64X2;
 
             let ret = self.lib_call_unadjusted(name, params, returns, &args)[0];
 
             Cow::Owned(vec![codegen_bitcast(self, types::I128, ret)])
-        } else if ret_single_i128 && self.tcx.sess.target.arch == Arch::S390x {
-            // Return i128 using a return area pointer on s390x.
+        } else if self.tcx.sess.target.arch == Arch::S390x
+            && matches!(*returns, [AbiParam { value_type: types::I128 | types::F128, .. }])
+        {
+            // Return i128 and f128 using a return area pointer on s390x.
             let mut params = params;
             let mut args = args.to_vec();
 
-            params.insert(0, AbiParam::new(self.pointer_type));
+            params.insert(0, AbiParam::special(self.pointer_type, ArgumentPurpose::StructReturn));
             let ret_ptr = self.create_stack_slot(16, 16);
             args.insert(0, ret_ptr.get_addr(self));
 
