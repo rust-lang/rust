@@ -1390,6 +1390,7 @@ impl AtomicBool {
                 x @ Ok(_) => return x,
                 Err(next_prev) => prev = next_prev,
             }
+            spin_loop();
         }
         Err(prev)
     }
@@ -1453,6 +1454,7 @@ impl AtomicBool {
                 Ok(x) => break x,
                 Err(next_prev) => prev = next_prev,
             }
+            spin_loop();
         }
     }
 }
@@ -2072,6 +2074,7 @@ impl<T> AtomicPtr<T> {
                 x @ Ok(_) => return x,
                 Err(next_prev) => prev = next_prev,
             }
+            spin_loop();
         }
         Err(prev)
     }
@@ -2140,6 +2143,7 @@ impl<T> AtomicPtr<T> {
                 Ok(x) => break x,
                 Err(next_prev) => prev = next_prev,
             }
+            spin_loop();
         }
     }
 
@@ -3400,6 +3404,7 @@ macro_rules! atomic_int {
                         x @ Ok(_) => return x,
                         Err(next_prev) => prev = next_prev
                     }
+                    spin_loop();
                 }
                 Err(prev)
             }
@@ -3466,6 +3471,7 @@ macro_rules! atomic_int {
                         Ok(x) => break x,
                         Err(next_prev) => prev = next_prev,
                     }
+                    spin_loop();
                 }
             }
 
