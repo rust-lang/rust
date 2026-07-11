@@ -1248,8 +1248,8 @@ enum PatConstKind {
     Float,
     /// Constant string values, tested via string equality.
     String,
-    /// Constant array or slice values where every element is a constant.
-    /// Tested by calling `PartialEq::eq` on the whole aggregate at once,
+    /// Constant array or slice values that array/slice patterns were expanded
+    /// from. Tested by calling `PartialEq::eq` on the whole aggregate at once,
     /// rather than comparing element by element.
     Aggregate,
     /// Any other constant-pattern is usually tested via some kind of equality
