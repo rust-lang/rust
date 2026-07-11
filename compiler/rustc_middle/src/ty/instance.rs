@@ -557,7 +557,6 @@ impl<'tcx> Instance<'tcx> {
                 | DefKind::Const { .. }
                 | DefKind::AssocConst { .. }
                 | DefKind::AnonConst
-                | DefKind::InlineConst
                 | DefKind::Static { .. }
                 | DefKind::Ctor(_, CtorKind::Fn)
                 | DefKind::Closure

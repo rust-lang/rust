@@ -177,6 +177,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
         libc::EINPROGRESS => InProgress,
         libc::EMFILE | libc::ENFILE => TooManyOpenFiles,
         libc::EOPNOTSUPP => Unsupported,
+        libc::EIO => InputOutputError,
 
         libc::EACCES | libc::EPERM => PermissionDenied,
 

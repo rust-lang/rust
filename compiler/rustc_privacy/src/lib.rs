@@ -712,7 +712,6 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::AssocConst { .. }
             | DefKind::TyParam
             | DefKind::AnonConst
-            | DefKind::InlineConst
             | DefKind::OpaqueTy
             | DefKind::Closure
             | DefKind::SyntheticCoroutineBody
@@ -814,7 +813,6 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
             | DefKind::Macro(_)
             | DefKind::TyParam
             | DefKind::AnonConst
-            | DefKind::InlineConst
             | DefKind::OpaqueTy
             | DefKind::SyntheticCoroutineBody
             | DefKind::ConstParam

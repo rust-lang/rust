@@ -990,20 +990,20 @@ pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 /// [`write_bytes`]: ptr::write_bytes
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
+pub const unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 
 /// Performs a volatile load from the `src` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_load<T>(src: *const T) -> T;
+pub const unsafe fn volatile_load<T>(src: *const T) -> T;
 /// Performs a volatile store to the `dst` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
+pub const unsafe fn volatile_store<T>(dst: *mut T, val: T);
 
 /// Performs a volatile load from the `src` pointer
 /// The pointer is not required to be aligned.

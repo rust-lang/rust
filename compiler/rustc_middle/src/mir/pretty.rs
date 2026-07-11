@@ -693,8 +693,8 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
             write!(w, "static mut ")?
         }
         (_, _) if is_function => write!(w, "fn ")?,
-        // things like anon const, not an item
-        (DefKind::AnonConst | DefKind::InlineConst, _) => {}
+        // anon consts are not an item and have no sig
+        (DefKind::AnonConst, _) => {}
         // `global_asm!` have fake bodies, which we may dump after mir-build
         (DefKind::GlobalAsm, _) => {}
         _ => bug!("Unexpected def kind {:?}", kind),
