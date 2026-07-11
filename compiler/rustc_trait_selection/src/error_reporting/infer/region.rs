@@ -786,42 +786,49 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let (type_scope, type_param_sugg_span) = match bound_kind {
                 GenericKind::Param(param) => {
                     let generics = self.tcx.generics_of(generic_param_scope);
-                    let type_param = generics.type_param(param, self.tcx);
-                    let def_id = type_param.def_id.expect_local();
-                    let scope = self.tcx.local_def_id_to_hir_id(def_id).owner.def_id;
-                    // Get the `hir::Param` to verify whether it already has any bounds.
-                    // We do this to avoid suggesting code that ends up as `T: 'a'b`,
-                    // instead we suggest `T: 'a + 'b` in that case.
-                    let hir_generics = self.tcx.hir_get_generics(scope).unwrap();
-                    let sugg_span = match hir_generics.bounds_span_for_suggestions(def_id) {
-                        Some((span, open_paren_sp)) => {
-                            Some((span, LifetimeSuggestion::NeedsPlus(open_paren_sp)))
-                        }
-                        // If `param` corresponds to `Self`, no usable suggestion span.
-                        None if generics.has_self && param.index == 0 => None,
-                        None => {
-                            let mut colon_flag = false;
-                            let span = if let Some(param) =
-                                hir_generics.params.iter().find(|param| param.def_id == def_id)
-                                && let ParamName::Plain(ident) = param.name
-                            {
-                                if let Some(sp) = param.colon_span {
-                                    colon_flag = true;
-                                    sp.shrink_to_hi()
-                                } else {
-                                    ident.span.shrink_to_hi()
-                                }
-                            } else {
-                                let span = self.tcx.def_span(def_id);
-                                span.shrink_to_hi()
-                            };
-                            match colon_flag {
-                                true => Some((span, LifetimeSuggestion::HasColon)),
-                                false => Some((span, LifetimeSuggestion::NeedsColon)),
+                    if (param.index as usize) < generics.count()
+                        && let param_def = generics.param_at(param.index as usize, self.tcx)
+                        && matches!(param_def.kind, ty::GenericParamDefKind::Type { .. })
+                    {
+                        let type_param = generics.type_param(param, self.tcx);
+                        let def_id = type_param.def_id.expect_local();
+                        let scope = self.tcx.local_def_id_to_hir_id(def_id).owner.def_id;
+                        // Get the `hir::Param` to verify whether it already has any bounds.
+                        // We do this to avoid suggesting code that ends up as `T: 'a'b`,
+                        // instead we suggest `T: 'a + 'b` in that case.
+                        let hir_generics = self.tcx.hir_get_generics(scope).unwrap();
+                        let sugg_span = match hir_generics.bounds_span_for_suggestions(def_id) {
+                            Some((span, open_paren_sp)) => {
+                                Some((span, LifetimeSuggestion::NeedsPlus(open_paren_sp)))
                             }
-                        }
-                    };
-                    (scope, sugg_span)
+                            // If `param` corresponds to `Self`, no usable suggestion span.
+                            None if generics.has_self && param.index == 0 => None,
+                            None => {
+                                let mut colon_flag = false;
+                                let span = if let Some(param) =
+                                    hir_generics.params.iter().find(|param| param.def_id == def_id)
+                                    && let ParamName::Plain(ident) = param.name
+                                {
+                                    if let Some(sp) = param.colon_span {
+                                        colon_flag = true;
+                                        sp.shrink_to_hi()
+                                    } else {
+                                        ident.span.shrink_to_hi()
+                                    }
+                                } else {
+                                    let span = self.tcx.def_span(def_id);
+                                    span.shrink_to_hi()
+                                };
+                                match colon_flag {
+                                    true => Some((span, LifetimeSuggestion::HasColon)),
+                                    false => Some((span, LifetimeSuggestion::NeedsColon)),
+                                }
+                            }
+                        };
+                        (scope, sugg_span)
+                    } else {
+                        (generic_param_scope, None)
+                    }
                 }
                 _ => (generic_param_scope, None),
             };
