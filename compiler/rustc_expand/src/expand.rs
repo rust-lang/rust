@@ -917,7 +917,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         Annotatable::Stmt(ref stmt) if let StmtKind::Item(ref item) = stmt.kind => {
                             self.propagate_cfg_attr_predicate_to_expanded_item(item)
                         }
-                        _ => unreachable!(),
+                        // FIXME: Should be `unreachable!()` but `rustdoc-json-types` is trying
+                        // to expand items it shouldn't.
+                        _ => Vec::new(),
                     };
                     let mut items = match expander.expand(self.cx, span, &meta, item, is_const) {
                         ExpandResult::Ready(items) => items,
@@ -941,7 +943,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                         item.attrs.extend(cfg_attrs.clone());
                                     }
                                 }
-                                _ => unreachable!(),
+                                // FIXME: Should be `unreachable!()` but `rustdoc-json-types` is
+                                // trying to expand items it shouldn't.
+                                _ => {}
                             }
                         }
                     }
@@ -1042,7 +1046,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 attr.name().is_some_and(|name| name == sym::cfg_attr_trace)
                     && attr.span.contains(self.cx.call_site())
             })
-            .map(|attr| {
+            .filter_map(|attr| {
                 let mut attr = attr.clone();
                 if let rustc_ast::AttrKind::Normal(attr) = &mut attr.kind {
                     let cfg = if let rustc_ast::ast::AttrItemKind::Parsed(
@@ -1057,12 +1061,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             ),
                         )
                     } else {
-                        unreachable!()
+                        // FIXME(GuillaumeGomez): How is it possible for `rustdoc-json-types` to
+                        // enter this condition?
+                        return None;
                     };
                     attr.item.args =
                         rustc_ast::ast::AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg));
                 }
-                attr
+                Some(attr)
             })
             .collect::<Vec<_>>()
     }
