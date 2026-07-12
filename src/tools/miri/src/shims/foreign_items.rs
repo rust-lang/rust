@@ -646,7 +646,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // C memory handling functions
             "memcmp" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [left, right, n] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let left = this.read_pointer(left)?;
@@ -657,9 +656,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.ptr_get_alloc_id(left, 0)?;
                 this.ptr_get_alloc_id(right, 0)?;
 
+                // memcmp does *not* have any wording like `memchr` that says anything about
+                // stopping as soon as a difference is found. So we requires both buffers
+                // to be fully inbounds and initialized.
+
                 let result = {
-                    // FIXME: It's unclear if pre-reading the entire block is correct.
-                    // See <https://github.com/rust-lang/miri/issues/5176>.
                     let left_bytes = this.read_bytes_ptr_strip_provenance(left, n)?;
                     let right_bytes = this.read_bytes_ptr_strip_provenance(right, n)?;
 
@@ -686,9 +687,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
                 this.ptr_get_alloc_id(ptr, 0)?;
 
-                // "This function behaves as if it reads the bytes sequentially and stops as soon as
-                // a matching bytes is found: if the array pointed to by ptr is smaller than count,
-                // but the match is found within the array, the behavior is well-defined."
+                // "The implementation shall behave as if it reads the characters sequentially and
+                // stops as soon as a matching character is found."
                 let needle_ptr = this.memchr(ptr, 0..num, val)?.map(|(_idx, ptr)| ptr);
 
                 if let Some(needle_ptr) = needle_ptr {

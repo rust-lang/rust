@@ -342,6 +342,14 @@ fn test_memset() {
     }
 }
 
+fn test_memcmp() {
+    unsafe {
+        assert_eq!(libc::memcmp(b"123".as_ptr().cast(), b"132".as_ptr().cast(), 3), -1);
+        assert_eq!(libc::memcmp(b"abc".as_ptr().cast(), b"aaa".as_ptr().cast(), 3), 1);
+        assert_eq!(libc::memcmp(b"xyz".as_ptr().cast(), b"xyz".as_ptr().cast(), 3), 0);
+    }
+}
+
 fn test_memchr() {
     unsafe {
         let buf = b"0abcdefd";
@@ -440,6 +448,7 @@ fn main() {
     test_memcpy();
     test_strcpy();
     test_memset();
+    test_memcmp();
     test_memchr();
     #[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
     test_memrchr();
