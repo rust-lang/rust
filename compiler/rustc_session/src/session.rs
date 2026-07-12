@@ -468,13 +468,13 @@ impl Session {
         }
 
         // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::Finalized;
+        *incr_comp_session = IncrCompSession::FinalizedOrRemoved;
     }
 
     pub fn incr_comp_session_dir(&self) -> MappedReadGuard<'_, PathBuf> {
         let incr_comp_session = self.incr_comp_session.borrow();
         ReadGuard::map(incr_comp_session, |incr_comp_session| match incr_comp_session {
-            IncrCompSession::NotInitialized | IncrCompSession::Finalized => panic!(
+            IncrCompSession::NotInitialized | IncrCompSession::FinalizedOrRemoved => panic!(
                 "trying to get session directory from `IncrCompSession`: {:?}",
                 incr_comp_session,
             ),
@@ -1410,7 +1410,7 @@ enum IncrCompSession {
     /// This is the state after the session directory has been finalized or
     /// removed after errors. In this state, the contents of the directory must
     /// not be modified any more.
-    Finalized,
+    FinalizedOrRemoved,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
