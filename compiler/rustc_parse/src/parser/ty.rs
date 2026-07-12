@@ -12,7 +12,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
-use crate::errors::{
+use crate::diagnostics::{
     self, AttributeOnEmptyType, AttributeOnType, DynAfterMut, ExpectedFnPathFoundFnKeyword,
     ExpectedMutOrConstInRawPointerType, FnPtrWithGenerics, FnPtrWithGenericsSugg,
     HelpUseLatestEdition, InvalidCVariadicType, InvalidDynKeyword, LifetimeAfterMut,
@@ -365,10 +365,10 @@ impl<'a> Parser<'a> {
                         parse_plus,
                         ast::Parens::No,
                     )?;
-                    let err = self.dcx().create_err(errors::TransposeDynOrImpl {
+                    let err = self.dcx().create_err(diagnostics::TransposeDynOrImpl {
                         span: kw.span,
                         kw: kw.name.as_str(),
-                        sugg: errors::TransposeDynOrImplSugg {
+                        sugg: diagnostics::TransposeDynOrImplSugg {
                             removal_span,
                             insertion_span: lo.shrink_to_lo(),
                             kw: kw.name.as_str(),
@@ -947,7 +947,7 @@ impl<'a> Parser<'a> {
                 if let token::Ident(sym, _) = t.kind {
                     // parse pattern with "'a Sized" we're supposed to give suggestion like
                     // "'a + Sized"
-                    self.dcx().emit_err(errors::MissingPlusBounds {
+                    self.dcx().emit_err(diagnostics::MissingPlusBounds {
                         span: self.token.span,
                         hi: self.token.span.shrink_to_hi(),
                         sym,
@@ -1173,9 +1173,10 @@ impl<'a> Parser<'a> {
         match constness {
             BoundConstness::Never => {}
             BoundConstness::Always(span) | BoundConstness::Maybe(span) => {
-                return self
-                    .dcx()
-                    .emit_err(errors::ModifierLifetime { span, modifier: constness.as_str() });
+                return self.dcx().emit_err(diagnostics::ModifierLifetime {
+                    span,
+                    modifier: constness.as_str(),
+                });
             }
         }
 
@@ -1184,21 +1185,24 @@ impl<'a> Parser<'a> {
             BoundPolarity::Negative(span) | BoundPolarity::Maybe(span) => {
                 return self
                     .dcx()
-                    .emit_err(errors::ModifierLifetime { span, modifier: polarity.as_str() });
+                    .emit_err(diagnostics::ModifierLifetime { span, modifier: polarity.as_str() });
             }
         }
 
         match asyncness {
             BoundAsyncness::Normal => {}
             BoundAsyncness::Async(span) => {
-                return self
-                    .dcx()
-                    .emit_err(errors::ModifierLifetime { span, modifier: asyncness.as_str() });
+                return self.dcx().emit_err(diagnostics::ModifierLifetime {
+                    span,
+                    modifier: asyncness.as_str(),
+                });
             }
         }
 
         if let Some(span) = binder_span {
-            return self.dcx().emit_err(errors::ModifierLifetime { span, modifier: "for<...>" });
+            return self
+                .dcx()
+                .emit_err(diagnostics::ModifierLifetime { span, modifier: "for<...>" });
         }
 
         unreachable!("lifetime bound intercepted in `parse_generic_ty_bound` but no modifiers?")
@@ -1229,7 +1233,7 @@ impl<'a> Parser<'a> {
             && self.is_kw_followed_by_ident(kw::Async)
         {
             self.bump(); // eat `async`
-            self.dcx().emit_err(errors::AsyncBoundModifierIn2015 {
+            self.dcx().emit_err(diagnostics::AsyncBoundModifierIn2015 {
                 span: self.prev_token.span,
                 help: HelpUseLatestEdition::new(),
             });
@@ -1265,7 +1269,7 @@ impl<'a> Parser<'a> {
                         let glue =
                             if !constness.is_empty() && !asyncness.is_empty() { " " } else { "" };
                         let modifiers_concatenated = format!("{constness}{glue}{asyncness}");
-                        self.dcx().emit_err(errors::PolarityAndModifiers {
+                        self.dcx().emit_err(diagnostics::PolarityAndModifiers {
                             polarity_span,
                             polarity: polarity.as_str(),
                             modifiers_span: modifier_lo.to(modifier_hi),
@@ -1327,7 +1331,7 @@ impl<'a> Parser<'a> {
         if let Some(binder_span) = binder_span {
             match modifiers.polarity {
                 BoundPolarity::Negative(polarity_span) | BoundPolarity::Maybe(polarity_span) => {
-                    self.dcx().emit_err(errors::BinderAndPolarity {
+                    self.dcx().emit_err(diagnostics::BinderAndPolarity {
                         binder_span,
                         polarity_span,
                         polarity: modifiers.polarity.as_str(),
@@ -1346,7 +1350,7 @@ impl<'a> Parser<'a> {
 
         if let (more_bound_vars, Some(binder_span)) = self.parse_higher_ranked_binder()? {
             bound_vars.extend(more_bound_vars);
-            self.dcx().emit_err(errors::BinderBeforeModifiers { binder_span, modifiers_span });
+            self.dcx().emit_err(diagnostics::BinderBeforeModifiers { binder_span, modifiers_span });
         }
 
         let mut path = if self.token.is_keyword(kw::Fn)
@@ -1415,9 +1419,9 @@ impl<'a> Parser<'a> {
                 let bounds = thin_vec![];
                 self.parse_remaining_bounds(bounds, true)?;
                 self.expect(exp!(CloseParen))?;
-                self.dcx().emit_err(errors::IncorrectParensTraitBounds {
+                self.dcx().emit_err(diagnostics::IncorrectParensTraitBounds {
                     span: vec![lo, self.prev_token.span],
-                    sugg: errors::IncorrectParensTraitBoundsSugg {
+                    sugg: diagnostics::IncorrectParensTraitBoundsSugg {
                         wrong_span: leading_token.span.shrink_to_hi().to(lo),
                         new_span: leading_token.span.shrink_to_lo(),
                     },
@@ -1630,7 +1634,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved_lifetime() {
-                self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });
+                self.dcx().emit_err(diagnostics::KeywordLifetime { span: ident.span });
             }
 
             self.bump();
