@@ -25,13 +25,13 @@ use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};
+use crate::diagnostics::impls::{OnUnknownData, Suggestion};
 use crate::diagnostics::{
     self, CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS,
     CannotBeReexportedPrivate, CannotBeReexportedPrivateNS, CannotDetermineImportResolution,
     CannotGlobImportAllCrates, ConsiderAddingMacroExport, ConsiderMarkingAsPub,
     ConsiderMarkingAsPubCrate,
 };
-use crate::error_helper::{OnUnknownData, Suggestion};
 use crate::ref_mut::{CmCell, CmRefCell};
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
