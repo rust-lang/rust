@@ -1514,7 +1514,7 @@ where
             BackendRepr::SimdScalableVector { element, count, number_of_vectors },
             size.checked_mul(number_of_vectors.0 as u64, dl)
                 .ok_or_else(|| LayoutCalculatorError::SizeOverflow)?,
-            dl.llvmlike_vector_align(size),
+            dl.rust_vector_align(size),
         ),
         // Non-power-of-two vectors have padding up to the next power-of-two.
         // If we're a packed repr, remove the padding while keeping the alignment as close
@@ -1523,7 +1523,7 @@ where
             (BackendRepr::Memory { sized: true }, size, Align::max_aligned_factor(size))
         }
         SimdVectorKind::PackedFixed | SimdVectorKind::Fixed => {
-            (BackendRepr::SimdVector { element, count }, size, dl.llvmlike_vector_align(size))
+            (BackendRepr::SimdVector { element, count }, size, dl.rust_vector_align(size))
         }
     };
     let size = size.align_to(align);

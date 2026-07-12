@@ -426,6 +426,23 @@ pub(crate) enum AliasPossibility {
     Maybe,
 }
 
+/// Whether resolving `impl` or `mut` restriction paths
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum ResolvingRestrictionKind {
+    Impl,
+    Mut,
+}
+
+impl IntoDiagArg for ResolvingRestrictionKind {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        use std::borrow::Cow;
+        match self {
+            ResolvingRestrictionKind::Impl => DiagArgValue::Str(Cow::Borrowed("impl")),
+            ResolvingRestrictionKind::Mut => DiagArgValue::Str(Cow::Borrowed("mut")),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum PathSource<'a, 'ast, 'ra> {
     /// Type paths `Path`.
@@ -1489,11 +1506,12 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             ty,
             is_placeholder: _,
             default,
-            mut_restriction: _,
+            mut_restriction,
             safety: _,
         } = f;
         walk_list!(self, visit_attribute, attrs);
         try_visit!(self.visit_vis(vis));
+        self.resolve_restriction_path(&mut_restriction.kind, ResolvingRestrictionKind::Mut);
         visit_opt!(self, visit_ident, ident);
         try_visit!(self.visit_ty(ty));
         if let Some(v) = &default {
@@ -2864,7 +2882,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
             ItemKind::Trait(Trait { generics, bounds, items, impl_restriction, .. }) => {
                 // resolve paths for `impl` restrictions
-                self.resolve_impl_restriction_path(impl_restriction);
+                self.resolve_restriction_path(
+                    &impl_restriction.kind,
+                    ResolvingRestrictionKind::Impl,
+                );
 
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
@@ -4480,8 +4501,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn resolve_impl_restriction_path(&mut self, restriction: &'ast ast::ImplRestriction) {
-        match &restriction.kind {
+    fn resolve_restriction_path(
+        &mut self,
+        restriction: &'ast ast::RestrictionKind,
+        kind: ResolvingRestrictionKind,
+    ) {
+        match &restriction {
             ast::RestrictionKind::Unrestricted => (),
             ast::RestrictionKind::Restricted { path, id, shorthand: _ } => {
                 self.smart_resolve_path(*id, &None, path, PathSource::Module);
@@ -4494,7 +4519,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     ) {
                         self.r
                             .dcx()
-                            .create_err(crate::diagnostics::RestrictionAncestorOnly(path.span))
+                            .create_err(crate::diagnostics::RestrictionAncestorOnly {
+                                span: path.span,
+                                kind,
+                            })
                             .emit();
                     }
                 }
