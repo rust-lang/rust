@@ -2386,7 +2386,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                     && self.tcx.item_name(def.did()).as_str().len() < 7 =>
             {
                 // Don't fully truncate types that have "short names" and at most one type or const
-                // param. We do use the short path for them (only item name instad of full path).
+                // param. We do use the short path for them (only item name instaed of full path).
                 with_forced_trimmed_paths!(self.pretty_print_type(ty))
             }
 
