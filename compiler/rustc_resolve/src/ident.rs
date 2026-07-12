@@ -122,6 +122,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let module_only = matches!(scope_set, ScopeSet::Module(..));
         let module_and_extern_prelude = matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..));
         let extern_prelude = matches!(scope_set, ScopeSet::ExternPrelude);
+        let visit_namespaced_crates = ns == TypeNS && !self.namespaced_crate_names.is_empty();
         let mut scope = match ns {
             _ if module_only || module_and_extern_prelude => Scope::ModuleNonGlobs(module, None),
             _ if extern_prelude => Scope::ExternPreludeItems,
@@ -152,6 +153,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     true
                 }
                 Scope::ModuleNonGlobs(..) | Scope::ModuleGlobs(..) => true,
+                Scope::NamespacedCrates(..) => visit_namespaced_crates,
                 Scope::MacroUsePrelude => use_prelude || orig_ident_span.is_rust_2015(),
                 Scope::BuiltinAttrs => true,
                 Scope::ExternPreludeItems | Scope::ExternPreludeFlags => {
@@ -195,15 +197,35 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     MacroRulesScope::Empty => Scope::ModuleNonGlobs(module, None),
                 },
                 Scope::ModuleNonGlobs(module, lint_id) => Scope::ModuleGlobs(module, lint_id),
-                Scope::ModuleGlobs(..) if module_only => break,
-                Scope::ModuleGlobs(..) if module_and_extern_prelude => match ns {
+                Scope::ModuleGlobs(..) if module_only && !visit_namespaced_crates => break,
+                Scope::ModuleGlobs(module, lint_id) if module_only => {
+                    Scope::NamespacedCrates(module, lint_id)
+                }
+                Scope::NamespacedCrates(..) if module_only => break,
+                Scope::ModuleGlobs(..) if module_and_extern_prelude && !visit_namespaced_crates => {
+                    match ns {
+                        TypeNS => {
+                            ctxt.update_unchecked(|ctxt| ctxt.adjust(ExpnId::root()));
+                            Scope::ExternPreludeItems
+                        }
+                        ValueNS | MacroNS => break,
+                    }
+                }
+                Scope::ModuleGlobs(module, lint_id) if module_and_extern_prelude => {
+                    Scope::NamespacedCrates(module, lint_id)
+                }
+                Scope::NamespacedCrates(..) if module_and_extern_prelude => match ns {
                     TypeNS => {
                         ctxt.update_unchecked(|ctxt| ctxt.adjust(ExpnId::root()));
                         Scope::ExternPreludeItems
                     }
                     ValueNS | MacroNS => break,
                 },
-                Scope::ModuleGlobs(module, prev_lint_id) => {
+                Scope::ModuleGlobs(module, prev_lint_id) if visit_namespaced_crates => {
+                    Scope::NamespacedCrates(module, prev_lint_id)
+                }
+                Scope::ModuleGlobs(module, prev_lint_id)
+                | Scope::NamespacedCrates(module, prev_lint_id) => {
                     use_prelude = !module.no_implicit_prelude;
                     match self.hygienic_lexical_parent(module, &mut ctxt, derive_fallback_lint_id) {
                         Some((parent_module, lint_id)) => {
@@ -708,6 +730,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     Err(ControlFlow::Continue(determinacy)) => Err(determinacy),
                     Err(ControlFlow::Break(..)) => return binding,
+                }
+            }
+            Scope::NamespacedCrates(module, _) => {
+                match self.resolve_namespaced_crate_in_module(
+                    module,
+                    ident,
+                    orig_ident_span,
+                    finalize.is_some(),
+                ) {
+                    Some(decl) => Ok(decl),
+                    None => Err(Determinacy::Determined),
                 }
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {

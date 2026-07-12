@@ -997,7 +997,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             );
             crate_id.map(|crate_id| {
                 self.r.extern_crate_map.insert(local_def_id, crate_id);
-                self.r.expect_module(crate_id.as_def_id())
+                let module = self.r.expect_module(crate_id.as_def_id());
+                self.r.try_add_def_id_for_namespaced_crate(
+                    crate_id.as_def_id(),
+                    IdentKey::new(orig_ident),
+                );
+                module
             })
         }
         .map(|module| {
