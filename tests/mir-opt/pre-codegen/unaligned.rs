@@ -24,11 +24,11 @@ pub unsafe fn unaligned_copy_generic<T>(src: *const T, dst: *mut T) {
     // CHECK: debug src => _1;
     // CHECK: debug dst => _2;
     // CHECK: debug val => [[VAL:_.+]];
-    // CHECK: [[SRC_P:_.+]] = copy _1 as *const {{.+}}::Packed<T> (PtrToPtr);
+    // CHECK: [[SRC_P:_.+]] = copy _1 as *const {{.+}}::Unaligned<T> (PtrToPtr);
     // CHECK: [[PACKED1:_.+]] = copy (*[[SRC_P]]);
     // CHECK: [[VAL]] = copy [[PACKED1]] as T (Transmute);
-    // CHECK: [[DST_P:_.+]] = copy _2 as *mut {{.+}}::Packed<T> (PtrToPtr);
-    // CHECK: [[PACKED2:_.+]] = {{.+}}::Packed::<T>(copy [[VAL]]);
+    // CHECK: [[DST_P:_.+]] = copy _2 as *mut {{.+}}::Unaligned<T> (PtrToPtr);
+    // CHECK: [[PACKED2:_.+]] = {{.+}}::Unaligned::<T>(copy [[VAL]]);
     // CHECK: (*[[DST_P]]) = copy [[PACKED2]];
     // CHECK-NOT: copy_nonoverlapping
     // CHECK-NOT: drop
