@@ -2,7 +2,7 @@
 
 #[macro_export]
 macro_rules! fatal {
-    ($($arg:tt)*) => {
+    ($($arg:tt)*) => {{
         let status = ::colored::Colorize::bright_red("FATAL: ");
         let status = ::colored::Colorize::bold(status);
         eprint!("{status}");
@@ -12,7 +12,7 @@ macro_rules! fatal {
         // FIXME: in the long term, we should handle "logic bug in compiletest itself" vs "fatal
         // user error" separately.
         panic!("fatal error");
-    };
+    }};
 }
 
 #[macro_export]

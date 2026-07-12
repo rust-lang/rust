@@ -40,17 +40,17 @@ use walkdir::WalkDir;
 
 use self::directives::{EarlyProps, make_test_description};
 use crate::common::{
-    CodegenBackend, CompareMode, Config, Debugger, ForcePassMode, TestMode, TestPaths,
+    CodegenBackend, CompareMode, Config, Debugger, ForcePassMode, TestMode, TestPaths, TestSuite,
     UI_EXTENSIONS, expected_output_path, output_base_dir, output_relative_path,
 };
 use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
-use crate::edition::parse_edition;
+use crate::edition::Edition;
 use crate::executor::CollectedTest;
 
 /// Compiletest command-line arguments.
 #[derive(clap::Parser)]
 struct Args {
-    // Required paths
+    // Required options
     /// Path to host shared libraries.
     #[arg(long)]
     compile_lib_path: Utf8PathBuf,
@@ -86,10 +86,10 @@ struct Args {
     stage_id: String,
     /// Which sort of compile tests to run.
     #[arg(long)]
-    mode: String,
+    mode: TestMode,
     /// Which suite of compile tests to run.
     #[arg(long)]
-    suite: String,
+    suite: TestSuite,
     /// Path to a C compiler.
     #[arg(long)]
     cc: String,
@@ -97,10 +97,10 @@ struct Args {
     #[arg(long)]
     cxx: String,
     /// Flags for the C compiler.
-    #[arg(long)]
+    #[arg(long, allow_hyphen_values = true)]
     cflags: String,
     /// Flags for the CXX compiler.
-    #[arg(long)]
+    #[arg(long, allow_hyphen_values = true)]
     cxxflags: String,
     /// List of LLVM components built in.
     #[arg(long)]
@@ -120,8 +120,6 @@ struct Args {
     /// Number of parallel jobs bootstrap was configured with.
     #[arg(long)]
     jobs: u32,
-
-    // Required-by-convention
     /// The host to build for.
     #[arg(long)]
     host: String,
@@ -129,7 +127,7 @@ struct Args {
     #[arg(long)]
     target: String,
 
-    // Optional paths
+    // Optional options
     /// Path to cargo to use for compiling.
     #[arg(long)]
     cargo_path: Option<Utf8PathBuf>,
@@ -202,11 +200,9 @@ struct Args {
     /// Path to a linker for the host.
     #[arg(long)]
     host_linker: Option<String>,
-
-    // Optional string values
     /// Force {check,build,run}-pass tests to this mode.
     #[arg(long)]
-    pass: Option<String>,
+    pass: Option<ForcePassMode>,
     /// Whether to execute run-* tests.
     #[arg(long)]
     run: Option<String>,
@@ -215,23 +211,23 @@ struct Args {
     runner: Option<String>,
     /// Mode describing what file the actual ui output will be compared to.
     #[arg(long)]
-    compare_mode: Option<String>,
+    compare_mode: Option<CompareMode>,
     /// Default Rust edition.
     #[arg(long)]
-    edition: Option<String>,
+    edition: Option<Edition>,
     /// Only test a specific debugger in debuginfo tests.
     #[arg(long)]
     debugger: Option<String>,
     /// The codegen backend currently used.
     #[arg(long)]
-    default_codegen_backend: Option<String>,
+    default_codegen_backend: Option<CodegenBackend>,
     /// The codegen backend to use instead of the default one.
     #[arg(long)]
     override_codegen_backend: Option<String>,
     /// Custom diff tool to use for displaying compiletest tests.
     #[arg(long)]
     compiletest_diff_tool: Option<String>,
-    /// Number of parallel threads for the frontend.
+    /// Number of parallel threads to use for the frontend when building test artifacts
     #[arg(long)]
     parallel_frontend_threads: Option<u32>,
     /// Number of times to execute each test.
@@ -287,6 +283,7 @@ struct Args {
     /// Only run tests that result been modified.
     #[arg(long)]
     only_modified: bool,
+    // Backcompat option
     #[arg(long, hide = true)]
     nocapture: bool,
     /// Don't capture stdout/stderr of tests.
@@ -305,19 +302,20 @@ struct Args {
     #[arg(long)]
     bypass_ignore_backends: bool,
 
-    // Multi-value
+    // Multi-value, these options can be entered multiple files
     /// Skip tests matching SUBSTRING.
     #[arg(long)]
     skip: Vec<String>,
     /// Flags to pass to rustc for host.
-    #[arg(long)]
+    #[arg(long, allow_hyphen_values = true)]
     host_rustcflags: Vec<String>,
     /// Flags to pass to rustc for target.
-    #[arg(long)]
+    #[arg(long, allow_hyphen_values = true)]
     target_rustcflags: Vec<String>,
 
-    // Positional (filters)
+    // Positional arguments
     /// Test name filters.
+    /// All leftover arguments will be stored in this list.
     filters: Vec<String>,
 }
 
@@ -352,18 +350,9 @@ fn parse_config(args: Vec<String>) -> Config {
             directives::extract_llvm_version_from_binary(args.llvm_filecheck.as_ref()?.as_str())
         });
 
-    let default_codegen_backend = match args.default_codegen_backend.as_deref() {
-        Some(backend) => match CodegenBackend::try_from(backend) {
-            Ok(backend) => backend,
-            Err(error) => {
-                panic!("invalid value `{backend}` for `--default-codegen-backend`: {error}")
-            }
-        },
-        // By default, it's always llvm.
-        None => CodegenBackend::Llvm,
-    };
+    let default_codegen_backend = args.default_codegen_backend.unwrap_or(CodegenBackend::Llvm);
 
-    let mode: TestMode = args.mode.parse().expect("invalid mode");
+    let mode = args.mode;
     let filters = if mode == TestMode::RunMake {
         args.filters
             .iter()
@@ -395,15 +384,7 @@ fn parse_config(args: Vec<String>) -> Config {
         args.filters.clone()
     };
 
-    let compare_mode = args.compare_mode.as_deref().map(|s| {
-        s.parse().unwrap_or_else(|_| {
-            let variants: Vec<_> = CompareMode::STR_VARIANTS.iter().copied().collect();
-            panic!(
-                "`{s}` is not a valid value for `--compare-mode`, it should be one of: {}",
-                variants.join(", ")
-            );
-        })
-    });
+    let compare_mode = args.compare_mode;
 
     let src_root = args.src_root;
     let src_test_suite_root = args.src_test_suite_root;
@@ -454,7 +435,7 @@ fn parse_config(args: Vec<String>) -> Config {
         stage_id: args.stage_id,
 
         mode,
-        suite: args.suite.parse().expect("invalid suite"),
+        suite: args.suite,
         debugger: args.debugger.map(|debugger| {
             debugger
                 .parse::<Debugger>()
@@ -467,10 +448,7 @@ fn parse_config(args: Vec<String>) -> Config {
         filters,
         skip: args.skip,
         filter_exact: args.exact,
-        force_pass_mode: args.pass.map(|mode| {
-            mode.parse::<ForcePassMode>()
-                .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
-        }),
+        force_pass_mode: args.pass,
         // FIXME: this run scheme is... confusing.
         run: args.run.and_then(|mode| match mode.as_str() {
             "auto" => None,
@@ -507,7 +485,7 @@ fn parse_config(args: Vec<String>) -> Config {
         has_offload: args.has_offload,
         channel: args.channel,
         git_hash: args.git_hash,
-        edition: args.edition.as_deref().map(parse_edition),
+        edition: args.edition,
 
         cc: args.cc,
         cxx: args.cxx,
@@ -810,7 +788,7 @@ fn collect_tests_from_dir(
         && let Some(("assembly" | "codegen", backend)) = last.split_once('-')
         && let Some(Utf8Component::Normal(parent)) = components.next()
         && parent == "tests"
-        && let Ok(backend) = CodegenBackend::try_from(backend)
+        && let Ok(backend) = backend.parse::<CodegenBackend>()
         && backend != cx.config.default_codegen_backend
     {
         // We ignore asm tests which don't match the current codegen backend.
