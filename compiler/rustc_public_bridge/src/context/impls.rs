@@ -485,6 +485,16 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         ty::Const::zero_sized(self.tcx, ty_internal)
     }
 
+    /// Create a caller location constant from a span.
+    ///
+    /// This produces a `&'static core::panic::Location<'static>` constant,
+    /// which is the implicit extra argument for `#[track_caller]` functions.
+    pub fn span_as_caller_location(&self, span: Span) -> MirConst<'tcx> {
+        let val = self.tcx.span_as_caller_location(span);
+        let ty = self.tcx.caller_location_ty();
+        MirConst::from_value(val, ty)
+    }
+
     /// Create a new constant that represents the given string value.
     pub fn new_const_str(&self, value: &str) -> MirConst<'tcx> {
         let ty = Ty::new_static_str(self.tcx);

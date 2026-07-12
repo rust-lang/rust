@@ -496,6 +496,14 @@ impl<'tcx> CompilerInterface<'tcx> {
         })
     }
 
+    /// Create a caller location constant from a span.
+    pub(crate) fn span_as_caller_location(&self, span: Span) -> MirConst {
+        self.with_cx(|tables, cx| {
+            let sp = tables.spans[span];
+            cx.span_as_caller_location(sp).stable(tables, cx)
+        })
+    }
+
     /// Create a new constant that represents the given string value.
     pub(crate) fn new_const_str(&self, value: &str) -> MirConst {
         self.with_cx(|tables, cx| cx.new_const_str(value).stable(tables, cx))

@@ -287,6 +287,14 @@ impl Span {
     pub fn diagnostic(&self) -> String {
         with(|c| c.span_to_string(*self))
     }
+
+    /// Create a `&'static core::panic::Location<'static>` constant from this span.
+    ///
+    /// This is the value that must be passed as the implicit extra argument
+    /// when calling a `#[track_caller]` function.
+    pub fn as_caller_location(&self) -> MirConst {
+        with(|c| c.span_as_caller_location(*self))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]

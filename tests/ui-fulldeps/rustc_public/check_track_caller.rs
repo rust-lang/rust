@@ -1,6 +1,7 @@
 //@ run-pass
 //! Test that users can query `Instance::requires_caller_location` to detect
-//! `#[track_caller]` functions and the implicit extra argument in their ABI.
+//! `#[track_caller]` functions and the implicit extra argument in their ABI,
+//! and that they can generate caller location constants via `Span::caller_location`.
 
 //@ ignore-stage1
 //@ ignore-cross-compile
@@ -21,7 +22,7 @@ use std::ops::ControlFlow;
 use rustc_public::crate_def::CrateDef;
 use rustc_public::mir::mono::Instance;
 use rustc_public::mir::TerminatorKind;
-use rustc_public::ty::{RigidTy, TyKind};
+use rustc_public::ty::{ConstantKind, RigidTy, TyKind};
 
 const CRATE_NAME: &str = "input";
 
@@ -62,7 +63,8 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert_eq!(not_tracked_abi.args.len(), 1, "not_tracked_fn ABI should have 1 arg");
 
     // Check that calling a #[track_caller] function from the caller's body
-    // resolves to an instance that requires caller location.
+    // resolves to an instance that requires caller location, and that we can
+    // generate a caller location constant from the call site span.
     let caller_instance = Instance::try_from(*caller).unwrap();
     let caller_body = caller_instance.body().unwrap();
     for bb in &caller_body.blocks {
@@ -77,6 +79,21 @@ fn test_stable_mir() -> ControlFlow<()> {
                 assert!(
                     callee.requires_caller_location(),
                     "resolved callee should require caller location"
+                );
+
+                // Generate a caller location from the call site span.
+                let call_span = bb.terminator.source_info.span;
+                let location_const = call_span.as_caller_location();
+                // The constant should be a reference type (&'static Location<'static>).
+                let ty_kind = location_const.ty().kind();
+                assert!(
+                    matches!(ty_kind, TyKind::RigidTy(RigidTy::Ref(..))),
+                    "caller_location should produce a reference type, got: {ty_kind:?}"
+                );
+                // The constant should be allocated (a scalar pointer to static data).
+                assert!(
+                    matches!(location_const.kind(), ConstantKind::Allocated(..)),
+                    "caller_location should produce an allocated constant"
                 );
             }
         }
