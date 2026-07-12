@@ -64,7 +64,7 @@ use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
 use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModDefId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
 use rustc_index::IndexVec;
@@ -236,7 +236,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by `tcx.hir_visit_item_likes_in_module`.
     /// Avoid calling this query directly.
-    query hir_module_items(key: LocalModDefId) -> &'tcx rustc_middle::hir::ModuleItems {
+    query hir_module_items(key: LocalModId) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
         desc { "getting HIR module items in `{}`", tcx.def_path_str(key) }
         cache_on_disk
@@ -1156,7 +1156,7 @@ rustc_queries! {
     }
 
     /// Performs lint checking for the module.
-    query lint_mod(key: LocalModDefId) {
+    query lint_mod(key: LocalModId) {
         desc { "linting {}", describe_as_module(key, tcx) }
     }
 
@@ -1165,16 +1165,16 @@ rustc_queries! {
     }
 
     /// Checks the attributes in the module.
-    query check_mod_attrs(key: LocalModDefId) {
+    query check_mod_attrs(key: LocalModId) {
         desc { "checking attributes in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks for uses of unstable APIs in the module.
-    query check_mod_unstable_api_usage(key: LocalModDefId) {
+    query check_mod_unstable_api_usage(key: LocalModId) {
         desc { "checking for unstable API usage in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_privacy(key: LocalModDefId) {
+    query check_mod_privacy(key: LocalModId) {
         desc { "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
 
@@ -1189,7 +1189,7 @@ rustc_queries! {
         desc { "finding live symbols in crate" }
     }
 
-    query check_mod_deathness(key: LocalModDefId) {
+    query check_mod_deathness(key: LocalModId) {
         desc { "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
 
@@ -1380,7 +1380,7 @@ rustc_queries! {
         eval_always
         desc { "checking effective visibilities" }
     }
-    query check_private_in_public(module_def_id: LocalModDefId) {
+    query check_private_in_public(module_def_id: LocalModId) {
         desc {
             "checking for private elements in public interfaces for {}",
             describe_as_module(module_def_id, tcx)

@@ -10,13 +10,13 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
-use rustc_span::def_id::StableCrateId;
+use rustc_span::def_id::{CRATE_MOD_ID, StableCrateId};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
 use crate::hir::{ModuleItems, ProjectedMaybeOwner, nested_filter};
@@ -207,7 +207,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn hir_module_free_items(self, module: LocalModDefId) -> impl Iterator<Item = ItemId> {
+    pub fn hir_module_free_items(self, module: LocalModId) -> impl Iterator<Item = ItemId> {
         self.hir_module_items(module).free_items()
     }
 
@@ -412,7 +412,7 @@ impl<'tcx> TyCtxt<'tcx> {
         find_attr!(self.hir_krate_attrs(), RustcCoherenceIsCore)
     }
 
-    pub fn hir_get_module(self, module: LocalModDefId) -> (&'tcx Mod<'tcx>, Span, HirId) {
+    pub fn hir_get_module(self, module: LocalModId) -> (&'tcx Mod<'tcx>, Span, HirId) {
         let hir_id = HirId::make_owner(module.to_local_def_id());
         match self.hir_owner_node(hir_id.owner) {
             OwnerNode::Item(&Item { span, kind: ItemKind::Mod(_, m), .. }) => (m, span, hir_id),
@@ -426,7 +426,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         V: Visitor<'tcx>,
     {
-        let (top_mod, span, hir_id) = self.hir_get_module(LocalModDefId::CRATE_DEF_ID);
+        let (top_mod, span, hir_id) = self.hir_get_module(CRATE_MOD_ID);
         visitor.visit_mod(top_mod, span, hir_id)
     }
 
@@ -477,11 +477,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// This method is the equivalent of `visit_all_item_likes_in_crate` but restricted to
     /// item-likes in a single module.
-    pub fn hir_visit_item_likes_in_module<V>(
-        self,
-        module: LocalModDefId,
-        visitor: &mut V,
-    ) -> V::Result
+    pub fn hir_visit_item_likes_in_module<V>(self, module: LocalModId, visitor: &mut V) -> V::Result
     where
         V: Visitor<'tcx>,
     {
@@ -501,29 +497,29 @@ impl<'tcx> TyCtxt<'tcx> {
         V::Result::output()
     }
 
-    pub fn hir_for_each_module(self, mut f: impl FnMut(LocalModDefId)) {
+    pub fn hir_for_each_module(self, mut f: impl FnMut(LocalModId)) {
         let crate_items = self.hir_crate_items(());
         for module in crate_items.submodules.iter() {
-            f(LocalModDefId::new_unchecked(module.def_id))
+            f(LocalModId::new_unchecked(module.def_id))
         }
     }
 
     #[inline]
-    pub fn par_hir_for_each_module(self, f: impl Fn(LocalModDefId) + DynSend + DynSync) {
+    pub fn par_hir_for_each_module(self, f: impl Fn(LocalModId) + DynSend + DynSync) {
         let crate_items = self.hir_crate_items(());
         par_for_each_in(&crate_items.submodules[..], |module| {
-            f(LocalModDefId::new_unchecked(module.def_id))
+            f(LocalModId::new_unchecked(module.def_id))
         })
     }
 
     #[inline]
     pub fn try_par_hir_for_each_module(
         self,
-        f: impl Fn(LocalModDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+        f: impl Fn(LocalModId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         let crate_items = self.hir_crate_items(());
         try_par_for_each_in(&crate_items.submodules[..], |module| {
-            f(LocalModDefId::new_unchecked(module.def_id))
+            f(LocalModId::new_unchecked(module.def_id))
         })
     }
 
@@ -1261,7 +1257,7 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
     upstream_crates
 }
 
-pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> ModuleItems {
+pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModId) -> ModuleItems {
     let mut collector = ItemCollector::new(tcx, false);
 
     let (hir_mod, span, hir_id) = tcx.hir_get_module(module_id);
