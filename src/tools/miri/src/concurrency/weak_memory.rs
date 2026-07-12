@@ -19,6 +19,9 @@
 //!   that C++20 intended to copy (<https://plv.mpi-sws.org/scfix/paper.pdf>); a change was
 //!   introduced when translating the math to English. According to Viktor Vafeiadis, this
 //!   difference is harmless. So we stick to what the standard says, and allow fewer behaviors.)
+//! - If an SC store happens after a load (of any ordering), then the existing store (of any ordering)
+//!   seen by the load is marked as an SC store. (The paper's model only marks stores that happen-before
+//!   an SC store as SC.)
 //! - SC fences are treated like AcqRel RMWs to a global clock, to ensure they induce enough
 //!   synchronization with the surrounding accesses. This rules out legal behavior, but it is really
 //!   hard to be more precise here.
@@ -77,8 +80,9 @@
 //
 // 3. §4.5 of the paper wants an SC store to mark all existing stores in the buffer that happens before it
 // as SC. This is not done in the operational semantics but implemented correctly in tsan11
-// (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L160-L167)
-// and here.
+// (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L160-L167).
+// On top of this we've added a C++20 change: if the current SC store happens after a load, then the store seen by that load
+// is marked SC.
 //
 // 4. W_SC ; R_SC case requires the SC load to ignore all but last store marked SC (stores not marked SC are not
 // affected). But this rule is applied to all loads in ReadsFromSet from the paper (last two lines of code), not just SC load.
@@ -149,7 +153,8 @@ struct StoreElement {
     /// The vector clock that can be acquired by loading this store.
     sync_clock: VClock,
 
-    /// Whether this store is SC.
+    /// Whether this store is SC. If a store happens-before or precedes in `mo` another SC store,
+    /// then it is also marked as SC.
     is_seqcst: bool,
 
     /// The value of this store. `None` means uninitialized.
@@ -371,7 +376,7 @@ impl<'tcx> StoreBuffer {
                 } else if is_seqcst
                     && store_elem.store_timestamp <= clocks.read_seqcst[store_elem.store_thread]
                 {
-                    // The current SC load cannot read-before the last store sequenced-before
+                    // The current SC load cannot read-from any but the last store sequenced-before
                     // the last SC fence.
                     // C++17 §32.4 [atomics.order] paragraph 5
                     false
@@ -433,11 +438,23 @@ impl<'tcx> StoreBuffer {
         }
         self.buffer.push_back(store_elem);
         if is_seqcst {
-            // Every store that happens before this needs to be marked as SC
-            // so that in a later SC load, only the last SC store (i.e. this one) or stores that
-            // aren't ordered by hb with the last SC is picked.
+            // Every store that happens-before or is coherence-ordered before the ongoing SC store
+            // needs to be marked as SC, so that in a later SC load, only the latest SC-marked store
+            // or unmarked stores can be picked.
             self.buffer.iter_mut().rev().for_each(|elem| {
                 if elem.store_timestamp <= thread_clock[elem.store_thread] {
+                    // This store happens-before the ongoing SC store.
+                    elem.is_seqcst = true;
+                } else if elem
+                    .load_info
+                    .borrow()
+                    .timestamps
+                    .iter()
+                    .any(|(&idx, &load_ts)| load_ts <= thread_clock[idx])
+                {
+                    // This store has a load which happens before the ongoing store.
+                    // This store must precede the onging store in modification order,
+                    // and is therefore coherence-ordered before the ongoing SC store.
                     elem.is_seqcst = true;
                 }
             })

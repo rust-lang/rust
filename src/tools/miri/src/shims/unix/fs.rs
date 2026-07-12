@@ -2,12 +2,12 @@
 
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fs::{self, DirBuilder, File, FileType, OpenOptions, TryLockError};
+use std::fs::{self, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
 
-use rustc_abi::Size;
+use rustc_abi::{FieldIdx, Size};
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::Os;
@@ -51,6 +51,13 @@ struct DirEntry {
     name: OsString,
     ino: u64,
     d_type: i32,
+}
+
+/// What a `futimens` `timespec` asks for: leave the timestamp alone (`UTIME_OMIT`) or set it.
+#[derive(Copy, Clone)]
+enum TimeUpdate {
+    Omit,
+    Set(SystemTime),
 }
 
 impl UnixFileDescription for FileHandle {
@@ -224,6 +231,33 @@ fn maybe_sync_file(
 
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Decode one `futimens` `timespec`, handling the `UTIME_NOW`/`UTIME_OMIT` `tv_nsec` values.
+    /// `None` means the `timespec` is invalid and the caller should report `EINVAL`.
+    fn parse_utimens_timespec(
+        &self,
+        tp: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx, Option<TimeUpdate>> {
+        let this = self.eval_context_ref();
+        // `UTIME_NOW` reads the host clock, which we must not do under isolation.
+        assert!(this.machine.communicate(), "isolation should have prevented reaching this");
+
+        // `tv_nsec` and the `UTIME_*` constants are `c_long`, i.e. the target's `isize`.
+        let nsec_place = this.project_field(tp, FieldIdx::ONE)?;
+        let nsec = this.read_scalar(&nsec_place)?.to_target_isize(this)?;
+
+        if nsec == this.eval_libc("UTIME_OMIT").to_target_isize(this)? {
+            return interp_ok(Some(TimeUpdate::Omit));
+        }
+        if nsec == this.eval_libc("UTIME_NOW").to_target_isize(this)? {
+            return interp_ok(Some(TimeUpdate::Set(SystemTime::now())));
+        }
+
+        let Some(duration) = this.read_timespec(tp)? else {
+            return interp_ok(None);
+        };
+        interp_ok(SystemTime::UNIX_EPOCH.checked_add(duration).map(TimeUpdate::Set))
+    }
+
     fn write_stat_buf(
         &mut self,
         metadata: FileMetadata,
@@ -1441,6 +1475,53 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
+    }
+
+    /// `futimens(fd, times)`: set `fd`'s access/modification times. `times` is `[atime, mtime]`, or
+    /// NULL to set both to now.
+    fn futimens(
+        &mut self,
+        fd_op: &OpTy<'tcx>,
+        times_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let fd_num = this.read_scalar(fd_op)?.to_i32()?;
+        let times_ptr = this.read_pointer(times_op)?;
+
+        let Some(fd) = this.machine.fds.get(fd_num) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+        let file = fd.downcast::<FileHandle>().ok_or_else(|| {
+            err_unsup_format!("`futimens` is only supported on file-backed file descriptors")
+        })?;
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
+
+        let (access, modified) = if this.ptr_is_null(times_ptr)? {
+            let now = TimeUpdate::Set(SystemTime::now());
+            (now, now)
+        } else {
+            let timespec = this.libc_ty_layout("timespec");
+            let access_place = this.deref_pointer_as(times_op, timespec)?;
+            let modified_place = access_place.offset(timespec.size, timespec, this)?;
+            let Some(access) = this.parse_utimens_timespec(&access_place)? else {
+                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+            };
+            let Some(modified) = this.parse_utimens_timespec(&modified_place)? else {
+                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+            };
+            (access, modified)
+        };
+
+        let mut filetimes = FileTimes::new();
+        if let TimeUpdate::Set(access) = access {
+            filetimes = filetimes.set_accessed(access);
+        }
+        if let TimeUpdate::Set(modified) = modified {
+            filetimes = filetimes.set_modified(modified);
+        }
+        let result = file.file.set_times(filetimes);
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|()| 0i32))?))
     }
 
     fn sync_file_range(

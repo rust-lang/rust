@@ -16,7 +16,7 @@ mod utils;
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
 
-use libc_utils::errno_result;
+use libc_utils::{errno_check, errno_result};
 
 fn main() {
     test_dup();
@@ -47,6 +47,7 @@ fn main() {
     test_fstat();
     test_stat();
     test_lstat();
+    test_futimens();
     test_isatty();
     test_read_and_uninit();
     test_nofollow_not_symlink();
@@ -164,8 +165,6 @@ fn test_statx_on_file_path() {
 
 #[cfg(target_os = "linux")]
 fn test_statx_empty_path_on_pipe() {
-    use libc_utils::errno_check;
-
     unsafe {
         let mut fds = [0; 2];
         errno_check(libc::pipe(fds.as_mut_ptr()));
@@ -253,7 +252,7 @@ fn test_file_open_dir() {
     // let err =
     //     errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) }).unwrap_err();
     // assert_eq!(err.raw_os_error().unwrap(), libc::EISDIR, "unexpected errno: {err}");
-    // libc_utils::errno_check(unsafe { libc::close(fd) });
+    // errno_check(unsafe { libc::close(fd) });
 }
 
 fn test_dup_stdout_stderr() {
@@ -716,6 +715,63 @@ fn test_lstat() {
     check_stat_fields(stat);
 
     remove_file(&symlink_path).unwrap();
+    remove_file(&path).unwrap();
+}
+
+fn test_futimens() {
+    use std::mem::MaybeUninit;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let path = utils::prepare_with_content("miri_test_libc_futimens.txt", b"hello");
+    let file = File::options().write(true).open(&path).unwrap();
+    let fd = file.as_raw_fd();
+
+    // Reads back the file's (access, modification) times as `(sec, nsec)` pairs via `fstat`.
+    let get_times = || {
+        let mut stat = MaybeUninit::<libc::stat>::uninit();
+        errno_check(unsafe { libc::fstat(fd, stat.as_mut_ptr()) });
+        let stat = unsafe { stat.assume_init_ref() };
+        ((stat.st_atime, stat.st_atime_nsec), (stat.st_mtime, stat.st_mtime_nsec))
+    };
+
+    // Setting both timestamps round-trips, including sub-second precision. We use 100ms since the
+    // coarsest clock any host rounds to is Windows/NTFS's 100ns.
+    let times = [
+        libc::timespec { tv_sec: 1_000_000_000, tv_nsec: 100_000_000 },
+        libc::timespec { tv_sec: 1_234_567_890, tv_nsec: 200_000_000 },
+    ];
+    errno_check(unsafe { libc::futimens(fd, times.as_ptr()) });
+    assert_eq!(get_times(), ((1_000_000_000, 100_000_000), (1_234_567_890, 200_000_000)));
+
+    // `UTIME_OMIT` leaves the access time unchanged while updating the modification time.
+    let times = [
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT },
+        libc::timespec { tv_sec: 2_000_000_000, tv_nsec: 0 },
+    ];
+    errno_check(unsafe { libc::futimens(fd, times.as_ptr()) });
+    assert_eq!(get_times(), ((1_000_000_000, 100_000_000), (2_000_000_000, 0)));
+
+    // `UTIME_NOW` sets a timestamp to the current time (here for access, alongside `UTIME_OMIT`).
+    let before = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let times = [
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_NOW },
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT },
+    ];
+    errno_check(unsafe { libc::futimens(fd, times.as_ptr()) });
+    let (atime, mtime) = get_times();
+    assert!(atime.0 as u64 >= before);
+    assert_eq!(mtime, (2_000_000_000, 0));
+
+    // A NULL `times` pointer sets both timestamps to the current time.
+    errno_check(unsafe { libc::futimens(fd, std::ptr::null()) });
+    let (atime, mtime) = get_times();
+    assert!(atime.0 as u64 >= before);
+    assert!(mtime.0 as u64 >= before);
+
+    // A bad file descriptor fails with `EBADF`.
+    let err = errno_result(unsafe { libc::futimens(-1, times.as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+
     remove_file(&path).unwrap();
 }
 
@@ -1200,7 +1256,7 @@ fn test_linkat() {
 
     // Call linkat
     unsafe {
-        libc_utils::errno_check(libc::linkat(
+        errno_check(libc::linkat(
             libc::AT_FDCWD,
             c_source.as_ptr(),
             libc::AT_FDCWD,

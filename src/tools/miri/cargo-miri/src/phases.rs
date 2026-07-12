@@ -1,10 +1,11 @@
 //! Implements the various phases of `cargo miri run/test`.
 
-use std::env;
+use std::ffi::OsString;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{self, Path, PathBuf};
 use std::process::Command;
+use std::{env, fs};
 
 use rustc_version::VersionMeta;
 
@@ -438,6 +439,13 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
         // Ideally we'd entirely skip them... but we have no good way of doing that here.
         // So we run the tests natively on the host instead.
         eprintln!("warning: unit tests of `proc-macro` crates are executed outside Miri");
+        // We also create a marker file next to the binary to indicate that this is a proc macro
+        // crate. We use this later when cargo asks us to run the tests.
+        for filename in out_filenames() {
+            let mut filename = OsString::from(filename);
+            filename.push(".proc-macro-test");
+            File::create(filename).expect("failed to create .proc-macro-test marker file");
+        }
     }
 
     let mut cmd = miri();
@@ -540,9 +548,17 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     let file = BufReader::new(file);
     let binary_args = binary_args.collect::<Vec<_>>();
 
-    let info: CrateRunInfo = serde_json::from_reader(file).unwrap_or_else(|_| {
-        show_error!("file {:?} contains outdated or invalid JSON; try `cargo clean`", binary)
-    });
+    let Ok(info) = serde_json::from_reader::<_, CrateRunInfo>(file) else {
+        // Sometimes cargo invokes us on proc macro tests even though those are actual binaries.
+        // So check if the proc-macro-test marker file exists next to this file, and if so,
+        // just run the file as a binary.
+        if fs::exists(format!("{binary}.proc-macro-test")).is_ok_and(|b| b) {
+            let mut cmd = Command::new(&binary);
+            cmd.args(&binary_args);
+            exec(cmd);
+        }
+        show_error!("file {binary:?} contains outdated or invalid JSON; try `cargo clean`")
+    };
 
     let mut cmd = miri();
 

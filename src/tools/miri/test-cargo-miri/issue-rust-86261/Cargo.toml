@@ -2,3 +2,6 @@
 name = "issue_rust_86261"
 version = "0.1.0"
 edition = "2018"
+
+[lib]
+test = false

@@ -1,7 +1,5 @@
-use rustc_abi::{CanonAbi, Size};
-use rustc_middle::ty::Ty;
+use rustc_abi::Size;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 
 use crate::shims::math::compute_crc32;
 use crate::*;
@@ -11,7 +9,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_loongarch_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -47,7 +44,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                let [data, crc] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [data, crc] = this.check_shim_sig_unadjusted(link_name, args)?;
                 let data = this.read_scalar(data)?;
                 let crc = this.read_scalar(crc)?;
 

@@ -34,7 +34,7 @@
 
 /** Scheduling */
 
-auto MiriGenmcShim::schedule_next(
+auto MiriGenmcInterface::schedule_next(
     const int curr_thread_id,
     const ActionKind curr_thread_next_instr_kind
 ) -> SchedulingResult {
@@ -61,27 +61,27 @@ auto MiriGenmcShim::schedule_next(
     );
 }
 
-void MiriGenmcShim::handle_execution_start() {
+void MiriGenmcInterface::handle_execution_start() {
     threads_action_.clear();
     threads_action_.push_back(Action(ActionKind::Load, Event::getInit()));
     GenMCDriver::handleExecutionStart();
 }
 
-auto MiriGenmcShim::handle_execution_end() -> std::unique_ptr<std::string> {
+auto MiriGenmcInterface::handle_execution_end() -> std::unique_ptr<std::string> {
     auto ret = GenMCDriver::handleExecutionEnd();
     return ret.has_value() ? format_error(*ret) : nullptr;
 }
 
 /**** Blocking instructions ****/
 
-void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_type) {
+void MiriGenmcInterface::handle_assume_block(ThreadId thread_id, AssumeType assume_type) {
     auto ret = GenMCDriver::handleAssume(nullptr, curr_pos(thread_id), assume_type);
     inc_pos(thread_id, ret.count);
 }
 
 /**** Memory access handling ****/
 
-[[nodiscard]] auto MiriGenmcShim::handle_atomic_load(
+[[nodiscard]] auto MiriGenmcInterface::handle_atomic_load(
     ThreadId thread_id,
     uint64_t address,
     uint64_t size,
@@ -100,19 +100,26 @@ void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_ty
         EventDeps()
     );
     inc_pos(thread_id, ret.count);
-    if (const auto* err = std::get_if<VerificationError>(&ret.result))
-        return LoadResultExt::from_error(format_error(*err));
-    if (std::holds_alternative<Invalid>(ret.result))
-        return LoadResultExt::from_invalid();
-    const auto* ret_val = std::get_if<SVal>(&ret.result);
     // FIXME(genmc): handle `HandleResult::Reset` return value.
-    ERROR_ON(!ret_val, "Unimplemented: atomic load returned unexpected result.");
-    return LoadResultExt::from_value(*ret_val);
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) {
+                return LoadResultExt::from_error(format_error(err));
+            },
+            [](const Invalid&) { return LoadResultExt::from_invalid(); },
+            [](const SVal& v) { return LoadResultExt::from_value(v); },
+            [](const Reset&) {
+                UNREACHABLE();
+                return LoadResultExt::from_invalid();
+            },
+        },
+        ret.result
+    );
 }
 
 [[nodiscard]] auto
-MiriGenmcShim::handle_non_atomic_load(ThreadId thread_id, uint64_t address, uint64_t size)
-    -> LoadResult {
+MiriGenmcInterface::handle_non_atomic_load(ThreadId thread_id, uint64_t address, uint64_t size)
+    -> NonAtomicResult {
     const auto ret = GenMCDriver::handleNALoad(
         nullptr,
         curr_pos(thread_id),
@@ -121,20 +128,24 @@ MiriGenmcShim::handle_non_atomic_load(ThreadId thread_id, uint64_t address, uint
         EventDeps()
     );
     inc_pos(thread_id, ret.count);
-
-    if (const auto* err = std::get_if<VerificationError>(&ret.result))
-        return LoadResultExt::from_error(format_error(*err));
-    if (std::holds_alternative<Invalid>(ret.result))
-        return LoadResultExt::from_invalid();
     // FIXME(genmc): handle `HandleResult::Reset` return value.
-    ERROR_ON(
-        !std::holds_alternative<std::monostate>(ret.result),
-        "Unimplemented: non-atomic load returned unexpected result."
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) {
+                return NonAtomicResultExt::from_error(format_error(err));
+            },
+            [](const Invalid&) { return NonAtomicResultExt::from_invalid(); },
+            [](const std::monostate&) { return NonAtomicResultExt::ok(); },
+            [](const Reset&) {
+                UNREACHABLE();
+                return NonAtomicResultExt::from_invalid();
+            },
+        },
+        ret.result
     );
-    return LoadResultExt::no_value();
 }
 
-[[nodiscard]] auto MiriGenmcShim::handle_atomic_store(
+[[nodiscard]] auto MiriGenmcInterface::handle_atomic_store(
     ThreadId thread_id,
     uint64_t address,
     uint64_t size,
@@ -155,20 +166,26 @@ MiriGenmcShim::handle_non_atomic_load(ThreadId thread_id, uint64_t address, uint
     );
 
     inc_pos(thread_id, ret.count);
-    if (const auto* err = std::get_if<VerificationError>(&ret.result))
-        return StoreResultExt::from_error(format_error(*err));
-    if (std::holds_alternative<Invalid>(ret.result))
-        return StoreResultExt::from_invalid();
-
-    const auto* is_co_max = std::get_if<bool>(&ret.result);
     // FIXME(genmc): handle `HandleResult::Reset` return value.
-    ERROR_ON(!is_co_max, "Unimplemented: atomic store returned unexpected result.");
-    return StoreResultExt::ok(*is_co_max);
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) {
+                return StoreResultExt::from_error(format_error(err));
+            },
+            [](const Invalid&) { return StoreResultExt::from_invalid(); },
+            [](bool is_co_max) { return StoreResultExt::ok(is_co_max); },
+            [](const Reset&) {
+                UNREACHABLE();
+                return StoreResultExt::from_invalid();
+            },
+        },
+        ret.result
+    );
 }
 
 [[nodiscard]] auto
-MiriGenmcShim::handle_non_atomic_store(ThreadId thread_id, uint64_t address, uint64_t size)
-    -> StoreResult {
+MiriGenmcInterface::handle_non_atomic_store(ThreadId thread_id, uint64_t address, uint64_t size)
+    -> NonAtomicResult {
     const auto ret = GenMCDriver::handleNAStore(
         nullptr,
         curr_pos(thread_id),
@@ -177,25 +194,29 @@ MiriGenmcShim::handle_non_atomic_store(ThreadId thread_id, uint64_t address, uin
         EventDeps()
     );
     inc_pos(thread_id, ret.count);
-
-    if (const auto* err = std::get_if<VerificationError>(&ret.result))
-        return StoreResultExt::from_error(format_error(*err));
-    if (std::holds_alternative<Invalid>(ret.result))
-        return StoreResultExt::from_invalid();
     // FIXME(genmc): handle `HandleResult::Reset` return value.
-    ERROR_ON(
-        !std::holds_alternative<std::monostate>(ret.result),
-        "Unimplemented: non-atomic store returned unexpected result."
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) -> NonAtomicResult {
+                return NonAtomicResultExt::from_error(format_error(err));
+            },
+            [](const Invalid&) { return NonAtomicResultExt::from_invalid(); },
+            [](const std::monostate&) { return NonAtomicResultExt::ok(); },
+            [](const Reset&) {
+                UNREACHABLE();
+                return NonAtomicResultExt::from_invalid();
+            },
+        },
+        ret.result
     );
-    return StoreResultExt::ok(true);
 }
 
-void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
+void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
     auto ret = GenMCDriver::handleFence(nullptr, curr_pos(thread_id), ord, EventDeps());
     inc_pos(thread_id, ret.count);
 }
 
-[[nodiscard]] auto MiriGenmcShim::handle_read_modify_write(
+[[nodiscard]] auto MiriGenmcInterface::handle_read_modify_write(
     ThreadId thread_id,
     uint64_t address,
     uint64_t size,
@@ -247,22 +268,26 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
         EventDeps()
     );
     inc_pos(thread_id, store_ret.count);
-    if (const auto* err = std::get_if<VerificationError>(&store_ret.result))
-        return ReadModifyWriteResultExt::from_error(format_error(*err));
-    if (std::holds_alternative<GenMCDriver::Invalid>(store_ret.result))
-        return ReadModifyWriteResultExt::from_invalid();
-
-    const auto* is_co_max = std::get_if<bool>(&store_ret.result);
     // FIXME(genmc): handle `HandleResult::Reset` return values.
-    ERROR_ON(!is_co_max, "Unimplemented: RMW store returned unexpected result.");
-    return ReadModifyWriteResultExt::ok(
-        /* old_value: */ read_old_val,
-        new_value,
-        *is_co_max
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) {
+                return ReadModifyWriteResultExt::from_error(format_error(err));
+            },
+            [](const GenMCDriver::Invalid&) { return ReadModifyWriteResultExt::from_invalid(); },
+            [&read_old_val, &new_value](bool is_co_max) {
+                return ReadModifyWriteResultExt::ok(read_old_val, new_value, is_co_max);
+            },
+            [](const Reset&) {
+                UNREACHABLE();
+                return ReadModifyWriteResultExt::from_invalid();
+            },
+        },
+        store_ret.result
     );
 }
 
-[[nodiscard]] auto MiriGenmcShim::handle_compare_exchange(
+[[nodiscard]] auto MiriGenmcInterface::handle_compare_exchange(
     ThreadId thread_id,
     uint64_t address,
     uint64_t size,
@@ -323,20 +348,28 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
         EventDeps()
     );
     inc_pos(thread_id, store_ret.count);
-    if (const auto* err = std::get_if<VerificationError>(&store_ret.result))
-        return CompareExchangeResultExt::from_error(format_error(*err));
-    if (std::holds_alternative<GenMCDriver::Invalid>(store_ret.result))
-        return CompareExchangeResultExt::from_invalid();
-
-    const auto* is_co_max = std::get_if<bool>(&store_ret.result);
     // FIXME(genmc): handle `HandleResult::Reset` return values.
-    ERROR_ON(!is_co_max, "Unimplemented: compare-exchange store returned unexpected result.");
-    return CompareExchangeResultExt::success(read_old_val, *is_co_max);
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) {
+                return CompareExchangeResultExt::from_error(format_error(err));
+            },
+            [](const GenMCDriver::Invalid&) { return CompareExchangeResultExt::from_invalid(); },
+            [&read_old_val](bool is_co_max) {
+                return CompareExchangeResultExt::success(read_old_val, is_co_max);
+            },
+            [](const Reset&) {
+                UNREACHABLE();
+                return CompareExchangeResultExt::from_invalid();
+            },
+        },
+        store_ret.result
+    );
 }
 
 /**** Memory (de)allocation ****/
 
-auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment)
+auto MiriGenmcInterface::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment)
     -> MallocResult {
     // These are only used for printing and features Miri-GenMC doesn't support (yet).
     const auto storage_duration = StorageDuration::SD_Heap;
@@ -357,30 +390,44 @@ auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t al
         EventDeps()
     );
     inc_pos(thread_id, ret.count);
-    if (const auto* err = std::get_if<VerificationError>(&ret.result))
-        return MallocResultExt::from_error(format_error(*err));
-    const auto* addr = std::get_if<SVal>(&ret.result);
-    ERROR_ON(!addr, "Unimplemented: malloc returned unexpected result.");
-    return MallocResultExt::ok(*addr);
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) {
+                return MallocResultExt::from_error(format_error(err));
+            },
+            [](const SVal& addr) { return MallocResultExt::ok(addr); },
+            [](const Invalid&) { return MallocResultExt::from_invalid(); },
+            [](const Reset&) {
+                UNREACHABLE();
+                return MallocResultExt::from_invalid();
+            },
+        },
+        ret.result
+    );
 }
 
-auto MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address)
-    -> std::unique_ptr<std::string> {
+auto MiriGenmcInterface::handle_free(ThreadId thread_id, uint64_t address) -> FreeResult {
     auto ret = GenMCDriver::handleFree(nullptr, curr_pos(thread_id), SAddr(address), EventDeps());
     inc_pos(thread_id, ret.count);
-    if (const auto* err = std::get_if<VerificationError>(&ret.result))
-        return format_error(*err);
-
-    ERROR_ON(
-        !std::holds_alternative<std::monostate>(ret.result),
-        "Unimplemented: free returned unexpected result."
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) {
+                return FreeResultExt::from_error(format_error(err));
+            },
+            [](const std::monostate&) { return FreeResultExt::ok(); },
+            [](const Invalid&) { return FreeResultExt::from_invalid(); },
+            [](const Reset&) {
+                UNREACHABLE();
+                return FreeResultExt::from_invalid();
+            },
+        },
+        ret.result
     );
-    return nullptr;
 }
 
 /**** Estimation mode result ****/
 
-auto MiriGenmcShim::get_estimation_results() const -> EstimationResult {
+auto MiriGenmcInterface::get_estimation_results() const -> EstimationResult {
     const auto& res = getResult();
     return EstimationResult {
         .mean = static_cast<double>(res.estimationMean),
@@ -401,7 +448,7 @@ struct MutexState {
     }
 };
 
-auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint64_t size)
+auto MiriGenmcInterface::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint64_t size)
     -> MutexLockResult {
     // This annotation informs GenMC about the condition required to make this lock call succeed.
     // It stands for `value_read_by_load != MUTEX_LOCKED`.
@@ -446,7 +493,7 @@ auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint
         return MutexLockResultExt::reset();
 
     const auto* ret_val = std::get_if<SVal>(&load_ret.result);
-    ERROR_ON(!ret_val, "Unimplemented: mutex lock returned unexpected result.");
+    ERROR_ON(!ret_val, "Unimplemented: mutex lock load returned unexpected result.");
     ERROR_ON(
         !MutexState::isValid(*ret_val),
         "Mutex read value was neither 0 nor 1 ({})",
@@ -457,25 +504,34 @@ auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint
         // it. GenMC determines this based on the annotation we pass with the load further up in
         // this function, namely when that load will read a value other than `MutexState::LOCKED`.
         this->handle_assume_block(thread_id, AssumeType::Spinloop);
-        return MutexLockResultExt::ok(false);
+        return MutexLockResultExt::not_acquired();
     }
 
     const auto store_ret =
         GenMCDriver::handleLockCasWrite(nullptr, curr_pos(thread_id), address, size, EventDeps());
     inc_pos(thread_id, store_ret.count);
-    if (const auto* err = std::get_if<VerificationError>(&store_ret.result))
-        return MutexLockResultExt::from_error(format_error(*err));
-    if (std::holds_alternative<GenMCDriver::Invalid>(store_ret.result))
-        return MutexLockResultExt::from_invalid();
     // We don't update Miri's memory for this operation so we don't need to know if the store
-    // was the co-maximal store, but we still check that we at least get a boolean as the result
-    // of the store.
-    const auto* is_co_max = std::get_if<bool>(&store_ret.result);
-    ERROR_ON(!is_co_max, "Unimplemented: mutex_try_lock store returned unexpected result.");
-    return MutexLockResultExt::ok(true);
+    // was the co-maximal store.
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) {
+                return MutexLockResultExt::from_error(format_error(err));
+            },
+            [](const GenMCDriver::Invalid&) { return MutexLockResultExt::from_invalid(); },
+            [](bool is_co_max) {
+                VERIFY(is_co_max);
+                return MutexLockResultExt::acquired();
+            },
+            [](const Reset&) {
+                UNREACHABLE();
+                return MutexLockResultExt::from_invalid();
+            },
+        },
+        store_ret.result
+    );
 }
 
-auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, uint64_t size)
+auto MiriGenmcInterface::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, uint64_t size)
     -> MutexLockResult {
     // As usual, we need to tell GenMC which value was stored at this location before this atomic
     // access, if there previously was a non-atomic initializing access. We set the initial state of
@@ -500,7 +556,7 @@ auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, 
 
     ERROR_ON(!MutexState::isValid(*ret_val), "Mutex read value was neither 0 nor 1");
     if (*ret_val == MutexState::LOCKED)
-        return MutexLockResultExt::ok(false); /* Lock already held. */
+        return MutexLockResultExt::not_acquired(); /* Lock already held. */
 
     const auto store_ret = GenMCDriver::handleTrylockCasWrite(
         nullptr,
@@ -510,18 +566,28 @@ auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, 
         EventDeps()
     );
     inc_pos(thread_id, store_ret.count);
-    if (const auto* err = std::get_if<VerificationError>(&store_ret.result))
-        return MutexLockResultExt::from_error(format_error(*err));
-    if (std::holds_alternative<GenMCDriver::Invalid>(store_ret.result))
-        return MutexLockResultExt::from_invalid();
     // We don't update Miri's memory for this operation so we don't need to know if the store was
-    // co-maximal, but we still check that we get a boolean result.
-    const auto* is_co_max = std::get_if<bool>(&store_ret.result);
-    ERROR_ON(!is_co_max, "Unimplemented: store part of mutex try_lock returned unexpected result.");
-    return MutexLockResultExt::ok(true);
+    // co-maximal.
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) {
+                return MutexLockResultExt::from_error(format_error(err));
+            },
+            [](const GenMCDriver::Invalid&) { return MutexLockResultExt::from_invalid(); },
+            [](bool is_co_max) {
+                VERIFY(is_co_max);
+                return MutexLockResultExt::acquired();
+            },
+            [](const Reset&) {
+                UNREACHABLE();
+                return MutexLockResultExt::from_invalid();
+            },
+        },
+        store_ret.result
+    );
 }
 
-auto MiriGenmcShim::handle_mutex_unlock(ThreadId thread_id, uint64_t address, uint64_t size)
+auto MiriGenmcInterface::handle_mutex_unlock(ThreadId thread_id, uint64_t address, uint64_t size)
     -> StoreResult {
     const auto ret = GenMCDriver::handleUnlockWrite(
         nullptr,
@@ -538,18 +604,25 @@ auto MiriGenmcShim::handle_mutex_unlock(ThreadId thread_id, uint64_t address, ui
         EventDeps()
     );
     inc_pos(thread_id, ret.count);
-    if (const auto* err = std::get_if<VerificationError>(&ret.result))
-        return StoreResultExt::from_error(format_error(*err));
-    if (std::holds_alternative<GenMCDriver::Invalid>(ret.result))
-        return StoreResultExt::from_invalid();
-    const auto* is_co_max = std::get_if<bool>(&ret.result);
-    ERROR_ON(!is_co_max, "Unimplemented: store part of mutex unlock returned unexpected result.");
-    return StoreResultExt::ok(*is_co_max);
+    return std::visit(
+        overloaded {
+            [](const VerificationError& err) {
+                return StoreResultExt::from_error(format_error(err));
+            },
+            [](const GenMCDriver::Invalid&) { return StoreResultExt::from_invalid(); },
+            [](bool is_co_max) { return StoreResultExt::ok(is_co_max); },
+            [](const Reset&) {
+                UNREACHABLE();
+                return StoreResultExt::from_invalid();
+            },
+        },
+        ret.result
+    );
 }
 
 /** Thread creation/joining */
 
-void MiriGenmcShim::handle_thread_create(ThreadId thread_id, ThreadId parent_id) {
+void MiriGenmcInterface::handle_thread_create(ThreadId thread_id, ThreadId parent_id) {
     // FIXME(genmc): for supporting symmetry reduction, these will need to be properly set:
     const unsigned fun_id = 0;
     const SVal arg = SVal(0);
@@ -571,7 +644,7 @@ void MiriGenmcShim::handle_thread_create(ThreadId thread_id, ThreadId parent_id)
     threads_action_.push_back(Action(ActionKind::Load, Event(child_tid, 0)));
 }
 
-void MiriGenmcShim::handle_thread_join(ThreadId thread_id, ThreadId child_id) {
+void MiriGenmcInterface::handle_thread_join(ThreadId thread_id, ThreadId child_id) {
     // The thread join event happens in the parent.
     const auto ret =
         GenMCDriver::handleThreadJoin(nullptr, curr_pos(thread_id), child_id, EventDeps());
@@ -592,7 +665,7 @@ void MiriGenmcShim::handle_thread_join(ThreadId thread_id, ThreadId child_id) {
     // NOTE: Thread return value is ignored, since Miri doesn't need it.
 }
 
-void MiriGenmcShim::handle_thread_finish(ThreadId thread_id, uint64_t ret_val) {
+void MiriGenmcInterface::handle_thread_finish(ThreadId thread_id, uint64_t ret_val) {
     auto ret = GenMCDriver::handleThreadFinish(nullptr, curr_pos(thread_id), SVal(ret_val));
     inc_pos(thread_id, ret.count);
     ERROR_ON(
@@ -601,7 +674,7 @@ void MiriGenmcShim::handle_thread_finish(ThreadId thread_id, uint64_t ret_val) {
     );
 }
 
-void MiriGenmcShim::handle_thread_kill(ThreadId thread_id) {
+void MiriGenmcInterface::handle_thread_kill(ThreadId thread_id) {
     auto ret = GenMCDriver::handleThreadKill(nullptr, curr_pos(thread_id));
     inc_pos(thread_id, ret.count);
     ERROR_ON(

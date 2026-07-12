@@ -1,10 +1,9 @@
-use rustc_abi::{CanonAbi, FieldIdx, Size};
+use rustc_abi::{FieldIdx, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::Single;
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::Arch;
 
 use self::helpers::bool_to_simd_element;
@@ -29,7 +28,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -47,8 +45,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
 
-                let [cb_in, a, b] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [cb_in, a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
                 let op = if unprefixed_name.starts_with("add") {
                     mir::BinOp::AddWithOverflow
                 } else {
@@ -66,7 +63,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the instruction behaves like a no-op, so it is always safe to call the
             // intrinsic.
             "sse2.pause" => {
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_unadjusted(link_name, args)?;
                 // Only exhibit the spin-loop hint behavior when SSE2 is enabled.
                 if this.tcx.sess.unstable_target_features.contains(&Symbol::intern("sse2")) {
                     this.yield_active_thread();
@@ -85,77 +82,68 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     len = 8;
                 }
 
-                let [left, right, imm] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right, imm] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 pclmulqdq(this, left, right, imm, dest, len)?;
             }
 
             name if name.starts_with("bmi.") => {
-                return bmi::EvalContextExt::emulate_x86_bmi_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
+                return bmi::EvalContextExt::emulate_x86_bmi_intrinsic(this, link_name, args, dest);
             }
             // The GFNI extension does not get its own namespace.
             // Check for instruction names instead.
             name if name.starts_with("vgf2p8affine") || name.starts_with("vgf2p8mulb") => {
                 return gfni::EvalContextExt::emulate_x86_gfni_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("sha") => {
-                return sha::EvalContextExt::emulate_x86_sha_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
+                return sha::EvalContextExt::emulate_x86_sha_intrinsic(this, link_name, args, dest);
             }
             name if name.starts_with("sse.") => {
-                return sse::EvalContextExt::emulate_x86_sse_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
+                return sse::EvalContextExt::emulate_x86_sse_intrinsic(this, link_name, args, dest);
             }
             name if name.starts_with("sse2.") => {
                 return sse2::EvalContextExt::emulate_x86_sse2_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("sse3.") => {
                 return sse3::EvalContextExt::emulate_x86_sse3_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("ssse3.") => {
                 return ssse3::EvalContextExt::emulate_x86_ssse3_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("sse41.") => {
                 return sse41::EvalContextExt::emulate_x86_sse41_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("sse42.") => {
                 return sse42::EvalContextExt::emulate_x86_sse42_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("aesni.") => {
                 return aesni::EvalContextExt::emulate_x86_aesni_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("avx.") => {
-                return avx::EvalContextExt::emulate_x86_avx_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
+                return avx::EvalContextExt::emulate_x86_avx_intrinsic(this, link_name, args, dest);
             }
             name if name.starts_with("avx2.") => {
                 return avx2::EvalContextExt::emulate_x86_avx2_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("avx512.") => {
                 return avx512::EvalContextExt::emulate_x86_avx512_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
 
@@ -1116,7 +1104,8 @@ fn permute<'tcx>(
 /// Shuffle elements from *two* source registers (`left` and `right`) using
 /// the corresponding index in `indices`, and store the results in `dest`.
 ///
-/// For a vector with `N` lanes, the low `log2(N)` bits of each index select a
+/// For indexing, we basically concatenate `left` and `right`, and index into the concatenation.
+/// More precisely: For a vector with `N` lanes, the low `log2(N)` bits of each index select a
 /// lane within a source vector. Bit `log2(N)` selects the source vector (`0` =>
 /// `left`, `1` => `right`), and all higher bits are ignored.
 /// Equivalently, lane `i` of the result is copied from
