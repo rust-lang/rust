@@ -8,7 +8,7 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Spanned, Symbol};
 
 use crate::Res;
-use crate::late::PatternSource;
+use crate::late::{PatternSource, ResolvingRestrictionKind};
 
 #[derive(Diagnostic)]
 #[diag("can't use {$is_self ->
@@ -546,8 +546,17 @@ pub(crate) struct ExpectedModuleFound {
 pub(crate) struct Indeterminate(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
-#[diag("trait implementation can only be restricted to ancestor modules")]
-pub(crate) struct RestrictionAncestorOnly(#[primary_span] pub(crate) Span);
+#[diag(
+    "{$kind ->
+    [impl] trait implementation
+    *[mut] field mutation
+} can only be restricted to ancestor modules"
+)]
+pub(crate) struct RestrictionAncestorOnly {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) kind: ResolvingRestrictionKind,
+}
 
 #[derive(Diagnostic)]
 #[diag("cannot use a tool module through an import")]
