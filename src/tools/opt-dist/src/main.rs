@@ -329,9 +329,16 @@ fn execute_pipeline(
 
                 // FIXME(kobzol): try gather profiles together, at once for LLVM and rustc
                 // Instrument the libraries and gather profiles
-                let llvm_profile = with_bolt_instrumented(env, &llvm_lib, |llvm_profile_dir| {
-                    stage.section("Gather profiles", |_| {
-                        gather_bolt_profiles(env, "LLVM", llvm_benchmarks(env), llvm_profile_dir)
+                let llvm_profile = stage.section("Instrument & gather profiles", |stage| {
+                    with_bolt_instrumented(env, &llvm_lib, |llvm_profile_dir| {
+                        stage.section("Gather profiles", |_| {
+                            gather_bolt_profiles(
+                                env,
+                                "LLVM",
+                                llvm_benchmarks(env),
+                                llvm_profile_dir,
+                            )
+                        })
                     })
                 })?;
                 print_free_disk_space()?;
@@ -341,9 +348,10 @@ fn execute_pipeline(
                 // the final dist build. However, when BOLT optimizes an artifact, it does so *in-place*,
                 // therefore it will actually optimize all the hard links, which means that the final
                 // packaged `libLLVM.so` file *will* be BOLT optimized.
-                bolt_optimize(&llvm_lib, &llvm_profile, env)
-                    .context("Could not optimize LLVM with BOLT")?;
-
+                stage.section("Optimize", |_| {
+                    bolt_optimize(&llvm_lib, &llvm_profile, env)
+                        .context("Could not optimize LLVM with BOLT")
+                })?;
                 Some(llvm_profile)
             } else {
                 None
@@ -354,17 +362,20 @@ fn execute_pipeline(
             log::info!("Optimizing {rustc_lib} with BOLT");
 
             // Instrument it and gather profiles
-            let rustc_profile = with_bolt_instrumented(env, &rustc_lib, |rustc_profile_dir| {
-                stage.section("Gather profiles", |_| {
-                    gather_bolt_profiles(env, "rustc", rustc_benchmarks(env), rustc_profile_dir)
+            let rustc_profile = stage.section("Instrument & gather profiles", |stage| {
+                with_bolt_instrumented(env, &rustc_lib, |rustc_profile_dir| {
+                    stage.section("Gather profiles", |_| {
+                        gather_bolt_profiles(env, "rustc", rustc_benchmarks(env), rustc_profile_dir)
+                    })
                 })
             })?;
             print_free_disk_space()?;
 
             // Now optimize the library with BOLT.
-            bolt_optimize(&rustc_lib, &rustc_profile, env)
-                .context("Could not optimize rustc with BOLT")?;
-
+            stage.section("Optimize", |_| {
+                bolt_optimize(&rustc_lib, &rustc_profile, env)
+                    .context("Could not optimize rustc with BOLT")
+            })?;
             // LLVM is not being cleared here. Either we built it and we want to use the BOLT-optimized LLVM, or we
             // didn't build it, so we don't want to remove it.
             Ok(vec![llvm_profile, Some(rustc_profile)])
