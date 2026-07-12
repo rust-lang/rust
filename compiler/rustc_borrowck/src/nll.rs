@@ -103,7 +103,7 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
         location_map,
     );
 
-    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None);
+    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None, true);
     closure_region_requirements
 }
 
@@ -180,7 +180,7 @@ pub(crate) fn compute_regions<'tcx>(
 
     // Solve the region constraints.
     let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, body, polonius_output.clone());
+        regioncx.solve(infcx, body, polonius_output.clone(), false);
 
     NllOutput {
         regioncx,

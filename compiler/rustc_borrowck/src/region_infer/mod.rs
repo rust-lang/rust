@@ -485,11 +485,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'tcx>,
         body: &Body<'tcx>,
         polonius_output: Option<Box<PoloniusOutput>>,
+        speculative: bool,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
         let mir_def_id = body.source.def_id();
         self.propagate_constraints();
 
-        let mut errors_buffer = RegionErrors::new(infcx.tcx);
+        let mut errors_buffer = if speculative {
+            RegionErrors::new_speculative(infcx.tcx)
+        } else {
+            RegionErrors::new(infcx.tcx)
+        };
 
         // If this is a nested body, we propagate unsatisfied
         // outlives constraints to the parent body instead of

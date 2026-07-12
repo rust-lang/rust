@@ -72,31 +72,43 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
 ///
 /// Usually we expect this to either be empty or contain a small number of items, so we can avoid
 /// allocation most of the time.
-pub(crate) struct RegionErrors<'tcx>(Vec<(RegionErrorKind<'tcx>, ErrorGuaranteed)>, TyCtxt<'tcx>);
+pub(crate) struct RegionErrors<'tcx> {
+    errors: Vec<(RegionErrorKind<'tcx>, ErrorGuaranteed)>,
+    tcx: TyCtxt<'tcx>,
+    speculative: bool,
+}
 
 impl<'tcx> RegionErrors<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
-        Self(vec![], tcx)
+        Self { errors: vec![], tcx, speculative: false }
+    }
+    pub(crate) fn new_speculative(tcx: TyCtxt<'tcx>) -> Self {
+        Self { errors: vec![], tcx, speculative: true }
     }
     #[track_caller]
     pub(crate) fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
         let val = val.into();
-        let guar = self.1.sess.dcx().delayed_bug(format!("{val:?}"));
-        self.0.push((val, guar));
+        let guar = if self.speculative {
+            #[allow(deprecated)]
+            ErrorGuaranteed::unchecked_error_guaranteed()
+        } else {
+            self.tcx.sess.dcx().delayed_bug(format!("{val:?}"))
+        };
+        self.errors.push((val, guar));
     }
     pub(crate) fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.errors.is_empty()
     }
     pub(crate) fn into_iter(
         self,
     ) -> impl Iterator<Item = (RegionErrorKind<'tcx>, ErrorGuaranteed)> {
-        self.0.into_iter()
+        self.errors.into_iter()
     }
 }
 
 impl std::fmt::Debug for RegionErrors<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("RegionErrors").field(&self.0).finish()
+        f.debug_tuple("RegionErrors").field(&self.errors).finish()
     }
 }
 
