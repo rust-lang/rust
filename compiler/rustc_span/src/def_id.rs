@@ -40,8 +40,8 @@ impl CrateNum {
     }
 
     #[inline]
-    pub fn as_mod_def_id(self) -> ModDefId {
-        ModDefId::new_unchecked(DefId { krate: self, index: CRATE_DEF_INDEX })
+    pub fn as_mod_id(self) -> ModId {
+        ModId::new_unchecked(DefId { krate: self, index: CRATE_DEF_INDEX })
     }
 }
 
@@ -377,6 +377,7 @@ impl !Ord for LocalDefId {}
 impl !PartialOrd for LocalDefId {}
 
 pub const CRATE_DEF_ID: LocalDefId = LocalDefId { local_def_index: CRATE_DEF_INDEX };
+pub const CRATE_MOD_ID: LocalModId = LocalModId::new_unchecked(CRATE_DEF_ID);
 
 impl Idx for LocalDefId {
     #[inline]
@@ -466,9 +467,9 @@ impl ToStableHashKey for LocalDefId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
-pub struct ModDefId(DefId);
+pub struct ModId(DefId);
 
-impl ModDefId {
+impl ModId {
     #[inline]
     pub const fn new_unchecked(def_id: DefId) -> Self {
         Self(def_id)
@@ -485,8 +486,8 @@ impl ModDefId {
     }
 
     #[inline]
-    pub fn as_local(self) -> Option<LocalModDefId> {
-        self.0.as_local().map(LocalModDefId::new_unchecked)
+    pub fn as_local(self) -> Option<LocalModId> {
+        self.0.as_local().map(LocalModId::new_unchecked)
     }
 
     pub fn is_top_level_module(self) -> bool {
@@ -494,29 +495,27 @@ impl ModDefId {
     }
 }
 
-impl From<LocalModDefId> for ModDefId {
+impl From<LocalModId> for ModId {
     #[inline]
-    fn from(local: LocalModDefId) -> Self {
+    fn from(local: LocalModId) -> Self {
         Self(local.0.to_def_id())
     }
 }
 
-impl From<ModDefId> for DefId {
+impl From<ModId> for DefId {
     #[inline]
-    fn from(typed: ModDefId) -> Self {
+    fn from(typed: ModId) -> Self {
         typed.0
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
-pub struct LocalModDefId(LocalDefId);
+pub struct LocalModId(LocalDefId);
 
-impl !Ord for LocalModDefId {}
-impl !PartialOrd for LocalModDefId {}
+impl !Ord for LocalModId {}
+impl !PartialOrd for LocalModId {}
 
-impl LocalModDefId {
-    pub const CRATE_DEF_ID: Self = Self::new_unchecked(CRATE_DEF_ID);
-
+impl LocalModId {
     #[inline]
     pub const fn new_unchecked(def_id: LocalDefId) -> Self {
         Self(def_id)
@@ -537,16 +536,16 @@ impl LocalModDefId {
     }
 }
 
-impl From<LocalModDefId> for LocalDefId {
+impl From<LocalModId> for LocalDefId {
     #[inline]
-    fn from(typed: LocalModDefId) -> Self {
+    fn from(typed: LocalModId) -> Self {
         typed.0
     }
 }
 
-impl From<LocalModDefId> for DefId {
+impl From<LocalModId> for DefId {
     #[inline]
-    fn from(typed: LocalModDefId) -> Self {
+    fn from(typed: LocalModId) -> Self {
         typed.0.into()
     }
 }
