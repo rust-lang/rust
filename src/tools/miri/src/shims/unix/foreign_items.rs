@@ -52,28 +52,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let name = this.read_scalar(val)?.to_i32()?;
         // FIXME: Which of these are POSIX, and which are GNU/Linux?
         // At least the names seem to all also exist on macOS.
-        let sysconfs: &[(&str, fn(&MiriInterpCx<'_>) -> Scalar)] = &[
-            ("_SC_PAGESIZE", |this| Scalar::from_int(this.machine.page_size, this.pointer_size())),
-            ("_SC_PAGE_SIZE", |this| Scalar::from_int(this.machine.page_size, this.pointer_size())),
-            ("_SC_NPROCESSORS_CONF", |this| {
-                Scalar::from_int(this.machine.num_cpus, this.pointer_size())
-            }),
-            ("_SC_NPROCESSORS_ONLN", |this| {
-                Scalar::from_int(this.machine.num_cpus, this.pointer_size())
-            }),
+        static SYSCONFS: &[(&str, fn(&MiriInterpCx<'_>) -> i64)] = &[
+            ("_SC_PAGESIZE", |this| this.machine.page_size.try_into().unwrap()),
+            ("_SC_PAGE_SIZE", |this| this.machine.page_size.try_into().unwrap()),
+            ("_SC_NPROCESSORS_CONF", |this| this.machine.num_cpus.into()),
+            ("_SC_NPROCESSORS_ONLN", |this| this.machine.num_cpus.into()),
             // 512 seems to be a reasonable default. The value is not critical, in
             // the sense that getpwuid_r takes and checks the buffer length.
-            ("_SC_GETPW_R_SIZE_MAX", |this| Scalar::from_int(512, this.pointer_size())),
+            ("_SC_GETPW_R_SIZE_MAX", |_this| 512),
             // Miri doesn't have a fixed limit on FDs, but we may be limited in terms of how
             // many *host* FDs we can open. Just use some arbitrary, pretty big value;
             // this can be adjusted if it causes problems.
             // The spec imposes a minimum of `_POSIX_OPEN_MAX` (20).
-            ("_SC_OPEN_MAX", |this| Scalar::from_int(2_i32.pow(16), this.pointer_size())),
+            ("_SC_OPEN_MAX", |_this| 2_i32.pow(16).into()),
+            // Our hard-coded hostname is just 4 bytes so we don't need anything big here.
+            ("_SC_HOST_NAME_MAX", |_this| 255),
         ];
-        for &(sysconf_name, value) in sysconfs {
+        for &(sysconf_name, value) in SYSCONFS {
             let sysconf_name = this.eval_libc_i32(sysconf_name);
             if sysconf_name == name {
-                return interp_ok(value(this));
+                let value = Scalar::from_target_isize(value(this), this);
+                return interp_ok(value);
             }
         }
         throw_unsup_format!("unimplemented sysconf name: {}", name)
