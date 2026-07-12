@@ -66,18 +66,11 @@ impl Attribute {
         }
     }
 
-    /// Replaces the arguments of this attribute with new arguments `AttrItemKind`.
-    /// This is useful for making this attribute into a trace attribute, and should otherwise be avoided.
+    /// Replaces the arguments of this attribute with new arguments `AttrItemKind`. This is useful
+    /// for making this attribute into a trace attribute, and should otherwise be avoided.
     pub fn replace_args(&mut self, new_args: AttrItemKind) {
         match &mut self.kind {
             AttrKind::Normal(normal) => normal.item.args = new_args,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
-        }
-    }
-
-    pub fn unwrap_normal_item(self) -> AttrItem {
-        match self.kind {
-            AttrKind::Normal(normal) => normal.item,
             AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
