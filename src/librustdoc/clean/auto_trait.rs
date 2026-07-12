@@ -172,34 +172,36 @@ fn clean_param_env<'tcx>(
 
     // FIXME(#111101): Incorporate the explicit predicates of the item here...
     let item_clauses: FxIndexSet<_> = tcx.param_env(item_def_id).caller_bounds().iter().collect();
-    let where_predicates = param_env
-        .caller_bounds()
-        .iter()
-        // FIXME: ...which hopefully allows us to simplify this:
-        .filter(|clause| {
-            !item_clauses.contains(clause)
-                || clause
-                    .as_trait_clause()
-                    .is_some_and(|clause| tcx.lang_items().sized_trait() == Some(clause.def_id()))
-        })
-        .map(|clause| {
-            fold_regions(tcx, clause, |r, _| match r.kind() {
-                // FIXME: Don't `unwrap_or`, I think we should panic if we encounter an infer var that
-                // we can't map to a concrete region. However, `AutoTraitFinder` *does* leak those kinds
-                // of `ReVar`s for some reason at the time of writing. See `rustdoc-ui/` tests.
-                // This is in dire need of an investigation into `AutoTraitFinder`.
-                ty::ReVar(vid) => vid_to_region.get(&vid).copied().unwrap_or(r),
-                ty::ReEarlyParam(_) | ty::ReStatic | ty::ReBound(..) | ty::ReError(_) => r,
-                // FIXME(#120606): `AutoTraitFinder` can actually leak placeholder regions which feels
-                // incorrect. Needs investigation.
-                ty::ReLateParam(_) | ty::RePlaceholder(_) | ty::ReErased => {
-                    bug!("unexpected region kind: {r:?}")
-                }
+    let where_predicates = cx.with_exact_param_env(param_env, |cx| {
+        param_env
+            .caller_bounds()
+            .iter()
+            // FIXME: ...which hopefully allows us to simplify this:
+            .filter(|clause| {
+                !item_clauses.contains(clause)
+                    || clause.as_trait_clause().is_some_and(|clause| {
+                        tcx.lang_items().sized_trait() == Some(clause.def_id())
+                    })
             })
-        })
-        .flat_map(|clause| clean_predicate(clause, cx))
-        .chain(clean_region_outlives_constraints(&region_data, generics))
-        .collect();
+            .map(|clause| {
+                fold_regions(tcx, clause, |r, _| match r.kind() {
+                    // FIXME: Don't `unwrap_or`, I think we should panic if we encounter an infer var that
+                    // we can't map to a concrete region. However, `AutoTraitFinder` *does* leak those kinds
+                    // of `ReVar`s for some reason at the time of writing. See `rustdoc-ui/` tests.
+                    // This is in dire need of an investigation into `AutoTraitFinder`.
+                    ty::ReVar(vid) => vid_to_region.get(&vid).copied().unwrap_or(r),
+                    ty::ReEarlyParam(_) | ty::ReStatic | ty::ReBound(..) | ty::ReError(_) => r,
+                    // FIXME(#120606): `AutoTraitFinder` can actually leak placeholder regions which feels
+                    // incorrect. Needs investigation.
+                    ty::ReLateParam(_) | ty::RePlaceholder(_) | ty::ReErased => {
+                        bug!("unexpected region kind: {r:?}")
+                    }
+                })
+            })
+            .flat_map(|clause| clean_predicate(clause, cx))
+            .chain(clean_region_outlives_constraints(&region_data, generics))
+            .collect()
+    });
 
     let mut generics = clean::Generics { params, where_predicates };
     simplify::sizedness_bounds(cx, &mut generics);

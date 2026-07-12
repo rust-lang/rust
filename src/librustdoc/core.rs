@@ -87,7 +87,15 @@ impl<'tcx> DocContext<'tcx> {
         def_id: DefId,
         f: F,
     ) -> T {
-        let old_param_env = mem::replace(&mut self.param_env, self.tcx.param_env(def_id));
+        self.with_exact_param_env(self.tcx.param_env(def_id), f)
+    }
+
+    pub(crate) fn with_exact_param_env<T, F: FnOnce(&mut Self) -> T>(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        f: F,
+    ) -> T {
+        let old_param_env = mem::replace(&mut self.param_env, param_env);
         let ret = f(self);
         self.param_env = old_param_env;
         ret
