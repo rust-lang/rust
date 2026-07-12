@@ -4,7 +4,9 @@ use core::ffi::{c_int, c_void};
 
 // Use the unwinding crate as unwinder on Xous
 #[cfg(target_os = "xous")]
-use unwinding as _;
+pub use unwinding::custom_eh_frame_finder::{
+    EhFrameFinder, FrameInfo, FrameInfoKind, set_custom_eh_frame_finder,
+};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
