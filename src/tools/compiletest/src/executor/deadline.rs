@@ -79,7 +79,7 @@ impl<'a> DeadlineQueue<'a> {
 
         // Clear out entries that are past their deadline, but only invoke the
         // callback for tests that are still considered running.
-        while let Some(entry) = pop_front_if(&mut self.queue, |entry| entry.deadline <= now) {
+        while let Some(entry) = self.queue.pop_front_if(|entry| entry.deadline <= now) {
             if is_running(entry.id) {
                 on_deadline_passed(entry.id, entry.test);
             }
@@ -87,16 +87,10 @@ impl<'a> DeadlineQueue<'a> {
 
         // Also clear out any leading entries that are no longer running, even
         // if their deadline hasn't been reached.
-        while let Some(_) = pop_front_if(&mut self.queue, |entry| !is_running(entry.id)) {}
+        while self.queue.pop_front_if(|entry| !is_running(entry.id)).is_some() {}
 
         if let Some(front) = self.queue.front() {
             assert!(now < front.deadline);
         }
     }
-}
-
-/// FIXME(vec_deque_pop_if): Use `VecDeque::pop_front_if` when it is stable in bootstrap.
-fn pop_front_if<T>(queue: &mut VecDeque<T>, predicate: impl FnOnce(&T) -> bool) -> Option<T> {
-    let first = queue.front()?;
-    if predicate(first) { queue.pop_front() } else { None }
 }
