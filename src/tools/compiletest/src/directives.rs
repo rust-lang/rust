@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::process::Command;
 use std::{env, fs};
@@ -895,8 +896,7 @@ pub(crate) fn make_test_description(
     poisoned: &mut bool,
     aux_props: &mut AuxProps,
 ) -> CollectedTestDesc {
-    let mut ignore = false;
-    let mut ignore_message = None;
+    let mut ignore_message: Option<Cow<'static, str>> = None;
     let mut should_fail = false;
 
     // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
@@ -912,7 +912,6 @@ pub(crate) fn make_test_description(
             ($e:expr) => {
                 match $e {
                     IgnoreDecision::Ignore { reason } => {
-                        ignore = true;
                         ignore_message = Some(reason.into());
                     }
                     IgnoreDecision::Error { message } => {
@@ -959,7 +958,6 @@ pub(crate) fn make_test_description(
     CollectedTestDesc {
         name,
         filterable_path: filterable_path.to_owned(),
-        ignore,
         ignore_message,
         should_fail,
     }
