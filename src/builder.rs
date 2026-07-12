@@ -4,8 +4,8 @@ use std::convert::TryFrom;
 use std::ops::Deref;
 
 use gccjit::{
-    BinaryOp, Block, ComparisonOp, Context, Function, LValue, Location, RValue, ToRValue, Type,
-    UnaryOp,
+    BinaryOp, Block, CType, ComparisonOp, Context, Function, LValue, Location, RValue, ToRValue,
+    Type, UnaryOp,
 };
 use rustc_abi as abi;
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
@@ -1513,8 +1513,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         variable.to_rvalue()
     }
 
-    fn va_arg(&mut self, _list: RValue<'gcc>, _ty: Type<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
+    fn va_arg(&mut self, list: RValue<'gcc>, ty: Type<'gcc>) -> RValue<'gcc> {
+        let va_list_type = self.context.new_c_type(CType::VaList);
+        let list = self.context.new_cast(self.location, list, va_list_type.make_pointer());
+        self.context.new_va_arg(self.location, list, ty)
     }
 
     #[cfg(feature = "master")]
