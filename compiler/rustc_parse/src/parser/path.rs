@@ -15,7 +15,7 @@ use tracing::debug;
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::ast::{PatKind, TyKind};
-use crate::errors::{
+use crate::diagnostics::{
     self, AttributeOnEmptyType, AttributeOnGenericArg, ConstGenericWithoutBraces,
     ConstGenericWithoutBracesSugg, FnPathFoundNamedParams, PathFoundAttributeInParams,
     PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
@@ -184,7 +184,7 @@ impl<'a> Parser<'a> {
                     .filter_map(|segment| segment.args.as_ref())
                     .map(|arg| arg.span())
                     .collect::<Vec<_>>();
-                parser.dcx().emit_err(errors::GenericsInPath { span });
+                parser.dcx().emit_err(diagnostics::GenericsInPath { span });
                 // Ignore these arguments to prevent unexpected behaviors.
                 let segments = path
                     .segments
@@ -375,8 +375,10 @@ impl<'a> Parser<'a> {
                         let ty = self.parse_ty()?;
                         let span = lo.to(ty.span);
                         let suggestion = prev_lo.to(ty.span);
-                        self.dcx()
-                            .emit_err(errors::BadReturnTypeNotationOutput { span, suggestion });
+                        self.dcx().emit_err(diagnostics::BadReturnTypeNotationOutput {
+                            span,
+                            suggestion,
+                        });
                     }
 
                     Box::new(ast::GenericArgs::ParenthesizedElided(span))
@@ -665,7 +667,7 @@ impl<'a> Parser<'a> {
                     // i.e. no multibyte characters, in this range.
                     let span = lo
                         .with_hi(lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count.into()));
-                    self.dcx().emit_err(errors::UnmatchedAngle {
+                    self.dcx().emit_err(diagnostics::UnmatchedAngle {
                         span,
                         plural: snapshot.unmatched_angle_bracket_count > 1,
                     });
@@ -798,7 +800,7 @@ impl<'a> Parser<'a> {
                 c.into()
             }
             Some(GenericArg::Lifetime(lt)) => {
-                let guar = self.dcx().emit_err(errors::LifetimeInEqConstraint {
+                let guar = self.dcx().emit_err(diagnostics::LifetimeInEqConstraint {
                     span: lt.ident.span,
                     lifetime: lt.ident,
                     binding_label: span,

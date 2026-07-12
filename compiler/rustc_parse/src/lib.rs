@@ -33,7 +33,7 @@ use crate::lexer::StripTokens;
 
 pub mod lexer;
 
-mod errors;
+mod diagnostics;
 
 // Make sure that the Unicode version of the dependencies is the same.
 const _: () = {

@@ -13,7 +13,7 @@ use super::{
     Trailing, UsePreAttrPos,
 };
 use crate::parser::FnContext;
-use crate::{errors, exp};
+use crate::{diagnostics, exp};
 
 // Public for rustfmt usage
 #[derive(Debug)]
@@ -412,7 +412,7 @@ impl<'a> Parser<'a> {
         debug!("checking if {:?} is unsuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
-            self.dcx().emit_err(errors::SuffixedLiteralInAttribute { span: lit.span });
+            self.dcx().emit_err(diagnostics::SuffixedLiteralInAttribute { span: lit.span });
         }
 
         Ok(lit)
@@ -507,7 +507,7 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(), // we provide a better error below
         }
 
-        let mut err = errors::InvalidMetaItem {
+        let mut err = diagnostics::InvalidMetaItem {
             span: self.token.span,
             descr: super::token_descr(&self.token),
             quote_ident_sugg: None,
@@ -523,7 +523,7 @@ impl<'a> Parser<'a> {
             while let token::Ident(..) = self.token.kind {
                 self.bump();
             }
-            err.quote_ident_sugg = Some(errors::InvalidMetaItemQuoteIdentSugg {
+            err.quote_ident_sugg = Some(diagnostics::InvalidMetaItemQuoteIdentSugg {
                 before,
                 after: self.prev_token.span.shrink_to_hi(),
             });
