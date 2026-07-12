@@ -48,7 +48,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             args,
         });
-        ast::Path { span, segments, tokens: None }
+        ast::Path { span, segments }
     }
 
     pub fn macro_call(
@@ -73,7 +73,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn ty(&self, span: Span, kind: ast::TyKind) -> Box<ast::Ty> {
-        Box::new(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind, tokens: None })
+        Box::new(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind })
     }
 
     pub fn ty_infer(&self, span: Span) -> Box<ast::Ty> {
@@ -287,13 +287,7 @@ impl<'a> ExtCtxt<'a> {
         )
     }
     pub fn block(&self, span: Span, stmts: ThinVec<ast::Stmt>) -> Box<ast::Block> {
-        Box::new(ast::Block {
-            stmts,
-            id: ast::DUMMY_NODE_ID,
-            rules: BlockCheckMode::Default,
-            span,
-            tokens: None,
-        })
+        Box::new(ast::Block { stmts, id: ast::DUMMY_NODE_ID, rules: BlockCheckMode::Default, span })
     }
 
     pub fn expr(&self, span: Span, kind: ast::ExprKind) -> Box<ast::Expr> {
@@ -532,7 +526,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn pat(&self, span: Span, kind: PatKind) -> ast::Pat {
-        ast::Pat { id: ast::DUMMY_NODE_ID, kind, span, tokens: None }
+        ast::Pat { id: ast::DUMMY_NODE_ID, kind, span }
     }
     pub fn pat_wild(&self, span: Span) -> ast::Pat {
         self.pat(span, PatKind::Wild)
@@ -688,7 +682,6 @@ impl<'a> ExtCtxt<'a> {
             vis: ast::Visibility {
                 span: span.shrink_to_lo(),
                 kind: ast::VisibilityKind::Inherited,
-                tokens: None,
             },
             span,
             tokens: None,

@@ -4,7 +4,7 @@ use std::iter;
 
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
-    AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
+    AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree, WithTokens,
 };
 use rustc_ast::{
     self as ast, AttrItemKind, AttrKind, AttrStyle, Attribute, EarlyParsedAttribute, HasAttrs,
@@ -308,7 +308,7 @@ impl<'a> StripUnconfigured<'a> {
     fn expand_cfg_attr_item(
         &self,
         cfg_attr: &Attribute,
-        (item, item_span): (ast::AttrItem, Span),
+        (attr_item, attr_item_span): (WithTokens<ast::AttrItem>, Span),
     ) -> Attribute {
         // Convert `#[cfg_attr(pred, attr)]` to `#[attr]`.
 
@@ -345,19 +345,20 @@ impl<'a> StripUnconfigured<'a> {
             delim_span,
             delim_spacing,
             Delimiter::Bracket,
-            item.tokens
+            attr_item
+                .tokens
                 .as_ref()
-                .unwrap_or_else(|| panic!("Missing tokens for {item:?}"))
+                .unwrap_or_else(|| panic!("Missing tokens for {:?}", attr_item.node))
                 .to_attr_token_stream(),
         ));
 
-        let tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
+        let attr_tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
         let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
-            item,
-            tokens,
+            attr_item.node,
+            attr_tokens,
             cfg_attr.style,
-            item_span,
+            attr_item_span,
         );
         if attr.has_name(sym::crate_type) {
             self.sess.dcx().emit_err(CrateTypeInCfgAttr { span: attr.span });

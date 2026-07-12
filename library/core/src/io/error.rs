@@ -951,6 +951,14 @@ pub enum ErrorKind {
     #[unstable(feature = "io_error_too_many_open_files", issue = "158319")]
     TooManyOpenFiles,
 
+    /// A low-level input/output error.
+    ///
+    /// This usually indicates a hardware or device-level failure, such as a bad
+    /// disk sector or a removed device, but the operating system may also report
+    /// it for other low-level I/O conditions.
+    #[unstable(feature = "io_error_input_output_error", issue = "159066")]
+    InputOutputError,
+
     // "Unusual" error kinds which do not correspond simply to (sets
     // of) OS error codes, should be added just above this comment.
     // `Other` and `Uncategorized` should remain at the end:
@@ -1001,6 +1009,7 @@ impl ErrorKind {
             FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
             HostUnreachable => "host unreachable",
             InProgress => "in progress",
+            InputOutputError => "input/output error",
             Interrupted => "operation interrupted",
             InvalidData => "invalid data",
             InvalidFilename => "invalid filename",
@@ -1093,6 +1102,7 @@ impl ErrorKind {
             OutOfMemory,
             InProgress,
             TooManyOpenFiles,
+            InputOutputError,
             Uncategorized,
         })
     }

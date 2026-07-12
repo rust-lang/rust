@@ -65,11 +65,7 @@ pub(crate) fn expand_test_case(
                 &ecx.current_expansion.module.mod_path[1..],
                 ident,
             ));
-            item.vis = ast::Visibility {
-                span: item.vis.span,
-                kind: ast::VisibilityKind::Public,
-                tokens: None,
-            };
+            item.vis = ast::Visibility { span: item.vis.span, kind: ast::VisibilityKind::Public };
             item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
         }
         _ => {}

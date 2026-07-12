@@ -407,6 +407,10 @@ pub(crate) struct ParamInNonTrivialAnonConst {
         "consider factoring the expression into a `type const` item and use it as the const argument instead"
     )]
     pub(crate) help_gca: bool,
+    #[help(
+        "alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item"
+    )]
+    pub(crate) help_suggest_gca: bool,
 }
 
 #[derive(Debug)]

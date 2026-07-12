@@ -627,7 +627,6 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         DefKind::Const { .. }
         | DefKind::AssocConst { .. }
         | DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::Static { .. }
         | DefKind::GlobalAsm => {
             (vec![], tcx.type_of(def_id).instantiate_identity().skip_norm_wip(), None)

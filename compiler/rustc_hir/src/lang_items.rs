@@ -66,6 +66,11 @@ impl LanguageItems {
             .enumerate()
             .filter_map(|(i, id)| id.map(|id| (LangItem::from_u32(i as u32).unwrap(), id)))
     }
+
+    /// Remove any missing items from the list that aren't actually missing
+    pub fn trim_missing(&mut self) {
+        self.missing.retain(|&item| self.items[item as usize].is_none());
+    }
 }
 
 // The actual lang items defined come at the end of this file in one handy table.
@@ -286,7 +291,7 @@ language_item_table! {
     PanicMisalignedPointerDereference, sym::panic_misaligned_pointer_dereference, panic_misaligned_pointer_dereference_fn, Target::Fn, GenericRequirement::Exact(0);
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct,         GenericRequirement::None;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct,         GenericRequirement::None;
-    PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn,             GenericRequirement::None;
+    PanicImpl,               sym::panic_impl,          panic_impl,                 Target::ForeignFn,      GenericRequirement::None;
     PanicCannotUnwind,       sym::panic_cannot_unwind, panic_cannot_unwind,        Target::Fn,             GenericRequirement::Exact(0);
     PanicInCleanup,          sym::panic_in_cleanup,    panic_in_cleanup,           Target::Fn,             GenericRequirement::Exact(0);
     /// Constant panic messages, used for codegen of MIR asserts.
@@ -450,12 +455,12 @@ language_item_table! {
     From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);
 
     // Runtime symbols
-    MemCpy,                  sym::memcpy_fn,           memcpy_fn,                  Target::Fn,             GenericRequirement::None;
-    MemMove,                 sym::memmove_fn,          memmove_fn,                 Target::Fn,             GenericRequirement::None;
-    MemSet,                  sym::memset_fn,           memset_fn,                  Target::Fn,             GenericRequirement::None;
-    MemCmp,                  sym::memcmp_fn,           memcmp_fn,                  Target::Fn,             GenericRequirement::None;
-    Bcmp,                    sym::bcmp_fn,             bcmp_fn,                    Target::Fn,             GenericRequirement::None;
-    StrLen,                  sym::strlen_fn,           strlen_fn,                  Target::Fn,             GenericRequirement::None;
+    MemCpy,                  sym::memcpy_fn,           memcpy_fn,                  Target::ForeignFn,             GenericRequirement::None;
+    MemMove,                 sym::memmove_fn,          memmove_fn,                 Target::ForeignFn,             GenericRequirement::None;
+    MemSet,                  sym::memset_fn,           memset_fn,                  Target::ForeignFn,             GenericRequirement::None;
+    MemCmp,                  sym::memcmp_fn,           memcmp_fn,                  Target::ForeignFn,             GenericRequirement::None;
+    Bcmp,                    sym::bcmp_fn,             bcmp_fn,                    Target::ForeignFn,             GenericRequirement::None;
+    StrLen,                  sym::strlen_fn,           strlen_fn,                  Target::ForeignFn,             GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item

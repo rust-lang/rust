@@ -69,6 +69,7 @@ impl Display for SuggestedType {
 }
 
 impl LateLintPass<'_> for SingleRangeInVecInit {
+    #[expect(clippy::too_many_lines)]
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         // inner_expr: `vec![0..200]` or `[0..200]`
         //                   ^^^^^^       ^^^^^^^
@@ -100,22 +101,23 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
         }
 
         let mut applicability = Applicability::MaybeIncorrect;
-        let suggestion = match (range.start, range.end, range.limits) {
+        let suggestion = match (range.start, range.end, range.ty.limits()) {
             (Some(start), Some(end), limits) => {
-                let ty = cx.typeck_results().expr_ty(start);
+                let element_ty = cx.typeck_results().expr_ty(start);
                 let (start_snippet, _) = snippet_with_context(cx, start.span, span.ctxt(), "..", &mut applicability);
                 let (end_snippet, _) = snippet_with_context(cx, end.span, span.ctxt(), "..", &mut applicability);
 
                 let should_emit_every_value = if let Some(step_def_id) = cx.tcx.get_diagnostic_item(sym::range_step)
-                    && implements_trait(cx, ty, step_def_id, &[])
+                    && implements_trait(cx, element_ty, step_def_id, &[])
+                    && range.ty.implements_into_iterator()
                 {
-                    true
+                    Some(range.ty)
                 } else {
-                    false
+                    None
                 };
                 let should_emit_of_len = if limits == RangeLimits::HalfOpen
                     && let Some(copy_def_id) = cx.tcx.lang_items().copy_trait()
-                    && implements_trait(cx, ty, copy_def_id, &[])
+                    && implements_trait(cx, element_ty, copy_def_id, &[])
                     && let ExprKind::Lit(lit_kind) = end.kind
                     && let LitKind::Int(.., suffix_type) = lit_kind.node
                     && let LitIntType::Unsigned(UintTy::Usize) | LitIntType::Unsuffixed = suffix_type
@@ -125,12 +127,11 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                     false
                 };
 
-                if should_emit_every_value || should_emit_of_len {
+                if should_emit_every_value.is_some() || should_emit_of_len {
                     Some((
-                        ty,
+                        element_ty,
                         start_snippet,
                         end_snippet,
-                        limits,
                         should_emit_every_value,
                         should_emit_of_len,
                     ))
@@ -154,18 +155,29 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                     .map_or(sym::Range, |adt_def| cx.tcx.item_name(adt_def.did()))
             ),
             |diag| {
-                if let Some((ty, start_snippet, end_snippet, limits, should_emit_every_value, should_emit_of_len)) =
-                    suggestion
+                if let Some((ty, start_snippet, end_snippet, should_emit_every_value, should_emit_of_len)) = suggestion
                 {
-                    if should_emit_every_value && !is_no_std_crate(cx) {
-                        let range_op = match limits {
+                    if let Some(range_ty) = should_emit_every_value
+                        && !is_no_std_crate(cx)
+                    {
+                        let range_op = match range_ty.limits() {
                             RangeLimits::HalfOpen => "..",
                             RangeLimits::Closed => "..=",
                         };
+
+                        let collect_code = if range_ty.implements_iterator() {
+                            format!("({start_snippet}{range_op}{end_snippet}).collect::<std::vec::Vec<{ty}>>()")
+                        } else {
+                            // If the range type does not implement `Iterator` then we cannot just call
+                            // `.collect()`. In that case, we use `from_iter()` rather than
+                            // `.into_iter().collect::<...>()` because it is more concise.
+                            format!("std::vec::Vec::<{ty}>::from_iter({start_snippet}{range_op}{end_snippet})")
+                        };
+
                         diag.span_suggestion(
                             span,
                             "if you wanted a `Vec` that contains the entire range, try",
-                            format!("({start_snippet}{range_op}{end_snippet}).collect::<std::vec::Vec<{ty}>>()"),
+                            collect_code,
                             applicability,
                         );
                     }

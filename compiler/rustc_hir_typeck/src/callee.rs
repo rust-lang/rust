@@ -2,12 +2,13 @@ use std::iter;
 
 use rustc_abi::{CanonAbi, ExternAbi};
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey, msg};
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem, find_attr};
 use rustc_hir_analysis::autoderef::Autoderef;
-use rustc_infer::infer::BoundRegionConversionTime;
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
@@ -629,8 +630,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Performs arguments check with an additional routine of adjusting the first argument,
-    /// so it corresponds to the first parameter of the function. We reuse adjustments
-    /// that are obtained from `probe_for_name`, where the first argument pretends to be
+    /// (and possibly other arguments) so it corresponds to the first parameter of the function.
+    /// We reuse adjustments that are obtained from `probe_for_name`, where the first argument pretends to be
     /// a receiver like in a method call. At this point this routine is used for delegations,
     /// as from this moment we always generate a call (earlier method calls were generated),
     /// so we can both propagate parent generics and get benefits from adjustments from method call.
@@ -659,58 +660,102 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         };
 
-        let Some(scope) = self.get_scope_for_method_call_adjustments(call_expr, arg_exprs) else {
+        let Some((candidate_res, args_to_map)) =
+            self.get_info_for_method_call_adjustments(call_expr, arg_exprs)
+        else {
             return do_check();
         };
 
-        let first_expr = &arg_exprs[0];
-        let first_arg_type = self.check_expr(first_expr);
+        // After we found pick for first argument we need to resolve inference variables
+        // in order to find adjustments for other mapped arguments.
+        let mut resolved_inputs = vec![];
+        let mut prev_types = FxHashMap::default();
+        let formal_input_tys = fn_sig.inputs();
 
-        // Reuse method probing that is used during method call, as all this code pretends that
-        // we generated method call.
-        let pick = self.probe_for_name(
-            Mode::MethodCall,
-            Ident::dummy(),
-            None,
-            IsSuggestion(false),
-            first_arg_type,
-            call_expr.hir_id,
-            scope,
-        );
+        let args_to_map = arg_exprs
+            .iter()
+            .enumerate()
+            .filter(|(idx, _)| args_to_map.contains(idx))
+            .collect::<Vec<_>>();
 
-        let Ok(ref pick) = pick else { return do_check() };
+        for &(idx, arg) in &args_to_map {
+            let is_first_arg = idx == 0;
+            let self_ty_override = if is_first_arg { None } else { Some(resolved_inputs[idx]) };
+            let scope = ProbeScope::Single(candidate_res, self_ty_override);
+            let arg_type = self.check_expr(arg);
 
-        // Fool typechecker by placing an adjusted type of the first arg to avoid errors.
-        // We already wrote type of `first_expr` during `self.check_expr(first_expr)` above.
-        let first_arg_type = self
-            .typeck_results
-            .borrow_mut()
-            .node_types_mut()
-            .insert(first_expr.hir_id, pick.self_ty)
-            .expect("must be set");
+            // Reuse method probing that is used during method call, as all this code pretends that
+            // we generated method call.
+            let pick = self.probe_for_name(
+                Mode::MethodCall,
+                Ident::dummy(),
+                None,
+                IsSuggestion(false),
+                arg_type,
+                call_expr.hir_id,
+                scope,
+            );
+
+            let Ok(pick) = pick else { return do_check() };
+
+            if is_first_arg && args_to_map.len() > 1 {
+                // We successfully found a pick and adjustments for first argument,
+                // now we have to unify it with signature input in order to resolve
+                // all inference variables. After that we update input signature for
+                // adjustments search for mapped arguments.
+                let cause = self.cause(call_expr.span, ObligationCauseCode::Misc);
+                if self
+                    .at(&cause, self.param_env)
+                    .sup(DefineOpaqueTypes::Yes, formal_input_tys[0], pick.self_ty)
+                    .is_err()
+                {
+                    return do_check();
+                }
+
+                resolved_inputs = self.resolve_vars_if_possible(formal_input_tys.to_vec());
+            }
+
+            // Fool typechecker by placing an adjusted type of the first arg to avoid errors.
+            // We already wrote type of `first_expr` during `self.check_expr(first_expr)` above.
+            prev_types.insert(
+                arg.hir_id,
+                (
+                    self.typeck_results
+                        .borrow_mut()
+                        .node_types_mut()
+                        .insert(arg.hir_id, pick.self_ty)
+                        .expect("must be set"),
+                    pick,
+                ),
+            );
+        }
 
         do_check();
 
-        let mut results = self.typeck_results.borrow_mut();
+        for (_, arg) in args_to_map {
+            let mut results = self.typeck_results.borrow_mut();
+            let mut adjustments = results.adjustments_mut();
 
-        // Remove any added adjustments for `first_expr` during `do_check` and replace them with ours.
-        let mut adjustments = results.adjustments_mut();
-        let adjustments = adjustments.entry(first_expr.hir_id).or_default();
+            let (prev_type, pick) = prev_types.remove(&arg.hir_id).expect("must be in a map");
 
-        let mut ctx = ConfirmContext::new(self, first_expr.span, first_expr, first_expr);
-        *adjustments = ctx.create_ty_adjustments_from_pick(first_arg_type, pick).1;
+            // Remove any added adjustments for arg expression during `do_check` and replace them with ours.
+            let adjustments = adjustments.entry(arg.hir_id).or_default();
 
-        // Restore original first provided arg type.
-        results.node_types_mut().insert(first_expr.hir_id, first_arg_type);
+            let mut ctx = ConfirmContext::new(self, arg.span, arg, arg);
+            *adjustments = ctx.create_ty_adjustments_from_pick(prev_type, &pick).1;
+
+            // Restore original first provided arg type.
+            results.node_types_mut().insert(arg.hir_id, prev_type);
+        }
     }
 
     /// Gets scope for method-call like adjustments for the first argument of the call.
     /// Now only delegations are processed this way.
-    fn get_scope_for_method_call_adjustments(
+    fn get_info_for_method_call_adjustments(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
-    ) -> Option<ProbeScope> {
+    ) -> Option<(DefId, &FxIndexSet<usize>)> {
         // Check that we are inside delegation and processing its call. First, we check that
         // the parent of call expr. is delegation and then make sure that it is compiler-generated
         // by comparing their hir ids (otherwise we will encounter errors in nested delegations,
@@ -732,7 +777,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
-        Some(ProbeScope::Single(info.call_path_res))
+        Some((info.call_path_res, &info.arguments_to_map))
     }
 
     /// Attempts to reinterpret `method(rcvr, args...)` as `rcvr.method(args...)`

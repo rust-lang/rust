@@ -143,7 +143,6 @@ impl<'a> State<'a> {
                     id: DUMMY_NODE_ID,
                 })
                 .collect(),
-            tokens: None,
         };
 
         match &item.args {

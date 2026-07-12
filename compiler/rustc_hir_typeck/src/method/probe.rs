@@ -86,6 +86,15 @@ pub(crate) struct ProbeContext<'a, 'tcx> {
     /// machinery, since we don't particularly care about, for example, similarly named
     /// candidates if we're *reporting* similarly named candidates.
     is_suggestion: IsSuggestion,
+
+    /// Hack for applying method probing routine for arbitrary types
+    /// in order to get adjustments as if they were at receiver position.
+    /// Used only for delegation's `Self` arguments mapping.
+    /// FIXME(fn_delegation): now this hack is used, however in perfect world
+    /// we would like to separate adjustments finding logic from probe context,
+    /// if we do so we will be able to find wanted adjustments given only two
+    /// types without reusing the whole method probing routine
+    self_ty_override: Option<Ty<'tcx>>,
 }
 
 impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
@@ -259,10 +268,10 @@ pub(crate) enum Mode {
     Path,
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub(crate) enum ProbeScope {
+#[derive(PartialEq, Eq, Debug)]
+pub(crate) enum ProbeScope<'tcx> {
     // Single candidate coming from pre-resolved delegation method.
-    Single(DefId),
+    Single(DefId, Option<Ty<'tcx>> /* self_ty override */),
 
     // Assemble candidates coming only from traits in scope.
     TraitsInScope,
@@ -330,7 +339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
         scope_expr_id: HirId,
-        scope: ProbeScope,
+        scope: ProbeScope<'tcx>,
     ) -> PickResult<'tcx> {
         self.probe_op(
             item_name.span,
@@ -354,7 +363,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
         scope_expr_id: HirId,
-        scope: ProbeScope,
+        scope: ProbeScope<'tcx>,
     ) -> Result<Vec<Candidate<'tcx>>, MethodError<'tcx>> {
         self.probe_op(
             item_name.span,
@@ -384,7 +393,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
         scope_expr_id: HirId,
-        scope: ProbeScope,
+        scope: ProbeScope<'tcx>,
         op: OP,
     ) -> Result<R, MethodError<'tcx>>
     where
@@ -556,7 +565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     probe_cx.assemble_inherent_candidates();
                     probe_cx.assemble_extension_candidates_for_all_traits();
                 }
-                ProbeScope::Single(def_id) => {
+                ProbeScope::Single(def_id, self_ty_override) => {
                     let item = self.tcx.associated_item(def_id);
                     // FIXME(fn_delegation): Delegation to inherent methods is not yet supported.
                     assert_eq!(item.container, AssocContainer::Trait);
@@ -567,6 +576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let trait_args = self.fresh_args_for_item(trait_span, trait_def_id);
                     let trait_ref = ty::TraitRef::new_from_args(self.tcx, trait_def_id, trait_args);
 
+                    probe_cx.self_ty_override = self_ty_override;
                     probe_cx.push_candidate(
                         Candidate {
                             item,
@@ -782,6 +792,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             static_candidates: RefCell::new(Vec::new()),
             scope_expr_id,
             is_suggestion,
+            self_ty_override: None,
         }
     }
 
@@ -1936,7 +1947,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self, possibly_unsatisfied_predicates), ret)]
     fn consider_probe(
         &self,
         self_ty: Ty<'tcx>,
@@ -2544,7 +2554,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
         if item.is_fn() && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, args);
-            (sig.inputs()[0], Some(sig.output()))
+            (self.self_ty_override.unwrap_or(sig.inputs()[0]), Some(sig.output()))
         } else {
             (impl_ty, None)
         }

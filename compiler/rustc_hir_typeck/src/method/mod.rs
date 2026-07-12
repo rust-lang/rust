@@ -183,7 +183,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         args: &'tcx [hir::Expr<'tcx>],
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         let scope = if let Some(only_method) = segment.res.opt_def_id() {
-            ProbeScope::Single(only_method)
+            ProbeScope::Single(only_method, None)
         } else {
             ProbeScope::TraitsInScope
         };
@@ -283,7 +283,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &hir::Expr<'_>,
-        scope: ProbeScope,
+        scope: ProbeScope<'tcx>,
     ) -> probe::PickResult<'tcx> {
         let pick = self.probe_for_name(
             probe::Mode::MethodCall,
@@ -303,7 +303,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &hir::Expr<'_>,
-        scope: ProbeScope,
+        scope: ProbeScope<'tcx>,
         return_type: Option<Ty<'tcx>>,
     ) -> probe::PickResult<'tcx> {
         let pick = self.probe_for_name(

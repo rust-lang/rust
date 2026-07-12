@@ -64,18 +64,16 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // CHECK-LABEL: read_i32
     //
     // RISCV32: lw a2, 0(a0)
-    // RISCV32-NEXT: lw a1, 0(a2)
+    // RISCV32-NEXT: lw [[VAL:a[0-1]]], 0(a2)
     // RISCV32-NEXT: addi a2, a2, 4
-    // RISCV32-NEXT: sw a2, 0(a0)
-    // RISCV32-NEXT: mv a0, a1
-    // RISCV32-NEXT: ret
+    // RISCV32-NEXT: sw a2, 0([[PTR:a[0-1]]])
+    // RISCV32: ret
     //
     // RISCV64: ld a2, 0(a0)
-    // RISCV64-NEXT: lw a1, 0(a2)
+    // RISCV64-NEXT: lw [[VAL:a[0-1]]], 0(a2)
     // RISCV64-NEXT: addi a2, a2, 8
-    // RISCV64-NEXT: sd a2, 0(a0)
-    // RISCV64-NEXT: mv a0, a1
-    // RISCV64-NEXT: ret
+    // RISCV64-NEXT: sd a2, 0([[PTR:a[0-1]]])
+    // RISCV64: ret
     va_arg(ap)
 }
 
@@ -83,22 +81,20 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
 unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // CHECK-LABEL: read_i64
     //
-    // RISCV32: lw a1, 0(a0)
-    // RISCV32-NEXT: addi a1, a1, 7
-    // RISCV32-NEXT: andi a3, a1, -8
-    // RISCV32-NEXT: lw a2, 0(a3)
+    // RISCV32: lw [[PTR:a[0-1]]], 0(a0)
+    // RISCV32-NEXT: addi [[PTR]], [[PTR]], 7
+    // RISCV32-NEXT: andi a3, [[PTR]], -8
+    // RISCV32-NEXT: lw [[LOW:a[02]]], 0(a3)
     // RISCV32-NEXT: lw a1, 4(a3)
     // RISCV32-NEXT: addi a3, a3, 8
-    // RISCV32-NEXT: sw a3, 0(a0)
-    // RISCV32-NEXT: mv a0, a2
-    // RISCV32-NEXT: ret
+    // RISCV32-NEXT: sw a3, 0([[LIST:a[02]]])
+    // RISCV32: ret
     //
     // RISCV64: ld a2, 0(a0)
-    // RISCV64-NEXT: ld a1, 0(a2)
+    // RISCV64-NEXT: ld [[VAL:a[0-1]]], 0(a2)
     // RISCV64-NEXT: addi a2, a2, 8
-    // RISCV64-NEXT: sd a2, 0(a0)
-    // RISCV64-NEXT: mv a0, a1
-    // RISCV64-NEXT: ret
+    // RISCV64-NEXT: sd a2, 0([[PTR:a[0-1]]])
+    // RISCV64: ret
     va_arg(ap)
 }
 
@@ -107,15 +103,14 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
 unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
     // RISCV64-LABEL: read_i128
     //
-    // RISCV64: ld a1, 0(a0)
-    // RISCV64-NEXT: addi a1, a1, 15
-    // RISCV64-NEXT: andi a3, a1, -16
-    // RISCV64-NEXT: ld a2, 0(a3)
+    // RISCV64: ld [[PTR:a[0-1]]], 0(a0)
+    // RISCV64-NEXT: addi [[PTR]], [[PTR]], 15
+    // RISCV64-NEXT: andi a3, [[PTR]], -16
+    // RISCV64-NEXT: ld [[LOW:a[02]]], 0(a3)
     // RISCV64-NEXT: ld a1, 8(a3)
     // RISCV64-NEXT: addi a3, a3, 16
-    // RISCV64-NEXT: sd a3, 0(a0)
-    // RISCV64-NEXT: mv a0, a2
-    // RISCV64-NEXT: ret
+    // RISCV64-NEXT: sd a3, 0([[LIST:a[02]]])
+    // RISCV64: ret
     va_arg(ap)
 }
 
