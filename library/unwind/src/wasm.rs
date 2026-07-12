@@ -51,7 +51,16 @@ pub const unwinder_private_data_size: usize = 2;
 pub struct _Unwind_Exception {
     pub exception_class: _Unwind_Exception_Class,
     pub exception_cleanup: _Unwind_Exception_Cleanup_Fn,
-    pub private: [_Unwind_Word; unwinder_private_data_size],
+    private: [_Unwind_Word; unwinder_private_data_size],
+}
+
+impl _Unwind_Exception {
+    pub fn new(
+        exception_class: _Unwind_Exception_Class,
+        exception_cleanup: _Unwind_Exception_Cleanup_Fn,
+    ) -> Self {
+        Self { exception_class, exception_cleanup, private: [core::ptr::null(); _] }
+    }
 }
 
 pub type _Unwind_Exception_Cleanup_Fn =
