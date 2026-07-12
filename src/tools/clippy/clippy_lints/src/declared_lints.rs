@@ -33,6 +33,8 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::await_holding_invalid::AWAIT_HOLDING_INVALID_TYPE_INFO,
     crate::await_holding_invalid::AWAIT_HOLDING_LOCK_INFO,
     crate::await_holding_invalid::AWAIT_HOLDING_REFCELL_REF_INFO,
+    crate::bit_width::MANUAL_BIT_WIDTH_INFO,
+    crate::bit_width::MISMATCHED_BIT_WIDTH_TYPE_INFO,
     crate::blocks_in_conditions::BLOCKS_IN_CONDITIONS_INFO,
     crate::bool_assert_comparison::BOOL_ASSERT_COMPARISON_INFO,
     crate::bool_comparison::BOOL_COMPARISON_INFO,

@@ -557,11 +557,11 @@ fn index_ast<'tcx>(
                 attrs: AttrVec::default(),
                 id,
                 span,
-                vis: Visibility { kind: VisibilityKind::Public, span, tokens: None },
+                vis: Visibility { kind: VisibilityKind::Public, span },
                 // Lacking a better choice, we replace the contents with a macro call.
                 // Unexpanded macros should never reach lowering, so this is not confusing.
                 kind: dummy(Box::new(MacCall {
-                    path: Path { span, segments: thin_vec![], tokens: None },
+                    path: Path { span, segments: thin_vec![] },
                     args: Box::new(DelimArgs {
                         dspan: DelimSpan::from_single(span),
                         delim: Delimiter::Parenthesis,
@@ -664,11 +664,6 @@ fn index_ast<'tcx>(
 
 #[instrument(level = "trace", skip(tcx))]
 fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
-    // Queries that borrow `resolver_for_lowering`.
-    tcx.ensure_done().output_filenames(());
-    tcx.ensure_done().early_lint_checks(());
-    tcx.ensure_done().debugger_visualizers(LOCAL_CRATE);
-    tcx.ensure_done().get_lang_items(());
     let ast_index = tcx.index_ast(());
     let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 
@@ -2916,7 +2911,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // Do not use lower_anon_const_to_const_arg, as that attempts to represent the body
                 // directly. Instead, force an anon const.
                 let def_id = self.local_def_id(anon_const.id);
-                assert_eq!(DefKind::InlineConst, self.tcx.def_kind(def_id));
+                assert_eq!(DefKind::AnonConst, self.tcx.def_kind(def_id));
                 let lowered_anon = self.lower_anon_const_to_anon_const(anon_const, span);
                 ConstArg {
                     hir_id: self.lower_node_id(node_id),

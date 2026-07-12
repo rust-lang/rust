@@ -130,7 +130,6 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
         DefKind::Static { .. }
         | DefKind::Const { .. }
         | DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::Struct
         | DefKind::Union
         | DefKind::Enum

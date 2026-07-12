@@ -30,6 +30,7 @@ use rustc_ast::token::{
 };
 use rustc_ast::tokenstream::{
     ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, TokenTreeCursor,
+    WithTokens,
 };
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
@@ -1492,7 +1493,6 @@ impl<'a> Parser<'a> {
             return Ok(Visibility {
                 span: self.token.span.shrink_to_lo(),
                 kind: VisibilityKind::Inherited,
-                tokens: None,
             });
         }
         let lo = self.prev_token.span;
@@ -1513,11 +1513,7 @@ impl<'a> Parser<'a> {
                     id: ast::DUMMY_NODE_ID,
                     shorthand: false,
                 };
-                return Ok(Visibility {
-                    span: lo.to(self.prev_token.span),
-                    kind: vis,
-                    tokens: None,
-                });
+                return Ok(Visibility { span: lo.to(self.prev_token.span), kind: vis });
             } else if self.look_ahead(2, |t| t == &token::CloseParen)
                 && self.is_keyword_ahead(1, &[kw::Crate, kw::Super, kw::SelfLower])
             {
@@ -1530,11 +1526,7 @@ impl<'a> Parser<'a> {
                     id: ast::DUMMY_NODE_ID,
                     shorthand: true,
                 };
-                return Ok(Visibility {
-                    span: lo.to(self.prev_token.span),
-                    kind: vis,
-                    tokens: None,
-                });
+                return Ok(Visibility { span: lo.to(self.prev_token.span), kind: vis });
             } else if let FollowedByType::No = fbt {
                 // Provide this diagnostic if a type cannot follow;
                 // in particular, if this is not a tuple struct.
@@ -1543,7 +1535,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(Visibility { span: lo, kind: VisibilityKind::Public, tokens: None })
+        Ok(Visibility { span: lo, kind: VisibilityKind::Public })
     }
 
     /// Recovery for e.g. `pub(something) fn ...` or `struct X { pub(something) y: Z }`
@@ -1565,12 +1557,11 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp!(Impl)) {
             let (kind, span, gated_span) = self.parse_restriction(ParsingRestrictionKind::Impl)?;
             self.psess.gated_spans.gate(sym::impl_restriction, gated_span);
-            return Ok(ImplRestriction { kind, span, tokens: None });
+            return Ok(ImplRestriction { kind, span });
         }
         Ok(ImplRestriction {
             kind: RestrictionKind::Unrestricted,
             span: self.token.span.shrink_to_lo(),
-            tokens: None,
         })
     }
 
@@ -1580,12 +1571,11 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp!(Mut)) {
             let (kind, span, gated_span) = self.parse_restriction(ParsingRestrictionKind::Mut)?;
             self.psess.gated_spans.gate(sym::mut_restriction, gated_span);
-            return Ok(MutRestriction { kind, span, tokens: None });
+            return Ok(MutRestriction { kind, span });
         }
         Ok(MutRestriction {
             kind: RestrictionKind::Unrestricted,
             span: self.token.span.shrink_to_lo(),
-            tokens: None,
         })
     }
 
@@ -1828,21 +1818,26 @@ impl<'a> Parser<'a> {
     }
 }
 
-// Metavar captures of various kinds.
+// Metavar captures of various kinds. The more complex node kinds (e.g. `Item`, `Expr`) store
+// tokens in the node itself because those tokens are needed for non-terminal parsing and for other
+// reasons (e.g. cfg expansion). Simpler node kinds (e.g. `Block`, `Path`) only need tokens for
+// non-terminal parsing so here they store the tokens next to the node, keeping the node size
+// smaller.
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
     Item(Box<ast::Item>),
-    Block(Box<ast::Block>),
+    Block(WithTokens<Box<ast::Block>>),
     Stmt(Box<ast::Stmt>),
-    Pat(Box<ast::Pat>, NtPatKind),
+    Pat(WithTokens<Box<ast::Pat>>, NtPatKind),
     Expr(Box<ast::Expr>, NtExprKind),
     Literal(Box<ast::Expr>),
-    Ty(Box<ast::Ty>),
-    Meta(Box<ast::AttrItem>),
-    Path(Box<ast::Path>),
-    Vis(Box<ast::Visibility>),
+    Ty(WithTokens<Box<ast::Ty>>),
+    // These tokens are for the attr item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
+    Meta(WithTokens<Box<ast::AttrItem>>),
+    Path(WithTokens<Box<ast::Path>>),
+    Vis(WithTokens<Box<ast::Visibility>>),
     Guard(Box<ast::Guard>),
 }

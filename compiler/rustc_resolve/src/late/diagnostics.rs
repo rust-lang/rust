@@ -104,7 +104,6 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
     let enum_path = ast::Path {
         span: suggestion.path.span,
         segments: suggestion.path.segments[0..path_len - 1].iter().cloned().collect(),
-        tokens: None,
     };
     let enum_path_string = path_names_to_string(&enum_path);
 
@@ -3034,8 +3033,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let doc_visible = doc_visible
                         && (module_def_id.is_local() || !r.tcx.is_doc_hidden(module_def_id));
                     if module_def_id == def_id {
-                        let path =
-                            Path { span: name_binding.span, segments: path_segments, tokens: None };
+                        let path = Path { span: name_binding.span, segments: path_segments };
                         result = Some((
                             r.expect_module(module_def_id),
                             ImportSuggestion {
@@ -3070,7 +3068,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if let Res::Def(DefKind::Ctor(CtorOf::Variant, kind), def_id) = name_binding.res() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
                     segms.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
-                    let path = Path { span: name_binding.span, segments: segms, tokens: None };
+                    let path = Path { span: name_binding.span, segments: segms };
                     variants.push((path, def_id, kind));
                 }
             });
@@ -3983,9 +3981,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         span: lifetime_ref.ident.span,
                         name: lifetime_ref.ident.name,
                         param_kind: diagnostics::ParamKindInNonTrivialAnonConst::Lifetime,
-                        help: self.r.tcx.sess.is_nightly_build(),
+                        help: self.r.tcx.sess.is_nightly_build()
+                            && !self.r.features.min_generic_const_args(),
                         is_gca: self.r.features.generic_const_args(),
                         help_gca: self.r.features.generic_const_args(),
+                        help_suggest_gca: self.r.tcx.sess.is_nightly_build()
+                            && !self.r.features.generic_const_args(),
                     })
                     .emit()
             }
@@ -4495,7 +4496,6 @@ fn mk_where_bound_predicate(
                     kind: ast::TyKind::Path(None, poly_trait_ref.trait_ref.path.clone()),
                     id: DUMMY_NODE_ID,
                     span: DUMMY_SP,
-                    tokens: None,
                 })),
             },
             span: DUMMY_SP,
@@ -4526,7 +4526,7 @@ fn mk_where_bound_predicate(
             bound_generic_params: ThinVec::new(),
             modifiers: ast::TraitBoundModifiers::NONE,
             trait_ref: ast::TraitRef {
-                path: ast::Path { segments: modified_segments, span: DUMMY_SP, tokens: None },
+                path: ast::Path { segments: modified_segments, span: DUMMY_SP },
                 ref_id: DUMMY_NODE_ID,
             },
             span: DUMMY_SP,

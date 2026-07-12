@@ -92,7 +92,7 @@ impl<'a> Parser<'a> {
             path_span = path_lo.to(self.prev_token.span);
         } else {
             path_span = self.token.span.to(self.token.span);
-            path = ast::Path { segments: ThinVec::new(), span: path_span, tokens: None };
+            path = ast::Path { segments: ThinVec::new(), span: path_span };
         }
 
         // See doc comment for `unmatched_angle_bracket_count`.
@@ -112,10 +112,7 @@ impl<'a> Parser<'a> {
             self.parse_path_segments(&mut path.segments, style, None)?;
         }
 
-        Ok((
-            qself,
-            Path { segments: path.segments, span: lo.to(self.prev_token.span), tokens: None },
-        ))
+        Ok((qself, Path { segments: path.segments, span: lo.to(self.prev_token.span) }))
     }
 
     /// Recover from an invalid single colon, when the user likely meant a qualified path.
@@ -221,7 +218,7 @@ impl<'a> Parser<'a> {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
-        Ok(Path { segments, span: lo.to(self.prev_token.span), tokens: None })
+        Ok(Path { segments, span: lo.to(self.prev_token.span) })
     }
 
     pub(super) fn parse_path_segments(

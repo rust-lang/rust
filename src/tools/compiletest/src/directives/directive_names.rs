@@ -327,5 +327,23 @@ pub(crate) const KNOWN_HTMLDOCCK_DIRECTIVE_NAMES: &[&str] = &[
     "!snapshot",
 ];
 
-pub(crate) const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
-    &["count", "!count", "has", "!has", "is", "!is", "ismany", "!ismany", "set", "!set"];
+pub(crate) const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] = &[
+    "count",
+    "!count",
+    "has",
+    "!has",
+    "is",
+    "!is",
+    "ismany",
+    "!ismany",
+    "set",
+    "jq_count",
+    "!jq_count",
+    "jq_has",
+    "!jq_has",
+    "jq_is",
+    "!jq_is",
+    "jq_ismany",
+    "!jq_ismany",
+    "jq_set",
+];

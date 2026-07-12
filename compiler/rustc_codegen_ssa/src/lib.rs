@@ -3,11 +3,11 @@
 #![feature(file_buffered)]
 #![feature(negative_impls)]
 #![feature(option_into_flat_iter)]
-#![feature(string_from_utf8_lossy_owned)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
+#![cfg_attr(bootstrap, feature(string_from_utf8_lossy_owned))]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
 //! The backend-agnostic functions of this crate use functions defined in various traits that

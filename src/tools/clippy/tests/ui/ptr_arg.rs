@@ -1,10 +1,3 @@
-#![allow(
-    unused,
-    clippy::many_single_char_names,
-    clippy::needless_lifetimes,
-    clippy::redundant_clone,
-    clippy::needless_pass_by_ref_mut
-)]
 #![warn(clippy::ptr_arg)]
 //@no-rustfix
 use std::borrow::Cow;
@@ -118,7 +111,6 @@ fn false_positive_capacity_too(x: &String) -> String {
     x.clone()
 }
 
-#[allow(dead_code)]
 fn test_cow_with_ref(c: &Cow<[i32]>) {}
 //~^ ptr_arg
 

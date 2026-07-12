@@ -1165,7 +1165,7 @@ impl<'a> Parser<'a> {
         rules: BlockCheckMode,
         span: Span,
     ) -> Box<Block> {
-        Box::new(Block { stmts, id: DUMMY_NODE_ID, rules, span, tokens: None })
+        Box::new(Block { stmts, id: DUMMY_NODE_ID, rules, span })
     }
 
     pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {

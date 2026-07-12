@@ -1095,8 +1095,8 @@ where
                     if let ty::Alias(is_rigid, alias_ty) = ty.kind()
                         && let Some(opaque_ty) = alias_ty.try_to_opaque()
                     {
-                        debug_assert_eq!(is_rigid, ty::IsRigid::No);
                         if opaque_ty == self.opaque_ty {
+                            debug_assert_eq!(is_rigid, ty::IsRigid::No);
                             return self.self_ty;
                         }
                     }

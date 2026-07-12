@@ -56,7 +56,6 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::Impl { .. }
         | DefKind::OpaqueTy
         | DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::Ctor(..)

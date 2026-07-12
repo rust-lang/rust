@@ -431,13 +431,16 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
                 diag.span_note(impl_.self_ty.span, "not a concrete type");
             }
         }
-        if matches!(self.context, ForbidParamContext::ConstArgument)
-            && self.tcx.features().min_generic_const_args()
-        {
-            if !self.tcx.features().generic_const_args() {
-                diag.help("add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items");
-            } else {
+        if matches!(self.context, ForbidParamContext::ConstArgument) {
+            if self.tcx.features().generic_const_args() {
                 diag.help("consider factoring the expression into a `type const` item and use it as the const argument instead");
+            } else if self.tcx.features().min_generic_const_args() {
+                diag.help("add `#![feature(generic_const_args)]` and extract the expression into a `type const` item");
+            } else if self.tcx.sess.is_nightly_build() {
+                diag.help(
+                    "add `#![feature(generic_const_exprs)]` to allow generic const expressions",
+                );
+                diag.help("alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item");
             }
         }
         diag.emit()
@@ -509,22 +512,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// contains params). Those cases are handled by `check_param_uses_if_mcg`.
     fn anon_const_forbids_generic_params(&self) -> Option<ForbidParamContext> {
         let tcx = self.tcx();
-        let parent_def_id = self.item_def_id();
+        let item_def_id = self.item_def_id();
 
         // Inline consts and closures can be nested inside anon consts that forbid generic
         // params (e.g. an enum discriminant). Walk up the def parent chain to find the
         // nearest enclosing AnonConst and use that to determine the context.
-        let parent_def_id = tcx.typeck_root_def_id(parent_def_id.into());
+        let anon_const_def_id = tcx.typeck_root_def_id_local(item_def_id);
 
-        let anon_const_def_id = match tcx.def_kind(parent_def_id) {
-            DefKind::AnonConst => parent_def_id,
-            DefKind::InlineConst if tcx.is_type_system_inline_const(parent_def_id) => parent_def_id,
-            _ => return None,
-        };
+        if tcx.def_kind(anon_const_def_id) != DefKind::AnonConst {
+            return None;
+        }
 
         match tcx.anon_const_kind(anon_const_def_id) {
             ty::AnonConstKind::MCG => Some(ForbidParamContext::ConstArgument),
-            ty::AnonConstKind::NonTypeSystem => {
+            ty::AnonConstKind::NonTypeSystemAnon => {
                 // NonTypeSystem anon consts only have accessible generic parameters in specific
                 // positions (ty patterns and field defaults — see `generics_of`). In all other
                 // positions (e.g. enum discriminants) generic parameters are not in scope.
@@ -534,7 +535,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     None
                 }
             }
-            ty::AnonConstKind::GCE | ty::AnonConstKind::RepeatExprCount => None,
+            ty::AnonConstKind::NonTypeSystemInline
+            | ty::AnonConstKind::GCE
+            | ty::AnonConstKind::RepeatExprCount => None,
         }
     }
 
@@ -2975,7 +2978,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 | DefKind::Use
                 | DefKind::ForeignMod
                 | DefKind::AnonConst
-                | DefKind::InlineConst
                 | DefKind::Field
                 | DefKind::Impl { .. }
                 | DefKind::Closure

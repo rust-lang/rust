@@ -130,6 +130,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::InferDelegationSig::Output(self.arena.alloc(hir::DelegationInfo {
                     call_expr_id,
                     call_path_res,
+                    arguments_to_map: res.sig_mapping.arguments_to_map.clone(),
                     child_seg_id: generics.child.args_segment_id,
                     child_seg_id_for_sig: generics.child.segment_id_for_sig(),
                     parent_seg_id_for_sig: generics.parent.segment_id_for_sig(),

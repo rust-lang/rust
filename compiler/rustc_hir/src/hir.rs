@@ -17,6 +17,7 @@ pub use rustc_ast::{
     MetaItemInner, MetaItemLit, Movability, Mutability, Pinnedness, UnOp,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
@@ -3874,7 +3875,7 @@ pub enum DelegationSelfTyPropagationKind {
     SelfParam,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
+#[derive(Debug, StableHash)]
 pub struct DelegationInfo {
     pub call_expr_id: HirId,
     pub call_path_res: DefId,
@@ -3893,16 +3894,18 @@ pub struct DelegationInfo {
 
     pub self_ty_propagation_kind: Option<DelegationSelfTyPropagationKind>,
     pub group_id: Option<(LocalExpnId, bool /* unused_target_expr */)>,
+
+    pub arguments_to_map: FxIndexSet<usize>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
+#[derive(Debug, Clone, Copy, StableHash)]
 pub enum InferDelegationSig<'hir> {
     Input(usize),
     // Place delegation info here, as we always specify output type for delegations.
     Output(&'hir DelegationInfo),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
+#[derive(Debug, Clone, Copy, StableHash)]
 pub enum InferDelegation<'hir> {
     /// Infer the type of this `DefId` through `tcx.type_of(def_id).instantiate_identity()`,
     /// used for const types propagation.

@@ -1,5 +1,5 @@
 error: using `.zip()` with a range and `.len()`
-  --> tests/ui/range_unfixable.rs:10:5
+  --> tests/ui/range_unfixable.rs:9:5
    |
 LL |     v1.iter().zip(0..v1.len()).filter(|(_, i)| *i < 2).for_each(|(e, i)| {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

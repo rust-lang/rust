@@ -64,7 +64,6 @@ fn setup_for_eval<'tcx>(
                     | DefKind::Static { .. }
                     | DefKind::ConstParam
                     | DefKind::AnonConst
-                    | DefKind::InlineConst
                     | DefKind::AssocConst { .. }
             ),
         "Unexpected DefKind: {:?}",

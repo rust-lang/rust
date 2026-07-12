@@ -104,8 +104,8 @@ fn main() {
     //~| WARN previously accepted
     unreachable!();
     #[repr(simd)]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
+    //~| ERROR SIMD types are experimental and possibly buggy
     unreachable!();
     #[register_tool(xyz)]
     //~^ ERROR crate-level attribute should be an inner attribute
