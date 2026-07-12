@@ -569,6 +569,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Aborting the process.
             "exit" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [code] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let code = this.read_scalar(code)?.to_i32()?;
                 if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
@@ -583,6 +584,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
             }
             "abort" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 throw_machine_stop!(TerminationInfo::Abort(
                     "the program aborted execution".to_owned()
@@ -644,6 +646,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // C memory handling functions
             "memcmp" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [left, right, n] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let left = this.read_pointer(left)?;
@@ -655,6 +658,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.ptr_get_alloc_id(right, 0)?;
 
                 let result = {
+                    // FIXME: It's unclear if pre-reading the entire block is correct.
+                    // See <https://github.com/rust-lang/miri/issues/5176>.
                     let left_bytes = this.read_bytes_ptr_strip_provenance(left, n)?;
                     let right_bytes = this.read_bytes_ptr_strip_provenance(right, n)?;
 
@@ -667,33 +672,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-            "memrchr" => {
-                let [ptr, val, num] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let ptr = this.read_pointer(ptr)?;
-                let val = this.read_scalar(val)?.to_i32()?;
-                let num = this.read_target_usize(num)?;
-                // The docs say val is "interpreted as unsigned char".
-                #[expect(clippy::as_conversions)]
-                let val = val as u8;
-
-                // C requires that this must always be a valid pointer (C18 §7.1.4).
-                this.ptr_get_alloc_id(ptr, 0)?;
-
-                if let Some(idx) = this
-                    .read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(num))?
-                    .iter()
-                    .rev()
-                    .position(|&c| c == val)
-                {
-                    let idx = u64::try_from(idx).unwrap();
-                    #[expect(clippy::arithmetic_side_effects)] // idx < num, so this never wraps
-                    let new_ptr = ptr.wrapping_offset(Size::from_bytes(num - idx - 1), this);
-                    this.write_pointer(new_ptr, dest)?;
-                } else {
-                    this.write_null(dest)?;
-                }
             }
             "memchr" => {
                 let [ptr, val, num] =
@@ -708,13 +686,37 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
                 this.ptr_get_alloc_id(ptr, 0)?;
 
-                let idx = this
-                    .read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(num))?
-                    .iter()
-                    .position(|&c| c == val);
-                if let Some(idx) = idx {
-                    let new_ptr = ptr.wrapping_offset(Size::from_bytes(idx), this);
-                    this.write_pointer(new_ptr, dest)?;
+                // "This function behaves as if it reads the bytes sequentially and stops as soon as
+                // a matching bytes is found: if the array pointed to by ptr is smaller than count,
+                // but the match is found within the array, the behavior is well-defined."
+                let needle_ptr = this.memchr(ptr, 0..num, val)?.map(|(_idx, ptr)| ptr);
+
+                if let Some(needle_ptr) = needle_ptr {
+                    this.write_pointer(needle_ptr, dest)?;
+                } else {
+                    this.write_null(dest)?;
+                }
+            }
+            "memrchr" => {
+                this.check_target_os(&[Os::Linux, Os::Android, Os::FreeBsd], link_name)?;
+
+                let [ptr, val, num] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let val = this.read_scalar(val)?.to_i32()?;
+                let num = this.read_target_usize(num)?;
+                // The docs say val is "interpreted as unsigned char".
+                #[expect(clippy::as_conversions)]
+                let val = val as u8;
+
+                // C requires that this must always be a valid pointer (C18 §7.1.4).
+                this.ptr_get_alloc_id(ptr, 0)?;
+
+                // We use the same early-abort search strategy as `memchr` (see above).
+                let needle_ptr = this.memchr(ptr, (0..num).rev(), val)?.map(|(_idx, ptr)| ptr);
+
+                if let Some(needle_ptr) = needle_ptr {
+                    this.write_pointer(needle_ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
                 }
@@ -728,6 +730,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Scalar::from_target_usize(u64::try_from(n).unwrap(), this),
                     dest,
                 )?;
+            }
+            "strnlen" => {
+                let [ptr, num] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let num = this.read_target_usize(num)?;
+
+                // C requires that this must always be a valid pointer (C18 §7.1.4).
+                this.ptr_get_alloc_id(ptr, 0)?;
+
+                // The docs say this behaves like memchr, which only deref's the memory it actually
+                // needs to compare.
+                let idx = this.memchr(ptr, 0..num, 0)?.map(|(idx, _ptr)| idx).unwrap_or(num);
+                this.write_scalar(Scalar::from_target_usize(idx, this), dest)?;
             }
             "wcslen" => {
                 let [ptr] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
@@ -892,5 +907,25 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We only fall through to here if we did *not* hit the `_` arm above,
         // i.e., if we actually emulated the function with one of the shims.
         interp_ok(EmulateItemResult::NeedsReturn)
+    }
+
+    /// For each `idx` yielded by `idxs`, check if `ptr + idx` equals `needle` and return that
+    /// index and a pointer to that element if so. Return `None` if none of the indices match.
+    fn memchr(
+        &self,
+        ptr: Pointer,
+        idxs: impl Iterator<Item = u64>,
+        needle: u8,
+    ) -> InterpResult<'tcx, Option<(u64, Pointer)>> {
+        let this = self.eval_context_ref();
+        for idx in idxs {
+            let ptr = ptr.wrapping_offset(Size::from_bytes(idx), this);
+            let place = this.ptr_to_mplace(ptr, this.machine.layouts.u8);
+            let val = this.read_scalar(&place)?.to_u8()?;
+            if val == needle {
+                return interp_ok(Some((idx, ptr)));
+            }
+        }
+        interp_ok(None)
     }
 }
