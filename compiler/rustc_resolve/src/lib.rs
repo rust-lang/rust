@@ -29,7 +29,6 @@ use std::{fmt, mem};
 
 use diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
-use error_helper::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
 use hygiene::Macros20NormalizedSyntaxContext;
 use imports::{Import, ImportData, ImportKind, NameResolution, PendingDecl};
 use late::{
@@ -77,7 +76,9 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
-use crate::error_helper::OnUnknownData;
+use crate::diagnostics::impls::{
+    ImportSuggestion, LabelSuggestion, OnUnknownData, StructCtor, Suggestion,
+};
 use crate::imports::NameResolutionRef;
 use crate::ref_mut::{CmCell, CmRefCell};
 
@@ -86,7 +87,6 @@ mod check_unused;
 mod def_collector;
 mod diagnostics;
 mod effective_visibilities;
-mod error_helper;
 mod ident;
 mod imports;
 mod late;
