@@ -18,7 +18,7 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/eventfd_block_write_twice.rs:LL:CC
    |
-LL |             libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
+LL |             libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8)
    |                                                                            ^ thread got stuck here
    |
    = note: this is on thread `unnamed-ID`
@@ -29,7 +29,7 @@ LL |       let thread2 = thread::spawn(move || {
    |  ___________________^
 LL | |         let sized_8_data = (u64::MAX - 1).to_ne_bytes();
 LL | |         // Write u64::MAX - 1, so that all subsequent writes will block.
-LL | |         let res: i64 = unsafe {
+LL | |         let res = errno_result(unsafe {
 ...  |
 LL | |         assert_eq!(res, 8);
 LL | |     });

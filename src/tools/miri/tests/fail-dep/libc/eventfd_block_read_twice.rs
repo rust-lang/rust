@@ -25,10 +25,8 @@ fn main() {
     let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
     let thread1 = thread::spawn(move || {
-        let mut buf: [u8; 8] = [0; 8];
         // This read will block initially.
-        let res: i64 = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8).try_into().unwrap() };
-        assert_eq!(res, 8);
+        let buf: [u8; 8] = read_exact_array(fd).unwrap();
         let counter = u64::from_ne_bytes(buf);
         assert_eq!(counter, 1_u64);
     });
@@ -37,7 +35,7 @@ fn main() {
         let mut buf: [u8; 8] = [0; 8];
         // This read will block initially, then get unblocked by thread3, then get blocked again
         // because the `read` in thread1 executes first and set the counter to 0 again.
-        let res: i64 = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8).try_into().unwrap() };
+        let res = errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8) }).unwrap();
         //~^ERROR: deadlocked
         assert_eq!(res, 8);
         let counter = u64::from_ne_bytes(buf);
@@ -47,11 +45,8 @@ fn main() {
     let thread3 = thread::spawn(move || {
         let sized_8_data = 1_u64.to_ne_bytes();
         // Write 1 to the counter, so both thread1 and thread2 will unblock.
-        let res: i64 = unsafe {
-            libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
-        };
         // Make sure that write is successful.
-        assert_eq!(res, 8);
+        write_all(fd, &sized_8_data).unwrap();
     });
 
     thread1.join().unwrap();
