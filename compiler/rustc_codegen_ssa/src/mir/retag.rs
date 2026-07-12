@@ -2,19 +2,24 @@
 //!
 //! We attempt to retag every argument and return value of a function, and every rvalue
 //! of an assignment. The first step to retagging is to generate a [`RetagPlan`], which
-//! describes which pointers within the place or operand can be retagged.
+//! describes which pointers within the place or operand can be retagged. Then, we traverse
+//! the [`RetagPlan`] to emit the calls.
 
 use rustc_abi::{FieldIdx, FieldsShape, Size, VariantIdx, Variants};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::range_set::RangeSet;
+use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::{Rvalue, WithRetag};
-use rustc_middle::ty;
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
+use rustc_middle::ty::{self, Ty};
 
 use crate::mir::FunctionCx;
 use crate::mir::operand::{OperandRef, OperandRefBuilder, OperandValue};
 use crate::mir::place::PlaceRef;
-use crate::traits::{BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods};
+use crate::traits::{
+    BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, StaticCodegenMethods,
+};
 use crate::{RetagFlags, RetagInfo};
 
 pub(crate) fn rvalue_needs_retag(rvalue: &Rvalue<'_>) -> bool {
@@ -167,27 +172,62 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         is_fn_entry: bool,
     ) -> Option<RetagPlan<Bx::Value>> {
         let tcx = bx.tcx();
+        let retag_opts = tcx.sess.opts.unstable_opts.codegen_emit_retag.unwrap_or_default();
 
         let pointee_ty = pointee_layout.ty;
 
         let is_mutable = matches!(ptr_kind, Some(Mutability::Mut) | None);
-        let is_unpin = pointee_ty.is_unpin(tcx, bx.typing_env());
-        let is_freeze = pointee_ty.is_freeze(tcx, bx.typing_env());
+        let is_unpin = UnsafePinnedRanges::excludes(bx, pointee_ty);
+        let is_freeze = UnsafeCellRanges::excludes(bx, pointee_ty);
         let is_box = ptr_kind.is_none();
 
         // `&mut !Unpin` is not protected
         let is_protected = is_fn_entry && (!is_mutable || is_unpin);
 
+        let pin_ranges = UnsafePinnedRanges::collect(bx, pointee_layout, retag_opts.no_precise_pin);
+
+        if is_mutable {
+            // Everything is `UnsafePinned` if the collected ranges
+            // cover the entire size of the layout.
+            let all_pinned = matches!(
+                pin_ranges.as_slice(),
+                [(Size::ZERO, size)] if *size == pointee_layout.size,
+            );
+
+            // Otherwise, if we can't find any `UnsafePinned`,
+            // the type is still might be `!Unpin` or `!UnsafeUnpin`,
+            // so we should include the entire range.
+            let implicitly_pinned = pin_ranges.is_empty() && !is_unpin;
+
+            if all_pinned || implicitly_pinned {
+                return None;
+            }
+        }
+
         if is_mutable && !is_unpin {
             return None;
         }
 
-        let im_layout = bx.const_null(bx.type_ptr());
-        let pin_layout = bx.const_null(bx.type_ptr());
+        let im_ranges = UnsafeCellRanges::collect(bx, pointee_layout, retag_opts.no_precise_im);
+        let all_im = matches!(
+            im_ranges.as_slice(),
+            [(Size::ZERO, size)] if *size == pointee_layout.size,
+        );
+
+        let pin_layout = Self::alloc_ranges(bx, pin_ranges);
+
+        // If the entire type is covered by `UnsafeCell`, then we can
+        // defer to checking if the type is `Freeze` via `RetagFlags`,
+        // to avoid allocating a global array.
+        let im_layout =
+            if all_im { bx.const_null(bx.type_ptr()) } else { Self::alloc_ranges(bx, im_ranges) };
 
         let mut flags = RetagFlags::empty();
         flags.set(RetagFlags::IS_PROTECTED, is_protected);
         flags.set(RetagFlags::IS_MUTABLE, is_mutable);
+        // Even though we have a list of interior mutable ranges,
+        // we still need a separate flag for `Freeze` types, for when
+        // we retag interior mutable ZSTs.
         flags.set(RetagFlags::IS_FREEZE, is_freeze);
         flags.set(RetagFlags::IS_BOX, is_box);
 
@@ -197,6 +237,133 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             pin_layout,
             flags,
         }))
+    }
+
+    /// Creates a pointer to a global static allocation containing adjacent pairs of `u64` bytes,
+    /// which indicate the offset and width of a range within the layout of a type. Returns a null
+    /// pointer if the list of ranges is empty.
+    fn alloc_ranges<Bx: BuilderMethods<'a, 'tcx>>(
+        bx: &mut Bx,
+        ranges: Vec<(Size, Size)>,
+    ) -> Bx::Value {
+        let tcx = bx.tcx();
+        let data_layout = &tcx.data_layout;
+
+        if ranges.is_empty() {
+            return bx.const_null(bx.type_ptr());
+        }
+
+        let mut bytes: Vec<u8> = vec![];
+        for (start, end) in ranges.iter() {
+            bytes.extend_from_slice(&start.bytes().to_ne_bytes());
+            bytes.extend_from_slice(&end.bytes().to_ne_bytes());
+        }
+
+        let intptr_ty = data_layout.ptr_sized_integer();
+        let align = intptr_ty.align(data_layout).abi;
+
+        let alloc = Allocation::from_bytes(&bytes, align, Mutability::Not, ());
+        let const_alloc = tcx.mk_const_alloc(alloc);
+
+        // Different IDs are produced, but identical range lists
+        // will resolve to the same allocation.
+        let alloc_id = tcx.reserve_and_set_memory_alloc(const_alloc);
+        let global_alloc = tcx.global_alloc(alloc_id);
+        let global_mem = global_alloc.unwrap_memory();
+
+        bx.cx().static_addr_of(global_mem, None)
+    }
+}
+
+/// A visitor trait for collecting the ranges within a layout that satisfy a given predicate.
+trait PerByteTracking<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
+    /// Indicates that we can exclude the range of bytes that contains this type.
+    /// This tells us that [`PerByteTracking::contains`] is false for every
+    /// field or variant without having to recurse any further into the layout of the type.
+    fn excludes(bx: &mut Bx, ty: Ty<'tcx>) -> bool;
+
+    /// Indicates that we should include the range containing this type.
+    fn contains(bx: &mut Bx, ty: Ty<'tcx>) -> bool;
+
+    /// Traverses through the layout of a type to find each range satisfying
+    /// the predicate.
+    ///
+    /// If `imprecise` is true, then the entire size of the type will be included,
+    /// even if only one of its fields satisfies the predicate.
+    fn visit_layout(
+        bx: &mut Bx,
+        offset: Size,
+        ranges: &mut RangeSet<Size>,
+        layout: TyAndLayout<'tcx>,
+        imprecise: bool,
+    ) {
+        if Self::excludes(bx, layout.ty) {
+            return;
+        }
+
+        if imprecise {
+            return ranges.add_range(offset, layout.size);
+        }
+
+        let union_or_primitive =
+            matches!(layout.fields, FieldsShape::Union(..) | FieldsShape::Primitive);
+        let has_multiple_variants = matches!(layout.variants, Variants::Multiple { .. });
+
+        if Self::contains(bx, layout.ty) || union_or_primitive || has_multiple_variants {
+            ranges.add_range(offset, layout.size);
+        } else {
+            // We know at this point that we have an array or an arbitrary layout.
+            for ix in layout.fields.index_by_increasing_offset() {
+                // We need to find the offset for this field relative
+                // to the entire type, not just the current aggregate
+                // that we are visiting here.
+                let field_offset = layout.fields.offset(ix);
+                let layout_offset = field_offset + offset;
+
+                let field = layout.field(bx, ix);
+                Self::visit_layout(bx, layout_offset, ranges, field, imprecise);
+            }
+        }
+    }
+    /// Collects the ranges within a type that satisfy the given predicate.
+    fn collect(bx: &mut Bx, layout: TyAndLayout<'tcx>, imprecise: bool) -> Vec<(Size, Size)> {
+        let mut ranges = RangeSet::<Size>::new();
+        Self::visit_layout(bx, Size::ZERO, &mut ranges, layout, imprecise);
+        ranges.0
+    }
+}
+
+/// Collects the ranges within a type that are covered by `UnsafeCell`.
+struct UnsafeCellRanges;
+
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> PerByteTracking<'a, 'tcx, Bx> for UnsafeCellRanges {
+    fn excludes(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
+        ty.is_freeze(bx.tcx(), bx.cx().typing_env())
+    }
+
+    fn contains(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
+        let tcx = bx.tcx();
+        match ty.kind() {
+            ty::Adt(adt, _) => Some(adt.did()) == tcx.lang_items().unsafe_cell_type(),
+            _ => false,
+        }
+    }
+}
+
+/// Collects the ranges within a type that are covered by `UnsafePinned`.
+struct UnsafePinnedRanges;
+
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> PerByteTracking<'a, 'tcx, Bx> for UnsafePinnedRanges {
+    fn excludes(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
+        ty.is_unpin(bx.tcx(), bx.typing_env()) && ty.is_unsafe_unpin(bx.tcx(), bx.typing_env())
+    }
+
+    fn contains(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
+        let tcx = bx.tcx();
+        match ty.kind() {
+            ty::Adt(adt, _) => Some(adt.did()) == tcx.lang_items().unsafe_pinned_type(),
+            _ => false,
+        }
     }
 }
 
