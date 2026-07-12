@@ -24,7 +24,7 @@ fn lend_mut_impl(
     let mut a1: usize = connection.try_into().unwrap();
     let mut a2 = InvokeType::LendMut as usize;
     let a3 = opcode;
-    let a4 = data.as_mut_ptr() as usize;
+    let a4 = data.as_mut_ptr().expose_provenance();
     let a5 = data.len();
     let a6 = arg1;
     let a7 = arg2;
@@ -86,7 +86,7 @@ fn lend_impl(
     let a1: usize = connection.try_into().unwrap();
     let a2 = InvokeType::Lend as usize;
     let a3 = opcode;
-    let a4 = data.as_ptr() as usize;
+    let a4 = data.as_ptr().expose_provenance();
     let a5 = data.len();
     let a6 = arg1;
     let a7 = arg2;
@@ -360,14 +360,14 @@ pub(crate) fn do_yield() {
 /// the kernel will return an alias to the existing range. This violates Rust's
 /// pointer uniqueness guarantee.
 pub(crate) unsafe fn map_memory<T>(
-    phys: Option<core::ptr::NonNull<T>>,
+    phys: Option<core::num::NonZeroUsize>,
     virt: Option<core::ptr::NonNull<T>>,
     count: usize,
     flags: MemoryFlags,
 ) -> Result<&'static mut [T], Error> {
     let mut a0 = Syscall::MapMemory as usize;
-    let mut a1 = phys.map(|p| p.as_ptr() as usize).unwrap_or_default();
-    let mut a2 = virt.map(|p| p.as_ptr() as usize).unwrap_or_default();
+    let mut a1 = phys.map_or(0, |p| p.get());
+    let mut a2 = virt.map_or(0, |p| p.as_ptr().expose_provenance());
     let a3 = count * size_of::<T>();
     let a4 = flags.bits();
     let a5 = 0;
@@ -408,7 +408,7 @@ pub(crate) unsafe fn map_memory<T>(
 /// function returns, even if this function returns Err().
 pub(crate) unsafe fn unmap_memory<T>(range: *mut [T]) -> Result<(), Error> {
     let mut a0 = Syscall::UnmapMemory as usize;
-    let mut a1 = range.as_mut_ptr() as usize;
+    let mut a1 = range.as_mut_ptr().expose_provenance();
     let a2 = range.len() * size_of::<T>();
     let a3 = 0;
     let a4 = 0;
@@ -454,7 +454,7 @@ pub(crate) unsafe fn update_memory_flags<T>(
     new_flags: MemoryFlags,
 ) -> Result<(), Error> {
     let mut a0 = Syscall::UpdateMemoryFlags as usize;
-    let mut a1 = range.as_mut_ptr() as usize;
+    let mut a1 = range.as_mut_ptr().expose_provenance();
     let a2 = range.len() * size_of::<T>();
     let a3 = new_flags.bits();
     let a4 = 0; // Process ID is currently None
@@ -497,8 +497,8 @@ pub(crate) fn create_thread(
     arg3: usize,
 ) -> Result<ThreadId, Error> {
     let mut a0 = Syscall::CreateThread as usize;
-    let mut a1 = start as usize;
-    let a2 = stack.as_mut_ptr() as usize;
+    let mut a1 = start.expose_provenance();
+    let a2 = stack.as_mut_ptr().expose_provenance();
     let a3 = stack.len();
     let a4 = arg0;
     let a5 = arg1;

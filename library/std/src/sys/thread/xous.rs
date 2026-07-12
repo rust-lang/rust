@@ -58,11 +58,11 @@ impl Thread {
             .map_err(|code| io::Error::from_raw_os_error(code as i32))?
         };
 
-        let guard_page_pre = stack_plus_guard_pages.as_ptr() as usize;
+        let guard_page_pre = stack_plus_guard_pages.as_ptr().expose_provenance();
         let tid = create_thread(
             thread_start as *mut usize,
             &mut stack_plus_guard_pages[GUARD_PAGE_SIZE..(stack_size + GUARD_PAGE_SIZE)],
-            data as usize,
+            data.expose_provenance(),
             guard_page_pre,
             stack_size,
             0,
