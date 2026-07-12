@@ -403,9 +403,13 @@ impl TyCtxt<'_> {
         }
     }
 
-    pub fn is_descendant_of(self, descendant: DefId, ancestor: DefId) -> bool {
+    pub fn is_descendant_of(
+        self,
+        descendant: impl Into<DefId>,
+        ancestor: impl Into<DefId>,
+    ) -> bool {
         matches!(
-            self.def_id_partial_cmp(descendant, ancestor),
+            self.def_id_partial_cmp(descendant.into(), ancestor.into()),
             Some(Ordering::Less | Ordering::Equal)
         )
     }
@@ -434,7 +438,7 @@ impl<Id: Into<DefId>> Visibility<Id> {
         match self {
             // Public items are visible everywhere.
             Visibility::Public => true,
-            Visibility::Restricted(id) => tcx.is_descendant_of(module.into(), id.into()),
+            Visibility::Restricted(id) => tcx.is_descendant_of(module, id),
         }
     }
 

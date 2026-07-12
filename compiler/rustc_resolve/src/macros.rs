@@ -1170,7 +1170,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,
             // so it cannot be in scope unless imported.
-            && self.tcx.is_descendant_of(def_id, mod_def_id.to_def_id())
+            && self.tcx.is_descendant_of(def_id, mod_def_id)
         {
             // Try to resolve our ident ignoring `macro_rules` scopes.
             // If such resolution is successful and gives the same result
