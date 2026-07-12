@@ -1831,7 +1831,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> PathResult<'ra> {
         let mut module = None;
         let mut module_had_parse_errors = !self.mods_with_parse_errors.is_empty()
-            && self.mods_with_parse_errors.contains(&parent_scope.module.nearest_parent_mod());
+            && self
+                .mods_with_parse_errors
+                .contains(&parent_scope.module.nearest_parent_mod().to_def_id());
         let mut allow_super = true;
         let mut second_binding = None;
 

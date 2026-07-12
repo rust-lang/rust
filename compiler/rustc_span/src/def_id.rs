@@ -490,6 +490,10 @@ impl ModId {
         self.0.as_local().map(LocalModId::new_unchecked)
     }
 
+    pub fn expect_local(self) -> LocalModId {
+        LocalModId::new_unchecked(self.0.expect_local())
+    }
+
     pub fn is_top_level_module(self) -> bool {
         self.0.is_top_level_module()
     }
@@ -528,6 +532,10 @@ impl LocalModId {
     #[inline]
     pub fn to_def_id(self) -> DefId {
         self.0.into()
+    }
+
+    pub fn to_mod_id(self) -> ModId {
+        ModId::new_unchecked(self.0.to_def_id())
     }
 
     #[inline]

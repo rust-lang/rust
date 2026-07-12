@@ -499,17 +499,15 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn hir_for_each_module(self, mut f: impl FnMut(LocalModId)) {
         let crate_items = self.hir_crate_items(());
-        for module in crate_items.submodules.iter() {
-            f(LocalModId::new_unchecked(module.def_id))
+        for &module in crate_items.submodules.iter() {
+            f(module)
         }
     }
 
     #[inline]
     pub fn par_hir_for_each_module(self, f: impl Fn(LocalModId) + DynSend + DynSync) {
         let crate_items = self.hir_crate_items(());
-        par_for_each_in(&crate_items.submodules[..], |module| {
-            f(LocalModId::new_unchecked(module.def_id))
-        })
+        par_for_each_in(&crate_items.submodules[..], |&&module| f(module));
     }
 
     #[inline]
@@ -518,9 +516,7 @@ impl<'tcx> TyCtxt<'tcx> {
         f: impl Fn(LocalModId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         let crate_items = self.hir_crate_items(());
-        try_par_for_each_in(&crate_items.submodules[..], |module| {
-            f(LocalModId::new_unchecked(module.def_id))
-        })
+        try_par_for_each_in(&crate_items.submodules[..], |&&module| f(module))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
@@ -1298,7 +1294,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
     // A "crate collector" and "module collector" start at a
     // module item (the former starts at the crate root) but only
     // the former needs to collect it. ItemCollector does not do this for us.
-    collector.submodules.push(CRATE_OWNER_ID);
+    collector.submodules.push(CRATE_MOD_ID);
     tcx.hir_walk_toplevel_module(&mut collector);
 
     let ItemCollector {
@@ -1337,7 +1333,7 @@ struct ItemCollector<'tcx> {
     // (see <https://github.com/rust-lang/rust/pull/158119#issuecomment-4751513679>).
     crate_collector: bool,
     tcx: TyCtxt<'tcx>,
-    submodules: Vec<OwnerId> = vec![],
+    submodules: Vec<LocalModId> = vec![],
     items: Vec<ItemId> = vec![],
     trait_items: Vec<TraitItemId> = vec![],
     impl_items: Vec<ImplItemId> = vec![],
@@ -1386,7 +1382,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
         // Items that are modules are handled here instead of in visit_mod.
         if let ItemKind::Mod(_, module) = &item.kind {
-            self.submodules.push(item.owner_id);
+            self.submodules.push(LocalModId::new_unchecked(item.owner_id.def_id));
             // A module collector does not recurse inside nested modules.
             if self.crate_collector {
                 intravisit::walk_mod(self, module);

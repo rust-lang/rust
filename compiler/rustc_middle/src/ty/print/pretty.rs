@@ -385,7 +385,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 && Some(*visible_parent) != actual_parent
             {
                 this.tcx()
-                    // FIXME(typed_def_id): Further propagate ModId
                     .module_children(ModId::new_unchecked(*visible_parent))
                     .iter()
                     .filter(|child| child.res.opt_def_id() == Some(def_id))
@@ -612,7 +611,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 // that's public and whose identifier isn't `_`.
                 let reexport = self
                     .tcx()
-                    // FIXME(typed_def_id): Further propagate ModId
                     .module_children(ModId::new_unchecked(visible_parent))
                     .iter()
                     .filter(|child| child.res.opt_def_id() == Some(def_id))

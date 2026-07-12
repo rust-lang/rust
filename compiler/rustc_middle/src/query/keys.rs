@@ -9,6 +9,7 @@ use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stable_hash::StableHash;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModId};
 use rustc_hir::hir_id::OwnerId;
+use rustc_span::def_id::ModId;
 use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
 
 use crate::dep_graph::DepNodeIndex;
@@ -149,6 +150,24 @@ impl QueryKey for DefId {
     #[inline(always)]
     fn key_as_def_id(&self) -> Option<DefId> {
         Some(*self)
+    }
+
+    #[inline(always)]
+    fn as_local_key(&self) -> Option<Self::LocalQueryKey> {
+        self.as_local()
+    }
+}
+
+impl QueryKey for ModId {
+    type LocalQueryKey = LocalModId;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.to_def_id())
+    }
+
+    #[inline(always)]
+    fn key_as_def_id(&self) -> Option<DefId> {
+        Some(self.to_def_id())
     }
 
     #[inline(always)]
