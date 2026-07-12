@@ -614,7 +614,10 @@ impl<'tcx> NonConstOp<'tcx> for LiveDrop<'tcx> {
         };
 
         // If the dropped type is a type parameter, suggest adding a `[const] Destruct` bound.
-        if let Param(param_ty) = self.dropped_ty.kind() {
+        // The suggestion is only offered on nightly, since `[const]` bounds are unstable.
+        if let Param(param_ty) = self.dropped_ty.kind()
+            && ccx.tcx.sess.is_nightly_build()
+        {
             let tcx = ccx.tcx;
             let caller = ccx.def_id();
             if let Some(generics) = tcx.hir_node_by_def_id(caller).generics() {
