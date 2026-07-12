@@ -874,7 +874,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             } else {
                 match &attr.kind {
                     ast::AttrKind::Normal(ref normal)
-                        if self.is_unknown_rustfmt_attr(&normal.item.path.segments) =>
+                        if self.is_unknown_rustfmt_attr(&normal.path.segments) =>
                     {
                         let file_name = self.psess.span_to_filename(attr.span);
                         self.report.append(

@@ -9,12 +9,12 @@ use rustc_span::sym;
 
 pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute) {
     if let AttrKind::Normal(normal_attr) = &attr.kind {
-        if let AttrItemKind::Unparsed(AttrArgs::Eq { .. }) = &normal_attr.item.args {
+        if let AttrItemKind::Unparsed(AttrArgs::Eq { .. }) = &normal_attr.args {
             // `#[should_panic = ".."]` found, good
             return;
         }
 
-        if let AttrItemKind::Unparsed(AttrArgs::Delimited(args)) = &normal_attr.item.args
+        if let AttrItemKind::Unparsed(AttrArgs::Delimited(args)) = &normal_attr.args
             && let mut tt_iter = args.tokens.iter()
             && let Some(TokenTree::Token(
                 Token {

@@ -8,7 +8,7 @@ use rustc_ast::tokenstream::{
 };
 use rustc_ast::{
     self as ast, AttrItemKind, AttrKind, AttrStyle, Attribute, EarlyParsedAttribute, HasAttrs,
-    HasTokens, MetaItem, MetaItemInner, NodeId, NormalAttr,
+    HasTokens, MetaItem, MetaItemInner, NodeId,
 };
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
@@ -146,10 +146,9 @@ pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec 
 pub(crate) fn attr_into_trace(mut attr: Attribute, trace_name: Symbol) -> Attribute {
     match &mut attr.kind {
         AttrKind::Normal(normal) => {
-            let NormalAttr { item, tokens } = &mut **normal;
-            item.path.segments[0].ident.name = trace_name;
+            normal.path.segments[0].ident.name = trace_name;
             // This makes the trace attributes unobservable to token-based proc macros.
-            *tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::default()));
+            normal.tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::default()));
         }
         AttrKind::DocComment(..) => unreachable!(),
     }
@@ -308,9 +307,13 @@ impl<'a> StripUnconfigured<'a> {
     fn expand_cfg_attr_item(
         &self,
         cfg_attr: &Attribute,
-        (attr_item, attr_item_span): (WithTokens<ast::AttrItem>, Span),
+        (mut attr_item, attr_item_span): (WithTokens<ast::AttrItem>, Span),
     ) -> Attribute {
         // Convert `#[cfg_attr(pred, attr)]` to `#[attr]`.
+        //
+        // Note that we read from `attr_item.tokens` (something like `foo`, from the `WithTokens`)
+        // and then write to `attr_item.node.tokens` (something like `#[foo]` or `#![foo]`, to
+        // the `AttrItem` itself).
 
         // Use the `#` from `#[cfg_attr(pred, attr)]` in the result `#[attr]`.
         let mut orig_trees = cfg_attr.token_trees().into_iter();
@@ -345,6 +348,7 @@ impl<'a> StripUnconfigured<'a> {
             delim_span,
             delim_spacing,
             Delimiter::Bracket,
+            // Read existing tokens from the `WithTokens`.
             attr_item
                 .tokens
                 .as_ref()
@@ -352,11 +356,12 @@ impl<'a> StripUnconfigured<'a> {
                 .to_attr_token_stream(),
         ));
 
-        let attr_tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
+        // Write new tokens to the `AttrItem`.
+        assert!(attr_item.node.tokens.is_none());
+        attr_item.node.tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
         let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
             attr_item.node,
-            attr_tokens,
             cfg_attr.style,
             attr_item_span,
         );

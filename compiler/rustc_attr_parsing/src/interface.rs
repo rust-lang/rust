@@ -161,12 +161,11 @@ impl<'sess> AttributeParser<'sess> {
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
             panic!("parse_single called on a doc attr")
         };
-        let parts =
-            normal_attr.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+        let parts = normal_attr.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
-        let path = AttrPath::from_ast(&normal_attr.item.path, identity);
+        let path = AttrPath::from_ast(&normal_attr.path, identity);
         let args = ArgParser::from_attr_args(
-            &normal_attr.item.args.unparsed_ref().unwrap(),
+            &normal_attr.args.unparsed_ref().unwrap(),
             &parts,
             &sess.psess,
             emit_errors,
@@ -175,10 +174,10 @@ impl<'sess> AttributeParser<'sess> {
         Self::parse_single_args(
             sess,
             attr.span,
-            normal_attr.item.span(),
+            normal_attr.span(),
             attr.style,
             path,
-            Some(normal_attr.item.unsafety),
+            Some(normal_attr.unsafety),
             expected_safety,
             ParsedDescription::Attribute,
             target_span,
@@ -330,10 +329,10 @@ impl<'sess> AttributeParser<'sess> {
                     }));
                 }
                 ast::AttrKind::Normal(n) => {
-                    attr_paths.push(PathParser(&n.item.path));
-                    let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
+                    attr_paths.push(PathParser(&n.path));
+                    let attr_path = AttrPath::from_ast(&n.path, lower_span);
 
-                    let args = match &n.item.args {
+                    let args = match &n.args {
                         AttrItemKind::Unparsed(args) => args,
                         AttrItemKind::Parsed(parsed) => {
                             early_parsed_state
@@ -343,14 +342,14 @@ impl<'sess> AttributeParser<'sess> {
                     };
 
                     let parts =
-                        n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
-                    let inner_span = lower_span(n.item.span());
+                        n.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+                    let inner_span = lower_span(n.span());
 
                     if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
                         self.check_attribute_safety(
                             &attr_path,
                             inner_span,
-                            n.item.unsafety,
+                            n.unsafety,
                             accept.safety,
                             &mut emit_lint,
                         );
@@ -414,7 +413,7 @@ impl<'sess> AttributeParser<'sess> {
                             attr_style: attr.style,
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
-                            attr_safety: n.item.unsafety,
+                            attr_safety: n.unsafety,
                             attr_path: attr_path.clone(),
                             #[cfg(debug_assertions)]
                             has_target_been_checked: false,
@@ -431,8 +430,7 @@ impl<'sess> AttributeParser<'sess> {
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),
-                            args: self
-                                .lower_attr_args(n.item.args.unparsed_ref().unwrap(), lower_span),
+                            args: self.lower_attr_args(n.args.unparsed_ref().unwrap(), lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
                             span: attr_span,
@@ -441,7 +439,7 @@ impl<'sess> AttributeParser<'sess> {
                         self.check_attribute_safety(
                             &attr_path,
                             inner_span,
-                            n.item.unsafety,
+                            n.unsafety,
                             AttributeSafety::Normal,
                             &mut emit_lint,
                         );

@@ -73,7 +73,7 @@ impl EarlyLintPass for CrateInMacroDef {
 
 fn is_macro_export(attr: &Attribute) -> bool {
     if let AttrKind::Normal(normal) = &attr.kind
-        && let [segment] = normal.item.path.segments.as_slice()
+        && let [segment] = normal.path.segments.as_slice()
     {
         segment.ident.name == sym::macro_export
     } else {

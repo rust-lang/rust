@@ -830,6 +830,7 @@ impl<'a> TraitDef<'a> {
                                 .collect(),
                             },
                         )),
+                        tokens: None,
                     },
                     self.span,
                 ),

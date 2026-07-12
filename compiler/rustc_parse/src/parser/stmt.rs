@@ -499,7 +499,7 @@ impl<'a> Parser<'a> {
         let (attrs, block) = self.parse_inner_attrs_and_block(None)?;
         if let [.., last] = &*attrs {
             let suggest_to_outer = match &last.kind {
-                ast::AttrKind::Normal(attr) => attr.item.is_valid_for_outer_style(),
+                ast::AttrKind::Normal(attr) => attr.is_valid_for_outer_style(),
                 _ => false,
             };
             self.error_on_forbidden_inner_attr(

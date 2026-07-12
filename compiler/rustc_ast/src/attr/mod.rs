@@ -14,15 +14,13 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::AttrItemKind;
 use crate::ast::{
     AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID, DelimArgs,
-    Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
-    PathSegment, Safety,
+    Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, Path, PathSegment,
+    Safety,
 };
 use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
-use crate::tokenstream::{
-    DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
-};
+use crate::tokenstream::{DelimSpan, Spacing, TokenStream, TokenStreamIter, TokenTree};
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
 
@@ -61,7 +59,7 @@ impl AttrIdGenerator {
 impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
         match &self.kind {
-            AttrKind::Normal(normal) => &normal.item,
+            AttrKind::Normal(normal) => normal,
             AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
@@ -70,7 +68,7 @@ impl Attribute {
     /// for making this attribute into a trace attribute, and should otherwise be avoided.
     pub fn replace_args(&mut self, new_args: AttrItemKind) {
         match &mut self.kind {
-            AttrKind::Normal(normal) => normal.item.args = new_args,
+            AttrKind::Normal(normal) => normal.args = new_args,
             AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
@@ -83,7 +81,7 @@ impl AttributeExt for Attribute {
 
     fn value_span(&self) -> Option<Span> {
         match &self.kind {
-            AttrKind::Normal(normal) => match &normal.item.args.unparsed_ref()? {
+            AttrKind::Normal(normal) => match &normal.args.unparsed_ref()? {
                 AttrArgs::Eq { expr, .. } => Some(expr.span),
                 _ => None,
             },
@@ -105,7 +103,7 @@ impl AttributeExt for Attribute {
     fn name(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::Normal(normal) => {
-                if let [ident] = &*normal.item.path.segments {
+                if let [ident] = &*normal.path.segments {
                     Some(ident.ident.name)
                 } else {
                     None
@@ -117,16 +115,14 @@ impl AttributeExt for Attribute {
 
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
         match &self.kind {
-            AttrKind::Normal(p) => {
-                Some(p.item.path.segments.iter().map(|i| i.ident.name).collect())
-            }
+            AttrKind::Normal(p) => Some(p.path.segments.iter().map(|i| i.ident.name).collect()),
             AttrKind::DocComment(_, _) => None,
         }
     }
 
     fn path_span(&self) -> Option<Span> {
         match &self.kind {
-            AttrKind::Normal(attr) => Some(attr.item.path.span),
+            AttrKind::Normal(attr) => Some(attr.path.span),
             AttrKind::DocComment(_, _) => None,
         }
     }
@@ -134,9 +130,8 @@ impl AttributeExt for Attribute {
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self.kind {
             AttrKind::Normal(normal) => {
-                normal.item.path.segments.len() == name.len()
+                normal.path.segments.len() == name.len()
                     && normal
-                        .item
                         .path
                         .segments
                         .iter()
@@ -153,7 +148,7 @@ impl AttributeExt for Attribute {
 
     fn is_word(&self) -> bool {
         if let AttrKind::Normal(normal) = &self.kind {
-            matches!(normal.item.args, AttrItemKind::Unparsed(AttrArgs::Empty))
+            matches!(normal.args, AttrItemKind::Unparsed(AttrArgs::Empty))
         } else {
             false
         }
@@ -168,7 +163,7 @@ impl AttributeExt for Attribute {
     /// ```
     fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta_item_list(),
+            AttrKind::Normal(normal) => normal.meta_item_list(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -190,7 +185,7 @@ impl AttributeExt for Attribute {
     /// ```
     fn value_str(&self) -> Option<Symbol> {
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.value_str(),
+            AttrKind::Normal(normal) => normal.value_str(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -203,9 +198,9 @@ impl AttributeExt for Attribute {
     fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
         match &self.kind {
             AttrKind::DocComment(kind, data) => Some((*data, DocFragmentKind::Sugared(*kind))),
-            AttrKind::Normal(normal) if normal.item.path == sym::doc => {
-                if let Some(value) = normal.item.value_str()
-                    && let Some(value_span) = normal.item.value_span()
+            AttrKind::Normal(normal) if normal.path == sym::doc => {
+                if let Some(value) = normal.value_str()
+                    && let Some(value_span) = normal.value_span()
                 {
                     Some((value, DocFragmentKind::Raw(value_span)))
                 } else {
@@ -223,7 +218,7 @@ impl AttributeExt for Attribute {
     fn doc_str(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::DocComment(.., data) => Some(*data),
-            AttrKind::Normal(normal) if normal.item.path == sym::doc => normal.item.value_str(),
+            AttrKind::Normal(normal) if normal.path == sym::doc => normal.value_str(),
             _ => None,
         }
     }
@@ -231,9 +226,7 @@ impl AttributeExt for Attribute {
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match &self.kind {
             AttrKind::DocComment(..) => Some(self.style),
-            AttrKind::Normal(normal)
-                if normal.item.path == sym::doc && normal.item.value_str().is_some() =>
-            {
+            AttrKind::Normal(normal) if normal.path == sym::doc && normal.value_str().is_some() => {
                 Some(self.style)
             }
             _ => None,
@@ -280,14 +273,14 @@ impl Attribute {
     /// Extracts the MetaItem from inside this Attribute.
     pub fn meta(&self) -> Option<MetaItem> {
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta(self.span),
+            AttrKind::Normal(normal) => normal.meta(self.span),
             AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta_kind(),
+            AttrKind::Normal(normal) => normal.meta_kind(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -309,16 +302,14 @@ impl Attribute {
 
     pub fn deprecation_note(&self) -> Option<Ident> {
         match &self.kind {
-            AttrKind::Normal(normal) if normal.item.path == sym::deprecated => {
-                let meta = &normal.item;
-
+            AttrKind::Normal(normal) if normal.path == sym::deprecated => {
                 // #[deprecated = "..."]
-                if let Some(s) = meta.value_str() {
-                    return Some(Ident { name: s, span: meta.span() });
+                if let Some(s) = normal.value_str() {
+                    return Some(Ident { name: s, span: normal.span() });
                 }
 
                 // #[deprecated(note = "...")]
-                if let Some(list) = meta.meta_item_list() {
+                if let Some(list) = normal.meta_item_list() {
                     for nested in list {
                         if let Some(mi) = nested.meta_item()
                             && mi.path == sym::note
@@ -740,8 +731,7 @@ fn mk_attr(
 ) -> Attribute {
     mk_attr_from_item(
         g,
-        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args) },
-        None,
+        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args), tokens: None },
         style,
         span,
     )
@@ -750,16 +740,10 @@ fn mk_attr(
 pub fn mk_attr_from_item(
     g: &AttrIdGenerator,
     item: AttrItem,
-    tokens: Option<LazyAttrTokenStream>,
     style: AttrStyle,
     span: Span,
 ) -> Attribute {
-    Attribute {
-        kind: AttrKind::Normal(Box::new(NormalAttr { item, tokens })),
-        id: g.mk_attr_id(),
-        style,
-        span,
-    }
+    Attribute { kind: AttrKind::Normal(Box::new(item)), id: g.mk_attr_id(), style, span }
 }
 
 pub fn mk_attr_word(

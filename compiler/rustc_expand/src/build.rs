@@ -777,6 +777,6 @@ impl<'a> ExtCtxt<'a> {
     // Builds an attribute fully manually.
     pub fn attr_nested(&self, inner: AttrItem, span: Span) -> ast::Attribute {
         let g = &self.sess.psess.attr_id_generator;
-        attr::mk_attr_from_item(g, inner, None, ast::AttrStyle::Outer, span)
+        attr::mk_attr_from_item(g, inner, ast::AttrStyle::Outer, span)
     }
 }

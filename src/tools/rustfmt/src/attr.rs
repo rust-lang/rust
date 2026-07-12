@@ -368,7 +368,7 @@ impl Rewrite for ast::Attribute {
                 Ok(meta.rewrite_result(context, shape).map_or_else(
                     |_| snippet.to_owned(),
                     |rw| match &self.kind {
-                        ast::AttrKind::Normal(normal_attr) => match normal_attr.item.unsafety {
+                        ast::AttrKind::Normal(normal_attr) => match normal_attr.unsafety {
                             // For #![feature(unsafe_attributes)]
                             // See https://github.com/rust-lang/rust/issues/123757
                             ast::Safety::Unsafe(_) => format!("{}[unsafe({})]", prefix, rw),

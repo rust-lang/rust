@@ -1013,7 +1013,7 @@ fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
         && match (&l.kind, &r.kind) {
             (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
             (Normal(l), Normal(r)) => {
-                eq_path(&l.item.path, &r.item.path) && eq_attr_item_kind(&l.item.args, &r.item.args)
+                eq_path(&l.path, &r.path) && eq_attr_item_kind(&l.args, &r.args)
             },
             _ => false,
         }

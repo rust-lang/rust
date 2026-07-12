@@ -616,7 +616,7 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
         if attr.has_name(sym::ignore)
             && match &attr.kind {
                 AttrKind::Normal(normal_attr) => {
-                    !matches!(normal_attr.item.args, AttrItemKind::Unparsed(AttrArgs::Eq { .. }))
+                    !matches!(normal_attr.args, AttrItemKind::Unparsed(AttrArgs::Eq { .. }))
                 },
                 AttrKind::DocComment(..) => true,
             }

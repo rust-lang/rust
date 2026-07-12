@@ -19,7 +19,6 @@ impl From<&AttrKind> for SimpleAttrKind {
         match value {
             AttrKind::Normal(attr) => {
                 let path_symbols = attr
-                    .item
                     .path
                     .segments
                     .iter()

@@ -27,7 +27,7 @@ mod llvm_enzyme {
     use crate::diagnostics;
 
     pub(crate) fn outer_normal_attr(
-        kind: &Box<rustc_ast::NormalAttr>,
+        kind: &Box<rustc_ast::AttrItem>,
         id: rustc_ast::AttrId,
         span: Span,
     ) -> rustc_ast::Attribute {
@@ -347,7 +347,7 @@ mod llvm_enzyme {
             eii_impls: ThinVec::new(),
         });
         let mut rustc_ad_attr =
-            Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
+            Box::new(ast::AttrItem::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
 
         let ts2: Vec<TokenTree> = vec![TokenTree::Token(
             Token::new(TokenKind::Ident(sym::never, false.into()), span),
@@ -358,12 +358,12 @@ mod llvm_enzyme {
             delim: ast::token::Delimiter::Parenthesis,
             tokens: TokenStream::from_iter(ts2),
         };
-        let inline_item = ast::AttrItem {
+        let inline_never_attr = Box::new(ast::AttrItem {
             unsafety: ast::Safety::Default,
             path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
             args: rustc_ast::ast::AttrItemKind::Unparsed(ast::AttrArgs::Delimited(never_arg)),
-        };
-        let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
+            tokens: None,
+        });
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
         let attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
@@ -373,8 +373,8 @@ mod llvm_enzyme {
         fn same_attribute(attr: &ast::AttrKind, item: &ast::AttrKind) -> bool {
             match (attr, item) {
                 (ast::AttrKind::Normal(a), ast::AttrKind::Normal(b)) => {
-                    let a = &a.item.path;
-                    let b = &b.item.path;
+                    let a = &a.path;
+                    let b = &b.path;
                     a.segments.iter().eq_by(&b.segments, |a, b| a.ident == b.ident)
                 }
                 _ => false,
@@ -423,7 +423,7 @@ mod llvm_enzyme {
             }
         };
         // Now update for d_fn
-        rustc_ad_attr.item.args = rustc_ast::ast::AttrItemKind::Unparsed(
+        rustc_ad_attr.args = rustc_ast::ast::AttrItemKind::Unparsed(
             rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
                 dspan: DelimSpan::dummy(),
                 delim: rustc_ast::token::Delimiter::Parenthesis,

@@ -859,9 +859,9 @@ impl<'a> Parser<'a> {
             let mut snapshot = self.create_snapshot_for_diagnostic();
             if let [attr] = &expr.attrs[..]
                 && let ast::AttrKind::Normal(attr_kind) = &attr.kind
-                && let [segment] = &attr_kind.item.path.segments[..]
+                && let [segment] = &attr_kind.path.segments[..]
                 && segment.ident.name == sym::cfg
-                && let Some(args_span) = attr_kind.item.args.span()
+                && let Some(args_span) = attr_kind.args.span()
                 && let next_attr = match snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
                 {
                     Ok(next_attr) => next_attr,
@@ -871,8 +871,8 @@ impl<'a> Parser<'a> {
                     }
                 }
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
-                && let Some(next_attr_args_span) = next_attr_kind.item.args.span()
-                && let [next_segment] = &next_attr_kind.item.path.segments[..]
+                && let Some(next_attr_args_span) = next_attr_kind.args.span()
+                && let [next_segment] = &next_attr_kind.path.segments[..]
                 && segment.ident.name == sym::cfg
             {
                 let next_expr = match snapshot.parse_expr() {

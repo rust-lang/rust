@@ -929,7 +929,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_attrs(
                 inner_hir_id,
                 &[Attribute {
-                    kind: AttrKind::Normal(Box::new(NormalAttr::from_ident(Ident::new(
+                    kind: AttrKind::Normal(Box::new(AttrItem::from_ident(Ident::new(
                         sym::track_caller,
                         span,
                     )))),

@@ -3416,7 +3416,7 @@ pub struct Attribute {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum AttrKind {
     /// A normal attribute.
-    Normal(Box<NormalAttr>),
+    Normal(Box<AttrItem>),
 
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
@@ -3425,30 +3425,24 @@ pub enum AttrKind {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub struct NormalAttr {
-    pub item: AttrItem,
-    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`.
-    pub tokens: Option<LazyAttrTokenStream>,
-}
-
-impl NormalAttr {
-    pub fn from_ident(ident: Ident) -> Self {
-        Self {
-            item: AttrItem {
-                unsafety: Safety::Default,
-                path: Path::from_ident(ident),
-                args: AttrItemKind::Unparsed(AttrArgs::Empty),
-            },
-            tokens: None,
-        }
-    }
-}
-
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
     pub args: AttrItemKind,
+    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
+    // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+impl AttrItem {
+    pub fn from_ident(ident: Ident) -> Self {
+        Self {
+            unsafety: Safety::Default,
+            path: Path::from_ident(ident),
+            args: AttrItemKind::Unparsed(AttrArgs::Empty),
+            tokens: None,
+        }
+    }
 }
 
 /// Some attributes are stored in a parsed form, for performance reasons.
@@ -4382,6 +4376,7 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(AssocItem, 72);
     static_assert_size!(AssocItemKind, 16);
+    static_assert_size!(AttrItem, 72);
     static_assert_size!(AttrKind, 16);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 24);
@@ -4407,7 +4402,6 @@ mod size_asserts {
     static_assert_size!(MetaItem, 80);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
-    static_assert_size!(NormalAttr, 72);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 64);
     static_assert_size!(PatKind, 48);

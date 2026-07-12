@@ -177,7 +177,6 @@ impl<'a> Parser<'a> {
             Ok(attr::mk_attr_from_item(
                 &self.psess.attr_id_generator,
                 attr_item.node,
-                None,
                 style,
                 attr_sp,
             ))
@@ -354,6 +353,7 @@ impl<'a> Parser<'a> {
                     unsafety,
                     path,
                     args: AttrItemKind::Unparsed(args),
+                    tokens: None,
                 }),
                 Trailing::No,
                 UsePreAttrPos::No,
