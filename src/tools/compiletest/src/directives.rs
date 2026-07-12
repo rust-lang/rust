@@ -899,52 +899,82 @@ pub(crate) fn make_test_description(
     let mut ignore_message: Option<Cow<'static, str>> = None;
     let mut should_fail = false;
 
-    // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
-    iter_directives(config, file_directives, &mut |ln @ &DirectiveLine { line_number, .. }| {
-        if !ln.applies_to_test_revision(test_revision) {
-            return;
-        }
-
-        // Parse `aux-*` directives, for use by up-to-date checks.
-        parse_and_update_aux(config, ln, aux_props);
-
-        macro_rules! decision {
-            ($e:expr) => {
-                match $e {
-                    IgnoreDecision::Ignore { reason } => {
-                        ignore_message = Some(reason.into());
-                    }
-                    IgnoreDecision::Error { message } => {
-                        error!("{path}:{line_number}: {message}");
-                        *poisoned = true;
-                        return;
-                    }
-                    IgnoreDecision::Continue => {}
+    // Perform a per-file (rather than per-line) ignore decision to skip running debuginfo tests
+    // if we don't have a debugger for them available.
+    // This is needed because we duplicate the Config once for each debugger.
+    if config.mode == TestMode::DebugInfo {
+        match &config.debugger {
+            Some(Debugger::Cdb) => {
+                if let Some(msg) = check_cdb_support(config) {
+                    ignore_message = Some(Cow::Owned(msg));
                 }
-            };
+            }
+            Some(Debugger::Gdb) => {
+                if let Some(msg) = check_gdb_support(config) {
+                    ignore_message = Some(Cow::Owned(msg));
+                }
+            }
+            Some(Debugger::Lldb) => {
+                if let Some(msg) = check_lldb_support(config) {
+                    ignore_message = Some(Cow::Owned(msg));
+                }
+            }
+            None => {}
         }
+    }
 
-        decision!(cfg::handle_ignore(&cache.cfg_conditions, ln));
-        decision!(cfg::handle_only(&cache.cfg_conditions, ln));
-        decision!(needs::handle_needs(&cache.needs, config, ln));
-        decision!(ignore_llvm(config, ln));
-        decision!(ignore_backends(config, ln));
-        decision!(needs_backends(config, ln));
-        decision!(ignore_cdb(config, ln));
-        decision!(ignore_gdb(config, ln));
-        decision!(ignore_lldb(config, ln));
-        decision!(ignore_parallel_frontend(config, ln));
+    if ignore_message.is_none() {
+        // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
+        iter_directives(
+            config,
+            file_directives,
+            &mut |ln @ &DirectiveLine { line_number, .. }| {
+                if !ln.applies_to_test_revision(test_revision) {
+                    return;
+                }
 
-        if config.target == "wasm32-unknown-unknown"
-            && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
-        {
-            decision!(IgnoreDecision::Ignore {
-                reason: "ignored on WASM as the run results cannot be checked there".into(),
-            });
-        }
+                // Parse `aux-*` directives, for use by up-to-date checks.
+                parse_and_update_aux(config, ln, aux_props);
 
-        should_fail |= config.parse_name_directive(ln, "should-fail");
-    });
+                macro_rules! decision {
+                    ($e:expr) => {
+                        match $e {
+                            IgnoreDecision::Ignore { reason } => {
+                                ignore_message = Some(reason.into());
+                            }
+                            IgnoreDecision::Error { message } => {
+                                error!("{path}:{line_number}: {message}");
+                                *poisoned = true;
+                                return;
+                            }
+                            IgnoreDecision::Continue => {}
+                        }
+                    };
+                }
+
+                decision!(cfg::handle_ignore(&cache.cfg_conditions, ln));
+                decision!(cfg::handle_only(&cache.cfg_conditions, ln));
+                decision!(needs::handle_needs(&cache.needs, config, ln));
+                decision!(ignore_llvm(config, ln));
+                decision!(ignore_backends(config, ln));
+                decision!(needs_backends(config, ln));
+                decision!(ignore_cdb(config, ln));
+                decision!(ignore_gdb(config, ln));
+                decision!(ignore_lldb(config, ln));
+                decision!(ignore_parallel_frontend(config, ln));
+
+                if config.target == "wasm32-unknown-unknown"
+                    && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
+                {
+                    decision!(IgnoreDecision::Ignore {
+                        reason: "ignored on WASM as the run results cannot be checked there".into(),
+                    });
+                }
+
+                should_fail |= config.parse_name_directive(ln, "should-fail");
+            },
+        );
+    }
 
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.
@@ -961,6 +991,32 @@ pub(crate) fn make_test_description(
         ignore_message,
         should_fail,
     }
+}
+
+/// Returns `None` if CDB is available, otherwise returns an ignore message.
+fn check_cdb_support(config: &Config) -> Option<String> {
+    if config.cdb.is_none() { Some("cdb is not available".to_string()) } else { None }
+}
+
+/// Returns `None` if GDB is available, otherwise returns an ignore message.
+fn check_gdb_support(config: &Config) -> Option<String> {
+    if config.gdb_version.is_none() {
+        return Some("gdb is not available".to_string());
+    }
+
+    if config.matches_env("msvc") {
+        return Some("gdb tests do not run on msvc".to_string());
+    }
+
+    if config.remote_test_client.is_some() && !config.target.contains("android") {
+        return Some("gdb tests are not available when testing with remote".to_string());
+    }
+    None
+}
+
+/// Returns `None` if LLDB is available, otherwise returns an ignore message.
+fn check_lldb_support(config: &Config) -> Option<String> {
+    if config.lldb.is_none() { Some("lldb is not available".to_string()) } else { None }
 }
 
 fn ignore_cdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
