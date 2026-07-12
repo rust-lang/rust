@@ -210,6 +210,15 @@ impl SnippetEdit {
     pub fn into_edit_ranges(self) -> Vec<(u32, TextRange)> {
         self.0
     }
+
+    /// Escapes `\` and `$` so that they don't get interpreted as snippet-specific constructs.
+    ///
+    /// Note that we don't need to escape the other characters that can be escaped,
+    /// because they wouldn't be treated as snippet-specific constructs without '$'.
+    pub fn escape_snippet_bits(text: &mut String) {
+        stdx::replace(text, '\\', "\\\\");
+        stdx::replace(text, '$', "\\$");
+    }
 }
 
 pub struct SourceChangeBuilder {
