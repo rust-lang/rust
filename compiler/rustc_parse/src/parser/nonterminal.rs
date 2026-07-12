@@ -110,7 +110,7 @@ impl<'a> Parser<'a> {
                 _ => token.is_keyword(kw::If),
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
-                token.kind.close_delim().is_none()
+                token.kind != token::Eof && token.kind.close_delim().is_none()
             }
         }
     }

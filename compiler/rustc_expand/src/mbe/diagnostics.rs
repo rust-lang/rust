@@ -148,6 +148,12 @@ pub(super) fn failed_to_match_macro(
 struct CollectTrackerAndEmitter<'dcx, 'matcher> {
     macro_name: Ident,
     dcx: DiagCtxtHandle<'dcx>,
+
+    /// The matcher currently being parsed.
+    //
+    // FIXME: Factor out a per-arm `Tracker` so that the `Option` is unnecessary.
+    current: Option<WhichMatcher>,
+
     remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
     best_failure: Option<BestFailure>,
@@ -177,10 +183,12 @@ impl BestFailure {
 }
 
 impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'matcher> {
-    type Failure = (Token, u32, &'static str);
+    fn prepare(&mut self, which_matcher: WhichMatcher) {
+        if self.current.is_some() {
+            bug!("`Self::after_arm()` was not called to clean up context");
+        }
 
-    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
-        (tok, position, msg)
+        self.current = Some(which_matcher);
     }
 
     fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc) {
@@ -191,7 +199,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
-    fn after_arm(&mut self, which_matcher: WhichMatcher, result: &NamedParseResult<Self::Failure>) {
+    fn after_arm(&mut self, result: &NamedParseResult) {
         match *result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -201,30 +209,56 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     "should not collect detailed info for successful macro match",
                 );
             }
-            Failure((token, approx_position, msg)) => {
-                debug!(?token, ?msg, "a new failure of an arm");
-
-                if self.best_failure.as_ref().is_none_or(|failure| {
-                    failure.is_better_position(which_matcher, approx_position)
-                }) {
-                    self.best_failure = Some(BestFailure {
-                        token,
-                        matcher: which_matcher,
-                        position: approx_position,
-                        msg,
-                        remaining_matcher: self
-                            .remaining_matcher
-                            .expect("must have collected matcher already")
-                            .clone(),
-                    })
+            Failure => {
+                if self.best_failure.is_none() {
+                    bug!("A matching failure occurred but `Self::failure()` was not called");
                 }
             }
             Ambiguity => {
                 if self.result.is_none() {
-                    bug!("`Error(..)` is only constructed through `Self::ambiguity()`");
+                    bug!("An ambiguity error occurred but `Self::ambiguity()` was not called");
                 }
             }
             ErrorReported(guar) => self.result = Some((self.root_span, guar)),
+        }
+
+        self.current = None;
+    }
+
+    fn failure(&mut self, parser: &Parser<'_>) {
+        let Some(which_matcher) = self.current else {
+            bug!("`Self::prepare()` was not called to initialize context");
+        };
+
+        let mut token = parser.token;
+        let approx_position = parser.approx_token_stream_pos();
+        let msg = if token.kind == token::Eof {
+            // FIXME: Can this be factored out of the EOF case?
+            if !token.span.is_dummy() {
+                token.span = token.span.shrink_to_hi();
+            }
+            "missing tokens in macro arguments"
+        } else {
+            "no rules expected this token in macro call"
+        };
+
+        debug!(?token, ?msg, "a new failure of an arm");
+
+        if self
+            .best_failure
+            .as_ref()
+            .is_none_or(|failure| failure.is_better_position(which_matcher, approx_position))
+        {
+            self.best_failure = Some(BestFailure {
+                token,
+                matcher: which_matcher,
+                position: approx_position,
+                msg,
+                remaining_matcher: self
+                    .remaining_matcher
+                    .expect("must have collected matcher already")
+                    .clone(),
+            })
         }
     }
 
@@ -281,6 +315,7 @@ impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
         Self {
             macro_name,
             dcx,
+            current: None,
             remaining_matcher: None,
             best_failure: None,
             root_span,
