@@ -412,7 +412,7 @@ fn array_length(
     let (ty1, expected) = d.expected.as_array(ctx.db())?;
     let (ty2, actual) = d.actual.as_array(ctx.db())?;
 
-    if ty1 != ty2 || expected == actual {
+    if !ty1.could_unify_with(ctx.db(), &ty2) || expected == actual {
         return None;
     }
 
