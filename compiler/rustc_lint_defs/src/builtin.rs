@@ -4952,6 +4952,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "unsafe-extern"),
     };
+    @msrv = "1.82";
 }
 
 declare_lint! {
