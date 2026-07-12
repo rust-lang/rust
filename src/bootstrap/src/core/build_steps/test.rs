@@ -1975,6 +1975,12 @@ impl Step for Coverage {
         for mode in Self::ALL_MODES {
             run = run.alias(mode.as_str());
         }
+
+        // Allow `./x test --skip=tests` to properly skip the coverage tests,
+        // by not treating the `coverage-map` and `coverage-run` aliases as
+        // implied command-line arguments.
+        run = run.default_to_suites_only();
+
         run
     }
 
@@ -2015,13 +2021,6 @@ impl Step for Coverage {
         modes.retain(|mode| {
             !run.builder.config.skip.iter().any(|skip| skip == Path::new(mode.as_str()))
         });
-
-        // FIXME(Zalathar): Make these commands skip all coverage tests, as expected:
-        // - `./x test --skip=tests`
-        // - `./x test --skip=tests/coverage`
-        // - `./x test --skip=coverage`
-        // Skip handling currently doesn't have a way to know that skipping the coverage
-        // suite should also skip the `coverage-map` and `coverage-run` aliases.
 
         for mode in modes {
             run.builder.ensure(Coverage { compiler, target, mode });
