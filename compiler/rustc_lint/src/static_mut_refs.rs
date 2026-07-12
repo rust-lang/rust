@@ -184,7 +184,7 @@ fn emit_static_mut_refs(
     };
 
     let (interior_mutability_help, interior_mutability_sugg) =
-        interior_mutability_suggestion(cx, def_id, mut_note);
+        interior_mutability_suggestion(cx, def_id, mut_note, suggest_addr_of);
 
     cx.emit_span_lint(
         STATIC_MUT_REFS,
@@ -209,12 +209,13 @@ fn interior_mutability_suggestion(
     cx: &LateContext<'_>,
     def_id: DefId,
     mut_ref: bool,
+    suggest_addr_of: bool,
 ) -> (bool, Option<StaticMutRefsInteriorMutabilitySugg>) {
     let static_ty = cx.tcx.type_of(def_id).skip_binder();
     let has_interior_mutability = !static_ty.is_freeze(cx.tcx, cx.typing_env());
 
     if !has_interior_mutability {
-        return (true, None);
+        return (!suggest_addr_of, None);
     }
 
     if mut_ref {
