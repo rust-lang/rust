@@ -770,7 +770,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let val = if let Some(_) = place.val.llextra {
             // FIXME: Merge with the `else` below?
             OperandValue::Ref(place.val)
-        } else if place.layout.is_llvm_immediate() {
+        } else if place.layout.backend_repr.is_scalar_or_simd() {
             let mut const_llval = None;
             let llty = place.layout.llvm_type(self);
             if let Some(global) = llvm::LLVMIsAGlobalVariable(place.val.llval) {

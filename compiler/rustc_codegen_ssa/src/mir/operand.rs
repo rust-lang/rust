@@ -28,25 +28,43 @@ use crate::traits::*;
 pub enum OperandValue<V> {
     /// A reference to the actual operand. The data is guaranteed
     /// to be valid for the operand's lifetime.
-    /// The second value, if any, is the extra data (vtable or length)
+    /// The [`PlaceValue::llextra`], if any, is the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
     ///
     /// An `OperandValue` *must* be this variant for any type for which
-    /// [`LayoutTypeCodegenMethods::is_backend_ref`] returns `true`.
+    /// [`rustc_abi::LayoutData::is_ssa_standalone`] returns `false`.
     /// (That basically amounts to "isn't one of the other variants".)
     ///
     /// This holds a [`PlaceValue`] (like a [`PlaceRef`] does) with a pointer
     /// to the location holding the value. The type behind that pointer is the
     /// one returned by [`LayoutTypeCodegenMethods::backend_type`].
+    ///
+    /// Note that a [`load_operand`] which produces this variant didn't actually
+    /// *load* anything; it just put the pointer-to-place into this variant.
+    ///
+    /// [`load_operand`]: BuilderMethods::load_operand
     Ref(PlaceValue<V>),
     /// A single LLVM immediate value.
     ///
-    /// An `OperandValue` *must* be this variant for any type for which
-    /// [`LayoutTypeCodegenMethods::is_backend_immediate`] returns `true`.
+    /// An `OperandValue` *must* be this variant for any type that's
+    /// [`BackendRepr::Scalar`], [`BackendRepr::SimdVector`], or
+    /// [`BackendRepr::SimdScalableVector`].
+    ///
     /// The backend value in this variant must be the *immediate* backend type,
     /// as returned by [`LayoutTypeCodegenMethods::immediate_backend_type`].
+    ///
+    /// Notably, that means that in LLVM a `bool` is `i1` here, even though we
+    /// load and store `bool`s as LLVM's `i8` type. Methods such as
+    /// [`BuilderMethods::load_operand`] and [`OperandRef::store_with_annotation`]
+    /// will handle that correctly, but if you're using the value directly or
+    /// implementing such methods, be sure to convert using
+    /// [`BuilderMethods::from_immediate`] and [`BuilderMethods::to_immediate_scalar`]
+    /// in the appropriate places.
     Immediate(V),
-    /// A pair of immediate LLVM values. Used by wide pointers too.
+    /// A pair of immediate LLVM values.
+    ///
+    /// Notably this includes wide pointers, where the two values are the pointer
+    /// and the metadata (slice length, vtable pointer, etc).
     ///
     /// # Invariants
     /// - For `Pair(a, b)`, `a` is always at offset 0, but may have `FieldIdx(1..)`
@@ -54,11 +72,10 @@ pub enum OperandValue<V> {
     /// - `a` and `b` will have a different FieldIdx, but otherwise `b`'s may be lower
     ///   or they may not be adjacent, due to arbitrary numbers of 1ZST fields that
     ///   will not affect the shape of the data which determines if `Pair` will be used.
-    /// - An `OperandValue` *must* be this variant for any type for which
-    /// [`LayoutTypeCodegenMethods::is_backend_scalar_pair`] returns `true`.
+    /// - An `OperandValue` *must* be this variant for any type that's [`BackendRepr::ScalarPair`].
     /// - The backend values in this variant must be the *immediate* backend types,
     /// as returned by [`LayoutTypeCodegenMethods::scalar_pair_element_backend_type`]
-    /// with `immediate: true`.
+    /// with `immediate: true`. See the note in [`Self::Immediate`].
     Pair(V, V),
     /// A value taking no bytes, and which therefore needs no LLVM value at all.
     ///
@@ -104,16 +121,18 @@ impl<V: CodegenObject> OperandValue<V> {
     }
 
     #[must_use]
-    pub(crate) fn is_expected_variant_for_type<'tcx, Cx: LayoutTypeCodegenMethods<'tcx>>(
-        &self,
-        cx: &Cx,
-        ty: TyAndLayout<'tcx>,
-    ) -> bool {
-        match self {
-            OperandValue::ZeroSized => ty.is_zst(),
-            OperandValue::Immediate(_) => cx.is_backend_immediate(ty),
-            OperandValue::Pair(_, _) => cx.is_backend_scalar_pair(ty),
-            OperandValue::Ref(_) => cx.is_backend_ref(ty),
+    pub(crate) fn is_expected_variant_for_type<'tcx>(&self, ty: TyAndLayout<'tcx>) -> bool {
+        match (self, ty.backend_repr) {
+            (OperandValue::ZeroSized, BackendRepr::Memory { .. }) => ty.is_zst(),
+            (OperandValue::Ref(_), BackendRepr::Memory { .. }) => !ty.is_zst(),
+            (
+                OperandValue::Immediate(_),
+                BackendRepr::Scalar(..)
+                | BackendRepr::SimdVector { .. }
+                | BackendRepr::SimdScalableVector { .. },
+            ) => true,
+            (OperandValue::Pair(_, _), BackendRepr::ScalarPair { .. }) => true,
+            _ => false,
         }
     }
 }
@@ -369,11 +388,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let field = self.layout.field(bx.cx(), i);
         let offset = self.layout.fields.offset(i);
 
-        if !bx.is_backend_ref(self.layout) && bx.is_backend_ref(field) {
+        if self.layout.is_ssa_standalone() && !field.is_ssa_standalone() {
             // Part of https://github.com/rust-lang/compiler-team/issues/838
             span_bug!(
                 fx.mir.span,
-                "Non-ref type {self:?} cannot project to ref field type {field:?}",
+                "Standalone type {self:?} cannot project to memory-dependent field type {field:?}",
             );
         }
 
@@ -943,18 +962,23 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         layout: TyAndLayout<'tcx>,
     ) -> OperandValue<V> {
         assert!(layout.is_sized());
-        if layout.is_zst() {
-            OperandValue::ZeroSized
-        } else if bx.cx().is_backend_immediate(layout) {
-            let ibty = bx.cx().immediate_backend_type(layout);
-            OperandValue::Immediate(bx.const_poison(ibty))
-        } else if bx.cx().is_backend_scalar_pair(layout) {
-            let ibty0 = bx.cx().scalar_pair_element_backend_type(layout, 0, true);
-            let ibty1 = bx.cx().scalar_pair_element_backend_type(layout, 1, true);
-            OperandValue::Pair(bx.const_poison(ibty0), bx.const_poison(ibty1))
-        } else {
-            let ptr = bx.cx().type_ptr();
-            OperandValue::Ref(PlaceValue::new_sized(bx.const_poison(ptr), layout.align.abi))
+        match layout.backend_repr {
+            _ if layout.is_zst() => OperandValue::ZeroSized,
+            BackendRepr::Scalar(_)
+            | BackendRepr::SimdVector { .. }
+            | BackendRepr::SimdScalableVector { .. } => {
+                let ibty = bx.cx().immediate_backend_type(layout);
+                OperandValue::Immediate(bx.const_poison(ibty))
+            }
+            BackendRepr::ScalarPair { .. } => {
+                let ibty0 = bx.cx().scalar_pair_element_backend_type(layout, 0, true);
+                let ibty1 = bx.cx().scalar_pair_element_backend_type(layout, 1, true);
+                OperandValue::Pair(bx.const_poison(ibty0), bx.const_poison(ibty1))
+            }
+            BackendRepr::Memory { .. } => {
+                let ptr = bx.cx().type_ptr();
+                OperandValue::Ref(PlaceValue::new_sized(bx.const_poison(ptr), layout.align.abi))
+            }
         }
     }
 
