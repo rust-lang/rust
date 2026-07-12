@@ -664,6 +664,8 @@ declare_features! (
     (unstable, naked_functions_rustic_abi, "1.88.0", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
     (unstable, naked_functions_target_feature, "1.86.0", Some(138568)),
+    /// Allows providing names to parameters of `impl Fn` etc
+    (unstable, named_fn_trait_parameters, "CURRENT_RUSTC_VERSION", Some(158499)),
     /// Allows specifying the as-needed link modifier
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
     /// Allow negative trait implementations.

@@ -17,8 +17,8 @@ use super::{Parser, Restrictions, TokenType};
 use crate::ast::{PatKind, TyKind};
 use crate::errors::{
     self, AttributeOnEmptyType, AttributeOnGenericArg, ConstGenericWithoutBraces,
-    ConstGenericWithoutBracesSugg, FnPathFoundNamedParams, PathFoundAttributeInParams,
-    PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
+    ConstGenericWithoutBracesSugg, PathFoundAttributeInParams, PathFoundCVariadicParams,
+    PathSingleColon, PathTripleColon,
 };
 use crate::exp;
 use crate::parser::{
@@ -406,11 +406,11 @@ impl<'a> Parser<'a> {
                             req_body: false,
                         };
                         let param = p.parse_param_general(&mode, false, false);
-                        param.map(move |param| {
+                        param.map(|param| {
                             if !matches!(param.pat.kind, PatKind::Missing) {
-                                dcx.emit_err(FnPathFoundNamedParams {
-                                    named_param_span: param.pat.span,
-                                });
+                                self.psess
+                                    .gated_spans
+                                    .gate(sym::named_fn_trait_parameters, param.pat.span);
                             }
                             if matches!(param.ty.kind, TyKind::CVarArgs) {
                                 dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
