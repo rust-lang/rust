@@ -648,6 +648,15 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)))
     }
 
+    /// Check if this instance requires a caller location argument.
+    ///
+    /// Functions with `#[track_caller]` have an implicit extra
+    /// `&'static core::panic::Location<'static>` argument appended to their ABI,
+    /// which is not visible in their MIR body signature.
+    pub fn instance_requires_caller_location(&self, instance: ty::Instance<'tcx>) -> bool {
+        instance.def.requires_caller_location(self.tcx)
+    }
+
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
     pub fn mono_instance(&self, def_id: DefId) -> Instance<'tcx> {

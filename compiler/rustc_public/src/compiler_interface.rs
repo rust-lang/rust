@@ -637,6 +637,14 @@ impl<'tcx> CompilerInterface<'tcx> {
         })
     }
 
+    /// Check if this instance requires a caller location argument.
+    pub(crate) fn instance_requires_caller_location(&self, def: InstanceDef) -> bool {
+        self.with_cx(|tables, cx| {
+            let instance = tables.instances[def];
+            cx.instance_requires_caller_location(instance)
+        })
+    }
+
     /// Check if this is an empty DropGlue shim.
     pub(crate) fn is_empty_drop_shim(&self, def: InstanceDef) -> bool {
         self.with_cx(|tables, cx| {
