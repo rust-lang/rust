@@ -174,27 +174,6 @@ pub(crate) fn abs_f128(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
     fx.bcx.ins().bitcast(types::F128, MemFlagsData::new(), bits)
 }
 
-pub(crate) fn copysign_f16(fx: &mut FunctionCx<'_, '_, '_>, lhs: Value, rhs: Value) -> Value {
-    let lhs = fx.bcx.ins().bitcast(types::I16, MemFlagsData::new(), lhs);
-    let rhs = fx.bcx.ins().bitcast(types::I16, MemFlagsData::new(), rhs);
-    let res = fx.bcx.ins().band_imm_u(lhs, 0x7fff);
-    let sign = fx.bcx.ins().band_imm_u(rhs, 0x8000);
-    let res = fx.bcx.ins().bor(res, sign);
-    fx.bcx.ins().bitcast(types::F16, MemFlagsData::new(), res)
-}
-
-pub(crate) fn copysign_f128(fx: &mut FunctionCx<'_, '_, '_>, lhs: Value, rhs: Value) -> Value {
-    let lhs = fx.bcx.ins().bitcast(types::I128, MemFlagsData::new(), lhs);
-    let rhs = fx.bcx.ins().bitcast(types::I128, MemFlagsData::new(), rhs);
-    let (low, lhs_high) = fx.bcx.ins().isplit(lhs);
-    let (_, rhs_high) = fx.bcx.ins().isplit(rhs);
-    let high = fx.bcx.ins().band_imm_u(lhs_high, 0x7fff_ffff_ffff_ffff_u64 as i64);
-    let sign = fx.bcx.ins().band_imm_u(rhs_high, 0x8000_0000_0000_0000_u64 as i64);
-    let high = fx.bcx.ins().bor(high, sign);
-    let res = fx.bcx.ins().iconcat(low, high);
-    fx.bcx.ins().bitcast(types::F128, MemFlagsData::new(), res)
-}
-
 pub(crate) fn codegen_cast(
     fx: &mut FunctionCx<'_, '_, '_>,
     from: Value,
