@@ -1,135 +1,23 @@
+//@run-native
+
 #![feature(pointer_is_aligned_to)]
+#![allow(unused_features)] // use is target-dependent
+
 use std::{mem, ptr, slice};
 
 #[path = "../../utils/mod.rs"]
 mod utils;
 use utils::check_nondet;
 
-fn test_memcpy() {
-    unsafe {
-        let src = [1i8, 2, 3];
-        let dest = libc::calloc(3, 1);
-        libc::memcpy(dest, src.as_ptr() as *const libc::c_void, 3);
-        let slc = std::slice::from_raw_parts(dest as *const i8, 3);
-        assert_eq!(*slc, [1i8, 2, 3]);
-        libc::free(dest);
-    }
-
-    unsafe {
-        let src = [1i8, 2, 3];
-        let dest = libc::calloc(4, 1);
-        libc::memcpy(dest, src.as_ptr() as *const libc::c_void, 3);
-        let slc = std::slice::from_raw_parts(dest as *const i8, 4);
-        assert_eq!(*slc, [1i8, 2, 3, 0]);
-        libc::free(dest);
-    }
-
-    unsafe {
-        let src = 123_i32;
-        let mut dest = 0_i32;
-        libc::memcpy(
-            &mut dest as *mut i32 as *mut libc::c_void,
-            &src as *const i32 as *const libc::c_void,
-            mem::size_of::<i32>(),
-        );
-        assert_eq!(dest, src);
-    }
-
-    unsafe {
-        let src = Some(123);
-        let mut dest: Option<i32> = None;
-        libc::memcpy(
-            &mut dest as *mut Option<i32> as *mut libc::c_void,
-            &src as *const Option<i32> as *const libc::c_void,
-            mem::size_of::<Option<i32>>(),
-        );
-        assert_eq!(dest, src);
-    }
-
-    unsafe {
-        let src = &123;
-        let mut dest = &42;
-        libc::memcpy(
-            &mut dest as *mut &'static i32 as *mut libc::c_void,
-            &src as *const &'static i32 as *const libc::c_void,
-            mem::size_of::<&'static i32>(),
-        );
-        assert_eq!(*dest, 123);
-    }
-}
-
-fn test_strcpy() {
-    use std::ffi::CStr;
-
-    // case: src_size equals dest_size
-    unsafe {
-        let src = c"rust";
-        let size = src.to_bytes_with_nul().len();
-        let dest = libc::malloc(size);
-        libc::strcpy(dest as *mut libc::c_char, src.as_ptr());
-        assert_eq!(CStr::from_ptr(dest as *const libc::c_char), src.as_ref());
-        libc::free(dest);
-    }
-
-    // case: src_size is less than dest_size
-    unsafe {
-        let src = c"rust";
-        let size = src.to_bytes_with_nul().len();
-        let dest = libc::malloc(size + 1);
-        libc::strcpy(dest as *mut libc::c_char, src.as_ptr());
-        assert_eq!(CStr::from_ptr(dest as *const libc::c_char), src.as_ref());
-        libc::free(dest);
-    }
-}
-
-fn test_memset() {
-    unsafe {
-        let val = 1;
-        let dest = libc::calloc(3, 1);
-        libc::memset(dest, val, 3);
-        let slc = std::slice::from_raw_parts(dest as *const i8, 3);
-        assert_eq!(*slc, [1i8, 1, 1]);
-        libc::free(dest);
-    }
-
-    unsafe {
-        let val = 1;
-        let dest = libc::calloc(4, 1);
-        libc::memset(dest, val, 3);
-        let slc = std::slice::from_raw_parts(dest as *const i8, 4);
-        assert_eq!(*slc, [1i8, 1, 1, 0]);
-        libc::free(dest);
-    }
-
-    unsafe {
-        let val = 1;
-        let mut dest = 0_i8;
-        libc::memset(&mut dest as *mut i8 as *mut libc::c_void, val, mem::size_of::<i8>());
-        assert_eq!(dest, val as i8);
-    }
-
-    unsafe {
-        let val = 1;
-        let mut dest = 0_i16;
-        libc::memset(&mut dest as *mut i16 as *mut libc::c_void, val, mem::size_of::<i16>());
-        assert_eq!(dest, 257);
-    }
-
-    unsafe {
-        let val = 257;
-        let mut dest = 0_i16;
-        libc::memset(&mut dest as *mut i16 as *mut libc::c_void, val, mem::size_of::<i16>());
-        assert_eq!(dest, 257);
-    }
-}
-
 fn test_malloc() {
-    // Test that small allocations sometimes are *not* very aligned (and sometimes they are).
-    check_nondet(|| unsafe {
-        let p = libc::malloc(3);
-        libc::free(p);
-        (p as usize) % 4 == 0
-    });
+    if cfg!(miri) {
+        // Test that small allocations sometimes are *not* very aligned (and sometimes they are).
+        check_nondet(|| unsafe {
+            let p = libc::malloc(3);
+            libc::free(p);
+            (p as usize) % 4 == 0
+        });
+    }
 
     unsafe {
         let p1 = libc::malloc(20);
@@ -300,40 +188,237 @@ fn test_reallocarray() {
 
 #[cfg(not(target_os = "windows"))]
 fn test_aligned_alloc() {
-    // libc doesn't have this function (https://github.com/rust-lang/libc/issues/3689),
-    // so we declare it ourselves.
-    extern "C" {
-        fn aligned_alloc(alignment: libc::size_t, size: libc::size_t) -> *mut libc::c_void;
-    }
-    // size not a multiple of the alignment
-    unsafe {
-        let p = aligned_alloc(16, 3);
-        assert_eq!(p, ptr::null_mut());
+    // size not a multiple of the alignment. glibc gets this wrong so we only check it in Miri.
+    if cfg!(miri) {
+        unsafe {
+            let p = libc::aligned_alloc(16, 3);
+            assert_eq!(p, ptr::null_mut());
+        }
     }
 
     // alignment not power of 2
     unsafe {
-        let p = aligned_alloc(63, 8);
+        let p = libc::aligned_alloc(63, 8);
         assert_eq!(p, ptr::null_mut());
     }
 
     // repeated tests on correct alignment/size
     for _ in 0..16 {
         // alignment 1, size 4 should succeed and actually must align to 4 (because C says so...)
-        unsafe {
-            let p = aligned_alloc(1, 4);
-            assert!(!p.is_null());
-            assert!(p.is_aligned_to(4));
-            libc::free(p);
+        // ... but on native macOS they don't seem to actually implement this correctly.
+        if cfg!(miri) || cfg!(not(target_vendor = "apple")) {
+            unsafe {
+                let p = libc::aligned_alloc(1, 4);
+                assert!(!p.is_null());
+                assert!(p.is_aligned_to(4));
+                libc::free(p);
+            }
         }
 
         unsafe {
-            let p = aligned_alloc(64, 64);
+            let p = libc::aligned_alloc(64, 64);
             assert!(!p.is_null());
             assert!(p.is_aligned_to(64));
             libc::free(p);
         }
     }
+}
+
+fn test_memcpy() {
+    unsafe {
+        let src = [1i8, 2, 3];
+        let dest = libc::calloc(3, 1);
+        libc::memcpy(dest, src.as_ptr() as *const libc::c_void, 3);
+        let slc = std::slice::from_raw_parts(dest as *const i8, 3);
+        assert_eq!(*slc, [1i8, 2, 3]);
+        libc::free(dest);
+    }
+
+    unsafe {
+        let src = [1i8, 2, 3];
+        let dest = libc::calloc(4, 1);
+        libc::memcpy(dest, src.as_ptr() as *const libc::c_void, 3);
+        let slc = std::slice::from_raw_parts(dest as *const i8, 4);
+        assert_eq!(*slc, [1i8, 2, 3, 0]);
+        libc::free(dest);
+    }
+
+    unsafe {
+        let src = 123_i32;
+        let mut dest = 0_i32;
+        libc::memcpy(
+            &mut dest as *mut i32 as *mut libc::c_void,
+            &src as *const i32 as *const libc::c_void,
+            mem::size_of::<i32>(),
+        );
+        assert_eq!(dest, src);
+    }
+
+    unsafe {
+        let src = Some(123);
+        let mut dest: Option<i32> = None;
+        libc::memcpy(
+            &mut dest as *mut Option<i32> as *mut libc::c_void,
+            &src as *const Option<i32> as *const libc::c_void,
+            mem::size_of::<Option<i32>>(),
+        );
+        assert_eq!(dest, src);
+    }
+
+    unsafe {
+        let src = &123;
+        let mut dest = &42;
+        libc::memcpy(
+            &mut dest as *mut &'static i32 as *mut libc::c_void,
+            &src as *const &'static i32 as *const libc::c_void,
+            mem::size_of::<&'static i32>(),
+        );
+        assert_eq!(*dest, 123);
+    }
+}
+
+fn test_strcpy() {
+    use std::ffi::CStr;
+
+    // case: src_size equals dest_size
+    unsafe {
+        let src = c"rust";
+        let size = src.to_bytes_with_nul().len();
+        let dest = libc::malloc(size);
+        libc::strcpy(dest as *mut libc::c_char, src.as_ptr());
+        assert_eq!(CStr::from_ptr(dest as *const libc::c_char), src.as_ref());
+        libc::free(dest);
+    }
+
+    // case: src_size is less than dest_size
+    unsafe {
+        let src = c"rust";
+        let size = src.to_bytes_with_nul().len();
+        let dest = libc::malloc(size + 1);
+        libc::strcpy(dest as *mut libc::c_char, src.as_ptr());
+        assert_eq!(CStr::from_ptr(dest as *const libc::c_char), src.as_ref());
+        libc::free(dest);
+    }
+}
+
+fn test_memset() {
+    unsafe {
+        let val = 1;
+        let dest = libc::calloc(3, 1);
+        libc::memset(dest, val, 3);
+        let slc = std::slice::from_raw_parts(dest as *const i8, 3);
+        assert_eq!(*slc, [1i8, 1, 1]);
+        libc::free(dest);
+    }
+
+    unsafe {
+        let val = 1;
+        let dest = libc::calloc(4, 1);
+        libc::memset(dest, val, 3);
+        let slc = std::slice::from_raw_parts(dest as *const i8, 4);
+        assert_eq!(*slc, [1i8, 1, 1, 0]);
+        libc::free(dest);
+    }
+
+    unsafe {
+        let val = 1;
+        let mut dest = 0_i8;
+        libc::memset(&mut dest as *mut i8 as *mut libc::c_void, val, mem::size_of::<i8>());
+        assert_eq!(dest, val as i8);
+    }
+
+    unsafe {
+        let val = 1;
+        let mut dest = 0_i16;
+        libc::memset(&mut dest as *mut i16 as *mut libc::c_void, val, mem::size_of::<i16>());
+        assert_eq!(dest, 257);
+    }
+
+    unsafe {
+        let val = 257;
+        let mut dest = 0_i16;
+        libc::memset(&mut dest as *mut i16 as *mut libc::c_void, val, mem::size_of::<i16>());
+        assert_eq!(dest, 257);
+    }
+}
+
+fn test_memchr() {
+    unsafe {
+        let buf = b"0abcdefd";
+        assert_eq!(
+            libc::memchr(buf.as_ptr().cast(), b'd'.into(), buf.len()).cast_const(),
+            buf.as_ptr().add(4).cast(),
+        );
+        assert_eq!(
+            libc::memchr(buf.as_ptr().cast(), b'x'.into(), buf.len()).cast_const(),
+            ptr::null(),
+        );
+        // It's fine if `len` is too big as long as don't search there.
+        assert_eq!(
+            libc::memchr(buf.as_ptr().cast(), b'd'.into(), buf.len() + 10).cast_const(),
+            buf.as_ptr().add(4).cast(),
+        );
+    }
+}
+
+// memrchr only exists on a few OSes
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
+fn test_memrchr() {
+    unsafe {
+        let buf = b"0abcdefd";
+        assert_eq!(
+            libc::memrchr(buf.as_ptr().cast(), b'd'.into(), buf.len()).cast_const(),
+            buf.as_ptr().add(7).cast(),
+        );
+        assert_eq!(
+            libc::memrchr(buf.as_ptr().cast(), b'x'.into(), buf.len()).cast_const(),
+            ptr::null(),
+        );
+        // We don't actually read the first bytes if we don't go there.
+        // Check that by making them uninitialized.
+        let mut buf = mem::MaybeUninit::<[u8; 10]>::uninit();
+        let buf: &mut [_] = buf.as_mut();
+        buf.last_mut().unwrap().write(0);
+        assert_eq!(
+            libc::memrchr(buf.as_ptr().cast(), 0, buf.len()).cast_const(),
+            buf.as_ptr().add(9).cast(),
+        );
+    }
+}
+
+fn test_strlen() {
+    unsafe {
+        assert_eq!(libc::strlen(c"This is Rust".as_ptr()), 12);
+    }
+}
+
+fn test_strnlen() {
+    unsafe {
+        assert_eq!(libc::strnlen(c"This is Rust".as_ptr(), 16), 12);
+        assert_eq!(libc::strnlen(c"This is Rust".as_ptr(), 10), 10);
+        assert_eq!(libc::strnlen(b"This".as_ptr().cast(), 4), 4);
+    }
+}
+
+fn test_wcslen() {
+    fn to_c_wchar_t_str(s: &str) -> Vec<libc::wchar_t> {
+        let mut r = Vec::<libc::wchar_t>::new();
+        for c in s.bytes() {
+            if c == 0 {
+                panic!("can't contain a null character");
+            }
+            if c >= 128 {
+                panic!("only ASCII supported");
+            }
+            r.push(c.into());
+        }
+        r.push(0);
+        r
+    }
+
+    let s = to_c_wchar_t_str("Rust");
+    let len = unsafe { libc::wcslen(s.as_ptr()) };
+    assert_eq!(len, 4);
 }
 
 fn main() {
@@ -355,4 +440,10 @@ fn main() {
     test_memcpy();
     test_strcpy();
     test_memset();
+    test_memchr();
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
+    test_memrchr();
+    test_strlen();
+    test_strnlen();
+    test_wcslen();
 }
