@@ -429,9 +429,10 @@ fn array_length(
     };
     let ast::Type::ArrayType(ty) = ty else { return None };
     let len = ty.const_arg()?.expr()?;
-    let hir::FileRange { file_id, range } = ctx.sema.original_range_opt(len.syntax())?;
+    let hir::FileRange { range: len_range, .. } = ctx.sema.original_range_opt(len.syntax())?;
+    let hir::FileRange { range, file_id } = ctx.sema.original_range_opt(&container)?;
 
-    let edit = TextEdit::replace(range, actual.to_string());
+    let edit = TextEdit::replace(len_range, actual.to_string());
     let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.db()), edit);
     let label = &format!("Change array length to {actual}");
     acc.push(fix("array_length", label, source_change, range));
@@ -1539,6 +1540,16 @@ static VALS: [i32; 2$0] = {[1, 2, 3]};
             "#,
             r#"
 static VALS: [i32; 3] = {[1, 2, 3]};
+            "#,
+        );
+
+        // Convenient trigger range
+        check_fix(
+            r#"
+static VALS: [i32; 2] = [$01, 2, 3];
+            "#,
+            r#"
+static VALS: [i32; 3] = [1, 2, 3];
             "#,
         );
 
