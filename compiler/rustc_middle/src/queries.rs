@@ -76,7 +76,7 @@ use rustc_session::cstore::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
 use rustc_session::lint::StableLintExpectationId;
-use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::def_id::{LOCAL_CRATE, ModId};
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
@@ -2164,7 +2164,7 @@ rustc_queries! {
     /// ```
     ///
     /// In here, if you call `visibility` on `T`, it'll panic.
-    query visibility(def_id: DefId) -> ty::Visibility<DefId> {
+    query visibility(def_id: DefId) -> ty::Visibility<ModId> {
         desc { "computing visibility of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
         feedable
@@ -2692,13 +2692,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query doc_link_resolutions(def_id: DefId) -> &'tcx DocLinkResMap {
+    query doc_link_resolutions(def_id: ModId) -> &'tcx DocLinkResMap {
         eval_always
         desc { "resolutions for documentation links for a module" }
         separate_provide_extern
     }
 
-    query doc_link_traits_in_scope(def_id: DefId) -> &'tcx [DefId] {
+    query doc_link_traits_in_scope(def_id: ModId) -> &'tcx [DefId] {
         eval_always
         desc { "traits in scope for documentation links for a module" }
         separate_provide_extern

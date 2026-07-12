@@ -473,7 +473,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             kind: DeclKind::Import { source_decl: decl, import },
             ambiguity: CmCell::new(None),
             span: import.span,
-            initial_vis: vis.to_def_id(),
+            initial_vis: vis.to_mod_id(),
             ambiguity_vis_max: CmCell::new(None),
             ambiguity_vis_min: CmCell::new(None),
             expansion: import.parent_scope.expansion,
@@ -1646,7 +1646,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
     ) -> Option<BufferedEarlyLint> {
         let crate_private_reexport = match decl.vis() {
-            Visibility::Restricted(def_id) if def_id.is_top_level_module() => true,
+            Visibility::Restricted(mod_id) if mod_id.is_top_level_module() => true,
             _ => false,
         };
 

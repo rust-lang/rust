@@ -28,7 +28,7 @@ pub struct ModuleItems {
     /// Whether this represents the whole crate, in which case we need to add `CRATE_OWNER_ID` to
     /// the iterators if we want to account for the crate root.
     add_root: bool,
-    submodules: Box<[OwnerId]>,
+    submodules: Box<[LocalModId]>,
     free_items: Box<[ItemId]>,
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,

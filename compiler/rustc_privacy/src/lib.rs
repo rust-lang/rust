@@ -405,9 +405,8 @@ impl VisibilityLike for EffectiveVisibility {
     ) -> Self {
         let effective_vis =
             find.effective_visibilities.effective_vis(def_id).copied().unwrap_or_else(|| {
-                let private_vis = ty::Visibility::Restricted(
-                    find.tcx.parent_module_from_def_id(def_id).to_local_def_id(),
-                );
+                let private_vis =
+                    ty::Visibility::Restricted(find.tcx.parent_module_from_def_id(def_id));
                 EffectiveVisibility::from_vis(private_vis)
             });
 
@@ -517,7 +516,6 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         max_vis: Option<ty::Visibility>,
         level: Level,
     ) -> bool {
-        // FIXME(typed_def_id): Make `Visibility::Restricted` use a `LocalModId` by default.
         let private_vis =
             ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id).into());
         if max_vis != Some(private_vis) {
@@ -1434,12 +1432,10 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         if self.hard_error && self.required_visibility.greater_than(vis, self.tcx) {
             let vis_descr = match vis {
                 ty::Visibility::Public => "public",
-                ty::Visibility::Restricted(vis_def_id) => {
-                    if vis_def_id
-                        == self.tcx.parent_module_from_def_id(local_def_id).to_local_def_id()
-                    {
+                ty::Visibility::Restricted(vis_mod_id) => {
+                    if vis_mod_id == self.tcx.parent_module_from_def_id(local_def_id) {
                         "private"
-                    } else if vis_def_id.is_top_level_module() {
+                    } else if vis_mod_id.is_top_level_module() {
                         "crate-private"
                     } else {
                         "restricted"

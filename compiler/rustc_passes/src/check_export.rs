@@ -56,7 +56,7 @@ impl<'tcx> ExportableItemCollector<'tcx> {
         if has_attr && !is_pub {
             let vis = visibilities.effective_vis(def_id).cloned().unwrap_or_else(|| {
                 EffectiveVisibility::from_vis(Visibility::Restricted(
-                    self.tcx.parent_module_from_def_id(def_id).to_local_def_id(),
+                    self.tcx.parent_module_from_def_id(def_id),
                 ))
             });
             let vis = vis.at_level(Level::Direct);

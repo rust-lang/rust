@@ -32,6 +32,7 @@ use rustc_session::lint::builtin::{
     AMBIGUOUS_PANIC_IMPORTS, MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::utils::was_invoked_from_cargo;
+use rustc_span::def_id::ModId;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
@@ -68,8 +69,8 @@ pub(crate) type LabelSuggestion = (Ident, bool);
 #[derive(Clone)]
 pub(crate) struct StructCtor {
     pub res: Res,
-    pub vis: Visibility<DefId>,
-    pub field_visibilities: Vec<Visibility<DefId>>,
+    pub vis: Visibility<ModId>,
+    pub field_visibilities: Vec<Visibility<ModId>>,
 }
 
 impl StructCtor {
@@ -1991,7 +1992,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 return;
             }
-            if Some(parent_nearest) == scope.opt_def_id() {
+            if Some(parent_nearest.to_def_id()) == scope.opt_def_id() {
                 err.subdiagnostic(MacroDefinedLater { span: unused_ident.span });
                 err.subdiagnostic(MacroSuggMovePosition { span: ident.span, ident });
                 return;

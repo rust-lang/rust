@@ -7,6 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::ty::Visibility;
+use rustc_span::def_id::{CRATE_MOD_ID, LocalModId};
 use rustc_span::sym;
 use tracing::info;
 
@@ -55,7 +56,7 @@ pub(crate) struct EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
 impl Resolver<'_, '_> {
     fn private_vis_decl(&self, decl: Decl<'_>) -> Visibility {
         Visibility::Restricted(
-            decl.parent_module.map_or(CRATE_DEF_ID, |m| m.nearest_parent_mod().expect_local()),
+            decl.parent_module.map_or(CRATE_MOD_ID, |m| m.nearest_parent_mod().expect_local()),
         )
     }
 
@@ -65,8 +66,8 @@ impl Resolver<'_, '_> {
             .get_nearest_non_block_module(def_id.to_def_id())
             .nearest_parent_mod()
             .expect_local();
-        if normal_mod_id == def_id {
-            Visibility::Restricted(self.tcx.local_parent(def_id))
+        if normal_mod_id.to_local_def_id() == def_id {
+            Visibility::Restricted(LocalModId::new_unchecked(self.tcx.local_parent(def_id)))
         } else {
             Visibility::Restricted(normal_mod_id)
         }
@@ -85,7 +86,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             r,
             def_effective_visibilities: Default::default(),
             import_effective_visibilities: Default::default(),
-            current_private_vis: Visibility::Restricted(CRATE_DEF_ID),
+            current_private_vis: Visibility::Restricted(CRATE_MOD_ID),
             macro_reachable: Default::default(),
             changed: true,
         };
@@ -230,7 +231,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     fn update_macro(&mut self, def_id: LocalDefId, inherited_effective_vis: EffectiveVisibility) {
         let max_vis = Some(self.r.tcx.local_visibility(def_id));
         let priv_vis = if def_id == CRATE_DEF_ID {
-            Visibility::Restricted(CRATE_DEF_ID)
+            Visibility::Restricted(CRATE_MOD_ID)
         } else {
             self.r.private_vis_def(def_id)
         };
@@ -352,8 +353,10 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
             ),
 
             ast::ItemKind::Mod(..) => {
-                let prev_private_vis =
-                    mem::replace(&mut self.current_private_vis, Visibility::Restricted(def_id));
+                let prev_private_vis = mem::replace(
+                    &mut self.current_private_vis,
+                    Visibility::Restricted(LocalModId::new_unchecked(def_id)),
+                );
                 self.set_bindings_effective_visibilities(def_id);
                 visit::walk_item(self, item);
                 self.current_private_vis = prev_private_vis;

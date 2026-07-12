@@ -5,7 +5,6 @@ use std::iter::once;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
 use rustc_hir::HirId;
-use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
@@ -15,6 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
+use rustc_span::def_id::LocalModId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::constructor::Constructor::*;
@@ -84,7 +84,7 @@ pub struct RustcPatCtxt<'p, 'tcx: 'p> {
     /// inhabited can depend on whether it was defined in the current module or
     /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
     /// outside its module and should not be matchable with an empty match statement.
-    pub module: DefId,
+    pub module: LocalModId,
     pub typing_env: ty::TypingEnv<'tcx>,
     /// To allocate the result of `self.ctor_sub_tys()`
     pub dropless_arena: &'p DroplessArena,
