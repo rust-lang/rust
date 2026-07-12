@@ -35,7 +35,7 @@ LL |     fn bar<I>(self, _: I)
 LL |         let collection = std::iter::empty::<()>().map(|_| &());
    |                                                       --- the found closure
 LL |         self.bar(collection)
-   |              --- ^^^^^^^^^^ expected type parameter `I`, found `Map<Empty<()>, {closure@...}>`
+   |              --- ^^^^^^^^^^ expected type parameter `I`, found `Map<Empty<()>, {closure}>`
    |              |
    |              arguments to this method are incorrect
    |

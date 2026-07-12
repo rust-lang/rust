@@ -900,7 +900,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 if !self.should_print_verbose() {
                     write!(self, "{coroutine_kind}")?;
                     if self.should_truncate() {
-                        write!(self, "@...}}")?;
+                        write!(self, "}}")?;
                         return Ok(());
                     } else if coroutine_kind.is_fn_like() {
                         // If we are printing an `async fn` coroutine type, then give the path
@@ -968,7 +968,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 if !self.should_print_verbose() {
                     write!(self, "closure")?;
                     if self.should_truncate() {
-                        write!(self, "@...}}")?;
+                        write!(self, "}}")?;
                         return Ok(());
                     } else {
                         if let Some(did) = did.as_local() {
@@ -1032,7 +1032,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         ),
                     }
                     if self.should_truncate() {
-                        write!(self, "@...}}")?;
+                        write!(self, "}}")?;
                         return Ok(());
                     } else if let Some(did) = did.as_local() {
                         if self.tcx().sess.opts.unstable_opts.span_free_formats {

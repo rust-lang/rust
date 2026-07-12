@@ -1,4 +1,4 @@
-error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&u64) -> &u64 {identity::<u64>}>, {closure@...}>`, but its trait bounds were not satisfied
+error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&u64) -> &u64 {identity::<u64>}>, {closure}>`, but its trait bounds were not satisfied
   --> $DIR/hrtb-doesnt-borrow-self-2.rs:112:24
    |
 LL | pub struct Filter<S, F> {

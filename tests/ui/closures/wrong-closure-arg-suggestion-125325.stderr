@@ -43,7 +43,7 @@ error: lifetime may not live long enough
 LL |         take(|_| to_fn(|_| self.counter += 1));
    |              --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
    |              | |
-   |              | return type of closure `aux::Map<{closure@...}>` contains a lifetime `'2`
+   |              | return type of closure `aux::Map<{closure}>` contains a lifetime `'2`
    |              lifetime `'1` represents this closure's body
    |
    = note: closure implements `Fn`, so references to captured variables can't escape the closure
@@ -77,7 +77,7 @@ error: lifetime may not live long enough
 LL |         P.flat_map(|_| P.map(|_| self.counter += 1));
    |                    --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
    |                    | |
-   |                    | return type of closure `aux::Map<{closure@...}>` contains a lifetime `'2`
+   |                    | return type of closure `aux::Map<{closure}>` contains a lifetime `'2`
    |                    lifetime `'1` represents this closure's body
    |
    = note: closure implements `Fn`, so references to captured variables can't escape the closure
