@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use std::fmt::Write;
 use std::mem;
 
@@ -435,7 +437,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_use_item(&mut self) -> PResult<'a, ItemKind> {
-        let tree = self.parse_use_tree()?;
+        let use_token_span = self.prev_token.span;
+        let tree = self.parse_use_tree(use_token_span, None)?;
         if let Err(mut e) = self.expect_semi() {
             match tree.kind {
                 UseTreeKind::Glob(_) => {
@@ -1291,7 +1294,11 @@ impl<'a> Parser<'a> {
     ///            PATH `::` `{` USE_TREE_LIST `}` |
     ///            PATH [`as` IDENT]
     /// ```
-    fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
+    fn parse_use_tree<'b>(
+        &mut self,
+        use_token_span: Span,
+        use_path: Option<&'b UsePathList<'b>>,
+    ) -> PResult<'a, UseTree> {
         let lo = self.token.span;
 
         let mut prefix = ast::Path { segments: ThinVec::new(), span: lo.shrink_to_lo() };
@@ -1305,13 +1312,14 @@ impl<'a> Parser<'a> {
                         .push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
                 }
 
-                self.parse_use_tree_glob_or_nested()?
+                self.parse_use_tree_glob_or_nested(use_token_span, use_path)?
             } else {
                 // `use path::*;` or `use path::{...};` or `use path;` or `use path as bar;`
                 prefix = self.parse_path(PathStyle::Mod)?;
 
                 if self.eat_path_sep() {
-                    self.parse_use_tree_glob_or_nested()?
+                    let use_path = UsePathList { elements: &prefix.segments, prev: use_path };
+                    self.parse_use_tree_glob_or_nested(use_token_span, Some(&use_path))?
                 } else {
                     // Recover from using a colon as path separator.
                     while self.eat_noexpect(&token::Colon) {
@@ -1331,13 +1339,17 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `*` or `{...}`.
-    fn parse_use_tree_glob_or_nested(&mut self) -> PResult<'a, UseTreeKind> {
+    fn parse_use_tree_glob_or_nested<'b>(
+        &mut self,
+        use_token_span: Span,
+        use_path: Option<&'b UsePathList<'b>>,
+    ) -> PResult<'a, UseTreeKind> {
         Ok(if self.eat(exp!(Star)) {
             UseTreeKind::Glob(self.prev_token.span)
         } else {
             let lo = self.token.span;
             UseTreeKind::Nested {
-                items: self.parse_use_tree_list()?,
+                items: self.parse_use_tree_list(use_token_span, use_path)?,
                 span: lo.to(self.prev_token.span),
             }
         })
@@ -1348,12 +1360,91 @@ impl<'a> Parser<'a> {
     /// ```text
     /// USE_TREE_LIST = ∅ | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
-    fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
+    fn parse_use_tree_list<'b>(
+        &mut self,
+        use_token_span: Span,
+        prefix: Option<&'b UsePathList<'b>>,
+    ) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| {
             p.recover_vcs_conflict_marker();
-            Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
+            let mut attr_span = None;
+            let attrs = p.parse_outer_attributes()?;
+            if !attrs.is_empty() {
+                let raw_attrs = attrs.take_for_recovery(&p.psess);
+                attr_span =
+                    Some(raw_attrs.first().unwrap().span.to(raw_attrs.last().unwrap().span));
+            }
+            let use_tree = p.parse_use_tree(use_token_span, prefix)?;
+            if let Some(attr_span) = attr_span {
+                p.emit_error_attr_in_use_tree(use_token_span, prefix, use_tree.span(), attr_span);
+            }
+
+            Ok((use_tree, DUMMY_NODE_ID))
         })
         .map(|(r, _)| r)
+    }
+
+    fn emit_error_attr_in_use_tree<'b>(
+        &self,
+        use_token_span: Span,
+        prefix: Option<&'b UsePathList<'b>>,
+        use_tree_span: Span,
+        attr_span: Span,
+    ) {
+        {
+            let mut prefix = prefix;
+            let Ok(attr) = self.psess.source_map().span_to_snippet(attr_span) else {
+                return;
+            };
+
+            let prefix = {
+                let mut tmp = Vec::new();
+                while let Some(prefix_) = prefix {
+                    tmp.push(prefix_.elements);
+                    prefix = prefix_.prev;
+                }
+                tmp.reverse();
+                tmp.iter().flat_map(|segments| segments.iter()).collect::<Vec<_>>()
+            };
+
+            let prefix =
+                prefix
+                    .iter()
+                    .map(|segment| {
+                        if segment.ident.name == kw::PathRoot { "" } else { segment.ident.as_str() }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("::");
+
+            let mut comma_reached = false;
+            let Ok(tree_span) = self.psess.source_map().span_extend_while(use_tree_span, |c| {
+                if comma_reached {
+                    return false;
+                }
+                comma_reached = c == ',';
+                c.is_whitespace() || comma_reached
+            }) else {
+                return;
+            };
+
+            let Ok(use_tree) = self.psess.source_map().span_to_snippet(use_tree_span) else {
+                return;
+            };
+
+            // FIXME: duplicate the attributes that are at the root of the initial use-item.
+            let code = format!("{attr}\nuse {prefix}::{use_tree};\n");
+
+            let err = crate::errors::AttrInUseTree {
+                attr_span,
+                sub: Some(crate::errors::AttrInUseTreeSugg {
+                    use_lo: use_token_span.shrink_to_lo(),
+                    attr_span,
+                    tree_span,
+                    code,
+                }),
+            };
+            self.dcx().emit_err(err);
+        }
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
@@ -3705,4 +3796,9 @@ pub(super) enum FrontMatterParsingMode {
     /// Parse the front matter of a function pointet type.
     /// For function pointer types, the `const` and `async` keywords are not permitted.
     FunctionPtrType,
+}
+
+struct UsePathList<'a> {
+    elements: &'a [ast::PathSegment],
+    prev: Option<&'a Self>,
 }

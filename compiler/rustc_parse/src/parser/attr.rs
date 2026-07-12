@@ -316,11 +316,15 @@ impl<'a> Parser<'a> {
     /// Parses an inner part of an attribute (the path and following tokens).
     /// The tokens must be either a delimited token stream, or empty token stream,
     /// or the "legacy" key-value form.
-    ///     PATH `(` TOKEN_STREAM `)`
-    ///     PATH `[` TOKEN_STREAM `]`
-    ///     PATH `{` TOKEN_STREAM `}`
-    ///     PATH
-    ///     PATH `=` UNSUFFIXED_LIT
+    ///
+    /// ```text
+    /// PATH `(` TOKEN_STREAM `)`
+    /// PATH `[` TOKEN_STREAM `]`
+    /// PATH `{` TOKEN_STREAM `}`
+    /// PATH
+    /// PATH `=` UNSUFFIXED_LIT
+    /// ```
+    ///
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(
         &mut self,
