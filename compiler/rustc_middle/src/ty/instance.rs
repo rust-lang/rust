@@ -983,6 +983,8 @@ impl<'tcx> Instance<'tcx> {
         }
     }
 
+    // TODO: this and/or is_ty_param_polymorphizable should probably be queries,
+    // used less ad hoc, and located somewhere else
     pub fn polymorphize(&self, tcx: TyCtxt<'tcx>) -> Self {
         let InstanceKind::Item(def_id) = self.def else {
             return *self;

@@ -1999,6 +1999,7 @@ impl<'tcx> Ty<'tcx> {
                 SizedTraitKind::Sized => false,
                 SizedTraitKind::MetaSized => true,
             },
+            ty::Erased(..) => true,
 
             ty::Foreign(..) => match sizedness {
                 SizedTraitKind::Sized | SizedTraitKind::MetaSized => false,
@@ -2010,9 +2011,7 @@ impl<'tcx> Ty<'tcx> {
                 ty.instantiate(tcx, args).skip_norm_wip().has_trivial_sizedness(tcx, sizedness)
             }),
 
-            ty::Alias(..) | ty::Param(_) | ty::Erased(..) | ty::Placeholder(..) | ty::Bound(..) => {
-                false
-            }
+            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 
             ty::Infer(ty::TyVar(_)) => false,
 
