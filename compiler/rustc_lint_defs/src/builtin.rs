@@ -5586,7 +5586,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,no_run
+    /// ```rust,ignore (does not compile on stage1 until bootstrap, change this to no_run after bootstrap is updated, writing CURRENT_RUSTC_VERSION hoping this is noticed in the diff)
     /// fn main() {
     ///     let x = panic!();
     ///     x.clone();
