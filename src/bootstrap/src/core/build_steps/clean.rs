@@ -58,8 +58,7 @@ macro_rules! clean_crate_tree {
             type Output = ();
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let crates = run.builder.in_tree_crates($root_crate, None);
-                run.crates(crates)
+                run.crate_or_deps($root_crate)
             }
 
             fn make_run(run: RunConfig<'_>) {
