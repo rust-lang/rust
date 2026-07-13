@@ -1944,8 +1944,13 @@ impl<'a> Linker for LlbcLinker<'a> {
         self.link_or_cc_arg(path);
     }
 
-    fn debuginfo(&mut self, _strip: Strip, _: &[PathBuf]) {
-        self.link_arg("--debug");
+    fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
+        match strip {
+            Strip::None => {
+                self.link_arg("--debug");
+            }
+            Strip::Debuginfo | Strip::Symbols => {}
+        }
     }
 
     fn optimize(&mut self) {
