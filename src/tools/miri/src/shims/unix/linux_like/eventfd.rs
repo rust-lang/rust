@@ -4,7 +4,7 @@ use std::io;
 use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
-use crate::shims::files::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
+use crate::shims::files::{FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::*;
 
@@ -41,15 +41,6 @@ impl FileDescription for EventFd {
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         // On Linux, eventfd is an "anonymous inode" reported as S_IFREG.
         interp_ok(Either::Right("S_IFREG"))
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
     }
 
     /// Read the counter in the buffer and return the counter if succeeded.
