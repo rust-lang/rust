@@ -112,12 +112,16 @@ impl Bootstrap {
             "--stage",
             "2",
             "library/std",
-            "rustdoc",
         ])
         .env("RUST_BACKTRACE", "full");
         let cmd = add_shared_x_flags(env, cmd);
 
         Self { cmd, metrics_path }
+    }
+
+    pub fn with_rustdoc(mut self) -> Self {
+        self.cmd = self.cmd.arg("rustdoc");
+        self
     }
 
     pub fn dist(env: &Environment, dist_args: &[String]) -> Self {

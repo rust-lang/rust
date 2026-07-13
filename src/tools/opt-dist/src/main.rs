@@ -248,6 +248,7 @@ fn execute_pipeline(
                 // they are executed together within a single rustc-perf invocation.
                 // Their profiles are then merged together into a single PGO profile.
                 let mut builder = Bootstrap::build(env)
+                    .with_rustdoc()
                     .rustc_pgo_instrument(&rustc_profile_dir_root)
                     .rustdoc_pgo_instrument(&rustc_profile_dir_root);
 
@@ -272,6 +273,7 @@ fn execute_pipeline(
 
             stage.section("Build PGO optimized rustc", |section| {
                 let mut cmd = Bootstrap::build(env)
+                    .with_rustdoc()
                     .rustc_pgo_optimize(&rustc_profile)
                     .rustdoc_pgo_optimize(&rustdoc_profile);
                 if env.use_bolt() {
