@@ -46,7 +46,7 @@ fn fn_sig_for_fn_abi<'tcx>(
     match *ty.kind() {
         ty::FnDef(def_id, args) => {
             let mut sig = tcx.instantiate_bound_regions_with_erased(
-                tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip(),
+                tcx.fn_sig(def_id).instantiate(tcx, args.no_bound_vars().unwrap()).skip_norm_wip(),
             );
 
             // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.

@@ -372,7 +372,12 @@ fn check_terminator<'tcx>(
                 // FIXME: when analyzing a function with generic parameters, we may not have enough information to
                 // resolve to an instance. However, we could check if a host effect predicate can guarantee that
                 // this can be made a `const` call.
-                let fn_def_id = match Instance::try_resolve(cx.tcx, cx.typing_env(), *fn_def_id, fn_substs) {
+                let fn_def_id = match Instance::try_resolve(
+                    cx.tcx,
+                    cx.typing_env(),
+                    *fn_def_id,
+                    fn_substs.no_bound_vars().unwrap(),
+                ) {
                     Ok(Some(fn_inst)) => fn_inst.def_id(),
                     Ok(None) => return Err((span, format!("cannot resolve instance for {func:?}").into())),
                     Err(_) => return Err((span, format!("error during instance resolution of {func:?}").into())),

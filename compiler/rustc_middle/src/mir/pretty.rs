@@ -2035,7 +2035,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;
-            p.pretty_print_value_path(*d, s)?;
+            p.pretty_print_value_path(*d, s.no_bound_vars().unwrap())?;
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }

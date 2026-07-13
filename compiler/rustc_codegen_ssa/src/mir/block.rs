@@ -949,7 +949,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.tcx(),
                     bx.typing_env(),
                     def_id,
-                    generic_args,
+                    generic_args.no_bound_vars().unwrap(),
                     fn_span,
                 );
 
@@ -1098,7 +1098,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx.tcx(),
                             bx.typing_env(),
                             def_id,
-                            generic_args,
+                            generic_args.no_bound_vars().unwrap(),
                         )
                         .unwrap();
 
@@ -1494,7 +1494,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx.tcx(),
                             bx.typing_env(),
                             def_id,
-                            args,
+                            args.no_bound_vars().unwrap(),
                         )
                         .unwrap();
                         InlineAsmOperandRef::SymFn { instance }

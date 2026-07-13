@@ -291,7 +291,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
             let sig = cx.fn_sig(def_id);
             if sig.skip_binder().is_fn_trait_compatible() && !cx.has_target_features(def_id) {
                 Ok(Some(
-                    sig.instantiate(cx, args)
+                    sig.instantiate(cx, args.no_bound_vars().unwrap())
                         .skip_norm_wip()
                         .map_bound(|sig| (Ty::new_tup(cx, sig.inputs().as_slice()), sig.output())),
                 ))
@@ -691,6 +691,9 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
 ) -> Result<(ty::Binder<I, (I::Ty, I::Ty)>, I::DefId, I::GenericArgs), NoSolution> {
     match self_ty.kind() {
         ty::FnDef(def_id, args) => {
+            // FIXME
+            let args = args.no_bound_vars().unwrap();
+
             let sig = cx.fn_sig(def_id);
             if sig.skip_binder().is_fn_trait_compatible()
                 && !cx.has_target_features(def_id)
