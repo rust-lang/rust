@@ -11,7 +11,7 @@ use rustc_const_eval::interpret::{InterpResult, interp_ok};
 use rustc_middle::throw_unsup_format;
 use rustc_target::spec::Os;
 
-use crate::shims::files::{EvalContextExt as _, FdId, FdNum, FileDescription, FileDescriptionRef};
+use crate::shims::files::{EvalContextExt as _, FdNum, FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::{SocketFamily, UnixSocketFileDescription};
 use crate::*;
@@ -89,29 +89,6 @@ impl TcpSocket {
 impl FileDescription for TcpSocket {
     fn name(&self) -> &'static str {
         "socket"
-    }
-
-    fn destroy<'tcx>(
-        self,
-        self_id: FdId,
-        communicate_allowed: bool,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
-
-        if matches!(
-            &*self.state.borrow(),
-            SocketState::Listening(_)
-                | SocketState::Connecting(_)
-                | SocketState::Connected(_)
-                | SocketState::ConnectionFailed(_)
-        ) {
-            // There exists an associated host socket so we need to deregister it
-            // from the blocking I/O manager.
-            ecx.machine.blocking_io.deregister(self_id, self)
-        };
-
-        interp_ok(Ok(()))
     }
 
     fn read<'tcx>(
@@ -995,6 +972,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         finish: DynMachineCallback<'tcx, Result<(FdNum, SocketAddr), IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        // Since the callback holds a strong reference to the socket, the file description
+        // won't be closed as long as some thread is blocked on it. While this reflects
+        // what Linux does, for other Unix systems this might differ from the native behavior.
         this.block_thread_for_io(
             socket.clone(),
             BlockingIoInterest::Read,
@@ -1094,6 +1074,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        // Since the callback holds a strong reference to the socket, the file description
+        // won't be closed as long as some thread is blocked on it. While this reflects
+        // what Linux does, for other Unix systems this might differ from the native behavior.
         this.block_thread_for_io(
             socket.clone(),
             BlockingIoInterest::Write,
@@ -1224,6 +1207,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        // Since the callback holds a strong reference to the socket, the file description
+        // won't be closed as long as some thread is blocked on it. While this reflects
+        // what Linux does, for other Unix systems this might differ from the native behavior.
         this.block_thread_for_io(
             socket.clone(),
             BlockingIoInterest::Read,
