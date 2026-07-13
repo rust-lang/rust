@@ -179,6 +179,7 @@ mod tests {
     #[test]
     fn can_fetch_known_folder_paths() {
         let dirs = UserDirs::known_folders().unwrap();
+        assert!(dirs.user_home().is_some());
         assert!(dirs.cache_home().is_some());
         assert!(dirs.config_home().is_some());
         assert!(dirs.data_home().is_some());

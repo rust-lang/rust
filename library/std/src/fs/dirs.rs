@@ -553,6 +553,7 @@ mod tests {
     fn test_user_dirs_field_hookup_matches() {
         let mut dirs = UserDirs::empty();
 
+        assert_eq!(dirs.user_home(), None);
         assert_eq!(dirs.config_home(), None);
         assert_eq!(dirs.data_home(), None);
         assert_eq!(dirs.state_home(), None);
@@ -566,6 +567,7 @@ mod tests {
         assert_eq!(dirs.public_share(), None);
         assert_eq!(dirs.videos(), None);
 
+        dirs.set_user_home("/home".into());
         dirs.set_config_home("/config".into());
         dirs.set_data_home("/data".into());
         dirs.set_state_home("/state".into());
@@ -579,6 +581,7 @@ mod tests {
         dirs.set_public_share("/public_share".into());
         dirs.set_videos("/videos".into());
 
+        assert_eq!(dirs.user_home(), Some("/home".as_ref()));
         assert_eq!(dirs.config_home(), Some("/config".as_ref()));
         assert_eq!(dirs.data_home(), Some("/data".as_ref()));
         assert_eq!(dirs.state_home(), Some("/state".as_ref()));

@@ -250,6 +250,7 @@ mod tests {
     #[test]
     fn can_fetch_sysdir_paths() {
         let dirs = UserDirs::sysdir().unwrap();
+        assert!(dirs.user_home().is_some());
         assert!(dirs.cache_home().is_some());
         assert!(dirs.config_home().is_some());
         assert!(dirs.data_home().is_some());

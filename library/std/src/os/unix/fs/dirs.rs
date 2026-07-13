@@ -331,6 +331,7 @@ mod tests {
     fn can_fetch_xdg_base_dirs() {
         let dirs = UserDirs::xdg_base().unwrap();
 
+        assert!(dirs.user_home().is_some());
         assert!(dirs.cache_home().is_some());
         assert!(dirs.config_home().is_some());
         assert!(dirs.data_home().is_some());
@@ -361,6 +362,7 @@ mod tests {
             Err(e) => panic!("failed to fetch xdg user dirs: {e:?}"),
         };
 
+        assert!(dirs.user_home().is_some());
         assert!(dirs.cache_home().is_some());
         assert!(dirs.config_home().is_some());
         assert!(dirs.data_home().is_some());
