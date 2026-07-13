@@ -740,6 +740,8 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             );
         }
 
+        trace!("read_scalar_atomic({:?}, {} bytes)", place.ptr(), place.layout.size.bytes());
+
         let scalar = this.allow_data_races_ref(move |this| this.read_scalar(place))?;
         let buffered_scalar = this.buffered_atomic_read(place, atomic, scalar, |sync_clock| {
             this.validate_atomic_load(place, atomic, sync_clock)
@@ -757,9 +759,13 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.atomic_access_check(dest, AtomicAccessType::Store)?;
 
+        // Read the previous value so we can put it in the store buffer later.
+        // Both GenMC and Miri need this. This value is nonsense if there are concurrent writes
+        // but the code consuming the value is aware of that.
+        let old_val = this.run_for_validation_ref(|this| this.read_scalar(dest)).discard_err();
+
         // Inform GenMC about the atomic store.
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let old_val = this.run_for_validation_ref(|this| this.read_scalar(dest)).discard_err();
             if genmc_ctx.atomic_store(
                 this,
                 dest.ptr().addr(),
@@ -775,8 +781,8 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             return interp_ok(());
         }
 
-        // Read the previous value so we can put it in the store buffer later.
-        let old_val = this.get_latest_nonatomic_val(dest);
+        trace!("write_scalar_atomic({:?}, {} bytes)", dest.ptr(), dest.layout.size.bytes());
+
         this.allow_data_races_mut(move |this| this.write_scalar(val, dest))?;
         this.validate_atomic_store(dest, atomic)?;
         this.buffered_atomic_write(val, dest, atomic, old_val)
@@ -813,6 +819,8 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             return interp_ok(ImmTy::from_scalar(old_val, old.layout));
         }
 
+        trace!("atomic_rmw({:?}, {} bytes)", place.ptr(), place.layout.size.bytes());
+
         let val = match atomic_op {
             AtomicRmwOp::MirOp { op, neg } => {
                 let val = this.binary_op(op, &old, rhs)?;
@@ -829,9 +837,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         };
 
         this.allow_data_races_mut(|this| this.write_immediate(*val, place))?;
-
         this.validate_atomic_rmw(place, ord)?;
-
         this.buffered_atomic_rmw(val.to_scalar(), place, ord, old.to_scalar())?;
         interp_ok(old)
     }
@@ -848,7 +854,6 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
         let old = this.allow_data_races_mut(|this| this.read_scalar(place))?;
-        this.allow_data_races_mut(|this| this.write_scalar(new, place))?;
 
         // Inform GenMC about the atomic atomic exchange.
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
@@ -868,8 +873,10 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             return interp_ok(old_val);
         }
 
-        this.validate_atomic_rmw(place, atomic)?;
+        trace!("atomic_exchange_scalar({:?}, {} bytes)", place.ptr(), place.layout.size.bytes());
 
+        this.allow_data_races_mut(|this| this.write_scalar(new, place))?;
+        this.validate_atomic_rmw(place, atomic)?;
         this.buffered_atomic_rmw(new, place, atomic, old)?;
         interp_ok(old)
     }
@@ -928,6 +935,13 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
                 true
             };
         let res = Immediate::ScalarPair(old.to_scalar(), Scalar::from_bool(cmpxchg_success));
+
+        trace!(
+            "atomic_compare_exchange_scalar({:?}, {} bytes, success = {})",
+            place.ptr(),
+            place.layout.size.bytes(),
+            cmpxchg_success,
+        );
 
         // Update ptr depending on comparison.
         // if successful, perform a full rw-atomic validation
@@ -1538,35 +1552,6 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
                 }
             },
         )
-    }
-
-    /// Returns the most recent *non-atomic* value stored in the given place.
-    /// Errors if we don't need that (because we don't do store buffering) or if
-    /// the most recent value is in fact atomic.
-    fn get_latest_nonatomic_val(&self, place: &MPlaceTy<'tcx>) -> Result<Option<Scalar>, ()> {
-        let this = self.eval_context_ref();
-        // These cannot fail because `atomic_access_check` was done first.
-        let (alloc_id, offset, _prov) = this.ptr_get_alloc_id(place.ptr(), 0).unwrap();
-        let alloc_meta = &this.get_alloc_extra(alloc_id).unwrap().data_race;
-        if alloc_meta.as_weak_memory_ref().is_none() {
-            // No reason to read old value if we don't track store buffers.
-            return Err(());
-        }
-        let data_race = alloc_meta.as_vclocks_ref().unwrap();
-        // Only read old value if this is currently a non-atomic location.
-        for (_range, clocks) in data_race.alloc_ranges.borrow_mut().iter(offset, place.layout.size)
-        {
-            // If this had an atomic write that's not before the non-atomic write, that should
-            // already be in the store buffer. Initializing the store buffer now would use the
-            // wrong `sync_clock` so we better make sure that does not happen.
-            if clocks.atomic().is_some_and(|atomic| !(atomic.write_vector <= clocks.write())) {
-                return Err(());
-            }
-        }
-        // The program didn't actually do a read, so suppress the memory access hooks.
-        // This is also a very special exception where we just ignore an error -- if this read
-        // was UB e.g. because the memory is uninitialized, we don't want to know!
-        Ok(this.run_for_validation_ref(|this| this.read_scalar(place)).discard_err())
     }
 
     /// Generic atomic operation implementation
