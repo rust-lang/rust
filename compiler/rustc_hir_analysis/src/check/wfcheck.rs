@@ -1412,7 +1412,7 @@ fn check_async_drop_not_on_union<'tcx>(
         && let ty::Adt(def, _) = trait_ref.skip_normalization().self_ty().kind()
         && def.is_union()
     {
-        return Err(tcx.dcx().emit_err(errors::AsyncDropUnion { span: self_ty_span }));
+        return Err(tcx.dcx().emit_err(diagnostics::AsyncDropUnion { span: self_ty_span }));
     }
     Ok(())
 }
