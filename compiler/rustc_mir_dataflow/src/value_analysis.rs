@@ -594,7 +594,7 @@ impl<'tcx> Map<'tcx> {
         if let Some(tail) = tail {
             let ty = match tail {
                 TrackElem::Discriminant => ty.ty.discriminant_ty(tcx),
-                TrackElem::Variant(..) | TrackElem::Field(..) => todo!(),
+                TrackElem::Variant(..) | TrackElem::Field(..) => unimplemented!(),
                 TrackElem::DerefLen => tcx.types.usize,
             };
             place_index = self.register_place_index(ty, place_index, tail);

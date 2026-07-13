@@ -1905,7 +1905,7 @@ impl InvocationCollectorNode for ast::Pat {
         }
     }
     fn as_target(&self) -> Target {
-        todo!();
+        unimplemented!();
     }
 }
 
