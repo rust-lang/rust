@@ -500,7 +500,7 @@ pub const unsafe trait Allocator {
 /// subject to some additional constraints:
 ///
 /// * It's undefined behavior if global allocators unwind. This restriction may
-///   be lifted in the future, but currently a panic from any of these
+///   be lifted in the future, but currently an unwind from any of these
 ///   functions may lead to memory unsafety.
 ///
 /// * You must not rely on allocations actually happening, even if there are explicit
@@ -594,8 +594,7 @@ unsafe trait DynAllocatorInternal {
 /// memory inside of that allocation. Furthermore, this pointer should be considered
 /// "mutably borrowed" from the pointer returned by (re)allocating methods and the usual
 /// aliasing rules for mutable borrows apply: when their lifetime ends (e.g. because a
-/// pointer they were derived from gets used again), they are invalidated must not be used
-/// anymore.
+/// pointer they were derived from gets used again), they must not be used anymore.
 ///
 /// This is *highly unlikely* to be possible to implement for most allocators. LLVM
 /// maintains special-case code for the global allocator in order to enable this trait
@@ -613,7 +612,7 @@ pub unsafe trait NoaliasAllocator: Allocator {}
 /// its currently allocated blocks at least so long as clones exist.
 ///
 /// Additionally, the bound that allocators do not unwind when (de)allocating also applies
-/// to guaranteeing allocators will not panic when cloned. This bound trivially holds for
+/// to guaranteeing allocators will not unwind when cloned. This bound trivially holds for
 /// allocators that are `Copy`.
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait AllocatorClone: Allocator + Clone {}
@@ -757,6 +756,9 @@ where
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl<A: Allocator + ?Sized> AllocatorClone for &A {}
 
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &A {}
+
 unsafe impl<A: Allocator + ?Sized> DynAllocatorInternal for A {
     fn __dyn_allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.allocate(layout)
@@ -803,7 +805,7 @@ unsafe impl<A: DynAllocatorInternal + ?Sized> DynAllocator for A {}
 // FIXME(nia-e): See if it's possible to make this built-in to the typesystem,
 // e.g. by making the impl work on arbitrary `dyn DynAlloc + Foo + Bar`. Otherwise,
 // just expand this macro with other trait combinations for now. Also needs to be
-// extendd for arbitrary `dyn DynAllocator + 'a`.
+// extended for arbitrary `dyn DynAllocator + 'a`.
 // https://rust.tf/157506
 
 macro_rules! impl_dyn_allocator {

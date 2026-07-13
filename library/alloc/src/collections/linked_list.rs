@@ -12,6 +12,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::alloc::AllocatorClone;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
@@ -340,7 +341,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
         at: usize,
     ) -> Self
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         // The split node is the new head node of the second part
         if let Some(mut split_node) = split_node {
@@ -383,7 +384,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
         at: usize,
     ) -> Self
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         // The split node is the new tail node of the first part and owns
         // the head of the second part.
@@ -994,7 +995,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split_off(&mut self, at: usize) -> LinkedList<T, A>
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         let len = self.len();
         assert!(at <= len, "Cannot split off at a nonexistent index");
@@ -1748,7 +1749,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn remove_current_as_list(&mut self) -> Option<LinkedList<T, A>>
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         let mut unlinked_node = self.current?;
         unsafe {
@@ -1776,7 +1777,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn split_after(&mut self) -> LinkedList<T, A>
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         let split_off_idx = if self.index == self.list.len { 0 } else { self.index + 1 };
         if self.index == self.list.len {
@@ -1795,7 +1796,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn split_before(&mut self) -> LinkedList<T, A>
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         let split_off_idx = self.index;
         self.index = 0;

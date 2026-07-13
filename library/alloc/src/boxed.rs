@@ -2535,7 +2535,8 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
 unsafe impl<T, A> AllocatorClone for Box<T, A>
 where
     T: AllocatorClone,
-    A: Allocator,
+    // Otherwise, the clone impl *here* may unwind.
+    A: AllocatorClone,
     Box<T, A>: Clone,
 {
 }

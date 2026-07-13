@@ -4605,4 +4605,4 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A: Allocator + ?Sized, B: AllocatorClone + ?Sized> AllocatorClone for Rc<A, B> {}
+unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Rc<T, A> {}

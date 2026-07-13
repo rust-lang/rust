@@ -4994,4 +4994,4 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Arc<T, A> {
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A: Allocator + ?Sized, B: AllocatorClone + ?Sized> AllocatorClone for Arc<A, B> {}
+unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Arc<T, A> {}
