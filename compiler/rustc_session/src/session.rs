@@ -932,7 +932,8 @@ impl Session {
                     version.max(min)
                 }
                 Err(error) => {
-                    self.dcx().emit_err(diagnostics::AppleDeploymentTarget::Invalid { env_var, error });
+                    self.dcx()
+                        .emit_err(diagnostics::AppleDeploymentTarget::Invalid { env_var, error });
                     min
                 }
             }
@@ -1203,8 +1204,9 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     match unsupported_sanitizers.into_iter().count() {
         0 => {}
         1 => {
-            sess.dcx()
-                .emit_err(diagnostics::SanitizerNotSupported { us: unsupported_sanitizers.to_string() });
+            sess.dcx().emit_err(diagnostics::SanitizerNotSupported {
+                us: unsupported_sanitizers.to_string(),
+            });
         }
         _ => {
             sess.dcx().emit_err(diagnostics::SanitizersNotSupported {
@@ -1331,15 +1333,17 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if !sess.target.options.supported_split_debuginfo.contains(&sess.split_debuginfo())
         && !sess.opts.unstable_opts.unstable_options
     {
-        sess.dcx()
-            .emit_err(diagnostics::SplitDebugInfoUnstablePlatform { debuginfo: sess.split_debuginfo() });
+        sess.dcx().emit_err(diagnostics::SplitDebugInfoUnstablePlatform {
+            debuginfo: sess.split_debuginfo(),
+        });
     }
 
     if sess.opts.unstable_opts.embed_source {
         let dwarf_version = sess.dwarf_version();
 
         if dwarf_version < 5 {
-            sess.dcx().emit_warn(diagnostics::EmbedSourceInsufficientDwarfVersion { dwarf_version });
+            sess.dcx()
+                .emit_warn(diagnostics::EmbedSourceInsufficientDwarfVersion { dwarf_version });
         }
 
         if sess.opts.debuginfo == DebugInfo::None {
@@ -1401,7 +1405,8 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             if let Some(code_model) = sess.code_model()
                 && code_model == CodeModel::Large
             {
-                sess.dcx().emit_err(diagnostics::FunctionReturnThunkExternRequiresNonLargeCodeModel);
+                sess.dcx()
+                    .emit_err(diagnostics::FunctionReturnThunkExternRequiresNonLargeCodeModel);
             }
         }
     }

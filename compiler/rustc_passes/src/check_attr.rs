@@ -37,7 +37,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,

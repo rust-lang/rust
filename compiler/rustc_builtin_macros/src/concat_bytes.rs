@@ -1,7 +1,7 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{ExprKind, LitIntType, LitKind, StrStyle, UintTy, token};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
-use rustc_session::errors::report_lit_error;
+use rustc_session::diagnostics::report_lit_error;
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::diagnostics;

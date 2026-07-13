@@ -7,7 +7,7 @@ use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
     DocInline, HideOrShow,
 };
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};

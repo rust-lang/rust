@@ -3,7 +3,7 @@ use rustc_feature::{AttributeStability, Features};
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
 use rustc_hir::attrs::*;
 use rustc_session::Session;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_span::edition::Edition::Edition2024;
 use rustc_span::kw;

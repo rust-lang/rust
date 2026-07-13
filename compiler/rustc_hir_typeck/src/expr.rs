@@ -30,7 +30,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
-use rustc_session::errors::{ExprParenthesesNeeded, feature_err};
+use rustc_session::diagnostics::{ExprParenthesesNeeded, feature_err};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{Ident, Span, Spanned, Symbol, kw, sym};
@@ -3773,7 +3773,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ident = self.tcx.adjust_ident(field, container_def.did());
 
                     if !self.tcx.features().offset_of_enum() {
-                        rustc_session::errors::feature_err(
+                        rustc_session::diagnostics::feature_err(
                             &self.tcx.sess,
                             sym::offset_of_enum,
                             ident.span,

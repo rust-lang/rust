@@ -522,7 +522,7 @@ fn infer_placeholder_type<'tcx>(
 
 fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
     if !tcx.features().inherent_associated_types() {
-        use rustc_session::errors::feature_err;
+        use rustc_session::diagnostics::feature_err;
         use rustc_span::sym;
         feature_err(
             &tcx.sess,

@@ -6,7 +6,7 @@ use rustc_feature::Features;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
-use rustc_session::errors::{feature_err, feature_warn};
+use rustc_session::diagnostics::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, Symbol, sym};
 
 use crate::diagnostics;
