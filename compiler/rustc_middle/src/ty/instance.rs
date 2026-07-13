@@ -989,10 +989,21 @@ impl<'tcx> Instance<'tcx> {
         let InstanceKind::Item(def_id) = self.def else {
             return *self;
         };
-        // TODO: temporary, hacky
-        if tcx.opt_item_name(def_id).map_or(true, |n| n.as_str() != "foopoly") {
+        if tcx.intrinsic(def_id).is_some() {
+            // Intrinsics sometimes do weird stuff with generics, where they are generic
+            // but rustc will ICE if they are called with unexpected types.
+            // TODO: is there any way this is visible from generic user code that doesn't use intrinsics?
             return *self;
         }
+        // A lot of private/perma-unstable code for atomics completely breaks parametricity
+        // by ICEing if generic params are not instantiated with specific types.
+        // Don't polymorphize those.
+        // TODO: this is horrifically hacky, need better solution. probably lang items,
+        // or maybe marker traits that bound the generics (and the traits are lang items)
+        if tcx.opt_item_name(def_id).map_or(false, |n| n.as_str().contains("atomic_")) {
+            return *self;
+        }
+
         let generics = tcx.generics_of(def_id);
         let clauses: Vec<_> = tcx
             .predicates_of(def_id)

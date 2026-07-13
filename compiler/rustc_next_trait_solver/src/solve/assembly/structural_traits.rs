@@ -148,6 +148,7 @@ where
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Never
+        | ty::Erased(..)
         | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
         // impl {Meta,}Sized for str, [T], dyn Trait
@@ -159,7 +160,7 @@ where
         // impl {} for extern type
         ty::Foreign(..) => Err(NoSolution),
 
-        ty::Alias(..) | ty::Param(_) | ty::Erased(..) | ty::Placeholder(..) => Err(NoSolution),
+        ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => Err(NoSolution),
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {

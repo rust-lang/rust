@@ -1272,6 +1272,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
+            | ty::Erased(..)
             | ty::Error(_) => {
                 candidates.vec.push(SizedCandidate);
             }
@@ -1304,7 +1305,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Not `MetaSized` or `Sized`.
             ty::Foreign(..) => {}
 
-            ty::Alias(..) | ty::Param(_) | ty::Erased(..) | ty::Placeholder(..) => {}
+            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => {}
 
             ty::Infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;
