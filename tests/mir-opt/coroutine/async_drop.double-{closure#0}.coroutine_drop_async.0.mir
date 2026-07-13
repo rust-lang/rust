@@ -1,8 +1,8 @@
 // MIR for `double::{closure#0}` 0 coroutine_drop_async
 
-fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Context<'_>) -> Poll<()> {
-    debug _task_context => _43;
-    let mut _0: std::task::Poll<()>;
+fn double::{closure#0}(_1: Pin<&mut {static coroutine body of double()}>, _2: std::future::ResumeTy) -> CoroutineState<(), ()> {
+    debug _task_context => _2;
+    let mut _0: std::ops::CoroutineState<(), ()>;
     let _3: SyncInt;
     let mut _6: impl std::future::Future<Output = ()>;
     let mut _7: std::future::ResumeTy;
@@ -40,9 +40,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     let mut _39: &mut AsyncInt;
     let mut _40: ();
     let mut _41: u32;
-    let mut _42: &mut {async fn body of double()};
-    let mut _43: std::future::ResumeTy;
-    let mut _44: std::ptr::NonNull<std::task::Context<'_>>;
+    let mut _42: &mut {static coroutine body of double()};
     scope 1 {
         debug sync_int => (((*_42) as variant#6).1: SyncInt);
         let _4: AsyncInt;
@@ -56,9 +54,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb0: {
-        _44 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-        _43 = std::future::ResumeTy(move _44);
-        _42 = copy (_1.0: &mut {async fn body of double()});
+        _42 = copy (_1.0: &mut {static coroutine body of double()});
         _41 = discriminant((*_42));
         switchInt(move _41) -> [0: bb29, 2: bb36, 3: bb32, 4: bb33, 5: bb34, 6: bb35, otherwise: bb37];
     }
@@ -79,7 +75,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb4: {
-        _0 = Poll::<()>::Ready(const ());
+        _0 = CoroutineState::<(), ()>::Complete(const ());
         return;
     }
 
@@ -113,14 +109,14 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb11: {
-        _43 = move _7;
+        _2 = move _7;
         StorageDead(_7);
         goto -> bb17;
     }
 
     bb12: {
         StorageLive(_7);
-        _0 = Poll::<()>::Pending;
+        _0 = CoroutineState::<(), ()>::Yielded(const ());
         StorageDead(_7);
         discriminant((*_42)) = 3;
         return;
@@ -140,7 +136,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb16: {
-        _12 = move _43;
+        _12 = move _2;
         _11 = copy (_12.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb15;
     }
@@ -151,7 +147,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb18: {
-        _43 = move _14;
+        _2 = move _14;
         StorageDead(_14);
         goto -> bb17;
     }
@@ -167,14 +163,14 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb21: {
-        _43 = move _24;
+        _2 = move _24;
         StorageDead(_24);
         goto -> bb26;
     }
 
     bb22: {
         StorageLive(_24);
-        _0 = Poll::<()>::Pending;
+        _0 = CoroutineState::<(), ()>::Yielded(const ());
         StorageDead(_24);
         discriminant((*_42)) = 5;
         return;
@@ -190,7 +186,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb25: {
-        _29 = move _43;
+        _29 = move _2;
         _28 = copy (_29.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb24;
     }
@@ -201,13 +197,13 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb27: {
-        _43 = move _31;
+        _2 = move _31;
         StorageDead(_31);
         goto -> bb26;
     }
 
     bb28: {
-        _0 = Poll::<()>::Ready(const ());
+        _0 = CoroutineState::<(), ()>::Complete(const ());
         return;
     }
 
@@ -226,25 +222,25 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
 
     bb32: {
         StorageLive(_7);
-        _7 = move _43;
+        _7 = move _2;
         goto -> bb11;
     }
 
     bb33: {
         StorageLive(_14);
-        _14 = move _43;
+        _14 = move _2;
         goto -> bb18;
     }
 
     bb34: {
         StorageLive(_24);
-        _24 = move _43;
+        _24 = move _2;
         goto -> bb21;
     }
 
     bb35: {
         StorageLive(_31);
-        _31 = move _43;
+        _31 = move _2;
         goto -> bb27;
     }
 
@@ -253,7 +249,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb37: {
-        _0 = Poll::<()>::Ready(const ());
+        _0 = CoroutineState::<(), ()>::Complete(const ());
         return;
     }
 }

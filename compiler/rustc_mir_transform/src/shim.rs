@@ -31,9 +31,8 @@ pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
+#[instrument(level = "debug", skip(tcx))]
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
-    debug!("make_shim({:?})", shim);
-
     let mut result = match shim {
         ty::ShimKind::VTable(def_id) => {
             let adjustment = Adjustment::Deref { source: DerefSource::MutPtr };
@@ -108,7 +107,10 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
 
                 let mut body =
                     EarlyBinder::bind(tcx, body.clone()).instantiate(tcx, args).skip_norm_wip();
-                debug!("make_shim({:?}) = {:?}", shim, body);
+
+                if let Some(dumper) = MirDumper::new(tcx, "make_shim", &body) {
+                    dumper.dump_mir(&body);
+                }
 
                 pm::run_passes(
                     tcx,
@@ -134,6 +136,10 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
             let mut body =
                 async_destructor_ctor::build_future_drop_poll_shim(tcx, def_id, proxy_ty, impl_ty);
 
+            if let Some(dumper) = MirDumper::new(tcx, "make_shim", &body) {
+                dumper.dump_mir(&body);
+            }
+
             pm::run_passes(
                 tcx,
                 &mut body,
@@ -146,11 +152,14 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                 pm::Optimizations::Allowed,
             );
             run_optimization_passes(tcx, &mut body);
-            debug!("make_shim({:?}) = {:?}", shim, body);
             return body;
         }
         ty::ShimKind::AsyncDropGlue(def_id, ty) => {
             let mut body = async_destructor_ctor::build_async_drop_shim(tcx, def_id, ty);
+
+            if let Some(dumper) = MirDumper::new(tcx, "make_shim", &body) {
+                dumper.dump_mir(&body);
+            }
 
             // Main pass required here is StateTransform to convert sync drop ladder
             // into coroutine.
@@ -168,17 +177,23 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                 Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
             );
             run_optimization_passes(tcx, &mut body);
-            debug!("make_shim({:?}) = {:?}", shim, body);
             return body;
         }
 
         ty::ShimKind::AsyncDropGlueCtor(def_id, ty) => {
             let body = async_destructor_ctor::build_async_destructor_ctor_shim(tcx, def_id, ty);
-            debug!("make_shim({:?}) = {:?}", shim, body);
+
+            if let Some(dumper) = MirDumper::new(tcx, "make_shim", &body) {
+                dumper.dump_mir(&body);
+            }
+
             return body;
         }
     };
-    debug!("make_shim({:?}) = untransformed {:?}", shim, result);
+
+    if let Some(dumper) = MirDumper::new(tcx, "make_shim", &result) {
+        dumper.dump_mir(&result);
+    }
 
     deref_finder(tcx, &mut result, false);
 
@@ -202,8 +217,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
         ],
         Some(MirPhase::Runtime(RuntimePhase::Optimized)),
     );
-
-    debug!("make_shim({:?}) = {:?}", shim, result);
 
     result
 }

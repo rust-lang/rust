@@ -1,8 +1,8 @@
 // MIR for `array::{closure#0}` 0 coroutine_drop_async
 
-fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context<'_>) -> Poll<()> {
-    debug _task_context => _26;
-    let mut _0: std::task::Poll<()>;
+fn array::{closure#0}(_1: Pin<&mut {static coroutine body of array()}>, _2: std::future::ResumeTy) -> CoroutineState<(), ()> {
+    debug _task_context => _2;
+    let mut _0: std::ops::CoroutineState<(), ()>;
     let _3: [AsyncInt; 2];
     let mut _4: AsyncInt;
     let mut _5: AsyncInt;
@@ -25,17 +25,13 @@ fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context
     let mut _22: &mut [AsyncInt; 2];
     let mut _23: ();
     let mut _24: u32;
-    let mut _25: &mut {async fn body of array()};
-    let mut _26: std::future::ResumeTy;
-    let mut _27: std::ptr::NonNull<std::task::Context<'_>>;
+    let mut _25: &mut {static coroutine body of array()};
     scope 1 {
         debug array => (((*_25) as variant#4).1: [AsyncInt; 2]);
     }
 
     bb0: {
-        _27 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-        _26 = std::future::ResumeTy(move _27);
-        _25 = copy (_1.0: &mut {async fn body of array()});
+        _25 = copy (_1.0: &mut {static coroutine body of array()});
         _24 = discriminant((*_25));
         switchInt(move _24) -> [0: bb16, 2: bb21, 3: bb19, 4: bb20, otherwise: bb22];
     }
@@ -46,7 +42,7 @@ fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context
     }
 
     bb2: {
-        _0 = Poll::<()>::Ready(const ());
+        _0 = CoroutineState::<(), ()>::Complete(const ());
         return;
     }
 
@@ -70,14 +66,14 @@ fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context
     }
 
     bb7: {
-        _26 = move _7;
+        _2 = move _7;
         StorageDead(_7);
         goto -> bb13;
     }
 
     bb8: {
         StorageLive(_7);
-        _0 = Poll::<()>::Pending;
+        _0 = CoroutineState::<(), ()>::Yielded(const ());
         StorageDead(_7);
         discriminant((*_25)) = 3;
         return;
@@ -97,7 +93,7 @@ fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context
     }
 
     bb12: {
-        _12 = move _26;
+        _12 = move _2;
         _11 = copy (_12.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb11;
     }
@@ -108,13 +104,13 @@ fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context
     }
 
     bb14: {
-        _26 = move _14;
+        _2 = move _14;
         StorageDead(_14);
         goto -> bb13;
     }
 
     bb15: {
-        _0 = Poll::<()>::Ready(const ());
+        _0 = CoroutineState::<(), ()>::Complete(const ());
         return;
     }
 
@@ -133,13 +129,13 @@ fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context
 
     bb19: {
         StorageLive(_7);
-        _7 = move _26;
+        _7 = move _2;
         goto -> bb7;
     }
 
     bb20: {
         StorageLive(_14);
-        _14 = move _26;
+        _14 = move _2;
         goto -> bb14;
     }
 
@@ -148,7 +144,7 @@ fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context
     }
 
     bb22: {
-        _0 = Poll::<()>::Ready(const ());
+        _0 = CoroutineState::<(), ()>::Complete(const ());
         return;
     }
 }

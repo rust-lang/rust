@@ -33,6 +33,7 @@ async fn foo<BAZ>(_: BAZ, mut cb: impl for<'any> FnMutFut<&'any BAZ::Param, ()>)
 where
     BAZ: Baz<Param = i32>,
 {
+    //[current]~^ ERROR: expected an `FnMut(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
     cb(&1i32).await;
     //[current]~^ ERROR: expected an `FnMut(&i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
     //[current]~| ERROR: mismatched types
