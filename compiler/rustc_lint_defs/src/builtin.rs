@@ -5586,12 +5586,13 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,no_run
+    #[cfg_attr(bootstrap, doc = "```rust,compile_fail")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,no_run")]
     /// fn main() {
     ///     let x = panic!();
     ///     x.clone();
     /// }
-    /// ```
+    #[doc = "```"]
     ///
     /// {{produces}}
     ///
