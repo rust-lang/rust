@@ -38,6 +38,12 @@
 //! assert_eq!(boxed_id, TypeId::of::<Box<dyn Any>>());
 //! ```
 //!
+//! To downcast an `Rc<dyn Any>` or `Arc<dyn Any>`, use [`Rc::downcast`] or
+//! [`Arc::downcast`], respectively.
+//!
+//! [`Rc::downcast`]: ../../std/rc/struct.Rc.html#method.downcast
+//! [`Arc::downcast`]: ../../std/sync/struct.Arc.html#method.downcast
+//!
 //! ## Examples
 //!
 //! Consider a situation where we want to log a value passed to a function.
