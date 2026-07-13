@@ -614,12 +614,8 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
         }
 
         if attr.has_name(sym::ignore)
-            && match &attr.kind {
-                AttrKind::Normal(normal_attr) => {
-                    !matches!(normal_attr.item.args, AttrItemKind::Unparsed(AttrArgs::Eq { .. }))
-                },
-                AttrKind::DocComment(..) => true,
-            }
+            && let AttrKind::Normal(normal_attr) = &attr.kind
+            && !matches!(normal_attr.item.args, AttrItemKind::Unparsed(AttrArgs::Eq { .. }))
         {
             span_lint_and_help(
                 cx,
