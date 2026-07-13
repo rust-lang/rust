@@ -225,7 +225,7 @@ impl<N: AstIdNode> AstIdLoc for AssocItemLoc<N> {
 macro_rules! impl_intern {
     ($id:ident, $loc:ident) => {
         impl_intern_key!($id, $loc);
-        impl_intern_lookup!(SourceDatabase, $id, $loc);
+        impl_intern_lookup!($id, $loc);
     };
 }
 
@@ -936,7 +936,7 @@ impl GenericDefId {
     ) -> (HirFileId, Option<ast::GenericParamList>) {
         fn file_id_and_params_of_item_loc<Loc>(
             db: &dyn SourceDatabase,
-            def: impl Lookup<Database = dyn SourceDatabase, Data = Loc>,
+            def: impl Lookup<Data = Loc>,
         ) -> (HirFileId, Option<ast::GenericParamList>)
         where
             Loc: src::HasSource,
@@ -1145,7 +1145,7 @@ pub trait HasModule {
 impl<N, ItemId> HasModule for ItemId
 where
     N: AstIdNode,
-    ItemId: Lookup<Database = dyn SourceDatabase, Data = ItemLoc<N>> + Copy,
+    ItemId: Lookup<Data = ItemLoc<N>> + Copy,
 {
     #[inline]
     fn module(&self, db: &dyn SourceDatabase) -> ModuleId {
@@ -1170,7 +1170,7 @@ where
 #[inline]
 fn module_for_assoc_item_loc<'db>(
     db: &(dyn 'db + SourceDatabase),
-    id: impl Lookup<Database = dyn SourceDatabase, Data = AssocItemLoc<impl AstIdNode>>,
+    id: impl Lookup<Data = AssocItemLoc<impl AstIdNode>>,
 ) -> ModuleId {
     id.lookup(db).container.module(db)
 }

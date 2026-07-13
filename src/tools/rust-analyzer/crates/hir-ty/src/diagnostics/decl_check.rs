@@ -15,7 +15,6 @@ mod case_conv;
 
 use std::fmt;
 
-use base_db::SourceDatabase;
 use hir_def::{
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
     ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
@@ -710,7 +709,7 @@ impl<'a> DeclValidator<'a> {
     ) where
         N: AstNode + HasName + fmt::Debug,
         S: HasSource<Value = N>,
-        L: Lookup<Data = S, Database = dyn SourceDatabase> + HasModule + Copy,
+        L: Lookup<Data = S> + HasModule + Copy,
     {
         let to_expected_case_type = match expected_case {
             CaseType::LowerSnakeCase => to_lower_snake_case,
