@@ -1,7 +1,7 @@
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
-use crate::sys::unsupported;
+use crate::sys::unsupported::unsupported;
 use crate::time::Duration;
 
 pub struct TcpStream(!);

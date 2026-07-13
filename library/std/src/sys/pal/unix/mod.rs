@@ -147,6 +147,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "horizon",
             target_os = "vxworks",
             target_os = "vita",
+            target_os = "l4re",
             // Unikraft's `signal` implementation is currently broken:
             // https://github.com/unikraft/lib-musl/issues/57
             target_vendor = "unikraft",
@@ -365,7 +366,13 @@ cfg_select! {
     _ => {}
 }
 
-#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx"))]
+#[cfg(any(
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nuttx",
+    target_os = "l4re",
+))]
 pub mod unsupported {
     use crate::io;
 

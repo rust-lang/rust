@@ -7,6 +7,7 @@
         all(target_os = "wasi", target_env = "p1"),
         target_os = "xous",
         target_os = "trusty",
+        target_os = "l4re",
     ))
 ))]
 mod tests;
