@@ -55,6 +55,9 @@ use stdx::{impl_from, never};
 use thin_vec::ThinVec;
 use tracing::debug;
 
+pub use hir_def::LoweringMode;
+pub(crate) use hir_def::TrackedStructToken;
+
 use crate::{
     ImplTraitId, Span, TyLoweringDiagnostic,
     consteval::{create_anon_const, path_to_const},
@@ -198,33 +201,6 @@ pub trait TyLoweringInferVarsCtx<'db> {
     #[expect(private_interfaces)]
     fn as_table(&mut self) -> Option<&mut InferenceTable<'db>> {
         None
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LoweringMode {
-    Analysis,
-    Ide,
-}
-
-pub(crate) use self::tracked_struct_token::TrackedStructToken;
-mod tracked_struct_token {
-    use super::LoweringMode;
-
-    /// A token that is required to construct tracked structs.
-    /// This exists to prevent one from accidentally creating a tracked struct outside of a query which may happen for some codepaths.
-    pub(crate) struct TrackedStructToken {
-        // #[non_exhaustive] doesn't work for us here, we want it module focused.
-        _private: (),
-    }
-
-    impl LoweringMode {
-        pub(crate) fn allow_tracked_structs(self) -> Option<TrackedStructToken> {
-            match self {
-                LoweringMode::Analysis => Some(TrackedStructToken { _private: () }),
-                LoweringMode::Ide => None,
-            }
-        }
     }
 }
 
