@@ -525,7 +525,8 @@ pub(super) fn definition(
             let body = it.eval(db);
             Some(match body {
                 Ok(it) => match it.render_debug(db) {
-                    Ok(it) => it,
+                    Ok(rendered) if rendered.is_empty() => it.render(db, display_target),
+                    Ok(rendered) => rendered,
                     Err(err) => {
                         let it = it.render(db, display_target);
                         if env::var_os("RA_DEV").is_some() {
@@ -557,7 +558,9 @@ pub(super) fn definition(
             let body = it.eval(db);
             Some(match body {
                 Ok(it) => match it.render_debug(db) {
-                    Ok(it) => it,
+                    Ok(rendered) if rendered.is_empty() => it.render(db, display_target),
+                    Ok(rendered) => rendered,
+
                     Err(err) => {
                         let it = it.render(db, display_target);
                         if env::var_os("RA_DEV").is_some() {
