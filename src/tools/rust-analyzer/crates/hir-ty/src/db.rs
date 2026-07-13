@@ -104,7 +104,7 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
     fn const_eval_static<'db>(&'db self, def: StaticId) -> Result<Allocation<'db>, ConstEvalError>;
 
     #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
-    #[salsa::cycle(cycle_result = crate::consteval::const_eval_discriminant_cycle_result)]
+    #[salsa::transparent]
     fn const_eval_discriminant(&self, def: EnumVariantId) -> Result<i128, ConstEvalError>;
 
     #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
@@ -119,7 +119,7 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
     // endregion:mir
 
     #[salsa::invoke(crate::layout::layout_of_adt_query)]
-    #[salsa::cycle(cycle_result = crate::layout::layout_of_adt_cycle_result)]
+    #[salsa::transparent]
     fn layout_of_adt(
         &self,
         def: AdtId,
@@ -128,7 +128,7 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
     ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::layout_of_ty_query)]
-    #[salsa::cycle(cycle_result = crate::layout::layout_of_ty_cycle_result)]
+    #[salsa::transparent]
     fn layout_of_ty(
         &self,
         ty: StoredTy,
