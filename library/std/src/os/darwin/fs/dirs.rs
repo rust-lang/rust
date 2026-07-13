@@ -23,19 +23,19 @@ pub trait UserDirsExt: Sized + Sealed {
     ///
     /// The loaded common directories are:
     ///
-    /// | `UserDirs` | [`SearchPathDirectory`] |
+    /// | `UserDirs` | [`NSSearchPathDirectory`] |
     /// | ---------- | ----------------------- |
-    /// | [`cache_home`] | [`.cachesDirectory`] (`~/Library/Caches`) |
-    /// | [`config_home`] | [`.applicationSupportDirectory`] (`~/Library/Application Support`) |
-    /// | [`data_home`] | [`.applicationSupportDirectory`] (`~/Library/Application Support`) |
-    /// | [`state_home`] | [`.applicationSupportDirectory`] (`~/Library/Application Support`) |
-    /// | [`desktop`] | [`.desktopDirectory`] (`~/Desktop`) |
-    /// | [`documents`] | [`.documentDirectory`] (`~/Documents`) |
-    /// | [`downloads`] | [`.downloadsDirectory`] |
-    /// | [`music`] | [`.musicDirectory`] (`~/Music`) |
-    /// | [`pictures`] | [`.picturesDirectory`] (`~/Pictures`) |
-    /// | [`public_share`] | [`.sharedPublicDirectory`] (`~/Public`) |
-    /// | [`videos`] | [`.moviesDirectory`] (`~/Movies`) |
+    /// | [`cache_home`] | [`NSCachesDirectory`] (`~/Library/Caches`) |
+    /// | [`config_home`] | [`NSApplicationSupportDirectory`] (`~/Library/Application Support`) |
+    /// | [`data_home`] | [`NSApplicationSupportDirectory`] (`~/Library/Application Support`) |
+    /// | [`state_home`] | [`NSApplicationSupportDirectory`] (`~/Library/Application Support`) |
+    /// | [`desktop`] | [`NSDesktopDirectory`] (`~/Desktop`) |
+    /// | [`documents`] | [`NSDocumentDirectory`] (`~/Documents`) |
+    /// | [`downloads`] | [`NSDownloadsDirectory`] |
+    /// | [`music`] | [`NSMusicDirectory`] (`~/Music`) |
+    /// | [`pictures`] | [`NSPicturesDirectory`] (`~/Pictures`) |
+    /// | [`public_share`] | [`NSSharedPublicDirectory`] (`~/Public`) |
+    /// | [`videos`] | [`NSMoviesDirectory`] (`~/Movies`) |
     ///
     /// Note that the Application Support directory is used for the config,
     /// data, and state directories. It is always possible for multiple user
@@ -75,16 +75,16 @@ pub trait UserDirsExt: Sized + Sealed {
     /// [`public_share`]: UserDirs::public_share
     /// [`videos`]: UserDirs::videos
     ///
-    /// [`SearchPathDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory
-    /// [`.cachesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/cachesdirectory
-    /// [`.applicationSupportDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/applicationsupportdirectory
-    /// [`.desktopDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/desktopdirectory
-    /// [`.documentDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/documentdirectory
-    /// [`.downloadsDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/downloadsdirectory
-    /// [`.musicDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/musicdirectory
-    /// [`.picturesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/picturesdirectory
-    /// [`.sharedPublicDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/sharedpublicdirectory
-    /// [`.moviesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/moviesdirectory
+    /// [`NSSearchPathDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory?language=objc
+    /// [`NSCachesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/cachesdirectory?language=objc
+    /// [`NSApplicationSupportDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/applicationsupportdirectory?language=objc
+    /// [`NSDesktopDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/desktopdirectory?language=objc
+    /// [`NSDocumentDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/documentdirectory?language=objc
+    /// [`NSDownloadsDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/downloadsdirectory?language=objc
+    /// [`NSMusicDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/musicdirectory?language=objc
+    /// [`NSPicturesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/picturesdirectory?language=objc
+    /// [`NSSharedPublicDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/sharedpublicdirectory?language=objc
+    /// [`NSMoviesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/moviesdirectory?language=objc
     #[unstable(feature = "dir_discovery", issue = "157515")]
     fn sysdir() -> io::Result<Self>;
 }
