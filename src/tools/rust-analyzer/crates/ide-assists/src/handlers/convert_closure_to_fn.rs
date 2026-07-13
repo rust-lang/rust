@@ -739,6 +739,25 @@ fn main() {
     }
 
     #[test]
+    fn handles_closures_with_unannotated_rest_patterns() {
+        check_assist(
+            convert_closure_to_fn,
+            r#"
+fn main() {
+    let closure = |$0..| ();
+}
+"#,
+            r#"
+fn main() {
+    fn closure(..: _) {
+        ()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn multiple_capture_usages() {
         check_assist(
             convert_closure_to_fn,
