@@ -9,7 +9,7 @@ use std::fmt::Write as _;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Disallow the use of rest patterns for accesible fields
+    /// Disallow the use of rest patterns for accessible fields
     ///
     /// ### Why restrict this?
     /// It might lead to unhandled fields when the struct changes.
