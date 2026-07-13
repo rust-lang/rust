@@ -141,7 +141,7 @@ mod sys {
         use libc::sysdir_search_path_domain_mask_t::SYSDIR_DOMAIN_MASK_USER;
 
         // SAFETY: SYSDIR_DOMAIN_MASK_USER < SYSDIR_DOMAIN_MASK_ALL
-        let mut iter = unsafe { sys::Iter::new(home, kind, SYSDIR_DOMAIN_MASK_USER) };
+        let mut iter = unsafe { Iter::new(home, kind, SYSDIR_DOMAIN_MASK_USER) };
         let Some(path) = iter.next() else {
             return Ok(None);
         };
