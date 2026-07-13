@@ -1,0 +1,20 @@
+error: lifetime may not live long enough
+  --> $DIR/static-coroutine-with-nonstatic-yield.rs:21:5
+   |
+LL |   fn make_coro<'a>()
+   |                -- lifetime `'a` defined here
+...
+LL | /     || {
+LL | |         let storage: Rc<RefCell<Option<&'a Payload>>> = Rc::new(RefCell::new(None));
+LL | |         yield storage.clone();
+LL | |         yield storage;
+LL | |     }
+   | |_____^ returning this value requires that `'a` must outlive `'static`
+   |
+help: consider adding 'move' keyword before the nested closure
+   |
+LL |     move || {
+   |     ++++
+
+error: aborting due to 1 previous error
+
