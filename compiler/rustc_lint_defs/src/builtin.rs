@@ -78,6 +78,7 @@ pub mod hardwired {
             MUST_NOT_SUSPEND,
             NAMED_ARGUMENTS_USED_POSITIONALLY,
             NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
+            NEXT_TRAIT_SOLVER_OVERFLOW,
             NON_CONTIGUOUS_RANGE_ENDPOINTS,
             NON_EXHAUSTIVE_OMITTED_PATTERNS,
             OUT_OF_SCOPE_MACRO_CALLS,
@@ -5577,5 +5578,67 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #156047),
         report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// The `next_trait_solver_overflow` lint detects situations where the obligation evaluation
+    /// overflows with the next solver but not with the old solver.
+    ///
+    /// ### Example
+    /// ```text
+    /// rustc -Znext-solver example.rs
+    /// ```
+    ///
+    /// ```rust,ignore (requires next solver)
+    /// #![recursion_limit = "8"]
+    /// struct Foo<T> {
+    ///    t: T,
+    ///    opt_t: Option<T>,
+    /// }
+    /// fn require_sync<T: Sync>() {}
+    /// fn main() {
+    ///     require_sync::<Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>>();
+    /// }
+    /// ```
+    ///
+    /// This will produces:
+    /// ```text
+    /// error[E0275]: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync`
+    ///  --> example.rs:12:20
+    ///   |
+    ///   |     require_sync::<Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>>();
+    ///   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///   |
+    ///   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "16"]` attribute to your crate
+    /// note: required by a bound in `require_sync`
+    ///  --> example.rs:9:20
+    ///   |
+    ///   | fn require_sync<T: Sync>() {}
+    ///   |                    ^^^^ required by this bound in `require_sync`
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// The trait solvers use a recursion limit to avoid hangs from deeply nested obligations.
+    /// They also use caches to avoid redundant computation. This is a performance optimization and
+    /// shouldn't affect the final evaluation result.
+    ///
+    /// However, the old solver doesn't validate depth requirement when looking up cache. This means
+    /// evaluation results depend on whether cache entries exists which in turn depends on cache
+    /// insertion order.
+    ///
+    /// The next solver correctly records and validates recursion depth requirements when using
+    /// the cache. This makes it more prone to overflow compared to the old solver.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub NEXT_TRAIT_SOLVER_OVERFLOW,
+    Warn,
+    "detects trait solving overflow that only happens with the next solver",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #159228),
+        report_in_deps: false,
     };
 }

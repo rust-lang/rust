@@ -2617,10 +2617,10 @@ rustc_queries! {
 
     /// Used by `-Znext-solver` to compute proof trees.
     query evaluate_root_goal_for_proof_tree_raw(
-        goal: solve::CanonicalInput<'tcx>,
+        key: (solve::CanonicalInput<'tcx>, usize)
     ) -> (solve::QueryResult<'tcx>, &'tcx solve::inspect::Probe<TyCtxt<'tcx>>) {
         no_hash
-        desc { "computing proof tree for `{}`", goal.canonical.value.goal.predicate }
+        desc { "computing proof tree for `{}` with depth `{}`", key.0.canonical.value.goal.predicate, key.1 }
     }
 
     /// Returns the Rust target features for the current target. These are not always the same as LLVM target features!

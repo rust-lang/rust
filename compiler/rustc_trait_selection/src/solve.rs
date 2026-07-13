@@ -19,11 +19,10 @@ pub use select::InferCtxtSelectExt;
 
 fn evaluate_root_goal_for_proof_tree_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
-    canonical_input: CanonicalInput<TyCtxt<'tcx>>,
+    key: (CanonicalInput<TyCtxt<'tcx>>, usize),
 ) -> (QueryResult<TyCtxt<'tcx>>, &'tcx inspect::Probe<TyCtxt<'tcx>>) {
     evaluate_root_goal_for_proof_tree_raw_provider::<SolverDelegate<'tcx>, TyCtxt<'tcx>>(
-        tcx,
-        canonical_input,
+        tcx, key.0, key.1,
     )
 }
 

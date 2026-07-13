@@ -465,6 +465,8 @@ pub trait InferCtxtLike: Sized {
 
     fn probe<T>(&self, probe: impl FnOnce() -> T) -> T;
 
+    fn commit_if_ok<T, E>(&self, f: impl FnOnce() -> Result<T, E>) -> Result<T, E>;
+
     fn sub_regions(
         &self,
         sub: Region<Self::Interner>,
