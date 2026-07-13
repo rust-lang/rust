@@ -1483,7 +1483,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             TypeRelativePath::Ctor { ctor_def_id, args } => match tcx.def_kind(ctor_def_id) {
                 DefKind::Ctor(_, CtorKind::Fn) => {
-                    Ok(ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, ctor_def_id, args)))
+                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                    Ok(ty::Const::zero_sized(
+                        tcx,
+                        Ty::new_fn_def(tcx, ctor_def_id, ty::Binder::dummy(args)),
+                    ))
                 }
                 DefKind::Ctor(ctor_of, CtorKind::Const) => {
                     Ok(self.construct_const_ctor_value(ctor_def_id, ctor_of, args))
@@ -2581,7 +2585,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|(field_def, arg)| {
                 self.lower_const_arg(
                     arg,
-                    tcx.type_of(field_def.did).instantiate(tcx, adt_args).skip_norm_wip(),
+                    tcx.type_of(field_def.did)
+                        .instantiate(tcx, adt_args.no_bound_vars().unwrap())
+                        .skip_norm_wip(),
                 )
             })
             .collect::<Vec<_>>();
@@ -2594,7 +2600,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let valtree = ty::ValTree::from_branches(tcx, opt_discr_const.into_iter().chain(fields));
-        let adt_ty = Ty::new_adt(tcx, adt_def, adt_args);
+        let adt_ty = Ty::new_adt(tcx, adt_def, adt_args.no_bound_vars().unwrap());
         ty::Const::new_value(tcx, valtree, adt_ty)
     }
 
@@ -2906,7 +2912,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &path.segments[generic_segments[0].1],
                 );
 
-                ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, ty::Binder::dummy(args)))
             }
             Res::Def(DefKind::AssocConst { .. }, did) => {
                 let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
@@ -2937,7 +2944,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
 
                 if self.tcx().generics_of(did).own_synthetic_params_count() == 0 {
-                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, ty::Binder::dummy(args)))
                 } else {
                     let tcx = self.tcx();
                     let generics = tcx.generics_of(did);
@@ -2954,7 +2962,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         }
                     });
 
-                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                    ty::Const::zero_sized(
+                        tcx,
+                        Ty::new_fn_def(tcx, did, ty::Binder::dummy(args.collect::<Box<_>>())),
+                    )
                 }
             }
 

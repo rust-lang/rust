@@ -343,7 +343,7 @@ fn associated_type_for_impl_trait_in_impl(
         let mut own_params = trait_assoc_generics.own_params.clone();
 
         let parent_generics = tcx.generics_of(impl_local_def_id.to_def_id());
-        let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
+        let parent_count = parent_generics.count();
 
         for param in &mut own_params {
             param.index = param.index + parent_count as u32 - trait_assoc_parent_count as u32;

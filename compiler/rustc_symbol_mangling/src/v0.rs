@@ -545,11 +545,14 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
 
             // Mangle all nominal types as paths.
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
-            | ty::FnDef(def_id, args)
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => {
                 self.print_def_path(def_id, args)?;
+            }
+
+            ty::FnDef(def_id, args) => {
+                self.print_def_path(def_id, args.no_bound_vars().unwrap())?
             }
 
             // We may still encounter projections here due to the printing
