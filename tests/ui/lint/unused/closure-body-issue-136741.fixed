@@ -1,5 +1,5 @@
 //@ run-rustfix
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 #![deny(unused_parens)]
 #![deny(unused_braces)]
 

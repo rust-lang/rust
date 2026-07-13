@@ -1,3 +1,5 @@
+// ignore-tidy-file-linelength
+//
 // Test that when debug info only includes line tables that backtrace is still generated
 // successfully.
 // Original test:
@@ -5,7 +7,6 @@
 // Part of <https://github.com/rust-lang/rust/issues/122899> porting some backtrace tests to rustc.
 // This test diverges from the original test in that it now uses a Rust library auxiliary because
 // rustc now has `-Cdebuginfo=line-tables-only`.
-// ignore-tidy-linelength
 //@ run-pass
 //@ compile-flags: -Cstrip=none -Cdebuginfo=line-tables-only
 //@ ignore-android FIXME #17520
