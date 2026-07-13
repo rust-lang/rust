@@ -44,6 +44,7 @@
 #![feature(cstr_display)]
 #![feature(debug_closure_helpers)]
 #![feature(dec2flt)]
+#![feature(derive_const)]
 #![feature(drop_guard)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
@@ -88,6 +89,7 @@
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(new_range_remainder)]
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![feature(num_internals)]
@@ -166,6 +168,7 @@ macro_rules! test_runtime_and_compiletime {
     }
 }
 
+// tidy-alphabetical-start
 mod alloc;
 mod any;
 mod array;
@@ -205,6 +208,7 @@ mod pattern;
 mod pin;
 mod pin_macro;
 mod ptr;
+mod range;
 mod result;
 mod simd;
 mod slice;
@@ -216,6 +220,7 @@ mod tuple;
 mod unicode;
 mod waker;
 mod wtf8;
+// tidy-alphabetical-end
 
 /// Copied from `std::test_helpers::test_rng`, see that function for rationale.
 #[track_caller]
