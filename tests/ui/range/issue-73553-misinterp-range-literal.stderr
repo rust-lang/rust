@@ -6,8 +6,8 @@ LL |     demo(tell(1)..tell(10));
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&std::ops::Range<_>`
-                 found struct `std::ops::Range<_>`
+   = note: expected reference `&Range<_>`
+                 found struct `Range<_>`
 note: function defined here
   --> $DIR/issue-73553-misinterp-range-literal.rs:3:4
    |
@@ -26,8 +26,8 @@ LL |     demo(1..10);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&std::ops::Range<usize>`
-                 found struct `std::ops::Range<{integer}>`
+   = note: expected reference `&Range<usize>`
+                 found struct `Range<{integer}>`
 note: function defined here
   --> $DIR/issue-73553-misinterp-range-literal.rs:3:4
    |

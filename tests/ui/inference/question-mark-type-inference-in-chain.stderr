@@ -42,8 +42,8 @@ LL |         .collect::<Result<Vec<Version>>>()?;
    |          |
    |          required by a bound introduced by this call
    |
-help: the trait `FromIterator<std::result::Result<_, Error>>` is not implemented for `std::result::Result<Vec<Version>, AnotherError>`
-      but trait `FromIterator<std::result::Result<_, AnotherError>>` is implemented for it
+help: the trait `FromIterator<Result<_, Error>>` is not implemented for `std::result::Result<Vec<Version>, AnotherError>`
+      but trait `FromIterator<Result<_, AnotherError>>` is implemented for it
   --> $SRC_DIR/core/src/result.rs:LL:COL
    = help: for that trait implementation, expected `AnotherError`, found `Error`
 note: the method call chain might not have had the expected associated types
