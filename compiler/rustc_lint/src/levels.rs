@@ -318,10 +318,9 @@ impl<'tcx> LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     ///
     /// The sharing works by looking up the derived-from item here and reusing the expectation
     /// ids of its `#[expect]` attributes, instead of copying the attributes to the generated
-    /// impl during expansion: `#[cfg]`/`#[cfg_attr]` processing re-parses the derive input
-    /// from tokens, which does not preserve attribute ids (see #152289 and its revert
-    /// #153055). One written attribute therefore corresponds to exactly one expectation, no
-    /// matter how many impls are derived from the item.
+    /// impl during expansion, as that causes issues with `#[cfg]`/`#[cfg_attr]` who re-parses the
+    /// derive input, which does not preserve attribute ids (see #152289 and its revert
+    /// #153055).
     fn inherit_derive_expectations(&mut self, owner: hir::OwnerId) {
         let tcx = self.provider.tcx;
         // Fast path: only trait impls can be derive-generated.
