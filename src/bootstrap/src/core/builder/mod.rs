@@ -75,7 +75,8 @@ pub struct Builder<'a> {
     /// executed to be logged instead. Used by snapshot tests of command-line
     /// paths-to-steps handling.
     #[expect(clippy::type_complexity)]
-    log_cli_step_for_tests: Option<Box<dyn Fn(&StepDescription, &[PathSet], &[TargetSelection])>>,
+    log_cli_step_for_tests:
+        Option<Box<dyn Fn(&CommandLineStepDescription, &[PathSet], &[TargetSelection])>>,
 }
 
 impl Deref for Builder<'_> {
@@ -101,8 +102,47 @@ impl dyn AnyDebug {
     // Feel free to add other `dyn Any` methods as necessary.
 }
 
+/// A unit of work within bootstrap that is cached to avoid redundant execution.
+/// Steps can be performed via [`Builder::ensure`].
+///
+/// Historically, steps also participated in command-line processing.
+/// That responsibility has been split off into the larger [`CommandLineStep`] trait,
+/// which helper steps don't need to implement.
 pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
-    /// Result type of `Step::run`.
+    /// Result type of [`Step::run`]. Stored in the step cache for later lookup.
+    type Output: Clone;
+
+    /// Executes this step.
+    ///
+    /// Called by [`Builder::ensure`] if no cached result was found for this step.
+    fn run(self, builder: &Builder<'_>) -> Self::Output;
+
+    /// Returns metadata of the step, for tests.
+    fn metadata(&self) -> Option<StepMetadata> {
+        None
+    }
+}
+
+/// Every [`CommandLineStep`] is also a [`Step`].
+impl<S: CommandLineStep> Step for S {
+    type Output = <S as CommandLineStep>::Output;
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        <S as CommandLineStep>::run(self, builder)
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        <S as CommandLineStep>::metadata(self)
+    }
+}
+
+/// A [`Step`] that can be selected by command-line arguments.
+///
+/// A blanket impl allows every `CommandLineStep` to be used as a `Step`.
+/// This is arguably nicer than having it be a subtrait, because it avoids the
+/// need for two separate `impl` blocks per command-line-step type.
+pub trait CommandLineStep: 'static + Clone + Debug + PartialEq + Eq + Hash {
+    /// Result type of [`Step::run`].
     type Output: Clone;
 
     /// If this value is true, then the values of `run.target` passed to the `make_run` function of
@@ -134,33 +174,15 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
         false
     }
 
-    /// Primary function to implement `Step` logic.
-    ///
-    /// This function can be triggered in two ways:
-    /// 1. Directly from [`Builder::execute_cli`].
-    /// 2. Indirectly by being called from other `Step`s using [`Builder::ensure`].
-    ///
-    /// When called with [`Builder::execute_cli`] (as done by `Build::build`), this function is executed twice:
-    /// - First in "dry-run" mode to validate certain things (like cyclic Step invocations,
-    ///   directory creation, etc) super quickly.
-    /// - Then it's called again to run the actual, very expensive process.
-    ///
-    /// When triggered indirectly from other `Step`s, it may still run twice (as dry-run and real mode)
-    /// depending on the `Step::run` implementation of the caller.
-    fn run(self, builder: &Builder<'_>) -> Self::Output;
-
     /// Called directly by the bootstrap `Step` handler when not triggered indirectly by other `Step`s using [`Builder::ensure`].
     /// For example, `./x.py test bootstrap` runs this for `test::Bootstrap`. Similarly, `./x.py test` runs it for every step
     /// that is listed by the `describe` macro in [`Builder::get_step_descriptions`].
-    fn make_run(_run: RunConfig<'_>) {
-        // It is reasonable to not have an implementation of make_run for rules
-        // who do not want to get called from the root context. This means that
-        // they are likely dependencies (e.g., sysroot creation) or similar, and
-        // as such calling them from ./x.py isn't logical.
-        unimplemented!()
-    }
+    fn make_run(_run: RunConfig<'_>);
 
-    /// Returns metadata of the step, for tests
+    /// Used as the implementation of [`Step::run`].
+    fn run(self, builder: &Builder<'_>) -> Self::Output;
+
+    /// Used as the implementation of [`Step::metadata`].
     fn metadata(&self) -> Option<StepMetadata> {
         None
     }
@@ -327,7 +349,7 @@ pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
     descr
 }
 
-struct StepDescription {
+struct CommandLineStepDescription {
     is_host: bool,
     should_run: fn(ShouldRun<'_>) -> ShouldRun<'_>,
     is_default_step_fn: fn(&Builder<'_>) -> bool,
@@ -446,9 +468,9 @@ impl PathSet {
     }
 }
 
-impl StepDescription {
-    fn from<S: Step>(kind: Kind) -> StepDescription {
-        StepDescription {
+impl CommandLineStepDescription {
+    fn from<S: CommandLineStep>(kind: Kind) -> CommandLineStepDescription {
+        CommandLineStepDescription {
             is_host: S::IS_HOST,
             should_run: S::should_run,
             is_default_step_fn: S::is_default_step,
@@ -617,12 +639,6 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    // allows being more explicit about why should_run in Step returns the value passed to it
-    pub fn never(mut self) -> ShouldRun<'a> {
-        self.paths.insert(PathSet::empty());
-        self
-    }
-
     /// Given a set of requested paths, return the subset which match the Step for this `ShouldRun`,
     /// removing the matches from `paths`.
     ///
@@ -747,16 +763,12 @@ struct Libdir {
 impl Step for Libdir {
     type Output = PathBuf;
 
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let relative_sysroot_libdir = builder.sysroot_libdir_relative(self.compiler);
         let sysroot = builder.sysroot(self.compiler).join(relative_sysroot_libdir).join("rustlib");
 
         if !builder.config.dry_run() {
-            // Avoid deleting the `rustlib/` directory we just copied (in `impl Step for
+            // Avoid deleting the `rustlib/` directory we just copied (in `impl CommandLineStep for
             // Sysroot`).
             if !builder.download_rustc() {
                 let sysroot_target_libdir = sysroot.join(self.target).join("lib");
@@ -790,10 +802,10 @@ impl Step for Libdir {
 pub const STEP_SPAN_TARGET: &str = "STEP";
 
 impl<'a> Builder<'a> {
-    fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
+    fn get_step_descriptions(kind: Kind) -> Vec<CommandLineStepDescription> {
         macro_rules! describe {
             ($($rule:ty),+ $(,)?) => {{
-                vec![$(StepDescription::from::<$rule>(kind)),+]
+                vec![$(CommandLineStepDescription::from::<$rule>(kind)),+]
             }};
         }
         match kind {
@@ -1173,7 +1185,7 @@ impl<'a> Builder<'a> {
         format!("https://doc.rust-lang.org/{channel}")
     }
 
-    fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
+    fn run_step_descriptions(&self, v: &[CommandLineStepDescription], paths: &[PathBuf]) {
         cli_paths::match_paths_to_steps_and_run(self, v, paths);
     }
 
@@ -1681,12 +1693,12 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// Ensure that a given step is built *only if it's supposed to be built by default*, returning
     /// its output. This will cache the step, so it's safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are build.
-    pub(crate) fn ensure_if_default<T, S: Step<Output = T>>(
+    pub(crate) fn ensure_if_default<T, S: CommandLineStep<Output = T>>(
         &'a self,
         step: S,
         kind: Kind,
     ) -> Option<S::Output> {
-        let desc = StepDescription::from::<S>(kind);
+        let desc = CommandLineStepDescription::from::<S>(kind);
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
         // Avoid running steps contained in --skip
@@ -1701,8 +1713,8 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     }
 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.
-    pub(crate) fn was_invoked_explicitly<S: Step>(&'a self, kind: Kind) -> bool {
-        let desc = StepDescription::from::<S>(kind);
+    pub(crate) fn was_invoked_explicitly<S: CommandLineStep>(&'a self, kind: Kind) -> bool {
+        let desc = CommandLineStepDescription::from::<S>(kind);
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
         for path in &self.paths {
@@ -1719,7 +1731,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         false
     }
 
-    pub(crate) fn maybe_open_in_browser<S: Step>(&self, path: impl AsRef<Path>) {
+    pub(crate) fn maybe_open_in_browser<S: CommandLineStep>(&self, path: impl AsRef<Path>) {
         if self.was_invoked_explicitly::<S>(Kind::Doc) {
             self.open_in_browser(path);
         } else {

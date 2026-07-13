@@ -9,7 +9,7 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, crate_description};
+use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun, crate_description};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::helpers::t;
 use crate::{Build, Compiler, Kind, Mode, Subcommand};
@@ -17,12 +17,13 @@ use crate::{Build, Compiler, Kind, Mode, Subcommand};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CleanAll {}
 
-impl Step for CleanAll {
+impl CommandLineStep for CleanAll {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // Only runs as the default `./x clean` step; cannot be selected explicitly.
-        run.never()
+        // Normally this step is invoked implicitly via `./x clean`, but all
+        // steps are required to register at least one explicit path/alias.
+        run.alias("default")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -54,7 +55,7 @@ macro_rules! clean_crate_tree {
             crates: Vec<String>,
         }
 
-        impl Step for $name {
+        impl CommandLineStep for $name {
             type Output = ();
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
