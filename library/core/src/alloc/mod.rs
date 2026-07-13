@@ -754,6 +754,9 @@ where
     }
 }
 
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<A: Allocator + ?Sized> AllocatorClone for &A {}
+
 unsafe impl<A: Allocator + ?Sized> DynAllocatorInternal for A {
     fn __dyn_allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.allocate(layout)

@@ -4992,3 +4992,6 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Arc<T, A> {
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<A: Allocator + ?Sized, B: AllocatorClone + ?Sized> AllocatorClone for Arc<A, B> {}
