@@ -71,6 +71,7 @@ pub mod hardwired {
             MALFORMED_DIAGNOSTIC_ATTRIBUTES,
             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
             META_VARIABLE_MISUSE,
+            METHOD_CALL_ON_DIVERGING_INFER_VAR,
             MISPLACED_DIAGNOSTIC_ATTRIBUTES,
             MISSING_ABI,
             MISSING_UNSAFE_ON_EXTERN,
@@ -5534,4 +5535,46 @@ declare_lint! {
     Allow,
     "usage of `unsafe` code and other potentially unsound constructs",
     @eval_always = true
+}
+
+declare_lint! {
+    /// The `method_call_on_diverging_infer_var` lint detects situations in which a method is called on a value resulting from a never-to-any coercion,
+    /// without necessary information to infer a type for it.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// fn main() {
+    ///     let x = panic!();
+    ///     x.clone();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust does not generally allow calling methods on values which do not have a known type,
+    /// such a result of a never-to-any coercion with no type specified.
+    ///
+    /// To aid with transition of code calling methods on `Infallible` after changing `Infallible` to be an alias for `!`, rustc *temporarily* allows such calls.
+    /// This will (once again) become an error in the future.
+    ///
+    /// Thanks to never-to-any coercion you can replace method calls on `!` with the use of the `!` variable, or an `as` cast to an explicit type:
+    ///
+    /// ```diff
+    /// - x.clone()
+    /// + x
+    /// ```
+    /// ```diff
+    /// - result.map(|x| x.convert_error())?;
+    /// + result.map(|x| x as ErrorType)?;
+    /// ```
+    pub METHOD_CALL_ON_DIVERGING_INFER_VAR,
+    Warn,
+    "detects method calls on a result of never-to-any coercion",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #156047),
+        report_in_deps: true,
+    };
 }
