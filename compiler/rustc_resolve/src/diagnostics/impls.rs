@@ -1514,11 +1514,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         suggestions.extend(
                             BUILTIN_ATTRIBUTES
                                 .iter()
-                                // These trace attributes are compiler-generated and have
-                                // deliberately invalid names.
-                                .filter(|attr| {
-                                    !matches!(**attr, sym::cfg_trace | sym::cfg_attr_trace)
-                                })
                                 .map(|attr| TypoSuggestion::typo_from_name(*attr, res)),
                         );
                     }

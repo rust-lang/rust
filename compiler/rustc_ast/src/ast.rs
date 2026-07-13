@@ -3462,14 +3462,27 @@ pub struct AttrItem {
 
 /// Some attributes are stored in parsed form in the AST.
 /// This is done for performance reasons, so the attributes don't need to be reparsed on every use.
-///
-/// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
-/// When adding new early parsed attributes, consider whether they should be pretty printed.
-///
-/// See also `EARLY_PARSED_ATTRIBUTES`.
 #[derive(Clone, Encodable, Decodable, Debug, StableHash)]
 pub enum EarlyParsedAttribute {
+    /// This special attribute is added by the compiler when a `cfg` attribute is expanded so that
+    /// subsequent code can tell that conditional compilation occurred. A `#[cfg(pred)]` with a
+    /// true predicate is replaced by a synthetic `CfgTrace` attribute that records the parsed
+    /// predicate. A `#[cfg(pred)]` with a false predicate leaves no trace because there is no node
+    /// left to annotate.
+    ///
+    /// The attribute is used for some diagnostics, by rustdoc (for detecting feature usage), and
+    /// by some clippy lints. It is treated specially in various places because it must not be
+    /// observable in any way that could change behaviour. For example, it is never pretty-printed
+    /// and it is hidden from proc macros.
     CfgTrace(CfgEntry),
+
+    /// This special attribute is added by the compiler when a `cfg_attr` attribute is expanded so
+    /// that subsequent code can tell that conditional compilation occurred. A `#[cfg_attr(pred,
+    /// attrs)]` is replaced by a synthetic `CfgAttrTrace` attribute whether the predicate
+    /// evaluated true or not (or even failed to parse). The `pred` and `attrs` are not recorded
+    /// because they are not needed.
+    ///
+    /// In all other respects, it is the same as `CfgTrace`.
     CfgAttrTrace,
 }
 

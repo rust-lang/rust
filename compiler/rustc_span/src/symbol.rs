@@ -581,7 +581,6 @@ symbols! {
         cfg_accessible,
         cfg_attr,
         cfg_attr_multi,
-        cfg_attr_trace: "<cfg_attr_trace>", // must not be a valid identifier
         cfg_boolean_literals,
         cfg_contract_checks,
         cfg_doctest,
@@ -602,7 +601,6 @@ symbols! {
         cfg_target_object_format,
         cfg_target_thread_local,
         cfg_target_vendor,
-        cfg_trace: "<cfg_trace>", // must not be a valid identifier
         cfg_ub_checks,
         cfg_version,
         cfi,

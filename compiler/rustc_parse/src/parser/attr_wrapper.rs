@@ -5,7 +5,7 @@ use rustc_ast::token::Token;
 use rustc_ast::tokenstream::{
     AttrsTarget, LazyAttrTokenStream, NodeRange, ParserRange, Spacing, TokenCursor,
 };
-use rustc_ast::{self as ast, AttrVec, Attribute, HasTokens};
+use rustc_ast::{self as ast, AttrKind, AttrVec, Attribute, HasTokens};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::PResult;
 use rustc_session::parse::ParseSess;
@@ -391,15 +391,21 @@ impl<'a> Parser<'a> {
     }
 }
 
-/// Tokens are needed if:
-/// - any non-single-segment attributes (other than doc comments) are present,
-///   e.g. `rustfmt::skip`; or
-/// - any `cfg_attr` attributes are present; or
-/// - any single-segment, non-builtin attributes are present, e.g. `derive`,
-///   `test`, `global_allocator`.
 fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(|attr| match attr.name() {
-        None => !attr.is_doc_comment(),
-        Some(name) => name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(name),
+    // Tokens are needed if...
+    attrs.iter().any(|attr| match &attr.kind {
+        AttrKind::Normal(normal) => {
+            match normal.item.name() {
+                // ... a multi-segment attribute is present, e.g. `rustfmt::skip`.
+                None => true,
+                // ... `cfg_attr` or a single-segment non-builtin attribute is present, e.g.
+                // `derive`, `test`, `global_allocator`.
+                Some(name) => name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(name),
+            }
+        }
+        // These attributes are created only during expansion, and can't re-enter the parser
+        // because they have no token form.
+        AttrKind::Parsed(_) => unreachable!(),
+        AttrKind::DocComment(..) => false,
     })
 }

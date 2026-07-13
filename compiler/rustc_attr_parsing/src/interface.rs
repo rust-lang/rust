@@ -20,7 +20,7 @@ use crate::attributes::AttributeSafety;
 use crate::context::{
     ATTRIBUTE_PARSERS, AcceptContext, FinalizeContext, FinalizeFn, SharedContext,
 };
-use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
+use crate::early_parsed::EarlyParsedState;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
 use crate::{AttributeTemplate, OmitDoc, ShouldEmit};
@@ -502,9 +502,7 @@ impl<'sess> AttributeParser<'sess> {
             &[sym::cfg_attr],
         ];
 
-        ATTRIBUTE_PARSERS.accepters.contains_key(path)
-            || EARLY_PARSED_ATTRIBUTES.contains(&path)
-            || SPECIAL_ATTRIBUTES.contains(&path)
+        ATTRIBUTE_PARSERS.accepters.contains_key(path) || SPECIAL_ATTRIBUTES.contains(&path)
     }
 
     fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {

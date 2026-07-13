@@ -43,19 +43,10 @@ fn check_duplicated_attr(
     };
     if let Some(ident) = attr.ident() {
         let name = ident.name;
-        if name == sym::doc || name == sym::cfg_attr_trace || name == sym::rustc_on_unimplemented || name == sym::reason
-        {
+        if name == sym::doc || name == sym::rustc_on_unimplemented || name == sym::reason {
             // FIXME: Would be nice to handle `cfg_attr` as well. Only problem is to check that cfg
             // conditions are the same.
             // `#[rustc_on_unimplemented]` contains duplicated subattributes, that's expected.
-            return;
-        }
-        if let Some(direct_parent) = parent.last()
-            && *direct_parent == sym::cfg_trace
-            && [sym::all, sym::not, sym::any].contains(&name)
-        {
-            // FIXME: We don't correctly check `cfg`s for now, so if it's more complex than just a one
-            // level `cfg`, we leave.
             return;
         }
     }

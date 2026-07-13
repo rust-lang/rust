@@ -2209,6 +2209,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
     fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
+        use EarlyParsedAttribute::*;
         let features = self.cx.ecfg.features;
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
@@ -2241,21 +2242,30 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     self.cx.current_expansion.lint_node_id,
                     crate::diagnostics::MacroCallUnusedDocComment { span: attr.span },
                 );
-            } else if rustc_attr_parsing::is_builtin_attr(attr)
-                && !AttributeParser::is_parsed_attribute(&attr.path())
-            {
-                let attr_name = attr.name().unwrap();
-                self.cx.sess.psess.buffer_lint(
-                    UNUSED_ATTRIBUTES,
-                    attr.span,
-                    self.cx.current_expansion.lint_node_id,
-                    crate::diagnostics::UnusedBuiltinAttribute {
-                        attr_name,
-                        macro_name: pprust::path_to_string(&call.path),
-                        invoc_span: call.path.span,
-                        attr_span: attr.span,
-                    },
-                );
+                continue;
+            }
+
+            match &attr.kind {
+                AttrKind::Normal(normal)
+                    if rustc_attr_parsing::is_builtin_attr(&normal.item)
+                        && !AttributeParser::is_parsed_attribute(&attr.path()) =>
+                {
+                    let attr_name = attr.name().unwrap();
+                    self.cx.sess.psess.buffer_lint(
+                        UNUSED_ATTRIBUTES,
+                        attr.span,
+                        self.cx.current_expansion.lint_node_id,
+                        crate::diagnostics::UnusedBuiltinAttribute {
+                            attr_name,
+                            macro_name: pprust::path_to_string(&call.path),
+                            invoc_span: call.path.span,
+                            attr_span: attr.span,
+                        },
+                    );
+                }
+                AttrKind::Normal(_) => {}
+                AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => {}
+                AttrKind::DocComment(..) => unreachable!(), // handled above
             }
         }
     }

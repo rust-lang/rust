@@ -557,22 +557,17 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_attribute(&mut self, attr: &'a Attribute) {
+        use EarlyParsedAttribute::*;
         let orig_in_attr = mem::replace(&mut self.invocation_parent.in_attr, true);
         match &attr.kind {
-            AttrKind::Normal(_) => {
-                if attr::is_builtin_attr(attr) {
+            AttrKind::Normal(normal) => {
+                if attr::is_builtin_attr(&normal.item) {
                     self.r
                         .builtin_attrs
-                        .push((attr.get_normal_item().path.segments[0].ident, self.parent_scope));
+                        .push((normal.item.path.segments[0].ident, self.parent_scope));
                 }
             }
-            AttrKind::Parsed(
-                EarlyParsedAttribute::CfgTrace(_) | EarlyParsedAttribute::CfgAttrTrace,
-            ) => {
-                // No action needed because `sym::cfg_trace` and `sym::cfg_attr_trace` are
-                // synthetic, invalid identifiers that can't overlap with any real identifier in
-                // the code.
-            }
+            AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => {}
             AttrKind::DocComment(..) => {}
         }
         visit::walk_attribute(self, attr);

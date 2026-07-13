@@ -514,22 +514,19 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_decl_attrs(&self, fn_decl: &FnDecl) {
+        use EarlyParsedAttribute::*;
         fn_decl
             .inputs
             .iter()
             .flat_map(|i| i.attrs.as_ref())
-            .filter(|attr| {
-                let arr = [
-                    sym::allow,
-                    sym::cfg_trace,
-                    sym::cfg_attr_trace,
-                    sym::deny,
-                    sym::expect,
-                    sym::forbid,
-                    sym::splat,
-                    sym::warn,
-                ];
-                !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(*attr)
+            .filter(|attr| match &attr.kind {
+                AttrKind::Normal(normal) => {
+                    let arr =
+                        [sym::allow, sym::deny, sym::expect, sym::forbid, sym::splat, sym::warn];
+                    !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
+                }
+                AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => false,
+                AttrKind::DocComment(..) => true,
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {

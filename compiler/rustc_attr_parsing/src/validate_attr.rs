@@ -6,7 +6,8 @@ use std::slice;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
-    self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
+    self as ast, AttrArgs, AttrKind, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind,
+    Safety,
 };
 use rustc_errors::{Applicability, Diagnostic, PResult};
 use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
@@ -20,9 +21,11 @@ use rustc_span::{Span, Symbol, sym};
 use crate::{AttributeParser, AttributeTemplate, session_diagnostics as errors, template};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
-    if attr.is_doc_comment() || attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace)
-    {
-        return;
+    use ast::EarlyParsedAttribute::*;
+    match &attr.kind {
+        AttrKind::Normal(_) => {}
+        AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => return,
+        AttrKind::DocComment(..) => return,
     }
 
     let builtin_attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));

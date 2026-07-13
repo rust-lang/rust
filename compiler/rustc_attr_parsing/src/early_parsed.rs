@@ -2,12 +2,8 @@ use rustc_ast::EarlyParsedAttribute;
 use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::Span;
 use thin_vec::ThinVec;
-
-/// See also `EarlyParsedAttribute`.
-pub(crate) const EARLY_PARSED_ATTRIBUTES: &[&[Symbol]] =
-    &[&[sym::cfg_trace], &[sym::cfg_attr_trace]];
 
 /// This struct contains the state necessary to convert early parsed attributes to hir attributes
 /// The only conversion that really happens here is that multiple early parsed attributes are

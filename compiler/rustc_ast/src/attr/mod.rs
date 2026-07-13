@@ -103,29 +103,21 @@ impl AttributeExt for Attribute {
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     fn name(&self) -> Option<Symbol> {
+        use EarlyParsedAttribute::*;
         match &self.kind {
-            AttrKind::Normal(normal) => {
-                if let [ident] = &*normal.item.path.segments {
-                    Some(ident.ident.name)
-                } else {
-                    None
-                }
-            }
-            AttrKind::Parsed(EarlyParsedAttribute::CfgTrace(_)) => Some(sym::cfg_trace),
-            AttrKind::Parsed(EarlyParsedAttribute::CfgAttrTrace) => Some(sym::cfg_attr_trace),
+            AttrKind::Normal(normal) => normal.item.name(),
+            AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => None,
             AttrKind::DocComment(..) => None,
         }
     }
 
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
+        use EarlyParsedAttribute::*;
         match &self.kind {
             AttrKind::Normal(normal) => {
                 Some(normal.item.path.segments.iter().map(|i| i.ident.name).collect())
             }
-            AttrKind::Parsed(EarlyParsedAttribute::CfgTrace(_)) => Some(smallvec![sym::cfg_trace]),
-            AttrKind::Parsed(EarlyParsedAttribute::CfgAttrTrace) => {
-                Some(smallvec![sym::cfg_attr_trace])
-            }
+            AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => None,
             AttrKind::DocComment(_, _) => None,
         }
     }
@@ -150,8 +142,7 @@ impl AttributeExt for Attribute {
                         .zip(name)
                         .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
             }
-            AttrKind::Parsed(EarlyParsedAttribute::CfgTrace(_)) => name == &[sym::cfg_trace],
-            AttrKind::Parsed(EarlyParsedAttribute::CfgAttrTrace) => name == &[sym::cfg_attr_trace],
+            AttrKind::Parsed(..) => false,
             AttrKind::DocComment(..) => false,
         }
     }
@@ -349,6 +340,10 @@ impl Attribute {
 }
 
 impl AttrItem {
+    pub fn name(&self) -> Option<Symbol> {
+        if let [seg] = &*self.path.segments { Some(seg.ident.name) } else { None }
+    }
+
     pub fn span(&self) -> Span {
         self.args.span().map_or(self.path.span, |args_span| self.path.span.to(args_span))
     }
