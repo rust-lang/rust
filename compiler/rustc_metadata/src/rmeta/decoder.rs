@@ -15,11 +15,11 @@ use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
-use rustc_hir::Safety;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::diagnostic_items::DiagnosticItems;
+use rustc_hir::{CanonicalSymbols, Safety};
 use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
@@ -1261,6 +1261,18 @@ impl CrateMetadata {
             })
             .collect();
         DiagnosticItems { id_to_name, name_to_id }
+    }
+
+    /// Iterates over the canonical_symbols in the given crate.
+    fn get_canonical_symbols(&self, tcx: TyCtxt<'_>) -> CanonicalSymbols {
+        let mut canonical_symbols = CanonicalSymbols::new();
+
+        for (name, def_index) in self.root.canonical_symbols.decode((self, tcx)) {
+            let id = self.local_def_id(def_index);
+            let _ = canonical_symbols.set(name, id);
+        }
+
+        canonical_symbols
     }
 
     fn get_mod_child(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ModChild {
