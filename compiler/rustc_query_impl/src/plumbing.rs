@@ -100,7 +100,12 @@ fn encode_query_values_inner<'a, 'tcx, C, V>(
 }
 
 pub(crate) fn verify_query_key_hashes<'tcx>(tcx: TyCtxt<'tcx>) {
-    if tcx.sess.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions) {
+    // Only run this if the dep graph is enabled. Otherwise there are no `DepNode`s
+    // to collide, and non-incremental builds skip span hashing, so keys differing
+    // only in spans collide by design.
+    if tcx.dep_graph.is_fully_enabled()
+        && (tcx.sess.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions))
+    {
         tcx.sess.time("verify_query_key_hashes", || {
             for_each_query_vtable!(ALL, tcx, |query| {
                 verify_query_key_hashes_inner(query, tcx);

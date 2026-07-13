@@ -22,9 +22,9 @@ enum CachingSourceMap<'a> {
 /// things (e.g., each `DefId`/`DefPath` is only hashed once).
 pub struct StableHashState<'a> {
     untracked: &'a Untracked,
-    // The value of `-Z incremental-ignore-spans`.
-    // This field should only be used by `unstable_opts_incremental_ignore_span`
-    incremental_ignore_spans: bool,
+    // The session-wide default for `hash_spans`, computed in `Self::new`. Only
+    // used by `assert_default_stable_hash_controls`.
+    default_hash_spans: bool,
     caching_source_map: CachingSourceMap<'a>,
     stable_hash_controls: StableHashControls,
 }
@@ -32,11 +32,15 @@ pub struct StableHashState<'a> {
 impl<'a> StableHashState<'a> {
     #[inline]
     pub fn new(sess: &'a Session, untracked: &'a Untracked) -> Self {
-        let hash_spans_initial = !sess.opts.unstable_opts.incremental_ignore_spans;
+        // Only hash spans for incremental and coverage, where hashes must react to
+        // code moving around; otherwise skip them and their source map lookups.
+        // Spans are also skipped if `-Z incremental-ignore-spans` is set.
+        let hash_spans_initial = (sess.opts.incremental.is_some() || sess.instrument_coverage())
+            && !sess.opts.unstable_opts.incremental_ignore_spans;
 
         StableHashState {
             untracked,
-            incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
+            default_hash_spans: hash_spans_initial,
             caching_source_map: CachingSourceMap::Unused(sess.source_map()),
             stable_hash_controls: StableHashControls { hash_spans: hash_spans_initial },
         }
@@ -178,15 +182,15 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
         let stable_hash_controls = self.stable_hash_controls;
         let StableHashControls { hash_spans } = stable_hash_controls;
 
-        // Note that we require that `hash_spans` be the inverse of the global `-Z
-        // incremental-ignore-spans` option. Normally, this option is disabled, in which case
-        // `hash_spans` must be true.
+        // Note that we require that `hash_spans` matches the session-wide default computed in
+        // `StableHashState::new` from the compilation mode and the global `-Z
+        // incremental-ignore-spans` option.
         //
         // Span hashing can also be disabled without `-Z incremental-ignore-spans`. This is the
         // case for instance when building a hash for name mangling. Such configuration must not be
         // used for metadata.
         assert_eq!(
-            hash_spans, !self.incremental_ignore_spans,
+            hash_spans, self.default_hash_spans,
             "Attempted hashing of {msg} with non-default StableHashControls: {stable_hash_controls:?}"
         );
     }
