@@ -175,6 +175,19 @@ impl<'tcx> OptimizationFinder<'_, 'tcx> {
                                     let (branch_value_scalar, branch_value_ty, to_switch_on) =
                                         find_branch_value_info(left, right, ssa)?;
 
+                                    // The transformation adds a use of `to_switch_on` at the
+                                    // terminator. `StorageLive` creates fresh uninitialized storage,
+                                    // so it invalidates the value used by the comparison.
+                                    if bb.statements[stmt_idx + 1..].iter().any(|stmt| {
+                                        matches!(
+                                            stmt.kind,
+                                            StatementKind::StorageLive(local)
+                                                if local == to_switch_on.local
+                                        )
+                                    }) {
+                                        return None;
+                                    }
+
                                     Some(OptimizationInfo {
                                         bin_op_stmt_idx: stmt_idx,
                                         bb_idx,
