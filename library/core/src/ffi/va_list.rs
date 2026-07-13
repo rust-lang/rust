@@ -371,25 +371,28 @@ unsafe impl VaArgSafe for usize {}
 // does provide `__int128` on 64-bit `*-pc-windows-msvc`, and we follow suit.
 cfg_select! {
     any(
-        target_arch = "aarch64",
-        target_arch = "amdgpu",
-        target_arch = "arm64ec",
-        target_arch = "bpf",
-        target_arch = "loongarch64",
-        target_arch = "mips64",
-        target_arch = "mips64r6",
-        target_arch = "nvptx64",
-        target_arch = "powerpc64",
-        target_arch = "riscv64",
-        target_arch = "s390x",
-        target_arch = "sparc64",
         target_arch = "wasm32",
-        target_arch = "wasm64",
-        target_arch = "x86_64",
+        all(target_arch = "x86_64", target_abi = "x32"),
+        all(
+            target_pointer_width = "64",
+            any(
+                target_arch = "aarch64",
+                target_arch = "amdgpu",
+                target_arch = "arm64ec",
+                target_arch = "bpf",
+                target_arch = "loongarch64",
+                target_arch = "mips64",
+                target_arch = "mips64r6",
+                target_arch = "nvptx64",
+                target_arch = "powerpc64",
+                target_arch = "riscv64",
+                target_arch = "s390x",
+                target_arch = "sparc64",
+                target_arch = "wasm64",
+                target_arch = "x86_64",
+            ),
+        ),
     ) => {
-        #[cfg(not(any(target_arch = "wasm32", target_abi = "x32", target_pointer_width = "64")))]
-        compile_error!("unexpected target architecture for 128-bit c-variadic");
-
         #[unstable_feature_bound(c_variadic_int128)]
         #[unstable(feature = "c_variadic_int128", issue = "155752")]
         unsafe impl VaArgSafe for i128 {}

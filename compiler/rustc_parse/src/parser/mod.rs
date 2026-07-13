@@ -51,8 +51,8 @@ use token_type::TokenTypeSet;
 pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
 use tracing::debug;
 
-use crate::errors::{
-    self, IncorrectImplRestriction, IncorrectMutRestriction, IncorrectVisibilityRestriction,
+use crate::diagnostics::{
+    IncorrectImplRestriction, IncorrectMutRestriction, IncorrectVisibilityRestriction,
     NonStringAbiLiteral, TokenDescription,
 };
 use crate::exp;
@@ -598,12 +598,12 @@ impl<'a> Parser<'a> {
                 (true, true) => {
                     unreachable!("keyword that is both fully upper- and fully lowercase")
                 }
-                (true, false) => errors::Case::Upper,
-                (false, true) => errors::Case::Lower,
-                (false, false) => errors::Case::Mixed,
+                (true, false) => crate::diagnostics::Case::Upper,
+                (false, true) => crate::diagnostics::Case::Lower,
+                (false, false) => crate::diagnostics::Case::Mixed,
             };
 
-            self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw, case });
+            self.dcx().emit_err(crate::diagnostics::KwBadCase { span: ident.span, kw, case });
             self.bump();
             true
         } else {
@@ -1359,7 +1359,7 @@ impl<'a> Parser<'a> {
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind
         {
             if let Some(suffix) = suffix {
-                self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
+                self.dcx().emit_err(crate::diagnostics::InvalidLiteralSuffixOnTupleIndex {
                     span: self.token.span,
                     suffix,
                 });

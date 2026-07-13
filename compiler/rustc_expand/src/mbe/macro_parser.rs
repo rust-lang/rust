@@ -294,14 +294,16 @@ impl MatcherPos {
 
 /// Represents the possible results of an attempted parse.
 #[derive(Debug)]
-pub(crate) enum ParseResult<T, F> {
+pub(crate) enum ParseResult<T> {
     /// Parsed successfully.
     Success(T),
-    /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
-    /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
-    /// The usize is the approximate position of the token in the input token stream.
-    Failure(F),
+    /// Arm failed to match.
+    ///
+    /// [`Tracker::failure()`] will be called beforehand.
+    Failure,
     /// The input could be parsed in multiple distinct ways.
+    ///
+    /// [`Tracker::ambiguity()`] will be called beforehand.
     Ambiguity,
     ErrorReported(ErrorGuaranteed),
 }
@@ -309,7 +311,7 @@ pub(crate) enum ParseResult<T, F> {
 /// A `ParseResult` where the `Success` variant contains a mapping of
 /// `MacroRulesNormalizedIdent`s to `NamedMatch`es. This represents the mapping
 /// of metavars to the token trees they bind to.
-pub(crate) type NamedParseResult<F> = ParseResult<NamedMatches, F>;
+pub(crate) type NamedParseResult = ParseResult<NamedMatches>;
 
 /// Contains a mapping of `MacroRulesNormalizedIdent`s to `NamedMatch`es.
 /// This represents the mapping of metavars to the token trees they bind to.
@@ -465,143 +467,151 @@ impl TtParser {
         parser: &Parser<'_>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
-    ) -> Option<NamedParseResult<T::Failure>> {
+    ) -> Option<NamedParseResult> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
         // modified if `token == Eof`.
-        let token = &parser.token;
         let mut eof_mps = SmallVec::<[MatcherPos; 1]>::new();
 
-        while let Some(mut mp) = self.cur_mps.pop() {
-            let matcher_loc = &matcher[mp.idx];
-            track.before_match_loc(self, matcher_loc);
-
-            match matcher_loc {
-                MatcherLoc::Token { token: t } => {
-                    // If it's a doc comment, we just ignore it and move on to the next tt in the
-                    // matcher. This is a bug, but #95267 showed that existing programs rely on
-                    // this behaviour, and changing it would require some care and a transition
-                    // period.
-                    //
-                    // If the token matches, we can just advance the parser.
-                    //
-                    // Otherwise, this match has failed, there is nothing to do, and hopefully
-                    // another mp in `cur_mps` will match.
-                    if matches!(t, Token { kind: DocComment(..), .. }) {
-                        mp.idx += 1;
-                        self.cur_mps.push(mp);
-                    } else if token_name_eq(t, token) {
-                        mp.idx += 1;
-                        self.next_mps.push(mp);
-                    }
-                }
-                MatcherLoc::Delimited => {
-                    // Entering the delimiter is trivial.
-                    mp.idx += 1;
-                    self.cur_mps.push(mp);
-                }
-                &MatcherLoc::Sequence {
-                    op,
-                    num_metavar_decls,
-                    idx_first_after,
-                    next_metavar,
-                    seq_depth,
-                } => {
-                    // Install an empty vec for each metavar within the sequence.
-                    for metavar_idx in next_metavar..next_metavar + num_metavar_decls {
-                        mp.push_match(metavar_idx, seq_depth, MatchedSeq(vec![]));
-                    }
-
-                    if matches!(op, KleeneOp::ZeroOrMore | KleeneOp::ZeroOrOne) {
-                        // Try zero matches of this sequence, by skipping over it.
-                        self.cur_mps.push(MatcherPos {
-                            idx: idx_first_after,
-                            matches: Rc::clone(&mp.matches),
-                        });
-                    }
-
-                    // Try one or more matches of this sequence, by entering it.
-                    mp.idx += 1;
-                    self.cur_mps.push(mp);
-                }
-                &MatcherLoc::SequenceKleeneOpNoSep { op, idx_first } => {
-                    // We are past the end of a sequence with no separator. Try ending the
-                    // sequence. If that's not possible, `ending_mp` will fail quietly when it is
-                    // processed next time around the loop.
-                    let ending_mp = MatcherPos {
-                        idx: mp.idx + 1, // +1 skips the Kleene op
-                        matches: Rc::clone(&mp.matches),
-                    };
-                    self.cur_mps.push(ending_mp);
-
-                    if op != KleeneOp::ZeroOrOne {
-                        // Try another repetition.
-                        mp.idx = idx_first;
-                        self.cur_mps.push(mp);
-                    }
-                }
-                MatcherLoc::SequenceSep { separator } => {
-                    // We are past the end of a sequence with a separator but we haven't seen the
-                    // separator yet. Try ending the sequence. If that's not possible, `ending_mp`
-                    // will fail quietly when it is processed next time around the loop.
-                    let ending_mp = MatcherPos {
-                        idx: mp.idx + 2, // +2 skips the separator and the Kleene op
-                        matches: Rc::clone(&mp.matches),
-                    };
-                    self.cur_mps.push(ending_mp);
-
-                    if token_name_eq(token, separator) {
-                        // The separator matches the current token. Advance past it.
-                        mp.idx += 1;
-                        self.next_mps.push(mp);
-                    }
-                }
-                &MatcherLoc::SequenceKleeneOpAfterSep { idx_first } => {
-                    // We are past the sequence separator. This can't be a `?` Kleene op, because
-                    // they don't permit separators. Try another repetition.
-                    mp.idx = idx_first;
-                    self.cur_mps.push(mp);
-                }
-                &MatcherLoc::MetaVarDecl { kind, .. } => {
-                    // Built-in nonterminals never start with these tokens, so we can eliminate
-                    // them from consideration. We use the span of the metavariable declaration
-                    // to determine any edition-specific matching behavior for non-terminals.
-                    if Parser::nonterminal_may_begin_with(kind, token) {
-                        self.bb_mps.push(mp);
-                    }
-                }
-                MatcherLoc::Eof => {
-                    // We are past the matcher's end, and not in a sequence. Try to end things.
-                    debug_assert_eq!(mp.idx, matcher.len() - 1);
-                    if *token == token::Eof {
-                        eof_mps.push(mp);
-                    }
-                }
-            }
+        while let Some(mp) = self.cur_mps.pop() {
+            self.match_one(parser, matcher, mp, track, &mut eof_mps);
         }
 
         // If we reached the end of input, check that there is EXACTLY ONE possible matcher.
         // Otherwise, either the parse is ambiguous (which is an error) or there is a syntax error.
+        let token = &parser.token;
         if *token == token::Eof {
+            assert!(self.next_mps.is_empty());
+            assert!(self.bb_mps.is_empty());
+
             Some(match *eof_mps {
                 [_] => {
-                    let mut eof_mp = eof_mps.pop().unwrap();
-                    // Need to take ownership of the matches from within the `Rc`.
-                    Rc::make_mut(&mut eof_mp.matches);
-                    let matches = Rc::try_unwrap(eof_mp.matches).unwrap().into_iter();
+                    let eof_mp = eof_mps.pop().unwrap();
+                    let matches = Rc::unwrap_or_clone(eof_mp.matches).into_iter();
                     Success(self.nameize(matcher, matches))
                 }
-                [] => Failure(T::build_failure(
-                    Token::new(
-                        token::Eof,
-                        if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
-                    ),
-                    parser.approx_token_stream_pos(),
-                    "missing tokens in macro arguments",
-                )),
+                [] => {
+                    track.failure(parser);
+                    Failure
+                }
                 _ => self.ambiguity_error(parser, matcher, track),
             })
         } else {
             None
+        }
+    }
+
+    /// Match a single [`MatcherPos`].
+    #[inline(always)] // must be inlined in `parse_tt_inner()`
+    fn match_one<'matcher, T: Tracker<'matcher>>(
+        &mut self,
+        parser: &Parser<'_>,
+        matcher: &'matcher [MatcherLoc],
+        mut mp: MatcherPos,
+        track: &mut T,
+        eof_mps: &mut SmallVec<[MatcherPos; 1]>,
+    ) {
+        let matcher_loc = &matcher[mp.idx];
+        track.before_match_loc(self, matcher_loc);
+        let token = &parser.token;
+
+        match matcher_loc {
+            MatcherLoc::Token { token: t } => {
+                // If it's a doc comment, we just ignore it and move on to the next tt in the
+                // matcher. This is a bug, but #95267 showed that existing programs rely on this
+                // behaviour, and changing it would require some care and a transition period.
+                //
+                // If the token matches, we can just advance the parser.
+                //
+                // Otherwise, this match has failed, there is nothing to do, and hopefully another
+                // mp in `cur_mps` will match.
+                if matches!(t, Token { kind: DocComment(..), .. }) {
+                    mp.idx += 1;
+                    self.cur_mps.push(mp);
+                } else if token_name_eq(t, token) {
+                    mp.idx += 1;
+                    self.next_mps.push(mp);
+                }
+            }
+            MatcherLoc::Delimited => {
+                // Entering the delimiter is trivial.
+                mp.idx += 1;
+                self.cur_mps.push(mp);
+            }
+            &MatcherLoc::Sequence {
+                op,
+                num_metavar_decls,
+                idx_first_after,
+                next_metavar,
+                seq_depth,
+            } => {
+                // Install an empty vec for each metavar within the sequence.
+                for metavar_idx in next_metavar..next_metavar + num_metavar_decls {
+                    mp.push_match(metavar_idx, seq_depth, MatchedSeq(vec![]));
+                }
+
+                if matches!(op, KleeneOp::ZeroOrMore | KleeneOp::ZeroOrOne) {
+                    // Try zero matches of this sequence, by skipping over it.
+                    self.cur_mps
+                        .push(MatcherPos { idx: idx_first_after, matches: Rc::clone(&mp.matches) });
+                }
+
+                // Try one or more matches of this sequence, by entering it.
+                mp.idx += 1;
+                self.cur_mps.push(mp);
+            }
+            &MatcherLoc::SequenceKleeneOpNoSep { op, idx_first } => {
+                // We are past the end of a sequence with no separator. Try ending the sequence. If
+                // that's not possible, `ending_mp` will fail quietly when it is processed next time
+                // around the loop.
+                let ending_mp = MatcherPos {
+                    idx: mp.idx + 1, // +1 skips the Kleene op
+                    matches: Rc::clone(&mp.matches),
+                };
+                self.cur_mps.push(ending_mp);
+
+                if op != KleeneOp::ZeroOrOne {
+                    // Try another repetition.
+                    mp.idx = idx_first;
+                    self.cur_mps.push(mp);
+                }
+            }
+            MatcherLoc::SequenceSep { separator } => {
+                // We are past the end of a sequence with a separator but we haven't seen the
+                // separator yet. Try ending the sequence. If that's not possible, `ending_mp` will
+                // fail quietly when it is processed next time around the loop.
+                let ending_mp = MatcherPos {
+                    idx: mp.idx + 2, // +2 skips the separator and the Kleene op
+                    matches: Rc::clone(&mp.matches),
+                };
+                self.cur_mps.push(ending_mp);
+
+                if token_name_eq(token, separator) {
+                    // The separator matches the current token. Advance past it.
+                    mp.idx += 1;
+                    self.next_mps.push(mp);
+                }
+            }
+            &MatcherLoc::SequenceKleeneOpAfterSep { idx_first } => {
+                // We are past the sequence separator. This can't be a `?` Kleene op, because they
+                // don't permit separators. Try another repetition.
+                mp.idx = idx_first;
+                self.cur_mps.push(mp);
+            }
+            &MatcherLoc::MetaVarDecl { kind, .. } => {
+                // Built-in nonterminals never start with these tokens, so we can eliminate them
+                // from consideration. We use the span of the metavariable declaration to determine
+                // any edition-specific matching behavior for non-terminals.
+                if Parser::nonterminal_may_begin_with(kind, token) {
+                    self.bb_mps.push(mp);
+                }
+            }
+            MatcherLoc::Eof => {
+                // We are past the matcher's end, and not in a sequence. Try to end things.
+                debug_assert_eq!(mp.idx, matcher.len() - 1);
+                if *token == token::Eof {
+                    eof_mps.push(mp);
+                }
+            }
         }
     }
 
@@ -611,7 +621,7 @@ impl TtParser {
         parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
-    ) -> NamedParseResult<T::Failure> {
+    ) -> NamedParseResult {
         // A queue of possible matcher positions. We initialize it with the matcher position in
         // which the "dot" is before the first token of the first token tree in `matcher`.
         // `parse_tt_inner` then processes all of these possible matcher positions and produces
@@ -640,11 +650,8 @@ impl TtParser {
                 (0, 0) => {
                     // There are no possible next positions AND we aren't waiting for the black-box
                     // parser: syntax error.
-                    return Failure(T::build_failure(
-                        parser.token,
-                        parser.approx_token_stream_pos(),
-                        "no rules expected this token in macro call",
-                    ));
+                    track.failure(parser);
+                    return Failure;
                 }
 
                 (_, 0) => {
@@ -684,7 +691,7 @@ impl TtParser {
         }
     }
 
-    fn nt_parsing_error<F>(&self, loc: &MatcherLoc, err: Diag<'_>) -> NamedParseResult<F> {
+    fn nt_parsing_error(&self, loc: &MatcherLoc, err: Diag<'_>) -> NamedParseResult {
         let &MatcherLoc::MetaVarDecl { span, kind, .. } = loc else { unreachable!() };
         let guarantee = err
             .with_span_label(
@@ -700,7 +707,7 @@ impl TtParser {
         parser: &Parser<'_>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
-    ) -> NamedParseResult<T::Failure> {
+    ) -> NamedParseResult {
         // Use a reasonable and deterministic ordering for data in the error message.
         self.bb_mps.sort_unstable_by_key(|mp| mp.idx);
         self.next_mps.sort_unstable_by_key(|mp| mp.idx);
