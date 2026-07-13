@@ -246,7 +246,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_deprecated_safe_2024,
     sym::rustc_pub_transparent,
 
-
     // ==========================================================================
     // Internal attributes: Type system related:
     // ==========================================================================

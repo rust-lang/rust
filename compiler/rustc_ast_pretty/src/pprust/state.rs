@@ -688,6 +688,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.print_attr_item(&normal.item, attr.span);
                 self.word("]");
             }
+            ast::AttrKind::Parsed(..) => panic!("parsed attrs are never printed"),
             ast::AttrKind::DocComment(comment_kind, data) => {
                 self.word(doc_comment_to_string(
                     DocFragmentKind::Sugared(*comment_kind),
@@ -709,7 +710,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
             ast::Safety::Default | ast::Safety::Safe(_) => {}
         }
-        match &item.args.unparsed_ref().expect("Parsed attributes are never printed") {
+        match &item.args {
             AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(
                 Some(MacHeader::Path(&item.path)),
                 false,

@@ -3418,8 +3418,13 @@ pub struct Attribute {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum AttrKind {
-    /// A normal attribute.
+    /// A normal (non-doc comment) attribute, with attributes in unparsed form.
     Normal(Box<NormalAttr>),
+
+    /// A normal (non-doc comment) attribute, with attributes in parsed form, so they don't have to
+    /// be reparsed every time they're used, for performance. Only used for a small number of
+    /// attribute kinds.
+    Parsed(Box<EarlyParsedAttribute>),
 
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
@@ -3430,7 +3435,8 @@ pub enum AttrKind {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct NormalAttr {
     pub item: AttrItem,
-    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`.
+    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
+    // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
@@ -3440,7 +3446,7 @@ impl NormalAttr {
             item: AttrItem {
                 unsafety: Safety::Default,
                 path: Path::from_ident(ident),
-                args: AttrItemKind::Unparsed(AttrArgs::Empty),
+                args: AttrArgs::Empty,
             },
             tokens: None,
         }
@@ -3451,38 +3457,7 @@ impl NormalAttr {
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
-    pub args: AttrItemKind,
-}
-
-/// Some attributes are stored in a parsed form, for performance reasons.
-/// Their arguments don't have to be reparsed everytime they're used
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub enum AttrItemKind {
-    Parsed(EarlyParsedAttribute),
-    Unparsed(AttrArgs),
-}
-
-impl AttrItemKind {
-    pub fn unparsed(self) -> Option<AttrArgs> {
-        match self {
-            AttrItemKind::Unparsed(args) => Some(args),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-
-    pub fn unparsed_ref(&self) -> Option<&AttrArgs> {
-        match self {
-            AttrItemKind::Unparsed(args) => Some(args),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-
-    pub fn span(&self) -> Option<Span> {
-        match self {
-            AttrItemKind::Unparsed(args) => args.span(),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
+    pub args: AttrArgs,
 }
 
 /// Some attributes are stored in parsed form in the AST.

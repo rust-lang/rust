@@ -7,8 +7,8 @@ use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree, WithTokens,
 };
 use rustc_ast::{
-    self as ast, AttrItemKind, AttrKind, AttrStyle, Attribute, EarlyParsedAttribute, HasAttrs,
-    HasTokens, MetaItem, MetaItemInner, NodeId, NormalAttr,
+    self as ast, AttrStyle, Attribute, EarlyParsedAttribute, HasAttrs, HasTokens, MetaItem,
+    MetaItemInner, NodeId,
 };
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
@@ -143,19 +143,6 @@ pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec 
         .collect()
 }
 
-pub(crate) fn attr_into_trace(mut attr: Attribute, trace_name: Symbol) -> Attribute {
-    match &mut attr.kind {
-        AttrKind::Normal(normal) => {
-            let NormalAttr { item, tokens } = &mut **normal;
-            item.path.segments[0].ident.name = trace_name;
-            // This makes the trace attributes unobservable to token-based proc macros.
-            *tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::default()));
-        }
-        AttrKind::DocComment(..) => unreachable!(),
-    }
-    attr
-}
-
 #[macro_export]
 macro_rules! configure {
     ($this:ident, $node:ident) => {
@@ -264,8 +251,7 @@ impl<'a> StripUnconfigured<'a> {
         // A trace attribute left in AST in place of the original `cfg_attr` attribute.
         // It can later be used by lints or other diagnostics.
         let mut trace_attr = cfg_attr.clone();
-        trace_attr.replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgAttrTrace));
-        let trace_attr = attr_into_trace(trace_attr, sym::cfg_attr_trace);
+        trace_attr.convert_normal_to_parsed(EarlyParsedAttribute::CfgAttrTrace);
 
         let Some((cfg_predicate, expanded_attrs)) = rustc_attr_parsing::parse_cfg_attr(
             cfg_attr,

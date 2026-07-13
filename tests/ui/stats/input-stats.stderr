@@ -10,7 +10,7 @@ ast-stats - Impl                     144 (NN.N%)             1
 ast-stats - Trait                    144 (NN.N%)             1
 ast-stats - Fn                       288 (NN.N%)             2
 ast-stats - Use                      576 (NN.N%)             4
-ast-stats PathSegment              864 (NN.N%)            36            24
+ast-stats PathSegment              840 (NN.N%)            35            24
 ast-stats Ty                       784 (NN.N%)            14            56
 ast-stats - Ptr                       56 (NN.N%)             1
 ast-stats - Ref                       56 (NN.N%)             1
@@ -43,7 +43,8 @@ ast-stats Param                    160 (NN.N%)             4            40
 ast-stats Block                    144 (NN.N%)             6            24
 ast-stats Attribute                128 (NN.N%)             4            32
 ast-stats - DocComment                32 (NN.N%)             1
-ast-stats - Normal                    96 (NN.N%)             3
+ast-stats - Parsed                    32 (NN.N%)             1
+ast-stats - Normal                    64 (NN.N%)             2
 ast-stats InlineAsm                120 (NN.N%)             1           120
 ast-stats FnDecl                   120 (NN.N%)             5            24
 ast-stats Local                     96 (NN.N%)             1            96
@@ -57,7 +58,7 @@ ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  6_976                   127
+ast-stats Total                  6_952                   126
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats

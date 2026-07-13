@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrItemKind, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
+use rustc_ast::{AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{BUILTIN_ATTRIBUTE_MAP, Features};
@@ -158,15 +158,12 @@ impl<'sess> AttributeParser<'sess> {
         allow_expr_metavar: AllowExprMetavar,
         expected_safety: AttributeSafety,
     ) -> Option<T> {
-        let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
-            panic!("parse_single called on a doc attr")
-        };
-        let parts =
-            normal_attr.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+        let attr_item = attr.get_normal_item();
+        let parts = attr_item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
-        let path = AttrPath::from_ast(&normal_attr.item.path, identity);
+        let path = AttrPath::from_ast(&attr_item.path, identity);
         let args = ArgParser::from_attr_args(
-            &normal_attr.item.args.unparsed_ref().unwrap(),
+            &attr_item.args,
             &parts,
             &sess.psess,
             emit_errors,
@@ -175,10 +172,10 @@ impl<'sess> AttributeParser<'sess> {
         Self::parse_single_args(
             sess,
             attr.span,
-            normal_attr.item.span(),
+            attr_item.span(),
             attr.style,
             path,
-            Some(normal_attr.item.unsafety),
+            Some(attr_item.unsafety),
             expected_safety,
             ParsedDescription::Attribute,
             target_span,
@@ -329,19 +326,13 @@ impl<'sess> AttributeParser<'sess> {
                         comment: *symbol,
                     }));
                 }
+                ast::AttrKind::Parsed(parsed) => {
+                    early_parsed_state.accept_early_parsed_attribute(attr_span, lower_span, parsed);
+                    continue;
+                }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
-
-                    let args = match &n.item.args {
-                        AttrItemKind::Unparsed(args) => args,
-                        AttrItemKind::Parsed(parsed) => {
-                            early_parsed_state
-                                .accept_early_parsed_attribute(attr_span, lower_span, parsed);
-                            continue;
-                        }
-                    };
-
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
                     let inner_span = lower_span(n.item.span());
@@ -360,7 +351,7 @@ impl<'sess> AttributeParser<'sess> {
                         }
 
                         let Some(args) = ArgParser::from_attr_args(
-                            args,
+                            &n.item.args,
                             &parts,
                             &self.sess.psess,
                             self.should_emit,
@@ -431,8 +422,7 @@ impl<'sess> AttributeParser<'sess> {
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),
-                            args: self
-                                .lower_attr_args(n.item.args.unparsed_ref().unwrap(), lower_span),
+                            args: self.lower_attr_args(&n.item.args, lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
                             span: attr_span,

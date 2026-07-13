@@ -7,7 +7,7 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
-    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrItemKind, AttrStyle, AttrVec,
+    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrKind, AttrStyle, AttrVec,
     DUMMY_NODE_ID, DelegationSource, DelegationSuffixes, EarlyParsedAttribute, ExprKind,
     ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
     MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
@@ -36,7 +36,7 @@ use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, Symbol, sy
 use smallvec::SmallVec;
 
 use crate::base::*;
-use crate::config::{StripUnconfigured, attr_into_trace};
+use crate::config::StripUnconfigured;
 use crate::diagnostics::{
     EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
     RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
@@ -818,10 +818,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     };
                     let attr_item = attr.get_normal_item();
                     let safety = attr_item.unsafety;
-                    if let AttrArgs::Eq { .. } = attr_item.args.unparsed_ref().unwrap() {
+                    if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
-                    let inner_tokens = attr_item.args.unparsed_ref().unwrap().inner_tokens();
+                    let inner_tokens = attr_item.args.inner_tokens();
                     match expander.expand_with_safety(self.cx, safety, span, inner_tokens, tokens) {
                         Ok(tok_result) => {
                             let fragment = self.parse_ast_fragment(
@@ -2163,7 +2163,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut cfg_pos = None;
         let mut attr_pos = None;
         for (pos, attr) in item.attrs().iter().enumerate() {
-            if !attr.is_doc_comment() && !self.cx.expanded_inert_attrs.is_marked(attr) {
+            if let AttrKind::Normal(..) = attr.kind
+                && !self.cx.expanded_inert_attrs.is_marked(attr)
+            {
                 let name = attr.name();
                 if name == Some(sym::cfg) || name == Some(sym::cfg_attr) {
                     cfg_pos = Some(pos); // a cfg attr found, no need to search anymore
@@ -2285,8 +2287,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         if res.as_bool() {
             // A trace attribute left in AST in place of the original `cfg` attribute.
             // It can later be used by lints or other diagnostics.
-            let mut trace_attr = attr_into_trace(attr, sym::cfg_trace);
-            trace_attr.replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg)));
+            let mut trace_attr = attr;
+            trace_attr.convert_normal_to_parsed(EarlyParsedAttribute::CfgTrace(cfg));
             node.visit_attrs(|attrs| attrs.insert(pos, trace_attr));
         }
 

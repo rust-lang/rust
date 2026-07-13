@@ -11,11 +11,10 @@ use rustc_span::{Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::AttrItemKind;
 use crate::ast::{
     AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID, DelimArgs,
-    Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
-    PathSegment, Safety,
+    EarlyParsedAttribute, Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind,
+    MetaItemLit, NormalAttr, Path, PathSegment, Safety,
 };
 use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
@@ -63,16 +62,16 @@ impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
         match &self.kind {
             AttrKind::Normal(normal) => &normal.item,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+            AttrKind::Parsed(..) | AttrKind::DocComment(..) => unreachable!(),
         }
     }
 
-    /// Replaces the arguments of this attribute with new arguments `AttrItemKind`. This is useful
-    /// for making this attribute into a trace attribute, and should otherwise be avoided.
-    pub fn replace_args(&mut self, new_args: AttrItemKind) {
-        match &mut self.kind {
-            AttrKind::Normal(normal) => normal.item.args = new_args,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+    pub fn convert_normal_to_parsed(&mut self, early_parsed_attribute: EarlyParsedAttribute) {
+        match self.kind {
+            AttrKind::Normal(..) => {
+                self.kind = AttrKind::Parsed(Box::new(early_parsed_attribute));
+            }
+            AttrKind::Parsed(..) | AttrKind::DocComment(..) => unreachable!(),
         }
     }
 }
@@ -84,11 +83,11 @@ impl AttributeExt for Attribute {
 
     fn value_span(&self) -> Option<Span> {
         match &self.kind {
-            AttrKind::Normal(normal) => match &normal.item.args.unparsed_ref()? {
+            AttrKind::Normal(normal) => match &normal.item.args {
                 AttrArgs::Eq { expr, .. } => Some(expr.span),
                 _ => None,
             },
-            AttrKind::DocComment(..) => None,
+            AttrKind::Parsed(..) | AttrKind::DocComment(..) => None,
         }
     }
 
@@ -97,7 +96,7 @@ impl AttributeExt for Attribute {
     /// a doc comment) will return `false`.
     fn is_doc_comment(&self) -> Option<Span> {
         match self.kind {
-            AttrKind::Normal(..) => None,
+            AttrKind::Normal(..) | AttrKind::Parsed(..) => None,
             AttrKind::DocComment(..) => Some(self.span),
         }
     }
@@ -112,14 +111,20 @@ impl AttributeExt for Attribute {
                     None
                 }
             }
+            AttrKind::Parsed(EarlyParsedAttribute::CfgTrace(_)) => Some(sym::cfg_trace),
+            AttrKind::Parsed(EarlyParsedAttribute::CfgAttrTrace) => Some(sym::cfg_attr_trace),
             AttrKind::DocComment(..) => None,
         }
     }
 
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
         match &self.kind {
-            AttrKind::Normal(p) => {
-                Some(p.item.path.segments.iter().map(|i| i.ident.name).collect())
+            AttrKind::Normal(normal) => {
+                Some(normal.item.path.segments.iter().map(|i| i.ident.name).collect())
+            }
+            AttrKind::Parsed(EarlyParsedAttribute::CfgTrace(_)) => Some(smallvec![sym::cfg_trace]),
+            AttrKind::Parsed(EarlyParsedAttribute::CfgAttrTrace) => {
+                Some(smallvec![sym::cfg_attr_trace])
             }
             AttrKind::DocComment(_, _) => None,
         }
@@ -128,6 +133,7 @@ impl AttributeExt for Attribute {
     fn path_span(&self) -> Option<Span> {
         match &self.kind {
             AttrKind::Normal(attr) => Some(attr.item.path.span),
+            AttrKind::Parsed(..) => unreachable!(),
             AttrKind::DocComment(_, _) => None,
         }
     }
@@ -144,6 +150,8 @@ impl AttributeExt for Attribute {
                         .zip(name)
                         .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
             }
+            AttrKind::Parsed(EarlyParsedAttribute::CfgTrace(_)) => name == &[sym::cfg_trace],
+            AttrKind::Parsed(EarlyParsedAttribute::CfgAttrTrace) => name == &[sym::cfg_attr_trace],
             AttrKind::DocComment(..) => false,
         }
     }
@@ -153,10 +161,10 @@ impl AttributeExt for Attribute {
     }
 
     fn is_word(&self) -> bool {
-        if let AttrKind::Normal(normal) = &self.kind {
-            matches!(normal.item.args, AttrItemKind::Unparsed(AttrArgs::Empty))
-        } else {
-            false
+        match &self.kind {
+            AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
+            AttrKind::Parsed(..) => unreachable!(),
+            AttrKind::DocComment(..) => false,
         }
     }
 
@@ -170,6 +178,7 @@ impl AttributeExt for Attribute {
     fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
+            AttrKind::Parsed(..) => None,
             AttrKind::DocComment(..) => None,
         }
     }
@@ -192,6 +201,7 @@ impl AttributeExt for Attribute {
     fn value_str(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.value_str(),
+            AttrKind::Parsed(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -204,16 +214,14 @@ impl AttributeExt for Attribute {
     fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
         match &self.kind {
             AttrKind::DocComment(kind, data) => Some((*data, DocFragmentKind::Sugared(*kind))),
-            AttrKind::Normal(normal) if normal.item.path == sym::doc => {
-                if let Some(value) = normal.item.value_str()
-                    && let Some(value_span) = normal.item.value_span()
-                {
-                    Some((value, DocFragmentKind::Raw(value_span)))
-                } else {
-                    None
-                }
+            AttrKind::Normal(normal)
+                if normal.item.path == sym::doc
+                    && let Some(value) = normal.item.value_str()
+                    && let Some(value_span) = normal.item.value_span() =>
+            {
+                Some((value, DocFragmentKind::Raw(value_span)))
             }
-            _ => None,
+            AttrKind::Normal(..) | AttrKind::Parsed(..) => None,
         }
     }
 
@@ -282,6 +290,7 @@ impl Attribute {
     pub fn meta(&self) -> Option<MetaItem> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta(self.span),
+            AttrKind::Parsed(..) => None,
             AttrKind::DocComment(..) => None,
         }
     }
@@ -289,6 +298,7 @@ impl Attribute {
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_kind(),
+            AttrKind::Parsed(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -301,6 +311,7 @@ impl Attribute {
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
                 .to_attr_token_stream()
                 .to_token_trees(),
+            AttrKind::Parsed(..) => vec![],
             AttrKind::DocComment(comment_kind, data) => vec![TokenTree::token_alone(
                 token::DocComment(comment_kind, self.style, data),
                 self.span,
@@ -343,7 +354,7 @@ impl AttrItem {
     }
 
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        match &self.args.unparsed_ref()? {
+        match &self.args {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
                 MetaItemKind::list_from_tokens(args.tokens.clone())
             }
@@ -364,7 +375,7 @@ impl AttrItem {
     /// #[attr("value")]
     /// ```
     fn value_str(&self) -> Option<Symbol> {
-        match &self.args.unparsed_ref()? {
+        match &self.args {
             AttrArgs::Eq { expr, .. } => match expr.kind {
                 ExprKind::Lit(token_lit) => {
                     LitKind::from_token_lit(token_lit).ok().and_then(|lit| lit.str())
@@ -388,7 +399,7 @@ impl AttrItem {
     /// #[attr("value")]
     /// ```
     fn value_span(&self) -> Option<Span> {
-        match &self.args.unparsed_ref()? {
+        match &self.args {
             AttrArgs::Eq { expr, .. } => Some(expr.span),
             AttrArgs::Delimited(_) | AttrArgs::Empty => None,
         }
@@ -404,7 +415,7 @@ impl AttrItem {
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        MetaItemKind::from_attr_args(self.args.unparsed_ref()?)
+        MetaItemKind::from_attr_args(&self.args)
     }
 }
 
@@ -810,13 +821,7 @@ pub fn mk_attr_word(
         span,
     ));
 
-    mk_attr_from_item(
-        g,
-        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args) },
-        tokens,
-        style,
-        span,
-    )
+    mk_attr_from_item(g, AttrItem { unsafety, path, args }, tokens, style, span)
 }
 
 pub fn mk_attr_nested_word(
@@ -857,13 +862,7 @@ pub fn mk_attr_nested_word(
         span,
     ));
 
-    mk_attr_from_item(
-        g,
-        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(attr_args) },
-        tokens,
-        style,
-        span,
-    )
+    mk_attr_from_item(g, AttrItem { unsafety, path, args: attr_args }, tokens, style, span)
 }
 
 pub fn mk_attr_name_value_str(
@@ -899,13 +898,7 @@ pub fn mk_attr_name_value_str(
         span,
     ));
 
-    mk_attr_from_item(
-        g,
-        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args) },
-        tokens,
-        style,
-        span,
-    )
+    mk_attr_from_item(g, AttrItem { unsafety, path, args }, tokens, style, span)
 }
 
 pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {
