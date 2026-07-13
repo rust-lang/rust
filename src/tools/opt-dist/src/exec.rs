@@ -163,7 +163,7 @@ impl Bootstrap {
         self.cmd = self
             .cmd
             .arg("--set")
-            .arg(format!(r#"pgo.rustdoc.generate="{}""#, profile_dir.as_str()));
+            .arg(format!(r#"pgo.rustdoc.generate="{}""#, normalize_path(profile_dir).as_str()));
         self
     }
 
@@ -186,8 +186,10 @@ impl Bootstrap {
     }
 
     pub fn rustdoc_pgo_optimize(mut self, profile: &RustdocPGOProfile) -> Self {
-        self.cmd =
-            self.cmd.arg("--set").arg(format!(r#"pgo.rustdoc.use="{}""#, profile.0.as_str()));
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.rustdoc.use="{}""#, normalize_path(&profile.0).as_str()));
         self
     }
 
