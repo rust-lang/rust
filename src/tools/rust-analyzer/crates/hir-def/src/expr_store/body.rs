@@ -2,6 +2,7 @@
 //! consts.
 use std::ops;
 
+use base_db::SourceDatabase;
 use hir_expand::{InFile, Lookup};
 use span::Edition;
 use syntax::ast;
@@ -9,7 +10,6 @@ use triomphe::Arc;
 
 use crate::{
     DefWithBodyId, ExpressionStoreOwnerId, HasModule,
-    db::DefDatabase,
     expr_store::{
         ExpressionStore, ExpressionStoreSourceMap, SelfParamPtr, lower::lower_body, pretty,
     },
@@ -87,7 +87,10 @@ impl ops::Deref for BodySourceMap {
 #[salsa::tracked]
 impl Body {
     #[salsa::tracked(lru = 512, returns(ref))]
-    pub fn with_source_map(db: &dyn DefDatabase, def: DefWithBodyId) -> (Arc<Body>, BodySourceMap) {
+    pub fn with_source_map(
+        db: &dyn SourceDatabase,
+        def: DefWithBodyId,
+    ) -> (Arc<Body>, BodySourceMap) {
         let _p = tracing::info_span!("body_with_source_map_query").entered();
         let mut params = None;
 
@@ -128,7 +131,7 @@ impl Body {
     }
 
     #[salsa::tracked(returns(deref))]
-    pub fn of(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<Body> {
+    pub fn of(db: &dyn SourceDatabase, def: DefWithBodyId) -> Arc<Body> {
         Self::with_source_map(db, def).0.clone()
     }
 }
@@ -150,7 +153,7 @@ impl Body {
 
     pub fn pretty_print(
         &self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         owner: DefWithBodyId,
         edition: Edition,
     ) -> String {
@@ -159,7 +162,7 @@ impl Body {
 
     pub fn pretty_print_expr(
         &self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         owner: DefWithBodyId,
         expr: ExprId,
         edition: Edition,
@@ -169,7 +172,7 @@ impl Body {
 
     pub fn pretty_print_pat(
         &self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         owner: ExpressionStoreOwnerId,
         pat: PatId,
         oneline: bool,

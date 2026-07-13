@@ -54,7 +54,9 @@
             source: Some(
                 "clippy",
             ),
-            message: "this argument is passed by reference, but would be more efficient if passed by value\n#[warn(clippy::trivially_copy_pass_by_ref)] implied by #[warn(clippy::all)]\nfor further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref",
+            message: String(
+                "this argument is passed by reference, but would be more efficient if passed by value\n#[warn(clippy::trivially_copy_pass_by_ref)] implied by #[warn(clippy::all)]\nfor further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref",
+            ),
             tags: None,
             related_information: Some(
                 [
@@ -171,7 +173,9 @@
             source: Some(
                 "clippy",
             ),
-            message: "lint level defined here",
+            message: String(
+                "lint level defined here",
+            ),
             tags: None,
             related_information: Some(
                 [
@@ -262,7 +266,9 @@
             source: Some(
                 "clippy",
             ),
-            message: "consider passing by value instead: `self`",
+            message: String(
+                "consider passing by value instead: `self`",
+            ),
             tags: None,
             related_information: Some(
                 [

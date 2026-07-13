@@ -42,7 +42,7 @@ impl CheckReparse {
         let delete =
             TextRange::at(delete_start.try_into().unwrap(), delete_len.try_into().unwrap());
         let edited_text =
-            format!("{}{}{}", &text[..delete_start], &insert, &text[delete_start + delete_len..]);
+            format!("{}{}{}", &text[..delete_start], insert, &text[delete_start + delete_len..]);
         Some(CheckReparse { text, insert, delete, edited_text })
     }
 

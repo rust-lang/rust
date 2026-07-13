@@ -29,7 +29,6 @@ triomphe.workspace = true
 rustc_apfloat = "0.2.3"
 salsa.workspace = true
 salsa-macros.workspace = true
-query-group.workspace = true
 
 ra-ap-rustc_parse_format.workspace = true
 ra-ap-rustc_abi.workspace = true

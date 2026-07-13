@@ -872,11 +872,11 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
 
     fn push_candidate(&mut self, candidate: Candidate<'db>, is_inherent: bool) {
         let is_accessible = if is_inherent {
-            let candidate_id = match candidate.item {
+            let candidate_id: AssocItemId = match candidate.item {
                 CandidateId::FunctionId(id) => id.into(),
                 CandidateId::ConstId(id) => id.into(),
             };
-            let visibility = self.db().assoc_visibility(candidate_id);
+            let visibility = candidate_id.assoc_visibility(self.db());
             self.ctx.resolver.is_visible(self.db(), visibility)
         } else {
             true

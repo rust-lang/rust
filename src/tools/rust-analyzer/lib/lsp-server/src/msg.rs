@@ -84,10 +84,15 @@ pub struct Response {
     // request id. We fail deserialization in that case, so we just
     // make this field mandatory.
     pub id: RequestId,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub result: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub error: Option<ResponseError>,
+    #[serde(flatten)]
+    pub response_kind: ResponseKind,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum ResponseKind {
+    Ok { result: serde_json::Value },
+    Err { error: ResponseError },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -198,11 +203,14 @@ impl Message {
 
 impl Response {
     pub fn new_ok<R: serde::Serialize>(id: RequestId, result: R) -> Response {
-        Response { id, result: Some(serde_json::to_value(result).unwrap()), error: None }
+        Response {
+            id,
+            response_kind: ResponseKind::Ok { result: serde_json::to_value(result).unwrap() },
+        }
     }
     pub fn new_err(id: RequestId, code: i32, message: String) -> Response {
         let error = ResponseError { code, message, data: None };
-        Response { id, result: None, error: Some(error) }
+        Response { id, response_kind: ResponseKind::Err { error } }
     }
 }
 

@@ -2704,4 +2704,23 @@ impl Drop for Foo {
         "#,
         );
     }
+
+    #[test]
+    fn issue_10326() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait A<T: ?Sized> { fn a(&self) -> &T; }
+trait B {}
+impl<'a, T: B> A<dyn 'a + B> for T {$0}"#,
+            r#"
+trait A<T: ?Sized> { fn a(&self) -> &T; }
+trait B {}
+impl<'a, T: B> A<dyn 'a + B> for T {
+    fn a(&self) -> &(dyn 'a + B) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
 }

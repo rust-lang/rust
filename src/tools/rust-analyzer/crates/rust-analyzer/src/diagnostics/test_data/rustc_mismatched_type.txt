@@ -54,7 +54,9 @@
             source: Some(
                 "rustc",
             ),
-            message: "mismatched types\nexpected usize, found u32",
+            message: String(
+                "mismatched types\nexpected usize, found u32",
+            ),
             tags: None,
             related_information: None,
             data: None,

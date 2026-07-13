@@ -5,7 +5,7 @@ use std::slice;
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
     HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
-    db::{ExpandDatabase, HirDatabase},
+    db::HirDatabase,
 };
 use ide_db::{
     RootDatabase,
@@ -241,7 +241,7 @@ pub fn add_trait_assoc_items_to_impl(
         .map(|InFile { file_id, value: original_item }| {
             let mut cloned_item = {
                 if let Some(macro_file) = file_id.macro_file() {
-                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let span_map = macro_file.expansion_span_map(sema.db);
                     let item_prettified = prettify_macro_expansion(
                         sema.db,
                         original_item.syntax().clone(),

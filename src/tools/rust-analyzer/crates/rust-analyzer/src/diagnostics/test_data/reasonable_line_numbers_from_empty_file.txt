@@ -54,7 +54,9 @@
             source: Some(
                 "rustc",
             ),
-            message: "`main` function not found in crate `current`\nconsider adding a `main` function to `src/bin/current.rs`",
+            message: String(
+                "`main` function not found in crate `current`\nconsider adding a `main` function to `src/bin/current.rs`",
+            ),
             tags: None,
             related_information: None,
             data: None,

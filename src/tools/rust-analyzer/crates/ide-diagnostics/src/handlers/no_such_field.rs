@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{HasSource, HirDisplay, Semantics, VariantId, db::ExpandDatabase};
+use hir::{HasSource, HirDisplay, Semantics, VariantId};
 use ide_db::text_edit::TextEdit;
 use ide_db::{EditionedFileId, RootDatabase, source_change::SourceChange};
 use syntax::{
@@ -32,7 +32,7 @@ pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_, '_>, d: &hir::NoSuchFie
 
 fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::NoSuchField) -> Option<Vec<Assist>> {
     // FIXME: quickfix for pattern
-    let root = ctx.sema.db.parse_or_expand(d.field.file_id);
+    let root = d.field.file_id.parse_or_expand(ctx.sema.db);
     match &d.field.value.to_node(&root) {
         Either::Left(node) => {
             if let Some(private_field) = d.private {

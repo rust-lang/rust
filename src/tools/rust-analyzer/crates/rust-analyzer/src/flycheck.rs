@@ -494,33 +494,24 @@ impl<'a> Substitutions<'a> {
         let mut cmd = toolchain::command(&template.program, &template.cwd, extra_env);
         for arg in &template.args {
             if let Some(ix) = arg.find(LABEL_INLINE) {
-                if let Some(label) = self.label {
-                    let mut arg = arg.to_string();
-                    arg.replace_range(ix..ix + LABEL_INLINE.len(), label);
-                    cmd.arg(arg);
-                    continue;
-                } else {
-                    return None;
-                }
+                let label = self.label?;
+                let mut arg = arg.to_string();
+                arg.replace_range(ix..ix + LABEL_INLINE.len(), label);
+                cmd.arg(arg);
+                continue;
             }
             if let Some(ix) = arg.find(SAVED_FILE_INLINE) {
-                if let Some(saved_file) = self.saved_file {
-                    let mut arg = arg.to_string();
-                    arg.replace_range(ix..ix + SAVED_FILE_INLINE.len(), saved_file);
-                    cmd.arg(arg);
-                    continue;
-                } else {
-                    return None;
-                }
+                let saved_file = self.saved_file?;
+                let mut arg = arg.to_string();
+                arg.replace_range(ix..ix + SAVED_FILE_INLINE.len(), saved_file);
+                cmd.arg(arg);
+                continue;
             }
             // Legacy syntax: full argument match
             if arg == SAVED_FILE_PLACEHOLDER_DOLLAR {
-                if let Some(saved_file) = self.saved_file {
-                    cmd.arg(saved_file);
-                    continue;
-                } else {
-                    return None;
-                }
+                let saved_file = self.saved_file?;
+                cmd.arg(saved_file);
+                continue;
             }
             cmd.arg(arg);
         }
