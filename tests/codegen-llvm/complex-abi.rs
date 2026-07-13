@@ -35,19 +35,19 @@
 //@ [ARM] compile-flags: --target arm-unknown-linux-gnueabihf
 //@ [ARM] needs-llvm-components: arm
 
+//@ revisions: RISCV64 RISCV32
+//@ [RISCV64] compile-flags: --target riscv64gc-unknown-linux-gnu
+//@ [RISCV64] needs-llvm-components: riscv
+//@ [RISCV32] compile-flags: --target riscv32gc-unknown-linux-gnu
+//@ [RISCV32] needs-llvm-components: riscv
+
+//@ revisions: LOONGARCH64 LOONGARCH32
+//@ [LOONGARCH64] compile-flags: --target loongarch64-unknown-linux-gnu
+//@ [LOONGARCH64] needs-llvm-components: loongarch
+//@ [LOONGARCH32] compile-flags: --target loongarch32-unknown-none
+//@ [LOONGARCH32] needs-llvm-components: loongarch
+
 // FIXME: the below revisions are deliberately disabled for now.
-
-// revisions: RISCV64 RISCV32
-// [RISCV64] compile-flags: --target riscv64gc-unknown-linux-gnu
-// [RISCV64] needs-llvm-components: riscv
-// [RISCV32] compile-flags: --target riscv32gc-unknown-linux-gnu
-// [RISCV32] needs-llvm-components: riscv
-
-// revisions: LOONGARCH64 LOONGARCH32
-// [LOONGARCH64] compile-flags: --target loongarch64-unknown-linux-gnu
-// [LOONGARCH64] needs-llvm-components: loongarch
-// [LOONGARCH32] compile-flags: --target loongarch32-unknown-none
-// [LOONGARCH32] needs-llvm-components: loongarch
 
 // revisions: SPARC64 SPARC
 // [SPARC64] compile-flags: --target sparc64-unknown-linux-gnu
@@ -109,11 +109,11 @@ pub extern "C" fn cplx_f16(x: Complex<f16>) -> Complex<f16> {
     // ARM64EC:        define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
     // ARM:            define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
     // I686:           define{{.*}} <2 x half> @cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
-    // LOONGARCH32:    define{{.*}} { half, half } @cplx_f16(half {{.*}}, half {{.*}})
-    // LOONGARCH64:    define{{.*}} { half, half } @cplx_f16(half {{.*}}, half {{.*}})
+    // LOONGARCH32:    define{{.*}} { half, half } @cplx_f16({ half, half } {{.*}})
+    // LOONGARCH64:    define{{.*}} { half, half } @cplx_f16({ half, half } {{.*}})
     // NVPTX:          define{{.*}} { half, half } @cplx_f16(ptr {{.*}} byval({ half, half }) {{.*}})
-    // RISCV32:        define{{.*}} { half, half } @cplx_f16(half {{.*}}, half {{.*}})
-    // RISCV64:        define{{.*}} { half, half } @cplx_f16(half {{.*}}, half {{.*}})
+    // RISCV32:        define{{.*}} { half, half } @cplx_f16({ half, half } {{.*}})
+    // RISCV64:        define{{.*}} { half, half } @cplx_f16({ half, half } {{.*}})
     // S390X:          define{{.*}} void @cplx_f16(ptr {{.*}} sret({ half, half }) {{.*}}, ptr {{.*}})
     // WIN32_GNU:      define{{.*}} <2 x half> @cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
     // WIN32_MSVC:     define{{.*}} <2 x half> @cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
@@ -134,16 +134,16 @@ pub extern "C" fn cplx_f32(x: Complex<f32>) -> Complex<f32> {
     // BPF:            define{{.*}} void @cplx_f32(ptr {{.*}} sret({ float, float }) {{.*}}, i64 {{.*}})
     // CSKY:           define{{.*}} [2 x i32] @cplx_f32([2 x i32] {{.*}})
     // I686:           define{{.*}} i64 @cplx_f32(ptr {{.*}} byval([8 x i8]) {{.*}})
-    // LOONGARCH32:    define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
-    // LOONGARCH64:    define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
+    // LOONGARCH32:    define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
+    // LOONGARCH64:    define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
     // MIPS64EL:       define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
     // MIPS:           define{{.*}} { float, float } @cplx_f32(i32 {{.*}}, i32 {{.*}})
     // NVPTX:          define{{.*}} { float, float } @cplx_f32(ptr {{.*}} byval({ float, float }) {{.*}})
     // POWERPC64:      define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
     // POWERPC64LE:    define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
     // POWERPC:        define{{.*}} void @cplx_f32(ptr {{.*}} sret({ float, float }) {{.*}}, ptr {{.*}} byval({ float, float }) {{.*}})
-    // RISCV32:        define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
-    // RISCV64:        define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
+    // RISCV32:        define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
+    // RISCV64:        define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
     // S390X:          define{{.*}} void @cplx_f32(ptr {{.*}} sret({ float, float }) {{.*}}, ptr {{.*}})
     // SPARC64:        define{{.*}} {{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
     // SPARC:          define{{.*}} { float, float } @cplx_f32(ptr {{.*}} byval({ float, float }) {{.*}})
@@ -168,16 +168,16 @@ pub extern "C" fn cplx_f64(x: Complex<f64>) -> Complex<f64> {
     // BPF:            define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, [2 x i64] {{.*}})
     // CSKY:           define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, [4 x i32] {{.*}})
     // I686:           define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
-    // LOONGARCH32:    define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
-    // LOONGARCH64:    define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
+    // LOONGARCH32:    define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
+    // LOONGARCH64:    define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
     // MIPS64EL:       define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
     // MIPS:           define{{.*}} { double, double } @cplx_f64(i32 {{.*}}, i32 {{.*}}, i32 {{.*}}, i32 {{.*}})
     // NVPTX:          define{{.*}} { double, double } @cplx_f64(ptr {{.*}} byval({ double, double }) {{.*}})
     // POWERPC64:      define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
     // POWERPC64LE:    define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
     // POWERPC:        define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, ptr {{.*}} byval({ double, double }) {{.*}})
-    // RISCV32:        define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
-    // RISCV64:        define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
+    // RISCV32:        define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
+    // RISCV64:        define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
     // S390X:          define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, ptr {{.*}})
     // SPARC64:        define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
     // SPARC:          define{{.*}} { double, double } @cplx_f64(ptr {{.*}} byval({ double, double }) {{.*}})
@@ -200,6 +200,8 @@ pub extern "C" fn cplx_f128(x: Complex<f128>) -> Complex<f128> {
     // WIN32_GNU:      define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
     // WINDOWS_GNU:    define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
     // X86_64:         define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
+    // LOONGARCH64:    define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    // RISCV64         define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
     x
 }
 
@@ -214,16 +216,16 @@ pub extern "C" fn cplx_i8(x: Complex<i8>) -> Complex<i8> {
     // BPF:            define{{.*}} void @cplx_i8(ptr {{.*}} sret({ i8, i8 }) {{.*}}, i16 {{.*}})
     // CSKY:           define{{.*}} {{.*}} i32 @cplx_i8(i32{{.*}})
     // I686:           define{{.*}} i16 @cplx_i8(ptr {{.*}} byval([2 x i8]) {{.*}})
-    // LOONGARCH32:    define{{.*}} {{.*}} i32 @cplx_i8(i32{{.*}})
-    // LOONGARCH64:    define{{.*}} {{.*}} i64 @cplx_i8(i64{{.*}})
+    // LOONGARCH32:    define{{.*}} i32 @cplx_i8(i32{{.*}})
+    // LOONGARCH64:    define{{.*}} i64 @cplx_i8(i64{{.*}})
     // MIPS64EL:       define{{.*}} { i8, i8 } @cplx_i8(i16 {{.*}})
     // MIPS:           define{{.*}} { i8, i8 } @cplx_i8(i16 {{.*}})
     // NVPTX:          define{{.*}} { i8, i8 } @cplx_i8(ptr {{.*}} byval({ i8, i8 }) {{.*}})
     // POWERPC64:      define{{.*}} { i8, i8 } @cplx_i8(i8 {{.*}}, i8 {{.*}})
     // POWERPC64LE:    define{{.*}} { i8, i8 } @cplx_i8(i8 {{.*}}, i8 {{.*}})
     // POWERPC:        define{{.*}} void @cplx_i8(ptr {{.*}} sret({ i8, i8 }) {{.*}}, ptr {{.*}} byval({ i8, i8 }) {{.*}})
-    // RISCV32:        define{{.*}} {{.*}} i32 @cplx_i8(i32{{.*}})
-    // RISCV64:        define{{.*}} {{.*}} i64 @cplx_i8(i64{{.*}})
+    // RISCV32:        define{{.*}} i32 @cplx_i8(i32{{.*}})
+    // RISCV64:        define{{.*}} i64 @cplx_i8(i64{{.*}})
     // S390X:          define{{.*}} void @cplx_i8(ptr {{.*}} sret({ i8, i8 }) {{.*}}, ptr {{.*}})
     // SPARC64:        define{{.*}} {{.*}} i64 @cplx_i8(i64{{.*}})
     // SPARC:          define{{.*}} { i8, i8 } @cplx_i8(ptr {{.*}} byval({ i8, i8 }) {{.*}})
@@ -249,7 +251,7 @@ pub extern "C" fn cplx_i16(x: Complex<i16>) -> Complex<i16> {
     // CSKY:           define{{.*}} i32 @cplx_i16(i32 {{.*}})
     // I686:           define{{.*}} i32 @cplx_i16(ptr {{.*}} byval([4 x i8]) {{.*}})
     // LOONGARCH32:    define{{.*}} i32 @cplx_i16(i32 {{.*}})
-    // LOONGARCH64:    define{{.*}} {{.*}} i64 @cplx_i16(i64{{.*}})
+    // LOONGARCH64:    define{{.*}} i64 @cplx_i16(i64{{.*}})
     // MIPS64EL:       define{{.*}} { i16, i16 } @cplx_i16(i32 {{.*}})
     // MIPS:           define{{.*}} { i16, i16 } @cplx_i16(i32 {{.*}})
     // NVPTX:          define{{.*}} { i16, i16 } @cplx_i16(ptr {{.*}} byval({ i16, i16 }) {{.*}})
@@ -257,7 +259,7 @@ pub extern "C" fn cplx_i16(x: Complex<i16>) -> Complex<i16> {
     // POWERPC64LE:    define{{.*}} { i16, i16 } @cplx_i16(i16 {{.*}}, i16 {{.*}})
     // POWERPC:        define{{.*}} void @cplx_i16(ptr {{.*}} sret({ i16, i16 }) {{.*}}, ptr {{.*}} byval({ i16, i16 }) {{.*}})
     // RISCV32:        define{{.*}} i32 @cplx_i16(i32 {{.*}})
-    // RISCV64:        define{{.*}} {{.*}} i64 @cplx_i16(i64{{.*}})
+    // RISCV64:        define{{.*}} i64 @cplx_i16(i64{{.*}})
     // S390X:          define{{.*}} void @cplx_i16(ptr {{.*}} sret({ i16, i16 }) {{.*}}, ptr {{.*}})
     // SPARC64:        define{{.*}} {{.*}} i64 @cplx_i16(i64{{.*}})
     // SPARC:          define{{.*}} { i16, i16 } @cplx_i16(ptr {{.*}} byval({ i16, i16 }) {{.*}})
@@ -316,7 +318,7 @@ pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
     // BPF:            define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, [2 x i64] {{.*}})
     // CSKY:           define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, [4 x i32] {{.*}})
     // I686:           define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
-    // LOONGARCH32:    define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, ptr {{.*}})
+    // LOONGARCH32:    define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // LOONGARCH64:    define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
     // MIPS64EL:       define{{.*}} { i64, i64 } @cplx_i64(i64 {{.*}}, i64 {{.*}})
     // MIPS:           define{{.*}} { i64, i64 } @cplx_i64(i32 {{.*}}, i32 {{.*}}, i32 {{.*}}, i32 {{.*}})
@@ -324,7 +326,7 @@ pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
     // POWERPC64:      define{{.*}} { i64, i64 } @cplx_i64(i64 {{.*}}, i64 {{.*}})
     // POWERPC64LE:    define{{.*}} { i64, i64 } @cplx_i64(i64 {{.*}}, i64 {{.*}})
     // POWERPC:        define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, ptr {{.*}} byval({ i64, i64 }) {{.*}})
-    // RISCV32:        define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, ptr {{.*}})
+    // RISCV32:        define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // RISCV64:        define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
     // S390X:          define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, ptr {{.*}})
     // SPARC64:        define{{.*}} { i64, i64 } @cplx_i64(i64 {{.*}}, i64 {{.*}})
