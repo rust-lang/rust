@@ -2304,10 +2304,10 @@ impl<'db> HirDisplay<'db> for Region<'db> {
                 Ok(())
             }
             RegionKind::ReBound(BoundVarIndexKind::Bound(db), idx) => {
-                write!(f, "?{}.{}", db.as_u32(), idx.var.as_u32())
+                write!(f, "'?{}.{}", db.as_u32(), idx.var.as_u32())
             }
             RegionKind::ReBound(BoundVarIndexKind::Canonical, idx) => {
-                write!(f, "?c.{}", idx.var.as_u32())
+                write!(f, "'?c.{}", idx.var.as_u32())
             }
             RegionKind::ReVar(_) => write!(f, "_"),
             RegionKind::ReStatic => write!(f, "'static"),
@@ -2319,8 +2319,8 @@ impl<'db> HirDisplay<'db> for Region<'db> {
                 }
             }
             RegionKind::ReErased => write!(f, "'<erased>"),
-            RegionKind::RePlaceholder(_) => write!(f, "<placeholder>"),
-            RegionKind::ReLateParam(_) => write!(f, "<late-param>"),
+            RegionKind::RePlaceholder(_) => write!(f, "'<placeholder>"),
+            RegionKind::ReLateParam(_) => write!(f, "'_"),
         }
     }
 }

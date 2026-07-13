@@ -3253,9 +3253,9 @@ fn main() {
         "#,
         expect![[r#"
             104..108 'self': &'? Box<T>
-            188..192 'self': &'a Box<Foo<T>>
+            188..192 'self': &'_ Box<Foo<T>>
             218..220 '{}': &'? T
-            242..246 'self': &'a Box<Foo<T>>
+            242..246 'self': &'_ Box<Foo<T>>
             275..277 '{}': &'? Foo<T>
             297..301 'self': Box<Foo<T>>
             322..324 '{}': Foo<T>
@@ -3270,7 +3270,7 @@ fn main() {
             389..394 'boxed': Box<Foo<i32>>
             389..406 'boxed....nner()': &'? i32
             416..421 'good1': &'? i32
-            424..438 'Foo::get_inner': fn get_inner<i32, '?>(&'? Box<Foo<i32>>) -> &'? i32
+            424..438 'Foo::get_inner': fn get_inner<i32>(&'?0.0 Box<Foo<i32>>) -> &'?0.0 i32
             424..446 'Foo::g...boxed)': &'? i32
             439..445 '&boxed': &'? Box<Foo<i32>>
             440..445 'boxed': Box<Foo<i32>>
@@ -3278,7 +3278,7 @@ fn main() {
             464..469 'boxed': Box<Foo<i32>>
             464..480 'boxed....self()': &'? Foo<i32>
             490..495 'good2': &'? Foo<i32>
-            498..511 'Foo::get_self': fn get_self<i32, '?>(&'? Box<Foo<i32>>) -> &'? Foo<i32>
+            498..511 'Foo::get_self': fn get_self<i32>(&'?0.0 Box<Foo<i32>>) -> &'?0.0 Foo<i32>
             498..519 'Foo::g...boxed)': &'? Foo<i32>
             512..518 '&boxed': &'? Box<Foo<i32>>
             513..518 'boxed': Box<Foo<i32>>
@@ -4321,5 +4321,41 @@ fn foo() {
     };
 }
     "#,
+    );
+}
+
+#[test]
+fn type_alias_with_different_lifetime_name() {
+    check_infer(
+        r#"
+trait Trait<'t> {
+    type Assoc<'a> where Self: 'a;
+}
+
+struct Foo;
+
+impl<'u> Trait<'u> for Foo {
+    type Assoc<'b> = &'b u32;
+}
+
+type Alias<'y, 'z> = <Foo as Trait<'y>>::Assoc<'z>;
+
+fn foo<'e, 'f>(alias: Alias<'e, 'f>) -> &'e u32 {
+    &1u32
+}
+
+fn check() {
+    let foo_fn = foo;
+}
+"#,
+        expect![[r#"
+            199..204 'alias': &'_ u32
+            232..245 '{     &1u32 }': &'e u32
+            238..243 '&1u32': &'? u32
+            239..243 '1u32': u32
+            258..283 '{     ...foo; }': ()
+            268..274 'foo_fn': fn foo<'?>(<Foo as Trait<'?>>::Assoc<'?0.0>) -> &'? u32
+            277..280 'foo': fn foo<'?>(<Foo as Trait<'?>>::Assoc<'?0.0>) -> &'? u32
+        "#]],
     );
 }

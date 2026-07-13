@@ -1797,7 +1797,7 @@ impl Adt {
         resolver
             .generic_params()
             .and_then(|gp| {
-                gp.iter_lt()
+                gp.iter_early_bound_lt()
                     // there should only be a single lifetime
                     // but `Arena` requires to use an iterator
                     .nth(0)
@@ -5414,7 +5414,7 @@ impl<'db> Type<'db> {
                 TypeOwnerId::AnonConstId(def) => def.into(),
                 TypeOwnerId::NoParams(_) => return ty.ty.skip_binder(),
             };
-            let args = GenericArgs::for_item(infcx.interner, owner, |_, param, _| {
+            let args = GenericArgs::for_item(infcx.interner, owner, |_, param, _, _| {
                 *var_for_param
                     .entry(param)
                     .or_insert_with(|| infcx.var_for_def(param, hir_ty::Span::Dummy))
@@ -5855,7 +5855,7 @@ impl<'db> Type<'db> {
         let env = ParamEnvAndCrate { param_env: ParamEnv::empty(interner), krate: self.krate(db) };
         traits::implements_trait_unique_with_infcx(db, env, trait_.id, &mut |infcx| {
             let mut args = Self::instantiate_many_with_infer(iter::once(self).chain(args), infcx);
-            GenericArgs::for_item(infcx.interner, trait_.id.into(), |_, param, _| {
+            GenericArgs::for_item(infcx.interner, trait_.id.into(), |_, param, _, _| {
                 if let GenericParamId::TypeParamId(_) = param
                     && let Some(arg) = args.next()
                 {
@@ -7413,7 +7413,7 @@ fn generic_args_from_tys<'db>(
 ) -> (GenericArgs<'db>, TypeOwnerId) {
     let mut owner = None::<TypeOwnerId>;
     let mut args = args.into_iter();
-    let args = GenericArgs::for_item(interner, def_id, |_, id, _| {
+    let args = GenericArgs::for_item(interner, def_id, |_, id, _, _| {
         if matches!(id, GenericParamId::TypeParamId(_))
             && let Some(arg) = args.next()
         {

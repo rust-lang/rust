@@ -93,8 +93,8 @@ use crate::{
         unify::resolve_completely::WriteBackCtxt,
     },
     lower::{
-        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, LoweringMode,
-        diagnostics::TyLoweringDiagnostic,
+        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, LifetimeLoweringMode,
+        LoweringMode, diagnostics::TyLoweringDiagnostic,
     },
     method_resolution::CandidateId,
     next_solver::{
@@ -1934,6 +1934,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             self.allow_using_generic_params,
             infer_vars,
             &self.defined_anon_consts,
+            LifetimeLoweringMode::LateParam,
         );
         f(&mut ctx)
     }
@@ -2268,6 +2269,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             self.allow_using_generic_params,
             Some(&mut vars_ctx),
             &self.defined_anon_consts,
+            LifetimeLoweringMode::LateParam,
         );
 
         if let Some(type_anchor) = path.type_anchor() {

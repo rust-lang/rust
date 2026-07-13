@@ -1823,11 +1823,14 @@ impl<'db> SemanticsImpl<'db> {
         let AnyFunctionId::FunctionId(func) = func.id else { return Some(func) };
         let interner = DbInterner::new_no_crate(self.db);
         let mut subst = subst.into_iter();
-        let substs =
-            hir_ty::next_solver::GenericArgs::for_item(interner, trait_.id.into(), |_, id, _| {
+        let substs = hir_ty::next_solver::GenericArgs::for_item(
+            interner,
+            trait_.id.into(),
+            |_, id, _, _| {
                 assert!(matches!(id, hir_def::GenericParamId::TypeParamId(_)), "expected a type");
                 subst.next().expect("too few subst").ty.skip_binder().into()
-            });
+            },
+        );
         assert!(subst.next().is_none(), "too many subst");
         Some(match self.db.lookup_impl_method(env.param_env(self.db), func, substs).0 {
             Either::Left(it) => it.into(),

@@ -12,10 +12,13 @@ use thin_vec::ThinVec;
 
 use crate::{
     GenericDefId, TypeOrConstParamId, TypeParamId,
-    expr_store::{TypePtr, lower::ExprCollector},
+    expr_store::{
+        TypePtr,
+        lower::{ExprCollector, LifetimeBoundScope, NamedLifetimeStore},
+    },
     hir::generics::{
-        ConstParamData, GenericParams, LifetimeParamData, TypeOrConstParamData, TypeParamData,
-        TypeParamProvenance, WherePredicate,
+        ConstParamData, GenericParams, LifetimeBoundType, LifetimeParamData, TypeOrConstParamData,
+        TypeParamData, TypeParamProvenance, WherePredicate,
     },
     type_ref::{LifetimeRef, LifetimeRefId, TypeBound, TypeRef, TypeRefId},
 };
@@ -62,7 +65,7 @@ impl GenericParamsCollector {
             self.lower_param_list(ec, params)
         }
         if let Some(where_clause) = where_clause {
-            self.lower_where_predicates(ec, where_clause);
+            self.lower_where_predicates(ec, where_clause)
         }
     }
 
@@ -118,7 +121,9 @@ impl GenericParamsCollector {
                             local_id: idx,
                         }));
                     let type_ref = ec.alloc_type_ref_desugared(type_ref);
-                    self.lower_bounds(ec, type_param.type_bound_list(), Either::Left(type_ref));
+                    ec.with_lifetime_bound_scope(LifetimeBoundScope::WhereClause, |ec| {
+                        self.lower_bounds(ec, type_param.type_bound_list(), Either::Left(type_ref))
+                    });
                 }
                 ast::GenericParam::ConstParam(const_param) => {
                     let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
@@ -133,13 +138,18 @@ impl GenericParamsCollector {
                 ast::GenericParam::LifetimeParam(lifetime_param) => {
                     let lifetime = ec.lower_lifetime_ref_opt(lifetime_param.lifetime());
                     if let LifetimeRef::Named(name) = &ec.store.lifetimes[lifetime] {
-                        let param = LifetimeParamData { name: name.clone() };
+                        let param = LifetimeParamData {
+                            name: name.clone(),
+                            bound_type: LifetimeBoundType::EarlyBound,
+                        };
                         let _idx = self.lifetimes.alloc(param);
-                        self.lower_bounds(
-                            ec,
-                            lifetime_param.type_bound_list(),
-                            Either::Right(lifetime),
-                        );
+                        ec.with_lifetime_bound_scope(LifetimeBoundScope::WhereClause, |ec| {
+                            self.lower_bounds(
+                                ec,
+                                lifetime_param.type_bound_list(),
+                                Either::Right(lifetime),
+                            )
+                        });
                     }
                 }
             }
@@ -151,33 +161,35 @@ impl GenericParamsCollector {
         ec: &mut ExprCollector<'_>,
         where_clause: ast::WhereClause,
     ) {
-        for pred in where_clause.predicates() {
-            let target = if let Some(type_ref) = pred.ty() {
-                Either::Left(
-                    ec.lower_type_ref(type_ref, &mut ExprCollector::impl_trait_error_allocator),
-                )
-            } else if let Some(lifetime) = pred.lifetime() {
-                Either::Right(ec.lower_lifetime_ref(lifetime))
-            } else {
-                continue;
-            };
+        ec.with_lifetime_bound_scope(LifetimeBoundScope::WhereClause, |ec| {
+            for pred in where_clause.predicates() {
+                let target = if let Some(type_ref) = pred.ty() {
+                    Either::Left(
+                        ec.lower_type_ref(type_ref, &mut ExprCollector::impl_trait_error_allocator),
+                    )
+                } else if let Some(lifetime) = pred.lifetime() {
+                    Either::Right(ec.lower_lifetime_ref(lifetime))
+                } else {
+                    continue;
+                };
 
-            let lifetimes: Option<Box<_>> =
-                pred.for_binder().and_then(|it| it.generic_param_list()).map(|param_list| {
-                    // Higher-Ranked Trait Bounds
-                    param_list
-                        .lifetime_params()
-                        .map(|lifetime_param| {
-                            lifetime_param
-                                .lifetime()
-                                .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt.text()))
-                        })
-                        .collect()
-                });
-            for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
-                self.lower_type_bound_as_predicate(ec, bound, lifetimes.as_deref(), target);
+                let lifetimes: Option<Box<_>> =
+                    pred.for_binder().and_then(|it| it.generic_param_list()).map(|param_list| {
+                        // Higher-Ranked Trait Bounds
+                        param_list
+                            .lifetime_params()
+                            .map(|lifetime_param| {
+                                lifetime_param
+                                    .lifetime()
+                                    .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt.text()))
+                            })
+                            .collect()
+                    });
+                for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
+                    self.lower_type_bound_as_predicate(ec, bound, lifetimes.as_deref(), target);
+                }
             }
-        }
+        });
     }
 
     fn lower_bounds(
@@ -221,6 +233,9 @@ impl GenericParamsCollector {
             }
             (Either::Right(_), TypeBound::ForLifetime(..) | TypeBound::Path(..)) => return,
         };
+        if let WherePredicate::Lifetime { target, .. } = predicate {
+            ec.push_named_target_lifetime(target);
+        }
         self.where_predicates.push(predicate);
     }
 
@@ -267,6 +282,26 @@ impl GenericParamsCollector {
         let self_ = ec.alloc_type_ref_desugared(type_ref);
         if let Some(bounds) = bounds {
             self.lower_bounds(ec, Some(bounds), Either::Left(self_));
+        }
+    }
+
+    pub(crate) fn update_to_late_bound_lifetimes(
+        &mut self,
+        named_lifetime_store: &NamedLifetimeStore,
+    ) {
+        for (_param_id, lifetime) in self.lifetimes.iter_mut() {
+            let lifetime_name = &lifetime.name;
+            if named_lifetime_store.lifetimes_in_where_clause.contains(lifetime_name) {
+                continue;
+            }
+
+            if !named_lifetime_store.lifetimes_constrained_by_input.contains(lifetime_name)
+                && named_lifetime_store.lifetimes_in_output.contains(lifetime_name)
+            {
+                continue;
+            }
+
+            lifetime.bound_type = LifetimeBoundType::LateBound
         }
     }
 }

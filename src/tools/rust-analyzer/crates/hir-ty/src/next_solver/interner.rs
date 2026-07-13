@@ -1145,7 +1145,7 @@ impl<'db> Interner for DbInterner<'db> {
     ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
         let trait_def_id = self.projection_parent(def_id).0;
         let trait_generics = crate::generics::generics(self.db, trait_def_id.into());
-        let trait_generics_len = trait_generics.len();
+        let trait_generics_len = trait_generics.len(true);
         let trait_args = GenericArgs::new_from_slice(&args.as_slice()[..trait_generics_len]);
         let alias_args = &args.as_slice()[trait_generics_len..];
         (TraitRef::new_from_args(self, trait_def_id.into(), trait_args), alias_args)

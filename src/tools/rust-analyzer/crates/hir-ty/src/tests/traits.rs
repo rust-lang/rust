@@ -4317,9 +4317,9 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
     "#,
         expect![[r#"
             90..94 'self': &'? Self
-            127..128 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + 'static)
+            127..128 'v': &'? (dyn Trait<Assoc<i32> = &'_ i32> + 'static)
             164..195 '{     ...f(); }': ()
-            170..171 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + 'static)
+            170..171 'v': &'? (dyn Trait<Assoc<i32> = &'_ i32> + 'static)
             170..184 'v.get::<i32>()': <{unknown} as Trait>::Assoc<i32>
             170..192 'v.get:...eref()': {unknown}
         "#]],
@@ -4884,6 +4884,23 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
 }
 
 #[test]
+fn rpit_with_lifetimes() {
+    check_no_mismatches(
+        r#"
+struct Event<'a> {};
+struct Range<T> {}
+trait Iterator {
+    type Item;
+}
+
+struct Vec<T> {}
+
+fn foo<'e>(events: &'e mut dyn Iterator<Item = (Event<'e>, Range<usize>)>) -> impl Iterator<Item = Event<'e>> {}
+"#,
+    );
+}
+
+#[test]
 fn recursive_tail_sized() {
     check_infer(
         r#"
@@ -5258,5 +5275,67 @@ fn foo() {
             736..743 'loop {}': !
             741..743 '{}': ()
         "#]],
+    );
+}
+
+#[test]
+fn rpit_with_type_and_only_late_bound_lifetime() {
+    check_no_mismatches(
+        r#"
+trait Trait<'a> {}
+struct Foo {}
+
+impl<'a> Trait for () {}
+
+fn foo<'a, T>(t: &'a mut T) -> impl Trait<'a> {}
+
+fn bar() {
+    let mut f = Foo {};
+    let p = foo(&mut f);
+}
+"#,
+    );
+}
+
+#[test]
+fn rpit_with_type_and_both_lifetimes() {
+    check_no_mismatches(
+        r#"
+trait Trait<'a> {}
+struct Foo {}
+
+impl<'a> Trait for () {}
+
+fn foo<'a, 'b, T: 'b>(t: &'a mut T) -> impl Trait<'a> {}
+
+fn bar() {
+    let mut f = Foo {};
+    let p = foo(&mut f);
+}
+"#,
+    );
+}
+
+#[test]
+fn async_impl_trait() {
+    check_no_mismatches(
+        r#"
+//- minicore: future
+trait Reader {}
+
+struct Path {}
+struct Result<T> { v: T }
+
+impl Reader for () {}
+
+async fn read<'a>(path: &'a Path) -> Result<impl Reader + 'a> {
+    Result { v: () }
+}
+
+fn foo() {
+    let p = Path {};
+    let v = read(&p);
+}
+"#,
     );
 }
