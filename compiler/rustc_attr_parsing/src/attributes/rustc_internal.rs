@@ -1008,6 +1008,7 @@ impl SingleAttributeParser for RustcDiagnosticItemParser {
         Allow(Target::Fn),
         Allow(Target::Const),
         Allow(Target::Mod),
+        Allow(Target::Impl { of_trait: true }),
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: false })),

@@ -26,7 +26,12 @@ LL | impl Foo for Vec<isize> {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     x.foo();
-LL +     <Vec<T> as Foo>::foo(&x);
+LL +     <Vec<usize> as Foo>::foo(&x);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     x.foo();
+LL +     <Vec<isize> as Foo>::foo(&x);
    |
 
 error[E0308]: mismatched types

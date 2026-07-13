@@ -15,7 +15,12 @@ LL | impl Method<u32> for Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     ref_thing.method();
-LL +     <Thing as Method<T>>::method(ref_thing);
+LL +     <Thing as Method<i32>>::method(ref_thing);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     ref_thing.method();
+LL +     <Thing as Method<u32>>::method(ref_thing);
    |
 
 error[E0283]: type annotations needed
@@ -35,7 +40,12 @@ LL | impl MethodRef<u32> for &Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     ref_thing.by_self();
-LL +     <&Thing as MethodRef<T>>::by_self(ref_thing);
+LL +     <&Thing as MethodRef<i32>>::by_self(ref_thing);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     ref_thing.by_self();
+LL +     <&Thing as MethodRef<u32>>::by_self(ref_thing);
    |
 
 error[E0283]: type annotations needed
@@ -55,7 +65,12 @@ LL | impl Method<u32> for Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     mut_thing.method();
-LL +     <Thing as Method<T>>::method(mut_thing);
+LL +     <Thing as Method<i32>>::method(mut_thing);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     mut_thing.method();
+LL +     <Thing as Method<u32>>::method(mut_thing);
    |
 
 error[E0283]: type annotations needed
@@ -75,7 +90,12 @@ LL | impl Method<u32> for Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     mut_thing.mut_method();
-LL +     <Thing as Method<T>>::mut_method(mut_thing);
+LL +     <Thing as Method<i32>>::mut_method(mut_thing);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     mut_thing.mut_method();
+LL +     <Thing as Method<u32>>::mut_method(mut_thing);
    |
 
 error[E0283]: type annotations needed
@@ -95,7 +115,12 @@ LL | impl MethodRef<u32> for &Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     mut_thing.by_self();
-LL +     <&Thing as MethodRef<T>>::by_self(mut_thing);
+LL +     <&Thing as MethodRef<i32>>::by_self(mut_thing);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     mut_thing.by_self();
+LL +     <&Thing as MethodRef<u32>>::by_self(mut_thing);
    |
 
 error[E0283]: type annotations needed
@@ -115,7 +140,12 @@ LL | impl Method<u32> for Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     deref_to.method();
-LL +     <Thing as Method<T>>::method(deref_to);
+LL +     <Thing as Method<i32>>::method(deref_to);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_to.method();
+LL +     <Thing as Method<u32>>::method(deref_to);
    |
 
 error[E0283]: type annotations needed
@@ -135,7 +165,12 @@ LL | impl Method<u32> for Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     deref_to.mut_method();
-LL +     <Thing as Method<T>>::mut_method(deref_to);
+LL +     <Thing as Method<i32>>::mut_method(deref_to);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_to.mut_method();
+LL +     <Thing as Method<u32>>::mut_method(deref_to);
    |
 
 error[E0283]: type annotations needed
@@ -155,7 +190,12 @@ LL | impl MethodRef<u32> for &Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     deref_to.by_self();
-LL +     <&Thing as MethodRef<T>>::by_self(deref_to);
+LL +     <&Thing as MethodRef<i32>>::by_self(deref_to);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_to.by_self();
+LL +     <&Thing as MethodRef<u32>>::by_self(deref_to);
    |
 
 error[E0283]: type annotations needed
@@ -175,7 +215,12 @@ LL | impl Method<u32> for Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     deref_deref_to.method();
-LL +     <Thing as Method<T>>::method(deref_deref_to);
+LL +     <Thing as Method<i32>>::method(deref_deref_to);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_deref_to.method();
+LL +     <Thing as Method<u32>>::method(deref_deref_to);
    |
 
 error[E0283]: type annotations needed
@@ -195,7 +240,12 @@ LL | impl Method<u32> for Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     deref_deref_to.mut_method();
-LL +     <Thing as Method<T>>::mut_method(deref_deref_to);
+LL +     <Thing as Method<i32>>::mut_method(deref_deref_to);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_deref_to.mut_method();
+LL +     <Thing as Method<u32>>::mut_method(deref_deref_to);
    |
 
 error[E0283]: type annotations needed
@@ -215,7 +265,12 @@ LL | impl MethodRef<u32> for &Thing {
 help: try using a fully qualified path to specify the expected types
    |
 LL -     deref_deref_to.by_self();
-LL +     <&Thing as MethodRef<T>>::by_self(deref_deref_to);
+LL +     <&Thing as MethodRef<i32>>::by_self(deref_deref_to);
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_deref_to.by_self();
+LL +     <&Thing as MethodRef<u32>>::by_self(deref_deref_to);
    |
 
 error: aborting due to 11 previous errors
