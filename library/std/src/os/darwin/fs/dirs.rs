@@ -204,24 +204,24 @@ mod sys {
 
             let Ok(path) = std::ffi::CStr::from_bytes_until_nul(&buf) else {
                 // should be impossible given username length limits, but be defensive
-                return Err(const_error!(
+                return Some(Err(const_error!(
                     ErrorKind::InvalidData,
                     "standard user directory path too long",
-                ));
+                )));
             };
 
             let Ok(path) = path.to_str() else {
                 // FIXME: is this possible, and if so, how should it be handled?
-                return Err(const_error!(
+                return Some(Err(const_error!(
                     ErrorKind::InvalidData,
                     "standard user directory path not valid UTF-8",
-                ));
+                )));
             };
 
             // expand `~` shorthand
             Some(match path {
-                "~" => Ok(home.into()),
-                _ if path.starts_with("~/") => Ok(home.join(&path[2..])),
+                "~" => Ok(self.home.into()),
+                _ if path.starts_with("~/") => Ok(self.home.join(&path[2..])),
                 _ if path.starts_with("~") => Err(const_error!(
                     ErrorKind::InvalidData,
                     "standard user directory relative to different user",
