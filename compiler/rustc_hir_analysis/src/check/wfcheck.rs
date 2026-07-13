@@ -1401,7 +1401,7 @@ fn check_impl<'tcx>(
 }
 
 /// `AsyncDrop` must not be implemented for `Union`s
-/// Droping in synchronous context would silently skip
+/// Dropping in synchronous context would silently skip
 /// the cleanup, use `Drop` instead
 fn check_async_drop_not_on_union<'tcx>(
     tcx: TyCtxt<'tcx>,
