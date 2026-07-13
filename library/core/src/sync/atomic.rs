@@ -641,7 +641,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[cfg(target_has_atomic_primitive_alignment = "8")]
-    #[stable(feature = "atomic_from_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_from_mut", since = "1.98.0")]
     pub fn from_mut(v: &mut bool) -> &mut Self {
         // SAFETY: the mutable reference guarantees unique ownership, and
         // alignment of both `bool` and `Self` is 1.
@@ -675,7 +675,7 @@ impl AtomicBool {
     /// });
     /// ```
     #[inline]
-    #[stable(feature = "atomic_from_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_from_mut", since = "1.98.0")]
     pub fn get_mut_slice(this: &mut [Self]) -> &mut [bool] {
         // SAFETY: the mutable reference guarantees unique ownership.
         unsafe { &mut *(this as *mut [Self] as *mut [bool]) }
@@ -699,7 +699,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[cfg(target_has_atomic_primitive_alignment = "8")]
-    #[stable(feature = "atomic_from_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_from_mut", since = "1.98.0")]
     pub fn from_mut_slice(v: &mut [bool]) -> &mut [Self] {
         // SAFETY: the mutable reference guarantees unique ownership, and
         // alignment of both `bool` and `Self` is 1.
@@ -1609,7 +1609,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic_primitive_alignment = "ptr")]
-    #[stable(feature = "atomic_from_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_from_mut", since = "1.98.0")]
     pub fn from_mut(v: &mut *mut T) -> &mut Self {
         let [] = [(); align_of::<AtomicPtr<()>>() - align_of::<*mut ()>()];
         // SAFETY:
@@ -1652,7 +1652,7 @@ impl<T> AtomicPtr<T> {
     /// });
     /// ```
     #[inline]
-    #[stable(feature = "atomic_from_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_from_mut", since = "1.98.0")]
     pub fn get_mut_slice(this: &mut [Self]) -> &mut [*mut T] {
         // SAFETY: the mutable reference guarantees unique ownership.
         unsafe { &mut *(this as *mut [Self] as *mut [*mut T]) }
@@ -1686,7 +1686,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic_primitive_alignment = "ptr")]
-    #[stable(feature = "atomic_from_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_from_mut", since = "1.98.0")]
     pub fn from_mut_slice(v: &mut [*mut T]) -> &mut [Self] {
         // SAFETY:
         //  - the mutable reference guarantees unique ownership.
@@ -2754,7 +2754,7 @@ macro_rules! atomic_int {
             ///
             #[inline]
             #[cfg(any($cfg_align, doc))]
-            #[stable(feature = "atomic_from_mut", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "atomic_from_mut", since = "1.98.0")]
             pub fn from_mut(v: &mut $int_type) -> &mut Self {
                 let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
                 // SAFETY:
@@ -2794,7 +2794,7 @@ macro_rules! atomic_int {
             /// });
             /// ```
             #[inline]
-            #[stable(feature = "atomic_from_mut", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "atomic_from_mut", since = "1.98.0")]
             pub fn get_mut_slice(this: &mut [Self]) -> &mut [$int_type] {
                 // SAFETY: the mutable reference guarantees unique ownership.
                 unsafe { &mut *(this as *mut [Self] as *mut [$int_type]) }
@@ -2829,7 +2829,7 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[cfg(any($cfg_align, doc))]
-            #[stable(feature = "atomic_from_mut", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "atomic_from_mut", since = "1.98.0")]
             pub fn from_mut_slice(v: &mut [$int_type]) -> &mut [Self] {
                 let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
                 // SAFETY:

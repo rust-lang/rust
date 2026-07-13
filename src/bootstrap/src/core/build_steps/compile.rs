@@ -1324,8 +1324,12 @@ pub fn rustc_cargo(
     // in the current working directory. Therefore, caching it with sccache should be
     // useful.
     // This is only performed for non-incremental builds, as ccache cannot deal with these.
+    //
+    // We skip this on Windows hosts for now because of command line length issues (see CI failure
+    // in https://github.com/rust-lang/rust/pull/158888#issuecomment-4960306292).
     if let Some(ref ccache) = builder.config.ccache
         && build_compiler.stage == 0
+        && !cfg!(windows)
         && !builder.config.incremental
     {
         cargo.env("RUSTC_WRAPPER", ccache);

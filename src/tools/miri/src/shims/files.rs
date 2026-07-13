@@ -4,7 +4,6 @@ use std::fs::{Dir, File};
 use std::io::{ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::marker::CoercePointee;
 use std::ops::Deref;
-use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 use std::{fs, io};
 
@@ -487,11 +486,7 @@ impl FileDescription for FileHandle {
 
 #[derive(Debug)]
 pub struct DirHandle {
-    #[cfg_attr(bootstrap, allow(unused))]
     pub(crate) dir: Dir,
-    /// Fallback used under `cfg(bootstrap)`.
-    #[cfg_attr(not(bootstrap), allow(unused))]
-    pub(crate) path: PathBuf,
 }
 
 impl FileDescription for DirHandle {
@@ -502,10 +497,7 @@ impl FileDescription for DirHandle {
     fn metadata<'tcx>(
         &self,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
-        #[cfg(not(bootstrap))]
         return interp_ok(Either::Left(self.dir.metadata()));
-        #[cfg(bootstrap)]
-        return interp_ok(Either::Left(std::fs::metadata(&self.path)));
     }
 
     fn destroy<'tcx>(

@@ -17,11 +17,10 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```rust")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
-    #[cfg_attr(not(bootstrap), doc = "#[unsafe(no_mangle)]")]
+    /// ```rust,compile_fail
+    /// #[unsafe(no_mangle)]
     /// pub fn strlen() {} // invalid definition of the `strlen` function
-    #[doc = "```"]
+    /// ```
     ///
     /// {{produces}}
     ///
@@ -47,7 +46,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,no_run,standalone_crate
-    #[cfg_attr(not(bootstrap), doc = "#[unsafe(no_mangle)]")]
+    /// #[unsafe(no_mangle)]
     /// pub extern "C" fn strlen(ptr: *mut f32) -> usize { 0 }
     /// // suspicious definition of the `strlen` function
     /// // `ptr` should be `*const std::ffi::c_char`
