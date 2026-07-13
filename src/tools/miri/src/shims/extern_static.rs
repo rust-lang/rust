@@ -1,10 +1,17 @@
 //! Provides the `extern static` that this platform expects.
 
+use rustc_span::Symbol;
 use rustc_target::spec::Os;
 
 use crate::*;
 
 impl<'tcx> MiriMachine<'tcx> {
+    fn add_extern_static(ecx: &mut MiriInterpCx<'tcx>, name: &str, ptr: Pointer) {
+        // This got just allocated, so there definitely is a pointer here.
+        let ptr = ptr.into_pointer_or_addr().unwrap();
+        ecx.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
+    }
+
     fn alloc_extern_static(
         ecx: &mut MiriInterpCx<'tcx>,
         name: &str,
@@ -26,7 +33,12 @@ impl<'tcx> MiriMachine<'tcx> {
             let layout = ecx.machine.layouts.const_raw_ptr;
             let ptr = ecx.fn_ptr(FnVal::Other(DynSym::from_str(name)));
             let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, ecx), layout);
-            Self::alloc_extern_static(ecx, name, val)?;
+
+            // Allocate the extra indirection place and add it to the map.
+            let place = ecx.allocate(val.layout, MiriMemoryKind::ExternStatic.into())?;
+            ecx.write_immediate(*val, &place)?;
+            let ptr = place.ptr().into_pointer_or_addr().unwrap();
+            ecx.machine.extern_statics_imports.try_insert(Symbol::intern(name), ptr).unwrap();
         }
         interp_ok(())
     }
@@ -64,7 +76,8 @@ impl<'tcx> MiriMachine<'tcx> {
         // Also initialize `missing_weak_symbol`.
         let place = ecx.allocate(ecx.machine.layouts.usize, MiriMemoryKind::ExternStatic.into())?;
         ecx.write_null(&place)?;
-        ecx.machine.missing_weak_symbol = Some(place.ptr().into_pointer_or_addr().unwrap());
+        ecx.machine.extern_static_weak_import_default =
+            Some(place.ptr().into_pointer_or_addr().unwrap());
 
         interp_ok(())
     }
