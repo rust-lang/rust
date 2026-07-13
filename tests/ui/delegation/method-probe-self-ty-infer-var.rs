@@ -1,7 +1,6 @@
 // Regression test for https://github.com/rust-lang/rust/issues/159128.
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 trait Trait {
     fn method(self);
