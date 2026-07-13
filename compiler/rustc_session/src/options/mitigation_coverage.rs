@@ -20,7 +20,6 @@ impl DeniedPartialMitigationLevel {
     pub fn level_str(&self) -> &'static str {
         match self {
             DeniedPartialMitigationLevel::StackProtector(StackProtector::All) => "=all",
-            DeniedPartialMitigationLevel::StackProtector(StackProtector::Basic) => "=basic",
             DeniedPartialMitigationLevel::StackProtector(StackProtector::Strong) => "=strong",
             // currently `=disabled` should not appear
             DeniedPartialMitigationLevel::Enabled(false) => "=disabled",
@@ -35,9 +34,6 @@ impl std::fmt::Display for DeniedPartialMitigationLevel {
         match self {
             DeniedPartialMitigationLevel::StackProtector(StackProtector::All) => {
                 write!(f, "all")
-            }
-            DeniedPartialMitigationLevel::StackProtector(StackProtector::Basic) => {
-                write!(f, "basic")
             }
             DeniedPartialMitigationLevel::StackProtector(StackProtector::Strong) => {
                 write!(f, "strong")
@@ -203,6 +199,7 @@ denied_partial_mitigations! {
     enum DeniedPartialMitigationKind {
         // The mitigation name should match the option name in rustc_session::options,
         // to allow for resetting the mitigation
+
         (StackProtector, "stack-protector", EditionFuture, self.stack_protector()),
         (ControlFlowGuard, "control-flow-guard", EditionFuture, self.opts.cg.control_flow_guard == CFGuard::Checks)
     }
