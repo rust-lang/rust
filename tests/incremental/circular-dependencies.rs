@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ revisions: bpass1 bfail2
 //@ edition: 2021
 //@ [bpass1] compile-flags: --crate-type lib --emit dep-info,metadata

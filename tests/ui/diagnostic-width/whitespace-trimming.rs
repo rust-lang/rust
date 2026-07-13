@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 fn main() {
                                                                                                                                                                                     let _: () = 42;

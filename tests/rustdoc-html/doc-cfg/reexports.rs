@@ -1,7 +1,7 @@
 // This test ensures that reexports cfgs are correctly computed.
 // Regression test for <https://github.com/rust-lang/rust/issues/150268>.
 
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![feature(doc_cfg)]
 #![crate_name = "foo"]
