@@ -21,17 +21,17 @@
 //@ [WIN32_GNU] compile-flags: --target i686-pc-windows-gnu
 //@ [WIN32_GNU] needs-llvm-components: x86
 
-// FIXME: the below revisions are deliberately disabled for now.
+//@ revisions: AARCH64 AARCH64_DARWIN AARCH64_MSVC ARM64EC
+//@ [AARCH64] compile-flags: --target aarch64-unknown-linux-gnu
+//@ [AARCH64] needs-llvm-components: aarch64
+//@ [AARCH64_DARWIN] compile-flags: --target aarch64-apple-darwin
+//@ [AARCH64_DARWIN] needs-llvm-components: aarch64
+//@ [AARCH64_MSVC] compile-flags: --target aarch64-pc-windows-msvc
+//@ [AARCH64_MSVC] needs-llvm-components: aarch64
+//@ [ARM64EC] compile-flags: --target arm64ec-pc-windows-msvc
+//@ [ARM64EC] needs-llvm-components: aarch64
 
-// revisions: AARCH64 AARCH64_DARWIN AARCH64_MSVC ARM64EC
-// [AARCH64] compile-flags: --target aarch64-unknown-linux-gnu
-// [AARCH64] needs-llvm-components: aarch64
-// [AARCH64_DARWIN] compile-flags: --target aarch64-apple-darwin
-// [AARCH64_DARWIN] needs-llvm-components: aarch64
-// [AARCH64_MSVC] compile-flags: --target aarch64-pc-windows-msvc
-// [AARCH64_MSVC] needs-llvm-components: aarch64
-// [ARM64EC] compile-flags: --target arm64ec-pc-windows-msvc
-// [ARM64EC] needs-llvm-components: aarch64
+// FIXME: the below revisions are deliberately disabled for now.
 
 // revisions: ARM
 // [ARM] compile-flags: --target arm-unknown-linux-gnueabihf
@@ -103,10 +103,10 @@ use minicore::num::Complex;
 
 #[no_mangle]
 pub extern "C" fn cplx_f16(x: Complex<f16>) -> Complex<f16> {
-    // AARCH64:        define{{.*}} { half, half } @cplx_f16([2 x half] {{.*}})
-    // AARCH64_DARWIN: define{{.*}} { half, half } @cplx_f16([2 x half] {{.*}})
-    // AARCH64_MSVC:   define{{.*}} { half, half } @cplx_f16([2 x half] {{.*}})
-    // ARM64EC:        define{{.*}} { half, half } @cplx_f16([2 x half] {{.*}})
+    // AARCH64:        define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
+    // AARCH64_DARWIN: define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
+    // AARCH64_MSVC:   define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
+    // ARM64EC:        define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
     // ARM:            define{{.*}} i32 @cplx_f16([1 x i32] {{.*}})
     // I686:           define{{.*}} <2 x half> @cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
     // LOONGARCH32:    define{{.*}} { half, half } @cplx_f16(half {{.*}}, half {{.*}})
@@ -125,11 +125,11 @@ pub extern "C" fn cplx_f16(x: Complex<f16>) -> Complex<f16> {
 
 #[no_mangle]
 pub extern "C" fn cplx_f32(x: Complex<f32>) -> Complex<f32> {
-    // AARCH64:        define{{.*}} { float, float } @cplx_f32([2 x float] {{.*}})
-    // AARCH64_DARWIN: define{{.*}} { float, float } @cplx_f32([2 x float] {{.*}})
-    // AARCH64_MSVC:   define{{.*}} { float, float } @cplx_f32([2 x float] {{.*}})
+    // AARCH64:        define{{.*}} [2 x float] @cplx_f32([2 x float] {{.*}})
+    // AARCH64_DARWIN: define{{.*}} [2 x float] @cplx_f32([2 x float] {{.*}})
+    // AARCH64_MSVC:   define{{.*}} [2 x float] @cplx_f32([2 x float] {{.*}})
     // AIX:            define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
-    // ARM64EC:        define{{.*}} { float, float } @cplx_f32([2 x float] {{.*}})
+    // ARM64EC:        define{{.*}} [2 x float] @cplx_f32([2 x float] {{.*}})
     // ARM:            define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
     // BPF:            define{{.*}} void @cplx_f32(ptr {{.*}} sret({ float, float }) {{.*}}, i64 {{.*}})
     // CSKY:           define{{.*}} [2 x i32] @cplx_f32([2 x i32] {{.*}})
@@ -159,11 +159,11 @@ pub extern "C" fn cplx_f32(x: Complex<f32>) -> Complex<f32> {
 
 #[no_mangle]
 pub extern "C" fn cplx_f64(x: Complex<f64>) -> Complex<f64> {
-    // AARCH64:        define{{.*}} { double, double } @cplx_f64([2 x double] {{.*}})
-    // AARCH64_DARWIN: define{{.*}} { double, double } @cplx_f64([2 x double] {{.*}})
-    // AARCH64_MSVC:   define{{.*}} { double, double } @cplx_f64([2 x double] {{.*}})
+    // AARCH64:        define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
+    // AARCH64_DARWIN: define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
+    // AARCH64_MSVC:   define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
     // AIX:            define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
-    // ARM64EC:        define{{.*}} { double, double } @cplx_f64([2 x double] {{.*}})
+    // ARM64EC:        define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
     // ARM:            define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
     // BPF:            define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, [2 x i64] {{.*}})
     // CSKY:           define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, [4 x i32] {{.*}})
@@ -193,6 +193,7 @@ pub extern "C" fn cplx_f64(x: Complex<f64>) -> Complex<f64> {
 
 #[no_mangle]
 pub extern "C" fn cplx_f128(x: Complex<f128>) -> Complex<f128> {
+    // AARCH64:        define{{.*}} [2 x fp128] {{.*}})
     // I686:           define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
     // WASM32:         define{{.*}} void @cplx_f128(ptr {{.*}} sret({ fp128, fp128 }) {{.*}}, ptr {{.*}} byval({ fp128, fp128 }) {{.*}})
     // WASM64:         define{{.*}} void @cplx_f128(ptr {{.*}} sret({ fp128, fp128 }) {{.*}}, ptr {{.*}} byval({ fp128, fp128 }) {{.*}})
@@ -204,11 +205,11 @@ pub extern "C" fn cplx_f128(x: Complex<f128>) -> Complex<f128> {
 
 #[no_mangle]
 pub extern "C" fn cplx_i8(x: Complex<i8>) -> Complex<i8> {
-    // AARCH64:        define{{.*}} i16 @cplx_i8(i64{{.*}})
-    // AARCH64_DARWIN: define{{.*}} i16 @cplx_i8(i64{{.*}})
-    // AARCH64_MSVC:   define{{.*}} i16 @cplx_i8(i64{{.*}})
+    // AARCH64:        define{{.*}} i64 @cplx_i8(i64{{.*}})
+    // AARCH64_DARWIN: define{{.*}} i64 @cplx_i8(i64{{.*}})
+    // AARCH64_MSVC:   define{{.*}} i64 @cplx_i8(i64{{.*}})
     // AIX:            define{{.*}} { i8, i8 } @cplx_i8(i8 {{.*}}, i8 {{.*}})
-    // ARM64EC:        define{{.*}} i16 @cplx_i8(i64{{.*}})
+    // ARM64EC:        define{{.*}} i64 @cplx_i8(i64{{.*}})
     // ARM:            define{{.*}} i16 @cplx_i8([1 x i32]{{.*}})
     // BPF:            define{{.*}} void @cplx_i8(ptr {{.*}} sret({ i8, i8 }) {{.*}}, i16 {{.*}})
     // CSKY:           define{{.*}} {{.*}} i32 @cplx_i8(i32{{.*}})
@@ -238,11 +239,11 @@ pub extern "C" fn cplx_i8(x: Complex<i8>) -> Complex<i8> {
 
 #[no_mangle]
 pub extern "C" fn cplx_i16(x: Complex<i16>) -> Complex<i16> {
-    // AARCH64:        define{{.*}} i32 @cplx_i16(i64{{.*}})
-    // AARCH64_DARWIN: define{{.*}} i32 @cplx_i16(i64{{.*}})
-    // AARCH64_MSVC:   define{{.*}} i32 @cplx_i16(i64{{.*}})
+    // AARCH64:        define{{.*}} i64 @cplx_i16(i64{{.*}})
+    // AARCH64_DARWIN: define{{.*}} i64 @cplx_i16(i64{{.*}})
+    // AARCH64_MSVC:   define{{.*}} i64 @cplx_i16(i64{{.*}})
     // AIX:            define{{.*}} { i16, i16 } @cplx_i16(i16 {{.*}}, i16 {{.*}})
-    // ARM64EC:        define{{.*}} i32 @cplx_i16(i64{{.*}})
+    // ARM64EC:        define{{.*}} i64 @cplx_i16(i64{{.*}})
     // ARM:            define{{.*}} i32 @cplx_i16([1 x i32] {{.*}})
     // BPF:            define{{.*}} void @cplx_i16(ptr {{.*}} sret({ i16, i16 }) {{.*}}, i32 {{.*}})
     // CSKY:           define{{.*}} i32 @cplx_i16(i32 {{.*}})
@@ -381,10 +382,10 @@ pub extern "C" fn wrapper_cplx_i64(
 pub extern "C" fn wrapper_cplx_f16(
     x: Wrapper<Complex<Wrapper<f16>>>,
 ) -> Wrapper<Complex<Wrapper<f16>>> {
-    // AARCH64:        define{{.*}} { half, half } @wrapper_cplx_f16([2 x half] {{.*}})
-    // AARCH64_DARWIN: define{{.*}} { half, half } @wrapper_cplx_f16([2 x half] {{.*}})
-    // AARCH64_MSVC:   define{{.*}} { half, half } @wrapper_cplx_f16([2 x half] {{.*}})
-    // ARM64EC:        define{{.*}} { half, half } @wrapper_cplx_f16([2 x half] {{.*}})
+    // AARCH64:        define{{.*}} [2 x half] @wrapper_cplx_f16([2 x half] {{.*}})
+    // AARCH64_DARWIN: define{{.*}} [2 x half] @wrapper_cplx_f16([2 x half] {{.*}})
+    // AARCH64_MSVC:   define{{.*}} [2 x half] @wrapper_cplx_f16([2 x half] {{.*}})
+    // ARM64EC:        define{{.*}} [2 x half] @wrapper_cplx_f16([2 x half] {{.*}})
     // ARM:            define{{.*}} i32 @wrapper_cplx_f16([1 x i32] {{.*}})
     // I686:           define{{.*}} <2 x half> @wrapper_cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
     // LOONGARCH32:    define{{.*}} { half, half } @wrapper_cplx_f16(half {{.*}}, half {{.*}})
