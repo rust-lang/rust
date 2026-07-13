@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rustc_ast::AttrStyle;
+use rustc_ast::{AttrStyle, Safety};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind;
@@ -187,6 +187,18 @@ impl<'sess> AttributeParser<'sess> {
         cx: &AcceptContext<'_, '_>,
     ) -> Option<InvalidTargetHelp> {
         match &*cx.attr_path.segments {
+            [sym::link_name]
+                if cx.target == Target::Static
+                    && matches!(cx.attr_safety, Safety::Default | Safety::Unsafe(_)) =>
+            {
+                Some(InvalidTargetHelp::UseExportName {
+                    unsafe_open: matches!(cx.attr_safety, Safety::Default)
+                        .then(|| cx.inner_span.shrink_to_lo()),
+                    name: cx.attr_path.span,
+                    unsafe_close: matches!(cx.attr_safety, Safety::Default)
+                        .then(|| cx.inner_span.shrink_to_hi()),
+                })
+            }
             [sym::repr] if attribute_args == "(align(...))" => match cx.target {
                 Target::Fn | Target::Method(..) if cx.features().fn_align() => {
                     Some(InvalidTargetHelp::UseRustcAlign)
