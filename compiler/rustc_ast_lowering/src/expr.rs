@@ -499,15 +499,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
 
-                ExprKind::DirectConstArg(_) => {
-                    let e = self
-                        .tcx
-                        .dcx()
-                        .struct_span_err(
-                            e.span,
-                            "expected expression, found `direct_const_arg!()` constant",
-                        )
-                        .emit();
+                ExprKind::DirectConstArg(expr) => {
+                    let e = self.emit_bad_direct_const_arg(e.span, expr, "expression");
                     hir::ExprKind::Err(e)
                 }
             };
