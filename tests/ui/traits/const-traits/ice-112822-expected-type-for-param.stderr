@@ -1,13 +1,12 @@
-error[E0015]: cannot call non-const function `core::panicking::assert_failed::<&u8, &u8>` in constant functions
+error[E0277]: the trait bound `{closure@$SRC_DIR/core/src/macros/mod.rs:LL:COL}: [const] FnOnce()` is not satisfied
   --> $DIR/ice-112822-expected-type-for-param.rs:9:17
    |
 LL |                 assert_eq!(first, &b'f');
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ required by a bound introduced by this call
    |
-note: function `assert_failed` is not const
+note: required by a bound in `core::panicking::outline`
   --> $SRC_DIR/core/src/panicking.rs:LL:COL
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0277`.

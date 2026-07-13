@@ -48,7 +48,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
+                    $crate::panicking::outline(|| $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None));
                 }
             }
         }
@@ -61,7 +61,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
+                   $crate::panicking::outline(|| $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+))));
                 }
             }
         }
@@ -104,7 +104,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
+                    $crate::panicking::outline(|| $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None));
                 }
             }
         }
@@ -117,7 +117,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
+                    $crate::panicking::outline(|| $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+))));
                 }
             }
         }
@@ -172,11 +172,11 @@ pub macro assert_matches {
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
-                $crate::panicking::assert_matches_failed(
+                $crate::panicking::outline(|| $crate::panicking::assert_matches_failed(
                     left_val,
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
                     $crate::option::Option::None
-                );
+                ));
             }
         }
     }},
@@ -184,11 +184,11 @@ pub macro assert_matches {
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
-                $crate::panicking::assert_matches_failed(
+                $crate::panicking::outline(|| $crate::panicking::assert_matches_failed(
                     left_val,
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
                     $crate::option::Option::Some($crate::format_args!($($arg)+))
-                );
+                ));
             }
         }
     }},
