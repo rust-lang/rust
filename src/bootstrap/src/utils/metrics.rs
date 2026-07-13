@@ -17,7 +17,7 @@ use build_helper::metrics::{
 use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
 use crate::Build;
-use crate::core::builder::{Builder, Step};
+use crate::core::builder::{Builder, StepTask};
 use crate::utils::helpers::t;
 
 // Update this number whenever a breaking change is made to the build metrics.
@@ -67,7 +67,7 @@ impl BuildMetrics {
         BuildMetrics { state }
     }
 
-    pub(crate) fn enter_step<S: Step>(&self, step: &S, builder: &Builder<'_>) {
+    pub(crate) fn enter_step<S: StepTask>(&self, step: &S, builder: &Builder<'_>) {
         // Do not record dry runs, as they'd be duplicates of the actual steps.
         if builder.config.dry_run() {
             return;

@@ -4,7 +4,7 @@ use std::io::BufWriter;
 use std::panic::Location;
 use std::path::Path;
 
-use crate::core::builder::{AnyDebug, Step, pretty_step_name};
+use crate::core::builder::{AnyDebug, StepTask, pretty_step_name};
 use crate::t;
 use crate::utils::tracing::format_location;
 
@@ -23,7 +23,7 @@ pub struct StepGraph {
 
 impl StepGraph {
     #[track_caller]
-    pub fn register_step_execution<S: Step>(
+    pub fn register_step_execution<S: StepTask>(
         &mut self,
         step: &S,
         parent: Option<&Box<dyn AnyDebug>>,
@@ -61,7 +61,7 @@ impl StepGraph {
     }
 
     #[track_caller]
-    pub fn register_cached_step<S: Step>(
+    pub fn register_cached_step<S: StepTask>(
         &mut self,
         step: &S,
         parent: &Box<dyn AnyDebug>,

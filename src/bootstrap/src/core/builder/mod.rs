@@ -52,15 +52,15 @@ pub struct Builder<'a> {
     /// What to build or what action to perform.
     pub kind: Kind,
 
-    /// A cache of outputs of [`Step`]s so we can avoid running steps we already
+    /// A cache of outputs of [`StepTask`]s so we can avoid running steps we already
     /// ran.
     cache: Cache,
 
-    /// A stack of [`Step`]s to run before we can run this builder. The output
+    /// A stack of [`StepTask`]s to run before we can run this builder. The output
     /// of steps is cached in [`Self::cache`].
     stack: RefCell<Vec<Box<dyn AnyDebug>>>,
 
-    /// The total amount of time we spent running [`Step`]s in [`Self::stack`].
+    /// The total amount of time we spent running [`StepTask`]s in [`Self::stack`].
     time_spent_on_dependencies: Cell<Duration>,
 
     /// The paths passed on the command line. Used by steps to figure out what
@@ -99,6 +99,36 @@ impl dyn AnyDebug {
     }
 
     // Feel free to add other `dyn Any` methods as necessary.
+}
+
+/// A cacheable unit of work that can be performed via [`Builder::ensure`].
+///
+/// This trait was split off from [`Step`], so that helper tasks don't have
+/// to implement all of the step APIs related to command-line processing.
+pub trait StepTask: 'static + Clone + Debug + PartialEq + Eq + Hash {
+    /// Result type of [`StepTask::run`].
+    type Output: Clone;
+
+    /// Runs this task. See [`Step::run`].
+    fn run(self, builder: &Builder<'_>) -> Self::Output;
+
+    /// Returns metadata of the step, for tests.
+    fn metadata(&self) -> Option<StepMetadata> {
+        None
+    }
+}
+
+/// Every [`Step`] is also a [`StepTask`].
+impl<S: Step> StepTask for S {
+    type Output = <S as Step>::Output;
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        <S as Step>::run(self, builder)
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        <S as Step>::metadata(self)
+    }
 }
 
 pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
@@ -1577,8 +1607,11 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// Ensure that a given step is built, returning its output. This will
     /// cache the step, so it is safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are built.
+    ///
+    /// This actually takes [`StepTask`] instead of [`Step`], to allow for
+    /// helper tasks that don't need to implement the full step interface.
     #[track_caller]
-    pub fn ensure<S: Step>(&'a self, step: S) -> S::Output {
+    pub fn ensure<S: StepTask>(&'a self, step: S) -> S::Output {
         {
             let mut stack = self.stack.borrow_mut();
             for stack_step in stack.iter() {
@@ -1747,14 +1780,14 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
 }
 
 /// Return qualified step name, e.g. `compile::Rustc`.
-pub fn pretty_step_name<S: Step>() -> String {
+pub fn pretty_step_name<S: StepTask>() -> String {
     // Normalize step type path to only keep the module and the type name
     let path = type_name::<S>().rsplit("::").take(2).collect::<Vec<_>>();
     path.into_iter().rev().collect::<Vec<_>>().join("::")
 }
 
 /// Renders `step` using its `Debug` implementation and extract the field arguments out of it.
-fn step_debug_args<S: Step>(step: &S) -> String {
+fn step_debug_args<S: StepTask>(step: &S) -> String {
     let step_dbg_repr = format!("{step:?}");
 
     // Some steps do not have any arguments, so they do not have the braces
@@ -1766,7 +1799,7 @@ fn step_debug_args<S: Step>(step: &S) -> String {
     }
 }
 
-fn pretty_print_step<S: Step>(step: &S) -> String {
+fn pretty_print_step<S: StepTask>(step: &S) -> String {
     format!("{} {{ {} }}", pretty_step_name::<S>(), step_debug_args(step))
 }
 

@@ -24,7 +24,7 @@ use std::ops::Deref;
 use std::sync::{LazyLock, Mutex};
 use std::{fmt, mem};
 
-use crate::core::builder::Step;
+use crate::core::builder::StepTask;
 
 /// Represents an interned value of type `T`, allowing for efficient comparisons and retrieval.
 ///
@@ -236,7 +236,7 @@ impl Cache {
     }
 
     /// Stores the result of a computation step in the cache.
-    pub fn put<S: Step>(&self, step: S, value: S::Output) {
+    pub fn put<S: StepTask>(&self, step: S, value: S::Output) {
         let mut cache = self.cache.borrow_mut();
         let type_id = TypeId::of::<S>();
         let stepcache = cache
@@ -256,7 +256,7 @@ impl Cache {
     }
 
     /// Retrieves a cached result for the given step, if available.
-    pub fn get<S: Step>(&self, step: &S) -> Option<S::Output> {
+    pub fn get<S: StepTask>(&self, step: &S) -> Option<S::Output> {
         let mut cache = self.cache.borrow_mut();
         let type_id = TypeId::of::<S>();
         let stepcache = cache
@@ -270,7 +270,7 @@ impl Cache {
 
 #[cfg(test)]
 impl Cache {
-    pub(crate) fn inspect_all_steps_of_type<S: Step, T: Ord>(
+    pub(crate) fn inspect_all_steps_of_type<S: StepTask, T: Ord>(
         &self,
         map_fn: impl Fn(&S, &S::Output) -> T,
     ) -> Vec<T> {
@@ -284,7 +284,7 @@ impl Cache {
         values
     }
 
-    pub fn contains<S: Step>(&self) -> bool {
+    pub fn contains<S: StepTask>(&self) -> bool {
         self.cache.borrow().contains_key(&TypeId::of::<S>())
     }
 
