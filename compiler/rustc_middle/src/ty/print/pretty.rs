@@ -2409,7 +2409,6 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             | ty::FnPtr(..)
             | ty::UnsafeBinder(..)
             | ty::Dynamic(..)
-            | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
@@ -2426,6 +2425,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                 Ok(())
             }
             ty::Ref(..) if self.should_truncate() && has_regions => self.pretty_print_type(ty),
+            ty::Closure(..) => self.pretty_print_type(ty),
             _ => {
                 self.printed_type_count += 1;
                 self.pretty_print_type(ty)

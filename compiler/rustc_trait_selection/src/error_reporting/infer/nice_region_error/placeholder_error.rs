@@ -60,7 +60,7 @@ where
         } else {
             // We are highlighting lifetimes in the output, we will print out the smallest possible
             // portion of the type while keeping the lifetimes visible.
-            let mut p = FmtPrinter::new_with_limit(self.tcx, self.ns, Limit(1));
+            let mut p = FmtPrinter::new_with_limit(self.tcx, self.ns, Limit(0));
             p.region_highlight_mode = self.highlight;
             self.value.print(&mut p).expect("could not print type");
             let x = p.into_buffer();
