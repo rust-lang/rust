@@ -19,11 +19,14 @@ The [`#[link_name]` attribute][reference-link_name] can be used to change that n
 
 ### WebAssembly import modules
 
-On WebAssembly targets, foreign items in an `extern` block using
-[`#[link(wasm_import_module = "...")]`][reference-link-attribute] are mangled even if
-`#[no_mangle]` or `#[link_name]` is used. This distinguishes imports with the same name from
-different WebAssembly modules. The requested module and import name are emitted separately in
-the WebAssembly import metadata.
+On WebAssembly targets, rustc currently mangles foreign items in an `extern` block using
+[`#[link(wasm_import_module = "...")]`][reference-link-attribute], even if `#[no_mangle]` or
+`#[link_name]` is used.
+
+This is an implementation detail of the current WebAssembly code generation and linking setup,
+and may change. It avoids current linker and code generation behavior that can conflate
+same-named imports from different WebAssembly modules. The requested module and import name are
+emitted as the `wasm-import-module` and `wasm-import-name` LLVM attributes.
 
 [reference-no_mangle]: ../../reference/abi.html#the-no_mangle-attribute
 [reference-export_name]: ../../reference/abi.html#the-export_name-attribute
