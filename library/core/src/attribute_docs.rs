@@ -569,8 +569,7 @@ mod ignore_attribute {}
 ///
 /// Here is an example where the `expect`ed lint is not emitted:
 ///
-/// ```rust
-/// #[deny(unfulfilled_lint_expectations)]
+/// ```rust,compile_fail
 /// #[expect(unused_variables)]
 /// let name = "rust-lang";
 /// println!("{name}");
