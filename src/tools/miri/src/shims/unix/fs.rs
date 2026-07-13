@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fs::{self, DirBuilder, File, FileType, OpenOptions, TryLockError};
+use std::fs::{self, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
@@ -644,6 +644,125 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let newpath = this.read_path_from_c_str(newpath_ptr)?.into_owned();
 
         let result = fs::hard_link(&oldpath, &newpath).map(|()| 0);
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+    }
+
+    fn utimensat(
+        &mut self,
+        dirfd_op: &OpTy<'tcx>,
+        pathname_op: &OpTy<'tcx>,
+        times_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
+        let pathname_ptr = this.read_pointer(pathname_op)?;
+        let times_ptr = this.read_pointer(times_op)?;
+        let flags = this.read_scalar(flags_op)?.to_i32()?;
+
+        let at_fdcwd = this.eval_libc_i32("AT_FDCWD");
+        let at_symlink_nofollow = this.eval_libc_i32("AT_SYMLINK_NOFOLLOW");
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`utimensat`", reject_with)?;
+            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
+        }
+
+        if dirfd != at_fdcwd {
+            throw_unsup_format!("utimensat with `dirfd` not equal to `AT_FDCWD` is not supported");
+        }
+
+        let follow_symlinks = if flags == 0 {
+            true
+        } else if flags == at_symlink_nofollow {
+            false
+        } else {
+            throw_unsup_format!("unsupported utimensat flags {:#x}", flags);
+        };
+
+        if pathname_ptr == Pointer::null() {
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        }
+        let pathname = this.read_path_from_c_str(pathname_ptr)?;
+
+        let mut file_times = FileTimes::new();
+
+        if !this.ptr_is_null(times_ptr)? {
+            // Check if we are running __utimensat64 or standard utimensat
+            let is_utimensat64 = this.tcx.sess.target.os == Os::Linux
+                && this.tcx.pointer_size().bits() == 32;
+
+            let c_long_size = this.libc_ty_layout("c_long").size;
+            let utime_now = this.eval_libc("UTIME_NOW").to_int(c_long_size)?;
+            let utime_omit = this.eval_libc("UTIME_OMIT").to_int(c_long_size)?;
+
+            let timespec_size = if is_utimensat64 {
+                Size::from_bytes(16)
+            } else {
+                this.libc_ty_layout("timespec").size
+            };
+
+            for (i, set_time) in [
+                |times: FileTimes, t: SystemTime| times.set_accessed(t),
+                |times: FileTimes, t: SystemTime| times.set_modified(t),
+            ].into_iter().enumerate() {
+                let offset = Size::from_bytes(timespec_size.bytes().checked_mul(u64::try_from(i).unwrap()).unwrap());
+                let element_ptr = times_ptr.wrapping_offset(offset, this);
+
+                let (sec, nsec) = if is_utimensat64 {
+                    let sec_place = this.ptr_to_mplace(element_ptr, this.machine.layouts.i64);
+                    let nsec_offset = if this.tcx.sess.target.endian == rustc_abi::Endian::Little { 8 } else { 12 };
+                    let nsec_ptr = element_ptr.wrapping_offset(Size::from_bytes(nsec_offset), this);
+                    let nsec_place = this.ptr_to_mplace(nsec_ptr, this.machine.layouts.i32);
+
+                    let sec = this.read_scalar(&sec_place)?.to_int(Size::from_bytes(8))?;
+                    let nsec = this.read_scalar(&nsec_place)?.to_int(Size::from_bytes(4))?;
+                    (sec, nsec)
+                } else {
+                    let timespec_layout = this.libc_ty_layout("timespec");
+                    let timespec = this.deref_pointer_as(
+                        &ImmTy::from_scalar(Scalar::from_maybe_pointer(element_ptr, this), this.machine.layouts.mut_raw_ptr),
+                        timespec_layout,
+                    )?;
+                    let sec_field = this.project_field_named(&timespec, "tv_sec")?;
+                    let sec = this.read_scalar(&sec_field)?.to_int(sec_field.layout.size)?;
+                    let nsec_field = this.project_field_named(&timespec, "tv_nsec")?;
+                    let nsec = this.read_scalar(&nsec_field)?.to_int(nsec_field.layout.size)?;
+                    (sec, nsec)
+                };
+
+                if nsec == utime_now {
+                    file_times = set_time(file_times, SystemTime::now());
+                } else if nsec == utime_omit {
+                    // Do nothing, leave it omitted.
+                } else {
+                    if !(0..1_000_000_000).contains(&nsec) {
+                        return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+                    }
+                    let duration = std::time::Duration::new(u64::try_from(sec.unsigned_abs()).unwrap(), nsec.try_into().unwrap());
+                    let system_time = if sec >= 0 {
+                        SystemTime::UNIX_EPOCH + duration
+                    } else {
+                        SystemTime::UNIX_EPOCH - duration
+                    };
+                    file_times = set_time(file_times, system_time);
+                }
+            }
+        } else {
+            // If times is NULL, both timestamps are set to the current time.
+            let now = SystemTime::now();
+            file_times = file_times.set_accessed(now).set_modified(now);
+        }
+
+        let result = if follow_symlinks {
+            fs::set_times(&pathname, file_times)
+        } else {
+            fs::set_times_nofollow(&pathname, file_times)
+        };
+
+        let result = result.map(|_| 0);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 

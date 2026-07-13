@@ -10,6 +10,7 @@
 )]
 #![feature(rustc_private)]
 #![feature(dirfd)]
+#![feature(fs_set_times)]
 #![feature(f16)]
 #![feature(float_gamma)]
 #![feature(float_erf)]

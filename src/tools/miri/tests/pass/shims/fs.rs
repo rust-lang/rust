@@ -3,6 +3,7 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
+#![feature(fs_set_times)]
 #![cfg_attr(unix, feature(unix_file_vectored_at))]
 
 use std::collections::BTreeMap;
@@ -49,6 +50,8 @@ fn main() {
         test_pread_pwrite();
         #[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
         test_preadv_pwritev();
+
+        test_file_times();
     }
 }
 
@@ -550,4 +553,45 @@ fn test_hard_link() {
     // Cleanup after test
     remove_file(&source).unwrap();
     remove_file(&link).unwrap();
+}
+
+fn test_file_times() {
+    let path = utils::prepare("miri_test_fs_times.txt");
+    let file = File::create(&path).unwrap();
+    drop(file);
+
+    // Get original metadata/times
+    let metadata = path.metadata().unwrap();
+    let accessed_before = metadata.accessed().unwrap();
+    let modified_before = metadata.modified().unwrap();
+
+    // Set new times
+    let new_accessed = accessed_before + std::time::Duration::from_secs(100);
+    let new_modified = modified_before + std::time::Duration::from_secs(200);
+
+    let mut times = fs::FileTimes::new();
+    times = times.set_accessed(new_accessed);
+    times = times.set_modified(new_modified);
+
+    fs::set_times(&path, times).unwrap();
+
+    let metadata = path.metadata().unwrap();
+    assert_eq!(metadata.accessed().unwrap(), new_accessed);
+    assert_eq!(metadata.modified().unwrap(), new_modified);
+
+    // Also test set_times_nofollow
+    let new_accessed = accessed_before + std::time::Duration::from_secs(300);
+    let new_modified = modified_before + std::time::Duration::from_secs(400);
+
+    let mut times = fs::FileTimes::new();
+    times = times.set_accessed(new_accessed);
+    times = times.set_modified(new_modified);
+
+    fs::set_times_nofollow(&path, times).unwrap();
+
+    let metadata = path.metadata().unwrap();
+    assert_eq!(metadata.accessed().unwrap(), new_accessed);
+    assert_eq!(metadata.modified().unwrap(), new_modified);
+
+    remove_file(&path).unwrap();
 }
