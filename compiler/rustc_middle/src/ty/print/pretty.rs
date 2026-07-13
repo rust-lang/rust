@@ -2357,7 +2357,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             {
                 // We only truncate types that we know are likely to be much longer than 3 chars.
                 // There's no point in replacing `i32` or `!`.
-                write!(self, "...")?;
+                write!(self, "_")?;
                 Ok(())
             }
             _ => {
