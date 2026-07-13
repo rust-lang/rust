@@ -788,7 +788,9 @@ fn has_allow_dead_code_or_lang_attr(
 
     if has_allow_expect_dead_code(tcx, def_id) {
         Some(ComesFromAllowExpect::Yes)
-    } else if has_used_like_attr(tcx, def_id) || find_attr!(tcx, def_id, Lang(..)) {
+    } else if has_used_like_attr(tcx, def_id)
+        || find_attr!(tcx, def_id, Lang(..) | RustcCanonicalSymbol(..))
+    {
         Some(ComesFromAllowExpect::No)
     } else {
         None
