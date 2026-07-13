@@ -3490,6 +3490,8 @@ impl AttrItemKind {
 ///
 /// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
 /// When adding new early parsed attributes, consider whether they should be pretty printed.
+///
+/// See also `EARLY_PARSED_ATTRIBUTES`.
 #[derive(Clone, Encodable, Decodable, Debug, StableHash)]
 pub enum EarlyParsedAttribute {
     CfgTrace(CfgEntry),

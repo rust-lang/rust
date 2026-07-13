@@ -5,6 +5,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
+/// See also `EarlyParsedAttribute`.
 pub(crate) const EARLY_PARSED_ATTRIBUTES: &[&[Symbol]] =
     &[&[sym::cfg_trace], &[sym::cfg_attr_trace]];
 
