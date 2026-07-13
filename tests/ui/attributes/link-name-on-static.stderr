@@ -1,0 +1,17 @@
+warning: `#[link_name]` attribute cannot be used on statics
+  --> $DIR/link-name-on-static.rs:3:1
+   |
+LL | #[link_name = "VALUE"]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: requested on the command line with `-W unused-attributes`
+help: did you mean to use `#[export_name]`?
+   |
+LL - #[link_name = "VALUE"]
+LL + #[unsafe(export_name = "VALUE")]
+   |
+
+warning: 1 warning emitted
+
