@@ -1018,16 +1018,11 @@ impl Step for Rustc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let mut crates = run.builder.in_tree_crates("rustc-main", None);
-        for (i, krate) in crates.iter().enumerate() {
+        run.crate_or_deps_filtered("rustc-main", |krate| {
             // We can't allow `build rustc` as an alias for this Step, because that's reserved by `Assemble`.
             // Ideally Assemble would use `build compiler` instead, but that seems too confusing to be worth the breaking change.
-            if krate.name == "rustc-main" {
-                crates.swap_remove(i);
-                break;
-            }
-        }
-        run.crates(crates)
+            krate.name != "rustc-main"
+        })
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
