@@ -72,13 +72,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
     let node = if ctx.has_empty_selection() {
         if let Some(t) = ctx.token_at_offset().find(|it| it.kind() == T![;]) {
             t.parent().and_then(ast::ExprStmt::cast)?.syntax().clone()
-        } else if let Some(expr) = ancestors_at_offset(ctx.source_file().syntax(), ctx.offset())
-            .next()
-            .and_then(ast::Expr::cast)
-        {
-            expr.syntax().ancestors().find_map(valid_target_expr(ctx))?.syntax().clone()
         } else {
-            return None;
+            let expr = ancestors_at_offset(ctx.source_file().syntax(), ctx.offset())
+                .next()
+                .and_then(ast::Expr::cast)?;
+            expr.syntax().ancestors().find_map(valid_target_expr(ctx))?.syntax().clone()
         }
     } else {
         match ctx.covering_element() {

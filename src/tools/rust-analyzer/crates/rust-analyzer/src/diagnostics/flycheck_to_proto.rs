@@ -375,7 +375,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             if needs_primary_span_label && let Some(primary_span_label) = &primary_span.label {
                 format_to!(message, "\n{}", primary_span_label);
             }
-            message
+            lsp_types::Message::String(message)
         };
 
         let mut related_info_macro_calls = vec![];
@@ -475,7 +475,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                     code: code.map(ToOwned::to_owned).map(lsp_types::Code::String),
                     code_description: code_description.clone(),
                     source: Some(source.to_owned()),
-                    message: sub.related.message.clone(),
+                    message: sub.related.message.clone().into(),
                     related_information: Some(vec![back_ref.clone()]),
                     tags: None, // don't apply modifiers again
                     data: None,

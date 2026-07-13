@@ -1892,13 +1892,19 @@ impl<'tcx> Pick<'tcx> {
 }
 
 impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
-    fn select_trait_candidate(
+    fn select_trait_candidate_for_diagnostics(
         &self,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
         let obligation =
             traits::Obligation::new(self.tcx, self.misc(self.span), self.param_env, trait_ref);
-        traits::SelectionContext::new(self).select(&obligation)
+        let candidate = traits::SelectionContext::new(self).select(&obligation);
+        if let Ok(Some(traits::ImplSource::UserDefined(impl_source_user_defined_data))) = &candidate
+            && self.infcx.tcx.do_not_recommend_impl(impl_source_user_defined_data.impl_def_id)
+        {
+            return Err(traits::SelectionError::Unimplemented);
+        }
+        candidate
     }
 
     /// Used for ambiguous method call error reporting. Uses probing that throws away the result internally,
@@ -1926,7 +1932,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     xform_self_ty,
                     self_ty,
                 );
-                match self.select_trait_candidate(trait_ref) {
+                match self.select_trait_candidate_for_diagnostics(trait_ref) {
                     Ok(Some(traits::ImplSource::UserDefined(ref impl_data))) => {
                         // If only a single impl matches, make the error message point
                         // to that impl.
@@ -2094,7 +2100,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         ocx.register_obligation(obligation);
                     } else {
                         result = ProbeResult::NoMatch;
-                        if let Ok(Some(candidate)) = self.select_trait_candidate(trait_ref) {
+                        if let Ok(Some(candidate)) =
+                            self.select_trait_candidate_for_diagnostics(trait_ref)
+                        {
                             for nested_obligation in candidate.nested_obligations() {
                                 if !self.infcx.predicate_may_hold(&nested_obligation) {
                                     possibly_unsatisfied_predicates.push((

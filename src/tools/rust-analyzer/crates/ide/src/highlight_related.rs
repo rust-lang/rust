@@ -1,8 +1,9 @@
 use std::iter;
 
-use hir::{EditionedFileId, FilePosition, FileRange, HirFileId, InFile, Semantics, db};
+use hir::{EditionedFileId, FilePosition, FileRange, HirFileId, InFile, Semantics};
 use ide_db::{
     FxHashMap, FxHashSet, RootDatabase,
+    base_db::SourceDatabase,
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
@@ -676,7 +677,7 @@ fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSe
 }
 
 fn original_frange(
-    db: &dyn db::ExpandDatabase,
+    db: &dyn SourceDatabase,
     file_id: HirFileId,
     text_range: Option<TextRange>,
 ) -> Option<FileRange> {

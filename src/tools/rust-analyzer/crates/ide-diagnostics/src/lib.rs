@@ -117,10 +117,7 @@ mod tests;
 
 use std::sync::LazyLock;
 
-use hir::{
-    Crate, DisplayTarget, InFile, MacroCallIdExt, Semantics, db::ExpandDatabase,
-    diagnostics::AnyDiagnostic,
-};
+use hir::{Crate, DisplayTarget, InFile, MacroCallIdExt, Semantics, diagnostics::AnyDiagnostic};
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
     assists::{Assist, AssistId, AssistResolveStrategy, ExprFillDefaultMode},
@@ -618,7 +615,7 @@ fn handle_diag_from_macros(
     node: &InFile<SyntaxNode>,
 ) -> bool {
     let Some(macro_file) = node.file_id.macro_file() else { return true };
-    let span_map = sema.db.expansion_span_map(macro_file);
+    let span_map = macro_file.expansion_span_map(sema.db);
     let mut spans = span_map.spans_for_range(node.text_range());
     if spans.any(|span| {
         span.ctx.outer_expn(sema.db).is_some_and(|expansion| {

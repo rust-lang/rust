@@ -1,11 +1,12 @@
 //! Span maps for real files and macro expansions.
 
+use base_db::SourceDatabase;
 use span::Span;
 use syntax::{AstNode, TextRange, ast};
 
 pub use span::RealSpanMap;
 
-use crate::{HirFileId, MacroCallId, db::ExpandDatabase};
+use crate::{HirFileId, MacroCallId};
 
 pub type ExpansionSpanMap = span::SpanMap;
 
@@ -30,31 +31,33 @@ impl<'db> SpanMap<'db> {
             // FIXME: Is it correct for us to only take the span at the start? This feels somewhat
             // wrong. The context will be right, but the range could be considered wrong. See
             // https://github.com/rust-lang/rust/issues/23480, we probably want to fetch the span at
-            // the start and end, then merge them like rustc does in `Span::to
+            // the start and end, then merge them like rustc does in `Span::to`
             Self::ExpansionSpanMap(span_map) => span_map.span_at(range.start()),
             Self::RealSpanMap(span_map) => span_map.span_for_range(range),
         }
     }
+}
 
+impl HirFileId {
     #[inline]
-    pub(crate) fn new(db: &'db dyn ExpandDatabase, file_id: HirFileId) -> SpanMap<'db> {
-        match file_id {
-            HirFileId::FileId(file_id) => SpanMap::RealSpanMap(db.real_span_map(file_id)),
-            HirFileId::MacroFile(m) => {
-                SpanMap::ExpansionSpanMap(&db.parse_macro_expansion(m).value.1)
-            }
+    pub fn span_map<'db>(self, db: &'db dyn SourceDatabase) -> SpanMap<'db> {
+        match self {
+            HirFileId::FileId(file_id) => SpanMap::RealSpanMap(real_span_map(db, file_id)),
+            HirFileId::MacroFile(m) => SpanMap::ExpansionSpanMap(m.expansion_span_map(db)),
         }
     }
 }
 
+/// This is an implementation detail of [`HirFileId::span_map`]. Outside this crate, use
+/// `HirFileId::from(file_id).span_map(db)` instead of `real_span_map(db, file_id)`.
 #[salsa_macros::tracked(returns(ref))]
 pub(crate) fn real_span_map(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     editioned_file_id: base_db::EditionedFileId,
 ) -> RealSpanMap {
     use syntax::ast::HasModuleItem;
     let mut pairs = vec![(syntax::TextSize::new(0), span::ROOT_ERASED_FILE_AST_ID)];
-    let ast_id_map = db.ast_id_map(editioned_file_id.into());
+    let ast_id_map = HirFileId::from(editioned_file_id).ast_id_map(db);
 
     let tree = editioned_file_id.parse(db).tree();
     // This is an incrementality layer. Basically we can't use absolute ranges for our spans as that
@@ -111,9 +114,8 @@ pub(crate) fn real_span_map(
     )
 }
 
-pub(crate) fn expansion_span_map(
-    db: &dyn ExpandDatabase,
-    file_id: MacroCallId,
-) -> &ExpansionSpanMap {
-    &db.parse_macro_expansion(file_id).value.1
+impl MacroCallId {
+    pub fn expansion_span_map(self, db: &dyn SourceDatabase) -> &ExpansionSpanMap {
+        &self.parse_macro_expansion(db).value.1
+    }
 }

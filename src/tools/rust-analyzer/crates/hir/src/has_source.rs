@@ -297,7 +297,7 @@ impl HasSource for Param<'_> {
                 let (_, source_map) =
                     ExpressionStore::with_source_map(db, owner.expression_store_owner(db));
                 let ast @ InFile { file_id, value } = source_map.expr_syntax(expr_id).ok()?;
-                let root = db.parse_or_expand(file_id);
+                let root = file_id.parse_or_expand(db);
                 match value.to_node(&root) {
                     Either::Left(ast::Expr::ClosureExpr(it)) => it
                         .param_list()?

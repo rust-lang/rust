@@ -1,11 +1,7 @@
 use std::collections::BTreeSet;
 
 use either::Either;
-use hir::{
-    FileRange, PathResolution, Semantics, TypeInfo,
-    db::{ExpandDatabase, HirDatabase},
-    sym,
-};
+use hir::{FileRange, PathResolution, Semantics, TypeInfo, db::HirDatabase, sym};
 use ide_db::{
     EditionedFileId, FxHashMap, RootDatabase,
     base_db::Crate,
@@ -352,7 +348,7 @@ fn inline(
     let file_id = sema.hir_file_for(fn_body.syntax());
     let body_to_clone = if let Some(macro_file) = file_id.macro_file() {
         cov_mark::hit!(inline_call_defined_in_macro);
-        let span_map = sema.db.expansion_span_map(macro_file);
+        let span_map = macro_file.expansion_span_map(sema.db);
         let body_prettified =
             prettify_macro_expansion(sema.db, fn_body.syntax().clone(), span_map, *krate);
         if let Some(body) = ast::BlockExpr::cast(body_prettified) { body } else { fn_body.clone() }
@@ -496,7 +492,7 @@ fn inline(
             let param_ty = param_ty.clone().map(|param_ty| {
                 let file_id = sema.hir_file_for(param_ty.syntax());
                 if let Some(macro_file) = file_id.macro_file() {
-                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let span_map = macro_file.expansion_span_map(sema.db);
                     let param_ty_prettified = prettify_macro_expansion(
                         sema.db,
                         param_ty.syntax().clone(),

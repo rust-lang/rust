@@ -395,7 +395,7 @@ config_data! {
         ///
         /// Controls how many independent `proc-macro-srv` processes rust-analyzer
         /// runs in parallel to handle macro expansion.
-        procMacro_processes: NumProcesses = NumProcesses::Concrete(1),
+        procMacro_processes: NumProcesses = NumProcesses::Concrete(2),
 
         /// Internal config, path to proc-macro server executable.
         procMacro_server: Option<Utf8PathBuf> = None,

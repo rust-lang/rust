@@ -137,7 +137,8 @@ impl<'db> MirLowerCtx<'_, 'db> {
             }
             Pat::Wild => (current, current_else),
             Pat::Tuple { args, ellipsis } => {
-                let subst = match self.infer.pat_ty(pattern).kind() {
+                let place_ty = cond_place.ty(&self.result, &self.infcx, self.env).ty;
+                let subst = match place_ty.kind() {
                     TyKind::Tuple(s) => s,
                     _ => {
                         return Err(MirLowerError::TypeError(

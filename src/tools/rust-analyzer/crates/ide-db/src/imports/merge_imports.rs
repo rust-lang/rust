@@ -827,7 +827,10 @@ fn split_prefix(
             make.use_tree(self_path, None, use_tree.rename(), false)
         }
     } else {
-        let suffix_segments = path.segments().skip(prefix.segments().count());
+        let suffix_segments: Vec<_> = path.segments().skip(prefix.segments().count()).collect();
+        if suffix_segments.is_empty() {
+            return None;
+        }
         let suffix_path = make.path_from_segments(suffix_segments, false);
         make.use_tree(
             suffix_path,
