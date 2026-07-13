@@ -1877,7 +1877,6 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect(&mut self, items: &[ModItemId], container: ItemContainerId) {
-        let krate = self.def_collector.def_map.krate;
         let is_crate_root = self.module_id == self.def_collector.def_map.root
             && self.def_collector.def_map.block.is_none();
 
@@ -1885,18 +1884,6 @@ impl ModCollector<'_, '_> {
         // for macros.
         self.def_collector.mod_dirs.insert(self.module_id, self.mod_dir.clone());
 
-        // Prelude module is always considered to be `#[macro_use]`.
-        if let Some((prelude_module, _use)) = self.def_collector.def_map.prelude {
-            // Don't insert macros from the prelude into blocks, as they can be shadowed by other macros.
-            if is_crate_root && prelude_module.krate(self.def_collector.db) != krate {
-                cov_mark::hit!(prelude_is_macro_use);
-                self.def_collector.import_macros_from_extern_crate(
-                    prelude_module.krate(self.def_collector.db),
-                    None,
-                    None,
-                );
-            }
-        }
         let db = self.def_collector.db;
         let module_id = self.module_id;
         let consider_deferred_derives =

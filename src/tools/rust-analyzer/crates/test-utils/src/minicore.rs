@@ -2515,6 +2515,7 @@ macro_rules! matches {
 
 pub mod prelude {
     pub mod v1 {
+        #[rustfmt::skip]
         pub use crate::{
             clone::Clone,                                 // :clone
             cmp::{Eq, PartialEq},                         // :eq
@@ -2541,6 +2542,16 @@ pub mod prelude {
             panic,                                        // :panic
             result::Result::{self, Err, Ok},              // :result
             str::FromStr,                                 // :str
+            write, writeln,                               // :write
+            assert,                                       // :assert
+            format_args, format_args_nl, const_format_args, print, // :fmt
+            todo,                                         // :todo
+            unimplemented,                                // :unimplemented
+            include,                                      // :include
+            include_bytes,                                // :include_bytes
+            concat,                                       // :concat
+            env, option_env,                              // :env
+            matches,                                      // :matches
         };
     }
 
