@@ -593,7 +593,7 @@ unsafe trait DynAllocatorInternal {
 /// the pointer passed back in via de/reallocating methods must only be used to access
 /// memory inside of that allocation. Furthermore, this pointer should be considered
 /// "mutably borrowed" from the pointer returned by (re)allocating methods and the usual
-/// aliasing rules for  mutable borrows apply: when their lifetime ends (e.g. because a
+/// aliasing rules for mutable borrows apply: when their lifetime ends (e.g. because a
 /// pointer they were derived from gets used again), they are invalidated must not be used
 /// anymore.
 ///
