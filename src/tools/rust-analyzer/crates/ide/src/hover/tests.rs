@@ -995,6 +995,158 @@ struct Foo$0 where u32: Copy { field: u32 }
 }
 
 #[test]
+fn hover_filters_private_struct_fields_by_hover_context() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let _: dep::Foo$0;
+}
+
+//- /dep.rs crate:dep library
+pub struct Foo {
+    pub visible: i32,
+    hidden: i32,
+    pub(crate) crate_visible: i32,
+}
+"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            dep
+            ```
+
+            ```rust
+            pub struct Foo {
+                pub visible: i32,
+                /* … */
+            }
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+//- /dep.rs crate:dep library
+pub struct Foo {
+    pub visible: i32,
+    hidden: i32,
+    pub(crate) crate_visible: i32,
+}
+
+fn main() {
+    let _: Foo$0;
+}
+"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            dep
+            ```
+
+            ```rust
+            pub struct Foo {
+                pub visible: i32,
+                hidden: i32,
+                pub(crate) crate_visible: i32,
+            }
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let _: dep::Foo$0;
+}
+
+//- /dep.rs crate:dep
+pub struct Foo {
+    pub visible: i32,
+    hidden: i32,
+    pub(crate) crate_visible: i32,
+}
+"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            dep
+            ```
+
+            ```rust
+            pub struct Foo {
+                pub visible: i32,
+                hidden: i32,
+                pub(crate) crate_visible: i32,
+            }
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_filters_private_tuple_struct_fields_by_hover_context() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let _: dep::Foo$0;
+}
+
+//- /dep.rs crate:dep library
+pub struct Foo(pub i32, i32, pub(crate) i32);
+"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            dep
+            ```
+
+            ```rust
+            pub struct Foo(pub i32, /* … */)
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_filters_private_union_fields_by_hover_context() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let _: dep::U$0;
+}
+
+//- /dep.rs crate:dep library
+pub union U {
+    pub visible: i32,
+    hidden: u32,
+}
+"#,
+        expect![[r#"
+            *U*
+
+            ```rust
+            dep
+            ```
+
+            ```rust
+            pub union U {
+                pub visible: i32,
+                /* … */
+            }
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_record_struct_limit() {
     check_hover_fields_limit(
         3,
