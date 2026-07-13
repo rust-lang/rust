@@ -16,10 +16,9 @@ use std::{env, fs};
 use crate::core::build_steps::compile::is_lto_stage;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
-use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, StepMetadata, apply_pgo,
-    cargo_profile_var,
+    self, Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, StepMetadata, StepTask,
+    apply_pgo, cargo_profile_var,
 };
 use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -66,12 +65,8 @@ pub struct ToolBuildResult {
     pub build_compiler: Compiler,
 }
 
-impl Step for ToolBuild {
+impl StepTask for ToolBuild {
     type Output = ToolBuildResult;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     /// Builds a tool in `src/tools`
     ///
@@ -1239,17 +1234,8 @@ pub enum LibcxxVersion {
     Llvm(usize),
 }
 
-impl Step for LibcxxVersionTool {
+impl StepTask for LibcxxVersionTool {
     type Output = LibcxxVersion;
-    const IS_HOST: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
-    fn is_default_step(_builder: &Builder<'_>) -> bool {
-        false
-    }
 
     fn run(self, builder: &Builder<'_>) -> LibcxxVersion {
         let out_dir = builder.out.join(self.target.to_string()).join("libcxx-version");

@@ -22,9 +22,9 @@ use tracing::span;
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
-use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, apply_pgo, crate_description,
+    self, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, StepTask, apply_pgo,
+    crate_description,
 };
 use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
@@ -740,12 +740,8 @@ impl StdLink {
     }
 }
 
-impl Step for StdLink {
+impl StepTask for StdLink {
     type Output = ();
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     /// Link all libstd rlibs/dylibs into the sysroot location.
     ///
@@ -1530,12 +1526,8 @@ impl RustcLink {
     }
 }
 
-impl Step for RustcLink {
+impl StepTask for RustcLink {
     type Output = ();
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     /// Same as `StdLink`, only for librustc
     fn run(self, builder: &Builder<'_>) {
@@ -1904,12 +1896,8 @@ impl Sysroot {
     }
 }
 
-impl Step for Sysroot {
+impl StepTask for Sysroot {
     type Output = PathBuf;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     /// Returns the sysroot that `compiler` is supposed to use.
     /// For the stage0 compiler, this is stage0-sysroot (because of the initial std build).

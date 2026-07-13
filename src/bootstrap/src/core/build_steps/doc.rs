@@ -16,7 +16,8 @@ use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, SourceType, Tool, prepare_tool_cargo,
 };
 use crate::core::builder::{
-    self, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    self, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata, StepTask,
+    crate_description,
 };
 use crate::core::config::{Config, TargetSelection};
 use crate::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
@@ -138,12 +139,8 @@ struct RustbookSrc<P: Step> {
     build_compiler: Option<Compiler>,
 }
 
-impl<P: Step> Step for RustbookSrc<P> {
+impl<P: Step> StepTask for RustbookSrc<P> {
     type Output = ();
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     /// Invoke `rustbook` for `target` for the doc book `name` from the `src` path.
     ///
@@ -574,17 +571,8 @@ pub struct SharedAssets {
     target: TargetSelection,
 }
 
-impl Step for SharedAssets {
+impl StepTask for SharedAssets {
     type Output = SharedAssetsPaths;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // Other tasks depend on this, no need to execute it on its own
-        run.never()
-    }
-
-    fn is_default_step(_builder: &Builder<'_>) -> bool {
-        false
-    }
 
     /// Generate shared resources used by other pieces of documentation.
     fn run(self, builder: &Builder<'_>) -> Self::Output {

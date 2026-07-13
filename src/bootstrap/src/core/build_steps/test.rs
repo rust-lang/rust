@@ -28,7 +28,7 @@ use crate::core::build_steps::tool::{
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder::{
-    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata, StepTask,
     crate_description,
 };
 use crate::core::config::TargetSelection;
@@ -2129,12 +2129,8 @@ struct Compiletest {
     compare_mode: Option<&'static str>,
 }
 
-impl Step for Compiletest {
+impl StepTask for Compiletest {
     type Output = ();
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) {
         if builder.test_target == TestTarget::DocOnly {
@@ -2854,13 +2850,8 @@ struct BookTest {
     dependencies: Vec<&'static str>,
 }
 
-impl Step for BookTest {
+impl StepTask for BookTest {
     type Output = ();
-    const IS_HOST: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) {
         // External docs are different from local because:
@@ -3663,12 +3654,8 @@ pub struct RemoteCopyLibs {
     target: TargetSelection,
 }
 
-impl Step for RemoteCopyLibs {
+impl StepTask for RemoteCopyLibs {
     type Output = ();
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;

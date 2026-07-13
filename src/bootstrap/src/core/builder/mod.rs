@@ -182,13 +182,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Called directly by the bootstrap `Step` handler when not triggered indirectly by other `Step`s using [`Builder::ensure`].
     /// For example, `./x.py test bootstrap` runs this for `test::Bootstrap`. Similarly, `./x.py test` runs it for every step
     /// that is listed by the `describe` macro in [`Builder::get_step_descriptions`].
-    fn make_run(_run: RunConfig<'_>) {
-        // It is reasonable to not have an implementation of make_run for rules
-        // who do not want to get called from the root context. This means that
-        // they are likely dependencies (e.g., sysroot creation) or similar, and
-        // as such calling them from ./x.py isn't logical.
-        unimplemented!()
-    }
+    fn make_run(_run: RunConfig<'_>);
 
     /// Returns metadata of the step, for tests
     fn metadata(&self) -> Option<StepMetadata> {
@@ -647,12 +641,6 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    // allows being more explicit about why should_run in Step returns the value passed to it
-    pub fn never(mut self) -> ShouldRun<'a> {
-        self.paths.insert(PathSet::empty());
-        self
-    }
-
     /// Given a set of requested paths, return the subset which match the Step for this `ShouldRun`,
     /// removing the matches from `paths`.
     ///
@@ -774,12 +762,8 @@ struct Libdir {
     target: TargetSelection,
 }
 
-impl Step for Libdir {
+impl StepTask for Libdir {
     type Output = PathBuf;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let relative_sysroot_libdir = builder.sysroot_libdir_relative(self.compiler);

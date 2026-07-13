@@ -13,7 +13,8 @@ use crate::core::build_steps::tool::{
     prepare_tool_cargo,
 };
 use crate::core::builder::{
-    self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, StepTask,
+    crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
@@ -219,12 +220,8 @@ impl PrepareRustcRmetaSysroot {
     }
 }
 
-impl Step for PrepareRustcRmetaSysroot {
+impl StepTask for PrepareRustcRmetaSysroot {
     type Output = RmetaSysroot;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         // Check rustc
@@ -263,12 +260,8 @@ impl PrepareStdRmetaSysroot {
     }
 }
 
-impl Step for PrepareStdRmetaSysroot {
+impl StepTask for PrepareStdRmetaSysroot {
     type Output = RmetaSysroot;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         // Check std

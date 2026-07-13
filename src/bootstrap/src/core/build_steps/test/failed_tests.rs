@@ -3,7 +3,7 @@ use std::fs::{self, File};
 use std::io::{BufRead, BufReader, ErrorKind};
 use std::path::{Path, PathBuf};
 
-use crate::core::builder::{Builder, ShouldRun, Step};
+use crate::core::builder::{Builder, StepTask};
 use crate::t;
 
 #[derive(Clone)]
@@ -29,12 +29,8 @@ impl RecordFailedTests {
 /// and the `RecordFailedTest` type doesn't (need to) signify anything.
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub struct SetupFailedTestsFile;
-impl Step for SetupFailedTestsFile {
+impl StepTask for SetupFailedTestsFile {
     type Output = RecordFailedTests;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         if !builder.config.cmd.record() || builder.config.dry_run() {

@@ -29,7 +29,7 @@ use crate::core::build_steps::tool::{
 };
 use crate::core::build_steps::vendor::Vendor;
 use crate::core::build_steps::{compile, llvm};
-use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
+use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata, StepTask};
 use crate::core::config::{GccCiMode, TargetSelection};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
@@ -704,12 +704,8 @@ pub struct DebuggerScripts {
     pub target: TargetSelection,
 }
 
-impl Step for DebuggerScripts {
+impl StepTask for DebuggerScripts {
     type Output = ();
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
