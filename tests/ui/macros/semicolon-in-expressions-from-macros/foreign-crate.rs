@@ -1,9 +1,9 @@
 //@ aux-build:foreign-crate.rs
-//@ check-pass
+//~? ERROR: macro expansion ignores `;` and any tokens following
 
 extern crate foreign_crate;
 
-// Test that we do not lint for a macro in a foreign crate
+// Test that we fail with a macro in a foreign crate
 fn main() {
     let _ = foreign_crate::my_macro!();
 }

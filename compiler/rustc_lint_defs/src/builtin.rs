@@ -102,7 +102,6 @@ pub mod hardwired {
             RUST_2024_INCOMPATIBLE_PAT,
             RUST_2024_PRELUDE_COLLISIONS,
             SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
-            SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
             SHADOWING_SUPERTRAIT_ITEMS,
             SINGLE_USE_LIFETIMES,
             STABLE_FEATURES,
@@ -2840,52 +2839,6 @@ declare_lint! {
     "detect unsupported use of `Self` from outer item",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #124186),
-    };
-}
-
-declare_lint! {
-    /// The `semicolon_in_expressions_from_macros` lint detects trailing semicolons
-    /// in macro bodies when the macro is invoked in expression position.
-    /// This was previous accepted, but is being phased out.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(semicolon_in_expressions_from_macros)]
-    /// macro_rules! foo {
-    ///     () => { true; }
-    /// }
-    ///
-    /// fn main() {
-    ///     let val = match true {
-    ///         true => false,
-    ///         _ => foo!()
-    ///     };
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous, Rust ignored trailing semicolon in a macro
-    /// body when a macro was invoked in expression position.
-    /// However, this makes the treatment of semicolons in the language
-    /// inconsistent, and could lead to unexpected runtime behavior
-    /// in some circumstances (e.g. if the macro author expects
-    /// a value to be dropped).
-    ///
-    /// This is a [future-incompatible] lint to transition this
-    /// to a hard error in the future. See [issue #79813] for more details.
-    ///
-    /// [issue #79813]: https://github.com/rust-lang/rust/issues/79813
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
-    Deny,
-    "trailing semicolon in macro body used as expression",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #79813),
-        report_in_deps: true,
     };
 }
 

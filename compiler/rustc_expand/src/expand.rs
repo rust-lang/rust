@@ -2511,31 +2511,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn flat_map_stmt(&mut self, node: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
-        // FIXME: invocations in semicolon-less expressions positions are expanded as expressions,
-        // changing that requires some compatibility measures.
         if node.is_expr() {
-            // The only way that we can end up with a `MacCall` expression statement,
-            // (as opposed to a `StmtKind::MacCall`) is if we have a macro as the
-            // trailing expression in a block (e.g. `fn foo() { my_macro!() }`).
-            // Record this information, so that we can report a more specific
-            // `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` lint if needed.
-            // See #78991 for an investigation of treating macros in this position
-            // as statements, rather than expressions, during parsing.
-            return match &node.kind {
-                StmtKind::Expr(expr)
-                    if matches!(**expr, ast::Expr { kind: ExprKind::MacCall(..), .. }) =>
-                {
-                    self.cx.current_expansion.is_trailing_mac = true;
-                    // Don't use `assign_id` for this statement - it may get removed
-                    // entirely due to a `#[cfg]` on the contained expression
-                    let res = walk_flat_map_stmt(self, node);
-                    self.cx.current_expansion.is_trailing_mac = false;
-                    res
-                }
-                _ => walk_flat_map_stmt(self, node),
-            };
+            return walk_flat_map_stmt(self, node);
         }
-
         self.flat_map_node(node)
     }
 
