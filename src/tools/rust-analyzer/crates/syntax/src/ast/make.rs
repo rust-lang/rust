@@ -686,7 +686,12 @@ pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::PrefixExpr {
     expr_from_text(&format!("{token}{expr}"))
 }
 pub fn expr_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::CallExpr {
-    expr_from_text(&format!("{f}{arg_list}"))
+    quote! {
+        CallExpr {
+            #f
+            #arg_list
+        }
+    }
 }
 pub fn expr_method_call(
     receiver: ast::Expr,
