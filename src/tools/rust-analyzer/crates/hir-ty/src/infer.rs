@@ -2,7 +2,7 @@
 //! the type of each expression and pattern.
 //!
 //! For type inference, compare the implementations in rustc (the various
-//! check_* methods in rustc_hir_analysis/check/mod.rs are a good entry point) and
+//! check_* methods in [`rustc_hir_typeck/check.rs`] are a good entry point) and
 //! IntelliJ-Rust (org.rust.lang.core.types.infer). Our entry point for
 //! inference here is the `infer` function, which infers the types of all
 //! expressions in a given function.
@@ -12,6 +12,8 @@
 //! we might determine that certain variables need to be equal to each other, or
 //! to certain types. To record this, we use the union-find implementation from
 //! the `ena` crate, which is extracted from rustc.
+//!
+//! [`rustc_hir_typeck/check.rs`]: https://github.com/rust-lang/rust/blob/5503df87342a73d0c29126a7e08dc9c1255c46ad/compiler/rustc_hir_typeck/src/check.rs
 
 mod autoderef;
 mod callee;

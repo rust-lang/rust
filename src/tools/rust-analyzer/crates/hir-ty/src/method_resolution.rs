@@ -1,7 +1,10 @@
 //! This module is concerned with finding methods that a given type provides.
 //! For details about how this works in rustc, see the method lookup page in the
-//! [rustc guide](https://rust-lang.github.io/rustc-guide/method-lookup.html)
-//! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
+//! [rustc guide] and the corresponding code mostly in
+//! [`rustc_hir_typeck/method/probe.rs`].
+//!
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/method-lookup.html
+//! [`rustc_hir_typeck/method/probe.rs`]: https://github.com/rust-lang/rust/blob/5503df87342a73d0c29126a7e08dc9c1255c46ad/compiler/rustc_hir_typeck/src/method/probe.rs
 
 mod confirm;
 mod probe;
