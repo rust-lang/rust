@@ -1,0 +1,10 @@
+error: `AsyncDrop` impl for `Union`
+  --> $DIR/union.rs:28:20
+   |
+LL | impl AsyncDrop for U {
+   |                    ^ union implementing `AsyncDrop`
+   |
+   = help: cancellation for union should be synchronous using `Drop` trait since cleanup silently skipped in async
+
+error: aborting due to 1 previous error
+

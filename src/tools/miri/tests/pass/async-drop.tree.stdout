@@ -19,5 +19,4 @@ SyncInt::drop: 17
 AsyncInt::async_drop: 18
 AsyncInt::async_drop: 19
 AsyncInt::async_drop: 20
-AsyncUnion::async_drop: 21, 21
 AsyncInt::async_drop: 10

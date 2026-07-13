@@ -1844,6 +1844,17 @@ pub(crate) struct AsyncDropWithoutSyncDrop {
 }
 
 #[derive(Diagnostic)]
+#[diag("`AsyncDrop` impl for `Union`")]
+#[help(
+    "cancellation for union should be synchronous using `Drop` trait since cleanup silently skipped in async"
+)]
+pub(crate) struct AsyncDropUnion {
+    #[primary_span]
+    #[label("union implementing `AsyncDrop`")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("lifetime parameters or bounds of `{$ident}` do not match the declaration")]
 pub(crate) struct LifetimesOrBoundsMismatchOnEii {
     #[primary_span]

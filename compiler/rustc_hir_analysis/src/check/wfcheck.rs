@@ -1317,6 +1317,7 @@ fn check_impl<'tcx>(
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).instantiate_identity();
+                check_async_drop_not_on_union(tcx, trait_ref, impl_.self_ty.span)?;
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in
                 // case other `Foo` impls are incoherent.
                 tcx.ensure_result().coherent_trait(trait_ref.skip_normalization().def_id)?;
@@ -1397,6 +1398,23 @@ fn check_impl<'tcx>(
         check_where_clauses(wfcx, item.owner_id.def_id);
         Ok(())
     })
+}
+
+/// `AsyncDrop` must not be implemented for `Union`s
+/// Droping in synchronous context would silently skip
+/// the cleanup, use `Drop` instead
+fn check_async_drop_not_on_union<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: Unnormalized<'tcx, ty::TraitRef<'tcx>>,
+    self_ty_span: Span,
+) -> Result<(), ErrorGuaranteed> {
+    if Some(trait_ref.skip_normalization().def_id) == tcx.lang_items().async_drop_trait()
+        && let ty::Adt(def, _) = trait_ref.skip_normalization().self_ty().kind()
+        && def.is_union()
+    {
+        return Err(tcx.dcx().emit_err(errors::AsyncDropUnion { span: self_ty_span }));
+    }
+    Ok(())
 }
 
 /// Checks where-clauses and inline bounds that are declared on `def_id`.

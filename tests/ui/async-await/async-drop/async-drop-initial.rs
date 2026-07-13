@@ -107,8 +107,6 @@ fn main() {
             48,
         )
         .await;
-
-        test_async_drop(AsyncUnion { signed: 21 }, 32).await;
     });
     let res = fut.poll(&mut cx);
     assert_eq!(res, Poll::Ready(()));
@@ -217,30 +215,5 @@ impl AsyncDrop for AsyncEnum {
             }
         };
         mem::forget(mem::replace(&mut *self, new_self));
-    }
-}
-
-// FIXME(zetanumbers): Disallow types with `AsyncDrop` in unions
-union AsyncUnion {
-    signed: i32,
-    unsigned: u32,
-}
-
-impl Drop for AsyncUnion {
-    fn drop(&mut self) {
-        println!(
-            "AsyncUnion::drop: {}, {}",
-            unsafe { self.signed },
-            unsafe { self.unsigned },
-        );
-    }
-}
-impl AsyncDrop for AsyncUnion {
-    async fn drop(self: Pin<&mut Self>) {
-        println!(
-            "AsyncUnion::Dropper::poll: {}, {}",
-            unsafe { self.signed },
-            unsafe { self.unsigned },
-        );
     }
 }
