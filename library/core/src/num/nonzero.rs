@@ -82,7 +82,7 @@ impl_zeroable_primitive!(
 ///
 /// `NonZero<T>` is guaranteed to have the same layout and bit validity as `T`
 /// with the exception that the all-zero bit pattern is invalid.
-/// `Option<NonZero<T>>` is guaranteed to be compatible with `T`, including in
+/// `Option<NonZero<T>>` is guaranteed to be ABI-compatible with `T`, including in
 /// FFI.
 ///
 /// Thanks to the [null pointer optimization], `NonZero<T>` and
@@ -525,7 +525,7 @@ macro_rules! nonzero_integer {
         ///
         #[doc = concat!("`", stringify!($Ty), "` is guaranteed to have the same layout and bit validity as `", stringify!($Int), "`")]
         /// with the exception that `0` is not a valid instance.
-        #[doc = concat!("`Option<", stringify!($Ty), ">` is guaranteed to be compatible with `", stringify!($Int), "`,")]
+        #[doc = concat!("`Option<", stringify!($Ty), ">` is guaranteed to be ABI-compatible with `", stringify!($Int), "`,")]
         /// including in FFI.
         ///
         /// Thanks to the [null pointer optimization],
