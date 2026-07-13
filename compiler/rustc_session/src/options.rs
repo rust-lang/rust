@@ -2568,8 +2568,6 @@ options! {
         "Whether to remove some of the MIR debug info from methods.  Default: None"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "the size at which the `large_assignments` lint starts to be emitted"),
-    mutable_noalias: bool = (true, parse_bool, [TRACKED],
-        "emit noalias metadata for mutable references (default: yes)"),
     namespaced_crates: bool = (false, parse_bool, [TRACKED],
         "allow crates to be namespaced by other crates (default: no)"),
     next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
