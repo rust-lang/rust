@@ -43,8 +43,8 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res}
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::{self as hir, MissingLifetimeKind, attrs as attr, find_attr};
-use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
+use rustc_index::{IndexVec, static_assert_size};
 use rustc_macros::{
     BlobDecodable, Decodable, Encodable, StableHash, TyDecodable, TyEncodable, TypeFoldable,
     TypeVisitable, extension,
@@ -1153,6 +1153,11 @@ pub struct ParamEnv<'tcx> {
     /// Use the `caller_bounds()` method to access.
     caller_bounds: Clauses<'tcx>,
 }
+
+// Empty ParamEnv's are super common (like, 100x more common than nonempty pnes),
+// so we want to not carry around too much data in this common case.
+// Make sure that a ParamEnv is no bigger than a single pointer, always.
+static_assert_size!(ParamEnv<'_>, 8);
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn caller_bounds(self) -> impl inherent::SliceLike<Item = ty::Clause<'tcx>> {
