@@ -23,22 +23,27 @@ impl<'tcx> MiriMachine<'tcx> {
         interp_ok(())
     }
 
-    /// Extern statics that are initialized with function pointers to the symbols of the same name.
-    fn weak_symbol_extern_statics(
+    /// Make `ptr` available as a weak symbol with the given name.
+    fn add_weak_symbol(
         ecx: &mut MiriInterpCx<'tcx>,
-        names: &[&str],
+        name: &str,
+        ptr: Pointer,
     ) -> InterpResult<'tcx> {
+        // Allocate the extra indirection place and add it to the map.
+        let layout = ecx.machine.layouts.mut_raw_ptr;
+        let place = ecx.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
+        ecx.write_scalar(Scalar::from_maybe_pointer(ptr, ecx), &place)?;
+        let weak_ptr = place.ptr().into_pointer_or_addr().unwrap();
+        ecx.machine.extern_statics_imports.try_insert(Symbol::intern(name), weak_ptr).unwrap();
+        interp_ok(())
+    }
+
+    /// Extern statics that are initialized with function pointers to the symbols of the same name.
+    fn weak_fn_symbols(ecx: &mut MiriInterpCx<'tcx>, names: &[&str]) -> InterpResult<'tcx> {
         for name in names {
             assert!(ecx.is_dyn_sym(name), "{name} is not a dynamic symbol");
-            let layout = ecx.machine.layouts.const_raw_ptr;
             let ptr = ecx.fn_ptr(FnVal::Other(DynSym::from_str(name)));
-            let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, ecx), layout);
-
-            // Allocate the extra indirection place and add it to the map.
-            let place = ecx.allocate(val.layout, MiriMemoryKind::ExternStatic.into())?;
-            ecx.write_immediate(*val, &place)?;
-            let ptr = place.ptr().into_pointer_or_addr().unwrap();
-            ecx.machine.extern_statics_imports.try_insert(Symbol::intern(name), ptr).unwrap();
+            Self::add_weak_symbol(ecx, name, ptr.into())?;
         }
         interp_ok(())
     }
@@ -49,17 +54,16 @@ impl<'tcx> MiriMachine<'tcx> {
             // "environ" is mandated by POSIX.
             let environ = ecx.machine.env_vars.unix().environ();
             Self::add_extern_static(ecx, "environ", environ);
+            // We also provide it as a weak symbol, which is needed on FreeBSD.
+            Self::add_weak_symbol(ecx, "environ", environ)?;
         }
 
         match &ecx.tcx.sess.target.os {
             Os::Linux => {
-                Self::weak_symbol_extern_statics(ecx, &["getrandom", "gettid", "statx", "strlen"])?;
+                Self::weak_fn_symbols(ecx, &["getrandom", "gettid", "statx", "strlen"])?;
             }
             Os::Android => {
-                Self::weak_symbol_extern_statics(
-                    ecx,
-                    &["signal", "getrandom", "gettid", "futimens"],
-                )?;
+                Self::weak_fn_symbols(ecx, &["signal", "getrandom", "gettid", "futimens"])?;
             }
             Os::Windows => {
                 // "_tls_used"
@@ -68,7 +72,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 Self::alloc_extern_static(ecx, "_tls_used", val)?;
             }
             Os::Illumos | Os::Solaris => {
-                Self::weak_symbol_extern_statics(ecx, &["pthread_setname_np"])?;
+                Self::weak_fn_symbols(ecx, &["pthread_setname_np"])?;
             }
             _ => {} // No "extern statics" supported on this target.
         }
