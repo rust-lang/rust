@@ -1770,6 +1770,7 @@ symbols! {
         rustc_attrs,
         rustc_autodiff,
         rustc_builtin_macro,
+        rustc_canonical_symbol,
         rustc_capture_analysis,
         rustc_clean,
         rustc_coherence_is_core,

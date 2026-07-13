@@ -212,6 +212,7 @@ attribute_parsers!(
         Single<RustcAllocatorZeroedVariantParser>,
         Single<RustcAutodiffParser>,
         Single<RustcBuiltinMacroParser>,
+        Single<RustcCanonicalSymbolParser>,
         Single<RustcDeprecatedSafe2024Parser>,
         Single<RustcDiagnosticItemParser>,
         Single<RustcDocPrimitiveParser>,
