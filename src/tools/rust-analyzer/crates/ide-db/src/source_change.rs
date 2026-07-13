@@ -232,15 +232,8 @@ pub struct SourceChangeBuilder {
     /// Keeps track of which annotations correspond to which snippets
     pub snippet_annotations: Vec<(AnnotationSnippet, SyntaxAnnotation)>,
 
-    /// Maps the original, immutable `SyntaxNode` to a `clone_for_update` twin.
-    mutated_tree: Option<TreeMutator>,
     /// Keeps track of where to place snippets
     pub snippet_builder: Option<SnippetBuilder>,
-}
-
-struct TreeMutator {
-    immutable: SyntaxNode,
-    mutable_clone: SyntaxNode,
 }
 
 #[derive(Default)]
@@ -258,7 +251,6 @@ impl SourceChangeBuilder {
             command: None,
             file_editors: FxHashMap::default(),
             snippet_annotations: vec![],
-            mutated_tree: None,
             snippet_builder: None,
         }
     }
@@ -342,10 +334,6 @@ impl SourceChangeBuilder {
                 builder.places.into_iter().flat_map(PlaceSnippet::finalize_position).collect(),
             )
         });
-
-        if let Some(tm) = self.mutated_tree.take() {
-            diff(&tm.immutable, &tm.mutable_clone).into_text_edit(&mut self.edit);
-        }
 
         let edit = mem::take(&mut self.edit).finish();
         if !edit.is_empty() || snippet_edit.is_some() {
