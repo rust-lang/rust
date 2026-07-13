@@ -27,7 +27,7 @@ use crate::{
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
     lower::{GenericDefaults, TrackedStructToken, TypeAliasBounds},
-    mir::{BorrowckResult, MirBody, MirLowerError},
+    mir::{MirBody, MirLowerError},
     next_solver::{
         Allocation, Clause, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredClauses,
         StoredEarlyBinder, StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy, TraitRef,
@@ -71,11 +71,6 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
     ) -> Result<&MirBody, MirLowerError> {
         crate::mir::monomorphized_mir_body_for_closure_query(self, def, subst, env)
             .map_err(|err| err.clone())
-    }
-
-    #[salsa::transparent]
-    fn borrowck(&self, def: InferBodyId) -> Result<&[BorrowckResult], MirLowerError> {
-        crate::mir::borrowck_query(self, def).map_err(|err| err.clone())
     }
 
     #[salsa::invoke(crate::consteval::const_eval)]

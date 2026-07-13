@@ -2100,7 +2100,7 @@ impl DefWithBody {
             }
         }
 
-        if let Ok(borrowck_results) = db.borrowck(id.into()) {
+        if let Ok(borrowck_results) = InferBodyId::from(id).borrowck(db) {
             for borrowck_result in borrowck_results {
                 let mir_body = borrowck_result.mir_body(db);
                 for moof in &borrowck_result.moved_out_of_ref {
