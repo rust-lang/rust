@@ -1081,10 +1081,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::CoroutineWitness(..)
                         | ty::Never
                         | ty::Tuple(..)
+                        | ty::UnsafeBinder(_)
                         // Integers and floats always have `u8` as their discriminant.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
-
-                        ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
 
                         // type parameters, opaques, and unnormalized projections don't have
                         // a known discriminant and may need to be normalized further or rely
