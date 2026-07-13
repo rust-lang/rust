@@ -199,8 +199,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 // We don't need to do call adjust_span here since
                 // deref coercions always start with a built-in deref.
                 let call_def_id = deref.method_call(self.tcx);
-                let overloaded_callee =
-                    Ty::new_fn_def(self.tcx, call_def_id, self.tcx.mk_args(&[expr.ty.into()]));
+                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                let overloaded_callee = Ty::new_fn_def(
+                    self.tcx,
+                    call_def_id,
+                    ty::Binder::dummy(self.tcx.mk_args(&[expr.ty.into()])),
+                );
 
                 expr = Expr {
                     temp_scope_id,
@@ -851,8 +855,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 };
                 let mk_call =
                     |thir: &mut Thir<'tcx>, ty: Ty<'tcx>, variant: VariantIdx, field: FieldIdx| {
-                        let fun_ty =
-                            Ty::new_fn_def(tcx, offset_of_intrinsic, [ty::GenericArg::from(ty)]);
+                        // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                        let fun_ty = Ty::new_fn_def(
+                            tcx,
+                            offset_of_intrinsic,
+                            ty::Binder::dummy([ty::GenericArg::from(ty)]),
+                        );
                         let fun = thir
                             .exprs
                             .push(mk_expr(ExprKind::ZstLiteral { user_ty: None }, fun_ty));
@@ -1203,7 +1211,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 let user_ty = self.user_args_applied_to_res(expr.hir_id, Res::Def(kind, def_id));
                 debug!("method_callee: user_ty={:?}", user_ty);
                 (
-                    Ty::new_fn_def(self.tcx, def_id, self.typeck_results.node_args(expr.hir_id)),
+                    // FIXME: instantiate binder correctly (turbofish/fndex)
+                    Ty::new_fn_def(
+                        self.tcx,
+                        def_id,
+                        ty::Binder::dummy(self.typeck_results.node_args(expr.hir_id)),
+                    ),
                     user_ty,
                 )
             }
@@ -1237,9 +1250,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
             Expr {
                 temp_scope_id: expr.hir_id.local_id,
-                // Create a new FnDef type, representing the splatted function arguments with
-                // user-supplied generic types applied
-                ty: Ty::new_fn_def(self.tcx, def_id, self.typeck_results.node_args(expr.hir_id)),
+                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                ty: Ty::new_fn_def(
+                    self.tcx,
+                    def_id,
+                    ty::Binder::dummy(self.typeck_results.node_args(expr.hir_id)),
+                ),
                 span,
                 kind: ExprKind::ZstLiteral { user_ty },
             }

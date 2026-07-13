@@ -464,7 +464,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
                 })
                 .collect();
             match adt_def.destructor(tcx).map(|dtor| tcx.constness(dtor.did)) {
-                Some(hir::Constness::Const { always: true }) => todo!("FIXME(comptime)"),
+                Some(hir::Constness::Const { always: true }) => unimplemented!("FIXME(comptime)"),
                 // `Drop` impl exists, but it's not const. Type cannot be `[const] Destruct`.
                 Some(hir::Constness::NotConst) => return Err(EvaluationFailure::NoSolution),
                 // `Drop` impl exists, and it's const. Require `Ty: [const] Drop` to hold.
@@ -558,7 +558,7 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
         // but they don't really need to right now.
         ty::CoroutineClosure(_, _) => return Err(EvaluationFailure::NoSolution),
 
-        ty::Closure(def, args) => (def, args),
+        ty::Closure(def, args) => (def, ty::Binder::dummy(args)),
 
         // Everything else needs explicit impls or cannot have an impl
         _ => return Err(EvaluationFailure::NoSolution),
@@ -569,7 +569,7 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
         hir::Constness::Const { always: true } => Err(EvaluationFailure::NoSolution),
         hir::Constness::Const { always: false } => Ok(tcx
             .const_conditions(def)
-            .instantiate(tcx, args)
+            .instantiate(tcx, args.no_bound_vars().unwrap())
             .into_iter()
             .map(|(c, span)| {
                 let code = ObligationCauseCode::WhereClause(def, span);
@@ -601,7 +601,7 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
                     match tcx.impl_trait_header(impl_.impl_def_id).constness {
                         rustc_hir::Constness::Const { always } => {
                             if always {
-                                todo!()
+                                unimplemented!()
                             }
                         }
                         rustc_hir::Constness::NotConst => {

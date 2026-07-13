@@ -323,7 +323,7 @@ macro_rules! common_visitor_and_walkers {
             Closure(&'a $($mut)? ClosureBinder, &'a $($mut)? Option<CoroutineKind>, &'a $($mut)? Box<FnDecl>, &'a $($mut)? Box<Expr>),
         }
 
-        impl<'a> FnKind<'a> {
+        impl<'a> FnKind<'_> {
             pub fn header(&'a $($mut)? self) -> Option<&'a $($mut)? FnHeader> {
                 match *self {
                     FnKind::Fn(_, _, Fn { sig, .. }) => Some(&$($mut)? sig.header),

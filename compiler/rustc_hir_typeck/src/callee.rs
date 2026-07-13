@@ -551,6 +551,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (fn_sig, def_id, callee_generic_args) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
+                let args = args.no_bound_vars().unwrap();
                 self.enforce_context_effects(Some(call_expr.hir_id), call_expr.span, def_id, args);
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_norm_wip();
 
@@ -696,7 +697,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 scope,
             );
 
-            let Ok(pick) = pick else { return do_check() };
+            let Ok(ref pick) = pick else { return do_check() };
+
+            let mut ctx = ConfirmContext::new(self, arg.span, arg, arg);
+            let (adjusted_arg_type, method_adjustments) =
+                ctx.create_ty_adjustments_from_pick(arg_type, pick);
 
             if is_first_arg && args_to_map.len() > 1 {
                 // We successfully found a pick and adjustments for first argument,
@@ -706,7 +711,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let cause = self.cause(call_expr.span, ObligationCauseCode::Misc);
                 if self
                     .at(&cause, self.param_env)
-                    .sup(DefineOpaqueTypes::Yes, formal_input_tys[0], pick.self_ty)
+                    .sup(DefineOpaqueTypes::Yes, formal_input_tys[0], adjusted_arg_type)
                     .is_err()
                 {
                     return do_check();
@@ -723,9 +728,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.typeck_results
                         .borrow_mut()
                         .node_types_mut()
-                        .insert(arg.hir_id, pick.self_ty)
+                        .insert(arg.hir_id, adjusted_arg_type)
                         .expect("must be set"),
-                    pick,
+                    method_adjustments,
                 ),
             );
         }
@@ -736,13 +741,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut results = self.typeck_results.borrow_mut();
             let mut adjustments = results.adjustments_mut();
 
-            let (prev_type, pick) = prev_types.remove(&arg.hir_id).expect("must be in a map");
+            let (prev_type, method_adjustments) =
+                prev_types.remove(&arg.hir_id).expect("must be in a map");
 
             // Remove any added adjustments for arg expression during `do_check` and replace them with ours.
             let adjustments = adjustments.entry(arg.hir_id).or_default();
-
-            let mut ctx = ConfirmContext::new(self, arg.span, arg, arg);
-            *adjustments = ctx.create_ty_adjustments_from_pick(prev_type, &pick).1;
+            *adjustments = method_adjustments;
 
             // Restore original first provided arg type.
             results.node_types_mut().insert(arg.hir_id, prev_type);
