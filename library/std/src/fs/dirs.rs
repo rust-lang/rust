@@ -118,6 +118,24 @@ impl UserDirs {
     ///
     /// This is the same directory for all applications. As such, applications
     /// should use a subdirectory for application-specific cache files.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `${XDG_CACHE_HOME:-$HOME/.cache}` |
+    /// | [Darwin] (macOS) | [`NSCachesDirectory`] (`$HOME/Library/Caches`) |
+    /// | [Windows] | [`{FOLDERID_LocalAppData}`] (`%LOCALAPPDATA%`) |
+    ///
+    /// Other paths can be configured via [`set_cache_home`](Self::set_cache_home).
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirsExt
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSCachesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/cachesdirectory?language=objc
+    /// [`{FOLDERID_LocalAppData}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_localappdata
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn cache_home(&self) -> Option<&Path> {
         self.home.cache.as_deref()
@@ -127,8 +145,25 @@ impl UserDirs {
     /// should be stored.
     ///
     /// This is the same directory for all applications. As such, applications
-
     /// should use a subdirectory for application-specific configuration files.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `${XDG_CONFIG_HOME:-$HOME/.config}` |
+    /// | [Darwin] (macOS) | [`NSApplicationSupportDirectory`] (`$HOME/Library/Application Support`) |
+    /// | [Windows] | [`{FOLDERID_RoamingAppData}`] (`%APPDATA%`) |
+    ///
+    /// Other paths can be configured via [`set_config_home`](Self::set_config_home).
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirs
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSApplicationSupportDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/applicationsupportdirectory?language=objc
+    /// [`{FOLDERID_RoamingAppData}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_roamingappdata
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn config_home(&self) -> Option<&Path> {
         self.home.config.as_deref()
@@ -139,6 +174,24 @@ impl UserDirs {
     ///
     /// This is the same directory for all applications. As such, applications
     /// should use a subdirectory for application-specific data files.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `${XDG_DATA_HOME:-$HOME/.local/share}` |
+    /// | [Darwin] (macOS) | [`NSApplicationSupportDirectory`] (`$HOME/Library/Application Support`) |
+    /// | [Windows] | [`{FOLDERID_RoamingAppData}`] (`%APPDATA%`) |
+    ///
+    /// Other paths can be configured via [`set_data_home`](Self::set_data_home).
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirs
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSApplicationSupportDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/applicationsupportdirectory?language=objc
+    /// [`{FOLDERID_RoamingAppData}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_roamingappdata
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn data_home(&self) -> Option<&Path> {
         self.home.data.as_deref()
@@ -156,6 +209,24 @@ impl UserDirs {
     ///
     /// This is the same directory for all applications. As such, applications
     /// should use a subdirectory for application-specific state files.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `${XDG_STATE_HOME:-$HOME/.local/state}` |
+    /// | [Darwin] (macOS) | [`NSApplicationSupportDirectory`] (`$HOME/Library/Application Support`) |
+    /// | [Windows] | [`{FOLDERID_LocalAppData}`] (`%LOCALAPPDATA%`) |
+    ///
+    /// Other paths can be configured via [`set_state_home`](Self::set_state_home).
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirs
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSApplicationSupportDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/applicationsupportdirectory?language=objc
+    /// [`{FOLDERID_LocalAppData}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_localappdata
     #[unstable(feature = "dir_discovery", issue = "157515")]
     pub fn state_home(&self) -> Option<&Path> {
         self.home.state.as_deref()
@@ -166,6 +237,24 @@ impl UserDirs {
     ///
     /// As a media directory, this should typically be used as a default path
     /// for file selection dialogs, not for automatically accessed file paths.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `$XDG_DESKTOP_DIR` (`$HOME/Desktop`) |
+    /// | [Darwin] (macOS) | [`NSDesktopDirectory`] (`$HOME/Desktop`) |
+    /// | [Windows] | [`{FOLDERID_Desktop}`] (`%USERPROFILE%\Desktop`) |
+    ///
+    /// Other paths can be configured via [`set_desktop`](Self::set_desktop).
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirs
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSDesktopDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/desktopdirectory?language=objc
+    /// [`{FOLDERID_Desktop}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_desktop
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
     pub fn desktop(&self) -> Option<&Path> {
         self.media.desktop.as_deref()
@@ -176,6 +265,24 @@ impl UserDirs {
     ///
     /// As a media directory, this should typically be used as a default path
     /// for file selection dialogs, not for automatically accessed file paths.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `$XDG_DOCUMENTS_DIR` (`$HOME/Documents`) |
+    /// | [Darwin] (macOS) | [`NSDocumentDirectory`] (`$HOME/Documents`) |
+    /// | [Windows] | [`{FOLDERID_Documents}`] (`%USERPROFILE%\Documents`) |
+    ///
+    /// Other paths can be configured via [`set_documents`](Self::set_documents).
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirs
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSDocumentDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/documentdirectory?language=objc
+    /// [`{FOLDERID_Documents}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_documents
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
     pub fn documents(&self) -> Option<&Path> {
         self.media.documents.as_deref()
@@ -186,6 +293,24 @@ impl UserDirs {
     ///
     /// As a media directory, this should typically be used as a default path
     /// for file selection dialogs, not for automatically accessed file paths.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `$XDG_DOWNLOAD_DIR` (`$HOME/Downloads`) |
+    /// | [Darwin] (macOS) | [`NSDownloadsDirectory`] (`$HOME/Downloads`) |
+    /// | [Windows] | [`{FOLDERID_Downloads}`] (`%USERPROFILE%\Downloads`) |
+    ///
+    /// Other paths can be configured via [`set_downloads`](Self::set_downloads).
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirsExt
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSDownloadsDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/downloadsdirectory?language=objc
+    /// [`{FOLDERID_Downloads}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_downloads
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
     pub fn downloads(&self) -> Option<&Path> {
         self.media.downloads.as_deref()
@@ -196,6 +321,24 @@ impl UserDirs {
     ///
     /// As a media directory, this should typically be used as a default path
     /// for file selection dialogs, not for automatically accessed file paths.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `$XDG_MUSIC_DIR` (`$HOME/Music`) |
+    /// | [Darwin] (macOS) | [`NSMusicDirectory`] (`$HOME/Music`) |
+    /// | [Windows] | [`{FOLDERID_Music}`] (`%USERPROFILE%\Music`) |
+    ///
+    /// Other paths can be configured via [`set_music`](Self::set_music).
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirsExt
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSMusicDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/musicdirectory?language=objc
+    /// [`{FOLDERID_Music}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_music
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
     pub fn music(&self) -> Option<&Path> {
         self.media.music.as_deref()
@@ -206,6 +349,28 @@ impl UserDirs {
     ///
     /// As a media directory, this should typically be used as a default path
     /// for file selection dialogs, not for automatically accessed file paths.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `$XDG_PUBLICSHARE_DIR` (`$HOME/Public`) |
+    /// | [Darwin] (macOS) | [`NSSharedPublicDirectory`] (`$HOME/Public`) |
+    /// | [Windows] | [`{FOLDERID_Public}`] (`%PUBLIC%`)[^win] |
+    ///
+    /// Other paths can be configured via [`set_public_share`](Self::set_public_share).
+    ///
+    /// [^win]: On Windows, the standard `%PUBLIC%` is a separate user folder,
+    ///     unlike other OSes where it is a subdirectory of the user's home.
+    ///     This is only particularly meaningful on multi-user systems.
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirsExt
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSSharedPublicDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/sharedpublicdirectory?language=objc
+    /// [`{FOLDERID_Public}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_public
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
     pub fn public_share(&self) -> Option<&Path> {
         self.media.public_share.as_deref()
@@ -216,6 +381,24 @@ impl UserDirs {
     ///
     /// As a media directory, this should typically be used as a default path
     /// for file selection dialogs, not for automatically accessed file paths.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `$XDG_PICTURES_DIR` (`$HOME/Pictures`) |
+    /// | [Darwin] (macOS) | [`NSPicturesDirectory`] (`$HOME/Pictures`) |
+    /// | [Windows] | [`{FOLDERID_Pictures}`] (`%USERPROFILE%\Pictures`) |
+    ///
+    /// Other paths can be configured via [`set_pictures`](Self::set_pictures).
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirsExt
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSPicturesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/picturesdirectory?language=objc
+    /// [`{FOLDERID_Pictures}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_pictures
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
     pub fn pictures(&self) -> Option<&Path> {
         self.media.pictures.as_deref()
@@ -226,6 +409,24 @@ impl UserDirs {
     ///
     /// As a media directory, this should typically be used as a default path
     /// for file selection dialogs, not for automatically accessed file paths.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// When constructed using platform-specific conventions, the value is:
+    ///
+    /// | OS | Path |
+    /// | -- | ---- |
+    /// | [XDG] (Linux) | `$XDG_VIDEOS_DIR` (`$HOME/Videos`) |
+    /// | [Darwin] (macOS) | [`NSMoviesDirectory`] (`$HOME/Movies`) |
+    /// | [Windows] | [`{FOLDERID_Videos}`] (`%USERPROFILE%\Videos`) |
+    ///
+    /// Other paths can be configured via [`set_videos`](Self::set_videos).
+    ///
+    /// [XDG]: std::os::unix::fs::dirs::UserDirsExt
+    /// [Darwin]: std::os::darwin::fs::dirs::UserDirsExt
+    /// [Windows]: std::os::windows::fs::dirs::UserDirsExt
+    /// [`NSMoviesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/moviesdirectory?language=objc
+    /// [`{FOLDERID_Videos}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_videos
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
     pub fn videos(&self) -> Option<&Path> {
         self.media.videos.as_deref()
