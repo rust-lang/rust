@@ -576,6 +576,21 @@ fn diagnostic_format_flags() {
 }
 
 #[test]
+fn diagnostic_format_flags_after_escaped_unicode() {
+    let lit = "넣{thing:blah}";
+    let snippet = r#""\u{b123}{thing:blah}""#.into();
+    let mut parser = Parser::new(lit, None, Some(snippet), false, ParseMode::Diagnostic);
+    assert!(parser.is_source_literal);
+
+    let [Lit("넣"), NextArgument(arg)] = &*parser.by_ref().collect::<Vec<Piece<'static>>>() else {
+        panic!()
+    };
+
+    assert_eq!(arg.format.ty, "blah");
+    assert!(parser.errors.is_empty());
+}
+
+#[test]
 fn diagnostic_format_mod() {
     let lit = "{thing:+}";
     let mut parser = Parser::new(lit, None, None, false, ParseMode::Diagnostic);

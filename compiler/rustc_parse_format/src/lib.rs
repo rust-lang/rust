@@ -759,7 +759,7 @@ impl<'input> Parser<'input> {
             return spec;
         };
 
-        spec.ty = self.string(self.input_vec_index);
+        spec.ty = self.string(self.input_vec_index2pos(self.input_vec_index));
         spec.ty_span = {
             let end = self.input_vec_index2range(self.input_vec_index).start;
             Some(start..end)
