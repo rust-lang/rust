@@ -5,7 +5,7 @@ LL |     x
    |     ^ one type is more general than the other
    |
    = note: expected fn pointer `fn(fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
-              found fn pointer `for<'e> fn(for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'e>, Co<'p>))))`
+              found fn pointer `for<'e> fn(for<'p> fn(fn(fn(Contra<'e>, Co<'p>))))`
 
 error: lifetime may not live long enough
   --> $DIR/placeholder-outlives-existential.rs:28:5
