@@ -21,8 +21,9 @@ impl Step for CleanAll {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // Only runs as the default `./x clean` step; cannot be selected explicitly.
-        run.never()
+        // Normally this step is invoked implicitly via `./x clean`, but all
+        // steps are required to register at least one explicit path/alias.
+        run.alias("default")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
