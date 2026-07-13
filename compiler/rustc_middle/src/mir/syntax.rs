@@ -999,7 +999,7 @@ pub struct SwitchTargets {
     // causes problems because multiple different concrete iterator types would
     // be involved and we would need a boxed trait object, which requires an
     // allocation, which is expensive if done frequently.
-    pub(super) targets: SmallVec<[BasicBlock; 2]>,
+    pub(super) targets: SmallVec<[BasicBlock; 4]>,
 }
 
 /// Action to be taken when a stack unwind happens.
