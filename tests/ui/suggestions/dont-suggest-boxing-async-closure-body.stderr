@@ -18,7 +18,7 @@ error[E0308]: mismatched types
   --> $DIR/dont-suggest-boxing-async-closure-body.rs:11:9
    |
 LL |     bar(async move || {});
-   |     --- ^^^^^^^^^^^^^^^^ expected `Box<dyn FnOnce() -> _>`, found `{async closure}`
+   |     --- ^^^^^^^^^^^^^^^^ expected `Box<dyn FnOnce() -> _>`, found `{async closure@dont-suggest-boxing-async-closure-body.rs:11:9}`
    |     |
    |     arguments to this function are incorrect
    |

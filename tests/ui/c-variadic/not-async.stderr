@@ -28,7 +28,7 @@ LL |     async unsafe extern "C" fn method_cannot_be_async(x: isize, _: ...) {}
    |                                                                        |
    |                                                                        opaque type defined here
    |
-   = note: hidden type `{async fn body}` captures lifetime `'_`
+   = note: hidden type `{async fn body of S::method_cannot_be_async()}` captures lifetime `'_`
 
 error: aborting due to 4 previous errors
 

@@ -12,7 +12,7 @@ LL | async unsafe extern "C" fn multiple_named_lifetimes<'a, 'b>(_: u8, _: ...) 
    |                                                                           |
    |                                                                           opaque type defined here
    |
-   = note: hidden type `{async fn body}` captures lifetime `'_`
+   = note: hidden type `{async fn body of multiple_named_lifetimes<'a, 'b>()}` captures lifetime `'_`
 
 error: aborting due to 2 previous errors
 
