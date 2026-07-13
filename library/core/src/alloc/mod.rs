@@ -196,10 +196,14 @@ impl fmt::Display for AllocError {
 pub const unsafe trait Allocator {
     /// Attempts to allocate a block of memory.
     ///
-    /// On success, returns a [`NonNull<[u8]>`][NonNull] meeting the size and alignment guarantees of `layout`.
+    /// On success, returns a [`NonNull<[u8]>`][NonNull] meeting the size and alignment
+    /// guarantees of `layout`. The returned block may have a larger size than specified
+    /// by `layout.size()`, and may or may not have its contents initialized.
     ///
-    /// The returned block may have a larger size than specified by `layout.size()`, and may or may
-    /// not have its contents initialized.
+    /// It is recommended that overallocating as per the above is only performed if doing so
+    /// is cheap; there is no guarantee that the caller is able to take advantage of the
+    /// returned excess. Implementors are free to e.g. provide an alternate method to query
+    /// available excess if doing so is expensive and should be left to the caller.
     ///
     /// Note that the returned block of memory is considered [*currently allocated*]
     /// with this allocator (and equivalent allocators).
