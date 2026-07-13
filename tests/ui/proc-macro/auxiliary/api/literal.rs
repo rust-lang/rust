@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 use proc_macro::{EscapeError, Literal, ConversionErrorKind};
 

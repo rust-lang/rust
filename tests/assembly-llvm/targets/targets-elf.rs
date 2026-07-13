@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ revisions: aarch64_be_unknown_hermit
 //@ [aarch64_be_unknown_hermit] compile-flags: --target aarch64_be-unknown-hermit
 //@ [aarch64_be_unknown_hermit] needs-llvm-components: aarch64

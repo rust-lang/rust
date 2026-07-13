@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 // Make sure that, if an extremely long type name is named,
 // the item table has it line wrapped.
 // There should be some reasonably-placed `<wbr>` tags in the snapshot file.

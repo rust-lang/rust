@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ revisions: control-flow-2024-explicit-deny
 //@ check-fail
 //@ ignore-nvptx64 stack protector is not supported
