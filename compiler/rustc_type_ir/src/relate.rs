@@ -512,11 +512,14 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         }
 
         (ty::FnDef(a_def_id, a_args), ty::FnDef(b_def_id, b_args)) if a_def_id == b_def_id => {
-            if a_args.is_empty() {
+            if a_args.skip_binder().is_empty() {
                 Ok(a)
             } else {
+                let a_args = a_args.no_bound_vars().unwrap();
+                let b_args = b_args.no_bound_vars().unwrap();
                 relation.relate_ty_args(a, b, a_def_id.into(), a_args, b_args, |args| {
-                    Ty::new_fn_def(cx, a_def_id, args)
+                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                    Ty::new_fn_def(cx, a_def_id, ty::Binder::dummy(args))
                 })
             }
         }

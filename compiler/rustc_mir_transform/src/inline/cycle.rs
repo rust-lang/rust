@@ -223,5 +223,5 @@ pub(crate) fn mir_inliner_callees<'tcx>(
             calls.insert(call);
         }
     }
-    tcx.arena.alloc_from_iter(calls.iter().copied())
+    tcx.arena.alloc_from_iter(calls.iter().map(|(did, args)| (*did, args.no_bound_vars().unwrap())))
 }
