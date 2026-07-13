@@ -15,7 +15,7 @@ extern crate rustc_interface;
 #[macro_use]
 extern crate rustc_public;
 
-use rustc_public::CrateDef;
+use rustc_public::{CrateDef, CrateDefType};
 use std::collections::HashSet;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -26,8 +26,30 @@ const CRATE_NAME: &str = "trait_test";
 fn test_traits() -> ControlFlow<()> {
     let local_crate = rustc_public::local_crate();
     let local_traits = local_crate.trait_decls();
-    assert_eq!(local_traits.len(), 1, "Expected `Max` trait, but found {:?}", local_traits);
-    assert_eq!(&local_traits[0].trimmed_name(), "Max");
+    assert_eq!(
+        local_traits.len(),
+        2,
+        "Expected `Max` and `TraitWithAssoc` traits, but found {:?}", local_traits,
+    );
+
+    let trait_with_assoc = local_traits
+        .iter()
+        .find(|t| t.trimmed_name() == "TraitWithAssoc")
+        .expect("Failed to find TraitWithAssoc");
+    let trait_items = trait_with_assoc.associated_items();
+    assert_eq!(trait_items.len(), 3);
+    let has_type = trait_items
+        .iter()
+        .any(|item| matches!(&item.kind, rustc_public::ty::AssocKind::Type { .. }));
+    let has_const = trait_items
+        .iter()
+        .any(|item| matches!(&item.kind, rustc_public::ty::AssocKind::Const { .. }));
+    let has_fn = trait_items
+        .iter()
+        .any(|item| matches!(&item.kind, rustc_public::ty::AssocKind::Fn { .. }));
+    assert!(has_type);
+    assert!(has_const);
+    assert!(has_fn);
 
     let local_impls = local_crate.trait_impls();
     let impl_names =
@@ -41,6 +63,37 @@ fn test_traits() -> ControlFlow<()> {
     assert_impl(&impl_names, "<Positive as TryFrom<u64>>");
     assert_impl(&impl_names, "<u64 as Max>");
     assert_impl(&impl_names, "<impl From<Positive> for u64>");
+    assert_impl(&impl_names, "<u64 as TraitWithAssoc>");
+
+    let impl_with_assoc = local_impls
+        .iter()
+        .find(|t| t.trimmed_name() == "<u64 as TraitWithAssoc>")
+        .expect("Failed to find <u64 as TraitWithAssoc>");
+    let impl_items = impl_with_assoc.associated_items();
+    assert_eq!(impl_items.len(), 3);
+    let has_type = impl_items
+        .iter()
+        .any(|item| matches!(&item.kind, rustc_public::ty::AssocKind::Type { .. }));
+    let has_const = impl_items
+        .iter()
+        .any(|item| matches!(&item.kind, rustc_public::ty::AssocKind::Const { .. }));
+    let has_fn = impl_items
+        .iter()
+        .any(|item| matches!(&item.kind, rustc_public::ty::AssocKind::Fn { .. }));
+    assert!(has_type);
+    assert!(has_const);
+    assert!(has_fn);
+
+    // Verify ImplDef::ty() returns the self type (u64)
+    let self_ty = impl_with_assoc.ty();
+    assert!(
+        matches!(
+            self_ty.kind(),
+            rustc_public::ty::TyKind::RigidTy(
+                rustc_public::ty::RigidTy::Uint(rustc_public::ty::UintTy::U64)
+            ),
+        ),
+    );
 
     let all_traits = rustc_public::all_trait_decls();
     assert!(all_traits.len() > local_traits.len());
@@ -113,6 +166,20 @@ fn generate_input(path: &str) -> std::io::Result<()> {
 
         impl Max for Positive {{
             fn is_max(&self) -> bool {{ self.0.is_max() }}
+        }}
+
+        pub trait TraitWithAssoc {{
+            type AssocType;
+            const ASSOC_CONST: i32;
+            fn assoc_fn() -> Self::AssocType;
+        }}
+
+        impl TraitWithAssoc for u64 {{
+            type AssocType = String;
+            const ASSOC_CONST: i32 = 42;
+            fn assoc_fn() -> Self::AssocType {{
+                "hello".to_string()
+            }}
         }}
 
     "#
