@@ -137,13 +137,19 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: LinkedList::into_iter
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     list: LinkedList<T, A>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Clone, A: AllocatorClone> Clone for IntoIter<T, A> {
+    fn clone(&self) -> Self {
+        Self { list: self.list.clone() }
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -2152,8 +2158,9 @@ impl<T: Ord, A: Allocator> Ord for LinkedList<T, A> {
     }
 }
 
+// `AllocatorClone` bound is necessary due to the `split_off` in `clone_from`.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for LinkedList<T, A> {
+impl<T: Clone, A: AllocatorClone> Clone for LinkedList<T, A> {
     fn clone(&self) -> Self {
         let mut list = Self::new_in(self.alloc.clone());
         list.extend(self.iter().cloned());
