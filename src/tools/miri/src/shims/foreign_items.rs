@@ -249,7 +249,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
-        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -258,7 +257,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // FIXME: avoid allocating memory
         let dest = this.force_allocation(dest)?;
 
-        let res = match link_name.as_str() {
+        let handled = match link_name.as_str() {
             // LLVM intrinsics
             "llvm.prefetch.p0" => {
                 let [p, rw, loc, ty] = this.check_shim_sig_unadjusted(link_name, args)?;
@@ -285,7 +284,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     throw_unsup_format!("unsupported `llvm.prefetch` type argument: {}", ty);
                 }
 
-                EmulateItemResult::NeedsReturn
+                true
             }
             // Used to implement the x86 `_mm{,256,512}_popcnt_epi{8,16,32,64}` and wasm
             // `{i,u}8x16_popcnt` functions.
@@ -311,7 +310,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     )?;
                 }
 
-                EmulateItemResult::NeedsReturn
+                true
             }
 
             // Target-specific shims
@@ -331,26 +330,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 shims::loongarch::EvalContextExt::emulate_loongarch_intrinsic(
                     this, link_name, args, &dest,
                 )?,
-            _ => EmulateItemResult::NotSupported,
+            _ => false,
         };
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
-        match res {
-            EmulateItemResult::NeedsReturn => {
-                trace!("{:?}", this.dump_place(&dest.clone().into()));
-                this.return_to_block(ret)
-            }
-            EmulateItemResult::NeedsUnwind => {
-                // Jump to the unwind block to begin unwinding.
-                this.unwind_to_block(unwind)
-            }
-            EmulateItemResult::AlreadyJumped => interp_ok(()),
-            EmulateItemResult::NotSupported => {
-                throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
-                    "can't call LLVM intrinsic `{link_name}` on architecture `{arch}`",
-                    arch = this.tcx.sess.target.arch,
-                )));
-            }
+        if handled {
+            trace!("{:?}", this.dump_place(&dest.clone().into()));
+            this.return_to_block(ret)
+        } else {
+            throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
+                "can't call LLVM intrinsic `{link_name}` on architecture `{arch}`",
+                arch = this.tcx.sess.target.arch,
+            )));
         }
     }
 }

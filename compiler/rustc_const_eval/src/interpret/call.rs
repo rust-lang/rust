@@ -660,7 +660,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     &Self::copy_fn_args(args),
                     destination,
                     target,
-                    unwind,
                 )
             }
             ty::InstanceKind::Shim(ty::ShimKind::VTable(..))

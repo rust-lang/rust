@@ -111,7 +111,6 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         _args: &[interpret::OpTy<'tcx, Self::Provenance>],
         _destination: &interpret::PlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
-        _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx> {
         unimplemented!()
     }

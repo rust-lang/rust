@@ -751,7 +751,6 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         _args: &[OpTy<'tcx>],
         _dest: &PlaceTy<'tcx, Self::Provenance>,
         _target: Option<mir::BasicBlock>,
-        _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         let intrinsic_name = ecx.tcx.codegen_fn_attrs(instance.def_id()).symbol_name.unwrap();
 

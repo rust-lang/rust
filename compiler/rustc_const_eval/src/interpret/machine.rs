@@ -255,7 +255,6 @@ pub trait Machine<'tcx>: Sized {
         args: &[OpTy<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
-        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
 
     /// Check whether the given function may be executed on the current machine, in terms of the

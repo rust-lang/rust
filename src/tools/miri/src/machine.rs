@@ -1307,9 +1307,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
-        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, ()> {
-        ecx.call_llvm_intrinsic(instance, args, dest, ret, unwind)
+        ecx.call_llvm_intrinsic(instance, args, dest, ret)
     }
 
     #[inline(always)]
