@@ -897,6 +897,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None => Ident::new(sym::integer(index), self.lower_span(f.span)),
             },
             vis_span: self.lower_span(f.vis.span),
+            mut_restriction: self.lower_mut_restriction(&f.mut_restriction),
             default: f
                 .default
                 .as_ref()
@@ -1792,11 +1793,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_impl_restriction(
-        &mut self,
-        r: &ImplRestriction,
-    ) -> &'hir hir::ImplRestriction<'hir> {
-        let kind = match &r.kind {
+    fn lower_restriction_kind(&mut self, kind: &RestrictionKind) -> hir::RestrictionKind<'hir> {
+        match kind {
             RestrictionKind::Unrestricted => hir::RestrictionKind::Unrestricted,
             RestrictionKind::Restricted { path, id, shorthand: _ } => {
                 let res = self.get_partial_res(*id);
@@ -1820,8 +1818,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::RestrictionKind::Unrestricted
                 }
             }
-        };
+        }
+    }
+
+    pub(super) fn lower_impl_restriction(
+        &mut self,
+        r: &ImplRestriction,
+    ) -> &'hir hir::ImplRestriction<'hir> {
+        let kind = self.lower_restriction_kind(&r.kind);
         self.arena.alloc(hir::ImplRestriction { kind, span: self.lower_span(r.span) })
+    }
+
+    pub(super) fn lower_mut_restriction(
+        &mut self,
+        r: &MutRestriction,
+    ) -> &'hir hir::MutRestriction<'hir> {
+        let kind = self.lower_restriction_kind(&r.kind);
+        self.arena.alloc(hir::MutRestriction { kind, span: self.lower_span(r.span) })
     }
 
     /// Return the pair of the lowered `generics` as `hir::Generics` and the evaluation of `f` with

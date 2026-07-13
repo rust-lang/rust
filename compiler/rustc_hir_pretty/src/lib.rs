@@ -901,6 +901,7 @@ impl<'a> State<'a> {
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
                         s.print_attrs(s.attrs(field.hir_id));
+                        s.print_mut_restriction(field.mut_restriction);
                         s.print_type(field.ty);
                     });
                     self.pclose();
@@ -922,6 +923,7 @@ impl<'a> State<'a> {
                     self.hardbreak_if_not_bol();
                     self.maybe_print_comment(field.span.lo());
                     self.print_attrs(self.attrs(field.hir_id));
+                    self.print_mut_restriction(field.mut_restriction);
                     self.print_ident(field.ident);
                     self.word_nbsp(":");
                     self.print_type(field.ty);
@@ -2655,16 +2657,28 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_impl_restriction(&mut self, r: &hir::ImplRestriction<'_>) {
-        match r.kind {
+    fn print_restriction<S: Into<std::borrow::Cow<'static, str>>>(
+        &mut self,
+        k: &hir::RestrictionKind<'_>,
+        prefix: S,
+    ) {
+        match k {
             hir::RestrictionKind::Unrestricted => {}
             hir::RestrictionKind::Restricted(path) => {
-                self.word("impl(");
-                self.word_nbsp("in");
+                self.word(prefix.into());
+                self.word_nbsp("(in");
                 self.print_path(path, false);
-                self.word(")");
+                self.word_nbsp(")");
             }
         }
+    }
+
+    fn print_mut_restriction(&mut self, r: &hir::MutRestriction<'_>) {
+        self.print_restriction(&r.kind, "mut");
+    }
+
+    fn print_impl_restriction(&mut self, r: &hir::ImplRestriction<'_>) {
+        self.print_restriction(&r.kind, "impl");
     }
 }
 

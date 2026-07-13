@@ -18,7 +18,7 @@ use rustc_target::callconv::FnAbi;
 use tracing::debug;
 
 use super::error::*;
-use crate::errors::{LongRunning, LongRunningWarn};
+use crate::diagnostics::{LongRunning, LongRunningWarn};
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, RetagMode,

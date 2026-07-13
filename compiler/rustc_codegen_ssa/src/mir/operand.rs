@@ -227,10 +227,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             BackendRepr::ScalarPair {
                 a: a @ abi::Scalar::Initialized { .. },
                 b: b @ abi::Scalar::Initialized { .. },
-                b_offset,
+                b_offset: local_b_offset,
             } => {
                 let (a_size, b_size) = (a.size(bx), b.size(bx));
-                assert!(b_offset.bytes() > 0);
+                let alloc_b_offset = offset + local_b_offset;
+                assert!(alloc_b_offset.bytes() > 0);
                 let a_val = read_scalar(
                     offset,
                     a_size,
@@ -238,7 +239,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     bx.scalar_pair_element_backend_type(layout, 0, true),
                 );
                 let b_val = read_scalar(
-                    b_offset,
+                    alloc_b_offset,
                     b_size,
                     b,
                     bx.scalar_pair_element_backend_type(layout, 1, true),

@@ -17,7 +17,7 @@ use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, Spanned, kw, respan, sym
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, UsePreAttrPos};
-use crate::errors::{
+use crate::diagnostics::{
     self, AmbiguousRangePattern, AtDotDotInStructPattern, AtInStructPattern,
     DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed, DotDotDotRestPattern,
     EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt, ExpectedCommaAfterPatternField,
@@ -1474,7 +1474,7 @@ impl<'a> Parser<'a> {
 
         if self.isnt_pattern_start() {
             let descr = super::token_descr(&self.token);
-            self.dcx().emit_err(errors::BoxNotPat {
+            self.dcx().emit_err(diagnostics::BoxNotPat {
                 span: self.token.span,
                 kw: box_span,
                 lo: box_span.shrink_to_lo(),

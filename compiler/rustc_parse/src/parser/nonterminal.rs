@@ -6,7 +6,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::{Ident, kw};
 
-use crate::errors::UnexpectedNonterminal;
+use crate::diagnostics::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use crate::parser::{
     AllowConstBlockItems, FollowedByType, ForceCollect, ParseNtResult, Parser, PathStyle,
@@ -110,7 +110,7 @@ impl<'a> Parser<'a> {
                 _ => token.is_keyword(kw::If),
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
-                token.kind.close_delim().is_none()
+                token.kind != token::Eof && token.kind.close_delim().is_none()
             }
         }
     }
