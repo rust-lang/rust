@@ -637,7 +637,7 @@ impl MemoryCellClocks {
 
     /// Detect races for non-atomic read operations at the current memory cell
     /// returns true if a data-race is detected.
-    fn read_race_detect(
+    fn non_atomic_read_detect(
         &mut self,
         thread_clocks: &mut ThreadClockSet,
         index: VectorIdx,
@@ -664,7 +664,7 @@ impl MemoryCellClocks {
 
     /// Detect races for non-atomic write operations at the current memory cell
     /// returns true if a data-race is detected.
-    fn write_race_detect(
+    fn non_atomic_write_detect(
         &mut self,
         thread_clocks: &mut ThreadClockSet,
         index: VectorIdx,
@@ -1233,9 +1233,12 @@ impl VClockAlloc {
         for (mem_clocks_range, mem_clocks) in
             alloc_ranges.iter_mut(access_range.start, access_range.size)
         {
-            if let Err(DataRace) =
-                mem_clocks.read_race_detect(&mut thread_clocks, index, read_type, current_span)
-            {
+            if let Err(DataRace) = mem_clocks.non_atomic_read_detect(
+                &mut thread_clocks,
+                index,
+                read_type,
+                current_span,
+            ) {
                 drop(thread_clocks);
                 // Report data-race.
                 return Self::report_data_race(
@@ -1274,9 +1277,12 @@ impl VClockAlloc {
         for (mem_clocks_range, mem_clocks) in
             self.alloc_ranges.borrow_mut().iter_mut(access_range.start, access_range.size)
         {
-            if let Err(DataRace) =
-                mem_clocks.write_race_detect(&mut thread_clocks, index, write_type, current_span)
-            {
+            if let Err(DataRace) = mem_clocks.non_atomic_write_detect(
+                &mut thread_clocks,
+                index,
+                write_type,
+                current_span,
+            ) {
                 drop(thread_clocks);
                 // Report data-race
                 return Self::report_data_race(
