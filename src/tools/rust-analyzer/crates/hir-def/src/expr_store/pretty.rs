@@ -56,7 +56,7 @@ pub enum LineFormat {
 
 fn item_name<Id, Loc>(db: &dyn SourceDatabase, id: Id, default: &str) -> String
 where
-    Id: Lookup<Database = dyn SourceDatabase, Data = Loc>,
+    Id: Lookup<Data = Loc>,
     Loc: HasSource,
     Loc::Value: ast::HasName,
 {

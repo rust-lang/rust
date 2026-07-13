@@ -1479,10 +1479,7 @@ impl HasResolver for MacroRulesId {
 
 fn lookup_resolver(
     db: &dyn SourceDatabase,
-    lookup: impl Lookup<
-        Database = dyn SourceDatabase,
-        Data = impl AstIdLoc<Container = impl HasResolver>,
-    >,
+    lookup: impl Lookup<Data = impl AstIdLoc<Container = impl HasResolver>>,
 ) -> Resolver<'_> {
     lookup.lookup(db).container().resolver(db)
 }

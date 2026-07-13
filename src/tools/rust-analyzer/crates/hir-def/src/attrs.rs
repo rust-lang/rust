@@ -52,7 +52,7 @@ pub use self::docs::{Docs, IsInnerDoc};
 #[inline]
 fn attrs_from_ast_id_loc<N: AstNode + Into<ast::AnyHasAttrs>>(
     db: &dyn SourceDatabase,
-    lookup: impl Lookup<Database = dyn SourceDatabase, Data = impl AstIdLoc<Ast = N> + HasModule>,
+    lookup: impl Lookup<Data = impl AstIdLoc<Ast = N> + HasModule>,
 ) -> (InFile<ast::AnyHasAttrs>, Crate) {
     let loc = lookup.lookup(db);
     let source = loc.source(db);

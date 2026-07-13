@@ -83,19 +83,17 @@ const TOKEN_LIMIT: usize = 2_097_152;
 
 #[macro_export]
 macro_rules! impl_intern_lookup {
-    ($db:ident, $id:ident, $loc:ident) => {
+    ($id:ident, $loc:ident) => {
         impl $crate::Intern for $loc {
-            type Database = dyn $db;
             type ID = $id;
-            fn intern(self, db: &Self::Database) -> Self::ID {
+            fn intern(self, db: &dyn ::base_db::SourceDatabase) -> Self::ID {
                 $id::new(db, self)
             }
         }
 
         impl $crate::Lookup for $id {
-            type Database = dyn $db;
             type Data = $loc;
-            fn lookup<'db>(&self, db: &'db Self::Database) -> &'db Self::Data {
+            fn lookup<'db>(&self, db: &'db dyn ::base_db::SourceDatabase) -> &'db Self::Data {
                 self.loc(db)
             }
         }
@@ -104,18 +102,16 @@ macro_rules! impl_intern_lookup {
 
 // ideally these would be defined in base-db, but the orphan rule doesn't let us
 pub trait Intern {
-    type Database: ?Sized;
     type ID;
-    fn intern(self, db: &Self::Database) -> Self::ID;
+    fn intern(self, db: &dyn SourceDatabase) -> Self::ID;
 }
 
 pub trait Lookup {
-    type Database: ?Sized;
     type Data;
-    fn lookup<'db>(&self, db: &'db Self::Database) -> &'db Self::Data;
+    fn lookup<'db>(&self, db: &'db dyn SourceDatabase) -> &'db Self::Data;
 }
 
-impl_intern_lookup!(SourceDatabase, MacroCallId, MacroCallLoc);
+impl_intern_lookup!(MacroCallId, MacroCallLoc);
 
 pub type ExpandResult<T> = ValueResult<T, ExpandError>;
 

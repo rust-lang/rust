@@ -283,7 +283,7 @@ fn insert_item_loc<ID, N, Data>(
     id: ID,
     key: Key<N, ID>,
 ) where
-    ID: Lookup<Database = dyn SourceDatabase, Data = Data> + 'static,
+    ID: Lookup<Data = Data> + 'static,
     Data: AstIdLoc<Ast = N>,
     N: AstIdNode + 'static,
 {
