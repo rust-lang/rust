@@ -94,6 +94,9 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
 
     fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
         // Verify the size expectation for scalars.
+        // Note that there is no alignment requirement, except for the
+        // implicit requirement that `align <= scalar_size` because otherwise
+        // the size check would fail due to the padding.
         let size = layout.backend_repr.scalar_size(cx);
         if let Some(size) = size {
             assert_eq!(
