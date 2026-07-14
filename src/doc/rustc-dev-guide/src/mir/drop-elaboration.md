@@ -150,7 +150,7 @@ Remember, variables whose type has a custom `Drop` impl do not allow `Open`
 drops because their fields cannot be moved from.
 
 This is accomplished by recursively categorizing each field as `Dead`,
-`Static`, `Conditional` or `Open`.
+`Static`, `Conditional`, or `Open`.
 Fields whose type does not have drop glue
 are automatically `Dead` and need not be considered during the recursion.
 When we reach a field whose kind is not `Open`, we handle it as we did above.
