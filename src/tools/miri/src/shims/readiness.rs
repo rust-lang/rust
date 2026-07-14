@@ -328,21 +328,6 @@ impl ReadinessWatcher {
 
         interp_ok(ready_interests)
     }
-
-    /// Destroy the watcher instance.
-    ///
-    /// This also deregisters all interests of the watcher
-    /// from the global readiness interest table.
-    pub fn destroy<'tcx>(self, ecx: &mut MiriInterpCx<'tcx>) {
-        // If we were interested in some FDs, we can remove that now.
-        let mut ids = self.interests.borrow().keys().map(|(id, _num)| *id).collect::<Vec<_>>();
-        // Because the ids come out of the map sorted,
-        // deduping only keeps all unique entries.
-        ids.dedup();
-        for id in ids {
-            ecx.machine.readiness_interests.remove(id, &self);
-        }
-    }
 }
 
 impl VisitProvenance for ReadinessWatcher {
@@ -360,7 +345,7 @@ pub struct ReadinessInterestTable {
     /// interested in that FD. We also store the [`ReadinessWatcher`]s ID
     /// separately so we can access it without calling `upgrade`. The list
     /// is sorted by that id. We use an ID so that we can identify the watcher even after it has
-    /// been moved, e.g. in [`ReadinessWatcher::destroy`].
+    /// been dropped.
     interests: BTreeMap<FdId, Vec<(ReadinessWatcherId, Weak<ReadinessWatcher>)>>,
 }
 
@@ -408,11 +393,9 @@ impl ReadinessInterestTable {
         fd_id: FdId,
     ) -> Option<impl Iterator<Item = Rc<ReadinessWatcher>>> {
         let watchers = self.interests.get(&fd_id)?;
-        Some(watchers.iter().map(|(_id, watcher)| {
-            watcher
-                .upgrade()
-                .expect("someone forgot to remove the garbage from `machine.readiness_interests`")
-        }))
+        // Ignore weak refs that cannot be upgraded -- those correspond to closed
+        // file descriptions and will be cleaned up by the GC eventually.
+        Some(watchers.iter().filter_map(|(_id, watcher)| watcher.upgrade()))
     }
 
     /// Remove all watchers for the file description with id `fd_id`.
@@ -433,6 +416,13 @@ impl ReadinessInterestTable {
             // Remove the ready interests for this file description.
             watcher.ready.borrow_mut().retain(|(id, _)| id != &fd_id);
         }
+    }
+
+    /// Run garbage collector to remove all dropped watchers from the interests map.
+    pub fn run_gc(&mut self) {
+        self.interests
+            .values_mut()
+            .for_each(|watchers| watchers.retain(|(_id, watcher)| watcher.strong_count() > 0));
     }
 }
 

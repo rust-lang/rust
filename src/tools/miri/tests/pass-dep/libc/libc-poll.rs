@@ -19,6 +19,7 @@ fn main() {
     test_poll_negative_fd_interest();
     test_poll_invalid_non_negative_fd_interest();
     test_poll_zero_timeout();
+    test_readiness_event_after_poll_blocked();
 }
 
 /// Test that the readiness written into the `revents` field on an interest
@@ -158,4 +159,36 @@ fn test_poll_zero_timeout() {
     // The `poll` should not block; since CI can be slow
     // we just assert that it didn't block for more than 100ms.
     assert!(before.elapsed() < Duration::from_millis(100))
+}
+
+/// Before <https://github.com/rust-lang/miri/pull/5172> Miri would ICE when
+/// any file description readiness is updated after a `poll` invocation has
+/// blocked.
+fn test_readiness_event_after_poll_blocked() {
+    let mut fds = [-1, -1];
+    unsafe { errno_check(libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr())) };
+
+    let t1 = thread::spawn(move || {
+        // Yield to main thread to ensure it's blocked on `poll` before
+        // we write into the socket.
+        thread::sleep(Duration::from_millis(10));
+
+        unsafe {
+            errno_result(libc::write(fds[1], TEST_BYTES.as_ptr().cast(), TEST_BYTES.len())).unwrap()
+        }
+    });
+
+    let mut interests = [libc::pollfd { fd: fds[0], events: libc::POLLIN, revents: 1 }];
+    let ready = unsafe {
+        errno_result(libc::poll(interests.as_mut_ptr(), interests.len() as libc::nfds_t, -1))
+            .unwrap()
+    };
+    assert_eq!(ready, 1);
+
+    // Update the file description readiness of `fds[0]` and `fds[1]`. This is used to ICE.
+    unsafe {
+        errno_result(libc::write(fds[0], TEST_BYTES.as_ptr().cast(), TEST_BYTES.len())).unwrap()
+    };
+
+    t1.join().unwrap();
 }

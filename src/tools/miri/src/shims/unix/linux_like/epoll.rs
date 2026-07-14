@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use rustc_abi::FieldIdx;
 
-use crate::shims::files::{FdId, FileDescription, FileDescriptionRef};
+use crate::shims::files::{FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::*;
 
@@ -32,18 +32,6 @@ impl FileDescription for Epoll {
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         // On Linux, epoll is an "anonymous inode" reported as S_IFREG.
         interp_ok(Either::Right("S_IFREG"))
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        let watcher = Rc::into_inner(self.watcher)
-            .expect("Epoll instance should contain the only strong reference to the watcher");
-        watcher.destroy(ecx);
-        interp_ok(Ok(()))
     }
 
     fn as_unix<'tcx>(

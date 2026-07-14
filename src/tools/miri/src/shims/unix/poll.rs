@@ -102,15 +102,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Some interests are already fulfilled or a zero timeout was provided.
             // We thus don't need to block the thread and can just return here.
 
-            let count = this.write_ready_events(watcher.clone(), interests)?;
+            let count = this.write_ready_events(watcher, interests)?;
             // The Linux implementation also counts invalid interests as fulfilled.
             let total = count.strict_add(invalid_interests);
-
-            // FIXME: Until <https://github.com/rust-lang/miri/issues/5152> is fixed,
-            // we destroy the watcher here instead of in `write_ready_events` because
-            // here we know that we only have a single strong reference.
-            let inner = Rc::into_inner(watcher).unwrap();
-            inner.destroy(this);
 
             return this.write_scalar(Scalar::from_u32(total), dest);
         }
@@ -138,8 +132,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     dest: MPlaceTy<'tcx>,
                 } |this, reason: UnblockKind| {
                     if let UnblockKind::TimedOut = reason {
-                        // FIXME(miri#5152): we are not destroying the watcher.
-                        return this.write_null(&dest);
+                        return this.write_scalar(Scalar::from_u32(0), &dest);
                     }
 
                     let count = this.write_ready_events(watcher, interests)?;
@@ -177,10 +170,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let poll_events = this.readiness_to_poll_bitflag(ready.active());
             this.write_scalar(Scalar::from_u16(poll_events), &interest.revents_place)?;
         }
-
-        // FIXME: At this point the watcher should be destroyed. However, because
-        // multiple strong references still exist at this point, that is impossible.
-        // See <https://github.com/rust-lang/miri/issues/5152>
 
         interp_ok(fulfilled_interests)
     }
