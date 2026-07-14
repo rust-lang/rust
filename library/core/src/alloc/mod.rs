@@ -547,6 +547,7 @@ pub const unsafe trait Allocator {
 /// [`std::thread::Thread`]: ../../std/thread/struct.Thread.html
 /// [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
 #[unstable(feature = "allocator_api", issue = "32838")]
+#[expect(multiple_supertrait_upcastable)]
 pub unsafe trait GlobalAllocator: Allocator + Sync + 'static {}
 
 /// Guarantees that we can emit `noalias` attributes for a certain allocator. To enable this,
