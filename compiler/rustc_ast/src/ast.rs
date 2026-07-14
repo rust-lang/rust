@@ -3458,10 +3458,10 @@ pub struct AttrItem {
     pub args: AttrArgs,
 }
 
-/// Synthetic attributes are inserted by the compiler and cannot be written in source code. They
-/// receive special treatment in various ways because they must not affect observable behaviour:
-/// they are invisible to proc macros, cannot be pretty-printed, and are unable to re-enter the
-/// parser.
+/// Synthetic attributes are inserted by the compiler. They cannot be written in source code, and
+/// so cannot be pretty-printed by the AST pretty printer (because its output should be valid Rust
+/// code). They receive special treatment because they must not affect observable language
+/// behaviour: they are invisible to proc macros and are unable to re-enter the parser.
 #[derive(Clone, Encodable, Decodable, Debug, StableHash)]
 pub enum SyntheticAttr {
     /// This synthetic attribute is added by the compiler when a `cfg` attribute is expanded so that

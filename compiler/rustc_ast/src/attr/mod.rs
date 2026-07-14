@@ -66,10 +66,10 @@ impl Attribute {
         }
     }
 
-    pub fn convert_normal_to_synthetic(&mut self, synthetic_attr: SyntheticAttr) {
+    pub fn convert_normal_to_synthetic(self, synthetic_attr: SyntheticAttr) -> Attribute {
         match self.kind {
             AttrKind::Normal(..) => {
-                self.kind = AttrKind::Synthetic(Box::new(synthetic_attr));
+                Attribute { kind: AttrKind::Synthetic(Box::new(synthetic_attr)), ..self }
             }
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
         }
@@ -142,8 +142,7 @@ impl AttributeExt for Attribute {
                         .zip(name)
                         .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
             }
-            AttrKind::Synthetic(..) => false,
-            AttrKind::DocComment(..) => false,
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
         }
     }
 
@@ -169,8 +168,7 @@ impl AttributeExt for Attribute {
     fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
-            AttrKind::Synthetic(..) => None,
-            AttrKind::DocComment(..) => None,
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
         }
     }
 
@@ -281,8 +279,7 @@ impl Attribute {
     pub fn meta(&self) -> Option<MetaItem> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta(self.span),
-            AttrKind::Synthetic(..) => None,
-            AttrKind::DocComment(..) => None,
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
         }
     }
 
@@ -302,6 +299,7 @@ impl Attribute {
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
                 .to_attr_token_stream()
                 .to_token_trees(),
+            // Empty tokens here ensures synthetic attributes are invisible to proc macros.
             AttrKind::Synthetic(..) => vec![],
             AttrKind::DocComment(comment_kind, data) => vec![TokenTree::token_alone(
                 token::DocComment(comment_kind, self.style, data),

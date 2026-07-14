@@ -250,8 +250,7 @@ impl<'a> StripUnconfigured<'a> {
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         // A synthetic trace attribute left in AST in place of the original `cfg_attr` attribute.
         // It can later be used by lints or other diagnostics.
-        let mut trace_attr = cfg_attr.clone();
-        trace_attr.convert_normal_to_synthetic(SyntheticAttr::CfgAttrTrace);
+        let trace_attr = cfg_attr.clone().convert_normal_to_synthetic(SyntheticAttr::CfgAttrTrace);
 
         let Some((cfg_predicate, expanded_attrs)) = rustc_attr_parsing::parse_cfg_attr(
             cfg_attr,

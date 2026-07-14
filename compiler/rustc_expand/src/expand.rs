@@ -2297,8 +2297,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         if res.as_bool() {
             // A synthetic trace attribute left in AST in place of the original `cfg` attribute.
             // It can later be used by lints or other diagnostics.
-            let mut trace_attr = attr;
-            trace_attr.convert_normal_to_synthetic(SyntheticAttr::CfgTrace(cfg));
+            let trace_attr = attr.convert_normal_to_synthetic(SyntheticAttr::CfgTrace(cfg));
             node.visit_attrs(|attrs| attrs.insert(pos, trace_attr));
         }
 
