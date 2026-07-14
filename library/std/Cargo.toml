@@ -62,11 +62,6 @@ path = "../windows_link"
 rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
 rand_xorshift = "0.4.0"
 
-# [target.'cfg(unix)'.dependencies]
-# shlex = { version = "1.3.0", default-features = false, features = [
-#     "rustc-dep-of-std", # allowlisted but missing rustc-dep-of-std feature
-# ] }
-
 [target.'cfg(any(all(target_family = "wasm", not(any(unix, target_os = "wasi"))), target_os = "xous", target_os = "vexos", all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.2.10", features = ['rustc-dep-of-std'] }
 
