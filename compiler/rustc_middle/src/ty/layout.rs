@@ -1207,6 +1207,14 @@ where
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().complex())
     }
 
+    fn is_complex_float(this: TyAndLayout<'tcx>) -> bool {
+        matches!(
+            this.ty.kind(),
+            ty::Adt(def, args)
+                if def.repr().complex() && args.type_at(0).is_floating_point()
+        )
+    }
+
     fn is_scalable_vector(this: TyAndLayout<'tcx>) -> bool {
         this.ty.is_scalable_vector()
     }
