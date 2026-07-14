@@ -1084,9 +1084,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                     load
                 },
             )
-        } else if let abi::BackendRepr::ScalarPair(ref a, ref b) = place.layout.backend_repr {
-            let b_offset = a.size(self).align_to(b.align(self).abi);
-
+        } else if let abi::BackendRepr::ScalarPair { ref a, ref b, b_offset } =
+            place.layout.backend_repr
+        {
             let mut load = |i, scalar: &abi::Scalar, align| {
                 let ptr = if i == 0 {
                     place.val.llval
@@ -1175,7 +1175,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // NOTE: libgccjit does not support specifying the alignment on the assignment, so we cast
         // to type so it gets the proper alignment.
         let destination_type = destination.to_rvalue().get_type().unqualified();
-        let align = if flags.contains(MemFlags::UNALIGNED) { 1 } else { align.bytes() };
+        let align = align.bytes();
         let mut modified_destination_type = destination_type.get_aligned(align);
         if flags.contains(MemFlags::VOLATILE) {
             modified_destination_type = modified_destination_type.make_volatile();

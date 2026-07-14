@@ -376,16 +376,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     load
                 }
             }
-            sym::volatile_store => {
-                let dst = args[0].deref(self.cx());
-                args[1].val.volatile_store(self, dst);
-                return IntrinsicResult::WroteIntoPlace;
-            }
-            sym::unaligned_volatile_store => {
-                let dst = args[0].deref(self.cx());
-                args[1].val.unaligned_volatile_store(self, dst);
-                return IntrinsicResult::WroteIntoPlace;
-            }
             sym::prefetch_read_data
             | sym::prefetch_write_data
             | sym::prefetch_read_instruction
@@ -484,7 +474,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 let tp_ty = fn_args.type_at(0);
                 let layout = self.layout_of(tp_ty).layout;
                 let _use_integer_compare = match layout.backend_repr() {
-                    Scalar(_) | ScalarPair(_, _) => true,
+                    Scalar(_) | ScalarPair { a: _, b: _, b_offset: _ } => true,
                     SimdVector { .. } | SimdScalableVector { .. } => false,
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
