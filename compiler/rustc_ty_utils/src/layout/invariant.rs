@@ -61,8 +61,15 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         })
     }
 
-    fn skip_newtypes<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) -> TyAndLayout<'tcx> {
+    fn skip_newtypes<'tcx>(
+        cx: &LayoutCx<'tcx>,
+        layout: &TyAndLayout<'tcx>,
+    ) -> Option<TyAndLayout<'tcx>> {
         match *layout.ty.kind() {
+            // Erased params have already had their layouts sanity-checked at construction.
+            // The sanity check fails for them because their layouts may have fields
+            // from the underlying type, but `ty::Erased` has no type info for fields.
+            ty::Erased(..) => return None,
             ty::UnsafeBinder(bound_ty) => {
                 let ty = cx.tcx().instantiate_bound_regions_with_erased(bound_ty.into());
                 return skip_newtypes(cx, &TyAndLayout { ty, ..*layout });
@@ -72,12 +79,12 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
 
         if matches!(layout.layout.variants(), Variants::Multiple { .. }) {
             // Definitely not a newtype of anything.
-            return *layout;
+            return Some(*layout);
         }
         let mut fields = non_zst_fields(cx, layout);
         let Some(first) = fields.next() else {
             // No fields here, so this could be a primitive or enum -- either way it's not a newtype around a thing
-            return *layout;
+            return Some(*layout);
         };
         if fields.next().is_none() {
             let (offset, first) = first;
@@ -89,7 +96,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             }
         }
         // No more newtypes here.
-        *layout
+        Some(*layout)
     }
 
     fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
@@ -118,7 +125,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 let align = align.unwrap();
                 let size = size.unwrap();
                 // Check that this matches the underlying field.
-                let inner = skip_newtypes(cx, layout);
+                let Some(inner) = skip_newtypes(cx, layout) else { return };
                 assert!(
                     matches!(inner.layout.backend_repr(), BackendRepr::Scalar(_)),
                     "`Scalar` type {} is newtype around non-`Scalar` type {}",
@@ -170,7 +177,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             }
             BackendRepr::ScalarPair { a: scalar1, b: scalar2, b_offset } => {
                 // Check that the underlying pair of fields matches.
-                let inner = skip_newtypes(cx, layout);
+                let Some(inner) = skip_newtypes(cx, layout) else { return };
                 assert!(
                     matches!(inner.layout.backend_repr(), BackendRepr::ScalarPair { .. }),
                     "`ScalarPair` type {} is newtype around non-`ScalarPair` type {}",
@@ -289,11 +296,13 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             assert!(layout.is_uninhabited());
         }
         Variants::Single { index } => {
-            if let Some(variants) = layout.ty.variant_range(tcx) {
-                assert!(variants.contains(index));
-            } else {
-                // Types without variants use `0` as dummy variant index.
-                assert!(index.as_u32() == 0);
+            if !layout.ty.is_erased() {
+                if let Some(variants) = layout.ty.variant_range(tcx) {
+                    assert!(variants.contains(index));
+                } else {
+                    // Types without variants use `0` as dummy variant index.
+                    assert!(index.as_u32() == 0);
+                }
             }
         }
         Variants::Multiple { variants, tag, tag_encoding, .. } => {
@@ -308,16 +317,18 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                         assert!(idx == *untagged_variant || niche_variants.contains(&idx));
                     }
 
-                    // Ensure that for niche encoded tags the discriminant coincides with the variant index.
-                    let val = layout.ty.discriminant_for_variant(tcx, idx).unwrap().val;
-                    if val != u128::from(idx.as_u32()) {
-                        let adt_def = layout.ty.ty_adt_def().unwrap();
-                        cx.tcx().dcx().span_delayed_bug(
-                            cx.tcx().def_span(adt_def.did()),
-                            format!(
-                                "variant {idx:?} has discriminant {val:?} in niche-encoded type"
-                            ),
-                        );
+                    if !layout.ty.is_erased() {
+                        // Ensure that for niche encoded tags the discriminant coincides with the variant index.
+                        let val = layout.ty.discriminant_for_variant(tcx, idx).unwrap().val;
+                        if val != u128::from(idx.as_u32()) {
+                            let adt_def = layout.ty.ty_adt_def().unwrap();
+                            cx.tcx().dcx().span_delayed_bug(
+                                cx.tcx().def_span(adt_def.did()),
+                                format!(
+                                    "variant {idx:?} has discriminant {val:?} in niche-encoded type"
+                                ),
+                            );
+                        }
                     }
                 }
             }
