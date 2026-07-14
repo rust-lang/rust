@@ -19,7 +19,7 @@ pub use rustc_lint_defs as lint;
 pub use session::*;
 
 pub mod code_stats;
-pub mod errors;
+pub mod diagnostics;
 pub mod parse;
 pub mod utils;
 #[macro_use]
