@@ -1008,6 +1008,71 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
     }
 }
 
+struct ClauseCompressionMetadata<'tcx> {
+    /// A clause may be considered compressable, but if we *never* merge something
+    /// with it, it might still be more efficient to keep the original uncompressed clause,
+    /// which as such doesn't need re-interning. So we better keep it around.
+    uncompressed: ty::Clause<'tcx>,
+    compressed: CompressedTraitClause<TyCtxt<'tcx>>,
+}
+
+/// Manages compression of clauses to form a `ParamEnv`.
+struct ClauseCompressor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    /// List of clauses in compressed form, together with some metadata
+    compressed_clauses: Vec<ClauseCompressionMetadata<'tcx>>,
+    /// clauses that we tried to compress but couldn't be
+    uncompressed_clauses: Vec<Clause<'tcx>>,
+}
+
+impl<'tcx> ClauseCompressor<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self { tcx, compressed_clauses: Vec::new(), uncompressed_clauses: Vec::new() }
+    }
+
+    fn add_clause(&mut self, clause: Clause<'tcx>) {
+        // Try to construct a common clause, if the given clause is one of the common clauses
+        let Some(new_compressed_trait_clause) =
+            CompressedTraitClause::from_clause(self.tcx, clause)
+        else {
+            self.uncompressed_clauses.push(clause);
+            return;
+        };
+
+        // See if this new common clause can be merged into another already existing
+        // common clause so they can be interned together.
+        //
+        // We're *not* using a hashmap here since this list is not expected to grow
+        // larger than a couple of elements. Just iterating is faster.
+        if !self
+            .compressed_clauses
+            .iter_mut()
+            // finishes iteration upon first successful `try_merge`.
+            .any(|existing| existing.compressed.try_merge(new_compressed_trait_clause))
+        {
+            self.compressed_clauses.push(ClauseCompressionMetadata {
+                compressed: new_compressed_trait_clause,
+                uncompressed: clause,
+            })
+        }
+    }
+
+    fn mk_clauses(self) -> Clauses<'tcx> {
+        let mut new_clauses = self.uncompressed_clauses;
+        new_clauses.extend(self.compressed_clauses.into_iter().map(|i| {
+            match i.compressed.compressed_trait_refs.bits().count_ones() {
+                0 => unreachable!(),
+                // See comment on CommonClauseData.
+                1 => i.uncompressed,
+                // TODO: keep original flags, or a union thereof
+                _ => ClauseKind::CompressedTrait(i.compressed).upcast(self.tcx),
+            }
+        }));
+
+        self.tcx.mk_clauses(&new_clauses)
+    }
+}
+
 /// When interacting with the type system we must provide information about the
 /// environment. `ParamEnv` is the type that represents this information. See the
 /// [dev guide chapter][param_env_guide] for more information.
@@ -1068,7 +1133,12 @@ impl<'tcx> ParamEnv<'tcx> {
         tcx: TyCtxt<'tcx>,
         caller_bounds: impl IntoIterator<Item = ty::Clause<'tcx>>,
     ) -> Self {
-        ParamEnv { caller_bounds: tcx.mk_clauses_from_iter(caller_bounds.into_iter()) }
+        let mut compressor = ClauseCompressor::new(tcx);
+        for clause in caller_bounds {
+            compressor.add_clause(clause);
+        }
+
+        ParamEnv { caller_bounds: compressor.mk_clauses() }
     }
 
     /// Creates a pair of param-env and value for use in queries.
