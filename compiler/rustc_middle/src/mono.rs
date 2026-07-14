@@ -524,6 +524,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                 MonoItem::Fn(ref instance) => match instance.def {
                     InstanceKind::Item(def) => def.as_local().map(|_| def),
                     InstanceKind::Intrinsic(..)
+                    | InstanceKind::LlvmIntrinsic(..)
                     | InstanceKind::Virtual(..)
                     | InstanceKind::Shim(ShimKind::VTable(..))
                     | InstanceKind::Shim(ShimKind::Reify(..))

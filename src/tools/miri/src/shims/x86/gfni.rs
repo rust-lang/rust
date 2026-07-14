@@ -9,7 +9,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         link_name: Symbol,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx, EmulateItemResult> {
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
         // Prefix should have already been checked.
@@ -58,9 +58,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_scalar(Scalar::from_u8(gf2p8_mul(left, right)), &dest)?;
                 }
             }
-            _ => return interp_ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(false),
         }
-        interp_ok(EmulateItemResult::NeedsReturn)
+        interp_ok(true)
     }
 }
 

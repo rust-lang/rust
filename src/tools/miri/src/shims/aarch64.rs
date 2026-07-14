@@ -13,7 +13,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         link_name: Symbol,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx, EmulateItemResult> {
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.aarch64.").unwrap();
@@ -273,8 +273,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_u128(result), &dest)?;
             }
 
-            _ => return interp_ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(false),
         }
-        interp_ok(EmulateItemResult::NeedsReturn)
+        interp_ok(true)
     }
 }
