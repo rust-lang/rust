@@ -14,7 +14,7 @@ This section describes how those queries and passes work and how you can extend 
 
 To produce the optimized MIR for a given def-id `D`, `optimized_mir(D)`
 goes through several suites of passes, each grouped by a query.
-Each suite consists of passes which perform linting, analysis, transformation or optimization.
+Each suite consists of passes which perform linting, analysis, transformation, or optimization.
 Each query represent a useful intermediate point
 where we can access the MIR dialect for type checking or other purposes:
 
@@ -42,8 +42,8 @@ The MIR is therefore modified in place (which helps to keep things efficient).
 
 A basic example of a MIR pass is [`RemoveStorageMarkers`], which walks
 the MIR and removes all storage marks if they won't be emitted during codegen.
-As you can see from its source, a MIR pass is defined by first defining a
-dummy type, a struct with no fields:
+As you can see from its source,
+a MIR pass is defined by first defining a dummy type, a struct with no fields:
 
 ```rust
 pub struct RemoveStorageMarkers;
@@ -138,8 +138,8 @@ flowchart BT
 The stadium-shape queries (e.g., `mir_built`) with a deep color are the primary queries in the
 pipeline, while the rectangle-shape queries (e.g., `mir_const_qualif*`[^star]) with a shallow color
 are those subsequent queries that need to read the results from `&'tcx Steal<Body<'tcx>>`.
-With the
-stealing mechanism, the rectangle-shape queries must be performed before any stadium-shape queries,
+With the stealing mechanism,
+the rectangle-shape queries must be performed before any stadium-shape queries,
 that have an equal or larger height in the dependency tree, ever do.
 
 [^part]: The `mir_promoted` query will yield up a tuple
