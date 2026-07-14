@@ -3,6 +3,7 @@ use crate::env::{self, JoinPathsError, SplitPaths, join_paths, split_paths, var_
 use crate::ffi::{OsStr, OsString};
 use crate::fs::{self, HomeDirs, MediaDirs};
 use crate::io::{self, ErrorKind, const_error};
+use crate::os::unix::ffi::{OsStrExt, OsStringExt};
 use crate::path::{Path, PathBuf};
 
 trait Sealed {}
@@ -193,7 +194,6 @@ pub trait MediaDirsExt: Sized + Sealed {
 }
 
 #[unstable(feature = "dir_discovery", issue = "157515")]
-#[cfg(unix)]
 impl HomeDirsExt for HomeDirs {
     fn xdg() -> io::Result<Self> {
         let mut dirs = HomeDirs::empty();
@@ -246,11 +246,8 @@ impl HomeDirsExt for HomeDirs {
 }
 
 #[unstable(feature = "media_dir_discovery", issue = "157515")]
-#[cfg(unix)]
 impl MediaDirsExt for MediaDirs {
     fn xdg() -> io::Result<Self> {
-        use crate::os::unix::ffi::{OsStrExt, OsStringExt};
-
         let mut dirs = MediaDirs::empty();
         let user_home = user_home()?;
         let config_home = xdg_dir("XDG_CONFIG_HOME", || user_home.join(".config"));
