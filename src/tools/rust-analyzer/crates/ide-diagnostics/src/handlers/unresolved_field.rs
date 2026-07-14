@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union, db::ExpandDatabase};
+use hir::{Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId},
@@ -64,7 +64,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::UnresolvedField<'_>) -> Opti
 // FIXME: Add Snippet Support
 fn field_fix(ctx: &DiagnosticsContext<'_, '_>, d: &hir::UnresolvedField<'_>) -> Option<Assist> {
     // Get the FileRange of the invalid field access
-    let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
+    let root = d.expr.file_id.parse_or_expand(ctx.sema.db);
     let expr = d.expr.value.to_node(&root).left()?;
 
     let error_range = ctx.sema.original_range_opt(expr.syntax())?;
@@ -266,7 +266,7 @@ fn method_fix(
     ctx: &DiagnosticsContext<'_, '_>,
     expr_ptr: &InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
 ) -> Option<Assist> {
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = expr_ptr.file_id.parse_or_expand(ctx.sema.db);
     let expr = expr_ptr.value.to_node(&root);
     let FileRange { range, file_id } = ctx.sema.original_range_opt(expr.syntax())?;
     Some(Assist {

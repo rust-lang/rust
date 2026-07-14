@@ -1517,7 +1517,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 }
                 visit::walk_item(self, item)
             }
-            ItemKind::Struct(ident, generics, vdata) => {
+            ItemKind::Struct(.., vdata) => {
                 self.with_tilde_const(Some(TildeConstReason::Struct { span: item.span }), |this| {
                     // Scalable vectors can only be tuple structs
                     let scalable_vector_attr =
@@ -1536,29 +1536,15 @@ impl Visitor<'_> for AstValidator<'_> {
                         }
                     }
 
-                    match vdata {
-                        VariantData::Struct { fields, .. } => {
-                            this.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
-                            this.visit_generics(generics);
-                            walk_list!(this, visit_field_def, fields);
-                        }
-                        _ => visit::walk_item(this, item),
-                    }
+                    visit::walk_item(this, item);
                 })
             }
-            ItemKind::Union(ident, generics, vdata) => {
+            ItemKind::Union(.., vdata) => {
                 if vdata.fields().is_empty() {
                     self.dcx().emit_err(diagnostics::FieldlessUnion { span: item.span });
                 }
                 self.with_tilde_const(Some(TildeConstReason::Union { span: item.span }), |this| {
-                    match vdata {
-                        VariantData::Struct { fields, .. } => {
-                            this.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
-                            this.visit_generics(generics);
-                            walk_list!(this, visit_field_def, fields);
-                        }
-                        _ => visit::walk_item(this, item),
-                    }
+                    visit::walk_item(this, item)
                 });
             }
             ItemKind::Const(ConstItem { defaultness, ident, rhs_kind, .. }) => {

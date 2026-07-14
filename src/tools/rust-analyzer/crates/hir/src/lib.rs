@@ -46,7 +46,7 @@ use std::{
 };
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateOrigin, LangCrateOrigin, all_crates};
+use base_db::{CrateDisplayName, CrateOrigin, LangCrateOrigin, SourceDatabase, all_crates};
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, AssocItemLoc, BuiltinDeriveImplId, CallableDefId, ConstId, ConstParamId,
@@ -115,7 +115,7 @@ use syntax::{
 };
 use triomphe::Arc;
 
-use crate::db::{DefDatabase, HirDatabase};
+use crate::db::HirDatabase;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PredicateEvaluationStatus {
@@ -294,7 +294,7 @@ impl Crate {
         self.id
             .transitive_deps(db)
             .into_iter()
-            .filter_map(|krate| db.crate_notable_traits(krate))
+            .filter_map(|krate| hir_def::crate_notable_traits(db, krate))
             .flatten()
     }
 
@@ -325,7 +325,7 @@ impl Crate {
 
     pub fn query_external_importables(
         self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         query: import_map::Query,
     ) -> impl Iterator<Item = (Either<ModuleDef, Macro>, Complete)> {
         let _p = tracing::info_span!("query_external_importables").entered();
@@ -813,7 +813,7 @@ impl Module {
                             expr_store_diagnostics(db, acc, source_map);
                             let (variants, diagnostics) = e.id.enum_variants_with_diagnostics(db);
                             let file = e.id.lookup(db).id.file_id;
-                            let ast_id_map = db.ast_id_map(file);
+                            let ast_id_map = file.ast_id_map(db);
                             for diag in diagnostics {
                                 acc.push(
                                     InactiveCode {
@@ -883,7 +883,7 @@ impl Module {
                 .iter()
                 .for_each(|&(_ast, call_id)| macro_call_diagnostics(db, call_id, acc));
 
-            let ast_id_map = db.ast_id_map(file_id);
+            let ast_id_map = file_id.ast_id_map(db);
 
             for diag in impl_id.impl_items_with_diagnostics(db).1.iter() {
                 emit_def_diagnostic(db, acc, diag, edition, loc.container.krate(db));
@@ -1109,7 +1109,7 @@ impl Module {
     /// this module, if possible.
     pub fn find_path(
         self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         item: impl Into<ItemInNs>,
         cfg: FindPathConfig,
     ) -> Option<ModPath> {
@@ -1127,7 +1127,7 @@ impl Module {
     /// this module, if possible. This is used for returning import paths for use-statements.
     pub fn find_use_path(
         self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         item: impl Into<ItemInNs>,
         prefix_kind: PrefixKind,
         cfg: FindPathConfig,
@@ -1159,7 +1159,7 @@ fn macro_call_diagnostics<'db>(
     macro_call_id: MacroCallId,
     acc: &mut Vec<AnyDiagnostic<'db>>,
 ) {
-    let Some(e) = db.parse_macro_expansion_error(macro_call_id) else {
+    let Some(e) = macro_call_id.parse_macro_expansion_error(db) else {
         return;
     };
     let ValueResult { value: parse_errors, err } = e;
@@ -1170,7 +1170,7 @@ fn macro_call_diagnostics<'db>(
         let RenderedExpandError { message, error, kind } = err.render_to_string(db);
         if Some(err.span().anchor.file_id) == file_id.file_id().map(|it| it.span_file_id(db)) {
             range.value = err.span().range
-                + db.ast_id_map(file_id).get_erased(err.span().anchor.ast_id).text_range().start();
+                + file_id.ast_id_map(db).get_erased(err.span().anchor.ast_id).text_range().start();
         }
         acc.push(MacroError { range, message, error, kind }.into());
     }
@@ -1187,10 +1187,10 @@ fn emit_macro_def_diagnostics<'db>(
     acc: &mut Vec<AnyDiagnostic<'db>>,
     m: Macro,
 ) {
-    let id = db.macro_def(m.id);
+    let id = m.id.definition(db);
     let krate = id.krate;
     if let hir_expand::MacroDefKind::Declarative(ast, _) = id.kind
-        && let expander = db.decl_macro_expander(krate, ast)
+        && let expander = ast.decl_macro_expander(db, krate)
         && let Some(e) = expander.mac.err()
     {
         let edition = krate.data(db).edition;
@@ -1260,7 +1260,7 @@ fn emit_def_diagnostic_<'db>(
         }
 
         DefDiagnosticKind::UnconfiguredCode { ast_id, cfg, opts } => {
-            let ast_id_map = db.ast_id_map(ast_id.file_id);
+            let ast_id_map = ast_id.file_id.ast_id_map(db);
             let ptr = ast_id_map.get_erased(ast_id.value);
             acc.push(
                 InactiveCode {
@@ -2827,7 +2827,7 @@ impl SelfParam {
 impl HasVisibility for Function {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         match self.id {
-            AnyFunctionId::FunctionId(id) => db.assoc_visibility(id.into()),
+            AnyFunctionId::FunctionId(id) => AssocItemId::from(id).assoc_visibility(db),
             AnyFunctionId::BuiltinDeriveImplMethod { .. } => Visibility::Public,
         }
     }
@@ -2929,7 +2929,7 @@ impl Const {
 
 impl HasVisibility for Const {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.assoc_visibility(self.id.into())
+        AssocItemId::from(self.id).assoc_visibility(db)
     }
 }
 
@@ -3159,7 +3159,7 @@ impl TypeAlias {
 
 impl HasVisibility for TypeAlias {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.assoc_visibility(self.id.into())
+        AssocItemId::from(self.id).assoc_visibility(db)
     }
 }
 
@@ -3622,7 +3622,7 @@ fn as_assoc_item<'db, ID, DEF, LOC>(
     id: ID,
 ) -> Option<AssocItem>
 where
-    ID: Lookup<Database = dyn DefDatabase, Data = AssocItemLoc<LOC>>,
+    ID: Lookup<Data = AssocItemLoc<LOC>>,
     DEF: From<ID>,
     LOC: AstIdNode,
 {
@@ -3638,7 +3638,7 @@ fn as_extern_assoc_item<'db, ID, DEF, LOC>(
     id: ID,
 ) -> Option<ExternAssocItem>
 where
-    ID: Lookup<Database = dyn DefDatabase, Data = AssocItemLoc<LOC>>,
+    ID: Lookup<Data = AssocItemLoc<LOC>>,
     DEF: From<ID>,
     LOC: AstIdNode,
 {
@@ -4715,7 +4715,7 @@ impl Impl {
                 &mut |impls| extend_with_impls(Either::Left(impls.for_self_ty(&simplified_ty))),
             );
             iter::successors(module.block(db), |block| block.loc(db).module.block(db))
-                .filter_map(|block| TraitImpls::for_block(db, block).as_deref())
+                .filter_map(|block| TraitImpls::for_block(db, block))
                 .for_each(|impls| impls.for_self_ty(&simplified_ty, &mut extend_with_impls));
             for &krate in &*all_crates(db) {
                 TraitImpls::for_crate(db, krate)

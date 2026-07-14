@@ -1575,6 +1575,7 @@ pub(crate) fn handle_code_action(
             .copied()
             .filter_map(|range| from_proto::text_range(&line_index, range).ok())
             .any(|fix_range| fix_range.intersect(frange.range).is_some());
+
         if intersect_fix_range {
             res.push(fix.action.clone());
         }

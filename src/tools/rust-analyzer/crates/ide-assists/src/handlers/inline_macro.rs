@@ -1,4 +1,3 @@
-use hir::db::ExpandDatabase;
 use ide_db::syntax_helpers::prettify_macro_expansion;
 use syntax::ast::{self, AstNode, edit::IndentLevel};
 
@@ -58,7 +57,7 @@ pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Op
         text_range,
         |builder| {
             let expanded = ctx.sema.parse_or_expand(macro_call.into());
-            let span_map = ctx.sema.db.expansion_span_map(macro_call);
+            let span_map = macro_call.expansion_span_map(ctx.sema.db);
             // Don't call `prettify_macro_expansion()` outside the actual assist action; it does some heavy rowan tree manipulation,
             // which can be very costly for big macros when it is done *even without the assist being invoked*.
             let expanded = prettify_macro_expansion(ctx.db(), expanded, span_map, target_crate_id);

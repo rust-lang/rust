@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use base_db::SourceDatabase;
 use intern::{Symbol, sym};
 use span::{Edition, SyntaxContext};
 use syntax::utils::is_raw_identifier;
@@ -180,7 +181,7 @@ impl Name {
     #[inline]
     pub fn display<'a>(
         &'a self,
-        db: &dyn crate::db::ExpandDatabase,
+        db: &dyn SourceDatabase,
         edition: Edition,
     ) -> impl fmt::Display + 'a {
         _ = db;

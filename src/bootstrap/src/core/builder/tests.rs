@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 use std::env::VarError;
 use std::{panic, thread};
 

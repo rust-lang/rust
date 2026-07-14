@@ -560,7 +560,9 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
             // To resolve an instance its args have to be fully normalized.
             let args = tcx
                 .try_normalize_erasing_regions(inliner.typing_env(), Unnormalized::new_wip(args))
-                .ok()?;
+                .ok()?
+                .no_bound_vars()
+                .unwrap();
             let mut callee =
                 Instance::try_resolve(tcx, inliner.typing_env(), def_id, args).ok().flatten()?;
 

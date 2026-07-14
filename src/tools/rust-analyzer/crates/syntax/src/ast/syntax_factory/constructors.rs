@@ -610,6 +610,18 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn ty_paren(&self, ty: ast::Type) -> ast::Type {
+        let ast::Type::ParenType(paren_ty) = make::ty_paren(ty.clone()) else { unreachable!() };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(paren_ty.syntax().clone());
+            builder.map_node(ty.syntax().clone(), paren_ty.ty().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        paren_ty.into()
+    }
+
     pub fn path_segment_generics(
         &self,
         name_ref: ast::NameRef,

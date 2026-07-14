@@ -1,0 +1,399 @@
+// MIR for `build::{closure#0}` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: TypeOf(Box<^c_0>::new_uninit at <impl boxed::<{impl#0}> for Box<^c_1, ^c_2>>), max_universe: U0, var_kinds: [Ty { ui: U0, sub_root: 0 }, Ty { ui: U0, sub_root: 1 }, Ty { ui: U0, sub_root: 2 }] }, span: $SRC_DIR/alloc/src/macros.rs:LL:COL, inferred_ty: fn() -> std::boxed::Box<std::mem::MaybeUninit<[std::string::String; 5]>> {std::boxed::Box::<[std::string::String; 5]>::new_uninit}
+|
+fn build::{closure#0}(_1: {async fn body of build()}, _2: std::future::ResumeTy) -> Vec<String>
+yields ()
+ {
+    debug _task_context => _2;
+    debug s => (_1.0: u64);
+    let mut _0: std::vec::Vec<std::string::String>;
+    let _3: u64;
+    let mut _4: std::boxed::Box<std::mem::MaybeUninit<[std::string::String; 5]>>;
+    let mut _5: std::boxed::Box<std::mem::MaybeUninit<[std::string::String; 5]>>;
+    let mut _6: std::string::String;
+    let mut _7: &str;
+    let _8: &str;
+    let mut _9: std::string::String;
+    let mut _10: &str;
+    let _11: &str;
+    let mut _12: std::string::String;
+    let mut _13: &str;
+    let _14: &str;
+    let mut _15: std::string::String;
+    let mut _16: &str;
+    let _17: &str;
+    let mut _18: std::string::String;
+    let mut _19: &str;
+    let _20: &str;
+    scope 1 {
+        debug s => _3;
+    }
+
+    bb0: {
+        StorageLive(_3);
+        _3 = copy (_1.0: u64);
+        FakeRead(ForLet(None), _3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = Box::<[String; 5]>::new_uninit() -> [return: bb1, unwind: bb50];
+    }
+
+    bb1: {
+        StorageLive(_6);
+        StorageLive(_7);
+        StorageLive(_8);
+        _8 = const "0";
+        _7 = &(*_8);
+        _6 = <str as ToString>::to_string(move _7) -> [return: bb2, unwind: bb47];
+    }
+
+    bb2: {
+        StorageDead(_7);
+        StorageLive(_9);
+        StorageLive(_10);
+        StorageLive(_11);
+        _11 = const "1";
+        _10 = &(*_11);
+        _9 = <str as ToString>::to_string(move _10) -> [return: bb3, unwind: bb43];
+    }
+
+    bb3: {
+        StorageDead(_10);
+        StorageLive(_12);
+        StorageLive(_13);
+        StorageLive(_14);
+        _14 = const "2";
+        _13 = &(*_14);
+        _12 = <str as ToString>::to_string(move _13) -> [return: bb4, unwind: bb38];
+    }
+
+    bb4: {
+        StorageDead(_13);
+        StorageLive(_15);
+        StorageLive(_16);
+        StorageLive(_17);
+        _17 = const "3";
+        _16 = &(*_17);
+        _15 = <str as ToString>::to_string(move _16) -> [return: bb5, unwind: bb32];
+    }
+
+    bb5: {
+        StorageDead(_16);
+        StorageLive(_18);
+        StorageLive(_19);
+        StorageLive(_20);
+        _20 = const "4";
+        _19 = &(*_20);
+        _18 = <str as ToString>::to_string(move _19) -> [return: bb6, unwind: bb24];
+    }
+
+    bb6: {
+        StorageDead(_19);
+        ((((*_5).1: std::mem::ManuallyDrop<[std::string::String; 5]>).0: std::mem::MaybeDangling<[std::string::String; 5]>).0: [std::string::String; 5]) = [move _6, move _9, move _12, move _15, move _18];
+        drop(_18) -> [return: bb7, unwind: bb25, drop: bb15];
+    }
+
+    bb7: {
+        StorageDead(_18);
+        drop(_15) -> [return: bb8, unwind: bb26, drop: bb16];
+    }
+
+    bb8: {
+        StorageDead(_15);
+        drop(_12) -> [return: bb9, unwind: bb27, drop: bb17];
+    }
+
+    bb9: {
+        StorageDead(_12);
+        drop(_9) -> [return: bb10, unwind: bb28, drop: bb18];
+    }
+
+    bb10: {
+        StorageDead(_9);
+        drop(_6) -> [return: bb11, unwind: bb29, drop: bb19];
+    }
+
+    bb11: {
+        StorageDead(_6);
+        _4 = move _5;
+        drop(_5) -> [return: bb12, unwind: bb22];
+    }
+
+    bb12: {
+        StorageDead(_5);
+        _0 = std::boxed::box_assume_init_into_vec_unsafe::<String, 5>(move _4) -> [return: bb13, unwind: bb23];
+    }
+
+    bb13: {
+        StorageDead(_4);
+        StorageDead(_20);
+        StorageDead(_17);
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_8);
+        StorageDead(_3);
+        drop(_1) -> [return: bb14, unwind: bb52, drop: bb21];
+    }
+
+    bb14: {
+        return;
+    }
+
+    bb15: {
+        StorageDead(_18);
+        drop(_15) -> [return: bb16, unwind: bb53];
+    }
+
+    bb16: {
+        StorageDead(_15);
+        drop(_12) -> [return: bb17, unwind: bb54];
+    }
+
+    bb17: {
+        StorageDead(_12);
+        drop(_9) -> [return: bb18, unwind: bb55];
+    }
+
+    bb18: {
+        StorageDead(_9);
+        drop(_6) -> [return: bb19, unwind: bb56];
+    }
+
+    bb19: {
+        StorageDead(_6);
+        drop(_5) -> [return: bb20, unwind: bb57];
+    }
+
+    bb20: {
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_20);
+        StorageDead(_17);
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_8);
+        StorageDead(_3);
+        drop(_1) -> [return: bb21, unwind: bb52];
+    }
+
+    bb21: {
+        coroutine_drop;
+    }
+
+    bb22 (cleanup): {
+        StorageDead(_5);
+        goto -> bb23;
+    }
+
+    bb23 (cleanup): {
+        drop(_4) -> [return: bb31, unwind terminate(cleanup)];
+    }
+
+    bb24 (cleanup): {
+        StorageDead(_19);
+        goto -> bb25;
+    }
+
+    bb25 (cleanup): {
+        StorageDead(_18);
+        drop(_15) -> [return: bb26, unwind terminate(cleanup)];
+    }
+
+    bb26 (cleanup): {
+        StorageDead(_15);
+        drop(_12) -> [return: bb27, unwind terminate(cleanup)];
+    }
+
+    bb27 (cleanup): {
+        StorageDead(_12);
+        drop(_9) -> [return: bb28, unwind terminate(cleanup)];
+    }
+
+    bb28 (cleanup): {
+        StorageDead(_9);
+        drop(_6) -> [return: bb29, unwind terminate(cleanup)];
+    }
+
+    bb29 (cleanup): {
+        StorageDead(_6);
+        drop(_5) -> [return: bb30, unwind terminate(cleanup)];
+    }
+
+    bb30 (cleanup): {
+        StorageDead(_5);
+        goto -> bb31;
+    }
+
+    bb31 (cleanup): {
+        StorageDead(_4);
+        StorageDead(_20);
+        goto -> bb37;
+    }
+
+    bb32 (cleanup): {
+        StorageDead(_16);
+        StorageDead(_15);
+        drop(_12) -> [return: bb33, unwind terminate(cleanup)];
+    }
+
+    bb33 (cleanup): {
+        StorageDead(_12);
+        drop(_9) -> [return: bb34, unwind terminate(cleanup)];
+    }
+
+    bb34 (cleanup): {
+        StorageDead(_9);
+        drop(_6) -> [return: bb35, unwind terminate(cleanup)];
+    }
+
+    bb35 (cleanup): {
+        StorageDead(_6);
+        drop(_5) -> [return: bb36, unwind terminate(cleanup)];
+    }
+
+    bb36 (cleanup): {
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb37;
+    }
+
+    bb37 (cleanup): {
+        StorageDead(_17);
+        goto -> bb42;
+    }
+
+    bb38 (cleanup): {
+        StorageDead(_13);
+        StorageDead(_12);
+        drop(_9) -> [return: bb39, unwind terminate(cleanup)];
+    }
+
+    bb39 (cleanup): {
+        StorageDead(_9);
+        drop(_6) -> [return: bb40, unwind terminate(cleanup)];
+    }
+
+    bb40 (cleanup): {
+        StorageDead(_6);
+        drop(_5) -> [return: bb41, unwind terminate(cleanup)];
+    }
+
+    bb41 (cleanup): {
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb42;
+    }
+
+    bb42 (cleanup): {
+        StorageDead(_14);
+        goto -> bb46;
+    }
+
+    bb43 (cleanup): {
+        StorageDead(_10);
+        StorageDead(_9);
+        drop(_6) -> [return: bb44, unwind terminate(cleanup)];
+    }
+
+    bb44 (cleanup): {
+        StorageDead(_6);
+        drop(_5) -> [return: bb45, unwind terminate(cleanup)];
+    }
+
+    bb45 (cleanup): {
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb46;
+    }
+
+    bb46 (cleanup): {
+        StorageDead(_11);
+        goto -> bb49;
+    }
+
+    bb47 (cleanup): {
+        StorageDead(_7);
+        StorageDead(_6);
+        drop(_5) -> [return: bb48, unwind terminate(cleanup)];
+    }
+
+    bb48 (cleanup): {
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb49;
+    }
+
+    bb49 (cleanup): {
+        StorageDead(_8);
+        goto -> bb51;
+    }
+
+    bb50 (cleanup): {
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb51;
+    }
+
+    bb51 (cleanup): {
+        StorageDead(_3);
+        drop(_1) -> [return: bb52, unwind terminate(cleanup)];
+    }
+
+    bb52 (cleanup): {
+        resume;
+    }
+
+    bb53 (cleanup): {
+        StorageDead(_15);
+        drop(_12) -> [return: bb54, unwind terminate(cleanup)];
+    }
+
+    bb54 (cleanup): {
+        StorageDead(_12);
+        drop(_9) -> [return: bb55, unwind terminate(cleanup)];
+    }
+
+    bb55 (cleanup): {
+        StorageDead(_9);
+        drop(_6) -> [return: bb56, unwind terminate(cleanup)];
+    }
+
+    bb56 (cleanup): {
+        StorageDead(_6);
+        drop(_5) -> [return: bb57, unwind terminate(cleanup)];
+    }
+
+    bb57 (cleanup): {
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_20);
+        StorageDead(_17);
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_8);
+        StorageDead(_3);
+        drop(_1) -> [return: bb52, unwind terminate(cleanup)];
+    }
+}
+
+ALLOC0 (size: 1, align: 1) {
+    34                                              │ 4
+}
+
+ALLOC1 (size: 1, align: 1) {
+    33                                              │ 3
+}
+
+ALLOC2 (size: 1, align: 1) {
+    32                                              │ 2
+}
+
+ALLOC3 (size: 1, align: 1) {
+    31                                              │ 1
+}
+
+ALLOC4 (size: 1, align: 1) {
+    30                                              │ 0
+}

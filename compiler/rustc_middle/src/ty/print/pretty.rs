@@ -743,6 +743,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 write!(self, ")")?;
             }
             ty::FnDef(def_id, args) => {
+                let args = args.no_bound_vars().unwrap();
                 if with_reduced_queries() {
                     self.print_def_path(def_id, args)?;
                 } else {
@@ -2031,7 +2032,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             (_, ty::FnDef(def_id, args)) => {
                 // Never allowed today, but we still encounter them in invalid const args.
-                self.pretty_print_value_path(def_id, args)?;
+                // FIXME(addiesh): fix wrt late-bound stuff
+                self.pretty_print_value_path(def_id, args.no_bound_vars().unwrap())?;
                 return Ok(());
             }
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
@@ -3416,6 +3418,29 @@ define_print_and_forward_display! {
 
     ty::Clause<'tcx> {
         self.kind().print(p)?;
+    }
+
+    ty::UserTypeKind<'tcx> {
+        match *self {
+            Self::Ty(ty) => {
+                write!(p, "Ty(")?;
+                ty.print(p)?;
+            }
+            Self::TypeOf(def_id, ty::UserArgs { args, user_self_ty }) => {
+                write!(p, "TypeOf(")?;
+                p.print_def_path(def_id, args)?;
+                if let Some(ty::UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
+                    write!(p, " at <impl ")?;
+                    let key = p.tcx().def_key(impl_def_id);
+                    let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
+                    p.print_def_path(parent_def_id, &[])?;
+                    write!(p, "::<{}> for ", key.disambiguated_data.as_sym(false))?;
+                    self_ty.print(p)?;
+                    write!(p, ">")?;
+                }
+            }
+        }
+        write!(p, ")")?;
     }
 
     GenericArg<'tcx> {

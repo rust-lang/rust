@@ -16,7 +16,7 @@
 //!
 //! This is partially adapted from `rustc_codegen_cranelift`:
 //! <https://github.com/rust-lang/rust/blob/c0b5cc9003f6464c11ae1c0662c6a7e06f6f5cab/compiler/rustc_codegen_cranelift/example/mini_core.rs>.
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![feature(
     no_core,

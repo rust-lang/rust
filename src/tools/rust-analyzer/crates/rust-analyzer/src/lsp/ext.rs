@@ -35,7 +35,7 @@ impl Request for InternalTestingFetchConfigRequest {
     type Params = InternalTestingFetchConfigParams;
     // Option is solely to circumvent Default bound.
     type Result = Option<InternalTestingFetchConfigResponse>;
-    const METHOD: LspRequestMethod =
+    const METHOD: LspRequestMethod<'_> =
         LspRequestMethod::new("rust-analyzer-internal/internalTestingFetchConfig");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
@@ -51,7 +51,7 @@ pub enum AnalyzerStatusRequest {}
 impl Request for AnalyzerStatusRequest {
     type Params = AnalyzerStatusParams;
     type Result = String;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/analyzerStatus");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/analyzerStatus");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -73,7 +73,7 @@ pub enum FetchDependencyListRequest {}
 impl Request for FetchDependencyListRequest {
     type Params = FetchDependencyListParams;
     type Result = FetchDependencyListResult;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/fetchDependencyList");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/fetchDependencyList");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -92,7 +92,7 @@ pub enum MemoryUsageRequest {}
 impl Request for MemoryUsageRequest {
     type Params = ();
     type Result = String;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/memoryUsage");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/memoryUsage");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -101,7 +101,7 @@ pub enum ReloadWorkspaceRequest {}
 impl Request for ReloadWorkspaceRequest {
     type Params = ();
     type Result = ();
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/reloadWorkspace");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/reloadWorkspace");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -110,7 +110,7 @@ pub enum RebuildProcMacrosRequest {}
 impl Request for RebuildProcMacrosRequest {
     type Params = ();
     type Result = ();
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/rebuildProcMacros");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/rebuildProcMacros");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -119,7 +119,7 @@ pub enum ViewSyntaxTreeRequest {}
 impl Request for ViewSyntaxTreeRequest {
     type Params = ViewSyntaxTreeParams;
     type Result = String;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewSyntaxTree");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/viewSyntaxTree");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -134,7 +134,7 @@ pub enum ViewHirRequest {}
 impl Request for ViewHirRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = String;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewHir");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/viewHir");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -143,7 +143,7 @@ pub enum ViewMirRequest {}
 impl Request for ViewMirRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = String;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewMir");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/viewMir");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -152,7 +152,7 @@ pub enum InterpretFunctionRequest {}
 impl Request for InterpretFunctionRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = String;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/interpretFunction");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/interpretFunction");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -161,7 +161,7 @@ pub enum ViewFileTextRequest {}
 impl Request for ViewFileTextRequest {
     type Params = lsp_types::TextDocumentIdentifier;
     type Result = String;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewFileText");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/viewFileText");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -177,7 +177,7 @@ pub enum ViewCrateGraphRequest {}
 impl Request for ViewCrateGraphRequest {
     type Params = ViewCrateGraphParams;
     type Result = String;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewCrateGraph");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/viewCrateGraph");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -192,7 +192,7 @@ pub enum ViewItemTreeRequest {}
 impl Request for ViewItemTreeRequest {
     type Params = ViewItemTreeParams;
     type Result = String;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewItemTree");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/viewItemTree");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -236,7 +236,7 @@ pub enum DiscoverTestRequest {}
 impl Request for DiscoverTestRequest {
     type Params = DiscoverTestParams;
     type Result = DiscoverTestResults;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/discoverTest");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/discoverTest");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -244,7 +244,7 @@ pub enum DiscoveredTestsNotification {}
 
 impl Notification for DiscoveredTestsNotification {
     type Params = DiscoverTestResults;
-    const METHOD: LspNotificationMethod =
+    const METHOD: LspNotificationMethod<'_> =
         LspNotificationMethod::new("experimental/discoveredTests");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
@@ -261,7 +261,7 @@ pub enum RunTestRequest {}
 impl Request for RunTestRequest {
     type Params = RunTestParams;
     type Result = ();
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/runTest");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/runTest");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -269,7 +269,7 @@ pub enum EndRunTestNotification {}
 
 impl Notification for EndRunTestNotification {
     type Params = ();
-    const METHOD: LspNotificationMethod = LspNotificationMethod::new("experimental/endRunTest");
+    const METHOD: LspNotificationMethod<'_> = LspNotificationMethod::new("experimental/endRunTest");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -277,7 +277,7 @@ pub enum AppendOutputToRunTestNotification {}
 
 impl Notification for AppendOutputToRunTestNotification {
     type Params = String;
-    const METHOD: LspNotificationMethod =
+    const METHOD: LspNotificationMethod<'_> =
         LspNotificationMethod::new("experimental/appendOutputToRunTest");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
@@ -286,7 +286,8 @@ pub enum AbortRunTestNotification {}
 
 impl Notification for AbortRunTestNotification {
     type Params = ();
-    const METHOD: LspNotificationMethod = LspNotificationMethod::new("experimental/abortRunTest");
+    const METHOD: LspNotificationMethod<'_> =
+        LspNotificationMethod::new("experimental/abortRunTest");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -311,7 +312,7 @@ pub enum ChangeTestStateNotification {}
 
 impl Notification for ChangeTestStateNotification {
     type Params = ChangeTestStateParams;
-    const METHOD: LspNotificationMethod =
+    const METHOD: LspNotificationMethod<'_> =
         LspNotificationMethod::new("experimental/changeTestState");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
@@ -321,7 +322,7 @@ pub enum ExpandMacroRequest {}
 impl Request for ExpandMacroRequest {
     type Params = ExpandMacroParams;
     type Result = Option<ExpandedMacro>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/expandMacro");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/expandMacro");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -344,7 +345,7 @@ pub enum ViewRecursiveMemoryLayoutRequest {}
 impl Request for ViewRecursiveMemoryLayoutRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = Option<RecursiveMemoryLayout>;
-    const METHOD: LspRequestMethod =
+    const METHOD: LspRequestMethod<'_> =
         LspRequestMethod::new("rust-analyzer/viewRecursiveMemoryLayout");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
@@ -372,7 +373,7 @@ pub enum CancelFlycheckNotification {}
 
 impl Notification for CancelFlycheckNotification {
     type Params = ();
-    const METHOD: LspNotificationMethod =
+    const METHOD: LspNotificationMethod<'_> =
         LspNotificationMethod::new("rust-analyzer/cancelFlycheck");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
@@ -381,7 +382,8 @@ pub enum RunFlycheckNotification {}
 
 impl Notification for RunFlycheckNotification {
     type Params = RunFlycheckParams;
-    const METHOD: LspNotificationMethod = LspNotificationMethod::new("rust-analyzer/runFlycheck");
+    const METHOD: LspNotificationMethod<'_> =
+        LspNotificationMethod::new("rust-analyzer/runFlycheck");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -389,7 +391,8 @@ pub enum ClearFlycheckNotification {}
 
 impl Notification for ClearFlycheckNotification {
     type Params = ();
-    const METHOD: LspNotificationMethod = LspNotificationMethod::new("rust-analyzer/clearFlycheck");
+    const METHOD: LspNotificationMethod<'_> =
+        LspNotificationMethod::new("rust-analyzer/clearFlycheck");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -397,7 +400,7 @@ pub enum OpenServerLogsNotification {}
 
 impl Notification for OpenServerLogsNotification {
     type Params = ();
-    const METHOD: LspNotificationMethod =
+    const METHOD: LspNotificationMethod<'_> =
         LspNotificationMethod::new("rust-analyzer/openServerLogs");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
@@ -413,7 +416,7 @@ pub enum MatchingBraceRequest {}
 impl Request for MatchingBraceRequest {
     type Params = MatchingBraceParams;
     type Result = Vec<Position>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/matchingBrace");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/matchingBrace");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -429,7 +432,7 @@ pub enum ParentModuleRequest {}
 impl Request for ParentModuleRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = Option<lsp_types::DefinitionResponse>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/parentModule");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/parentModule");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -438,7 +441,7 @@ pub enum ChildModulesRequest {}
 impl Request for ChildModulesRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = Option<lsp_types::DefinitionResponse>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/childModules");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/childModules");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -447,7 +450,7 @@ pub enum JoinLinesRequest {}
 impl Request for JoinLinesRequest {
     type Params = JoinLinesParams;
     type Result = Vec<lsp_types::TextEdit>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/joinLines");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/joinLines");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -463,7 +466,7 @@ pub enum OnEnterRequest {}
 impl Request for OnEnterRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = Option<Vec<SnippetTextEdit>>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/onEnter");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/onEnter");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -472,7 +475,7 @@ pub enum RunnablesRequest {}
 impl Request for RunnablesRequest {
     type Params = RunnablesParams;
     type Result = Vec<Runnable>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/runnables");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/runnables");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -531,7 +534,7 @@ pub enum RelatedTestsRequest {}
 impl Request for RelatedTestsRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = Vec<TestInfo>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/relatedTests");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/relatedTests");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -545,7 +548,7 @@ pub enum SsrRequest {}
 impl Request for SsrRequest {
     type Params = SsrParams;
     type Result = lsp_types::WorkspaceEdit;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/ssr");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/ssr");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -568,7 +571,8 @@ pub enum ServerStatusNotification {}
 
 impl Notification for ServerStatusNotification {
     type Params = ServerStatusParams;
-    const METHOD: LspNotificationMethod = LspNotificationMethod::new("experimental/serverStatus");
+    const METHOD: LspNotificationMethod<'_> =
+        LspNotificationMethod::new("experimental/serverStatus");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -603,7 +607,7 @@ pub enum CodeActionRequest {}
 impl Request for CodeActionRequest {
     type Params = lsp_types::CodeActionParams;
     type Result = Option<Vec<CodeAction>>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("textDocument/codeAction");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::TextDocumentCodeAction;
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -612,7 +616,7 @@ pub enum CodeActionResolveRequest {}
 impl Request for CodeActionResolveRequest {
     type Params = CodeAction;
     type Result = CodeAction;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("codeAction/resolve");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::CodeActionResolve;
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -690,7 +694,7 @@ pub enum HoverRequest {}
 impl Request for HoverRequest {
     type Params = HoverParams;
     type Result = Option<Hover>;
-    const METHOD: LspRequestMethod = lsp_types::HoverRequest::METHOD;
+    const METHOD: LspRequestMethod<'_> = lsp_types::HoverRequest::METHOD;
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -740,7 +744,7 @@ pub enum ExternalDocsRequest {}
 impl Request for ExternalDocsRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = ExternalDocsResponse;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/externalDocs");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/externalDocs");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -769,7 +773,7 @@ pub enum OpenCargoTomlRequest {}
 impl Request for OpenCargoTomlRequest {
     type Params = OpenCargoTomlParams;
     type Result = Option<lsp_types::DefinitionResponse>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/openCargoToml");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/openCargoToml");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -799,7 +803,7 @@ pub enum MoveItemRequest {}
 impl Request for MoveItemRequest {
     type Params = MoveItemParams;
     type Result = Vec<SnippetTextEdit>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/moveItem");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("experimental/moveItem");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -823,7 +827,7 @@ pub enum WorkspaceSymbolRequest {}
 impl Request for WorkspaceSymbolRequest {
     type Params = WorkspaceSymbolParams;
     type Result = Option<lsp_types::WorkspaceSymbolResponse>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("workspace/symbol");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::WorkspaceSymbol;
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -868,7 +872,7 @@ pub enum DocumentOnTypeFormattingRequest {}
 impl Request for DocumentOnTypeFormattingRequest {
     type Params = DocumentOnTypeFormattingParams;
     type Result = Option<Vec<SnippetTextEdit>>;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("textDocument/onTypeFormatting");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::TextDocumentOnTypeFormatting;
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -938,7 +942,7 @@ pub enum PredicateEvaluationStatus {
 impl Request for EvaluatePredicateRequest {
     type Params = EvaluatePredicateParams;
     type Result = EvaluatePredicateResult;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/evaluatePredicate");
+    const METHOD: LspRequestMethod<'_> = LspRequestMethod::new("rust-analyzer/evaluatePredicate");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
@@ -954,7 +958,8 @@ pub struct GetFailedObligationsParams {
 impl Request for GetFailedObligationsRequest {
     type Params = GetFailedObligationsParams;
     type Result = String;
-    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/getFailedObligations");
+    const METHOD: LspRequestMethod<'_> =
+        LspRequestMethod::new("rust-analyzer/getFailedObligations");
     const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 

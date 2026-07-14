@@ -1,6 +1,6 @@
 [package]
 name = "lsp-server"
-version = "0.8.0"
+version = "0.9.0"
 description = "Generic LSP server scaffold."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/lsp-server"
@@ -14,7 +14,7 @@ serde_derive = { version = "1.0.219" }
 crossbeam-channel.workspace = true
 
 [dev-dependencies]
-lsp-types = { version = "0.4.0", package = "gen-lsp-types", features = [
+lsp-types = { version = "0.10.0", package = "gen-lsp-types", features = [
     "url",
 ] }
 ctrlc = "3.4.7"

@@ -367,7 +367,6 @@ fn try_lookup_include_path(
         kind: None,
         container_name: None,
         description: None,
-        docs: None,
     })
 }
 

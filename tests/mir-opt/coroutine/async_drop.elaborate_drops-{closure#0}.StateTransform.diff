@@ -17,8 +17,8 @@
 +         field _s6: AsyncEnum;
 +         field _s7: AsyncInt;
 +         field _s8: AsyncReference<'_>;
-+         field _s9: {closure@$DIR/async_drop.rs:70:25: 70:27};
-+         field _s10: {async closure@$DIR/async_drop.rs:78:27: 78:35};
++         field _s9: {closure@$DIR/async_drop.rs:78:25: 78:27};
++         field _s10: {async closure@$DIR/async_drop.rs:86:27: 86:35};
 +         field _s11: impl Future<Output = ()>;
 +         field _s12: impl Future<Output = ()>;
 +         field _s13: impl Future<Output = ()>;
@@ -83,8 +83,8 @@
       let mut _39: &mut std::task::Context<'_>;
       let mut _40: std::future::ResumeTy;
       let mut _41: &mut impl std::future::Future<Output = ()>;
-      let mut _42: std::pin::Pin<&mut {async closure@$DIR/async_drop.rs:78:27: 78:35}>;
-      let mut _43: &mut {async closure@$DIR/async_drop.rs:78:27: 78:35};
+      let mut _42: std::pin::Pin<&mut {async closure@$DIR/async_drop.rs:86:27: 86:35}>;
+      let mut _43: &mut {async closure@$DIR/async_drop.rs:86:27: 86:35};
       let mut _44: impl std::future::Future<Output = ()>;
       let mut _45: std::future::ResumeTy;
       let mut _46: std::task::Poll<()>;
@@ -100,8 +100,8 @@
       let mut _56: &mut std::task::Context<'_>;
       let mut _57: std::future::ResumeTy;
       let mut _58: &mut impl std::future::Future<Output = ()>;
-      let mut _59: std::pin::Pin<&mut {closure@$DIR/async_drop.rs:70:25: 70:27}>;
-      let mut _60: &mut {closure@$DIR/async_drop.rs:70:25: 70:27};
+      let mut _59: std::pin::Pin<&mut {closure@$DIR/async_drop.rs:78:25: 78:27}>;
+      let mut _60: &mut {closure@$DIR/async_drop.rs:78:25: 78:27};
       let mut _61: impl std::future::Future<Output = ()>;
       let mut _62: std::future::ResumeTy;
       let mut _63: std::task::Poll<()>;
@@ -271,18 +271,18 @@
                                           scope 10 {
                                               debug foo => _23;
 +                                             coroutine debug async_closure => _s9;
-                                              let _24: {closure@$DIR/async_drop.rs:70:25: 70:27};
+                                              let _24: {closure@$DIR/async_drop.rs:78:25: 78:27};
                                               scope 11 {
 -                                                 debug async_closure => _24;
-+                                                 debug async_closure => (((*_182) as variant#6).9: {closure@$DIR/async_drop.rs:70:25: 70:27});
++                                                 debug async_closure => (((*_182) as variant#6).9: {closure@$DIR/async_drop.rs:78:25: 78:27});
                                                   let _25: AsyncInt;
                                                   scope 12 {
                                                       debug foo => _25;
 +                                                     coroutine debug async_coroutine => _s10;
-                                                      let _26: {async closure@$DIR/async_drop.rs:78:27: 78:35};
+                                                      let _26: {async closure@$DIR/async_drop.rs:86:27: 86:35};
                                                       scope 13 {
 -                                                         debug async_coroutine => _26;
-+                                                         debug async_coroutine => (((*_182) as variant#4).10: {async closure@$DIR/async_drop.rs:78:27: 78:35});
++                                                         debug async_coroutine => (((*_182) as variant#4).10: {async closure@$DIR/async_drop.rs:86:27: 86:35});
                                                       }
                                                   }
                                               }
@@ -404,17 +404,17 @@
           StorageLive(_23);
           _23 = AsyncInt(const 14_i32);
 -         StorageLive(_24);
--         _24 = {closure@$DIR/async_drop.rs:70:25: 70:27} { foo: move _23 };
+-         _24 = {closure@$DIR/async_drop.rs:78:25: 78:27} { foo: move _23 };
 +         nop;
-+         (((*_182) as variant#6).9: {closure@$DIR/async_drop.rs:70:25: 70:27}) = {closure@$DIR/async_drop.rs:70:25: 70:27} { foo: move _23 };
++         (((*_182) as variant#6).9: {closure@$DIR/async_drop.rs:78:25: 78:27}) = {closure@$DIR/async_drop.rs:78:25: 78:27} { foo: move _23 };
           StorageLive(_25);
           _25 = AsyncInt(const 15_i32);
 -         StorageLive(_26);
--         _26 = {closure@$DIR/async_drop.rs:78:27: 78:35} { foo: move _25 };
+-         _26 = {closure@$DIR/async_drop.rs:86:27: 86:35} { foo: move _25 };
 -         _0 = const ();
 -         goto -> bb72;
 +         nop;
-+         (((*_182) as variant#4).10: {async closure@$DIR/async_drop.rs:78:27: 78:35}) = {closure@$DIR/async_drop.rs:78:27: 78:35} { foo: move _25 };
++         (((*_182) as variant#4).10: {async closure@$DIR/async_drop.rs:86:27: 86:35}) = {closure@$DIR/async_drop.rs:86:27: 86:35} { foo: move _25 };
 +         (((*_182) as variant#20).0: ()) = const ();
 +         goto -> bb51;
       }
@@ -517,7 +517,7 @@
 +     bb24 (cleanup): {
           StorageDead(_25);
 -         goto -> bb25;
-+         drop((((*_182) as variant#6).9: {closure@$DIR/async_drop.rs:70:25: 70:27})) -> [return: bb25, unwind terminate(cleanup)];
++         drop((((*_182) as variant#6).9: {closure@$DIR/async_drop.rs:78:25: 78:27})) -> [return: bb25, unwind terminate(cleanup)];
       }
   
 -     bb25: {
@@ -720,14 +720,14 @@
 -         drop(_1) -> [return: bb51, unwind terminate(cleanup)];
 +     bb50: {
 +         nop;
-+         (((*_182) as variant#4).11: impl std::future::Future<Output = ()>) = async_drop_in_place::<{async closure@$DIR/async_drop.rs:78:27: 78:35}>(copy (_42.0: &mut {async closure@$DIR/async_drop.rs:78:27: 78:35})) -> [return: bb49, unwind: bb40];
++         (((*_182) as variant#4).11: impl std::future::Future<Output = ()>) = async_drop_in_place::<{async closure@$DIR/async_drop.rs:86:27: 86:35}>(copy (_42.0: &mut {async closure@$DIR/async_drop.rs:86:27: 86:35})) -> [return: bb49, unwind: bb40];
       }
   
 -     bb51 (cleanup): {
 -         resume;
 +     bb51: {
-+         _43 = &mut (((*_182) as variant#4).10: {async closure@$DIR/async_drop.rs:78:27: 78:35});
-+         _42 = Pin::<&mut {async closure@$DIR/async_drop.rs:78:27: 78:35}>::new_unchecked(move _43) -> [return: bb50, unwind: bb23];
++         _43 = &mut (((*_182) as variant#4).10: {async closure@$DIR/async_drop.rs:86:27: 86:35});
++         _42 = Pin::<&mut {async closure@$DIR/async_drop.rs:86:27: 86:35}>::new_unchecked(move _43) -> [return: bb50, unwind: bb23];
       }
   
       bb52: {
@@ -811,14 +811,14 @@
 -         _33 = move _2;
 -         _32 = std::future::get_context::<'_, '_>(move _33) -> [return: bb61, unwind: bb54];
 +         nop;
-+         (((*_182) as variant#6).10: impl std::future::Future<Output = ()>) = async_drop_in_place::<{closure@$DIR/async_drop.rs:70:25: 70:27}>(copy (_59.0: &mut {closure@$DIR/async_drop.rs:70:25: 70:27})) -> [return: bb61, unwind: bb53];
++         (((*_182) as variant#6).10: impl std::future::Future<Output = ()>) = async_drop_in_place::<{closure@$DIR/async_drop.rs:78:25: 78:27}>(copy (_59.0: &mut {closure@$DIR/async_drop.rs:78:25: 78:27})) -> [return: bb61, unwind: bb53];
       }
   
       bb63: {
 -         _34 = &mut _27;
 -         _31 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _34) -> [return: bb62, unwind: bb54];
-+         _60 = &mut (((*_182) as variant#6).9: {closure@$DIR/async_drop.rs:70:25: 70:27});
-+         _59 = Pin::<&mut {closure@$DIR/async_drop.rs:70:25: 70:27}>::new_unchecked(move _60) -> [return: bb62, unwind: bb25];
++         _60 = &mut (((*_182) as variant#6).9: {closure@$DIR/async_drop.rs:78:25: 78:27});
++         _59 = Pin::<&mut {closure@$DIR/async_drop.rs:78:25: 78:27}>::new_unchecked(move _60) -> [return: bb62, unwind: bb25];
       }
   
       bb64: {
@@ -879,13 +879,13 @@
   
       bb71: {
 -         StorageLive(_27);
--         _27 = async_drop_in_place::<{async closure@$DIR/async_drop.rs:78:27: 78:35}>(copy (_42.0: &mut {async closure@$DIR/async_drop.rs:78:27: 78:35})) -> [return: bb70, unwind: bb54];
+-         _27 = async_drop_in_place::<{async closure@$DIR/async_drop.rs:86:27: 86:35}>(copy (_42.0: &mut {async closure@$DIR/async_drop.rs:86:27: 86:35})) -> [return: bb70, unwind: bb54];
 +         _70 = <impl Future<Output = ()> as Future>::poll(move _72, move _73) -> [return: bb70, unwind: bb65];
       }
   
       bb72: {
 -         _43 = &mut _26;
--         _42 = Pin::<&mut {async closure@$DIR/async_drop.rs:78:27: 78:35}>::new_unchecked(move _43) -> [return: bb71, unwind: bb36];
+-         _42 = Pin::<&mut {async closure@$DIR/async_drop.rs:86:27: 86:35}>::new_unchecked(move _43) -> [return: bb71, unwind: bb36];
 +         _74 = move _183;
 +         _73 = copy (_74.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb71;
@@ -1027,7 +1027,7 @@
   
       bb91: {
 -         StorageLive(_44);
--         _44 = async_drop_in_place::<{closure@$DIR/async_drop.rs:70:25: 70:27}>(copy (_59.0: &mut {closure@$DIR/async_drop.rs:70:25: 70:27})) -> [return: bb90, unwind: bb75];
+-         _44 = async_drop_in_place::<{closure@$DIR/async_drop.rs:78:25: 78:27}>(copy (_59.0: &mut {closure@$DIR/async_drop.rs:78:25: 78:27})) -> [return: bb90, unwind: bb75];
 +         _183 = move _96;
 +         StorageDead(_96);
 +         goto -> bb90;
@@ -1035,7 +1035,7 @@
   
       bb92: {
 -         _60 = &mut _24;
--         _59 = Pin::<&mut {closure@$DIR/async_drop.rs:70:25: 70:27}>::new_unchecked(move _60) -> [return: bb91, unwind: bb38];
+-         _59 = Pin::<&mut {closure@$DIR/async_drop.rs:78:25: 78:27}>::new_unchecked(move _60) -> [return: bb91, unwind: bb38];
 +         _183 = move _103;
 +         StorageDead(_103);
 +         goto -> bb97;

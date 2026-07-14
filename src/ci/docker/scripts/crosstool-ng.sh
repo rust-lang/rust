@@ -1,7 +1,7 @@
 #!/bin/sh
 set -ex
 
-# ignore-tidy-linelength
+# ignore-tidy-file-linelength
 
 CT_NG=1.28.0
 

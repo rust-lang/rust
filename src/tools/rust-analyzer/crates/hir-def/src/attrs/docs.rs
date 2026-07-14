@@ -11,7 +11,7 @@ use std::{
     ops::{ControlFlow, Range},
 };
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
@@ -27,7 +27,7 @@ use syntax::{
 };
 use tt::{TextRange, TextSize};
 
-use crate::{db::DefDatabase, macro_call_as_call_id, nameres::MacroSubNs, resolver::Resolver};
+use crate::{macro_call_as_call_id, nameres::MacroSubNs, resolver::Resolver};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct DocsSourceMapLine {
@@ -323,13 +323,10 @@ impl Docs {
 }
 
 struct DocMacroExpander<'db> {
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     krate: Crate,
     recursion_depth: usize,
     recursion_limit: usize,
-}
-
-struct DocExprSourceCtx<'db> {
     resolver: Resolver<'db>,
     file_id: HirFileId,
     ast_id_map: &'db AstIdMap,
@@ -338,12 +335,11 @@ struct DocExprSourceCtx<'db> {
 
 fn expand_doc_expr_via_macro_pipeline<'db>(
     expander: &mut DocMacroExpander<'db>,
-    source_ctx: &DocExprSourceCtx<'db>,
     expr: ast::Expr,
 ) -> Option<String> {
     match expr {
         ast::Expr::ParenExpr(paren_expr) => {
-            expand_doc_expr_via_macro_pipeline(expander, source_ctx, paren_expr.expr()?)
+            expand_doc_expr_via_macro_pipeline(expander, paren_expr.expr()?)
         }
         ast::Expr::Literal(literal) => match literal.kind() {
             ast::LiteralKind::String(string) => string.value().ok().map(Into::into),
@@ -351,9 +347,7 @@ fn expand_doc_expr_via_macro_pipeline<'db>(
         },
         ast::Expr::MacroExpr(macro_expr) => {
             let macro_call = macro_expr.macro_call()?;
-            let (expr, new_source_ctx) = expand_doc_macro_call(expander, source_ctx, macro_call)?;
-            // After expansion, the expr lives in the expansion file; use its source context.
-            expand_doc_expr_via_macro_pipeline(expander, &new_source_ctx, expr)
+            expand_doc_macro_call(expander, macro_call)
         }
         _ => None,
     }
@@ -361,19 +355,18 @@ fn expand_doc_expr_via_macro_pipeline<'db>(
 
 fn expand_doc_macro_call<'db>(
     expander: &mut DocMacroExpander<'db>,
-    source_ctx: &DocExprSourceCtx<'db>,
     macro_call: ast::MacroCall,
-) -> Option<(ast::Expr, DocExprSourceCtx<'db>)> {
+) -> Option<String> {
     if expander.recursion_depth >= expander.recursion_limit {
         return None;
     }
 
     let path = macro_call.path()?;
     let mod_path = ModPath::from_src(expander.db, path, &mut |range| {
-        source_ctx.span_map.span_for_range(range).ctx
+        expander.span_map.span_for_range(range).ctx
     })?;
-    let call_site = source_ctx.span_map.span_for_range(macro_call.syntax().text_range());
-    let ast_id = AstId::new(source_ctx.file_id, source_ctx.ast_id_map.ast_id(&macro_call));
+    let call_site = expander.span_map.span_for_range(macro_call.syntax().text_range());
+    let ast_id = AstId::new(expander.file_id, expander.ast_id_map.ast_id(&macro_call));
     let call_id = macro_call_as_call_id(
         expander.db,
         ast_id,
@@ -382,34 +375,40 @@ fn expand_doc_macro_call<'db>(
         ExpandTo::Expr,
         expander.krate,
         |path| {
-            source_ctx.resolver.resolve_path_as_macro_def(expander.db, path, Some(MacroSubNs::Bang))
+            expander.resolver.resolve_path_as_macro_def(expander.db, path, Some(MacroSubNs::Bang))
         },
         &mut |_, _| (),
     )
     .ok()?
     .value?;
 
-    expander.recursion_depth += 1;
-    let parse = expander.db.parse_macro_expansion(call_id).value.0.clone();
-    let expr = parse.cast::<ast::Expr>().map(|parse| parse.tree())?;
-    expander.recursion_depth -= 1;
+    let (parse, span_map) = &call_id.parse_macro_expansion(expander.db).value;
+    let expr = parse.clone().cast::<ast::Expr>().map(|parse| parse.tree())?;
 
     // Build a new source context for the expansion file so that any further
     // recursive expansion (e.g. a user macro expanding to `concat!(...)`)
     // correctly resolves AstIds and spans in the expansion.
     let expansion_file_id: HirFileId = call_id.into();
-    let new_source_ctx = DocExprSourceCtx {
-        resolver: source_ctx.resolver.clone(),
-        file_id: expansion_file_id,
-        ast_id_map: expander.db.ast_id_map(expansion_file_id),
-        span_map: expander.db.span_map(expansion_file_id),
-    };
-    Some((expr, new_source_ctx))
+    let old_file_id = std::mem::replace(&mut expander.file_id, expansion_file_id);
+    let old_span_map =
+        std::mem::replace(&mut expander.span_map, SpanMap::ExpansionSpanMap(span_map));
+    let old_ast_id_map =
+        std::mem::replace(&mut expander.ast_id_map, expansion_file_id.ast_id_map(expander.db));
+    expander.recursion_depth += 1;
+
+    let expansion = expand_doc_expr_via_macro_pipeline(expander, expr);
+
+    expander.file_id = old_file_id;
+    expander.span_map = old_span_map;
+    expander.ast_id_map = old_ast_id_map;
+    expander.recursion_depth -= 1;
+
+    expansion
 }
 
 fn extend_with_attrs<'a, 'db>(
     result: &mut Docs,
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     krate: Crate,
     node: &SyntaxNode,
     file_id: HirFileId,
@@ -420,7 +419,7 @@ fn extend_with_attrs<'a, 'db>(
     make_resolver: &dyn Fn() -> Resolver<'db>,
 ) {
     // Lazily initialised when we first encounter a `#[doc = macro!()]`.
-    let mut expander: Option<(DocMacroExpander<'db>, DocExprSourceCtx<'db>)> = None;
+    let mut expander: Option<DocMacroExpander<'db>> = None;
 
     expand_cfg_attr_with_doc_comments::<_, Infallible>(
         AttrDocCommentIter::from_syntax_node(node).filter(|attr| match attr {
@@ -442,27 +441,23 @@ fn extend_with_attrs<'a, 'db>(
                             {
                                 result.extend_with_doc_attr(value, indent);
                             } else {
-                                let (exp, ctx) = expander.get_or_insert_with(|| {
+                                let exp = expander.get_or_insert_with(|| {
                                     let resolver = make_resolver();
                                     let def_map = resolver.top_level_def_map();
                                     let recursion_limit = def_map.recursion_limit() as usize;
-                                    (
-                                        DocMacroExpander {
-                                            db,
-                                            krate,
-                                            recursion_depth: 0,
-                                            recursion_limit,
-                                        },
-                                        DocExprSourceCtx {
-                                            resolver,
-                                            file_id,
-                                            ast_id_map: db.ast_id_map(file_id),
-                                            span_map: db.span_map(file_id),
-                                        },
-                                    )
+                                    DocMacroExpander {
+                                        db,
+                                        krate,
+                                        recursion_depth: 0,
+                                        recursion_limit,
+                                        resolver,
+                                        file_id,
+                                        ast_id_map: file_id.ast_id_map(db),
+                                        span_map: file_id.span_map(db),
+                                    }
                                 });
                                 if let Some(expanded) =
-                                    expand_doc_expr_via_macro_pipeline(exp, ctx, value)
+                                    expand_doc_expr_via_macro_pipeline(exp, value)
                                 {
                                     result.extend_with_unmapped_doc_str(&expanded, indent);
                                 }
@@ -478,7 +473,7 @@ fn extend_with_attrs<'a, 'db>(
 }
 
 pub(crate) fn extract_docs<'a, 'db>(
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     krate: Crate,
     resolver: &dyn Fn() -> Resolver<'db>,
     get_cfg_options: &dyn Fn() -> &'a CfgOptions,

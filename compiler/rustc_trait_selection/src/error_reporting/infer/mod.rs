@@ -1078,8 +1078,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     //         ---  ^ type argument elided
                     //         |
                     //         highlighted in output
-                    values.0.push_normal(path1);
-                    values.1.push_normal(path2);
+                    values.0.push_normal(self.tcx.item_name(did1).to_string());
+                    values.1.push_normal(self.tcx.item_name(did2).to_string());
 
                     // Avoid printing out default generic parameters that are common to both
                     // types.
@@ -1284,17 +1284,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
+                let args1 = args1.no_bound_vars().unwrap();
+                let args2 = args2.no_bound_vars().unwrap();
+
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
                 self.cmp_fn_sig(sig1, Some((*did1, Some(args1))), sig2, Some((*did2, Some(args2))))
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
+                let args1 = args1.no_bound_vars().unwrap();
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
                 self.cmp_fn_sig(sig1, Some((*did1, Some(args1))), sig_tys2.with(*hdr2), None)
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
+                let args2 = args2.no_bound_vars().unwrap();
+
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
                 self.cmp_fn_sig(sig_tys1.with(*hdr1), None, sig2, Some((*did2, Some(args2))))
             }

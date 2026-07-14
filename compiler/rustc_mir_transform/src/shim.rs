@@ -327,7 +327,13 @@ pub fn build_drop_shim<'tcx>(
         start.terminator = Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
-                func: Operand::function_handle(tcx, def_id, [ty::GenericArg::from(slice_ty)], span),
+                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                func: Operand::function_handle(
+                    tcx,
+                    def_id,
+                    ty::Binder::dummy([ty::GenericArg::from(slice_ty)]),
+                    span,
+                ),
                 args: Box::new([Spanned { span, node: Operand::Move(Place::from(erased_local)) }]),
                 destination: Place::from(RETURN_PLACE),
                 target: Some(return_block),
@@ -618,7 +624,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         // `func == Clone::clone(&ty) -> ty`
-        let func_ty = Ty::new_fn_def(tcx, self.def_id, [ty]);
+        // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+        let func_ty = Ty::new_fn_def(tcx, self.def_id, ty::Binder::dummy([ty]));
         let func = Operand::Constant(Box::new(ConstOperand {
             span: self.span,
             user_ty: None,

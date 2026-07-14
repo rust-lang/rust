@@ -827,4 +827,15 @@ use top::{a::A, b::{B as D, B as C}};
 ",
         );
     }
+
+    #[test]
+    fn test_merge_with_trailing_path_separator() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+use foo::bar;
+use foo::$0;
+",
+        );
+    }
 }

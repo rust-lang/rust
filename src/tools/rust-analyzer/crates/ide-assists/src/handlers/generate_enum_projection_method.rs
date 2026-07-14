@@ -219,7 +219,7 @@ impl Method {
     fn new(variant: &ast::Variant, fn_name_prefix: &str) -> Option<Self> {
         use itertools::Itertools as _;
         let variant_name = variant.name()?;
-        let fn_name = format!("{fn_name_prefix}_{}", &to_lower_snake_case(&variant_name.text()));
+        let fn_name = format!("{fn_name_prefix}_{}", to_lower_snake_case(&variant_name.text()));
 
         match variant.kind() {
             ast::StructKind::Record(record) => {

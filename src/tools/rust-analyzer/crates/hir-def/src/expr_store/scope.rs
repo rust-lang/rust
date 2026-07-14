@@ -1,10 +1,10 @@
 //! Name resolution for expressions.
+use base_db::SourceDatabase;
 use hir_expand::{MacroDefId, name::Name};
 use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 
 use crate::{
     BlockId, DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
-    db::DefDatabase,
     expr_store::{Body, ExpressionStore, HygieneId, body::Param},
     hir::{
         Array, Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement,
@@ -56,7 +56,7 @@ pub struct ScopeData {
 #[salsa::tracked]
 impl ExprScopes {
     #[salsa::tracked(returns(ref))]
-    pub fn body_expr_scopes(db: &dyn DefDatabase, def: DefWithBodyId) -> ExprScopes {
+    pub fn body_expr_scopes(db: &dyn SourceDatabase, def: DefWithBodyId) -> ExprScopes {
         let body = Body::of(db, def);
         let mut scopes = ExprScopes::new_body(body);
         scopes.shrink_to_fit();
@@ -64,7 +64,7 @@ impl ExprScopes {
     }
 
     #[salsa::tracked(returns(ref))]
-    pub fn sig_expr_scopes(db: &dyn DefDatabase, def: GenericDefId) -> ExprScopes {
+    pub fn sig_expr_scopes(db: &dyn SourceDatabase, def: GenericDefId) -> ExprScopes {
         let (_, store) = GenericParams::with_store(db, def);
         let roots = store.expr_roots();
         let mut scopes = ExprScopes::new_store(store, roots);
@@ -73,7 +73,7 @@ impl ExprScopes {
     }
 
     #[salsa::tracked(returns(ref))]
-    pub fn variant_scopes(db: &dyn DefDatabase, def: VariantId) -> ExprScopes {
+    pub fn variant_scopes(db: &dyn SourceDatabase, def: VariantId) -> ExprScopes {
         let fields = VariantFields::of(db, def);
         let roots = fields.store.expr_roots();
         let mut scopes = ExprScopes::new_store(&fields.store, roots);
@@ -84,7 +84,7 @@ impl ExprScopes {
 
 impl ExprScopes {
     #[inline]
-    pub fn of(db: &dyn DefDatabase, def: impl Into<ExpressionStoreOwnerId>) -> &ExprScopes {
+    pub fn of(db: &dyn SourceDatabase, def: impl Into<ExpressionStoreOwnerId>) -> &ExprScopes {
         match def.into() {
             ExpressionStoreOwnerId::Body(def) => Self::body_expr_scopes(db, def),
             ExpressionStoreOwnerId::Signature(def) => Self::sig_expr_scopes(db, def),

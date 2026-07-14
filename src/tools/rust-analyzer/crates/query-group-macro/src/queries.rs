@@ -32,13 +32,8 @@ impl ToTokens for TrackedQuery {
         let options = self
             .cycle
             .as_ref()
-            .map(|Cycle { cycle_fn, cycle_initial, cycle_result }| {
-                let cycle_fn = cycle_fn.as_ref().map(|(ident, path)| quote!(#ident=#path));
-                let cycle_initial =
-                    cycle_initial.as_ref().map(|(ident, path)| quote!(#ident=#path));
-                let cycle_result = cycle_result.as_ref().map(|(ident, path)| quote!(#ident=#path));
-                let options = cycle_fn.into_iter().chain(cycle_initial).chain(cycle_result);
-                quote!(#(#options),*)
+            .map(|Cycle { cycle_result }| {
+                cycle_result.as_ref().map(|(ident, path)| quote!(#ident=#path))
             })
             .into_iter();
         let annotation = quote!(#[salsa_macros::tracked( #(#options),* )]);

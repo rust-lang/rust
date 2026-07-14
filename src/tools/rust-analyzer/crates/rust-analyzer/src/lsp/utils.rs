@@ -48,6 +48,7 @@ impl GlobalState {
                     message,
                     actions: Some(vec![lsp_types::MessageActionItem {
                         title: "Open server logs".to_owned(),
+                        properties: Default::default(),
                     }]),
                 },
                 |this, resp| {

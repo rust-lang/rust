@@ -365,6 +365,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_paren_sugar,
     sym::rustc_inherit_overflow_checks,
     sym::rustc_reservation_impl,
+    sym::rustc_test_entrypoint_marker,
     sym::rustc_test_marker,
     sym::rustc_unsafe_specialization_marker,
     sym::rustc_specialization_trait,
