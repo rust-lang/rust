@@ -11,7 +11,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModDefId};
+use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
@@ -385,8 +385,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 && Some(*visible_parent) != actual_parent
             {
                 this.tcx()
-                    // FIXME(typed_def_id): Further propagate ModDefId
-                    .module_children(ModDefId::new_unchecked(*visible_parent))
+                    .module_children(ModId::new_unchecked(*visible_parent))
                     .iter()
                     .filter(|child| child.res.opt_def_id() == Some(def_id))
                     .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
@@ -612,8 +611,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 // that's public and whose identifier isn't `_`.
                 let reexport = self
                     .tcx()
-                    // FIXME(typed_def_id): Further propagate ModDefId
-                    .module_children(ModDefId::new_unchecked(visible_parent))
+                    .module_children(ModId::new_unchecked(visible_parent))
                     .iter()
                     .filter(|child| child.res.opt_def_id() == Some(def_id))
                     .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)

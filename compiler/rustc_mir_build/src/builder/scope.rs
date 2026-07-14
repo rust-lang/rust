@@ -967,7 +967,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let cx = RustcPatCtxt {
             tcx: self.tcx,
             typeck_results,
-            module: self.tcx.parent_module(self.hir_id).to_def_id(),
+            module: self.tcx.parent_module(self.hir_id),
             typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(
                 self.tcx,
                 self.def_id,

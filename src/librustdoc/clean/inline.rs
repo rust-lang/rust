@@ -6,7 +6,7 @@ use std::sync::Arc;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir::def::{DefKind, MacroKinds, Res};
-use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModId};
 use rustc_hir::{self as hir, Mutability, find_attr};
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -181,7 +181,7 @@ pub(crate) fn try_inline(
 pub(crate) fn try_inline_glob(
     cx: &mut DocContext<'_>,
     res: Res,
-    current_mod: LocalModDefId,
+    current_mod: LocalModId,
     visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
     import: &hir::Item<'_>,

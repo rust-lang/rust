@@ -24,7 +24,7 @@ use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::Parser;
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
-use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_span::def_id::{CrateNum, DefId, LocalDefId, ModId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -1003,7 +1003,7 @@ impl SyntaxExtension {
         descr: Symbol,
         kind: MacroKind,
         macro_def_id: Option<DefId>,
-        parent_module: Option<DefId>,
+        parent_module: Option<ModId>,
     ) -> ExpnData {
         ExpnData::new(
             ExpnKind::Macro(kind, descr),

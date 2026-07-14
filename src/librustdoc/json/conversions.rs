@@ -16,6 +16,7 @@ use rustc_hir::{HeaderSafety, Safety, find_attr};
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, ty};
+use rustc_span::def_id::ModId;
 use rustc_span::{Pos, Symbol, kw, sym};
 use rustdoc_json_types::*;
 
@@ -207,15 +208,15 @@ impl FromClean<clean::Span> for Option<Span> {
     }
 }
 
-impl FromClean<Option<ty::Visibility<DefId>>> for Visibility {
-    fn from_clean(v: &Option<ty::Visibility<DefId>>, renderer: &JsonRenderer<'_>) -> Self {
-        match v {
+impl FromClean<Option<ty::Visibility<ModId>>> for Visibility {
+    fn from_clean(v: &Option<ty::Visibility<ModId>>, renderer: &JsonRenderer<'_>) -> Self {
+        match *v {
             None => Visibility::Default,
             Some(ty::Visibility::Public) => Visibility::Public,
-            Some(ty::Visibility::Restricted(did)) if did.is_crate_root() => Visibility::Crate,
-            Some(ty::Visibility::Restricted(did)) => Visibility::Restricted {
-                parent: renderer.id_from_item_default((*did).into()),
-                path: renderer.tcx.def_path(*did).to_string_no_crate_verbose(),
+            Some(ty::Visibility::Restricted(mod_id)) if mod_id.is_crate_root() => Visibility::Crate,
+            Some(ty::Visibility::Restricted(mod_id)) => Visibility::Restricted {
+                parent: renderer.id_from_item_default(ItemId::DefId(mod_id.to_def_id())),
+                path: renderer.tcx.def_path(mod_id.to_def_id()).to_string_no_crate_verbose(),
             },
         }
     }

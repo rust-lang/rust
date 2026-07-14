@@ -16,6 +16,7 @@ use rustc_hir::find_attr;
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
+use rustc_span::def_id::ModId;
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::{debug, warn};
 
@@ -556,17 +557,17 @@ where
 }
 
 /// Find the nearest parent module of a [`DefId`].
-pub(crate) fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
+pub(crate) fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ModId> {
     if def_id.is_top_level_module() {
         // The crate root has no parent. Use it as the root instead.
-        Some(def_id)
+        Some(ModId::new_unchecked(def_id))
     } else {
         let mut current = def_id;
         // The immediate parent might not always be a module.
         // Find the first parent which is.
         while let Some(parent) = tcx.opt_parent(current) {
             if tcx.def_kind(parent) == DefKind::Mod {
-                return Some(parent);
+                return Some(ModId::new_unchecked(parent));
             }
             current = parent;
         }

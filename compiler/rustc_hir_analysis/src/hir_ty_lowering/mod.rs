@@ -45,6 +45,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
+use rustc_span::def_id::ModId;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, FulfillmentError};
@@ -116,7 +117,7 @@ pub enum RegionInferReason<'a> {
 pub struct InherentAssocCandidate {
     pub impl_: DefId,
     pub assoc_item: DefId,
-    pub scope: DefId,
+    pub scope: ModId,
 }
 
 pub struct ResolvedStructPath<'tcx> {
@@ -1806,7 +1807,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         ident: Ident,
         assoc_tag: ty::AssocTag,
         scope: DefId,
-    ) -> Option<(ty::AssocItem, /*scope*/ DefId)> {
+    ) -> Option<(ty::AssocItem, /*scope*/ ModId)> {
         let tcx = self.tcx();
 
         let (ident, def_scope) = tcx.adjust_ident_and_get_scope(ident, scope, self.item_def_id());
@@ -1826,7 +1827,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         item_def_id: DefId,
         ident: Ident,
-        scope: DefId,
+        scope: ModId,
         block: HirId,
         span: Span,
     ) {
