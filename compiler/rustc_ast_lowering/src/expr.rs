@@ -597,7 +597,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         for (idx, arg) in args.iter().cloned().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let node_id = self.next_node_id();
-                self.create_def(node_id, None, DefKind::AnonConst, f.span);
+                self.create_def(node_id, None, DefKind::AnonConst, arg.span);
                 let const_value =
                     if let ControlFlow::Break(span) = WillCreateDefIdsVisitor.visit_expr(&arg) {
                         Box::new(Expr {
