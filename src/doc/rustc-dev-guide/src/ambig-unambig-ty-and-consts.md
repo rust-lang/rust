@@ -1,19 +1,18 @@
 # Ambig/Unambig Types and Consts
 
 Types and Consts args in the AST/HIR can be in two kinds of positions ambiguous (ambig) or unambiguous (unambig).
-Ambig positions are where
-it would be valid to parse either a type or a const, unambig positions are where only one kind would be valid to
-parse.
+Ambig positions are where it would be valid to parse either a type or a const.
+Unambig positions are where only one kind would be valid to parse.
 
 ```rust
 fn func<T, const N: usize>(arg: T) {
     //                          ^ Unambig type position
-    let a: _ = arg; 
+    let a: _ = arg;
     //     ^ Unambig type position
 
     func::<T, N>(arg);
     //     ^  ^
-    //     ^^^^ Ambig position 
+    //     ^^^^ Ambig position
 
     let _: [u8; 10];
     //      ^^  ^^ Unambig const position
@@ -43,7 +42,7 @@ Then during name resolution:
 See [`LateResolutionVisitor::visit_generic_arg`] for where this is implemented.
 
 Finally during AST lowering when we attempt to lower a type argument, we first check if it is a `Ty::Path` and if it resolved to something in the value namespace.
-If it did then we create an *anon const* and lower to a const argument instead of a type argument.
+If it did, then we create an *anon const* and lower to a const argument instead of a type argument.
 
 See [`LoweringContext::lower_generic_arg`] for where this is implemented.
 
@@ -60,15 +59,21 @@ fn foo() {
 ```
 
 The only generic arguments which remain ambiguous after lowering are inferred generic arguments (`_`) in path segments.
-In the above example it is not clear at parse time whether the `_` argument to `Foo` is an inferred type argument, or an inferred const argument.
+In the above example,
+it is not clear at parse time whether the `_` argument to `Foo` is an inferred type argument,
+or an inferred const argument.
 
 In ambig AST positions, inferred arguments are parsed as an [`ast::GenericArg::Ty`] wrapping a [`ast::Ty::Infer`].
-Then during AST lowering when lowering an `ast::GenericArg::Ty` we check if it is an inferred type and if so lower to a [`hir::GenericArg::Infer`].
+Then, during AST lowering, when lowering an `ast::GenericArg::Ty`,
+we check if it is an inferred type, and if so, lower to a [`hir::GenericArg::Infer`].
 
 In unambig AST positions, inferred arguments are parsed as either `ast::Ty::Infer` or [`ast::AnonConst`].
-The `AnonConst` case is quite strange, we use [`ast::ExprKind::Underscore`] to represent the "body" of the "anon const" although in reality we do not actually lower this to an anon const in the HIR.
+The `AnonConst` case is quite strange;
+we use [`ast::ExprKind::Underscore`] to represent the "body" of the "anon const",
+although in reality we do not actually lower this to an anon const in the HIR.
 
-It may be worth seeing if we can refactor the AST to have `ast::GenericArg::Infer` and then get rid of this overloaded meaning of `AnonConst`, as well as the reuse of `ast::Ty::Infer` in ambig positions.
+It may be worth seeing if we can refactor the AST to have `ast::GenericArg::Infer` and then get rid of this overloaded meaning of `AnonConst`,
+as well as the reuse of `ast::Ty::Infer` in ambig positions.
 
 In unambig AST positions, during AST lowering we lower inferred arguments to [`hir::TyKind::Infer`][ty_infer] or [`hir::ConstArgKind::Infer`][const_infer] depending on whether it is a type or const position respectively.
 In ambig AST positions, during AST lowering we lower inferred arguments to [`hir::GenericArg::Infer`][generic_arg_infer].
@@ -99,7 +104,7 @@ To make writing HIR visitors less error prone when caring about inferred types/c
 
 This has a number of benefits:
 - It's clear that `GenericArg::Type/Const` cannot represent inferred type/const arguments
-- Implementors of `visit_ty` and `visit_const_arg` will never encounter inferred types/consts making it impossible to write a visitor that seems to work right but handles edge cases wrong 
+- Implementors of `visit_ty` and `visit_const_arg` will never encounter inferred types/consts making it impossible to write a visitor that seems to work right but handles edge cases wrong
 - The `visit_infer` method handles *all* cases of inferred type/consts in the HIR making it easy for visitors to handle inferred type/consts in one dedicated place and not forget cases
 
 [ty_infer]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.TyKind.html#variant.Infer
