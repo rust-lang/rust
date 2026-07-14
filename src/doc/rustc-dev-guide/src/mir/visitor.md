@@ -35,8 +35,7 @@ As shown above, within the impl, you can override any of the
 code that will execute whenever a `foo` is found.
 If you want to recursively walk the contents of the `foo`, you then invoke the
 `super_foo` method.
-(NB.
-You never want to override `super_foo`.)
+Note that you never want to override `super_foo`.
 
 A very simple example of a visitor can be found in [`LocalFinder`].
 By implementing `visit_local` method, this visitor identifies local variables that
@@ -53,4 +52,3 @@ post-order, and so forth).
 
 [t]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/traversal/index.html
 [traversal]: https://en.wikipedia.org/wiki/Tree_traversal
-
