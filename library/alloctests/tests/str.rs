@@ -1922,6 +1922,21 @@ fn word_to_titlecase() {
         expected.push_str(&str::repeat("a", 510));
         expected
     });
+
+    // LJ ligatures and title-case characters.
+    // ǈ is already a title-case letter, so it stays as the first char.
+    assert_eq!("ǈj".word_to_titlecase(), "ǈj");
+    assert_eq!("ǈJ".word_to_titlecase(), "ǈj");
+    // l is the first cased char (uppercases to L), ǈ lowercases to ǉ.
+    assert_eq!("lǈﬁ".word_to_titlecase(), "Lǉﬁ");
+    assert_eq!("Lǈﬁ".word_to_titlecase(), "Lǉﬁ");
+
+    // LJ ligatures: lower=ǉ (U+01C9), upper=Ǉ (U+01C7), title=ǈ (U+01C8).
+    // ß decomposes to "Ss" in title case (first char) but stays ß elsewhere.
+    assert_eq!("ßǉǇǈ".word_to_titlecase(), "Ssǉǉǉ");
+    assert_eq!("ǉǇǈß".word_to_titlecase(), "ǈǉǉß");
+    assert_eq!("Ǉǈßǉ".word_to_titlecase(), "ǈǉßǉ");
+    assert_eq!("ǈßǉǇ".word_to_titlecase(), "ǈßǉǉ");
 }
 
 #[test]
