@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
 use rustc_index::IndexVec;
 use rustc_middle::ptrauth::{
-    build_fn_ptr_type_discriminator_input_from_ty, compute_fn_ptr_type_discriminator,
+    clone_discriminated_ptrauth_schema_for, compute_fn_ptr_type_discriminator_for,
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
@@ -144,18 +144,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Bx::Value {
         let tcx = bx.tcx();
 
-        let src_input = build_fn_ptr_type_discriminator_input_from_ty(tcx, info.src_ty);
-        let dst_input = build_fn_ptr_type_discriminator_input_from_ty(tcx, info.dst_ty);
-
-        let src_disc = match src_input {
-            Some(src) => compute_fn_ptr_type_discriminator(tcx, &src),
-            None => 0,
-        };
-
-        let dst_disc = match dst_input {
-            Some(dst) => compute_fn_ptr_type_discriminator(tcx, &dst),
-            None => 0,
-        };
+        let src_disc = compute_fn_ptr_type_discriminator_for(tcx, info.src_ty).unwrap_or(0);
+        let dst_disc = compute_fn_ptr_type_discriminator_for(tcx, info.dst_ty).unwrap_or(0);
 
         if src_disc == dst_disc {
             return val;
@@ -164,7 +154,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         debug!("resign_transmuted_fn_ptr\t{:#x} -> {:#x}", src_disc, dst_disc);
 
         let key = self.cx.tcx().sess.pointer_authentication_fn_ptr_key().unwrap() as u32;
-        bx.ptrauth_resign(val, key, src_disc, key, dst_disc)
+        bx.ptrauth_resign(val, key, src_disc.into(), key, dst_disc.into())
     }
 
     /// Walks through `#[repr(transparent)]` wrappers to find an underlying
@@ -686,22 +676,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     args.no_bound_vars().unwrap(),
                                 )
                                 .unwrap();
-                                let mut schema = bx.sess().pointer_authentication_functions();
 
-                                if let Some(ref mut s) = schema {
-                                    if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
-                                        if let Some(input) = build_fn_ptr_type_discriminator_input_from_ty(
-                                            bx.tcx(),
-                                            operand.layout.ty,
-                                        ) {
-                                            s.constant_discriminator =
-                                                compute_fn_ptr_type_discriminator(
-                                                    bx.tcx(),
-                                                    &input,
-                                                ) as u16;
-                                        }
-                                    }
-                                }
+                            let schema = if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+                                clone_discriminated_ptrauth_schema_for(
+                                    bx.tcx(),
+                                    bx.sess().pointer_authentication_functions(),
+                                    operand.layout.ty,
+                                )
+                            } else {
+                                bx.sess().pointer_authentication_functions().clone()
+                            };
 
                                 OperandValue::Immediate(bx.get_fn_addr(instance, schema))
                             }
