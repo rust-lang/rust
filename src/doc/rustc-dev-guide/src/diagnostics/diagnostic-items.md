@@ -57,7 +57,6 @@ A new diagnostic item can be added with these two steps:
    and add the name, in this case `Cat`, at the correct point in the list.
 
 Now you can create a pull request with your changes.
-:tada:
 
 > NOTE:
 > When using diagnostic items in other projects like Clippy,
