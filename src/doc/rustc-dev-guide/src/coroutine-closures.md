@@ -36,7 +36,7 @@ We later force all of the *closure args* to be captured by-value[^l3], but we do
 
 [^l3]: <https://github.com/rust-lang/rust/blob/5ca0e9fa9b2f92b463a0a2b0b34315e09c0b7236/compiler/rustc_hir_typeck/src/upvar.rs#L250-L256>
 
-### `rustc_middle::ty` Representation
+### `rustc_middle::ty` representation
 
 For the purposes of keeping the implementation mostly future-compatible (i.e. with gen `|| {}` and `async gen || {}`), most of this section calls async closures "coroutine-closures".
 
@@ -87,7 +87,7 @@ To most easily construct the `Coroutine` that a coroutine-closure returns, you c
 
 Most of the args to that function will be components that you can get out of the `CoroutineArgs`, except for the `goal_kind: ClosureKind` which controls which flavor of coroutine to return based off of the `ClosureKind` passed in -- i.e. it will prepare the by-ref coroutine if `ClosureKind::Fn | ClosureKind::FnMut`, and the by-move coroutine if `ClosureKind::FnOnce`.
 
-### Trait Hierarchy
+### Trait hierarchy
 
 We introduce a parallel hierarchy of `Fn*` traits that are implemented for .
 The motivation for the introduction was covered in a blog post: [Async Closures](https://hackmd.io/@compiler-errors/async-closures).
