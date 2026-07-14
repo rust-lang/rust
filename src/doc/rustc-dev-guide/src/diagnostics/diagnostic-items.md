@@ -53,7 +53,7 @@ A new diagnostic item can be added with these two steps:
    [`rustc_span::symbol::sym`].
    To add your newly-created diagnostic item,
    simply open the module file,
-   and add the name (In this case `Cat`) at the correct point in the list.
+   and add the name, in this case `Cat`, at the correct point in the list.
 
 Now you can create a pull request with your changes. :tada:
 
