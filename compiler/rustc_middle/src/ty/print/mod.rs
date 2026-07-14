@@ -368,6 +368,7 @@ impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::Instance<'tcx> {
         match self.def {
             ty::InstanceKind::Item(_) => {}
             ty::InstanceKind::Intrinsic(_) => cx.write_str(" - intrinsic")?,
+            ty::InstanceKind::LlvmIntrinsic(_) => cx.write_str(" - LLVM intrinsic")?,
             ty::InstanceKind::Virtual(_, num) => cx.write_str(&format!(" - virtual#{num}"))?,
             ty::InstanceKind::Shim(shim) => {
                 cx.write_str(" - ")?;

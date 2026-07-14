@@ -1833,7 +1833,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     _ => self.optimized_mir(def),
                 }
             }
-            ty::InstanceKind::Intrinsic(..) => bug!("intrinsics have no instance MIR"),
+            ty::InstanceKind::Intrinsic(..) | ty::InstanceKind::LlvmIntrinsic(..) => {
+                bug!("intrinsics have no instance MIR")
+            }
             ty::InstanceKind::Virtual(..) => bug!("virtual dispatches have no instance MIR"),
             ty::InstanceKind::Shim(shim) => self.mir_shims(shim),
         };

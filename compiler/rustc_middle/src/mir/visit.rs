@@ -347,6 +347,7 @@ macro_rules! make_mir_visitor {
                         ty::InstanceKind::Item(_def_id) => {}
 
                         ty::InstanceKind::Intrinsic(_def_id)
+                        | ty::InstanceKind::LlvmIntrinsic(_def_id)
                         | ty::InstanceKind::Shim(ty::ShimKind::VTable(_def_id))
                         | ty::InstanceKind::Shim(ty::ShimKind::Reify(_def_id, _))
                         | ty::InstanceKind::Virtual(_def_id, _)

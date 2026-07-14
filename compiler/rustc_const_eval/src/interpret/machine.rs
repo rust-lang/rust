@@ -247,6 +247,16 @@ pub trait Machine<'tcx>: Sized {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>>;
 
+    /// Directly process an LLVM intrinsic without pushing a stack frame. It is the hook's
+    /// responsibility to advance the instruction pointer as appropriate.
+    fn call_llvm_intrinsic(
+        ecx: &mut InterpCx<'tcx, Self>,
+        instance: ty::Instance<'tcx>,
+        args: &[OpTy<'tcx, Self::Provenance>],
+        destination: &PlaceTy<'tcx, Self::Provenance>,
+        target: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx>;
+
     /// Check whether the given function may be executed on the current machine, in terms of the
     /// target features is requires.
     fn check_fn_target_features(
