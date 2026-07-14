@@ -24,14 +24,8 @@ error[E0071]: expected struct, variant or union type, found type parameter `Self
 LL |         let z = Self::<u8> {};
    |                 ^^^^^^^^^^ not a struct
 
-error[E0071]: expected struct, variant or union type, found type parameter `Self`
-  --> $DIR/struct-path-self.rs:11:13
-   |
-LL |             Self { .. } => {}
-   |             ^^^^ not a struct
-
 error[E0109]: type arguments are not allowed on self type
-  --> $DIR/struct-path-self.rs:20:24
+  --> $DIR/struct-path-self.rs:19:24
    |
 LL |         let z = Self::<u8> {};
    |                 ----   ^^ type argument not allowed
@@ -53,7 +47,7 @@ LL +         let z = Self {};
    |
 
 error[E0109]: type arguments are not allowed on self type
-  --> $DIR/struct-path-self.rs:30:24
+  --> $DIR/struct-path-self.rs:29:24
    |
 LL |         let z = Self::<u8> {};
    |                 ----   ^^ type argument not allowed
@@ -74,7 +68,7 @@ LL -         let z = Self::<u8> {};
 LL +         let z = Self {};
    |
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0071, E0109.
 For more information about an error, try `rustc --explain E0071`.

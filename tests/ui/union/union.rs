@@ -37,13 +37,16 @@ pub fn main() {
     match foo {
         Foo { zst: () } => {} //~ ERROR access to union field is unsafe
     }
-    match foo {
-        Foo { pizza: Pizza { .. } } => {} //~ ERROR access to union field is unsafe
-    }
+
 
     // binding to wildcard is okay
     match foo {
         Foo { bar: _ } => {},
     }
     let Foo { bar: _ } = foo;
+
+    match foo {
+        // OK, `Type { .. }` is equivalent to wildcard
+        Foo { pizza: Pizza { .. } } => {}
+    }
 }
