@@ -1035,11 +1035,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// `allow_any_type` is `true` for `Path { .. }` patterns (with only a `..` rest).
+    /// If it's not set to `true`, then the only valid `qpath`s point
+    /// a struct, union, or enum variant, and the returned `Option<&'tcx ty::VariantDef>`
+    /// will be `Some`.
     pub(crate) fn check_struct_path(
         &self,
         qpath: &QPath<'tcx>,
         hir_id: HirId,
-    ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
+        allow_any_type: bool,
+    ) -> Result<(Option<&'tcx ty::VariantDef>, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
         let variant = match def {
@@ -1063,6 +1068,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => None,
             },
+            Res::Def(
+                DefKind::Enum
+                | DefKind::Trait
+                | DefKind::TraitAlias
+                | DefKind::TyParam
+                | DefKind::ForeignTy,
+                _,
+            )
+            | Res::PrimTy(..) => None,
             _ => bug!("unexpected definition: {:?}", def),
         };
 
@@ -1075,7 +1089,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Check bounds on type arguments used in the path.
             self.add_required_obligations_for_hir(path_span, did, args, hir_id);
 
-            Ok((variant, ty.normalized))
+            Ok((Some(variant), ty.normalized))
+        } else if allow_any_type {
+            Ok((None, ty.normalized))
         } else {
             Err(match *ty.normalized.kind() {
                 ty::Error(guar) => {
