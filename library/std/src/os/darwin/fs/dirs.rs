@@ -112,7 +112,6 @@ pub trait MediaDirsExt: Sized + Sealed {
     /// [`downloads`]: MediaDirs::downloads
     /// [`music`]: MediaDirs::music
     /// [`pictures`]: MediaDirs::pictures
-    /// [`public_share`]: MediaDirs::public_share
     /// [`videos`]: MediaDirs::videos
     ///
     /// [`NSSearchPathDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory?language=objc

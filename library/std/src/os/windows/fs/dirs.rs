@@ -152,7 +152,6 @@ impl UserDirsExt for UserDirs {
         dirs.downloads = downloads;
         dirs.music = music;
         dirs.pictures = pictures;
-        dirs.public_share = public;
         dirs.videos = videos;
 
         Ok(dirs)
@@ -238,7 +237,6 @@ mod tests {
         assert!(dirs.downloads().is_some());
         assert!(dirs.music().is_some());
         assert!(dirs.pictures().is_some());
-        assert!(dirs.public_share().is_some());
         assert!(dirs.videos().is_some());
     }
 }

@@ -87,9 +87,9 @@ impl HomeDirs {
     ///
     /// Other paths can be configured via [`set_cache_home`](Self::set_cache_home).
     ///
-    /// [XDG]: std::os::unix::fs::dirs::HomeDirsExt
-    /// [Darwin]: std::os::darwin::fs::dirs::HomeDirsExt
-    /// [Windows]: std::os::windows::fs::dirs::HomeDirsExt
+    /// [XDG]: crate::os::unix::fs::HomeDirsExt
+    /// [Darwin]: crate::os::darwin::fs::HomeDirsExt
+    /// [Windows]: crate::os::windows::fs::HomeDirsExt
     /// [`NSCachesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/cachesdirectory?language=objc
     /// [`{FOLDERID_LocalAppData}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_localappdata
     #[unstable(feature = "dir_discovery", issue = "157515")]
@@ -115,9 +115,9 @@ impl HomeDirs {
     ///
     /// Other paths can be configured via [`set_config_home`](Self::set_config_home).
     ///
-    /// [XDG]: std::os::unix::fs::dirs::HomeDirsExt
-    /// [Darwin]: std::os::darwin::fs::dirs::HomeDirsExt
-    /// [Windows]: std::os::windows::fs::dirs::HomeDirsExt
+    /// [XDG]: crate::os::unix::fs::HomeDirsExt
+    /// [Darwin]: crate::os::darwin::fs::HomeDirsExt
+    /// [Windows]: crate::os::windows::fs::HomeDirsExt
     /// [`NSApplicationSupportDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/applicationsupportdirectory?language=objc
     /// [`{FOLDERID_RoamingAppData}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_roamingappdata
     #[unstable(feature = "dir_discovery", issue = "157515")]
@@ -143,9 +143,9 @@ impl HomeDirs {
     ///
     /// Other paths can be configured via [`set_data_home`](Self::set_data_home).
     ///
-    /// [XDG]: std::os::unix::fs::dirs::HomeDirsExt
-    /// [Darwin]: std::os::darwin::fs::dirs::HomeDirsExt
-    /// [Windows]: std::os::windows::fs::dirs::HomeDirsExt
+    /// [XDG]: crate::os::unix::fs::HomeDirsExt
+    /// [Darwin]: crate::os::darwin::fs::HomeDirsExt
+    /// [Windows]: crate::os::windows::fs::HomeDirsExt
     /// [`NSApplicationSupportDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/applicationsupportdirectory?language=objc
     /// [`{FOLDERID_RoamingAppData}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_roamingappdata
     #[unstable(feature = "dir_discovery", issue = "157515")]
@@ -178,9 +178,9 @@ impl HomeDirs {
     ///
     /// Other paths can be configured via [`set_state_home`](Self::set_state_home).
     ///
-    /// [XDG]: std::os::unix::fs::dirs::HomeDirsExt
-    /// [Darwin]: std::os::darwin::fs::dirs::HomeDirsExt
-    /// [Windows]: std::os::windows::fs::dirs::HomeDirsExt
+    /// [XDG]: crate::os::unix::fs::HomeDirsExt
+    /// [Darwin]: crate::os::darwin::fs::HomeDirsExt
+    /// [Windows]: crate::os::windows::fs::HomeDirsExt
     /// [`NSApplicationSupportDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/applicationsupportdirectory?language=objc
     /// [`{FOLDERID_LocalAppData}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_localappdata
     #[unstable(feature = "dir_discovery", issue = "157515")]
@@ -225,9 +225,9 @@ impl MediaDirs {
     ///
     /// Other paths can be configured via [`set_desktop`](Self::set_desktop).
     ///
-    /// [XDG]: std::os::unix::fs::dirs::MediaDirsExt
-    /// [Darwin]: std::os::darwin::fs::dirs::MediaDirsExt
-    /// [Windows]: std::os::windows::fs::dirs::MediaDirsExt
+    /// [XDG]: crate::os::unix::fs::MediaDirsExt
+    /// [Darwin]: crate::os::darwin::fs::MediaDirsExt
+    /// [Windows]: crate::os::windows::fs::MediaDirsExt
     /// [`NSDesktopDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/desktopdirectory?language=objc
     /// [`{FOLDERID_Desktop}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_desktop
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
@@ -253,9 +253,9 @@ impl MediaDirs {
     ///
     /// Other paths can be configured via [`set_documents`](Self::set_documents).
     ///
-    /// [XDG]: std::os::unix::fs::dirs::MediaDirsExt
-    /// [Darwin]: std::os::darwin::fs::dirs::MediaDirsExt
-    /// [Windows]: std::os::windows::fs::dirs::MediaDirsExt
+    /// [XDG]: crate::os::unix::fs::MediaDirsExt
+    /// [Darwin]: crate::os::darwin::fs::MediaDirsExt
+    /// [Windows]: crate::os::windows::fs::MediaDirsExt
     /// [`NSDocumentDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/documentdirectory?language=objc
     /// [`{FOLDERID_Documents}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_documents
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
@@ -281,9 +281,9 @@ impl MediaDirs {
     ///
     /// Other paths can be configured via [`set_downloads`](Self::set_downloads).
     ///
-    /// [XDG]: std::os::unix::fs::dirs::MediaDirsExt
-    /// [Darwin]: std::os::darwin::fs::dirs::MediaDirsExt
-    /// [Windows]: std::os::windows::fs::dirs::MediaDirsExt
+    /// [XDG]: crate::os::unix::fs::MediaDirsExt
+    /// [Darwin]: crate::os::darwin::fs::MediaDirsExt
+    /// [Windows]: crate::os::windows::fs::MediaDirsExt
     /// [`NSDownloadsDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/downloadsdirectory?language=objc
     /// [`{FOLDERID_Downloads}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_downloads
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
@@ -309,9 +309,9 @@ impl MediaDirs {
     ///
     /// Other paths can be configured via [`set_music`](Self::set_music).
     ///
-    /// [XDG]: std::os::unix::fs::dirs::MediaDirsExt
-    /// [Darwin]: std::os::darwin::fs::dirs::MediaDirsExt
-    /// [Windows]: std::os::windows::fs::dirs::MediaDirsExt
+    /// [XDG]: crate::os::unix::fs::MediaDirsExt
+    /// [Darwin]: crate::os::darwin::fs::MediaDirsExt
+    /// [Windows]: crate::os::windows::fs::MediaDirsExt
     /// [`NSMusicDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/musicdirectory?language=objc
     /// [`{FOLDERID_Music}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_music
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
@@ -337,9 +337,9 @@ impl MediaDirs {
     ///
     /// Other paths can be configured via [`set_pictures`](Self::set_pictures).
     ///
-    /// [XDG]: std::os::unix::fs::dirs::MediaDirsExt
-    /// [Darwin]: std::os::darwin::fs::dirs::MediaDirsExt
-    /// [Windows]: std::os::windows::fs::dirs::MediaDirsExt
+    /// [XDG]: crate::os::unix::fs::MediaDirsExt
+    /// [Darwin]: crate::os::darwin::fs::MediaDirsExt
+    /// [Windows]: crate::os::windows::fs::MediaDirsExt
     /// [`NSPicturesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/picturesdirectory?language=objc
     /// [`{FOLDERID_Pictures}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_pictures
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
@@ -365,9 +365,9 @@ impl MediaDirs {
     ///
     /// Other paths can be configured via [`set_videos`](Self::set_videos).
     ///
-    /// [XDG]: std::os::unix::fs::dirs::MediaDirsExt
-    /// [Darwin]: std::os::darwin::fs::dirs::MediaDirsExt
-    /// [Windows]: std::os::windows::fs::dirs::MediaDirsExt
+    /// [XDG]: crate::os::unix::fs::MediaDirsExt
+    /// [Darwin]: crate::os::darwin::fs::MediaDirsExt
+    /// [Windows]: crate::os::windows::fs::MediaDirsExt
     /// [`NSMoviesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/moviesdirectory?language=objc
     /// [`{FOLDERID_Videos}`]: https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#folderid_videos
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
