@@ -7,7 +7,7 @@ use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_span::{Span, Symbol, edit_distance, sym};
 use rustc_target::spec::{Arch, SanitizerSet};
