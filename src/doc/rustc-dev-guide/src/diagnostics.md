@@ -339,18 +339,18 @@ For example,
 
 Most of these methods will accept strings, but it is recommended that typed
 identifiers for translatable diagnostics be used for new diagnostics (see
-[Translation][translation]).
+[Translation]).
 
 [translation]: ./diagnostics/translation.md
 
 `Diag` allows you to add related notes and suggestions to an error
-before emitting it by calling the [`emit`][emit] method.
+before emitting it by calling the [`emit`] method.
 (Failing to either emit or [cancel] a `Diag` will result in an ICE.) See the
 [docs][diag] for more info on what you can do.
 
 [spanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.span_err
 [strspanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.struct_span_err
-[emit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.emit
+[`emit`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.emit
 [cancel]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.cancel
 
 ```rust,ignore
