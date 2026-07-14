@@ -302,7 +302,8 @@ struct Args {
     #[arg(long)]
     bypass_ignore_backends: bool,
 
-    // Multi-value, these options can be entered multiple files
+    // These values can be entered multiple times, for example:
+    // --skip foo --skip bar
     /// Skip tests matching SUBSTRING.
     #[arg(long)]
     skip: Vec<String>,
