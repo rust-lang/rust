@@ -9,9 +9,10 @@ use rustc_type_ir_macros::{
 };
 
 use crate::inherent::*;
+use crate::lang_items::SolverTraitLangItem;
 use crate::upcast::{Upcast, UpcastFrom};
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, Alias, Interner, Region};
+use crate::{self as ty, Alias, Binder, ClauseKind, Interner, Region};
 
 /// `A: 'region`
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, A)]
@@ -792,6 +793,63 @@ bitflags::bitflags! {
     }
 }
 
+impl CompressedTraitRefs {
+    #[inline]
+    pub fn from_lang_item(lang_item: SolverTraitLangItem) -> Option<Self> {
+        Some(match lang_item {
+            SolverTraitLangItem::Clone => CompressedTraitRefs::CLONE,
+            SolverTraitLangItem::Copy => CompressedTraitRefs::COPY,
+            SolverTraitLangItem::MetaSized => CompressedTraitRefs::META_SIZED,
+            SolverTraitLangItem::PointeeSized => CompressedTraitRefs::POINTEE_SIZED,
+            SolverTraitLangItem::Sized => CompressedTraitRefs::SIZED,
+            SolverTraitLangItem::Drop => CompressedTraitRefs::DROP,
+            SolverTraitLangItem::Unpin => CompressedTraitRefs::UNPIN,
+            // TODO: Debug
+            _ => return None,
+        })
+    }
+
+    #[inline]
+    pub fn lang_item_from_single_bit(self) -> SolverTraitLangItem {
+        match self {
+            Self::SIZED => SolverTraitLangItem::Sized,
+            Self::META_SIZED => SolverTraitLangItem::MetaSized,
+            Self::POINTEE_SIZED => SolverTraitLangItem::PointeeSized,
+            Self::CLONE => SolverTraitLangItem::Clone,
+            Self::COPY => SolverTraitLangItem::Copy,
+            Self::DEBUG => todo!(),
+            Self::DROP => SolverTraitLangItem::Drop,
+            Self::UNPIN => SolverTraitLangItem::Unpin,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    pub fn trait_clause_from_def_id<I: Interner>(
+        cx: I,
+        self_ty: I::Ty,
+        def_id: I::TraitId,
+    ) -> Binder<I, TraitClause<I>> {
+        Binder::dummy(TraitClause {
+            trait_ref: TraitRef::new(cx, def_id, [self_ty]),
+            polarity: ClausePolarity::Positive,
+        })
+    }
+
+    #[inline]
+    pub fn trait_clause_from_single_bit<I: Interner>(
+        self,
+        cx: I,
+        self_ty: I::Ty,
+    ) -> Binder<I, TraitClause<I>> {
+        Self::trait_clause_from_def_id(
+            cx,
+            self_ty,
+            cx.require_trait_lang_item(self.lang_item_from_single_bit()),
+        )
+    }
+}
+
 /// A clause kind that represents a small set of frequently occurring clauses as a bitset for a given self type.
 /// When multiple common clauses exist in a paramenv, they're merged together so the paramenv can be
 /// stored more efficiently.
@@ -799,10 +857,11 @@ bitflags::bitflags! {
 /// # WARNING/FIXME:
 ///
 /// Computing type flags for common clauses works correctly.
-/// However, folding  and visiting with `TypeFoldable` and `TypeVisitable` does *not* work as expected.
+/// However, folding and visiting with [`TypeFoldable`](crate::TypeFoldable) and
+/// [`TypeVisitable`](crate::TypeVisitable) does *not* work as expected.
 /// If we were to decompress `ParamEnv`s everytime we folded/visited it would be super expensive.
-/// So we don't, and assume that it's enough to fold/visit into the `self_ty`.
-/// This works because the traits represented by `CommonClause` don't have generic args or anything
+/// So we don't, and assume that it's enough to fold/visit into the `self_ty`. This works because
+/// the traits represented by [`ClauseKind::CompressedTrait`] don't have generic args or anything
 /// complicated. A normal fold/visit of them will effectively only care about `self_ty`.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
@@ -811,9 +870,51 @@ bitflags::bitflags! {
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct CompressedTraitClause<I: Interner> {
-    self_ty: I::DefId,
+    pub self_ty: I::Ty,
 
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
-    compressed_trait_refs: CompressedTraitRefs,
+    pub compressed_trait_refs: CompressedTraitRefs,
+}
+
+impl<I: Interner> CompressedTraitClause<I> {
+    /// Returns `Some` if the passed clause is eligible to be represented as a `CommonClause`.
+    /// Only a few clauses are, but those clauses are exceedingly common.
+    pub fn from_clause(cx: I, clause: I::Clause) -> Option<Self> {
+        let kind = clause.kind();
+        let kind = kind.no_bound_vars()?;
+        match kind {
+            ClauseKind::Trait(TraitClause { trait_ref, polarity }) => {
+                if matches!(polarity, ClausePolarity::Negative) {
+                    return None;
+                }
+
+                let compressed_trait_refs =
+                    CompressedTraitRefs::from_lang_item(cx.as_trait_lang_item(trait_ref.def_id)?)?;
+
+                Some(Self { self_ty: trait_ref.self_ty(), compressed_trait_refs })
+            }
+            ClauseKind::RegionOutlives(_) => None,
+            ClauseKind::TypeOutlives(_) => None,
+            ClauseKind::Projection(_) => None,
+            ClauseKind::ConstArgHasType(_, _) => None,
+            ClauseKind::WellFormed(_) => None,
+            ClauseKind::ConstEvaluatable(_) => None,
+            ClauseKind::HostEffect(_) => None,
+            ClauseKind::UnstableFeature(_) => None,
+            ClauseKind::CompressedTrait(_) => unimplemented!(),
+        }
+    }
+
+    /// Try to merge an `other` clause into `self`.
+    /// If possible, `true` is returned, and `self` will now represent both clauses in a compressed form.
+    /// Upon calling `iter_clauses`, both original clauses are returned.
+    pub fn try_merge(&mut self, other: Self) -> bool {
+        if self.self_ty == other.self_ty {
+            self.compressed_trait_refs |= other.compressed_trait_refs;
+            true
+        } else {
+            false
+        }
+    }
 }

@@ -924,7 +924,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     Err(_) => Ok(EvaluatedToErr),
                 }
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(..)) => unreachable!(),
+            ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(_)) => unreachable!(),
         }
     }
 
