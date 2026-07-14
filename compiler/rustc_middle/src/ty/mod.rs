@@ -1161,7 +1161,7 @@ pub struct ParamEnv<'tcx> {
 static_assert_size!(ParamEnv<'_>, 8);
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn caller_bounds(self) -> impl inherent::SliceLike<Item = ty::Clause<'tcx>> {
+    fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> {
         self.caller_bounds()
     }
 }
@@ -1179,8 +1179,13 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     #[inline]
-    pub fn caller_bounds(self) -> Clauses<'tcx> {
-        self.caller_bounds
+    pub fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> + Clone {
+        self.caller_bounds.iter()
+    }
+
+    #[inline]
+    pub fn is_empty(self) -> bool {
+        self.caller_bounds.as_slice().is_empty()
     }
 
     /// Construct a trait environment with the given set of predicates.

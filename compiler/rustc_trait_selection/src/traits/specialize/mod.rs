@@ -206,7 +206,7 @@ fn fulfill_implication<'tcx>(
             source_trait_ref,
             target_trait_ref,
             errors,
-            param_env.caller_bounds()
+            param_env.caller_bounds().collect::<Vec<_>>()
         );
         return Err(NoSolution);
     }
@@ -337,7 +337,7 @@ pub(super) fn specializes(
             specializing_impl_trait_ref,
             parent_impl_trait_ref,
             errors,
-            param_env.caller_bounds()
+            param_env.caller_bounds().collect::<Vec<_>>()
         );
         return false;
     }
@@ -373,7 +373,7 @@ pub(super) fn specializes(
                 specializing_impl_trait_ref,
                 parent_impl_trait_ref,
                 errors,
-                param_env.caller_bounds()
+                param_env.caller_bounds().collect::<Vec<_>>()
             );
             return false;
         }

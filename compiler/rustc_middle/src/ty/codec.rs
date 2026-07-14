@@ -204,7 +204,7 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for CtfeProvenance {
 
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::ParamEnv<'tcx> {
     fn encode(&self, e: &mut E) {
-        self.caller_bounds().encode(e);
+        self.caller_bounds.encode(e);
     }
 }
 
