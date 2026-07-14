@@ -13,8 +13,9 @@ use region_constraints::{
 pub use relate::StructurallyRelateAliases;
 pub use relate::combine::PredicateEmittingRelation;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
-use rustc_data_structures::unify as ut;
+use rustc_data_structures::unify::{self as ut, UnifyKey, UnifyValue};
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId};
@@ -754,21 +755,18 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn unresolved_root_variables(&self) -> (Vec<TyVid>, Vec<ty::IntVid>, Vec<ty::FloatVid>) {
         let mut inner = self.inner.borrow_mut();
-        let ty = inner.type_variables().unresolved_root_variables().into_iter().collect();
-        let int = (0..inner.int_unification_table().len())
-            .map(|i| ty::IntVid::from_usize(i))
-            .filter(|&vid| {
-                inner.int_unification_table().probe_value(vid).is_unknown()
-                    && inner.int_unification_table().find(vid) == vid
-            })
-            .collect();
-        let float = (0..inner.float_unification_table().len())
-            .map(|i| ty::FloatVid::from_usize(i))
-            .filter(|&vid| {
-                inner.float_unification_table().probe_value(vid).is_unknown()
-                    && inner.float_unification_table().find(vid) == vid
-            })
-            .collect();
+
+        let ty = inner.type_variables().unresolved_root_variables();
+
+        let int = unresolved_root_variables_of(
+            inner.int_unification_table(),
+            ty::IntVarValue::is_unknown,
+        );
+
+        let float = unresolved_root_variables_of(
+            inner.float_unification_table(),
+            ty::FloatVarValue::is_unknown,
+        );
 
         (ty, int, float)
     }
@@ -1871,4 +1869,25 @@ impl<'tcx> SolverRegionConstraintStorage<'tcx> {
             self.0 = constraint;
         }
     }
+}
+
+/// Returns unresolved root variables from `table`, according to `is_unresolved`.
+fn unresolved_root_variables_of<V: UnifyKey>(
+    mut table: UnificationTable<'_, '_, V>,
+    is_unresolved: impl Fn(V::Value) -> bool,
+) -> Vec<V>
+where
+    V: Eq,
+    V::Value: UnifyValue,
+    for<'a> UndoLog<'a>: From<sv::UndoLog<ut::Delegate<V>>>,
+{
+    (0..table.len() as u32)
+        .map(V::from_index)
+        .filter(|&vid| {
+            // vid is a root variable
+            table.find(vid) == vid
+                // ...and it's currently unresolved
+                && is_unresolved(table.try_probe_value(vid).unwrap().clone())
+        })
+        .collect()
 }

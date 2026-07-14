@@ -289,16 +289,8 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Returns indices of all root variables that are not yet instantiated.
     pub(crate) fn unresolved_root_variables(&mut self) -> Vec<ty::TyVid> {
         (0..self.num_vars())
-            .filter_map(|i| {
-                let vid = ty::TyVid::from_usize(i);
-                if self.root_var(vid) != vid {
-                    return None;
-                }
-                match self.probe(vid) {
-                    TypeVariableValue::Unknown { .. } => Some(vid),
-                    TypeVariableValue::Known { .. } => None,
-                }
-            })
+            .map(ty::TyVid::from_usize)
+            .filter(|&vid| self.root_var(vid) == vid && self.probe(vid).is_unknown())
             .collect()
     }
 }
