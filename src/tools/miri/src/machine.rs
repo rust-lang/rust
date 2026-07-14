@@ -1301,6 +1301,17 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
+    fn call_llvm_intrinsic(
+        ecx: &mut MiriInterpCx<'tcx>,
+        instance: ty::Instance<'tcx>,
+        args: &[OpTy<'tcx>],
+        dest: &PlaceTy<'tcx>,
+        ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx, ()> {
+        ecx.call_llvm_intrinsic(instance, args, dest, ret)
+    }
+
+    #[inline(always)]
     fn assert_panic(
         ecx: &mut MiriInterpCx<'tcx>,
         msg: &mir::AssertMessage<'tcx>,

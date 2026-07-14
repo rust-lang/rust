@@ -631,6 +631,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             let def_id = match instance.def {
                 ty::InstanceKind::Item(def) => def,
                 ty::InstanceKind::Intrinsic(..)
+                | ty::InstanceKind::LlvmIntrinsic(..)
                 | ty::InstanceKind::Virtual(..)
                 | ty::InstanceKind::Shim(ty::ShimKind::VTable(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::Reify(..))
@@ -821,6 +822,7 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::Shim(ShimKind::FnPtr(..))
         | InstanceKind::Virtual(..)
         | InstanceKind::Intrinsic(..)
+        | InstanceKind::LlvmIntrinsic(..)
         | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
         | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
         | InstanceKind::Shim(ShimKind::DropGlue(..))
