@@ -139,7 +139,6 @@ impl MediaDirsExt for MediaDirs {
         let downloads = sys::get_known_folder_path(&c::FOLDERID_Downloads)?;
         let music = sys::get_known_folder_path(&c::FOLDERID_Music)?;
         let pictures = sys::get_known_folder_path(&c::FOLDERID_Pictures)?;
-        let public = sys::get_known_folder_path(&c::FOLDERID_Public)?;
         let videos = sys::get_known_folder_path(&c::FOLDERID_Videos)?;
 
         // AppData/Local -- system-local, doesn't make sense to sync to another
