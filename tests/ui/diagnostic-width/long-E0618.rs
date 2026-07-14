@@ -6,8 +6,8 @@ type B = (A, A, A, A);
 type C = (B, B, B, B);
 type D = (C, C, C, C);
 
-fn foo(x: D) { //~ NOTE `x` has type `(...
-    x(); //~ ERROR expected function, found `(...
+fn foo(x: D) { //~ NOTE `x` has type `((_
+    x(); //~ ERROR expected function, found `((_
 }
 
 fn main() {}
