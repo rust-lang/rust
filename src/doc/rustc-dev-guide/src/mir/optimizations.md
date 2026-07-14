@@ -81,7 +81,7 @@ If you have any questions along the way, feel free to ask in `#t-compiler/wg-mir
 The list of passes run and the order in which they are run is defined by the
 [`run_optimization_passes`][rop] function.
 It contains an array of passes to run.
- Each pass in the array is a struct that implements the [`MirPass`] trait.
+Each pass in the array is a struct that implements the [`MirPass`] trait.
 The array is an array of `&dyn MirPass` trait objects.
 Typically, a pass is implemented in its own module of the [`rustc_mir_transform`][trans] crate.
 
