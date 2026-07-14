@@ -1,3 +1,13 @@
+Version 1.97.1 (2026-07-16)
+==========================
+
+<a id="1.97.1"></a>
+
+- [rustc: Fix miscompilation in LLVM optimization](https://github.com/rust-lang/rust/issues/159035)
+  This backports an LLVM submodule bump to include the LLVM-side fix and a
+  revert of the rustc change that is one known trigger for the bug. The rustc
+  side revert should not be strictly necessary but is done out of abundance of caution.
+
 Version 1.97.0 (2026-07-09)
 ==========================
 
