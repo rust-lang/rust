@@ -1,5 +1,5 @@
+// ignore-tidy-file-linelength
 //@ add-minicore
-// ignore-tidy-linelength
 //@ only-pauthtest
 //@ revisions: O0_PAUTH O3_PAUTH O0_PAUTH-ADDR-DISC O3_PAUTH-ADDR-DISC O0_PAUTH-NO-INIT-FINI O3_PAUTH-NO-INIT-FINI
 
