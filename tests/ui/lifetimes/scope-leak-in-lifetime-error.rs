@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/37884
 //@ dont-require-annotations: NOTE
 
 struct RepeatMut<'a, T>(T, &'a ());

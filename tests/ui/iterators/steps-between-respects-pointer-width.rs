@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/48006
 //@ run-pass
 
 #![feature(step_trait)]

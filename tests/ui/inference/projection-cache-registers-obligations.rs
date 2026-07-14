@@ -1,5 +1,6 @@
+//! Regression test for an obscure issue with the projection cache.
+//! https://github.com/rust-lang/rust/issues/42552
 //@ run-pass
-// Regression test for an obscure issue with the projection cache.
 
 fn into_iter<I: Iterator>(a: &I) -> Groups<'_, I> {
     Groups { _a: a }

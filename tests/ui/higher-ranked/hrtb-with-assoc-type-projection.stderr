@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&u32: Foo` is not satisfied
-  --> $DIR/issue-60218.rs:18:19
+  --> $DIR/hrtb-with-assoc-type-projection.rs:17:19
    |
 LL |     trigger_error(vec![], |x: &u32| x)
    |     ------------- ^^^^^^ the trait `Foo` is not implemented for `&u32`
@@ -7,12 +7,12 @@ LL |     trigger_error(vec![], |x: &u32| x)
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/issue-60218.rs:7:1
+  --> $DIR/hrtb-with-assoc-type-projection.rs:6:1
    |
 LL | pub trait Foo {}
    | ^^^^^^^^^^^^^
 note: required by a bound in `trigger_error`
-  --> $DIR/issue-60218.rs:13:72
+  --> $DIR/hrtb-with-assoc-type-projection.rs:12:72
    |
 LL | pub fn trigger_error<I, F>(iterable: I, functor: F)
    |        ------------- required by a bound in this function
