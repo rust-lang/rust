@@ -1006,7 +1006,7 @@ fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
             (Normal(l), Normal(r)) => {
                 eq_path(&l.item.path, &r.item.path) && eq_attr_args(&l.item.args, &r.item.args)
             },
-            (Parsed(..), _) | (_, Parsed(..)) => unreachable!(),
+            (Synthetic(..), _) | (_, Synthetic(..)) => unreachable!(),
             _ => false,
         }
 }
@@ -1035,8 +1035,8 @@ pub fn is_cfg_test(item: &impl HasAttrs) -> bool {
             && item_list.iter().any(|item| item.has_name(sym::test))
         {
             true
-        } else if let AttrKind::Parsed(parsed) = &attr.kind
-            && let EarlyParsedAttribute::CfgTrace(cfg) = &**parsed
+        } else if let AttrKind::Synthetic(synthetic) = &attr.kind
+            && let SyntheticAttr::CfgTrace(cfg) = &**synthetic
         {
             requires_test_cfg(cfg)
         } else {

@@ -13,8 +13,8 @@ use thin_vec::{ThinVec, thin_vec};
 
 use crate::ast::{
     AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID, DelimArgs,
-    EarlyParsedAttribute, Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind,
-    MetaItemLit, NormalAttr, Path, PathSegment, Safety,
+    Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
+    PathSegment, Safety, SyntheticAttr,
 };
 use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
@@ -62,16 +62,16 @@ impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
         match &self.kind {
             AttrKind::Normal(normal) => &normal.item,
-            AttrKind::Parsed(..) | AttrKind::DocComment(..) => unreachable!(),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
         }
     }
 
-    pub fn convert_normal_to_parsed(&mut self, early_parsed_attribute: EarlyParsedAttribute) {
+    pub fn convert_normal_to_synthetic(&mut self, synthetic_attr: SyntheticAttr) {
         match self.kind {
             AttrKind::Normal(..) => {
-                self.kind = AttrKind::Parsed(Box::new(early_parsed_attribute));
+                self.kind = AttrKind::Synthetic(Box::new(synthetic_attr));
             }
-            AttrKind::Parsed(..) | AttrKind::DocComment(..) => unreachable!(),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
         }
     }
 }
@@ -87,7 +87,7 @@ impl AttributeExt for Attribute {
                 AttrArgs::Eq { expr, .. } => Some(expr.span),
                 _ => None,
             },
-            AttrKind::Parsed(..) | AttrKind::DocComment(..) => None,
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
         }
     }
 
@@ -96,28 +96,28 @@ impl AttributeExt for Attribute {
     /// a doc comment) will return `false`.
     fn is_doc_comment(&self) -> Option<Span> {
         match self.kind {
-            AttrKind::Normal(..) | AttrKind::Parsed(..) => None,
+            AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
             AttrKind::DocComment(..) => Some(self.span),
         }
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     fn name(&self) -> Option<Symbol> {
-        use EarlyParsedAttribute::*;
+        use SyntheticAttr::*;
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.name(),
-            AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => None,
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => None,
             AttrKind::DocComment(..) => None,
         }
     }
 
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
-        use EarlyParsedAttribute::*;
+        use SyntheticAttr::*;
         match &self.kind {
             AttrKind::Normal(normal) => {
                 Some(normal.item.path.segments.iter().map(|i| i.ident.name).collect())
             }
-            AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => None,
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => None,
             AttrKind::DocComment(_, _) => None,
         }
     }
@@ -125,7 +125,7 @@ impl AttributeExt for Attribute {
     fn path_span(&self) -> Option<Span> {
         match &self.kind {
             AttrKind::Normal(attr) => Some(attr.item.path.span),
-            AttrKind::Parsed(..) => unreachable!(),
+            AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(_, _) => None,
         }
     }
@@ -142,7 +142,7 @@ impl AttributeExt for Attribute {
                         .zip(name)
                         .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
             }
-            AttrKind::Parsed(..) => false,
+            AttrKind::Synthetic(..) => false,
             AttrKind::DocComment(..) => false,
         }
     }
@@ -154,7 +154,7 @@ impl AttributeExt for Attribute {
     fn is_word(&self) -> bool {
         match &self.kind {
             AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
-            AttrKind::Parsed(..) => unreachable!(),
+            AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => false,
         }
     }
@@ -169,7 +169,7 @@ impl AttributeExt for Attribute {
     fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
-            AttrKind::Parsed(..) => None,
+            AttrKind::Synthetic(..) => None,
             AttrKind::DocComment(..) => None,
         }
     }
@@ -192,7 +192,7 @@ impl AttributeExt for Attribute {
     fn value_str(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.value_str(),
-            AttrKind::Parsed(..) => unreachable!(),
+            AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -212,7 +212,7 @@ impl AttributeExt for Attribute {
             {
                 Some((value, DocFragmentKind::Raw(value_span)))
             }
-            AttrKind::Normal(..) | AttrKind::Parsed(..) => None,
+            AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
         }
     }
 
@@ -281,7 +281,7 @@ impl Attribute {
     pub fn meta(&self) -> Option<MetaItem> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta(self.span),
-            AttrKind::Parsed(..) => None,
+            AttrKind::Synthetic(..) => None,
             AttrKind::DocComment(..) => None,
         }
     }
@@ -289,7 +289,7 @@ impl Attribute {
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_kind(),
-            AttrKind::Parsed(..) => unreachable!(),
+            AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -302,7 +302,7 @@ impl Attribute {
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
                 .to_attr_token_stream()
                 .to_token_trees(),
-            AttrKind::Parsed(..) => vec![],
+            AttrKind::Synthetic(..) => vec![],
             AttrKind::DocComment(comment_kind, data) => vec![TokenTree::token_alone(
                 token::DocComment(comment_kind, self.style, data),
                 self.span,

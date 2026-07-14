@@ -21,10 +21,10 @@ use rustc_span::{Span, Symbol, sym};
 use crate::{AttributeParser, AttributeTemplate, session_diagnostics as errors, template};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
-    use ast::EarlyParsedAttribute::*;
+    use ast::SyntheticAttr::*;
     match &attr.kind {
         AttrKind::Normal(_) => {}
-        AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => return,
+        AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => return,
         AttrKind::DocComment(..) => return,
     }
 

@@ -776,7 +776,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
                 AttrKind::DocComment(CommentKind::Block, _) => {
                     BuiltinUnusedDocCommentSub::BlockHelp
                 }
-                AttrKind::Parsed(..) => unreachable!(),
+                AttrKind::Synthetic(..) => unreachable!(),
             };
             cx.emit_span_lint(
                 UNUSED_DOC_COMMENTS,

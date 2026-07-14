@@ -670,9 +670,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) -> bool {
-        use ast::EarlyParsedAttribute::*;
+        use ast::SyntheticAttr::*;
         match attr.kind {
-            AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => {
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => {
                 // These are internal synthetic attributes with no syntax, so avoid printing them
                 // to keep the printed code reasonably parse-able.
                 return false;
@@ -692,7 +692,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.print_attr_item(&normal.item, attr.span);
                 self.word("]");
             }
-            ast::AttrKind::Parsed(..) => unreachable!(), // due to early return above
+            ast::AttrKind::Synthetic(..) => unreachable!(), // due to early return above
             ast::AttrKind::DocComment(comment_kind, data) => {
                 self.word(doc_comment_to_string(
                     DocFragmentKind::Sugared(*comment_kind),

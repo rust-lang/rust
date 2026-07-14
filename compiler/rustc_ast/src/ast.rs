@@ -3418,13 +3418,11 @@ pub struct Attribute {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum AttrKind {
-    /// A normal (non-doc comment) attribute, with attributes in unparsed form.
+    /// A normal attribute.
     Normal(Box<NormalAttr>),
 
-    /// A normal (non-doc comment) attribute, with attributes in parsed form, so they don't have to
-    /// be reparsed every time they're used, for performance. Only used for a small number of
-    /// attribute kinds.
-    Parsed(Box<EarlyParsedAttribute>),
+    /// A synthetic attribute inserted by the compiler.
+    Synthetic(Box<SyntheticAttr>),
 
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
@@ -3460,29 +3458,29 @@ pub struct AttrItem {
     pub args: AttrArgs,
 }
 
-/// Some attributes are stored in parsed form in the AST.
-/// This is done for performance reasons, so the attributes don't need to be reparsed on every use.
+/// Synthetic attributes are inserted by the compiler and cannot be written in source code. They
+/// receive special treatment in various ways because they must not affect observable behaviour:
+/// they are invisible to proc macros, cannot be pretty-printed, and are unable to re-enter the
+/// parser.
 #[derive(Clone, Encodable, Decodable, Debug, StableHash)]
-pub enum EarlyParsedAttribute {
-    /// This special attribute is added by the compiler when a `cfg` attribute is expanded so that
+pub enum SyntheticAttr {
+    /// This synthetic attribute is added by the compiler when a `cfg` attribute is expanded so that
     /// subsequent code can tell that conditional compilation occurred. A `#[cfg(pred)]` with a
     /// true predicate is replaced by a synthetic `CfgTrace` attribute that records the parsed
     /// predicate. A `#[cfg(pred)]` with a false predicate leaves no trace because there is no node
     /// left to annotate.
     ///
     /// The attribute is used for some diagnostics, by rustdoc (for detecting feature usage), and
-    /// by some clippy lints. It is treated specially in various places because it must not be
-    /// observable in any way that could change behaviour. For example, it is never pretty-printed
-    /// and it is hidden from proc macros.
+    /// by some clippy lints.
     CfgTrace(CfgEntry),
 
-    /// This special attribute is added by the compiler when a `cfg_attr` attribute is expanded so
+    /// This synthetic attribute is added by the compiler when a `cfg_attr` attribute is expanded so
     /// that subsequent code can tell that conditional compilation occurred. A `#[cfg_attr(pred,
     /// attrs)]` is replaced by a synthetic `CfgAttrTrace` attribute whether the predicate
     /// evaluated true or not (or even failed to parse). The `pred` and `attrs` are not recorded
     /// because they are not needed.
     ///
-    /// In all other respects, it is the same as `CfgTrace`.
+    /// The attribute is used by some clippy lints.
     CfgAttrTrace,
 }
 

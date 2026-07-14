@@ -403,9 +403,9 @@ fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
                 Some(name) => name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(name),
             }
         }
-        // These attributes are created only during expansion, and can't re-enter the parser
+        // Synthetic attributes are created only during expansion, and can't re-enter the parser
         // because they have no token form.
-        AttrKind::Parsed(_) => unreachable!(),
+        AttrKind::Synthetic(_) => unreachable!(),
         AttrKind::DocComment(..) => false,
     })
 }

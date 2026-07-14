@@ -514,7 +514,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_decl_attrs(&self, fn_decl: &FnDecl) {
-        use EarlyParsedAttribute::*;
+        use SyntheticAttr::*;
         fn_decl
             .inputs
             .iter()
@@ -525,7 +525,7 @@ impl<'a> AstValidator<'a> {
                         [sym::allow, sym::deny, sym::expect, sym::forbid, sym::splat, sym::warn];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
-                AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => false,
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => false,
                 AttrKind::DocComment(..) => true,
             })
             .for_each(|attr| {

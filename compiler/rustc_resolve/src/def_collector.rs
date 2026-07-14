@@ -557,7 +557,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_attribute(&mut self, attr: &'a Attribute) {
-        use EarlyParsedAttribute::*;
+        use SyntheticAttr::*;
         let orig_in_attr = mem::replace(&mut self.invocation_parent.in_attr, true);
         match &attr.kind {
             AttrKind::Normal(normal) => {
@@ -567,7 +567,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                         .push((normal.item.path.segments[0].ident, self.parent_scope));
                 }
             }
-            AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => {}
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => {}
             AttrKind::DocComment(..) => {}
         }
         visit::walk_attribute(self, attr);

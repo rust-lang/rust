@@ -8,9 +8,9 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrKind, AttrStyle, AttrVec,
-    DUMMY_NODE_ID, DelegationSource, DelegationSuffixes, EarlyParsedAttribute, ExprKind,
-    ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
-    MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
+    DUMMY_NODE_ID, DelegationSource, DelegationSuffixes, ExprKind, ForeignItemKind, HasAttrs,
+    HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId,
+    PatKind, StmtKind, SyntheticAttr, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::parser::AllowExprMetavar;
@@ -2209,7 +2209,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
     fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
-        use EarlyParsedAttribute::*;
+        use SyntheticAttr::*;
         let features = self.cx.ecfg.features;
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
@@ -2264,7 +2264,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     );
                 }
                 AttrKind::Normal(_) => {}
-                AttrKind::Parsed(CfgTrace(_) | CfgAttrTrace) => {}
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => {}
                 AttrKind::DocComment(..) => unreachable!(), // handled above
             }
         }
@@ -2295,10 +2295,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
         let res = eval_config_entry(self.cfg().sess, &cfg);
         if res.as_bool() {
-            // A trace attribute left in AST in place of the original `cfg` attribute.
+            // A synthetic trace attribute left in AST in place of the original `cfg` attribute.
             // It can later be used by lints or other diagnostics.
             let mut trace_attr = attr;
-            trace_attr.convert_normal_to_parsed(EarlyParsedAttribute::CfgTrace(cfg));
+            trace_attr.convert_normal_to_synthetic(SyntheticAttr::CfgTrace(cfg));
             node.visit_attrs(|attrs| attrs.insert(pos, trace_attr));
         }
 

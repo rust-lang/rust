@@ -20,9 +20,9 @@ use crate::attributes::AttributeSafety;
 use crate::context::{
     ATTRIBUTE_PARSERS, AcceptContext, FinalizeContext, FinalizeFn, SharedContext,
 };
-use crate::early_parsed::EarlyParsedState;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
+use crate::synthetic::SyntheticAttrState;
 use crate::{AttributeTemplate, OmitDoc, ShouldEmit};
 
 pub struct EmitAttribute(
@@ -290,7 +290,7 @@ impl<'sess> AttributeParser<'sess> {
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
-        let mut early_parsed_state = EarlyParsedState::default();
+        let mut synthetic_attr_state = SyntheticAttrState::default();
 
         let mut finalizers: Vec<FinalizeFn> = Vec::with_capacity(attrs.len());
 
@@ -326,8 +326,8 @@ impl<'sess> AttributeParser<'sess> {
                         comment: *symbol,
                     }));
                 }
-                ast::AttrKind::Parsed(parsed) => {
-                    early_parsed_state.accept_early_parsed_attribute(attr_span, lower_span, parsed);
+                ast::AttrKind::Synthetic(synthetic) => {
+                    synthetic_attr_state.accept_synthetic_attr(attr_span, lower_span, synthetic);
                     continue;
                 }
                 ast::AttrKind::Normal(n) => {
@@ -448,7 +448,7 @@ impl<'sess> AttributeParser<'sess> {
             }
         }
 
-        early_parsed_state.finalize_early_parsed_attributes(&mut attributes);
+        synthetic_attr_state.finalize_synthetic_attrs(&mut attributes);
         for f in &finalizers {
             if let Some(attr) = f(&mut FinalizeContext {
                 shared: SharedContext {
@@ -497,7 +497,8 @@ impl<'sess> AttributeParser<'sess> {
         /// The list of attributes that are parsed attributes,
         /// even though they don't have a parser in `Late::parsers()`
         const SPECIAL_ATTRIBUTES: &[&[Symbol]] = &[
-            // Cfg attrs are removed after being early-parsed, so don't need to be in the parser list
+            // Cfg attrs are removed after being converted into synthetic attrs and don't need to
+            // be in the parser list.
             &[sym::cfg],
             &[sym::cfg_attr],
         ];

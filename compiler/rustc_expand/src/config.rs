@@ -7,8 +7,8 @@ use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree, WithTokens,
 };
 use rustc_ast::{
-    self as ast, AttrStyle, Attribute, EarlyParsedAttribute, HasAttrs, HasTokens, MetaItem,
-    MetaItemInner, NodeId,
+    self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
+    SyntheticAttr,
 };
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
@@ -248,10 +248,10 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
-        // A trace attribute left in AST in place of the original `cfg_attr` attribute.
+        // A synthetic trace attribute left in AST in place of the original `cfg_attr` attribute.
         // It can later be used by lints or other diagnostics.
         let mut trace_attr = cfg_attr.clone();
-        trace_attr.convert_normal_to_parsed(EarlyParsedAttribute::CfgAttrTrace);
+        trace_attr.convert_normal_to_synthetic(SyntheticAttr::CfgAttrTrace);
 
         let Some((cfg_predicate, expanded_attrs)) = rustc_attr_parsing::parse_cfg_attr(
             cfg_attr,
