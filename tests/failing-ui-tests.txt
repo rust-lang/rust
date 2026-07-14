@@ -96,7 +96,6 @@ tests/ui/eii/default/call_impl.rs
 tests/ui/eii/linking/track_caller_cross_crate.rs
 tests/ui/asm/x86_64/global_asm_escape.rs
 tests/ui/lto/all-crates.rs
-tests/ui/consts/const-eval/c-variadic.rs
 tests/ui/eii/default/call_default_panics.rs
 tests/ui/explicit-tail-calls/indirect.rs
 tests/ui/traits/inheritance/self-in-supertype.rs
