@@ -2011,9 +2011,10 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             && let GeneralConstId::AnonConstId(konst) = konst.def.0
         {
             self.defined_anon_consts.borrow_mut().push(konst);
+        } else {
+            self.write_expr_ty(expr, expected_ty);
         }
 
-        self.write_expr_ty(expr, expected_ty);
         // FIXME: Report an error if needed.
         konst.unwrap_or_else(|_| self.table.next_const_var(Span::Dummy))
     }
