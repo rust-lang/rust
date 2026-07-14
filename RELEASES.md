@@ -1,3 +1,13 @@
+Version 1.97.1 (2026-07-16)
+==========================
+
+<a id="1.97.1"></a>
+
+- [rustc: Fix miscompilation in LLVM optimization](https://github.com/rust-lang/rust/issues/159035)
+  This backports an LLVM submodule bump to include the LLVM-side fix and a
+  revert of the rustc change that is one known trigger for the bug. The rustc
+  side revert should not be strictly necessary but is done out of abundance of caution.
+
 Version 1.97.0 (2026-07-09)
 ==========================
 
@@ -35,14 +45,14 @@ Stabilized APIs
 - [`Send for std::fs::File` on UEFI](https://github.com/rust-lang/rust/pull/154003)
 - [`<{integer}>::isolate_highest_one`](https://doc.rust-lang.org/stable/std/primitive.u32.html#method.isolate_highest_one)
 - [`<{integer}>::isolate_lowest_one`](https://doc.rust-lang.org/stable/std/primitive.u32.html#method.isolate_lowest_one)
+- [`<{integer}>::highest_one`](https://doc.rust-lang.org/stable/std/primitive.u32.html#method.highest_one)
+- [`<{integer}>::lowest_one`](https://doc.rust-lang.org/stable/std/primitive.u32.html#method.lowest_one)
+- [`<{integer}>::bit_width`](https://doc.rust-lang.org/stable/std/primitive.u32.html#method.bit_width)
 - [`NonZero<{integer}>::isolate_highest_one`](https://doc.rust-lang.org/stable/std/num/struct.NonZero.html#method.isolate_highest_one)
 - [`NonZero<{integer}>::isolate_lowest_one`](https://doc.rust-lang.org/stable/std/num/struct.NonZero.html#method.isolate_lowest_one)
-- [`<{integer}>::bit_width`](https://doc.rust-lang.org/stable/std/primitive.u32.html#method.bit_width)
-- [`<{integer}>::lowest_one`](https://doc.rust-lang.org/stable/std/primitive.u32.html#method.lowest_one)
-- [`<{integer}>::highest_one`](https://doc.rust-lang.org/stable/std/primitive.u32.html#method.highest_one)
-- [`NonZero<{integer}>::bit_width`](https://doc.rust-lang.org/stable/std/num/struct.NonZero.html#method.bit_width)
 - [`NonZero<{integer}>::highest_one`](https://doc.rust-lang.org/stable/std/num/struct.NonZero.html#method.highest_one)
 - [`NonZero<{integer}>::lowest_one`](https://doc.rust-lang.org/stable/std/num/struct.NonZero.html#method.lowest_one)
+- [`NonZero<{integer}>::bit_width`](https://doc.rust-lang.org/stable/std/num/struct.NonZero.html#method.bit_width)
 
 
 These previously stable APIs are now stable in const contexts:
@@ -66,6 +76,8 @@ Rustdoc
 -----
 - [Stabilize `--emit` flag](https://github.com/rust-lang/rust/pull/146220)
 - [Stabilize `--remap-path-prefix`](https://github.com/rust-lang/rust/pull/155307)
+
+
 <a id="1.97.0-Compatibility-Notes"></a>
 
 Compatibility Notes
