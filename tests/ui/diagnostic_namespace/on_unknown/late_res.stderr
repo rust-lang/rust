@@ -1,0 +1,28 @@
+error[E0531]: cannot find unit struct, unit variant or constant `blah` in module `empty`
+  --> $DIR/late_res.rs:9:16
+   |
+LL |         empty::blah => {}
+   |                ^^^^ not found in `empty`
+
+error[E0425]: cannot find value `blah` in module `empty`
+  --> $DIR/late_res.rs:14:27
+   |
+LL |     println!("{}", empty::blah);
+   |                           ^^^^ not found in `empty`
+
+error[E0425]: cannot find value `blah` in module `empty`
+  --> $DIR/late_res.rs:18:16
+   |
+LL |         empty::blah,
+   |                ^^^^ not found in `empty`
+
+error[E0425]: cannot find value `blah2` in module `empty`
+  --> $DIR/late_res.rs:21:16
+   |
+LL |         empty::blah2,
+   |                ^^^^^ not found in `empty`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0425, E0531.
+For more information about an error, try `rustc --explain E0425`.
