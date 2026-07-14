@@ -1,5 +1,3 @@
-// use shlex::bytes::Shlex;
-
 use crate::borrow::Cow;
 use crate::env::{self, JoinPathsError, SplitPaths, join_paths, split_paths, var_os};
 use crate::ffi::{OsStr, OsString};

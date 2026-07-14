@@ -1,8 +1,7 @@
 use crate::env;
-use crate::ffi::{CStr, c_char};
 use crate::fs::{HomeDirs, MediaDirs};
 use crate::io::{self, ErrorKind, const_error};
-use crate::path::{Path, PathBuf};
+use crate::path::PathBuf;
 
 trait Sealed {}
 impl Sealed for HomeDirs {}
@@ -184,6 +183,7 @@ impl MediaDirsExt for MediaDirs {
 /// Safer wrapper around the sysdir(3) API
 #[cfg(target_vendor = "apple")]
 mod sys {
+    use crate::ffi::{CStr, c_char};
     use crate::io::{self, ErrorKind, const_error};
     use crate::path::{Path, PathBuf};
 
@@ -246,7 +246,7 @@ mod sys {
                 self.state = unsafe {
                     libc::sysdir_get_next_search_path_enumeration(
                         self.state,
-                        buf.as_mut_ptr() as *mut libc::c_char,
+                        buf.as_mut_ptr() as *mut c_char,
                     )
                 };
             }
@@ -256,7 +256,7 @@ mod sys {
                 return None;
             }
 
-            let Ok(path) = crate::ffi::CStr::from_bytes_until_nul(&buf) else {
+            let Ok(path) = CStr::from_bytes_until_nul(&buf) else {
                 // should be impossible given username length limits, but be defensive
                 return Some(Err(const_error!(
                     ErrorKind::InvalidData,
