@@ -13,8 +13,7 @@ It is merely a description of the framework used to define these analyses in `ru
 It assumes that the reader is familiar with the core ideas as well as
 some basic terminology, such as "transfer function", "fixpoint" and "lattice".
 If you're unfamiliar with these terms, or if you want a quick refresher,
-[*Static Program Analysis*] by Anders Møller and Michael I. Schwartzbach is an excellent,
-freely available textbook.
+[*Static Program Analysis*] is an excellent and freely available textbook.
 For those who prefer audiovisual learning, we previously recommended a series of short lectures
 by the Goethe University Frankfurt on YouTube, but it has since been deleted.
 See [this PR][pr-1295] for the context and [this comment][pr-1295-comment]
