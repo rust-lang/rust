@@ -1,5 +1,5 @@
 error[E0107]: associated function takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/issue-53251.rs:11:20
+  --> $DIR/repeated-macro-expansion-error.rs:12:20
    |
 LL |                 S::f::<i64>();
    |                    ^------- help: remove the unnecessary generics
@@ -10,14 +10,14 @@ LL | impl_add!(a b);
    | -------------- in this macro invocation
    |
 note: associated function defined here, with 0 generic parameters
-  --> $DIR/issue-53251.rs:4:8
+  --> $DIR/repeated-macro-expansion-error.rs:5:8
    |
 LL |     fn f() {}
    |        ^
    = note: this error originates in the macro `impl_add` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0107]: associated function takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/issue-53251.rs:11:20
+  --> $DIR/repeated-macro-expansion-error.rs:12:20
    |
 LL |                 S::f::<i64>();
    |                    ^------- help: remove the unnecessary generics
@@ -28,7 +28,7 @@ LL | impl_add!(a b);
    | -------------- in this macro invocation
    |
 note: associated function defined here, with 0 generic parameters
-  --> $DIR/issue-53251.rs:4:8
+  --> $DIR/repeated-macro-expansion-error.rs:5:8
    |
 LL |     fn f() {}
    |        ^
