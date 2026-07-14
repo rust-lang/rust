@@ -17,7 +17,7 @@ tests/ui/drop/dynamic-drop.rs
 tests/ui/simd/issue-17170.rs
 tests/ui/simd/issue-39720.rs
 tests/ui/drop/panic-during-drop-14875.rs
-tests/ui/issues/issue-29948.rs
+tests/ui/drop/move-closure-drop-on-unwind.rs
 tests/ui/process/println-with-broken-pipe.rs
 tests/ui/lto/thin-lto-inlines2.rs
 tests/ui/panic-runtime/lto-abort.rs
@@ -96,6 +96,7 @@ tests/ui/eii/default/call_default.rs
 tests/ui/eii/linking/same-symbol.rs
 tests/ui/eii/privacy1.rs
 tests/ui/eii/default/call_impl.rs
+tests/ui/eii/linking/track_caller_cross_crate.rs
 tests/ui/c-variadic/copy.rs
 tests/ui/asm/x86_64/global_asm_escape.rs
 tests/ui/lto/all-crates.rs
@@ -115,3 +116,4 @@ tests/ui/eii/static/default_cross_crate.rs
 tests/ui/eii/static/default_explicit.rs
 tests/ui/eii/static/default_cross_crate_explicit.rs
 tests/ui/explicit-tail-calls/default-trait-method.rs
+tests/ui/explicit-tail-calls/tailcc-no-signature-restriction.rs
