@@ -238,6 +238,7 @@ impl ReadinessWatcher {
     ) -> Option<()> {
         let mut interests = self.interests.borrow_mut();
 
+        #[allow(clippy::question_mark)] // avoid hidden control flow
         if interests.remove(&key).is_none() {
             // We did not have interest in this.
             return None;

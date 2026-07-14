@@ -471,7 +471,7 @@ impl FileDescription for DirHandle {
     fn metadata<'tcx>(
         &self,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
-        return interp_ok(Either::Left(self.dir.metadata()));
+        interp_ok(Either::Left(self.dir.metadata()))
     }
 }
 
