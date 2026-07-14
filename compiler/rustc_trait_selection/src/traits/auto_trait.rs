@@ -236,9 +236,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 .upcast(tcx)
             })
             .collect::<Vec<ty::Clause<'tcx>>>();
-        let full_user_env = ty::ParamEnv::new(
-            tcx.mk_clauses_from_iter(orig_env.caller_bounds().chain(field_clauses)),
-        );
+        let full_user_env = ty::ParamEnv::new(tcx, orig_env.caller_bounds().chain(field_clauses));
 
         let fresh_args = infcx.fresh_args_for_item(DUMMY_SP, adt_def.did());
         let fresh_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, fresh_args).skip_norm_wip();
@@ -403,11 +401,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 tcx,
                 computed_clauses.clone().chain(user_computed_clauses.iter().cloned()),
             );
-            new_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(normalized_preds));
+            new_env = ty::ParamEnv::new(tcx, normalized_preds);
         }
 
-        let final_user_env =
-            ty::ParamEnv::new(tcx.mk_clauses_from_iter(user_computed_clauses.into_iter()));
+        let final_user_env = ty::ParamEnv::new(tcx, user_computed_clauses.into_iter());
         debug!(
             "evaluate_nested_obligations(ty={:?}, trait_did={:?}): succeeded with '{:?}' \
              '{:?}'",

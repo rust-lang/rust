@@ -353,7 +353,7 @@ fn do_normalize_clauses<'tcx>(
     {
         let elaborated_env = ty::set_type_aliases_to_rigid(tcx, elaborated_env);
         let elaborated_env = set_projection_term_to_non_rigid(tcx, elaborated_env.caller_bounds());
-        ty::ParamEnv::new(tcx.mk_clauses_from_iter(elaborated_env))
+        ty::ParamEnv::new(tcx, elaborated_env)
     } else {
         elaborated_env
     };
@@ -403,7 +403,7 @@ fn do_normalize_clauses<'tcx>(
     //
     // FIXME: We should avoid interning clauses both here and at the
     // caller sites. We should also avoid cloning if possible.
-    let normalized_env = ty::ParamEnv::new(tcx.mk_clauses(&clauses));
+    let normalized_env = ty::ParamEnv::new(tcx, clauses.iter().copied());
     let _errors = infcx.resolve_regions(cause.body_def_id, normalized_env, []);
     match infcx.fully_resolve(clauses.clone()) {
         Ok(clauses) => clauses,
@@ -525,7 +525,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     debug!("normalize_param_env_or_error: elaborated-clauses={:?}", clauses);
 
-    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&clauses));
+    let elaborated_env = ty::ParamEnv::new(tcx, clauses.iter().copied());
     if !elaborated_env.has_aliases() {
         return elaborated_env;
     }
@@ -566,14 +566,14 @@ pub fn normalize_param_env_or_error<'tcx>(
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // clauses here anyway. Keeping them here anyway because it seems safer.
     let outlives_env = non_outlives_clauses.iter().chain(&outlives_clauses).cloned();
-    let outlives_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env));
+    let outlives_env = ty::ParamEnv::new(tcx, outlives_env);
     let outlives_clauses = do_normalize_clauses(tcx, cause, outlives_env, outlives_clauses);
     debug!("normalize_param_env_or_error: outlives clauses={:?}", outlives_clauses);
 
     let mut clauses = non_outlives_clauses;
     clauses.extend(outlives_clauses);
     debug!("normalize_param_env_or_error: final clauses={:?}", clauses);
-    ty::ParamEnv::new(tcx.mk_clauses(&clauses))
+    ty::ParamEnv::new(tcx, clauses)
 }
 
 #[derive(Debug)]
