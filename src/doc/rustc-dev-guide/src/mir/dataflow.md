@@ -1,7 +1,7 @@
 # Dataflow Analysis
 
 If you work on the MIR, you will frequently come across various flavors of
-[dataflow analysis][wiki].
+[dataflow analysis].
 `rustc` uses dataflow to find uninitialized
 variables, determine what variables are live across a generator `yield`
 statement, and compute which `Place`s are borrowed at a given point in the control-flow graph.
@@ -13,8 +13,8 @@ It is merely a description of the framework used to define these analyses in `ru
 It assumes that the reader is familiar with the core ideas as well as
 some basic terminology, such as "transfer function", "fixpoint" and "lattice".
 If you're unfamiliar with these terms, or if you want a quick refresher,
-[*Static Program Analysis*] by Anders Møller and Michael I.
-Schwartzbach is an excellent, freely available textbook.
+[*Static Program Analysis*] by Anders Møller and Michael I. Schwartzbach is an excellent,
+freely available textbook.
 For those who prefer audiovisual learning, we previously recommended a series of short lectures
 by the Goethe University Frankfurt on YouTube, but it has since been deleted.
 See [this PR][pr-1295] for the context and [this comment][pr-1295-comment]
@@ -25,7 +25,7 @@ for the alternative lectures.
 A dataflow analysis is defined by the [`Analysis`] trait.
 In addition to the type of the dataflow state, this trait defines the initial value of that state
 at entry to each block, as well as the direction of the analysis, either forward or backward.
-The domain of your dataflow analysis must be a [lattice][]
+The domain of your dataflow analysis must be a [lattice]
 (strictly speaking a join-semilattice) with a well-behaved `join` operator.
 See documentation for the [`lattice`] module, as well as the [`JoinSemiLattice`]
 trait, for more information.
@@ -35,9 +35,8 @@ trait, for more information.
 The dataflow framework in `rustc` allows each statement (and terminator) inside
 a basic block to define its own transfer function.
 For brevity, these individual transfer functions are known as "effects".
-Each effect is applied
-successively in dataflow order, and together they define the transfer function
-for the entire basic block.
+Each effect is applied successively in dataflow order,
+and together they define the transfer function for the entire basic block.
 It's also possible to define an effect for
 particular outgoing edges of some terminators (e.g.
 [`apply_call_return_effect`] for the `success` edge of a `Call` terminator).
@@ -176,7 +175,7 @@ These `.dot` files will be saved in your `mir_dump` directory and will have the
 [`NAME`] of the analysis (e.g. `maybe_inits`) as part of their filename. Each
 visualization will display the full dataflow state at entry and exit of each
 block, as well as any changes that occur in each statement and terminator.
- See the example below:
+See the example below:
 
 ![A graphviz diagram for a dataflow analysis](../img/dataflow-graphviz-example.png)
 
@@ -195,4 +194,4 @@ block, as well as any changes that occur in each statement and terminator.
 [pr-1295]: https://github.com/rust-lang/rustc-dev-guide/pull/1295
 [pr-1295-comment]: https://github.com/rust-lang/rustc-dev-guide/pull/1295#issuecomment-1118131294
 [lattice]: https://en.wikipedia.org/wiki/Lattice_(order)
-[wiki]: https://en.wikipedia.org/wiki/Data-flow_analysis#Basic_principles
+[dataflow analysis]: https://en.wikipedia.org/wiki/Data-flow_analysis#Basic_principles
