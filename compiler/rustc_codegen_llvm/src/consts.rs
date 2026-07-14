@@ -14,9 +14,7 @@ use rustc_middle::mir::interpret::{
     read_target_uint,
 };
 use rustc_middle::mono::MonoItem;
-use rustc_middle::ptrauth::{
-    build_fn_ptr_type_discriminator_input_from_ty, compute_fn_ptr_type_discriminator,
-};
+use rustc_middle::ptrauth::compute_fn_ptr_type_discriminator_for;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -82,11 +80,8 @@ fn collect_fn_ptr_discriminators_inner<'tcx>(
     map: &mut FxHashMap<Size, u64>,
 ) {
     // Direct function pointer.
-    if let Some(input) = build_fn_ptr_type_discriminator_input_from_ty(tcx, ty) {
-        let discr = compute_fn_ptr_type_discriminator(tcx, &input);
-        if discr != 0 {
-            map.insert(base_offset, discr);
-        }
+    if let Some(disc) = compute_fn_ptr_type_discriminator_for(tcx, ty) {
+        map.insert(base_offset, disc.into());
 
         return;
     }
