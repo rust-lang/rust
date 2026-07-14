@@ -1,0 +1,20 @@
+error: `#[rustc_comptime]` attribute cannot be used on closures
+  --> $DIR/comptime_closure.rs:4:13
+   |
+LL |     let f = #[rustc_comptime]
+   |             ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_comptime]` can be applied to functions, inherent impl blocks, and inherent methods
+
+error[E0015]: cannot call non-const closure in constants
+  --> $DIR/comptime_closure.rs:9:5
+   |
+LL |     f();
+   |     ^^^
+   |
+   = note: closures need an RFC before allowed to be called in constants
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.
