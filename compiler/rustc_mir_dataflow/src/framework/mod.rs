@@ -32,8 +32,6 @@
 //!
 //! [gen-kill]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 
-use std::cmp::Ordering;
-
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
@@ -400,42 +398,6 @@ impl Effect {
 pub struct EffectIndex {
     statement_index: usize,
     effect: Effect,
-}
-
-impl EffectIndex {
-    fn next_in_forward_order(self) -> Self {
-        match self.effect {
-            Effect::Early => Effect::Primary.at_index(self.statement_index),
-            Effect::Primary => Effect::Early.at_index(self.statement_index + 1),
-        }
-    }
-
-    fn next_in_backward_order(self) -> Self {
-        match self.effect {
-            Effect::Early => Effect::Primary.at_index(self.statement_index),
-            Effect::Primary => Effect::Early.at_index(self.statement_index - 1),
-        }
-    }
-
-    /// Returns `true` if the effect at `self` should be applied earlier than the effect at `other`
-    /// in forward order.
-    fn precedes_in_forward_order(self, other: Self) -> bool {
-        let ord = self
-            .statement_index
-            .cmp(&other.statement_index)
-            .then_with(|| self.effect.cmp(&other.effect));
-        ord == Ordering::Less
-    }
-
-    /// Returns `true` if the effect at `self` should be applied earlier than the effect at `other`
-    /// in backward order.
-    fn precedes_in_backward_order(self, other: Self) -> bool {
-        let ord = other
-            .statement_index
-            .cmp(&self.statement_index)
-            .then_with(|| self.effect.cmp(&other.effect));
-        ord == Ordering::Less
-    }
 }
 
 #[cfg(test)]

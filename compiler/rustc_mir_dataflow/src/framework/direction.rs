@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::ops::RangeInclusive;
 
 use rustc_middle::bug;
@@ -9,6 +10,16 @@ use super::{Analysis, Effect, EffectIndex, SwitchTargetIndex};
 pub trait Direction {
     const IS_FORWARD: bool;
     const IS_BACKWARD: bool = !Self::IS_FORWARD;
+
+    /// Returns the first statement index for this direction. (0 when going forward and
+    /// `statements.len()` when going backward.)
+    fn first_index(block_data: &mir::BasicBlockData<'_>) -> EffectIndex;
+
+    /// Returns `true` if `a` comes before `b` for this direction.
+    fn index_precedes(a: EffectIndex, b: EffectIndex) -> bool;
+
+    /// Returns the next index for this direction.
+    fn next_index(idx: EffectIndex) -> EffectIndex;
 
     /// Called by `iterate_to_fixpoint` during initial analysis computation.
     fn apply_effects_in_block<'mir, 'tcx, A>(
@@ -52,6 +63,26 @@ pub struct Backward;
 
 impl Direction for Backward {
     const IS_FORWARD: bool = false;
+
+    fn first_index(block_data: &mir::BasicBlockData<'_>) -> EffectIndex {
+        Effect::Early.at_index(block_data.statements.len())
+    }
+
+    fn index_precedes(a: EffectIndex, b: EffectIndex) -> bool {
+        // Higher statement indices precede lower statement indices, and then `Early` effects
+        // precede `Primary` effects. (That's why the two comparisons use different orders for `a`
+        // and `b`.)
+        let ord = b.statement_index.cmp(&a.statement_index).then_with(|| a.effect.cmp(&b.effect));
+        ord == Ordering::Less
+    }
+
+    /// Returns the next index for this direction.
+    fn next_index(idx: EffectIndex) -> EffectIndex {
+        match idx.effect {
+            Effect::Early => Effect::Primary.at_index(idx.statement_index),
+            Effect::Primary => Effect::Early.at_index(idx.statement_index - 1),
+        }
+    }
 
     fn apply_effects_in_block<'mir, 'tcx, A>(
         analysis: &A,
@@ -141,7 +172,7 @@ impl Direction for Backward {
         let terminator_index = block_data.statements.len();
 
         assert!(from.statement_index <= terminator_index);
-        assert!(!to.precedes_in_backward_order(from));
+        assert!(!Self::index_precedes(to, from));
 
         // Handle the statement (or terminator) at `from`.
 
@@ -239,6 +270,25 @@ pub struct Forward;
 impl Direction for Forward {
     const IS_FORWARD: bool = true;
 
+    fn first_index(_block_data: &mir::BasicBlockData<'_>) -> EffectIndex {
+        Effect::Early.at_index(0)
+    }
+
+    fn index_precedes(a: EffectIndex, b: EffectIndex) -> bool {
+        // Lower statement indices precede higher statement indices, and then `Early` effects
+        // precede `Primary` effects.
+        let ord = a.statement_index.cmp(&b.statement_index).then_with(|| a.effect.cmp(&b.effect));
+        ord == Ordering::Less
+    }
+
+    /// Returns the next index for this direction.
+    fn next_index(idx: EffectIndex) -> EffectIndex {
+        match idx.effect {
+            Effect::Early => Effect::Primary.at_index(idx.statement_index),
+            Effect::Primary => Effect::Early.at_index(idx.statement_index + 1),
+        }
+    }
+
     fn apply_effects_in_block<'mir, 'tcx, A>(
         analysis: &A,
         body: &mir::Body<'tcx>,
@@ -321,7 +371,7 @@ impl Direction for Forward {
         let terminator_index = block_data.statements.len();
 
         assert!(to.statement_index <= terminator_index);
-        assert!(!to.precedes_in_forward_order(from));
+        assert!(!Self::index_precedes(to, from));
 
         // If we have applied the before affect of the statement or terminator at `from` but not its
         // after effect, do so now and start the loop below from the next statement.
