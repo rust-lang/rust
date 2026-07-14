@@ -910,17 +910,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         span,
                         path,
                     };
-                    let cfg_attrs = match item {
-                        Annotatable::Item(ref item) => {
-                            self.propagate_cfg_attr_predicate_to_expanded_item(item)
-                        }
-                        Annotatable::Stmt(ref stmt) if let StmtKind::Item(ref item) = stmt.kind => {
-                            self.propagate_cfg_attr_predicate_to_expanded_item(item)
-                        }
-                        // FIXME: Should be `unreachable!()` but `rustdoc-json-types` is trying
-                        // to expand items it shouldn't.
-                        _ => Vec::new(),
-                    };
+                    let cfg_attrs = self.get_item_cfg_attr_traces(&item);
                     let mut items = match expander.expand(self.cx, span, &meta, item, is_const) {
                         ExpandResult::Ready(items) => items,
                         ExpandResult::Retry(item) => {
@@ -931,24 +921,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             });
                         }
                     };
-
-                    if !cfg_attrs.is_empty() {
-                        for item in &mut items {
-                            match item {
-                                Annotatable::Item(item) => {
-                                    item.attrs.extend(cfg_attrs.clone());
-                                }
-                                Annotatable::Stmt(stmt) => {
-                                    if let StmtKind::Item(item) = &mut stmt.kind {
-                                        item.attrs.extend(cfg_attrs.clone());
-                                    }
-                                }
-                                // FIXME: Should be `unreachable!()` but `rustdoc-json-types` is
-                                // trying to expand items it shouldn't.
-                                _ => {}
-                            }
-                        }
-                    }
+                    self.add_cfg_attrs_to_items(&mut items, cfg_attrs);
 
                     let fragment = fragment_kind.expect_from_annotatables(items);
                     if macro_stats {
@@ -1032,10 +1005,49 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         })
     }
 
-    fn propagate_cfg_attr_predicate_to_expanded_item(
-        &self,
-        item: &rustc_ast::Item,
-    ) -> Vec<rustc_ast::Attribute> {
+    fn add_cfg_attrs_to_items(&self, items: &mut Vec<Annotatable>, cfg_attrs: Vec<ast::Attribute>) {
+        if cfg_attrs.is_empty() {
+            return;
+        }
+        for item in items {
+            match item {
+                Annotatable::Item(item) => {
+                    item.attrs.extend(cfg_attrs.clone());
+                }
+                Annotatable::Stmt(stmt) => {
+                    if let StmtKind::Item(item) = &mut stmt.kind {
+                        item.attrs.extend(cfg_attrs.clone());
+                    }
+                }
+                Annotatable::GenericParam(_) => {
+                    self.cx.dcx().span_delayed_bug(
+                        item.span(),
+                        "trying to get derive attributes on a `GenericParam`",
+                    );
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    fn get_item_cfg_attr_traces(&self, item: &Annotatable) -> Vec<ast::Attribute> {
+        match item {
+            Annotatable::Item(item) => self.cfg_attr_traces_for_derive(item),
+            Annotatable::Stmt(stmt) if let StmtKind::Item(ref item) = stmt.kind => {
+                self.cfg_attr_traces_for_derive(item)
+            }
+            Annotatable::GenericParam(_) => {
+                self.cx.dcx().span_delayed_bug(
+                    item.span(),
+                    "trying to get derive attributes on a `GenericParam`",
+                );
+                Vec::new()
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn cfg_attr_traces_for_derive(&self, item: &ast::Item) -> Vec<ast::Attribute> {
         item.attrs
             .iter()
             .filter(|attr| {
@@ -1048,25 +1060,30 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             })
             .filter_map(|attr| {
                 let mut attr = attr.clone();
-                if let rustc_ast::AttrKind::Normal(attr) = &mut attr.kind {
-                    let cfg = if let rustc_ast::ast::AttrItemKind::Parsed(
-                        EarlyParsedAttribute::CfgAttrTrace(cfg),
-                    ) = &mut attr.item.args
-                    {
-                        std::mem::replace(
-                            cfg,
-                            rustc_ast::attr::data_structures::CfgEntry::Bool(
-                                false,
-                                rustc_span::DUMMY_SP,
-                            ),
-                        )
-                    } else {
-                        // FIXME(GuillaumeGomez): How is it possible for `rustdoc-json-types` to
-                        // enter this condition?
-                        return None;
-                    };
-                    attr.item.args =
-                        rustc_ast::ast::AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg));
+                let ast::AttrKind::Normal(normal_attr) = &mut attr.kind else { unreachable!() };
+                let cfg = if let ast::ast::AttrItemKind::Parsed(
+                    EarlyParsedAttribute::CfgAttrTrace(cfg),
+                ) = &mut normal_attr.item.args
+                {
+                    std::mem::replace(
+                        cfg,
+                        rustc_ast::attr::data_structures::CfgEntry::Bool(
+                            false,
+                            rustc_span::DUMMY_SP,
+                        ),
+                    )
+                } else {
+                    unreachable!()
+                };
+                normal_attr.item.args =
+                    ast::ast::AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg));
+                // We also need to change the attribute because `rustdoc-json-types` is using the
+                // already processed attributes. So if we don't make this change, we will have an
+                // attribute with the name `cfg_attr_trace` but of type
+                // `AttrItemKind::Parsed(EarlyParsedAttribute::CfgAttrTrace())`, entering the
+                // `unreachable!()`.
+                if let Some(name) = normal_attr.item.path.segments.first_mut() {
+                    name.ident.name = sym::cfg_trace;
                 }
                 Some(attr)
             })
