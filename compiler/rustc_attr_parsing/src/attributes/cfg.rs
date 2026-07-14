@@ -11,7 +11,7 @@ use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
