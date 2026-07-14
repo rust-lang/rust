@@ -31,7 +31,7 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, info, instrument, trace};
 
 use crate::clean::utils::find_nearest_parent_module;
-use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType};
+use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType, reexport_chain};
 use crate::core::DocContext;
 use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, markdown_links};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
@@ -1148,10 +1148,19 @@ impl LinkCollector<'_, '_> {
             // `use` statement, we need to use the `def_id` of the `use` statement, not the
             // inlined item.
             // <https://github.com/rust-lang/rust/pull/151120>
-            let item_id = if let Some(inline_stmt_id) = item.inline_stmt_id
-                && find_attr!(tcx, inline_stmt_id, Deprecated { span, ..} if span == depr_span)
-            {
-                inline_stmt_id.to_def_id()
+            let item_id = if let Some(inline_stmt_id) = item.inline_stmt_id {
+                let target_def_id = item.item_id.expect_def_id();
+                reexport_chain(tcx, inline_stmt_id, target_def_id)
+                    .iter()
+                    .flat_map(|reexport| reexport.id())
+                    .find(|&reexport_def_id| {
+                        find_attr!(
+                            tcx,
+                            reexport_def_id,
+                            Deprecated { span, .. } if span == depr_span
+                        )
+                    })
+                    .unwrap_or(target_def_id)
             } else {
                 item.item_id.expect_def_id()
             };
