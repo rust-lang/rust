@@ -179,7 +179,7 @@ Assignments in general have the form:
 ```
 
 A place is an expression like `_3`, `_3.f` or `*_3` – it denotes a location in memory.
- An **Rvalue** is an expression that creates a
+An **Rvalue** is an expression that creates a
 value: in this case, the rvalue is a mutable borrow expression, which looks like `&mut <Place>`.
 So we can kind of define a grammar for rvalues like so:
 
@@ -221,7 +221,7 @@ maps in a fairly straightforward way to a Rust type.
 The main MIR data type is [`Body`].
 It contains the data for a single
 function (along with sub-instances of Mir for "promoted constants",
-but [you can read about those below](#promoted)).
+but [you can read about those below](#promoted-constants)).
 
 - **Basic blocks**: The basic blocks are stored in the field
   [`Body::basic_blocks`][basicblocks]; this is a vector of [`BasicBlockData`] structures.
@@ -297,34 +297,32 @@ The `ty::ValTree` datastructure allows us to represent
 * most primitives.
 
 The most important rule for this representation is that every value must be uniquely represented.
-In other words: a specific value must only be representable in one specific way.
-For example: there is only one way to represent an array of two integers as a `ValTree`:
+In other words, a specific value must only be representable in one specific way.
+For example, there is only one way to represent an array of two integers as a `ValTree`:
 `Branch([Leaf(first_int), Leaf(second_int)])`.
 Even though theoretically a `[u32; 2]` could be encoded in a `u64` and thus just be a
 `Leaf(bits_of_two_u32)`, that is not a legal construction of `ValTree`
 (and is very complex to do, so it is unlikely anyone is tempted to do so).
 
 These rules also mean that some values are not representable.
-There can be no `union`s in type
-level constants, as it is not clear how they should be represented, because their active variant
-is unknown.
-Similarly there is no way to represent raw pointers, as addresses are unknown at
-compile-time and thus we cannot make any assumptions about them.
-References on the other hand
-*can* be represented, as equality for references is defined as equality on their value, so we
-ignore their address and just look at the backing value.
+There can be no `union`s in type level constants,
+as it is not clear how they should be represented,
+because their active variant is unknown.
+Similarly, there is no way to represent raw pointers as addresses are unknown at compile-time,
+and thus we cannot make any assumptions about them.
+References on the other hand *can* be represented,
+as equality for references is defined as equality on their value,
+so we ignore their address and just look at the backing value.
 We must make sure that the pointer values of the references are not observable at compile time.
 We thus encode `&42` exactly like `42`.
 Any conversion from valtree back to a MIR constant value must reintroduce an actual indirection.
-At codegen time the
-addresses may be deduplicated between multiple uses or not, entirely depending on arbitrary
-optimization choices.
+At codegen time,
+the addresses may be deduplicated between multiple uses or not,
+entirely depending on arbitrary optimization choices.
 
 As a consequence, all decoding of `ValTree` must happen by matching on the type first and making
 decisions depending on that.
 The value itself gives no useful information without the type that belongs to it.
-
-<a id="promoted"></a>
 
 ### Promoted constants
 
