@@ -1,0 +1,98 @@
+error[E0392]: type parameter `T` is never used
+  --> $DIR/relate-bound-region-ice-144033.rs:11:25
+   |
+LL | struct DelegatingFooMut<T> {}
+   |                         ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0195]: lifetime parameters do not match the trait definition
+  --> $DIR/relate-bound-region-ice-144033.rs:19:12
+   |
+LL |     fn bar<'a, I>(self, collection: &'a I)
+   |            ^^
+   |
+   = note: lifetime parameters differ in whether they are early- or late-bound
+note: `'a` differs between the trait and impl
+  --> $DIR/relate-bound-region-ice-144033.rs:7:12
+   |
+LL |   trait FooMut {
+   |   ------------ in this trait...
+LL |       type Baz: 'static;
+LL |       fn bar<'a, I>(self, iterator: &'a I)
+   |              ^^ `'a` is early-bound
+LL |       where
+LL |           for<'b> &'b I: IntoIterator<Item = &'b &'a Self::Baz>;
+   |                                       ------------------------ this lifetime bound makes `'a` early-bound
+...
+LL | / impl<T> FooMut for DelegatingFooMut<T>
+LL | | where
+LL | |     T: FooMut,
+   | |______________- in this impl...
+...
+LL |       fn bar<'a, I>(self, collection: &'a I)
+   |              ^^ `'a` is late-bound
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/relate-bound-region-ice-144033.rs:30:22
+   |
+LL | struct DelegatingBaz<T>;
+   |                      ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0271]: type mismatch resolving `<&I as IntoIterator>::Item == &&DelegatingBaz<<T as FooMut>::Baz>`
+  --> $DIR/relate-bound-region-ice-144033.rs:25:18
+   |
+LL |         self.bar(collection)
+   |              --- ^^^^^^^^^^ expected `&&DelegatingBaz<<T as FooMut>::Baz>`, found associated type
+   |              |
+   |              required by a bound introduced by this call
+   |
+   = note:    expected reference `&&DelegatingBaz<<T as FooMut>::Baz>`
+           found associated type `<&I as IntoIterator>::Item`
+   = help: consider constraining the associated type `<&I as IntoIterator>::Item` to `&&DelegatingBaz<<T as FooMut>::Baz>`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: the method call chain might not have had the expected associated types
+  --> $DIR/relate-bound-region-ice-144033.rs:19:37
+   |
+LL |     fn bar<'a, I>(self, collection: &'a I)
+   |                                     ^^^^^ `IntoIterator::Item` is `<&I as IntoIterator>::Item` here
+...
+LL |         let collection = collection.into_iter().map(|b| &b);
+   |                                     ----------- ----------- `IntoIterator::Item` changed to `&<&I as IntoIterator>::Item` here
+   |                                     |
+   |                                     `IntoIterator::Item` remains `<&I as IntoIterator>::Item` here
+note: required by a bound in `FooMut::bar`
+  --> $DIR/relate-bound-region-ice-144033.rs:9:37
+   |
+LL |     fn bar<'a, I>(self, iterator: &'a I)
+   |        --- required by a bound in this associated function
+LL |     where
+LL |         for<'b> &'b I: IntoIterator<Item = &'b &'a Self::Baz>;
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `FooMut::bar`
+
+error[E0308]: mismatched types
+  --> $DIR/relate-bound-region-ice-144033.rs:25:18
+   |
+LL |         let collection = collection.into_iter().map(|b| &b);
+   |                                                     --- the found closure
+LL |         self.bar(collection)
+   |              --- ^^^^^^^^^^ expected `&I`, found `Map<<&I as IntoIterator>::IntoIter, ...>`
+   |              |
+   |              arguments to this method are incorrect
+   |
+   = note: expected reference `&I`
+                 found struct `Map<<&I as IntoIterator>::IntoIter, {closure@$DIR/relate-bound-region-ice-144033.rs:24:53: 24:56}>`
+note: method defined here
+  --> $DIR/relate-bound-region-ice-144033.rs:7:8
+   |
+LL |     fn bar<'a, I>(self, iterator: &'a I)
+   |        ^^^              --------
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0195, E0271, E0308, E0392.
+For more information about an error, try `rustc --explain E0195`.
