@@ -152,7 +152,7 @@ impl bool {
     ///
     /// [`true`]: ../std/keyword.true.html
     /// [`false`]: ../std/keyword.false.html
-    #[unstable(feature = "bool_toggle", issue = "none")]
+    #[unstable(feature = "bool_toggle", issue = "159298")]
     #[inline]
     pub const fn toggle(&mut self) {
         *self = !*self;
