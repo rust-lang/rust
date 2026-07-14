@@ -667,7 +667,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = compile::std_crates_for_run_make(&run);
+        let crates = compile::std_crates_for_make_run(&run);
         let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
         if crates.is_empty() && target_is_no_std {
             return;
