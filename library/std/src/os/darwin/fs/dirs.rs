@@ -257,7 +257,7 @@ mod sys {
                 return None;
             }
 
-            let Ok(path) = std::ffi::CStr::from_bytes_until_nul(&buf) else {
+            let Ok(path) = crate::ffi::CStr::from_bytes_until_nul(&buf) else {
                 // should be impossible given username length limits, but be defensive
                 return Some(Err(const_error!(
                     ErrorKind::InvalidData,
