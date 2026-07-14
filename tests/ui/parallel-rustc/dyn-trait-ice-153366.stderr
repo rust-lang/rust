@@ -52,7 +52,7 @@ LL | fn iso<A>(a: Fn) -> Option<_>
    |                     --------- expected `Option<_>` because of return type
 ...
 LL |     Box::new(iso_un_option)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<_>`, found `Box<fn() -> ... {iso_un_option::<_>}>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<_>`, found `Box<fn() -> _ {iso_un_option::<_>}>`
    |
    = note: expected enum `Option<_>`
             found struct `Box<fn() -> {type error} {iso_un_option::<_>}>`
