@@ -2,6 +2,7 @@
 
 use std::{fmt, ops::ControlFlow};
 
+use either::Either;
 use intern::{Interned, InternedRef, InternedSliceRef, impl_internable};
 use macros::GenericTypeVisitable;
 use rustc_abi::ReprOptions;
@@ -597,20 +598,17 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
         interner: DbInterner<'db>,
     ) -> EarlyBinder<DbInterner<'db>, impl IntoIterator<Item = Ty<'db>>> {
         let db = interner.db();
-        // FIXME: this is disabled just to match the behavior with chalk right now
-        let _field_tys = |id: VariantId| {
-            db.field_types(id).iter().map(|(_, ty)| ty.ty().skip_binder()).collect::<Vec<_>>()
-        };
-        let field_tys = |_id: VariantId| vec![];
-        let tys: Vec<_> = match self.def_id() {
-            hir_def::AdtId::StructId(id) => field_tys(id.into()),
-            hir_def::AdtId::UnionId(id) => field_tys(id.into()),
-            hir_def::AdtId::EnumId(id) => id
-                .enum_variants(db)
-                .variants
-                .values()
-                .flat_map(|&(variant_id, _)| field_tys(variant_id.into()))
-                .collect(),
+        let field_tys =
+            |id: VariantId| db.field_types(id).iter().map(|(_, ty)| ty.ty().skip_binder());
+        let tys = match self.def_id() {
+            hir_def::AdtId::StructId(id) => Either::Left(field_tys(id.into())),
+            hir_def::AdtId::UnionId(id) => Either::Left(field_tys(id.into())),
+            hir_def::AdtId::EnumId(id) => Either::Right(
+                id.enum_variants(db)
+                    .variants
+                    .values()
+                    .flat_map(move |&(variant_id, _)| field_tys(variant_id.into())),
+            ),
         };
 
         EarlyBinder::bind(tys)
