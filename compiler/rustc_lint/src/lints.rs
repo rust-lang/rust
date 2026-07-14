@@ -601,8 +601,6 @@ pub(crate) struct BuiltinDerefNullptr {
     pub label: Span,
 }
 
-// FIXME: migrate fluent::lint::builtin_asm_labels
-
 #[derive(Diagnostic)]
 pub(crate) enum BuiltinSpecialModuleNameUsed {
     #[diag("found module declaration for lib.rs")]
