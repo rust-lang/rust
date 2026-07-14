@@ -134,3 +134,19 @@ fn alias<T: Tr>(x: T::A) {
     "#,
     );
 }
+
+#[test]
+fn borrowck_opaque_downcast_recovery_does_not_panic() {
+    check_borrowck(
+        r#"
+//- minicore: option, sized
+struct PathBuf;
+fn opaque<T>(path: T) -> impl Sized {
+    Some(path)
+}
+fn caller(path: &PathBuf) {
+    let Some(value) = opaque(path) else { return };
+}
+    "#,
+    );
+}
