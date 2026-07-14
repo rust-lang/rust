@@ -618,7 +618,7 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 
 #[rust_analyzer::prefer_underscore_import]
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
-    fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
+    fn caller_bounds(self) -> impl Iterator<Item = I::Clause>;
 }
 
 #[rust_analyzer::prefer_underscore_import]

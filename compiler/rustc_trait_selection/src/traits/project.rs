@@ -751,7 +751,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::ParamEnv,
-        obligation.param_env.caller_bounds().iter(),
+        obligation.param_env.caller_bounds(),
         false,
     );
 }

@@ -571,7 +571,7 @@ where
     Infcx: InferCtxtLike<Interner = I>,
 {
     // Iterate through all goals in param_env to find the one that has the same symbol.
-    for clause in param_env.caller_bounds().iter() {
+    for clause in param_env.caller_bounds() {
         if let ty::ClauseKind::UnstableFeature(sym) = clause.kind().skip_binder() {
             if sym == symbol {
                 return true;
