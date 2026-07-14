@@ -391,7 +391,7 @@ is passed) as JSON for consumption by tools like [`rustfix`][rustfix].
 
 [rustfix]: https://github.com/rust-lang/rustfix
 
-Not all suggestions should be applied mechanically,
+Not all suggestions should be applied mechanically;
 they have a degree of confidence in the suggested code,
 from high (`Applicability::MachineApplicable`) to low (`Applicability::MaybeIncorrect`).
 Be conservative when choosing the level.
