@@ -117,7 +117,7 @@ impl HomeDirsExt for HomeDirs {
         // AppData/Local -- system-local, doesn't make sense to sync to another
         // AppData/Roaming -- data that makes sense to sync across machines
 
-        let mut dirs = HomeDirs::new();
+        let mut dirs = HomeDirs::empty();
 
         dirs.cache = local_app_data.clone();
         dirs.config = roaming_app_data.clone();
@@ -145,7 +145,7 @@ impl MediaDirsExt for MediaDirs {
         // AppData/Local -- system-local, doesn't make sense to sync to another
         // AppData/Roaming -- data that makes sense to sync across machines
 
-        let mut dirs = MediaDirs::new();
+        let mut dirs = MediaDirs::empty();
 
         dirs.desktop = desktop;
         dirs.documents = documents;
