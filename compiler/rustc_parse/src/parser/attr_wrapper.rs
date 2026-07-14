@@ -5,7 +5,7 @@ use rustc_ast::token::Token;
 use rustc_ast::tokenstream::{
     AttrsTarget, LazyAttrTokenStream, NodeRange, ParserRange, Spacing, TokenCursor,
 };
-use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, HasTokens};
+use rustc_ast::{self as ast, AttrVec, Attribute, HasTokens};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::PResult;
 use rustc_session::parse::ParseSess;
@@ -137,7 +137,7 @@ impl<'a> Parser<'a> {
     ///     }                               //  32..33
     /// }                                   //  33..34
     /// ```
-    pub(super) fn collect_tokens<R: HasAttrs + HasTokens>(
+    pub(super) fn collect_tokens<R: HasTokens>(
         &mut self,
         pre_attr_pos: Option<CollectPos>,
         attrs: AttrWrapper,
