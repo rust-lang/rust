@@ -24,7 +24,9 @@ mod tests;
 mod dirs;
 
 #[unstable(feature = "dir_discovery", issue = "157515")]
-pub use self::dirs::UserDirsExt;
+pub use self::dirs::HomeDirsExt;
+#[unstable(feature = "media_dir_discovery", issue = "157515")]
+pub use self::dirs::MediaDirsExt;
 
 /// Unix-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]

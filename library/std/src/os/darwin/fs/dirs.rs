@@ -1,41 +1,36 @@
+use crate::env;
 use crate::ffi::{CStr, c_char};
-use crate::fs::UserDirs;
+use crate::fs::{HomeDirs, MediaDirs};
 use crate::io::{self, ErrorKind, const_error};
 use crate::path::{Path, PathBuf};
 
 trait Sealed {}
-impl Sealed for UserDirs {}
+impl Sealed for HomeDirs {}
+impl Sealed for MediaDirs {}
 
-/// Darwin-specific extensions to [`fs::UserDirs`](UserDirs).
+/// Darwin-specific extensions to [`fs::HomeDirs`](HomeDirs).
 #[unstable(feature = "dir_discovery", issue = "157515")]
 #[expect(private_bounds, reason = "sealed")]
-pub trait UserDirsExt: Sized + Sealed {
+pub trait HomeDirsExt: Sized + Sealed {
     /// Load the standard user directory paths for the current user.
     ///
     /// On iOS, tvOS, watchOS, visionOS, and sandboxed macOS applications,
-    /// [`cache_home`], [`config_home`], [`data_home`], and [`state_home`]
-    /// are within the application's sandbox bundle. Outside the sandbox,
-    /// these are subdirectories of the `~/Library` directory on macOS.
+    /// these directories are within the application's sandbox bundle. Outside
+    /// the sandbox, these are subdirectories of the `~/Library` directory on
+    /// macOS.
     ///
     /// The produced directory paths are not guaranteed to be the canonical
     /// paths to the directories; they are allowed to be sandbox-redirected
-    /// paths as long as the user directory is accessible there.
+    /// paths as long as the directory is accessible there.
     ///
     /// The loaded common directories are:
     ///
-    /// | `UserDirs` | [`NSSearchPathDirectory`] |
+    /// | `HomeDirs` | [`NSSearchPathDirectory`] |
     /// | ---------- | ----------------------- |
     /// | [`cache_home`] | [`NSCachesDirectory`] (`~/Library/Caches`) |
     /// | [`config_home`] | [`NSApplicationSupportDirectory`] (`~/Library/Application Support`) |
     /// | [`data_home`] | [`NSApplicationSupportDirectory`] (`~/Library/Application Support`) |
     /// | [`state_home`] | [`NSApplicationSupportDirectory`] (`~/Library/Application Support`) |
-    /// | [`desktop`] | [`NSDesktopDirectory`] (`~/Desktop`) |
-    /// | [`documents`] | [`NSDocumentDirectory`] (`~/Documents`) |
-    /// | [`downloads`] | [`NSDownloadsDirectory`] |
-    /// | [`music`] | [`NSMusicDirectory`] (`~/Music`) |
-    /// | [`pictures`] | [`NSPicturesDirectory`] (`~/Pictures`) |
-    /// | [`public_share`] | [`NSSharedPublicDirectory`] (`~/Public`) |
-    /// | [`videos`] | [`NSMoviesDirectory`] (`~/Movies`) |
     ///
     /// Note that the Application Support directory is used for the config,
     /// data, and state directories. It is always possible for multiple user
@@ -45,39 +40,82 @@ pub trait UserDirsExt: Sized + Sealed {
     ///
     /// # Errors
     ///
-    /// Errors if the underlying system directory discovery API returns
-    /// multiple directories for a queried standard directory, if a
-    /// directory path is not valid Unicode, or if the [user home](UserDirs::user_home)
-    /// cannot be determined.
+    /// Errors if the the [user home](env::home_dir) cannot be determined.
+    //  Errors due to the underlying sysdir(3) API should never occur, as
+    //  - the user domain only has one directory for each search path;
+    //  - the user domain always returns subdirectory paths of `~`;
+    //  - the username plus OS defined path segments cannot exceed PATH_MAX; and
+    //  - the username and OS defined path segments are always valid UTF-8.
     ///
     /// # Implementation-specific behavior
     ///
     /// Uses the `sysdir(3)` API from `libSystem` to discover the standard
-    /// user directories. Iterates each of `SYSDIR_DIRECTORY_DOCUMENT`,
-    /// `SYSDIR_DIRECTORY_DESKTOP`, `SYSDIR_DIRECTORY_CACHES`,
-    /// `SYSDIR_DIRECTORY_APPLICATION_SUPPORT`, `SYSDIR_DIRECTORY_DOWNLOADS`,
-    /// `SYSDIR_DIRECTORY_MOVIES`, `SYSDIR_DIRECTORY_MUSIC`,
-    /// `SYSDIR_DIRECTORY_PICTURES`, `SYSDIR_DIRECTORY_SHARED_PUBLIC` once.
+    /// user directories.
     ///
     /// This behavior may change in the future. One example change that we
     /// explicitly reserve the right to make is to load additional common
     /// directories not currently in this list.
     ///
-    /// [`cache_home`]: UserDirs::cache_home
-    /// [`config_home`]: UserDirs::config_home
-    /// [`data_home`]: UserDirs::data_home
-    /// [`state_home`]: UserDirs::state_home
-    /// [`desktop`]: UserDirs::desktop
-    /// [`documents`]: UserDirs::documents
-    /// [`downloads`]: UserDirs::downloads
-    /// [`music`]: UserDirs::music
-    /// [`pictures`]: UserDirs::pictures
-    /// [`public_share`]: UserDirs::public_share
-    /// [`videos`]: UserDirs::videos
+    /// [`cache_home`]: HomeDirs::cache_home
+    /// [`config_home`]: HomeDirs::config_home
+    /// [`data_home`]: HomeDirs::data_home
+    /// [`state_home`]: HomeDirs::state_home
     ///
     /// [`NSSearchPathDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory?language=objc
     /// [`NSCachesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/cachesdirectory?language=objc
     /// [`NSApplicationSupportDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/applicationsupportdirectory?language=objc
+    #[unstable(feature = "dir_discovery", issue = "157515")]
+    fn sysdir() -> io::Result<Self>;
+}
+
+/// Darwin-specific extensions to [`fs::MediaDirs`](MediaDirs).
+#[unstable(feature = "media_dir_discovery", issue = "157515")]
+#[expect(private_bounds, reason = "sealed")]
+pub trait MediaDirsExt: Sized + Sealed {
+    /// Load the standard user directory paths for the current user.
+    ///
+    /// The produced directory paths are not guaranteed to be the canonical
+    /// paths to the directories; they are allowed to be sandbox-redirected
+    /// paths as long as the directory is accessible there.
+    ///
+    /// The loaded common directories are:
+    ///
+    /// | `MediaDirs` | [`NSSearchPathDirectory`] |
+    /// | ---------- | ----------------------- |
+    /// | [`desktop`] | [`NSDesktopDirectory`] (`~/Desktop`) |
+    /// | [`documents`] | [`NSDocumentDirectory`] (`~/Documents`) |
+    /// | [`downloads`] | [`NSDownloadsDirectory`] |
+    /// | [`music`] | [`NSMusicDirectory`] (`~/Music`) |
+    /// | [`pictures`] | [`NSPicturesDirectory`] (`~/Pictures`) |
+    /// | [`videos`] | [`NSMoviesDirectory`] (`~/Movies`) |
+    ///
+    /// # Errors
+    ///
+    /// Errors if the the [user home](env::home_dir) cannot be determined.
+    //  Errors due to the underlying sysdir(3) API should never occur, as
+    //  - the user domain only has one directory for each search path;
+    //  - the user domain always returns subdirectory paths of `~`;
+    //  - the username plus OS defined path segments cannot exceed PATH_MAX; and
+    //  - the username and OS defined path segments are always valid UTF-8.
+    ///
+    /// # Implementation-specific behavior
+    ///
+    /// Uses the `sysdir(3)` API from `libSystem` to discover the standard
+    /// user directories.
+    ///
+    /// This behavior may change in the future. One example change that we
+    /// explicitly reserve the right to make is to load additional common
+    /// directories not currently in this list.
+    ///
+    /// [`desktop`]: MediaDirs::desktop
+    /// [`documents`]: MediaDirs::documents
+    /// [`downloads`]: MediaDirs::downloads
+    /// [`music`]: MediaDirs::music
+    /// [`pictures`]: MediaDirs::pictures
+    /// [`public_share`]: MediaDirs::public_share
+    /// [`videos`]: MediaDirs::videos
+    ///
+    /// [`NSSearchPathDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory?language=objc
     /// [`NSDesktopDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/desktopdirectory?language=objc
     /// [`NSDocumentDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/documentdirectory?language=objc
     /// [`NSDownloadsDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/downloadsdirectory?language=objc
@@ -85,43 +123,60 @@ pub trait UserDirsExt: Sized + Sealed {
     /// [`NSPicturesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/picturesdirectory?language=objc
     /// [`NSSharedPublicDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/sharedpublicdirectory?language=objc
     /// [`NSMoviesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/moviesdirectory?language=objc
-    #[unstable(feature = "dir_discovery", issue = "157515")]
+    #[unstable(feature = "media_dir_discovery", issue = "157515")]
     fn sysdir() -> io::Result<Self>;
+}
+
+fn user_home() -> io::Result<PathBuf> {
+    env::home_dir()
+        .filter(|p| !p.is_empty())
+        .ok_or(const_error!(ErrorKind::NotFound, "no home directory"))
 }
 
 #[unstable(feature = "dir_discovery", issue = "157515")]
 #[cfg(target_vendor = "apple")]
-impl UserDirsExt for UserDirs {
+impl HomeDirsExt for HomeDirs {
     fn sysdir() -> io::Result<Self> {
         use libc::sysdir_search_path_directory_t::*;
 
-        let mut dirs = UserDirs::new();
-        let home =
-            dirs.user_home().ok_or(const_error!(ErrorKind::NotFound, "no home directory"))?;
+        let mut dirs = HomeDirs::empty();
+        let home = user_home()?;
 
         let caches = sys::get_user_dir(&home, SYSDIR_DIRECTORY_CACHES)?;
         let application_support = sys::get_user_dir(&home, SYSDIR_DIRECTORY_APPLICATION_SUPPORT)?;
+
+        dirs.cache = caches;
+        // Apple puts config/data/state all in Application Support
+        dirs.config = application_support.clone();
+        dirs.data = application_support.clone();
+        dirs.state = application_support;
+
+        Ok(dirs)
+    }
+}
+
+#[unstable(feature = "media_dir_discovery", issue = "157515")]
+#[cfg(target_vendor = "apple")]
+impl MediaDirsExt for MediaDirs {
+    fn sysdir() -> io::Result<Self> {
+        use libc::sysdir_search_path_directory_t::*;
+
+        let mut dirs = MediaDirs::empty();
+        let home = user_home()?;
+
         let desktop = sys::get_user_dir(&home, SYSDIR_DIRECTORY_DESKTOP)?;
         let documents = sys::get_user_dir(&home, SYSDIR_DIRECTORY_DOCUMENT)?;
         let downloads = sys::get_user_dir(&home, SYSDIR_DIRECTORY_DOWNLOADS)?;
         let movies = sys::get_user_dir(&home, SYSDIR_DIRECTORY_MOVIES)?;
         let music = sys::get_user_dir(&home, SYSDIR_DIRECTORY_MUSIC)?;
         let pictures = sys::get_user_dir(&home, SYSDIR_DIRECTORY_PICTURES)?;
-        let public_share = sys::get_user_dir(&home, SYSDIR_DIRECTORY_SHARED_PUBLIC)?;
 
-        dirs.home.cache = caches;
-        // Apple puts config/data/state all in Application Support
-        dirs.home.config = application_support.clone();
-        dirs.home.data = application_support.clone();
-        dirs.home.state = application_support;
-
-        dirs.media.desktop = desktop;
-        dirs.media.documents = documents;
-        dirs.media.downloads = downloads;
-        dirs.media.music = music;
-        dirs.media.pictures = pictures;
-        dirs.media.public_share = public_share;
-        dirs.media.videos = movies;
+        dirs.desktop = desktop;
+        dirs.documents = documents;
+        dirs.downloads = downloads;
+        dirs.music = music;
+        dirs.pictures = pictures;
+        dirs.videos = movies;
 
         Ok(dirs)
     }
@@ -211,7 +266,7 @@ mod sys {
             };
 
             let Ok(path) = path.to_str() else {
-                // FIXME: is this possible, and if so, how should it be handled?
+                // should be impossible on a working system, but be defensive
                 return Some(Err(const_error!(
                     ErrorKind::InvalidData,
                     "standard user directory path not valid UTF-8",
@@ -249,18 +304,18 @@ mod tests {
 
     #[test]
     fn can_fetch_sysdir_paths() {
-        let dirs = UserDirs::sysdir().unwrap();
-        assert!(dirs.user_home().is_some());
+        let dirs = HomeDirs::sysdir().unwrap();
         assert!(dirs.cache_home().is_some());
         assert!(dirs.config_home().is_some());
         assert!(dirs.data_home().is_some());
         assert!(dirs.state_home().is_some());
+
+        let dirs = MediaDirs::sysdir().unwrap();
         assert!(dirs.desktop().is_some());
         assert!(dirs.documents().is_some());
         assert!(dirs.downloads().is_some());
         assert!(dirs.music().is_some());
         assert!(dirs.pictures().is_some());
-        assert!(dirs.public_share().is_some());
         assert!(dirs.videos().is_some());
     }
 }

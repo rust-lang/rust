@@ -51,7 +51,9 @@ use crate::{error, fmt};
 pub(crate) mod dirs;
 
 #[unstable(feature = "dir_discovery", issue = "157515")]
-pub use self::dirs::UserDirs;
+pub use self::dirs::HomeDirs;
+#[unstable(feature = "media_dir_discovery", issue = "157515")]
+pub use self::dirs::MediaDirs;
 
 /// An object providing access to an open file on the filesystem.
 ///
