@@ -1169,7 +1169,7 @@ fn check_eiis_fn(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     continue;
                 }
             }
-            EiiImplResolution::Known(decl) => (decl.foreign_item, decl.name.name),
+            EiiImplResolution::Known(def_id) => (*def_id, tcx.item_name(*def_id)),
             EiiImplResolution::Error(_eg) => continue,
         };
 
@@ -1196,7 +1196,7 @@ fn check_eiis_static<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, ty: Ty<'tcx>) 
                     continue;
                 }
             }
-            EiiImplResolution::Known(decl) => (decl.foreign_item, decl.name.name),
+            EiiImplResolution::Known(def_id) => (*def_id, tcx.item_name(*def_id)),
             EiiImplResolution::Error(_eg) => continue,
         };
 
