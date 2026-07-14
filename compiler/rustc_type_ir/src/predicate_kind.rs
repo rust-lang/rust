@@ -53,6 +53,16 @@ pub enum ClauseKind<I: Interner> {
         #[type_visitable(ignore)]
         I::Symbol,
     ),
+
+    /// You never have to deal with this. It's an implementation detail of how ParamEnvs are stored.
+    /// It represents a couple of very simple, super common clauses as a bitset, and gets interned
+    /// as one. This variant is created behind the scenes, when constructing a ParamEnv, but when
+    /// iterating over a `ParamEnv` these are flattened out and reified into their corresponding
+    /// real clauses.
+    ///
+    /// There's some complexity surrounding these clauses in `TypeFoldable` and `TypeVisitable`,
+    /// to make sure that there these bitsets are also properly reified.
+    CompressedTrait(ty::CompressedTraitClause<I>),
 }
 
 impl<I: Interner> Eq for ClauseKind<I> {}
@@ -122,6 +132,9 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
             }
             ClauseKind::UnstableFeature(feature_name) => {
                 write!(f, "UnstableFeature({feature_name:?})")
+            }
+            ClauseKind::CompressedTrait(_) => {
+                todo!()
             }
         }
     }

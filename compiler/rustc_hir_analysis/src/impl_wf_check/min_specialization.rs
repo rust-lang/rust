@@ -472,5 +472,6 @@ fn trait_specialization_kind<'tcx>(
         | ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::UnstableFeature(_)
         | ty::ClauseKind::HostEffect(..) => None,
+        ty::ClauseKind::CompressedTrait(..) => unreachable!(),
     }
 }
