@@ -1,15 +1,15 @@
 # MIR optimizations
 
-MIR optimizations are optimizations run on the [MIR][mir] to produce better MIR before codegen.
+MIR optimizations are optimizations run on the [MIR] to produce better MIR before codegen.
 This is important for two reasons: first, it makes the final
 generated executable code better, and second, it means that LLVM has less work
 to do, so compilation is faster.
 Note that since MIR is generic (not
-[monomorphized][monomorph] yet), these optimizations are particularly
+[monomorphized] yet), these optimizations are particularly
 effective; we can optimize the generic version, so all of the monomorphizations are cheaper!
 
 [mir]: ../mir/index.md
-[monomorph]: ../appendix/glossary.md#mono
+[monomorphized]: ../appendix/glossary.md#mono
 
 MIR optimizations run after borrow checking.
 We run a series of optimization passes over the MIR to improve it.
@@ -17,16 +17,16 @@ Some passes are required to run on all code,
 some passes don't actually do optimizations but only check stuff, and some
 passes are only turned on in `release` mode.
 
-The [`optimized_mir`][optmir] [query] is called to produce the optimized MIR
-for a given [`DefId`][defid].
+The [`optimized_mir`] [query] is called to produce the optimized MIR
+for a given [`DefId`].
 This query makes sure that the borrow checker has run and that some validation has occurred.
-Then, it [steals][steal] the MIR,
+Then, it [steals] the MIR,
 optimizes it, and returns the improved MIR.
 
-[optmir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.optimized_mir.html
+[`optimized_mir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.optimized_mir.html
 [query]: ../query.md
-[defid]: ../appendix/glossary.md#def-id
-[steal]: ../mir/passes.md#stealing
+[`defid`]: ../appendix/glossary.md#def-id
+[steals]: ../mir/passes.md#stealing
 
 ## Quickstart for adding a new optimization
 
