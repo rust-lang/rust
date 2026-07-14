@@ -862,7 +862,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.bitwise_operation(BinaryOp::BitwiseOr, a, b, loc)
     }
 
-    // FIXME(antoyo): can we use https://github.com/rust-lang/compiler-builtins/blob/master/src/int/mod.rs#L379 instead?
+    // FIXME(antoyo): can we use https://github.com/rust-lang/compiler-builtins/blob/1a99c2aa295bb2d507fa0e67a3b5eef64fba92a0/libm/src/math/support/int_traits.rs#L485 instead?
     pub fn gcc_int_cast(&self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {
         let value_type = value.get_type();
         if self.is_native_int_type_or_bool(dest_typ) && self.is_native_int_type_or_bool(value_type)

@@ -33,6 +33,7 @@ pub fn run() -> Result<(), String> {
 
     run_command_with_output(cmd, Some(Path::new(".")))?;
     run_command_with_output(cmd, Some(Path::new("build_system")))?;
+    run_command_with_output(cmd, Some(Path::new("build_system/asm-tester")))?;
 
     run_rustfmt_recursively("tests/run", check)
 }

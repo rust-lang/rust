@@ -146,6 +146,14 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             if attrs.regular.contains(rustc_target::callconv::ArgAttribute::NonNull) {
                 non_null_args.push(arg_index as i32 + 1);
             }
+            // There are a few others `ArgAttribute` variants"
+            //
+            // * ArgAttribute::ReadOnly: `access(read_only())`, but it's only used for emitting
+            //   warning, not for optimization.
+            // * ArgAttribute::NoUndef: No equivalent in GCC
+            // * ArgAttribute::Writable: `access(read_write())` or `access(write_only())`, but it's
+            //   only used for emitting warning, not for optimization.
+            // * ArgAttribute::NoFree: No equivalent in GCC
             ty
         };
         #[cfg(not(feature = "master"))]

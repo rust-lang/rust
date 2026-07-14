@@ -418,8 +418,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 self.location,
                 self.cx.context.new_call_through_ptr(self.location, func_ptr, &args),
             );
-            // Return dummy value when not having return value.
-            self.context.new_rvalue_zero(self.isize_type)
+            // Return dummy value when not having return value, unless the intrinsic adapter
+            // needs to synthesize a non-void LLVM-level result from out-parameters.
+            llvm::adjust_intrinsic_return_value(
+                self,
+                self.context.new_rvalue_zero(self.isize_type),
+                &func_name,
+                &args,
+                args_adjusted,
+                orig_args,
+            )
         }
     }
 
@@ -570,6 +578,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         default_block: Block<'gcc>,
         cases: impl ExactSizeIterator<Item = (u128, Block<'gcc>)>,
     ) {
+        // A switch with no cases is equivalent to an unconditional jump to the
+        // default block. Such a `SwitchInt` (one with only an `otherwise` target)
+        // is normally simplified into a `goto`, but `-Z mir-preserve-ub` keeps it,
+        // so it can reach here with e.g. the `bool` discriminant produced by a
+        // range-pattern comparison. `gcc_jit_block_end_with_switch` rejects a
+        // discriminant that is not of integer type, so emit a plain jump instead
+        // of a (pointless) switch.
+        if cases.len() == 0 {
+            self.block.end_with_jump(self.location, default_block);
+            return;
+        }
+
         let mut gcc_cases = vec![];
         let typ = self.val_ty(value);
         // FIXME(FractalFir): This is a workaround for a libgccjit limitation.
