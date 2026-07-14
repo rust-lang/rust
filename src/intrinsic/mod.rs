@@ -4,7 +4,7 @@ mod simd;
 #[cfg(feature = "master")]
 use std::iter;
 
-use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
+use gccjit::{CType, ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
 use rustc_abi::{Align, BackendRepr, HasDataLayout, WrappingRange};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
@@ -362,7 +362,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 unimplemented!();
             }
             sym::va_arg => {
-                unimplemented!();
+                let va_list = args[0].immediate();
+                let gcc_type = self.immediate_backend_type(result.layout);
+                self.va_arg(va_list, gcc_type)
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
@@ -691,8 +693,18 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         self.context.new_rvalue_from_int(self.int_type, 0)
     }
 
-    fn va_start(&mut self, _va_list: RValue<'gcc>) {
-        unimplemented!();
+    fn va_start(&mut self, va_list: RValue<'gcc>) {
+        let func = self.context.get_builtin_function("__builtin_va_start");
+
+        let va_list_type = self.context.new_c_type(CType::VaList);
+        let va_list = self.context.new_cast(self.location, va_list, va_list_type.make_pointer());
+
+        // Pre-C23 requires that the last "normal" argument was passed to va_start.
+        // Just pass 0, this appears to be handled correctly.
+        let last_normal_arg = self.context.new_rvalue_from_int(self.int_type, 0);
+
+        let call = self.context.new_call(self.location, func, &[va_list, last_normal_arg]);
+        self.block.add_eval(self.location, call);
     }
 
     fn retag_reg(&mut self, _ptr: Self::Value, _info: &RetagInfo<Self::Value>) -> Self::Value {

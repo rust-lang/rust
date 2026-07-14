@@ -74,9 +74,6 @@ tests/ui/linkage-attr/raw-dylib/elf/glibc-x86_64.rs
 tests/ui/explicit-tail-calls/recursion-etc.rs
 tests/ui/explicit-tail-calls/indexer.rs
 tests/ui/explicit-tail-calls/drop-order.rs
-tests/ui/c-variadic/valid.rs
-tests/ui/c-variadic/inherent-method.rs
-tests/ui/c-variadic/trait-method.rs
 tests/ui/explicit-tail-calls/become-cast-return.rs
 tests/ui/explicit-tail-calls/become-indirect-return.rs
 tests/ui/panics/panic-abort-backtrace-without-debuginfo.rs
@@ -97,15 +94,12 @@ tests/ui/eii/linking/same-symbol.rs
 tests/ui/eii/privacy1.rs
 tests/ui/eii/default/call_impl.rs
 tests/ui/eii/linking/track_caller_cross_crate.rs
-tests/ui/c-variadic/copy.rs
 tests/ui/asm/x86_64/global_asm_escape.rs
 tests/ui/lto/all-crates.rs
-tests/ui/consts/const-eval/c-variadic.rs
 tests/ui/eii/default/call_default_panics.rs
 tests/ui/explicit-tail-calls/indirect.rs
 tests/ui/traits/inheritance/self-in-supertype.rs
 tests/ui/fmt/fmt_debug/shallow.rs
-tests/ui/c-variadic/roundtrip.rs
 tests/ui/eii/eii_impl_with_contract.rs
 tests/ui/eii/static/cross_crate_decl.rs
 tests/ui/eii/static/cross_crate_def.rs
