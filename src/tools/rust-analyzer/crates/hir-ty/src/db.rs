@@ -38,7 +38,7 @@ use crate::{
 };
 
 #[query_group::query_group]
-pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
+pub trait HirDatabase: SourceDatabase {
     // region:mir
 
     // FIXME: Collapse `mir_body_for_closure` into `mir_body`
