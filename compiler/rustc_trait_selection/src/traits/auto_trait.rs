@@ -237,7 +237,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             })
             .collect::<Vec<ty::Clause<'tcx>>>();
         let full_user_env = ty::ParamEnv::new(
-            tcx.mk_clauses_from_iter(orig_env.caller_bounds().iter().chain(field_clauses)),
+            tcx.mk_clauses_from_iter(orig_env.caller_bounds().chain(field_clauses)),
         );
 
         let fresh_args = infcx.fresh_args_for_item(DUMMY_SP, adt_def.did());
@@ -325,8 +325,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             polarity: ty::ClausePolarity::Positive,
         }));
 
-        let computed_clauses = param_env.caller_bounds().iter();
-        let mut user_computed_clauses: FxIndexSet<_> = user_env.caller_bounds().iter().collect();
+        let computed_clauses = param_env.caller_bounds();
+        let mut user_computed_clauses: FxIndexSet<_> = user_env.caller_bounds().collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
