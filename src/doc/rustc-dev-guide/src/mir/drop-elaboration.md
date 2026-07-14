@@ -28,8 +28,8 @@ let mut y = vec![];
 } // `x` goes out of scope here. Should it be dropped?
 ```
 
-In these cases, we need to keep track of whether a variable is initialized
-*dynamically*. The rules are laid out in detail in [RFC 320: Non-zeroing dynamic drops][RFC 320].
+In these cases, we need to keep track of whether a variable is initialized _dynamically_.
+The rules are laid out in detail in [RFC 320: Non-zeroing dynamic drops][RFC 320].
 
 ## Drop obligations
 
