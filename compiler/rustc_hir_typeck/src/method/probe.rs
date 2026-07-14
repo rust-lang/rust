@@ -12,6 +12,7 @@ use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, query};
+use rustc_lint::builtin::METHOD_CALL_ON_DIVERGING_INFER_VAR;
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
@@ -403,6 +404,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         #[diag("type annotations needed")]
         struct MissingTypeAnnot;
 
+        #[derive(Diagnostic)]
+        #[diag("method call on a diverging inference variable")]
+        #[help("consider providing a type annotation")]
+        struct MethodCallOnDivergingInferenceVariable;
+
         let mut orig_values = OriginalQueryValues::default();
         let predefined_opaques_in_body = if self.next_trait_solver() {
             self.tcx.mk_predefined_opaques_in_body_from_iter(
@@ -468,6 +474,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we encountered an `_` type or an error type during autoderef, this is
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
+            // We care about the opt_bad_ty given the inference state at the point of computing the auto deref chain,
+            // so we don't call structurally_resolve_type as it processes obligations in our local FnCtxt,
+            // potentially making inference progress.
+            let ty = &bad_ty.ty;
+            let ty = self
+                .probe_instantiate_query_response(span, &orig_values, ty)
+                .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
+            let ty = ty.value;
+
             if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. There's really
                 // not much use in suggesting methods in this case.
@@ -491,15 +506,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     MissingTypeAnnot,
                 );
+            // If `ty` is an inference variable that was created by being adjusted from the never type,
+            // We demand the type to be equal to the never type, so we can probe the never type for methods
+            // (see https://github.com/rust-lang/rust/issues/143349)
+            } else if let ty::Infer(ty::TyVar(ty_id)) = *ty.kind()
+                && let ty_id = self.sub_unification_table_root_var(ty_id)
+                && self
+                    .diverging_type_vars
+                    .borrow()
+                    .iter()
+                    .any(|&candidate_id| self.sub_unification_table_root_var(candidate_id) == ty_id)
+            {
+                self.tcx.emit_node_span_lint(
+                    METHOD_CALL_ON_DIVERGING_INFER_VAR,
+                    scope_expr_id,
+                    span,
+                    MethodCallOnDivergingInferenceVariable,
+                );
+                let root_ty = Ty::new_var(self.tcx, ty_id);
+                self.demand_eqtype(span, root_ty, self.tcx.types.never);
             } else {
-                // Ended up encountering a type variable when doing autoderef,
-                // but it may not be a type variable after processing obligations
-                // in our local `FnCtxt`, so don't call `structurally_resolve_type`.
-                let ty = &bad_ty.ty;
-                let ty = self
-                    .probe_instantiate_query_response(span, &orig_values, ty)
-                    .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
-                let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
                     _ if let Some(guar) = self.tainted_by_errors() => guar,
                     ty::Infer(ty::TyVar(_)) => {
