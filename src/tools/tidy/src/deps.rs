@@ -242,11 +242,17 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
 
 const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     // tidy-alphabetical-start
+    ("aws-lc-rs", "ISC AND (Apache-2.0 OR ISC)"),
+    (
+        "aws-lc-sys",
+        "ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0)",
+    ),
+    ("brotli", "BSD-3-Clause AND MIT"),
+    ("fast-srgb8", "MIT OR Apache-2.0 OR CC0-1.0"),
     ("inferno", "CDDL-1.0"),
     ("option-ext", "MPL-2.0"),
-    ("terminfo", "WTFPL"),
     ("wasite", "Apache-2.0 OR BSL-1.0 OR MIT"),
-    ("wezterm-bidi", "MIT AND Unicode-DFS-2016"),
+    ("webpki-root-certs", "CDLA-Permissive-2.0"),
     ("whoami", "Apache-2.0 OR BSL-1.0 OR MIT"),
     // tidy-alphabetical-end
 ];
