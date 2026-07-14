@@ -30,7 +30,7 @@ pub trait HomeDirsExt: Sized + Sealed {
     ///
     /// Errors if the underlying system discovery API returns an error.
     /// The lack of a configured path is not considered an error and results
-    /// in a `None` value for that path in the returned `UserDirs`.
+    /// in a `None` value for that path in the returned `HomeDirs`.
     ///
     /// # Implementation-specific behavior
     ///
@@ -75,7 +75,7 @@ pub trait MediaDirsExt: Sized + Sealed {
     ///
     /// Errors if the underlying system discovery API returns an error.
     /// The lack of a configured path is not considered an error and results
-    /// in a `None` value for that path in the returned `UserDirs`.
+    /// in a `None` value for that path in the returned `MediaDirs`.
     ///
     /// # Implementation-specific behavior
     ///
@@ -130,7 +130,7 @@ impl HomeDirsExt for HomeDirs {
 
 #[cfg(windows)]
 #[unstable(feature = "dir_discovery", issue = "157515")]
-impl UserDirsExt for UserDirs {
+impl MediaDirsExt for MediaDirs {
     fn known_folders() -> io::Result<Self> {
         use crate::sys::c;
 
@@ -169,7 +169,7 @@ mod sys {
     pub fn get_known_folder_path(id: &c::GUID) -> io::Result<Option<PathBuf>> {
         // Get the known folder path. hToken = NULL requests the current user
         // scope, and we set KF_FLAG_DONT_VERIFY because it's a bit faster and
-        // UserDirs does not guarantee that the directories at the paths exist.
+        // we don't guarantee that the directories at the paths exist.
         let mut pszPath = ptr::null_mut();
         // SAFETY: rfid/ppszPath are valid pointers, flags are appropriate, and
         //   a NULL hToken is supported by SHGetKnownFolderPath.
