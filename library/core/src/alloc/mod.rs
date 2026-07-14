@@ -192,7 +192,6 @@ impl fmt::Display for AllocError {
 // https://rust.tf/155746
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-#[rustc_dyn_incompatible_trait]
 pub const unsafe trait Allocator {
     /// Attempts to allocate a block of memory.
     ///
@@ -550,45 +549,6 @@ pub const unsafe trait Allocator {
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait GlobalAllocator: Allocator + Sync + 'static {}
 
-/// Marker trait for enabling dyn-compatible allocators.
-///
-/// # Usage
-///
-/// `dyn DynAllocator` objects implement [`Allocator`], thus enabling these to be
-/// used as dynamically-dispatched allocators. This also applies to `dyn` objects
-/// with autotrait bounds alongside `DynAllocator`, e.g. `dyn DynAllocator + Send`.
-///
-/// # Safety
-///
-/// Same as [`Allocator`].
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[expect(private_bounds)]
-pub impl(self) unsafe trait DynAllocator: DynAllocatorInternal {}
-
-unsafe trait DynAllocatorInternal {
-    fn __dyn_allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
-    fn __dyn_allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
-    unsafe fn __dyn_deallocate(&self, ptr: NonNull<u8>, layout: Layout);
-    unsafe fn __dyn_grow(
-        &self,
-        ptr: NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError>;
-    unsafe fn __dyn_grow_zeroed(
-        &self,
-        ptr: NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError>;
-    unsafe fn __dyn_shrink(
-        &self,
-        ptr: NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError>;
-}
-
 /// Guarantees that we can emit `noalias` attributes for a certain allocator. To enable this,
 /// the pointer passed back in via de/reallocating methods must only be used to access
 /// memory inside of that allocation. Furthermore, this pointer should be considered
@@ -758,109 +718,3 @@ unsafe impl<A: Allocator + ?Sized> AllocatorClone for &A {}
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &A {}
-
-unsafe impl<A: Allocator + ?Sized> DynAllocatorInternal for A {
-    fn __dyn_allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        self.allocate(layout)
-    }
-    fn __dyn_allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        self.allocate_zeroed(layout)
-    }
-    unsafe fn __dyn_deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        // SAFETY: Guaranteed by caller
-        unsafe { self.deallocate(ptr, layout) }
-    }
-    unsafe fn __dyn_grow(
-        &self,
-        ptr: NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
-        // SAFETY: Guaranteed by caller
-        unsafe { self.grow(ptr, old_layout, new_layout) }
-    }
-    unsafe fn __dyn_grow_zeroed(
-        &self,
-        ptr: NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
-        // SAFETY: Guaranteed by caller
-        unsafe { self.grow_zeroed(ptr, old_layout, new_layout) }
-    }
-    unsafe fn __dyn_shrink(
-        &self,
-        ptr: NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
-        // SAFETY: Guaranteed by caller
-        unsafe { self.shrink(ptr, old_layout, new_layout) }
-    }
-}
-
-#[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A: DynAllocatorInternal + ?Sized> DynAllocator for A {}
-
-// FIXME(nia-e): See if it's possible to make this built-in to the typesystem,
-// e.g. by making the impl work on arbitrary `dyn DynAlloc + Foo + Bar`. Otherwise,
-// just expand this macro with other trait combinations for now. Also needs to be
-// extended for arbitrary `dyn DynAllocator + 'a`.
-// https://rust.tf/157506
-
-macro_rules! impl_dyn_allocator {
-    ($t:ty, $($n:ty),+) => {
-        impl_dyn_allocator!($t);
-        impl_dyn_allocator!($($n),+);
-    };
-
-    ($t:ty) => {
-        #[unstable(feature = "allocator_api", issue = "32838")]
-        unsafe impl Allocator for $t {
-            fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-                self.__dyn_allocate(layout)
-            }
-            unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-                // SAFETY: Guaranteed by caller
-                unsafe { self.__dyn_deallocate(ptr, layout) }
-            }
-            fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-                self.__dyn_allocate_zeroed(layout)
-            }
-            unsafe fn grow(
-                &self,
-                ptr: NonNull<u8>,
-                old_layout: Layout,
-                new_layout: Layout,
-            ) -> Result<NonNull<[u8]>, AllocError> {
-                // SAFETY: Guaranteed by caller
-                unsafe { self.__dyn_grow(ptr, old_layout, new_layout) }
-            }
-            unsafe fn grow_zeroed(
-                &self,
-                ptr: NonNull<u8>,
-                old_layout: Layout,
-                new_layout: Layout,
-            ) -> Result<NonNull<[u8]>, AllocError> {
-                // SAFETY: Guaranteed by caller
-                unsafe { self.__dyn_grow_zeroed(ptr, old_layout, new_layout) }
-            }
-            unsafe fn shrink(
-                &self,
-                ptr: NonNull<u8>,
-                old_layout: Layout,
-                new_layout: Layout,
-            ) -> Result<NonNull<[u8]>, AllocError> {
-                // SAFETY: Guaranteed by caller
-                unsafe { self.__dyn_shrink(ptr, old_layout, new_layout) }
-            }
-        }
-    };
-}
-
-impl_dyn_allocator!(
-    dyn DynAllocator,
-    dyn DynAllocator + Send,
-    dyn DynAllocator + Sync,
-    dyn DynAllocator + Send + Sync
-);
