@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -44,6 +45,18 @@ where
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         self.0.visit_provenance(visit);
         self.1.visit_provenance(visit);
+    }
+}
+
+impl<T: ?Sized + VisitProvenance> VisitProvenance for Box<T> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        (**self).visit_provenance(visit);
+    }
+}
+
+impl<T: ?Sized + VisitProvenance> VisitProvenance for Rc<T> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        (**self).visit_provenance(visit);
     }
 }
 
