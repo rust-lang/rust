@@ -137,7 +137,7 @@ Checkout [`clippy_utils::ty::get_iterator_item_ty()`] for an example usage of th
 Clippy tries to use diagnostic items where possible and has developed some
 wrapper and utility functions.
 Please also refer to its documentation when using diagnostic items in Clippy.
-(See [*Common tools for writing lints*][clippy-Common-tools-for-writing-lints].)
+(See [*Common tools for writing lints*].)
 
 ## Related issues
 
@@ -157,6 +157,6 @@ These are probably only interesting to people who really want to take a deep div
 [`TyCtxt::associated_items()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.associated_items
 [`AssocItems`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/assoc/struct.AssocItems.html
 [`clippy_utils::ty::get_iterator_item_ty()`]: https://github.com/rust-lang/rust-clippy/blob/305177342fbc622c0b3cb148467bab4b9524c934/clippy_utils/src/ty.rs#L55-L72
-[clippy-Common-tools-for-writing-lints]: https://doc.rust-lang.org/nightly/clippy/development/common_tools_writing_lints.html
+[*Common tools for writing lints*]: https://doc.rust-lang.org/nightly/clippy/development/common_tools_writing_lints.html
 [rust#60966]: https://github.com/rust-lang/rust/pull/60966
 [rust-clippy#5393]: https://github.com/rust-lang/rust-clippy/issues/5393
