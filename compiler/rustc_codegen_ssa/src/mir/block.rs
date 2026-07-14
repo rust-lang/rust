@@ -11,9 +11,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
-use rustc_middle::ptrauth::{
-    build_fn_ptr_type_discriminator_input_from_instance, compute_fn_ptr_type_discriminator,
-};
+use rustc_middle::ptrauth::clone_discriminated_ptrauth_schema_for;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
@@ -688,17 +686,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 )
             }
             _ => {
-                let mut schema = bx.sess().pointer_authentication_functions().clone();
-
-                if let Some(ref mut s) = schema
-                    && bx.sess().pointer_authentication_fn_ptr_type_discrimination()
-                {
-                    let disc_input =
-                        build_fn_ptr_type_discriminator_input_from_instance(bx.tcx(), drop_fn);
-                    let disc = compute_fn_ptr_type_discriminator(bx.tcx(), &disc_input) as u16;
-
-                    s.constant_discriminator = disc;
-                }
+                let schema = if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+                    clone_discriminated_ptrauth_schema_for(
+                        bx.tcx(),
+                        bx.sess().pointer_authentication_functions(),
+                        drop_fn,
+                    )
+                } else {
+                    bx.sess().pointer_authentication_functions().clone()
+                };
                 (
                     false,
                     bx.get_fn_addr(drop_fn, schema),
@@ -1117,21 +1113,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             generic_args.no_bound_vars().unwrap(),
                         )
                         .unwrap();
-
-                        let mut schema = bx.sess().pointer_authentication_functions().clone();
-
-                        if let Some(ref mut s) = schema
-                            && bx.sess().pointer_authentication_fn_ptr_type_discrimination()
-                        {
-                            let disc_input = build_fn_ptr_type_discriminator_input_from_instance(
-                                bx.tcx(),
-                                instance,
-                            );
-                            let disc =
-                                compute_fn_ptr_type_discriminator(bx.tcx(), &disc_input) as u16;
-
-                            s.constant_discriminator = disc;
-                        };
+                        let schema =
+                            if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+                                clone_discriminated_ptrauth_schema_for(
+                                    bx.tcx(),
+                                    bx.sess().pointer_authentication_functions(),
+                                    instance,
+                                )
+                            } else {
+                                bx.sess().pointer_authentication_functions().clone()
+                            };
 
                         (None, Some(bx.get_fn_addr(instance, schema)))
                     }
@@ -1447,17 +1438,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let fn_ptr = match (instance, llfn) {
             (Some(instance), None) => {
-                let mut schema = bx.sess().pointer_authentication_functions().clone();
-
-                if let Some(ref mut s) = schema
-                    && bx.sess().pointer_authentication_fn_ptr_type_discrimination()
-                {
-                    let disc_input =
-                        build_fn_ptr_type_discriminator_input_from_instance(bx.tcx(), instance);
-                    let disc = compute_fn_ptr_type_discriminator(bx.tcx(), &disc_input) as u16;
-
-                    s.constant_discriminator = disc;
-                }
+                let schema = if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+                    clone_discriminated_ptrauth_schema_for(
+                        bx.tcx(),
+                        bx.sess().pointer_authentication_functions(),
+                        instance,
+                    )
+                } else {
+                    bx.sess().pointer_authentication_functions().clone()
+                };
 
                 bx.get_fn_addr(instance, schema)
             }
