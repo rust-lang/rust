@@ -186,6 +186,7 @@ pub mod type_info;
 #[rustc_const_stable(feature = "const_forget", since = "1.46.0")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "mem_forget"]
+#[rustc_no_writable]
 pub const fn forget<T>(t: T) {
     let _ = ManuallyDrop::new(t);
 }
@@ -1170,6 +1171,7 @@ pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
 /// let _: std::mem::MaybeUninit<u16> = unsafe { transmute_prefix(123_u8) };
 /// ```
 #[unstable(feature = "transmute_prefix", issue = "155079")]
+#[rustc_no_writable]
 pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
     #[repr(C)]
     union Transmute<A, B> {
@@ -1219,6 +1221,7 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
 #[unstable(feature = "transmute_neo", issue = "155079")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[inline]
+#[rustc_no_writable]
 pub const unsafe fn transmute_neo<Src, Dst>(src: Src) -> Dst {
     const { assert!(Src::SIZE == Dst::SIZE) };
 
