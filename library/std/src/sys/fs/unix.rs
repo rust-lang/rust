@@ -2012,6 +2012,7 @@ impl fmt::Debug for Mode {
     }
 }
 
+#[cfg(not(target_os = "wasi"))]
 #[derive(Debug, Default, Clone)]
 pub struct ExtraHomeDirs {
     pub runtime: Option<PathBuf>,
@@ -2019,6 +2020,7 @@ pub struct ExtraHomeDirs {
     pub data_path: Option<OsString>,
 }
 
+#[cfg(not(target_os = "wasi"))]
 #[derive(Debug, Default, Clone)]
 pub struct ExtraMediaDirs {
     pub templates: Option<PathBuf>,
