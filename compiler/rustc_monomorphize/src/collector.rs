@@ -1019,7 +1019,9 @@ fn visit_instance_use<'tcx>(
     }
 
     match instance.def {
-        ty::InstanceKind::Virtual(..) | ty::InstanceKind::Intrinsic(_) => {
+        ty::InstanceKind::Virtual(..)
+        | ty::InstanceKind::Intrinsic(_)
+        | ty::InstanceKind::LlvmIntrinsic(_) => {
             if !is_direct_call {
                 bug!("{:?} being reified", instance);
             }
