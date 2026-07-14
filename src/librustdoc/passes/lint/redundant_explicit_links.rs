@@ -9,7 +9,7 @@ use rustc_resolve::rustdoc::pulldown_cmark::{
     BrokenLink, BrokenLinkCallback, CowStr, Event, LinkType, OffsetIter, Parser, Tag,
 };
 use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, source_span_for_markdown_range};
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, ModId};
 use rustc_span::{Span, Symbol};
 
 use crate::clean::Item;
@@ -58,7 +58,7 @@ fn check_redundant_explicit_link_for_did(
     }
 
     let module_id = match cx.tcx.def_kind(did) {
-        DefKind::Mod if item.inner_docs(cx.tcx) => did,
+        DefKind::Mod if item.inner_docs(cx.tcx) => ModId::new_unchecked(did),
         _ => find_nearest_parent_module(cx.tcx, did).unwrap(),
     };
 

@@ -494,6 +494,10 @@ impl ModId {
         LocalModId::new_unchecked(self.0.expect_local())
     }
 
+    pub fn is_crate_root(self) -> bool {
+        self.0.is_crate_root()
+    }
+
     pub fn is_top_level_module(self) -> bool {
         self.0.is_top_level_module()
     }
