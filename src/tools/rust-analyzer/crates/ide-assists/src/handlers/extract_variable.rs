@@ -95,7 +95,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
     let node = node.ancestors().take_while(|anc| anc.text_range() == node.text_range()).last()?;
     let range = node.text_range();
 
-    let (to_replace, analysis, prefer_source_expr) = if node.kind() == SyntaxKind::TOKEN_TREE {
+    let (to_replace, analysis, use_source_expr) = if node.kind() == SyntaxKind::TOKEN_TREE {
         let (first, last) = extract_token_range_of(&node, ctx.selection_trimmed())?;
 
         let first_descend = ctx.sema.descend_into_macros_single_exact(first.clone());
@@ -220,9 +220,8 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
                     editor.add_annotation(pat_name.syntax().clone(), tabstop);
                 }
 
-                let to_extract_no_ref = if prefer_source_expr {
-                    source_expr(ctx, to_replace.clone())
-                        .unwrap_or_else(|| to_extract_no_ref.clone())
+                let to_extract_no_ref = if use_source_expr {
+                    source_expr(ctx, to_replace.clone()).unwrap()
                 } else {
                     to_extract_no_ref.clone()
                 };
