@@ -245,6 +245,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
             ty::ClauseKind::UnstableFeature(_) => {
                 // Nothing to elaborate
             }
+            ty::ClauseKind::CompressedTrait(_) => unreachable!(),
         }
     }
 }

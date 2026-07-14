@@ -1330,6 +1330,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     | ClauseKind::ConstEvaluatable(..)
                     // Users don't write this directly, only via another trait ref.
                     | ty::ClauseKind::HostEffect(..) => continue,
+                    ty::ClauseKind::CompressedTrait(_) => unreachable!(),
                 };
                 if clause.is_global() {
                     cx.emit_span_lint(

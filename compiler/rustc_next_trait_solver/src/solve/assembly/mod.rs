@@ -111,7 +111,8 @@ where
                 | ty::ClauseKind::WellFormed(..)
                 | ty::ClauseKind::ConstEvaluatable(..)
                 | ty::ClauseKind::HostEffect(..)
-                | ty::ClauseKind::UnstableFeature(..) => {
+                | ty::ClauseKind::UnstableFeature(..)
+                | ty::ClauseKind::CompressedTrait(_) => {
                     unreachable!("expected trait or projection predicate as an assumption")
                 }
             });

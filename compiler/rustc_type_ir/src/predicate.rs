@@ -772,3 +772,48 @@ impl fmt::Display for BoundConstness {
         }
     }
 }
+
+#[derive(Clone, Copy, Hash, PartialEq, Debug)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
+)]
+pub struct CompressedTraitRefs(u32);
+bitflags::bitflags! {
+    impl CompressedTraitRefs: u32 {
+        const SIZED = 1;
+        const META_SIZED = 1 << 1;
+        const POINTEE_SIZED = 1 << 2;
+        const CLONE = 1 << 3;
+        const COPY = 1 << 4;
+        const DEBUG = 1 << 5;
+        const DROP = 1 << 6;
+        const UNPIN = 1 << 7;
+    }
+}
+
+/// A clause kind that represents a small set of frequently occurring clauses as a bitset for a given self type.
+/// When multiple common clauses exist in a paramenv, they're merged together so the paramenv can be
+/// stored more efficiently.
+///
+/// # WARNING/FIXME:
+///
+/// Computing type flags for common clauses works correctly.
+/// However, folding  and visiting with `TypeFoldable` and `TypeVisitable` does *not* work as expected.
+/// If we were to decompress `ParamEnv`s everytime we folded/visited it would be super expensive.
+/// So we don't, and assume that it's enough to fold/visit into the `self_ty`.
+/// This works because the traits represented by `CommonClause` don't have generic args or anything
+/// complicated. A normal fold/visit of them will effectively only care about `self_ty`.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
+)]
+pub struct CompressedTraitClause<I: Interner> {
+    self_ty: I::DefId,
+
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    compressed_trait_refs: CompressedTraitRefs,
+}

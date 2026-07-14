@@ -467,6 +467,8 @@ impl<I: Interner> FlagComputation<I> {
             }
             ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_sym)) => {}
             ty::PredicateKind::Ambiguous => {}
+
+            ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(_)) => unreachable!(),
         }
     }
 

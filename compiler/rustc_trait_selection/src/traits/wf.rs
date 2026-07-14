@@ -209,6 +209,7 @@ pub fn clause_obligations<'tcx>(
             wf.add_wf_preds_for_term(ct.into());
         }
         ty::ClauseKind::UnstableFeature(_) => {}
+        ty::ClauseKind::CompressedTrait(_) => unreachable!(),
     }
 
     wf.normalize(infcx)
@@ -1353,6 +1354,7 @@ pub fn object_region_bounds<'tcx>(
                 | ty::ClauseKind::WellFormed(_)
                 | ty::ClauseKind::UnstableFeature(_)
                 | ty::ClauseKind::ConstEvaluatable(_) => None,
+                ty::ClauseKind::CompressedTrait(_) => unreachable!(),
             }
         })
         .collect()
