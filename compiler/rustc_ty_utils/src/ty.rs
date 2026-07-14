@@ -197,7 +197,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 
     let local_did = def_id.as_local().unwrap_or(CRATE_DEF_ID);
 
-    let unnormalized_env = ty::ParamEnv::new(tcx.mk_clauses(&clauses));
+    let unnormalized_env = ty::ParamEnv::new(tcx, clauses);
 
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), local_did);
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)

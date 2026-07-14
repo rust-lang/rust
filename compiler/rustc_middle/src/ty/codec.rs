@@ -306,7 +306,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::SymbolName<'tcx> {
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::ParamEnv<'tcx> {
     fn decode(d: &mut D) -> Self {
         let caller_bounds = Decodable::decode(d);
-        ty::ParamEnv::new(caller_bounds)
+        ty::ParamEnv { caller_bounds }
     }
 }
 

@@ -1174,7 +1174,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
     #[inline]
     pub fn empty() -> Self {
-        Self::new(ListWithCachedTypeInfo::empty())
+        Self { caller_bounds: ListWithCachedTypeInfo::empty() }
     }
 
     #[inline]
@@ -1189,8 +1189,11 @@ impl<'tcx> ParamEnv<'tcx> {
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(caller_bounds: Clauses<'tcx>) -> Self {
-        ParamEnv { caller_bounds }
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        caller_bounds: impl IntoIterator<Item = ty::Clause<'tcx>>,
+    ) -> Self {
+        ParamEnv { caller_bounds: tcx.mk_clauses_from_iter(caller_bounds.into_iter()) }
     }
 
     /// Creates a pair of param-env and value for use in queries.
@@ -1205,7 +1208,7 @@ impl<'tcx> ParamEnv<'tcx> {
         if tcx.next_trait_solver_globally() {
             self
         } else {
-            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds))
+            ParamEnv::new(tcx, tcx.reveal_opaque_types_in_bounds(self.caller_bounds).iter())
         }
     }
 }

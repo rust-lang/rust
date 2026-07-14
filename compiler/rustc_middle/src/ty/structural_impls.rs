@@ -268,7 +268,7 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for ty::ParamEnv<'a> {
     type Lifted = ty::ParamEnv<'tcx>;
 
     fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
-        ty::ParamEnv::new(tcx.lift(self.caller_bounds))
+        ty::ParamEnv { caller_bounds: tcx.lift(self.caller_bounds) }
     }
 }
 
