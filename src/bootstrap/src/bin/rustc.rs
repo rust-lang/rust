@@ -186,6 +186,18 @@ fn main() {
         }
     }
 
+    // Additional remap flags for reproducible builds, covering build output directories
+    // (e.g., OUT_DIR from build scripts) that are not covered by RUSTC_DEBUGINFO_MAP or
+    // RUSTC_CARGO_REGISTRY_SRC_TO_REMAP. Applied to both host and target compilations.
+    // This is needed because RUSTFLAGS remaps only apply to target compilations (Cargo
+    // does not pass RUSTFLAGS to host/proc-macro builds, see rust-lang/cargo#4423),
+    // and RUSTC_DEBUGINFO_MAP only remaps source directories, not build output paths.
+    if let Ok(maps) = env::var("RUSTC_EXTRA_REMAP") {
+        for map in maps.split('\t') {
+            cmd.arg("--remap-path-prefix").arg(map);
+        }
+    }
+
     // Here we pass additional paths that essentially act as a sysroot.
     // These are used to load rustc crates (e.g. `extern crate rustc_ast;`)
     // for rustc_private tools, so that we do not have to copy them into the
