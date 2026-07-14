@@ -797,6 +797,9 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
             ClauseKind::ConstEvaluatable(const_) => {
                 crate::ty::ClauseKind::ConstEvaluatable(const_.stable(tables, cx))
             }
+            ClauseKind::CompressedTrait(_) => {
+                unreachable!()
+            }
             ClauseKind::HostEffect(..) => {
                 unimplemented!()
             }

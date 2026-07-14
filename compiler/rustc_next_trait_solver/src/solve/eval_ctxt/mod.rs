@@ -786,6 +786,7 @@ where
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(_))
                 | ty::PredicateKind::ConstEquate(_, _)
                 | ty::PredicateKind::Ambiguous => LowerAvailableDepth::Yes,
+                ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(_)) => unreachable!(),
             };
         self.search_graph.evaluate_goal(
             self.cx(),
@@ -1054,6 +1055,9 @@ where
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
                     ecx.compute_unstable_feature_goal(param_env, symbol)?
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(_)) => {
+                    unreachable!();
                 }
                 ty::PredicateKind::Subtype(predicate) => {
                     ecx.compute_subtype_goal(Goal { param_env, predicate })?

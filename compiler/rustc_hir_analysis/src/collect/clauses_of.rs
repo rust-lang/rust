@@ -780,6 +780,7 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
+                    ty::ClauseKind::CompressedTrait(_) => unreachable!(),
 
                     ty::ClauseKind::RegionOutlives(_)
                     | ty::ClauseKind::ConstArgHasType(_, _)
@@ -805,6 +806,7 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
+                    ty::ClauseKind::CompressedTrait(_) => unreachable!(),
 
                     ty::ClauseKind::Projection(_)
                     | ty::ClauseKind::TypeOutlives(_)
