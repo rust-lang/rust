@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -21,7 +21,8 @@ use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
 use crate::tokenstream::{
-    DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
+    AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing,
+    TokenStream, TokenStreamIter, TokenTree,
 };
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
@@ -737,23 +738,6 @@ pub fn mk_doc_comment(
     Attribute { kind: AttrKind::DocComment(comment_kind, data), id: g.mk_attr_id(), style, span }
 }
 
-fn mk_attr(
-    g: &AttrIdGenerator,
-    style: AttrStyle,
-    unsafety: Safety,
-    path: Path,
-    args: AttrArgs,
-    span: Span,
-) -> Attribute {
-    mk_attr_from_item(
-        g,
-        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args) },
-        None,
-        style,
-        span,
-    )
-}
-
 pub fn mk_attr_from_item(
     g: &AttrIdGenerator,
     item: AttrItem,
@@ -769,6 +753,50 @@ pub fn mk_attr_from_item(
     }
 }
 
+fn mk_attr_tokens(
+    style: AttrStyle,
+    unsafety: Safety,
+    item_tokens: AttrTokenStream,
+    span: Span,
+) -> LazyAttrTokenStream {
+    let safety_kw = match unsafety {
+        Safety::Default => None,
+        Safety::Unsafe(span) => Some((kw::Unsafe, span)),
+        Safety::Safe(span) => Some((kw::Safe, span)),
+    };
+    let item_tokens = if let Some((kw, kw_span)) = safety_kw {
+        AttrTokenStream::new(vec![
+            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(kw, kw_span)), Spacing::Alone),
+            AttrTokenTree::Delimited(
+                DelimSpan::from_single(span),
+                DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
+                Delimiter::Parenthesis,
+                item_tokens,
+            ),
+        ])
+    } else {
+        item_tokens
+    };
+
+    let mut tokens = match style {
+        AttrStyle::Outer => {
+            vec![AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::JointHidden)]
+        }
+        AttrStyle::Inner => vec![
+            AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::Joint),
+            AttrTokenTree::Token(Token::new(token::Bang, span), Spacing::JointHidden),
+        ],
+    };
+    tokens.push(AttrTokenTree::Delimited(
+        DelimSpan::from_single(span),
+        DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
+        Delimiter::Bracket,
+        item_tokens,
+    ));
+
+    LazyAttrTokenStream::new_direct(AttrTokenStream::new(tokens))
+}
+
 pub fn mk_attr_word(
     g: &AttrIdGenerator,
     style: AttrStyle,
@@ -778,7 +806,24 @@ pub fn mk_attr_word(
 ) -> Attribute {
     let path = Path::from_ident(Ident::new(name, span));
     let args = AttrArgs::Empty;
-    mk_attr(g, style, unsafety, path, args, span)
+
+    let tokens = Some(mk_attr_tokens(
+        style,
+        unsafety,
+        AttrTokenStream::new(vec![AttrTokenTree::Token(
+            Token::from_ast_ident(Ident::new(name, span)),
+            Spacing::Alone,
+        )]),
+        span,
+    ));
+
+    mk_attr_from_item(
+        g,
+        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args) },
+        tokens,
+        style,
+        span,
+    )
 }
 
 pub fn mk_attr_nested_word(
@@ -800,7 +845,32 @@ pub fn mk_attr_nested_word(
         delim: Delimiter::Parenthesis,
         tokens: inner_tokens,
     });
-    mk_attr(g, style, unsafety, path, attr_args, span)
+
+    let tokens = Some(mk_attr_tokens(
+        style,
+        unsafety,
+        AttrTokenStream::new(vec![
+            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(outer, span)), Spacing::Alone),
+            AttrTokenTree::Delimited(
+                DelimSpan::from_single(span),
+                DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
+                Delimiter::Parenthesis,
+                AttrTokenStream::new(vec![AttrTokenTree::Token(
+                    Token::from_ast_ident(Ident::new(inner, span)),
+                    Spacing::Alone,
+                )]),
+            ),
+        ]),
+        span,
+    ));
+
+    mk_attr_from_item(
+        g,
+        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(attr_args) },
+        tokens,
+        style,
+        span,
+    )
 }
 
 pub fn mk_attr_name_value_str(
@@ -821,7 +891,28 @@ pub fn mk_attr_name_value_str(
     });
     let path = Path::from_ident(Ident::new(name, span));
     let args = AttrArgs::Eq { eq_span: span, expr };
-    mk_attr(g, style, unsafety, path, args, span)
+
+    let tokens = Some(mk_attr_tokens(
+        style,
+        unsafety,
+        AttrTokenStream::new(vec![
+            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(name, span)), Spacing::Alone),
+            AttrTokenTree::Token(Token::new(token::Eq, span), Spacing::Alone),
+            AttrTokenTree::Token(
+                Token::new(token::TokenKind::lit(lit.kind, lit.symbol, lit.suffix), span),
+                Spacing::Alone,
+            ),
+        ]),
+        span,
+    ));
+
+    mk_attr_from_item(
+        g,
+        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args) },
+        tokens,
+        style,
+        span,
+    )
 }
 
 pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {
