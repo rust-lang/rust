@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use crate::core::build_steps::compile::{
     ArtifactKeepMode, add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
-    std_crates_for_run_make,
+    std_crates_for_make_run,
 };
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
@@ -68,7 +68,7 @@ impl Step for Std {
         // Explicitly pass -p for all dependencies crates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
         // than just the leaf crate.
-        let crates = std_crates_for_run_make(&run);
+        let crates = std_crates_for_make_run(&run);
         run.builder.ensure(Std {
             build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Std)
                 .build_compiler(),
