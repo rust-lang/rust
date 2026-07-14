@@ -713,15 +713,11 @@ impl<'tcx> MiriMachine<'tcx> {
             let target = &tcx.sess.target;
             match target.arch {
                 Arch::Wasm32 | Arch::Wasm64 => 64 * 1024, // https://webassembly.github.io/spec/core/exec/runtime.html#memory-instances
-                Arch::AArch64 => {
-                    if target.is_like_darwin {
-                        // No "definitive" source, but see:
-                        // https://www.wwdcnotes.com/notes/wwdc20/10214/
-                        // https://github.com/ziglang/zig/issues/11308 etc.
-                        16 * 1024
-                    } else {
-                        4 * 1024
-                    }
+                Arch::AArch64 if target.is_like_darwin => {
+                    // No "definitive" source, but see:
+                    // https://www.wwdcnotes.com/notes/wwdc20/10214/
+                    // https://github.com/ziglang/zig/issues/11308 etc.
+                    16 * 1024
                 }
                 _ => 4 * 1024,
             }

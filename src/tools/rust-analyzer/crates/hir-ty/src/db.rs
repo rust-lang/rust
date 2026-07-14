@@ -2,14 +2,13 @@
 //! type inference-related queries.
 
 use arrayvec::ArrayVec;
-use base_db::{Crate, target::TargetLoadError};
+use base_db::{Crate, SourceDatabase, target::TargetLoadError};
 use either::Either;
 use hir_def::{
     AdtId, BuiltinDeriveImplId, CallableDefId, ConstId, ConstParamId, EnumVariantId,
     ExpressionStoreOwnerId, FunctionId, GenericDefId, HasModule, ImplId, LocalFieldId, ModuleId,
     StaticId, TraitId, TypeAliasId, VariantId,
     builtin_derive::BuiltinDeriveImplMethod,
-    db::DefDatabase,
     expr_store::ExpressionStore,
     hir::{ClosureKind, ExprId, generics::LocalTypeOrConstParamId},
     layout::TargetDataLayout,
@@ -38,7 +37,7 @@ use crate::{
 };
 
 #[query_group::query_group]
-pub trait HirDatabase: DefDatabase + std::fmt::Debug {
+pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
     // region:mir
 
     // FXME: Collapse `mir_body_for_closure` into `mir_body`
@@ -416,20 +415,24 @@ pub struct AnonConstId {
 }
 
 impl AnonConstId {
-    pub(crate) fn new(db: &dyn DefDatabase, loc: AnonConstLoc, token: TrackedStructToken) -> Self {
+    pub(crate) fn new(
+        db: &dyn SourceDatabase,
+        loc: AnonConstLoc,
+        token: TrackedStructToken,
+    ) -> Self {
         _ = token;
         AnonConstId::new_(db, loc)
     }
 }
 
 impl HasModule for AnonConstId {
-    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+    fn module(&self, db: &dyn SourceDatabase) -> ModuleId {
         self.loc(db).owner.module(db)
     }
 }
 
 impl HasResolver for AnonConstId {
-    fn resolver(self, db: &dyn DefDatabase) -> Resolver<'_> {
+    fn resolver(self, db: &dyn SourceDatabase) -> Resolver<'_> {
         self.loc(db).owner.resolver(db)
     }
 }
@@ -492,7 +495,7 @@ impl GeneralConstId {
         }
     }
 
-    pub fn name(self, db: &dyn DefDatabase) -> String {
+    pub fn name(self, db: &dyn SourceDatabase) -> String {
         match self {
             GeneralConstId::StaticId(it) => {
                 StaticSignature::of(db, it).name.display(db, Edition::CURRENT).to_string()

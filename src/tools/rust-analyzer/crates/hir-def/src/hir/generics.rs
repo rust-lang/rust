@@ -1,6 +1,7 @@
 //! Pre-type IR item generics
 use std::{ops, sync::LazyLock};
 
+use base_db::SourceDatabase;
 use hir_expand::name::Name;
 use la_arena::{Arena, Idx, RawIdx};
 use stdx::impl_from;
@@ -8,7 +9,6 @@ use thin_vec::ThinVec;
 
 use crate::{
     AdtId, ConstParamId, GenericDefId, LifetimeParamId, TypeOrConstParamId, TypeParamId,
-    db::DefDatabase,
     expr_store::{ExpressionStore, ExpressionStoreSourceMap},
     signatures::{
         ConstSignature, EnumSignature, FunctionSignature, ImplSignature, StaticSignature,
@@ -193,12 +193,12 @@ impl GenericParams {
         LazyLock::force(&EMPTY)
     }
 
-    pub fn of(db: &dyn DefDatabase, def: GenericDefId) -> &GenericParams {
+    pub fn of(db: &dyn SourceDatabase, def: GenericDefId) -> &GenericParams {
         Self::with_store(db, def).0
     }
 
     pub fn with_store(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         def: GenericDefId,
     ) -> (&GenericParams, &ExpressionStore) {
         match def {
@@ -242,7 +242,7 @@ impl GenericParams {
     }
 
     pub fn with_source_map(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         def: GenericDefId,
     ) -> (&GenericParams, &ExpressionStore, &ExpressionStoreSourceMap) {
         match def {

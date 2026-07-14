@@ -72,7 +72,7 @@ use lsp_types::{
     Contents, DefinitionRequest, Diagnostic, DiagnosticSeverity, DidChangeTextDocumentNotification,
     DidChangeTextDocumentParams, DidOpenTextDocumentNotification, DidOpenTextDocumentParams,
     DocumentFormattingParams, DocumentFormattingRequest, Hover, HoverProvider, HoverRequest,
-    InitializeParams, LspNotificationMethod, LspRequestMethod, MarkedString, Notification,
+    InitializeParams, LspNotificationMethod, LspRequestMethod, MarkupContent, Notification,
     Position, PublishDiagnosticsNotification, PublishDiagnosticsParams, Range, Request,
     ServerCapabilities, TextDocumentSync, TextEdit, Uri,
 };
@@ -82,7 +82,9 @@ use toolchain::command; // clippy-approved wrapper
 
 #[allow(clippy::print_stderr, clippy::disallowed_types, clippy::disallowed_methods)]
 use anyhow::{Context, Result, anyhow, bail};
-use lsp_server::{Connection, Message, Request as ServerRequest, RequestId, Response};
+use lsp_server::{
+    Connection, Message, Request as ServerRequest, RequestId, Response, ResponseKind,
+};
 
 // =====================================================================
 // main
@@ -134,7 +136,7 @@ fn main_loop(
                     break;
                 }
                 if let Err(err) = handle_request(&connection, &req, &mut docs) {
-                    log::error!("[lsp] request {} failed: {err}", &req.method);
+                    log::error!("[lsp] request {} failed: {err}", req.method);
                 }
             }
             Message::Notification(note) => {
@@ -157,7 +159,7 @@ fn handle_notification(
     note: &lsp_server::Notification,
     docs: &mut FxHashMap<Uri, String>,
 ) -> Result<()> {
-    let method: LspNotificationMethod = note.method.clone().into();
+    let method: LspNotificationMethod<'_> = note.method.as_str().into();
     match method {
         DidOpenTextDocumentNotification::METHOD => {
             let p: DidOpenTextDocumentParams = serde_json::from_value(note.params.clone())?;
@@ -191,7 +193,7 @@ fn handle_request(
     req: &ServerRequest,
     docs: &mut FxHashMap<Uri, String>,
 ) -> Result<()> {
-    let parsed: LspRequestMethod = req.method.clone().into();
+    let parsed: LspRequestMethod<'_> = req.method.as_str().into();
     match parsed {
         DefinitionRequest::METHOD => {
             send_ok(
@@ -218,9 +220,10 @@ fn handle_request(
         }
         HoverRequest::METHOD => {
             let hover = Hover {
-                contents: Contents::MarkedString(MarkedString::String(
-                    "Hello from *minimal_lsp*".into(),
-                )),
+                contents: Contents::MarkupContent(MarkupContent {
+                    value: "Hello from *minimal_lsp*".into(),
+                    kind: lsp_types::MarkupKind::Markdown,
+                }),
                 range: None,
             };
             send_ok(conn, req.id.clone(), &hover)?;
@@ -303,7 +306,8 @@ fn full_range(text: &str) -> Range {
 }
 
 fn send_ok<T: serde::Serialize>(conn: &Connection, id: RequestId, result: &T) -> Result<()> {
-    let resp = Response { id, result: Some(serde_json::to_value(result)?), error: None };
+    let resp =
+        Response { id, response_kind: ResponseKind::Ok { result: serde_json::to_value(result)? } };
     conn.sender.send(Message::Response(resp))?;
     Ok(())
 }
@@ -316,12 +320,9 @@ fn send_err(
 ) -> Result<()> {
     let resp = Response {
         id,
-        result: None,
-        error: Some(lsp_server::ResponseError {
-            code: code as i32,
-            message: msg.into(),
-            data: None,
-        }),
+        response_kind: ResponseKind::Err {
+            error: lsp_server::ResponseError { code: code as i32, message: msg.into(), data: None },
+        },
     };
     conn.sender.send(Message::Response(resp))?;
     Ok(())

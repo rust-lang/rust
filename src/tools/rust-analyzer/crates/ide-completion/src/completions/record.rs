@@ -1,4 +1,5 @@
 //! Complete fields in record literals and patterns.
+use hir::{HasContainer, ItemContainer};
 use ide_db::SymbolKind;
 use syntax::{
     SmolStr, T,
@@ -98,9 +99,13 @@ pub(crate) fn add_default_update(
     let impls_default_trait = default_trait
         .zip(ty)
         .is_some_and(|(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
+    let in_own_default_impl =
+        ty.zip(ctx.containing_function).is_some_and(|(ty, f)| ty.original == f.ret_type(ctx.db)
+            && matches!(f.container(ctx.db), ItemContainer::Impl(impl_) if impl_.trait_(ctx.db) == default_trait));
     let ends_of_record_list =
         next_non_trivia_token(ctx.token.clone()).is_none_or(|it| it.kind() == T!['}']);
-    if impls_default_trait && ends_of_record_list {
+
+    if impls_default_trait && !in_own_default_impl && ends_of_record_list {
         // FIXME: This should make use of scope_def like completions so we get all the other goodies
         // that is we should handle this like actually completing the default function
         let completion_text = "..Default::default()";

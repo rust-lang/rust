@@ -20,7 +20,6 @@ rustc-hash.workspace = true
 itertools.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true
-query-group.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
 thin-vec.workspace = true

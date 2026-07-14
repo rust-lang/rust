@@ -270,11 +270,14 @@ macro_rules! match_ast {
     (match $node:ident { $($tt:tt)* }) => { $crate::match_ast!(match ($node) { $($tt)* }) };
 
     (match ($node:expr) {
-        $( $( $path:ident )::+ ($it:pat) => $res:expr, )*
+        $( $( $path:ident )::+ ($it:pat) $(if $guard:expr)? => $res:expr, )*
         _ => $catch_all:expr $(,)?
     }) => {{
-        $( if let Some($it) = $($path::)+cast($node.clone()) { $res } else )*
-        { $catch_all }
+        #[allow(clippy::question_mark, reason = "if `$catch_all` is `return None` Clippy can mark this")]
+        {
+            $( if let Some($it) = $($path::)+cast($node.clone()) $(&& $guard)? { $res } else )*
+            { $catch_all }
+        }
     }};
 }
 

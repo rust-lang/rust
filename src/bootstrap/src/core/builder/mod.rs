@@ -524,22 +524,30 @@ impl<'a> ShouldRun<'a> {
         ShouldRun { builder, kind, paths: BTreeSet::new(), default_to_suites_only: false }
     }
 
-    /// Indicates it should run if the command-line selects the given crate or
-    /// any of its (local) dependencies.
+    /// The corresponding step should run if the bootstrap command-line selects
+    /// the given crate or any of its (local) dependencies.
     ///
-    /// `make_run` will be called a single time with all matching command-line paths.
-    pub fn crate_or_deps(self, name: &str) -> Self {
-        let crates = self.builder.in_tree_crates(name, None);
-        self.crates(crates)
+    /// Delegates to [`Self::crate_or_deps_filtered`] with a filter that accepts all crates.
+    pub(crate) fn crate_or_deps(self, root_crate_name: &str) -> Self {
+        self.crate_or_deps_filtered(root_crate_name, |_: &Crate| true)
     }
 
-    /// Indicates it should run if the command-line selects any of the given crates.
+    /// The corresponding step should run if the bootstrap command-line selects
+    /// the given crate or any of its (local) dependencies, not counting any
+    /// crates rejected by the given filter function.
     ///
     /// `make_run` will be called a single time with all matching command-line paths.
-    ///
-    /// Prefer [`ShouldRun::crate_or_deps`] to this function where possible.
-    pub(crate) fn crates(mut self, crates: Vec<&Crate>) -> Self {
+    pub(crate) fn crate_or_deps_filtered(
+        mut self,
+        root_crate_name: &str,
+        crate_filter_fn: impl Fn(&Crate) -> bool,
+    ) -> Self {
+        let crates = self.builder.in_tree_crates(root_crate_name, None);
         for krate in crates {
+            if !crate_filter_fn(krate) {
+                continue;
+            }
+
             let path = krate.local_path(self.builder);
             self.paths.insert(PathSet::one(path, self.kind));
         }

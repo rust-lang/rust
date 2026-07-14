@@ -29,12 +29,8 @@
 #![feature(uint_carryless_mul)]
 // Configure clippy and other lints
 #![allow(
-    clippy::collapsible_else_if,
     clippy::collapsible_if,
-    clippy::if_same_then_else,
-    clippy::comparison_chain,
     clippy::enum_variant_names,
-    clippy::field_reassign_with_default,
     clippy::manual_map,
     clippy::neg_cmp_op_on_partial_ord,
     clippy::new_without_default,
@@ -49,8 +45,6 @@
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
     clippy::len_zero,
-    clippy::collapsible_match,
-    clippy::question_mark,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]

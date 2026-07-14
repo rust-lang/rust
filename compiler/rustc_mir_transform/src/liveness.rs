@@ -906,6 +906,58 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
         false
     }
 
+    /// Check for source-level uses that may have been removed from reachable MIR.
+    /// For example:
+    /// ```rust
+    /// fn example() {
+    ///     let x = todo!();
+    ///     eprintln!("{x}");
+    /// }
+    /// ```
+    /// The use of x is unreachable, but we'll still want to know if x is used to correctly emit
+    /// unused variable warning.
+    fn is_local_used_in_source(&self, name: Symbol, def_span: Span) -> bool {
+        use rustc_hir as hir;
+        use rustc_hir::def::Res;
+        use rustc_hir::intravisit::{self, Visitor};
+
+        let Some(body_def_id) = self.body.source.def_id().as_local() else { return false };
+        let Some(hir_body) = self.tcx.hir_maybe_body_owned_by(body_def_id) else { return false };
+        let typeck_results = self.tcx.typeck(body_def_id);
+
+        struct LocalUseVisitor<'a, 'tcx> {
+            tcx: TyCtxt<'tcx>,
+            typeck_results: &'a ty::TypeckResults<'tcx>,
+            name: Symbol,
+            def_span: Span,
+            found: bool,
+        }
+
+        impl<'a, 'tcx> Visitor<'tcx> for LocalUseVisitor<'a, 'tcx> {
+            fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+                if self.found {
+                    return;
+                }
+
+                if let hir::ExprKind::Path(qpath) = &expr.kind
+                    && let Res::Local(hir_id) = self.typeck_results.qpath_res(qpath, expr.hir_id)
+                    && self.tcx.hir_name(hir_id) == self.name
+                    && self.tcx.hir_span(hir_id) == self.def_span
+                {
+                    self.found = true;
+                    return;
+                }
+
+                intravisit::walk_expr(self, expr);
+            }
+        }
+
+        let mut visitor =
+            LocalUseVisitor { tcx: self.tcx, typeck_results, name, def_span, found: false };
+        visitor.visit_body(hir_body);
+        visitor.found
+    }
+
     /// Report fully unused locals, and forget the corresponding assignments.
     fn report_fully_unused(&mut self) {
         let tcx = self.tcx;
@@ -995,8 +1047,22 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 }
             };
 
+            // the is_local_used_in_source is sufficient to check if the local is used in the source code,
+            // but we keep the local_kind check for a cheap filter to avoid heavy check
+            let is_used_after_uninitialized = self.body.local_kind(local) == LocalKind::Temp
+                && matches!(binding.opt_match_place, Some((None, _)))
+                && self.is_local_used_in_source(name, def_span);
+
             let statements = &mut self.assignments[index];
             if statements.is_empty() {
+                if is_used_after_uninitialized {
+                    // A local from `let PAT = ...` normally has an assignment recorded for the
+                    // value it initializes. If no assignment was recorded in reachable MIR, the
+                    // initializer did not complete. If the local still has a source-level use,
+                    // that use was made unreachable by the diverging initializer.
+                    continue;
+                }
+
                 if !self.is_local_in_reachable_code(local) {
                     continue;
                 }

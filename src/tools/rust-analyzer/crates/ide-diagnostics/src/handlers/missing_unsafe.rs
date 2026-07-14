@@ -1,4 +1,3 @@
-use hir::db::ExpandDatabase;
 use hir::{UnsafeLint, UnsafetyReason};
 use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
@@ -47,7 +46,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::MissingUnsafe) -> Option<Vec
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(d.node.file_id);
+    let root = d.node.file_id.parse_or_expand(ctx.sema.db);
     let node = d.node.value.to_node(&root);
     let expr = node.syntax().ancestors().find_map(ast::Expr::cast)?;
 

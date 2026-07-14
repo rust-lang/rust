@@ -194,7 +194,7 @@ static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("v6m", Unstable(sym::arm_target_feature), &["v6"]),
     ("v6t2", Unstable(sym::arm_target_feature), &["v6k", "v8m", "thumb2"]),
     ("v7", Unstable(sym::arm_target_feature), &["v6t2"]),
-    ("v8", Unstable(sym::arm_target_feature), &["v7"]),
+    ("v8", Unstable(sym::arm_target_feature), &["v7", "acquire-release"]),
     ("v8.1m.main", Unstable(sym::arm_target_feature), &["v8m.main"]),
     ("v8m", Unstable(sym::arm_target_feature), &["v6m"]),
     ("v8m.main", Unstable(sym::arm_target_feature), &["v7"]),

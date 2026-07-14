@@ -1241,7 +1241,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
                         {
                             let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
-                            Some((*def_id, expr.span, arg_pos, arg_pos, generic_args))
+                            Some((
+                                *def_id,
+                                expr.span,
+                                arg_pos,
+                                arg_pos,
+                                generic_args.no_bound_vars().unwrap(),
+                            ))
                         } else {
                             None
                         }
@@ -1914,7 +1920,7 @@ fn suggest_ampmut<'tcx>(
                 let trait_ref = ty::TraitRef::from_assoc(
                     tcx,
                     tcx.require_lang_item(hir::LangItem::IndexMut, rhs_span),
-                    method_args,
+                    method_args.no_bound_vars().unwrap(),
                 );
                 // The type only implements `Index` but not `IndexMut`, we must not suggest `&mut`.
                 if !infcx

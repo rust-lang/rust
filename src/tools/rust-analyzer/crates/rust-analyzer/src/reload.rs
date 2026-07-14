@@ -659,11 +659,16 @@ impl GlobalState {
             Config::user_config_dir_path().as_deref(),
         );
 
-        if (self.proc_macro_clients.len() < self.workspaces.len() || !same_workspaces)
-            && self.config.expand_proc_macros()
-        {
+        if !same_workspaces && self.config.expand_proc_macros() {
             info!("Spawning proc-macro servers");
 
+            // Workspaces referring to the same proc-macro server executable (i.e. the same
+            // sysroot) with an identical spawn environment share a single client, and thereby
+            // a single set of server processes.
+            let mut clients: Vec<(
+                (AbsPathBuf, Option<semver::Version>, FxHashMap<String, Option<String>>),
+                ProcMacroClient,
+            )> = Vec::new();
             self.proc_macro_clients = Arc::from_iter(self.workspaces.iter().map(|ws| {
                 let path = match self.config.proc_macro_srv() {
                     Some(path) => path,
@@ -695,20 +700,30 @@ impl GlobalState {
 
                     _ => Default::default(),
                 };
-                info!("Using proc-macro server at {path}");
+
+                let key = (path, ws.toolchain.clone(), env);
+                if let Some((_, client)) = clients.iter().find(|(k, _)| *k == key) {
+                    return Some(Ok(client.clone()));
+                }
+
+                let (path, toolchain, env) = &key;
+                info!("Spawning proc-macro server at {path}");
                 let num_process = self.config.proc_macro_num_processes();
 
-                Some(
-                    ProcMacroClient::spawn(&path, &env, ws.toolchain.as_ref(), num_process)
-                        .map_err(|err| {
-                            tracing::error!(
-                                "Failed to run proc-macro server from path {path}, error: {err:?}",
-                            );
-                            anyhow::format_err!(
-                                "Failed to run proc-macro server from path {path}, error: {err:?}",
-                            )
-                        }),
-                )
+                Some(match ProcMacroClient::spawn(path, env, toolchain.as_ref(), num_process) {
+                    Ok(client) => {
+                        clients.push((key.clone(), client.clone()));
+                        Ok(client)
+                    }
+                    Err(err) => {
+                        tracing::error!(
+                            "Failed to run proc-macro server from path {path}, error: {err:?}",
+                        );
+                        Err(anyhow::format_err!(
+                            "Failed to run proc-macro server from path {path}, error: {err:?}",
+                        ))
+                    }
+                })
             }))
         }
 

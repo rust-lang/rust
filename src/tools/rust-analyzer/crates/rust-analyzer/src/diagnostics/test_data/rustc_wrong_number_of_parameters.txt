@@ -54,7 +54,9 @@
             source: Some(
                 "rustc",
             ),
-            message: "this function takes 2 parameters but 3 parameters were supplied\nexpected 2 parameters",
+            message: String(
+                "this function takes 2 parameters but 3 parameters were supplied\nexpected 2 parameters",
+            ),
             tags: None,
             related_information: Some(
                 [
@@ -145,7 +147,9 @@
             source: Some(
                 "rustc",
             ),
-            message: "defined here",
+            message: String(
+                "defined here",
+            ),
             tags: None,
             related_information: Some(
                 [

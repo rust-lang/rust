@@ -1,8 +1,6 @@
 use either::Either;
 use hir::{
-    AssocItem, FindPathConfig, HasVisibility, HirDisplay, InFile, Type,
-    db::{ExpandDatabase, HirDatabase},
-    sym,
+    AssocItem, FindPathConfig, HasVisibility, HirDisplay, InFile, Type, db::HirDatabase, sym,
 };
 use ide_db::{
     FxHashMap,
@@ -65,7 +63,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::MissingFields) -> Option<Vec
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(d.file);
+    let root = d.file.parse_or_expand(ctx.sema.db);
 
     let current_module =
         ctx.sema.scope(d.field_list_parent.to_node(&root).syntax()).map(|it| it.module());

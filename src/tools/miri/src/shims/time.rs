@@ -43,6 +43,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return Some(TimeoutClock::Monotonic);
                 }
             }
+            #[allow(clippy::collapsible_match)] // collapsing would remove symmetry
             Os::MacOs => {
                 // `CLOCK_UPTIME_RAW` supposed to not increment while the system is asleep... but
                 // that's not really something a program running inside Miri can tell, anyway.

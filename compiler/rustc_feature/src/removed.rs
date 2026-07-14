@@ -107,7 +107,7 @@ declare_features! (
     /// Allows deriving traits as per `SmartPointer` specification
     (removed, derive_smart_pointer, "1.84.0", Some(123430), Some("replaced by `CoercePointee`"), 131284),
     /// Allows macros to customize macro argument matcher diagnostics.
-    (removed, diagnostic_on_unmatch_args, "CURRENT_RUSTC_VERSION", Some(155642), Some("renamed to `diagnostic_on_unmatched_args`"), 157887),
+    (removed, diagnostic_on_unmatch_args, "1.98.0", Some(155642), Some("renamed to `diagnostic_on_unmatched_args`"), 157887),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (removed, doc_auto_cfg, "1.92.0", Some(43781), Some("merged into `doc_cfg`"), 138907),
     /// Allows `#[doc(cfg_hide(...))]`.

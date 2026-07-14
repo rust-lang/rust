@@ -1013,7 +1013,7 @@ impl<'db> AnyDiagnostic<'db> {
             }
             InferenceDiagnostic::PathDiagnostic { node, diag } => {
                 let source = expr_or_pat_syntax(*node)?;
-                let syntax = source.value.to_node(&db.parse_or_expand(source.file_id));
+                let syntax = source.value.to_node(&source.file_id.parse_or_expand(db));
                 let path = match_ast! {
                     match (syntax.syntax()) {
                         ast::RecordExpr(it) => it.path()?,
@@ -1316,7 +1316,7 @@ impl<'db> AnyDiagnostic<'db> {
         Some(match diag {
             TyLoweringDiagnostic::PathDiagnostic { source, diag } => {
                 let source = Self::type_syntax(*source, source_map)?;
-                let syntax = source.value.to_node(&db.parse_or_expand(source.file_id));
+                let syntax = source.value.to_node(&source.file_id.parse_or_expand(db));
                 let ast::Type::PathType(syntax) = syntax else { return None };
                 Self::path_diagnostic(diag, source.with_value(syntax.path()?))?
             }

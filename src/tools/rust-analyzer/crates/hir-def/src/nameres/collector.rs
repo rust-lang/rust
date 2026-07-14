@@ -5,7 +5,7 @@
 
 use std::{iter, mem, ops::Range};
 
-use base_db::{BuiltDependency, Crate, CrateOrigin, LangCrateOrigin};
+use base_db::{BuiltDependency, Crate, CrateOrigin, LangCrateOrigin, SourceDatabase};
 use cfg::{CfgAtom, CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -33,8 +33,7 @@ use crate::{
     ImplLoc, Intern, ItemContainerId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId,
     MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, ProcMacroId,
     ProcMacroLoc, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId,
-    UseLoc,
-    db::DefDatabase,
+    UseLoc, file_item_tree,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
         self, Attrs, AttrsOrCfg, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId,
@@ -61,7 +60,7 @@ const GLOB_RECURSION_LIMIT: usize = 100;
 const FIXED_POINT_LIMIT: usize = 8192;
 
 pub(super) fn collect_defs(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     def_map: DefMap,
     tree_id: TreeId,
     crate_local_def_map: Option<&LocalDefMap>,
@@ -231,7 +230,7 @@ struct DeferredBuiltinDerive {
 
 /// Walks the tree of module recursively
 struct DefCollector<'db> {
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     def_map: DefMap,
     local_def_map: LocalDefMap,
     /// Set only in case of blocks.
@@ -279,7 +278,7 @@ impl<'db> DefCollector<'db> {
         let _p = tracing::info_span!("seed_with_top_level").entered();
 
         let file_id = self.def_map.krate.root_file_id(self.db);
-        let item_tree = self.db.file_item_tree(file_id.into(), self.def_map.krate);
+        let item_tree = file_item_tree(self.db, file_id.into(), self.def_map.krate);
         let attrs = match item_tree.top_level_attrs() {
             AttrsOrCfg::Enabled { attrs } => attrs.as_ref(),
             AttrsOrCfg::CfgDisabled(it) => it.1.as_ref(),
@@ -616,7 +615,7 @@ impl<'db> DefCollector<'db> {
         let (expander, kind) = match self.proc_macros.iter().find(|(n, _, _)| n == &def.name) {
             Some(_)
                 if kind == hir_expand::proc_macro::ProcMacroKind::Attr
-                    && !crate::db::ExpandProcAttrMacros::get(self.db).enabled(self.db) =>
+                    && !crate::ExpandProcAttrMacros::get(self.db).enabled(self.db) =>
             {
                 (CustomProcMacroExpander::disabled_proc_attr(), kind)
             }
@@ -1336,7 +1335,7 @@ impl<'db> DefCollector<'db> {
                     BuiltinShadowMode::Module,
                     Some(subns),
                 );
-                resolved_res.resolved_def.take_macros().map(|it| (it, self.db.macro_def(it)))
+                resolved_res.resolved_def.take_macros().map(|it| (it, it.definition(self.db)))
             };
             let resolver_def_id = |path: &_| resolver(&self.def_map, path).map(|(_, it)| it);
 
@@ -1715,7 +1714,7 @@ impl<'db> DefCollector<'db> {
         }
         let file_id = macro_call_id.into();
 
-        let item_tree = self.db.file_item_tree(file_id, self.def_map.krate);
+        let item_tree = file_item_tree(self.db, file_id, self.def_map.krate);
 
         // Derive helpers that are in scope for an item are also in scope for attribute macro expansions
         // of that item (but not derive or fn like macros).
@@ -1787,7 +1786,7 @@ impl<'db> DefCollector<'db> {
                                 BuiltinShadowMode::Module,
                                 Some(MacroSubNs::Bang),
                             );
-                            resolved_res.resolved_def.take_macros().map(|it| self.db.macro_def(it))
+                            resolved_res.resolved_def.take_macros().map(|it| it.definition(self.db))
                         },
                         &mut |_, _| (),
                     );
@@ -2345,7 +2344,7 @@ impl ModCollector<'_, '_> {
                 ) {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
                         let item_tree =
-                            db.file_item_tree(file_id.into(), self.def_collector.def_map.krate);
+                            file_item_tree(db, file_id.into(), self.def_collector.def_map.krate);
                         match item_tree.top_level_attrs() {
                             AttrsOrCfg::CfgDisabled(cfg) => {
                                 self.emit_unconfigured_diagnostic(
@@ -2561,7 +2560,7 @@ impl ModCollector<'_, '_> {
         } else {
             // Case 2: normal `macro_rules!` macro
             let id = InFile::new(self.file_id(), ast_id);
-            let decl_expander = self.def_collector.db.decl_macro_expander(krate, id.upcast());
+            let decl_expander = id.upcast().decl_macro_expander(self.def_collector.db, krate);
             let styles = decl_expander.mac.rule_styles();
             MacroExpander::Declarative { styles }
         };
@@ -2639,7 +2638,7 @@ impl ModCollector<'_, '_> {
         } else {
             // Case 2: normal `macro`
             let id = InFile::new(self.file_id(), ast_id);
-            let decl_expander = self.def_collector.db.decl_macro_expander(krate, id.upcast());
+            let decl_expander = id.upcast().decl_macro_expander(self.def_collector.db, krate);
             let styles = decl_expander.mac.rule_styles();
             MacroExpander::Declarative { styles }
         };
@@ -2702,7 +2701,7 @@ impl ModCollector<'_, '_> {
                         .or_else(|| def_map[self.module_id].scope.get(name).take_macros())
                         .or_else(|| Some(def_map.macro_use_prelude.get(name).copied()?.0))
                         .filter(|&id| sub_namespace_match(db, id, Some(MacroSubNs::Bang)))
-                        .map(|it| self.def_collector.db.macro_def(it))
+                        .map(|it| it.definition(self.def_collector.db))
                 })
             },
             &mut |ptr, call_id| eager_callback_buffer.push((ptr, call_id)),

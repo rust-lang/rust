@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 use std::mem;
 use std::ops::ControlFlow;
 
@@ -2433,18 +2433,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         Some(path)
     }
 
-    /// Shortens a candidate import path to use `super::` (up to 1 level) or `self::` (same module)
-    /// relative to the current scope, if possible. Only applies to crate-local items and
-    /// only when the resulting path is actually shorter than the original.
     fn shorten_candidate_path(
         &self,
         suggestion: &mut ImportSuggestion,
         current_module: Module<'ra>,
     ) {
+        self.shorten_import_path(suggestion.did, &mut suggestion.path, current_module);
+    }
+
+    /// Shortens an import path to use `super::` (up to 1 level) or `self::` (same module)
+    /// relative to the current scope, if possible. Only applies to crate-local items and
+    /// only when the resulting path is actually shorter than the original.
+    fn shorten_import_path(
+        &self,
+        did: Option<DefId>,
+        path: &mut Path,
+        current_module: Module<'ra>,
+    ) {
         const MAX_SUPER_PATH_ITEMS_IN_SUGGESTION: usize = 1;
 
         // Only shorten local items.
-        if suggestion.did.is_none_or(|did| !did.is_local()) {
+        if did.is_none_or(|did| !did.is_local()) {
             return;
         }
 
@@ -2457,12 +2466,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // doesn't start with `Crate`, prepend it (edition 2015 paths are relative
         // to the crate root without an explicit `crate::` prefix).
         let candidate_names = {
-            let filtered_segments: Vec<_> = suggestion
-                .path
-                .segments
-                .iter()
-                .filter(|segment| segment.ident.name != kw::PathRoot)
-                .collect();
+            let filtered_segments: Vec<_> =
+                path.segments.iter().filter(|segment| segment.ident.name != kw::PathRoot).collect();
 
             let mut candidate_names: Vec<Symbol> =
                 filtered_segments.iter().map(|segment| segment.ident.name).collect();
@@ -2511,11 +2516,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Only apply if the result is strictly shorter than the original path.
-        if new_segments.len() >= suggestion.path.segments.len() {
+        if new_segments.len() >= path.segments.len() {
             return;
         }
 
-        suggestion.path = Path { span: suggestion.path.span, segments: new_segments };
+        *path = Path { span: path.span, segments: new_segments };
     }
 
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
@@ -2668,17 +2673,80 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match binding.kind {
                 DeclKind::Import { source_decl, import, .. } => {
-                    // Don't include `{{root}}` in suggestions - it's an internal symbol
-                    // that should never be shown to users.
-                    let path = import
-                        .module_path
-                        .iter()
-                        .filter(|seg| seg.ident.name != kw::PathRoot)
-                        .map(|seg| seg.ident.clone())
-                        .chain(std::iter::once(ident))
-                        .collect::<Vec<_>>();
                     let through_reexport = !matches!(source_decl.kind, DeclKind::Def(_));
-                    sugg_paths.push((path, through_reexport));
+                    let uses_relative_path = import
+                        .module_path
+                        .first()
+                        .is_some_and(|seg| matches!(seg.ident.name, kw::SelfLower | kw::Super));
+                    let res_def_id = res.opt_def_id();
+                    let path = if uses_relative_path {
+                        // A path recovered from `self`/`super` is only useful if both the
+                        // target and every module segment can be named from the failing use site.
+                        let module_path = if let Some(ModuleOrUniformRoot::Module(module)) =
+                            import.imported_module.get()
+                            && module.is_local()
+                            && let Some(module_path) = self.module_path_names(module)
+                            && let Some(mut def_id) = module.opt_def_id()
+                            && res_def_id.is_none_or(|def_id| {
+                                self.is_accessible_from(
+                                    self.tcx.visibility(def_id),
+                                    parent_scope.module,
+                                )
+                            }) {
+                            // `module_path_names` tells us the resolved module's canonical path.
+                            // Before suggesting that path from the failing use site, make sure
+                            // every segment in it can actually be named from there.
+                            let mut visible_from_use_site = true;
+                            while let Some(parent) = self.tcx.opt_parent(def_id) {
+                                if !self.is_accessible_from(
+                                    self.tcx.visibility(def_id),
+                                    parent_scope.module,
+                                ) {
+                                    visible_from_use_site = false;
+                                    break;
+                                }
+                                if parent.is_top_level_module() {
+                                    break;
+                                }
+                                def_id = parent;
+                            }
+                            if visible_from_use_site { Some(module_path) } else { None }
+                        } else {
+                            None
+                        };
+
+                        module_path.map(|module_path| {
+                            // `import.module_path` is relative to the import's module, not to the
+                            // failing use site.
+                            let mut path = Path {
+                                span: ident.span,
+                                segments: module_path
+                                    .into_iter()
+                                    .chain(std::iter::once(ident.name))
+                                    .map(|name| {
+                                        ast::PathSegment::from_ident(Ident::with_dummy_span(name))
+                                    })
+                                    .collect(),
+                            };
+                            self.shorten_import_path(res_def_id, &mut path, parent_scope.module);
+                            path.segments.iter().map(|seg| seg.ident).collect()
+                        })
+                    } else {
+                        // Don't include `{{root}}` in suggestions - it's an internal symbol
+                        // that should never be shown to users.
+                        Some(
+                            import
+                                .module_path
+                                .iter()
+                                .filter(|seg| seg.ident.name != kw::PathRoot)
+                                .map(|seg| seg.ident.clone())
+                                .chain(std::iter::once(ident))
+                                .collect::<Vec<_>>(),
+                        )
+                    };
+                    if let Some(path) = path {
+                        sugg_paths.push((path, through_reexport));
+                    }
                 }
                 DeclKind::Def(_) => {}
             }
