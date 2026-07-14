@@ -36,7 +36,9 @@ use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges, traversal};
+use rustc_middle::mir::{
+    self, BasicBlock, BasicBlockData, CallReturnPlaces, Location, TerminatorEdges, traversal,
+};
 use rustc_middle::ty::TyCtxt;
 use tracing::error;
 
@@ -122,6 +124,40 @@ pub trait Analysis<'tcx> {
     // block where control flow could exit the MIR body (e.g., those terminated with `return` or
     // `resume`). It's not obvious how to handle `yield` points in coroutines, however.
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain);
+
+    /// Given an `EffectIndex`, calls the appropriate `apply_*` method in the
+    /// {early,primary} x {statement,terminator} space.
+    ///
+    /// Do not override this; instead override one or more of the `apply_*` methods.
+    #[inline]
+    fn apply_effect<'mir>(
+        &self,
+        state: &mut Self::Domain,
+        block: BasicBlock,
+        block_data: &'mir BasicBlockData<'tcx>,
+        idx: EffectIndex,
+    ) {
+        let statement_index = idx.statement_index;
+        let terminator_index = block_data.statements.len();
+        let loc = Location { block, statement_index };
+        let is_terminator = statement_index == terminator_index;
+
+        if !is_terminator {
+            let statement = &block_data.statements[statement_index];
+            match idx.effect {
+                Effect::Early => self.apply_early_statement_effect(state, statement, loc),
+                Effect::Primary => self.apply_primary_statement_effect(state, statement, loc),
+            }
+        } else {
+            let terminator = block_data.terminator();
+            match idx.effect {
+                Effect::Early => self.apply_early_terminator_effect(state, terminator, loc),
+                Effect::Primary => {
+                    self.apply_primary_terminator_effect(state, terminator, loc);
+                }
+            }
+        }
+    }
 
     /// Updates the current dataflow state with an "early" effect, i.e. one
     /// that occurs immediately before the given statement.

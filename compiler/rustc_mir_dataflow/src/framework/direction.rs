@@ -43,7 +43,24 @@ pub trait Direction {
         block_data: &mir::BasicBlockData<'tcx>,
         effects: RangeInclusive<EffectIndex>,
     ) where
-        A: Analysis<'tcx>;
+        A: Analysis<'tcx>,
+    {
+        let (from, to) = (*effects.start(), *effects.end());
+        let terminator_index = block_data.statements.len();
+
+        assert!(to.statement_index <= terminator_index);
+        assert!(from.statement_index <= terminator_index);
+        assert!(!Self::index_precedes(to, from));
+
+        let mut idx = from;
+        loop {
+            analysis.apply_effect(state, block, block_data, idx);
+            if idx == to {
+                break;
+            }
+            idx = Self::next_index(idx);
+        }
+    }
 
     /// Called by `ResultsVisitor` to recompute the analysis domain values for
     /// all locations in a basic block (starting from `entry_state` and to
@@ -157,83 +174,6 @@ impl Direction for Backward {
                 _ => propagate(pred, exit_state),
             }
         }
-    }
-
-    fn apply_effects_in_range<'tcx, A>(
-        analysis: &A,
-        state: &mut A::Domain,
-        block: BasicBlock,
-        block_data: &mir::BasicBlockData<'tcx>,
-        effects: RangeInclusive<EffectIndex>,
-    ) where
-        A: Analysis<'tcx>,
-    {
-        let (from, to) = (*effects.start(), *effects.end());
-        let terminator_index = block_data.statements.len();
-
-        assert!(from.statement_index <= terminator_index);
-        assert!(!Self::index_precedes(to, from));
-
-        // Handle the statement (or terminator) at `from`.
-
-        let next_effect = match from.effect {
-            // If we need to apply the terminator effect in all or in part, do so now.
-            _ if from.statement_index == terminator_index => {
-                let location = Location { block, statement_index: from.statement_index };
-                let terminator = block_data.terminator();
-
-                if from.effect == Effect::Early {
-                    analysis.apply_early_terminator_effect(state, terminator, location);
-                    if to == Effect::Early.at_index(terminator_index) {
-                        return;
-                    }
-                }
-
-                analysis.apply_primary_terminator_effect(state, terminator, location);
-                if to == Effect::Primary.at_index(terminator_index) {
-                    return;
-                }
-
-                // If `from.statement_index` is `0`, we will have hit one of the earlier comparisons
-                // with `to`.
-                from.statement_index - 1
-            }
-
-            Effect::Primary => {
-                let location = Location { block, statement_index: from.statement_index };
-                let statement = &block_data.statements[from.statement_index];
-
-                analysis.apply_primary_statement_effect(state, statement, location);
-                if to == Effect::Primary.at_index(from.statement_index) {
-                    return;
-                }
-
-                from.statement_index - 1
-            }
-
-            Effect::Early => from.statement_index,
-        };
-
-        // Handle all statements between `first_unapplied_idx` and `to.statement_index`.
-
-        for statement_index in (to.statement_index..next_effect).rev().map(|i| i + 1) {
-            let location = Location { block, statement_index };
-            let statement = &block_data.statements[statement_index];
-            analysis.apply_early_statement_effect(state, statement, location);
-            analysis.apply_primary_statement_effect(state, statement, location);
-        }
-
-        // Handle the statement at `to`.
-
-        let location = Location { block, statement_index: to.statement_index };
-        let statement = &block_data.statements[to.statement_index];
-        analysis.apply_early_statement_effect(state, statement, location);
-
-        if to.effect == Effect::Early {
-            return;
-        }
-
-        analysis.apply_primary_statement_effect(state, statement, location);
     }
 
     fn visit_results_in_block<'mir, 'tcx, A>(
@@ -354,80 +294,6 @@ impl Direction for Forward {
                         propagate(*target, exit_state);
                     }
                 }
-            }
-        }
-    }
-
-    fn apply_effects_in_range<'tcx, A>(
-        analysis: &A,
-        state: &mut A::Domain,
-        block: BasicBlock,
-        block_data: &mir::BasicBlockData<'tcx>,
-        effects: RangeInclusive<EffectIndex>,
-    ) where
-        A: Analysis<'tcx>,
-    {
-        let (from, to) = (*effects.start(), *effects.end());
-        let terminator_index = block_data.statements.len();
-
-        assert!(to.statement_index <= terminator_index);
-        assert!(!Self::index_precedes(to, from));
-
-        // If we have applied the before affect of the statement or terminator at `from` but not its
-        // after effect, do so now and start the loop below from the next statement.
-
-        let first_unapplied_index = match from.effect {
-            Effect::Early => from.statement_index,
-
-            Effect::Primary if from.statement_index == terminator_index => {
-                debug_assert_eq!(from, to);
-
-                let location = Location { block, statement_index: terminator_index };
-                let terminator = block_data.terminator();
-                analysis.apply_primary_terminator_effect(state, terminator, location);
-                return;
-            }
-
-            Effect::Primary => {
-                let location = Location { block, statement_index: from.statement_index };
-                let statement = &block_data.statements[from.statement_index];
-                analysis.apply_primary_statement_effect(state, statement, location);
-
-                // If we only needed to apply the after effect of the statement at `idx`, we are
-                // done.
-                if from == to {
-                    return;
-                }
-
-                from.statement_index + 1
-            }
-        };
-
-        // Handle all statements between `from` and `to` whose effects must be applied in full.
-
-        for statement_index in first_unapplied_index..to.statement_index {
-            let location = Location { block, statement_index };
-            let statement = &block_data.statements[statement_index];
-            analysis.apply_early_statement_effect(state, statement, location);
-            analysis.apply_primary_statement_effect(state, statement, location);
-        }
-
-        // Handle the statement or terminator at `to`.
-
-        let location = Location { block, statement_index: to.statement_index };
-        if to.statement_index == terminator_index {
-            let terminator = block_data.terminator();
-            analysis.apply_early_terminator_effect(state, terminator, location);
-
-            if to.effect == Effect::Primary {
-                analysis.apply_primary_terminator_effect(state, terminator, location);
-            }
-        } else {
-            let statement = &block_data.statements[to.statement_index];
-            analysis.apply_early_statement_effect(state, statement, location);
-
-            if to.effect == Effect::Primary {
-                analysis.apply_primary_statement_effect(state, statement, location);
             }
         }
     }
