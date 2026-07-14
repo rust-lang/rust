@@ -1,6 +1,7 @@
 // use shlex::bytes::Shlex;
 
-use crate::env::{JoinPathsError, SplitPaths, home_dir, join_paths, split_paths, var_os};
+use crate::borrow::Cow;
+use crate::env::{self, JoinPathsError, SplitPaths, join_paths, split_paths, var_os};
 use crate::ffi::{OsStr, OsString};
 use crate::fs::{self, HomeDirs, MediaDirs};
 use crate::io::{self, ErrorKind, const_error};
@@ -45,7 +46,7 @@ pub trait HomeDirsExt: Sized + Sealed {
     /// | [`config_dirs`] | `XDG_CONFIG_DIRS` | `/etc/xdg` |
     /// | [`data_dirs`] | `XDG_DATA_DIRS` | `/usr/local/share/`, `/usr/share/` |
     ///
-    /// Note that `$HOME` here means [`env::home_dir`](home_dir), which uses
+    /// Note that `$HOME` here means [`env::home_dir`], which uses
     /// `$HOME` if set and non-empty, but falls back to the system password
     /// database if it isn't set. A correctly configured XDG system will have
     /// `$HOME` set, but this fallback matches that of the shell.
@@ -140,7 +141,6 @@ pub trait HomeDirsExt: Sized + Sealed {
 /// [xdg-user-dirs]: https://www.freedesktop.org/wiki/Software/xdg-user-dirs/
 #[unstable(feature = "media_dir_discovery", issue = "157515")]
 #[expect(private_bounds, reason = "sealed")]
-#[cfg(unix)]
 pub trait MediaDirsExt: Sized + Sealed {
     /// Load the user directory paths according to the [xdg-user-dirs] tool.
     ///
@@ -164,7 +164,7 @@ pub trait MediaDirsExt: Sized + Sealed {
     ///   `DOCUMENTS`, `MUSIC`, `PICTURES`, or `VIDEOS` is ignored.
     /// - `{path}` must be a `"`-quoted shell-escaped path.
     /// - `{path}` may only start with `/` or `$HOME/`. A home-relative path is
-    ///   returned relative to [`env::home_dir`](home_dir); shell expansion is
+    ///   returned relative to [`env::home_dir`]; shell expansion is
     ///   not performed.
     /// - A directory set to just `$HOME` without a subdirectory is treated as
     ///   unsetting the directory, and results in a `None` value for that path.
@@ -281,35 +281,33 @@ impl MediaDirsExt for MediaDirs {
             let Some(var) = split.next() else { continue };
             let Some(val) = split.next() else { continue };
             debug_assert_eq!(split.next(), None);
-            // expand the only allowed expansion: a leading `$HOME/` prefix, still quoted
-            let buffer;
-            const HOME_RELATIVE_PREFIX: &[u8] = b"\"$HOME/";
-            let expanded = if val.starts_with(HOME_RELATIVE_PREFIX) {
-                let joined = user_home.join(OsStr::from_bytes(&val[HOME_RELATIVE_PREFIX.len()..]));
-                buffer = OsString::from_iter([OsStr::new("\""), joined.as_os_str()]);
-                buffer.as_bytes()
-            } else {
-                val
-            };
 
-            // the path value is shell-escaped, so unescape it
-            // FIXME: get shlex working as dep-of-std
-            // let mut lex = Shlex::new(expanded);
-            // let Some(path) = lex.next() else { continue };
-            // let None = lex.next() else { continue };
-            let path = &expanded[1..expanded.len() - 1]; // FIXME: placeholder quote strip
+            // ensure the path is absolute or $HOME-relative
+            if !val.starts_with(b"\"/") && !val.starts_with(b"\"$HOME/") {
+                continue;
+            }
+
+            // the path value is quoted; unquote it
+            let Some(path) = xdg_unquote(val) else { continue };
+
+            // expand the $HOME prefix if present
+            let path = if path.starts_with(b"$HOME/") {
+                user_home.join(OsStr::from_bytes(&path[6..]))
+            } else {
+                PathBuf::from(OsString::from_vec(path.into_owned()))
+            };
 
             // load the known user directories
             match var {
-                b"XDG_DESKTOP_DIR" => dirs.desktop = Some(path_from_bytes(&path)),
-                b"XDG_DOCUMENTS_DIR" => dirs.documents = Some(path_from_bytes(&path)),
-                b"XDG_DOWNLOAD_DIR" => dirs.downloads = Some(path_from_bytes(&path)),
-                b"XDG_MUSIC_DIR" => dirs.music = Some(path_from_bytes(&path)),
-                b"XDG_PICTURES_DIR" => dirs.pictures = Some(path_from_bytes(&path)),
-                b"XDG_VIDEOS_DIR" => dirs.videos = Some(path_from_bytes(&path)),
-                b"XDG_TEMPLATES_DIR" => dirs.extra.templates = Some(path_from_bytes(&path)),
+                b"XDG_DESKTOP_DIR" => dirs.desktop = Some(path),
+                b"XDG_DOCUMENTS_DIR" => dirs.documents = Some(path),
+                b"XDG_DOWNLOAD_DIR" => dirs.downloads = Some(path),
+                b"XDG_MUSIC_DIR" => dirs.music = Some(path),
+                b"XDG_PICTURES_DIR" => dirs.pictures = Some(path),
+                b"XDG_VIDEOS_DIR" => dirs.videos = Some(path),
+                b"XDG_TEMPLATES_DIR" => dirs.extra.templates = Some(path),
                 _ => {
-                    // ignore unknown variable assignment, matching shell permissiveness
+                    // ignore unknown variable assignment
                 }
             }
         }
@@ -328,7 +326,7 @@ impl MediaDirsExt for MediaDirs {
 }
 
 fn user_home() -> io::Result<PathBuf> {
-    home_dir()
+    env::home_dir()
         .filter(|p| !p.is_empty())
         .ok_or(const_error!(ErrorKind::NotFound, "no home directory"))
 }
@@ -341,8 +339,44 @@ fn xdg_env(env: &str, fallback: &str) -> OsString {
     var_os(env).filter(|s| !s.is_empty()).unwrap_or_else(|| OsString::from(fallback))
 }
 
-fn path_from_bytes(bytes: &[u8]) -> PathBuf {
-    PathBuf::from(OsString::from_vec(bytes.to_vec()))
+fn xdg_unquote(bytes: &[u8]) -> Option<Cow<'_, [u8]>> {
+    let [b'"', bytes @ .., b'"'] = bytes else { return None };
+
+    if !bytes.contains(&b'\\') {
+        return Some(Cow::Borrowed(bytes));
+    }
+
+    let mut rest = bytes;
+    let mut s = Vec::with_capacity(rest.len());
+    loop {
+        let i = rest
+            .iter()
+            .position(|&b| matches!(b, b'"' | b'\\' | b'$' | b'`'))
+            .unwrap_or(rest.len());
+        s.extend_from_slice(&rest[..i]);
+        match &rest[i..] {
+            [] => break,
+            [b'\\', c @ (b'"' | b'\\' | b'$' | b'`'), tail @ ..] => {
+                s.push(*c);
+                rest = tail;
+            }
+            [b'\\', b'\n', tail @ ..] => {
+                // line continuation
+                rest = tail;
+            }
+            [b'\\', tail @ ..] => {
+                s.push(b'\\');
+                rest = tail;
+            }
+            [b'"' | b'$' | b'`', ..] => {
+                // unsupported shell syntax
+                return None;
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    Some(Cow::Owned(s))
 }
 
 #[cfg(test)]
