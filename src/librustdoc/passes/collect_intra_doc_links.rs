@@ -1506,7 +1506,7 @@ impl LinkCollector<'_, '_> {
             Some((sp, _)) => sp,
             None => item.attr_span(self.cx.tcx),
         };
-        rustc_session::errors::feature_err(
+        rustc_session::diagnostics::feature_err(
             self.cx.tcx.sess,
             sym::intra_doc_pointers,
             span,

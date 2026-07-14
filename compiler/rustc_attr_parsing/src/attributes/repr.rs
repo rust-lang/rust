@@ -3,7 +3,7 @@ use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
 use rustc_feature::AttributeStability;
 use rustc_hir::attrs::IntType::{SignedInt, UnsignedInt};
 use rustc_hir::attrs::ReprAttr;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 
 use super::prelude::*;
 use crate::session_diagnostics;

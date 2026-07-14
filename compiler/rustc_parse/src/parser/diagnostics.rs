@@ -15,7 +15,7 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions, msg,
     pluralize,
 };
-use rustc_session::errors::ExprParenthesesNeeded;
+use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::symbol::used_keywords;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Spanned, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};

@@ -13,7 +13,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
