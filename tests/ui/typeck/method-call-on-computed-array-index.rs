@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/41604>.
+//! This used to ICE.
 //@ run-pass
+
 struct B;
 
 impl B {
