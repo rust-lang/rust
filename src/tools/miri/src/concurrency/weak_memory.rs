@@ -244,6 +244,12 @@ impl StoreBufferAlloc {
                 // We can use `init` for a new store buffer (with a default `sync_clock` that
                 // acquires nothing) because there was no data race and all previous atomic writes
                 // are fully synchronized (as otherwise the imperfect overlap would be UB).
+                // It is tempting to try to sanity-check this against the data race clock view of
+                // whether there was any overlap, but that is very tricky: because we are skipping
+                // clock tracking until the first thread is spawned, we don't actually have a good
+                // view of whether a given atomic access "creates a new atomic object" or not.
+                // A sanity check would require is to always track clocks for atomic accesses, which
+                // does show up in benchmarks so we don't do it.
                 buffers.remove_pos_range(pos_range.clone());
                 buffers.insert_at_pos(pos_range.start, range, StoreBuffer::new(init));
                 pos_range.start
