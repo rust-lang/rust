@@ -1,5 +1,5 @@
+// ignore-tidy-file-linelength
 //@ add-minicore
-// ignore-tidy-linelength
 //@ only-pauthtest
 // Run it at O0, so that the compiler doesn't optimise the calls away.
 

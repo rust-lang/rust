@@ -6,7 +6,7 @@
 // is optimised out by LLVM's instcombine, hence dump the IR before that pass and inspect it.
 
 //@ only-pauthtest
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 use run_make_support::path_helpers::source_root;
 use run_make_support::{llvm_filecheck, rfs, rustc};
