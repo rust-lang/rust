@@ -64,9 +64,9 @@ pub use imp::{
     ReadDir,
 };
 
-#[cfg(not(unix))]
+#[cfg(not(any(target_family = "unix", target_os = "wasi")))]
 pub type ExtraHomeDirs = ();
-#[cfg(not(unix))]
+#[cfg(not(any(target_family = "unix", target_os = "wasi")))]
 pub type ExtraMediaDirs = ();
 
 pub fn read_dir(path: &Path) -> io::Result<ReadDir> {
