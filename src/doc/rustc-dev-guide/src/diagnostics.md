@@ -350,7 +350,6 @@ before emitting it by calling the [`emit`][emit] method.
 
 [spanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.span_err
 [strspanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.struct_span_err
-[diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html
 [emit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.emit
 [cancel]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.cancel
 
@@ -390,7 +389,6 @@ To this end,
 suggestions pleasingly in the terminal, or (when the `--error-format json` flag
 is passed) as JSON for consumption by tools like [`rustfix`][rustfix].
 
-[diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html
 [rustfix]: https://github.com/rust-lang/rustfix
 
 Not all suggestions should be applied mechanically, they have a degree of
@@ -1049,3 +1047,5 @@ Will format the message into
 ```text
 "Self = `i8`, T = `i32`, this = `From`, trait = `From<i32>`, context = `a function`"
 ```
+
+[diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html
