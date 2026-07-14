@@ -191,12 +191,14 @@ mod sys {
             }
             c::E_FAIL => {
                 // This known folder id exists but does not have a path
-                #[cfg(debug_assertions)]
-                unreachable!("should not call get_known_folder_path on a virtual folder");
-                Err(const_error!(
-                    ErrorKind::InvalidInput,
-                    "virtual known folders do not have paths"
-                ))
+                if cfg!(debug_assertions) {
+                    unreachable!("should not call get_known_folder_path on a virtual folder");
+                } else {
+                    Err(const_error!(
+                        ErrorKind::InvalidInput,
+                        "virtual known folders do not have paths"
+                    ))
+                }
             }
             c::E_INVALIDARG => {
                 // This known folder id is not present on the system
