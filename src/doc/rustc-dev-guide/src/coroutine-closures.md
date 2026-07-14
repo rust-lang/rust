@@ -1,6 +1,6 @@
 # Async closures/"coroutine-closures"
 
-Please read [RFC 3668](https://rust-lang.github.io/rfcs/3668-async-closures.html) to understand the general motivation of the feature.
+Please read [RFC 3668] to understand the general motivation of the feature.
 This is a very technical and somewhat "vertical" chapter; ideally we'd split this and sprinkle it across all the relevant chapters, but for the purposes of understanding async closures *holistically*, I've put this together all here in one chapter.
 
 ## Coroutine-closures -- a technical deep dive
@@ -332,3 +332,5 @@ One thing to note is that we don't borrow-check the synthetic body we make for b
 [^bck1]: <https://github.com/rust-lang/rust/blob/705cfe0e966399e061d64dd3661bfbc57553ed87/compiler/rustc_borrowck/src/universal_regions.rs#L110-L115>
 
 [^bck2]: <https://github.com/rust-lang/rust/blob/7c7bb7dc017545db732f5cffec684bbaeae0a9a0/compiler/rustc_borrowck/src/universal_regions.rs#L743-L790>
+
+[RFC 3668]: https://rust-lang.github.io/rfcs/3668-async-closures.html
