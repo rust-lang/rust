@@ -660,16 +660,8 @@ where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
 {
-    fn visit_block_start(&mut self, state: &A::Domain) {
-        if A::Direction::IS_FORWARD {
-            self.prev_state.clone_from(state);
-        }
-    }
-
-    fn visit_block_end(&mut self, state: &A::Domain) {
-        if A::Direction::IS_BACKWARD {
-            self.prev_state.clone_from(state);
-        }
+    fn visit_block_entry(&mut self, state: &A::Domain) {
+        self.prev_state.clone_from(state);
     }
 
     fn visit_after_early_statement_effect(

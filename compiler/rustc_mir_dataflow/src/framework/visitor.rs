@@ -46,7 +46,9 @@ pub trait ResultsVisitor<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    fn visit_block_start(&mut self, _state: &A::Domain) {}
+    /// Called on entry to a block. In a forwards analysis, `_state` is from the block's start. In
+    /// a backwards analysis, `_state` is from the block's end.
+    fn visit_block_entry(&mut self, _state: &A::Domain) {}
 
     /// Called after the "early" effect of the given statement is applied to `state`.
     fn visit_after_early_statement_effect(
@@ -89,6 +91,4 @@ where
         _location: Location,
     ) {
     }
-
-    fn visit_block_end(&mut self, _state: &A::Domain) {}
 }
