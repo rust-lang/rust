@@ -770,6 +770,17 @@ fn static_visibility<'tcx>(
         *can_be_internalized = false;
         default_visibility(tcx, def_id, false)
     } else {
+        if tcx.def_kind(def_id).has_codegen_attrs() {
+            // Prevent EII and `rustc_std_internal_symbol` statics being internalized.
+            let attrs = tcx.codegen_fn_attrs(def_id);
+            if attrs.flags.intersects(
+                CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
+                    | CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM,
+            ) {
+                *can_be_internalized = false;
+            }
+        }
+
         Visibility::Hidden
     }
 }
