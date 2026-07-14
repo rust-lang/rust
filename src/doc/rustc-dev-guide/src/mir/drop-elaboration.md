@@ -2,7 +2,7 @@
 
 ## Dynamic drops
 
-According to the [reference][reference-drop]:
+According to [Rust Reference][reference-drop]:
 
 > When an initialized variable or temporary goes out of scope, its destructor
 > is run, or it is dropped. Assignment also runs the destructor of its
