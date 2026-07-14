@@ -301,7 +301,7 @@ impl<'tcx> PrirodaContext<'tcx> {
         // claiming support for multi-threaded interpreted programs.
 
         // State inspection should happen only after a successful step.
-        self.ecx.miri_step()?;
+        self.ecx.step_current_thread()?;
         self.last_location = self.current_location.take();
         self.current_location = self.resolve_current_location();
         interp_ok(())
