@@ -1,8 +1,11 @@
+use std::iter;
 use std::marker::PhantomData;
 
 pub use clause_filter::NoClauses;
-use clause_filter::*;
 pub use iterator::CallerBoundsIterator;
+use rustc_data_structures::either::Either;
+
+use clause_filter::*;
 use output_as::*;
 use polarity_filter::*;
 use self_ty_filter::*;
@@ -10,7 +13,9 @@ use trait_filter::*;
 
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
-use crate::{Binder, ClauseKind, ClausePolarity, Interner, TraitClause, Upcast};
+use crate::{
+    Binder, ClauseKind, ClausePolarity, CompressedTraitRefs, Interner, TraitClause, Upcast,
+};
 
 #[must_use]
 pub struct CallerBoundsAccessor<I, Iter, CF>
@@ -37,7 +42,6 @@ where
 
 mod iterator {
     use super::*;
-    use crate::param_env::output_as::OutputAs;
 
     pub trait CallerBoundsIterator<I, Iter>
     where
@@ -57,11 +61,16 @@ mod iterator {
 
         #[inline]
         fn iter(self) -> impl Iterator<Item = Self::Item> {
-            self.clauses.filter(|&i| !matches!(i.kind().skip_binder(), ClauseKind::Trait(_)))
+            self.clauses.filter(|&i| {
+                !matches!(
+                    i.kind().skip_binder(),
+                    ClauseKind::Trait(_) | ClauseKind::CompressedTrait(_)
+                )
+            })
         }
     }
 
-    impl<I, Iter> CallerBoundsIterator<I, Iter> for CallerBoundsAccessor<I, Iter, AllClauses>
+    impl<I, Iter> CallerBoundsIterator<I, Iter> for CallerBoundsAccessor<I, Iter, AllClauses<I>>
     where
         I: Interner,
         Iter: Iterator<Item = I::Clause>,
@@ -70,7 +79,16 @@ mod iterator {
 
         #[inline]
         fn iter(self) -> impl Iterator<Item = Self::Item> {
-            self.clauses
+            let cx = self.clause_filter.0;
+            self.clauses.flat_map(move |clause| match clause.kind().skip_binder() {
+                // Reconstruct clauses from compressed trait clauses.
+                ClauseKind::CompressedTrait(ct) => Either::Left(
+                    ct.compressed_trait_refs
+                        .iter()
+                        .map(move |c| c.trait_clause_from_single_bit(cx, ct.self_ty).upcast(cx)),
+                ),
+                _ => Either::Right(iter::once(clause)),
+            })
         }
     }
 
@@ -88,9 +106,42 @@ mod iterator {
     {
         let TraitClauses { cx: _, polarity_filter, self_type_filter, trait_filter, output: _ } =
             filter;
+
         polarity_filter.allow_polarity(clause.polarity)
             && self_type_filter.allow_self_ty(clause.self_ty())
             && trait_filter.allow_clause(clause)
+    }
+
+    #[inline]
+    fn filter_compressed_trait_clause_helper<I, P, S, T, O>(
+        filter: &TraitClauses<I, P, S, T, O>,
+        self_ty: I::Ty,
+        trait_ref_single_bit: CompressedTraitRefs,
+    ) -> Option<Binder<I, TraitClause<I>>>
+    where
+        I: Interner,
+        P: PolarityFilter,
+        S: SelfTyFilter<I>,
+        T: TraitFilter<I>,
+        O: OutputAs<I>,
+    {
+        let &TraitClauses {
+            cx,
+            ref polarity_filter,
+            ref self_type_filter,
+            ref trait_filter,
+            output: _,
+        } = filter;
+        // All compressed clauses are positive clauses, so filter negatives out.
+        let allow = polarity_filter.allow_polarity(ClausePolarity::Positive)
+            // Match the self ty, of course.
+            && self_type_filter.allow_self_ty(self_ty)
+            && trait_filter.allow_compressed_trait_ref_single_bit(trait_ref_single_bit);
+
+        // Only if all filtering allows this compressed clause do we reconstruct the trait clause,
+        // but we don't intern it yet, since that depends on the output transformation. If we can
+        // avoid re-interning, that's worth a *lot*.
+        allow.then(|| trait_ref_single_bit.trait_clause_from_single_bit(cx, self_ty))
     }
 
     impl<I, Iter, P, S, T, O> CallerBoundsIterator<I, Iter>
@@ -107,20 +158,29 @@ mod iterator {
 
         #[inline]
         fn iter(self) -> impl Iterator<Item = Self::Item> {
-            self.clauses.filter_map(move |clause| {
+            let Self { clauses, clause_filter: filter, cx: _ } = self;
+            let cx = filter.cx;
+            clauses.flat_map(move |clause| {
                 let kind = clause.kind();
                 match kind.skip_binder() {
                     ClauseKind::Trait(trait_clause)
-                        if filter_trait_clause_helper(&self.clause_filter, trait_clause) =>
+                        if filter_trait_clause_helper(&filter, trait_clause) =>
                     {
-                        Some(O::construct_from_trait_clause(
-                            kind.rebind(trait_clause),
-                            self.clause_filter.cx,
-                        ))
+                        // Use either to allow returning two kinds of iterators.
+                        Either::Left(Some(kind.rebind(trait_clause)).into_iter())
                     }
-                    _ => None,
+                    ClauseKind::CompressedTrait(ct) => Either::Right(
+                        ct.compressed_trait_refs
+                            .iter()
+                            .filter_map(|i| {
+                                filter_compressed_trait_clause_helper(&filter, ct.self_ty, i)
+                            })
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                    ),
+                    _ => Either::Left(None.into_iter()),
                 }
-            })
+            }).map(move |i| O::construct_from_trait_clause(i, cx))
         }
     }
 }
@@ -136,6 +196,7 @@ mod clause_filter {
     pub struct NonTraitClauses;
     impl ClauseFilter for NonTraitClauses {}
 
+    #[derive(Clone, Copy)]
     pub struct TraitClauses<I, P, S, T, O> {
         pub cx: I,
         pub polarity_filter: P,
@@ -146,8 +207,10 @@ mod clause_filter {
 
     impl<I, P, S, T, O> ClauseFilter for TraitClauses<I, P, S, T, O> {}
 
-    pub struct AllClauses;
-    impl ClauseFilter for AllClauses {}
+    pub struct AllClauses<I>(pub I)
+    where
+        I: Interner;
+    impl<I> ClauseFilter for AllClauses<I> where I: Interner {}
 
     impl<I, Iter> CallerBoundsAccessor<I, Iter, NoClauses>
     where
@@ -184,11 +247,10 @@ mod clause_filter {
 
         /// Warning: may be a performance hazzard!
         #[inline]
-        // FIXME: asking for _cx here is useful down the line.
-        pub fn all_clauses(self, _cx: I) -> CallerBoundsAccessor<I, Iter, AllClauses> {
+        pub fn all_clauses(self, cx: I) -> CallerBoundsAccessor<I, Iter, AllClauses<I>> {
             CallerBoundsAccessor {
                 clauses: self.clauses,
-                clause_filter: AllClauses,
+                clause_filter: AllClauses(cx),
                 cx: PhantomData,
             }
         }
@@ -278,35 +340,58 @@ mod polarity_filter {
             self.validate_self_ty(move |actual_self_ty| actual_self_ty == desired_self_ty)
         }
         #[inline]
-        pub fn for_trait(
+        fn for_target_trait(
             self,
-            def_id: I::TraitId,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TraitWithId<I>, O>> {
+            trait_filter: TargetTrait<I>,
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, O>> {
             let CallerBoundsAccessor {
                 clauses: iter,
                 clause_filter:
-                    TraitClauses { polarity_filter, self_type_filter, trait_filter: _, output, cx },
+                    TraitClauses {
+                        cx,
+                        polarity_filter,
+                        self_type_filter,
+                        trait_filter: _,
+                        output,
+                    },
                 cx: PhantomData,
             } = self;
             CallerBoundsAccessor {
                 clauses: iter,
                 clause_filter: TraitClauses {
+                    cx,
                     polarity_filter,
                     self_type_filter,
-                    trait_filter: TraitWithId(def_id),
+                    trait_filter,
                     output,
-                    cx,
                 },
                 cx: PhantomData,
             }
         }
         #[inline]
+        pub fn for_trait(
+            self,
+            def_id: I::TraitId,
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, O>> {
+            self.for_target_trait(TargetTrait::DefId(def_id))
+        }
+        #[inline]
         pub fn for_trait_lang_item(
             self,
             lang_item: SolverTraitLangItem,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TraitWithId<I>, O>> {
+        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, O>> {
             let cx = self.clause_filter.cx;
-            self.for_trait(cx.require_trait_lang_item(lang_item))
+            // We try to turn the requested lang item directly into a TargetTrait,
+            // without calling `cx.require_trait_lang_item`, avoiding a query.
+            // We only call it if the desired lang item cannot be part of a compressed trait clause.
+            match CompressedTraitRefs::from_lang_item(lang_item) {
+                Some(compressed) => {
+                    self.for_target_trait(TargetTrait::CompressedSingleBit(compressed))
+                }
+                None => {
+                    self.for_target_trait(TargetTrait::DefId(cx.require_trait_lang_item(lang_item)))
+                }
+            }
         }
 
         #[inline]
@@ -372,12 +457,14 @@ mod self_ty_filter {
 
 mod trait_filter {
     use super::*;
+    use crate::CompressedTraitRefs;
 
     pub trait TraitFilter<I>
     where
         I: Interner,
     {
         fn allow_clause(&self, clause: TraitClause<I>) -> bool;
+        fn allow_compressed_trait_ref_single_bit(&self, trait_ref: CompressedTraitRefs) -> bool;
     }
 
     impl<I> TraitFilter<I> for ()
@@ -388,18 +475,48 @@ mod trait_filter {
         fn allow_clause(&self, _clause: TraitClause<I>) -> bool {
             true
         }
+
+        #[inline]
+        fn allow_compressed_trait_ref_single_bit(&self, _trait_ref: CompressedTraitRefs) -> bool {
+            true
+        }
     }
 
-    pub struct TraitWithId<I>(pub I::TraitId)
+    // TODO: use bit operations to test an entire compressed clause against a single filter.
+    pub enum TargetTrait<I>
     where
-        I: Interner;
-    impl<I> TraitFilter<I> for TraitWithId<I>
+        I: Interner,
+    {
+        DefId(I::TraitId),
+        /// When scanning specifically for trait refs that can be compressed,
+        /// this value has a single bit set, representing the compressed form
+        /// of the trait we're looking for.
+        CompressedSingleBit(CompressedTraitRefs),
+    }
+    impl<I> TraitFilter<I> for TargetTrait<I>
     where
         I: Interner,
     {
         #[inline]
         fn allow_clause(&self, clause: TraitClause<I>) -> bool {
-            clause.def_id() == self.0
+            match self {
+                &TargetTrait::DefId(target) => clause.def_id() == target,
+                // When looking for a compressed trait, any normal clause can never match so we
+                // return false unconditionally.
+                &TargetTrait::CompressedSingleBit(_target) => false,
+            }
+        }
+
+        #[inline]
+        fn allow_compressed_trait_ref_single_bit(&self, trait_ref: CompressedTraitRefs) -> bool {
+            match self {
+                // When looking for a normal trait, any compressed clause can never match so we
+                // return false unconditionally.
+                &TargetTrait::DefId(_target) => false,
+                // Both the target and the trait ref we receive has a single bit set,
+                // so we can test for equality.
+                &TargetTrait::CompressedSingleBit(target) => trait_ref == target,
+            }
         }
     }
 }
