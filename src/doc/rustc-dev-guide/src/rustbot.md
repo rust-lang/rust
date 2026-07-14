@@ -48,7 +48,7 @@ the `@rustbot` command will look like this:
 The syntax for this command is pretty loose, so there are other variants of this command invocation.
 There are also some shortcuts to update labels,
 for instance `@rustbot ready` will do the same thing with above command.
-For more details, see [the docs page about labeling][labeling] and [shortcuts][shortcuts].
+For more details, see [the docs page about labeling][labeling] and [shortcuts].
 
 [labeling]: https://forge.rust-lang.org/triagebot/labeling.html
 [shortcuts]: https://forge.rust-lang.org/triagebot/shortcuts.html
@@ -62,8 +62,8 @@ bot gets an upgrade.
 `@rustbot` is maintained by the Release team.
 If you have any feedback regarding
 existing commands or suggestions for new commands, feel free to reach out
-[on Zulip][zulip] or file an issue in [the triagebot repository][repo]
+[on Zulip] or file an issue in [the triagebot repository].
 
 [documentation]: https://forge.rust-lang.org/triagebot/index.html
-[zulip]: https://rust-lang.zulipchat.com/#narrow/stream/224082-t-release.2Ftriagebot
-[repo]: https://github.com/rust-lang/triagebot/
+[on zulip]: https://rust-lang.zulipchat.com/#narrow/stream/224082-t-release.2Ftriagebot
+[the triagebot repository]: https://github.com/rust-lang/triagebot/
