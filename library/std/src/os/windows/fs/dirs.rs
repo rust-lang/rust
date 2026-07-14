@@ -161,7 +161,7 @@ impl UserDirsExt for UserDirs {
 
 #[cfg(windows)]
 mod sys {
-    use crate::io::{ErrorKind, const_error};
+    use crate::io::{self, ErrorKind, const_error};
     use crate::path::PathBuf;
     use crate::sys::{c, os2path};
     use crate::{ptr, slice};
