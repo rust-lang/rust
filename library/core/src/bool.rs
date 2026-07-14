@@ -135,7 +135,7 @@ impl bool {
     /// - If `self` is [`true`], sets `self` to [`false`].
     /// - If `self` is [`false`], sets `self` to [`true`].
     ///
-    /// Equivalent to `*self = !*self`.
+    /// Equivalent to `value = !value`.
     ///
     /// # Examples
     ///
