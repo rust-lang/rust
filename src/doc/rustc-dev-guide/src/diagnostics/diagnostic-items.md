@@ -1,6 +1,6 @@
 # Diagnostic Items
 
-While writing lints it's common to check for specific types, traits and functions.
+While writing lints, it's common to check for specific types, traits, and functions.
 This raises the question on how to check for these.
 Types can be checked by their complete type path.
 However, this requires hard coding paths and can lead to misclassifications in some edge cases.
