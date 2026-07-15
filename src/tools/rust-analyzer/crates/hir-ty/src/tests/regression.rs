@@ -2983,3 +2983,13 @@ fn migrations_preserve_index() {
     "#,
     );
 }
+
+#[test]
+fn array_repeat_closure() {
+    check(
+        r#"
+fn f() {[_; || ()]}
+     // ^^^^^^^^^^ expected (), got [{unknown}; _]
+    "#,
+    );
+}
