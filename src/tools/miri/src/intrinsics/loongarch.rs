@@ -1,7 +1,7 @@
 use rustc_abi::Size;
 use rustc_span::Symbol;
 
-use crate::shims::math::compute_crc32;
+use crate::intrinsics::math::compute_crc32;
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}

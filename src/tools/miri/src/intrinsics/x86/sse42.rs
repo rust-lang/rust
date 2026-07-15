@@ -4,7 +4,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::spec::Arch;
 
-use crate::shims::math::compute_crc32;
+use crate::intrinsics::math::compute_crc32;
 use crate::*;
 
 /// A bitmask constant for scrutinizing the immediate byte provided
