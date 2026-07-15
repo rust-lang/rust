@@ -771,6 +771,7 @@ mod desc {
     pub(crate) const parse_list: &str = "a space-separated list of strings";
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
+    pub(crate) const parse_pointer_authentication_list_with_polarity: &str = "a comma-separated list of options, each of the form `+<name>` or `-<name>`, where `<name>` is one of: `aarch64-jump-table-hardening`, `auth-traps`, `calls`, `elf-got`, `function-pointer-type-discrimination`, `indirect-gotos`, `init-fini`, `init-fini-address-discrimination`, `intrinsics`, `return-addresses`, `typeinfo-vt-ptr-discrimination`, `vt-ptr-addr-discrimination` or `vt-ptr-type-discrimination`";
     pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`, `NoTT`";
     pub(crate) const parse_offload: &str =
         "a comma separated list of settings: `Host=<Absolute-Path>`, `Device`, `Test`";
@@ -1034,6 +1035,37 @@ pub mod parse {
             }
             None => false,
         }
+    }
+
+    pub(crate) fn parse_pointer_authentication_list_with_polarity(
+        slot: &mut Vec<(PointerAuthOption, bool)>,
+        v: Option<&str>,
+    ) -> bool {
+        let Some(s) = v else {
+            return false;
+        };
+
+        let mut map = BTreeMap::<PointerAuthOption, bool>::new();
+
+        for item in s.split(',') {
+            let Some(name) = item.strip_prefix(&['+', '-'][..]) else {
+                return false;
+            };
+
+            let Some(opt) = PointerAuthOption::parse(name) else {
+                return false;
+            };
+
+            let enabled = item.starts_with('+');
+
+            // Last occurrence wins.
+            map.insert(opt, enabled);
+        }
+
+        slot.clear();
+        slot.extend(map);
+
+        true
     }
 
     pub(crate) fn parse_fmt_debug(opt: &mut FmtDebug, v: Option<&str>) -> bool {
@@ -2626,6 +2658,26 @@ options! {
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled on x86_64)"),
+    pointer_authentication: Vec<(PointerAuthOption, bool)> = (
+        Vec::new(),
+        parse_pointer_authentication_list_with_polarity,
+        [TRACKED]
+        { TARGET_MODIFIER: PointerAuthentication },
+        "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
+        `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
+        `auth-traps` - trap immediately on pointer authentication failure
+        `calls` - enable signing and authentication of all indirect calls
+        `elf-got` - enable authentication of pointers from GOT (ELF only)
+        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
+        `indirect-gotos` - enable signing and authentication of indirect goto targets
+        `init-fini` - enable signing of function pointers in init/fini arrays
+        `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
+        `intrinsics` - pointer authentication intrinsics
+        `return-addresses` - enable signing and authentication of return addresses
+        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
+        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
+        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
+        Example: `-Zpointer-authentication=+calls,-init-fini`."),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],
@@ -2659,7 +2711,6 @@ options! {
         "use the given `.prof` file for sampled profile-guided optimization (also known as AutoFDO)"),
     profiler_runtime: String = (String::from("profiler_builtins"), parse_string, [TRACKED],
         "name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)"),
-    ptrauth_elf_got: bool = (false, parse_bool, [TRACKED], "enable signing of ELF GOT entries"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
