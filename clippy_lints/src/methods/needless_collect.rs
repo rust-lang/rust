@@ -239,9 +239,9 @@ fn check_collect_into_intoiterator<'tcx>(
 fn collect_turbofish_is_fully_concrete(collect_expr: &Expr<'_>) -> bool {
     if let ExprKind::MethodCall(segment, ..) = collect_expr.kind
         && let Some(args) = segment.args
-        && !args.args.is_empty()
+        && let [a] = args.args
     {
-        args.args.iter().all(generic_arg_is_fully_concrete)
+        generic_arg_is_fully_concrete(a)
     } else {
         false
     }
