@@ -2,6 +2,25 @@ use super::{MIN_ALIGN, realloc_fallback};
 use crate::alloc::Layout;
 use crate::ptr;
 
+// Used by rustc for checking the definitions of other function with the same symbol names
+//
+// See the `invalid_runtime_symbols_definitions` lint.
+#[cfg(not(test))]
+mod runtime_symbols {
+    use core::ffi::{c_size_t, c_void};
+
+    unsafe extern "C" {
+        #[lang = "malloc_fn"]
+        fn malloc(size: c_size_t) -> *mut c_void;
+
+        #[lang = "realloc_fn"]
+        fn realloc(ptr: *mut c_void, size: c_size_t) -> *mut c_void;
+
+        #[lang = "free_fn"]
+        fn free(ptr: *mut c_void);
+    }
+}
+
 #[inline]
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     // jemalloc provides alignment less than MIN_ALIGN for small allocations.

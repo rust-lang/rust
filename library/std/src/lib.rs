@@ -322,6 +322,7 @@
 #![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(c_size_t)]
 #![feature(can_vector)]
 #![feature(cast_maybe_uninit)]
 #![feature(char_internals)]

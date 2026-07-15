@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/41742>.
+//! Test indexing with the wrong type doesn't cause ICE.
+
 use std::ops::{Index, IndexMut};
 
 struct S;
