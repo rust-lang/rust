@@ -9,8 +9,9 @@ cfg_select! {
     any(target_family = "unix", target_os = "wasi") => {
         mod unix;
         use unix as imp;
+        pub use unix::{ExtraHomeDirs, ExtraMediaDirs};
         #[cfg(not(target_os = "wasi"))]
-        pub use unix::{chown, fchown, lchown, mkfifo, ExtraHomeDirs, ExtraMediaDirs};
+        pub use unix::{chown, fchown, lchown, mkfifo};
         #[cfg(not(any(target_os = "fuchsia", target_os = "wasi")))]
         pub use unix::chroot;
         #[cfg(not(target_os = "wasi"))]
