@@ -459,6 +459,29 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
     }
 }
 
+/// Create an `OngoingCodegen` that has no coordinator thread and will finish
+/// immediately when joined. This is used for the offload host-metadata pass,
+/// that only need to run the monomorphization collector.
+pub(crate) fn empty_ongoing_codegen<B: WriteBackendMethods>(
+    backend: B,
+    tcx: TyCtxt<'_>,
+) -> OngoingCodegen<B> {
+    let (coordinator_send, _) = channel::<Message<B>>();
+    let (codegen_worker_send, codegen_worker_receive) = channel();
+    drop(codegen_worker_send);
+
+    let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
+    drop(shared_emitter);
+
+    OngoingCodegen {
+        backend,
+        codegen_worker_receive,
+        shared_emitter_main,
+        coordinator: Coordinator { sender: coordinator_send, future: None, phantom: PhantomData },
+        output_filenames: Arc::clone(tcx.output_filenames(())),
+    }
+}
+
 fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
     compiled_modules: &CompiledModules,
@@ -2091,7 +2114,15 @@ pub struct Coordinator<B: WriteBackendMethods> {
 
 impl<B: WriteBackendMethods> Coordinator<B> {
     fn join(mut self) -> std::thread::Result<Result<MaybeLtoModules<B>, ()>> {
-        self.future.take().unwrap().join()
+        if let Some(future) = self.future.take() {
+            future.join()
+        } else {
+            // Used for passes that do not codegen anything (e.g. the offload host-metadata pass).
+            Ok(Ok(MaybeLtoModules::NoLto(CompiledModules {
+                modules: vec![],
+                allocator_module: None,
+            })))
+        }
     }
 }
 

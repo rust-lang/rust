@@ -830,6 +830,16 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return Visibility::Hidden,
     };
 
+    let attrs = tcx.codegen_fn_attrs(def_id);
+    if attrs.flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL) {
+        *can_be_internalized = false;
+        return default_visibility(
+            tcx,
+            def_id,
+            instance.args.non_erasable_generics().next().is_some(),
+        );
+    }
+
     // Both the `start_fn` lang item and `main` itself should not be exported,
     // so we give them with `Hidden` visibility but these symbols are
     // only referenced from the actual `main` symbol which we unfortunately

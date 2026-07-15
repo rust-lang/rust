@@ -197,10 +197,16 @@ pub enum CoverageLevel {
 pub enum Offload {
     /// Entry point for `std::offload`, enables kernel compilation for a gpu device
     Device,
+    /// Like `Device`, but reads a manifest of required generic kernel instantiations
+    /// produced by a previous `HostMetadata` pass.
+    DeviceWithManifest(String),
     /// Second step in the offload pipeline, generates the host code to call kernels.
     Host(String),
     /// Test is similar to Host, but allows testing without a device artifact.
     Test,
+    /// First step in the offload pipeline: compile for the host but only emit a manifest of
+    /// kernel instantiations required by the host code.
+    HostMetadata(String),
 }
 
 /// The different settings that the `-Z codegen-emit-retag` flag can have.
