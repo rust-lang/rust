@@ -13,6 +13,8 @@
   ],
   // Require manual approval from the Dependency Dashboard before opening PRs
   "dependencyDashboardApproval": true,
+  // Renovate shouldn't update a PR if it is in the bors merge queue.
+  "stopUpdatingLabel": "S-waiting-on-bors",
   "packageRules": [
     {
       // No dashboard approval necessary for GitHub Actions updates
