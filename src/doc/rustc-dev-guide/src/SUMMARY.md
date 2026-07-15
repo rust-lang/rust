@@ -86,7 +86,7 @@
 - [Debugging bootstrap](./building/bootstrapping/debugging-bootstrap.md)
 - [cfg(bootstrap) in dependencies](./building/bootstrapping/bootstrap-in-dependencies.md)
 
-# High-level Compiler Architecture
+# High-level compiler architecture
 
 - [Prologue](./part-2-intro.md)
 - [Overview of the compiler](./overview.md)
@@ -115,7 +115,7 @@
     - [Autodiff flags](./autodiff/flags.md)
     - [Type Trees](./autodiff/type-trees.md)
 
-# Source Code Representation
+# Source code representation
 
 - [Prologue](./part-3-intro.md)
 - [Syntax and the AST](./syntax-intro.md)
@@ -140,7 +140,7 @@
     - [MIR queries and passes: getting the MIR](./mir/passes.md)
 - [Inline assembly](./asm.md)
 
-# Supporting Infrastructure
+# Supporting infrastructure
 
 - [Command-line arguments](./cli.md)
 - [rustc_driver and rustc_interface](./rustc-driver/intro.md)
