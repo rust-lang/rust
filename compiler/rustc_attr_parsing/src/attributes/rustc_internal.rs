@@ -4,12 +4,13 @@ use rustc_ast::{GenericParamKind, LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{
-    BorrowckGraphvizFormatKind, CguFields, CguKind, RustcAssertVarianceKind, RustcCleanAttribute,
-    RustcCleanQueries, RustcMirKind,
+    BorrowckGraphvizFormatKind, CguFields, CguKind, EditionRedirect, RustcAssertVarianceKind,
+    RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::AttributeStability;
 use rustc_span::Symbol;
+use rustc_span::edition::Edition;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
@@ -358,6 +359,29 @@ impl AttributeParser for RustcCguTestAttributeParser {
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         Some(AttributeKind::RustcCguTestAttr(self.items))
+    }
+}
+
+pub(crate) struct RustcEditionRedirectParser;
+
+impl SingleAttributeParser for RustcEditionRedirectParser {
+    const PATH: &[Symbol] = &[sym::rustc_edition_redirect];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Use)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "2024");
+    const STABILITY: AttributeStability = unstable!(edition_redirect);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let value = cx.expect_name_value(args, cx.attr_span, Some(sym::rustc_edition_redirect))?;
+        let value = cx.expect_string_literal(value)?;
+        let edition = match value.as_str().parse::<Edition>() {
+            Ok(edition) => edition,
+            Err(()) => {
+                cx.emit_err(diagnostics::InvalidEditionRedirect { span: cx.attr_span });
+                return None;
+            }
+        };
+
+        Some(AttributeKind::RustcEditionRedirect(EditionRedirect { edition, span: cx.attr_span }))
     }
 }
 
