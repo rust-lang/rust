@@ -1,16 +1,13 @@
 #![warn(clippy::arithmetic_side_effects)]
 
-mod aarch64;
 mod alloc;
 mod backtrace;
 mod files;
-mod loongarch;
 mod math;
 #[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib;
 mod unix;
 mod windows;
-mod x86;
 
 pub mod env;
 pub mod extern_static;
@@ -40,4 +37,32 @@ pub enum EmulateItemResult {
     AlreadyJumped,
     /// The item is not supported.
     NotSupported,
+}
+
+impl EmulateItemResult {
+    pub fn jump_to_next_block<'tcx, T: Default>(
+        self,
+        ecx: &mut crate::MiriInterpCx<'tcx>,
+        dest: &crate::MPlaceTy<'tcx>,
+        ret: Option<rustc_middle::mir::BasicBlock>,
+        unwind: Option<rustc_middle::mir::UnwindAction>,
+        not_supported: impl FnOnce(&mut crate::MiriInterpCx<'tcx>) -> crate::InterpResult<'tcx, T>,
+    ) -> crate::InterpResult<'tcx, T> {
+        use crate::*;
+
+        match self {
+            EmulateItemResult::NeedsReturn => {
+                trace!("{:?}", ecx.dump_place(&dest.clone().into()));
+                ecx.return_to_block(ret)?;
+                interp_ok(T::default())
+            }
+            EmulateItemResult::NeedsUnwind => {
+                // Jump to the unwind block to begin unwinding.
+                ecx.unwind_to_block(unwind.unwrap())?;
+                interp_ok(T::default())
+            }
+            EmulateItemResult::AlreadyJumped => interp_ok(T::default()),
+            EmulateItemResult::NotSupported => not_supported(ecx),
+        }
+    }
 }

@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::io::Write;
 use std::path::Path;
 
-use rustc_abi::{Align, CanonAbi, Endian, ExternAbi, Size};
+use rustc_abi::{Align, CanonAbi, ExternAbi, Size};
 use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_data_structures::either::Either;
 use rustc_hir::attrs::Linkage;
@@ -14,7 +14,7 @@ use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{Arch, Os};
+use rustc_target::spec::Os;
 
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
@@ -73,29 +73,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let dest = this.force_allocation(dest)?;
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
-        match this.emulate_foreign_item_inner(link_name, abi, args, &dest)? {
-            EmulateItemResult::NeedsReturn => {
-                trace!("{:?}", this.dump_place(&dest.clone().into()));
-                this.return_to_block(ret)?;
+        let res = this.emulate_foreign_item_inner(link_name, abi, args, &dest)?;
+        res.jump_to_next_block(this, &dest, ret, Some(unwind), |this| {
+            if let Some(body) = this.lookup_exported_symbol(link_name)? {
+                return interp_ok(Some(body));
             }
-            EmulateItemResult::NeedsUnwind => {
-                // Jump to the unwind block to begin unwinding.
-                this.unwind_to_block(unwind)?;
-            }
-            EmulateItemResult::AlreadyJumped => (),
-            EmulateItemResult::NotSupported => {
-                if let Some(body) = this.lookup_exported_symbol(link_name)? {
-                    return interp_ok(Some(body));
-                }
 
-                throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
-                    "can't call foreign function `{link_name}` on OS `{os}`",
-                    os = this.tcx.sess.target.os,
-                )));
-            }
-        }
-
-        interp_ok(None)
+            throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
+                "can't call foreign function `{link_name}` on OS `{os}`",
+                os = this.tcx.sess.target.os,
+            )));
+        })
     }
 
     fn is_dyn_sym(&self, name: &str) -> bool {
@@ -239,109 +227,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match instance {
             None => interp_ok(None), // no symbol with this name
             Some(instance) => interp_ok(Some((this.load_mir(instance.def, None)?, instance))),
-        }
-    }
-
-    // FIXME move this and the LLVM intrinsic impls to the intrinsics module
-    fn call_llvm_intrinsic(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-        dest: &PlaceTy<'tcx>,
-        ret: Option<mir::BasicBlock>,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-
-        let link_name = this.tcx.codegen_fn_attrs(instance.def_id()).symbol_name.unwrap();
-
-        // FIXME: avoid allocating memory
-        let dest = this.force_allocation(dest)?;
-
-        let handled = match link_name.as_str() {
-            // LLVM intrinsics
-            "llvm.prefetch.p0" => {
-                let [p, rw, loc, ty] = this.check_shim_sig_unadjusted(link_name, args)?;
-
-                let _ = this.read_pointer(p)?;
-                let rw = this.read_scalar(rw)?.to_i32()?;
-                let loc = this.read_scalar(loc)?.to_i32()?;
-                let ty = this.read_scalar(ty)?.to_i32()?;
-
-                if ty == 1 {
-                    // Data cache prefetch.
-                    // Notably, we do not have to check the pointer, this operation is never UB!
-
-                    if !matches!(rw, 0 | 1) {
-                        throw_unsup_format!("invalid `rw` value passed to `llvm.prefetch`: {}", rw);
-                    }
-                    if !matches!(loc, 0..=3) {
-                        throw_unsup_format!(
-                            "invalid `loc` value passed to `llvm.prefetch`: {}",
-                            loc
-                        );
-                    }
-                } else {
-                    throw_unsup_format!("unsupported `llvm.prefetch` type argument: {}", ty);
-                }
-
-                true
-            }
-            // Used to implement the x86 `_mm{,256,512}_popcnt_epi{8,16,32,64}` and wasm
-            // `{i,u}8x16_popcnt` functions.
-            name if name.starts_with("llvm.ctpop.v")
-                && this.tcx.sess.target.endian == Endian::Little =>
-            {
-                let [op] = this.check_shim_sig_unadjusted(link_name, args)?;
-
-                let (op, op_len) = this.project_to_simd(op)?;
-                let (dest, dest_len) = this.project_to_simd(&dest)?;
-
-                assert_eq!(dest_len, op_len);
-
-                for i in 0..dest_len {
-                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
-                    // Use `to_uint` to get a zero-extended `u128`. Those
-                    // extra zeros will not affect `count_ones`.
-                    let res = op.to_scalar().to_uint(op.layout.size)?.count_ones();
-
-                    this.write_scalar(
-                        Scalar::from_uint(res, op.layout.size),
-                        &this.project_index(&dest, i)?,
-                    )?;
-                }
-
-                true
-            }
-
-            // Target-specific shims
-            name if name.starts_with("llvm.x86.")
-                && matches!(this.tcx.sess.target.arch, Arch::X86 | Arch::X86_64)
-                && this.tcx.sess.target.endian == Endian::Little =>
-                shims::x86::EvalContextExt::emulate_x86_intrinsic(this, link_name, args, &dest)?,
-            name if name.starts_with("llvm.aarch64.")
-                && this.tcx.sess.target.arch == Arch::AArch64
-                && this.tcx.sess.target.endian == Endian::Little =>
-                shims::aarch64::EvalContextExt::emulate_aarch64_intrinsic(
-                    this, link_name, args, &dest,
-                )?,
-            name if name.starts_with("llvm.loongarch.")
-                && matches!(this.tcx.sess.target.arch, Arch::LoongArch32 | Arch::LoongArch64)
-                && this.tcx.sess.target.endian == Endian::Little =>
-                shims::loongarch::EvalContextExt::emulate_loongarch_intrinsic(
-                    this, link_name, args, &dest,
-                )?,
-            _ => false,
-        };
-
-        // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
-        if handled {
-            trace!("{:?}", this.dump_place(&dest.clone().into()));
-            this.return_to_block(ret)
-        } else {
-            throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
-                "can't call LLVM intrinsic `{link_name}` on architecture `{arch}`",
-                arch = this.tcx.sess.target.arch,
-            )));
         }
     }
 }
