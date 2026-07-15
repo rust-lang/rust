@@ -11,6 +11,7 @@ use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_index::Idx;
 use rustc_span::DUMMY_SP;
 
+use crate::shims::readiness::DelayedReadinessUpdates;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -87,6 +88,9 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         // The active thread yielded or got terminated. Let's see if there are any I/O events
         // or timeouts to take care of.
+
+        // There may be delayed readiness updates we have to process.
+        DelayedReadinessUpdates::process(this)?;
 
         if this.machine.communicate() {
             // When isolation is disabled we need to check for events for threads

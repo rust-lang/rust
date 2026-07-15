@@ -205,10 +205,10 @@ fn test_unblock_after_socket_close() {
         unsafe { errno_check(libc::close(client_fd)) };
 
         // Writing data into the peer socket should unblock the main thread.
-        libc_utils::write_all(server_fd, b"1234").unwrap();
+        write_all(server_fd, b"1234").unwrap();
     });
 
-    let data = libc_utils::read_exact_array::<4>(client_fd).unwrap();
+    let data = read_exact_array::<4>(client_fd).unwrap();
     assert_eq!(&data, b"1234");
 
     server_thread.join().unwrap();

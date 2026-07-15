@@ -63,10 +63,9 @@ impl From<&mio::event::Event> for Readiness {
 }
 
 struct BlockingIoSource {
-    /// The source file description which is registered into the poll.
-    /// We only store weak references such that source file descriptions
-    /// can be destroyed whilst they are registered. However, they are required
-    /// to deregister themselves when [`FileDescription::destroy`] is called.
+    /// The source file description which is registered into the poll. We only store weak references
+    /// such that source file descriptions can be destroyed whilst they are registered. They will
+    /// later be cleaned up on the next GC run.
     fd: WeakFileDescriptionRef<dyn SourceFileDescription>,
     /// The threads which are blocked on the I/O source, and the interest indicating
     /// when they should be unblocked.

@@ -41,6 +41,7 @@ use crate::concurrency::{
     AllocDataRaceHandler, GenmcCtx, GenmcEvalContextExt as _, GlobalDataRaceHandler, weak_memory,
 };
 use crate::helpers::is_no_core;
+use crate::shims::readiness::DelayedReadinessUpdates;
 use crate::*;
 
 /// First real-time signal.
@@ -534,6 +535,7 @@ pub struct MiriMachine<'tcx> {
 
     /// The table of all active [`ReadinessWatcher`]s.
     pub(crate) readiness_interests: ReadinessInterestTable,
+    pub(crate) delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
 
     /// This machine's monotone clock.
     pub(crate) monotonic_clock: MonotonicClock,
@@ -767,6 +769,7 @@ impl<'tcx> MiriMachine<'tcx> {
             validation: config.validation,
             fds: shims::FdTable::init(config.mute_stdout_stderr),
             readiness_interests: ReadinessInterestTable::new(),
+            delayed_readiness_updates: Rc::new(DelayedReadinessUpdates::default()),
             dirs: Default::default(),
             layouts,
             threads,
@@ -1027,6 +1030,7 @@ impl VisitProvenance for MiriMachine<'_> {
             fds,
             blocking_io:_,
             readiness_interests: _,
+            delayed_readiness_updates: _,
             tcx: _,
             isolated_op: _,
             validation: _,

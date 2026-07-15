@@ -342,7 +342,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             Handle::File(fd_num) =>
                 if let Some(fd) = this.machine.fds.remove(fd_num) {
-                    let err = fd.close_ref(this.machine.communicate(), this)?;
+                    let err = fd.close_ref(this)?;
                     if let Err(e) = err {
                         this.set_last_error(e)?;
                         this.eval_windows("c", "FALSE")
