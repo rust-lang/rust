@@ -9,10 +9,10 @@ use rustc_public_bridge::context::CompilerCtxt;
 use rustc_target::callconv;
 
 use crate::abi::{
-    AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength,
-    IntegerType, Layout, LayoutShape, NumScalableVectors, PassMode, Primitive, ReprFlags,
-    ReprOptions, Scalar, TagEncoding, TyAndLayout, ValueAbi, VariantFields, VariantsShape,
-    WrappingRange,
+    AddressSpace, ArgAbi, CallConvention, CastTarget, FieldsShape, FloatLength, FnAbi,
+    IntegerLength, IntegerType, Layout, LayoutShape, NumScalableVectors, PassMode, Primitive, Reg,
+    RegKind, ReprFlags, ReprOptions, Scalar, TagEncoding, TyAndLayout, Uniform, ValueAbi,
+    VariantFields, VariantsShape, WrappingRange,
 };
 use crate::compiler_interface::BridgeTys;
 use crate::target::MachineSize as Size;
@@ -158,7 +158,11 @@ impl<'tcx> Stable<'tcx> for CanonAbi {
 impl<'tcx> Stable<'tcx> for callconv::PassMode {
     type T = PassMode;
 
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
         match self {
             callconv::PassMode::Ignore => PassMode::Ignore,
             callconv::PassMode::Direct(attr) => PassMode::Direct(opaque(attr)),
@@ -166,13 +170,64 @@ impl<'tcx> Stable<'tcx> for callconv::PassMode {
                 PassMode::Pair(opaque(first), opaque(second))
             }
             callconv::PassMode::Cast { pad_i32, cast } => {
-                PassMode::Cast { pad_i32: *pad_i32, cast: opaque(cast) }
+                PassMode::Cast { pad_i32: *pad_i32, cast: cast.stable(tables, cx) }
             }
             callconv::PassMode::Indirect { attrs, meta_attrs, on_stack } => PassMode::Indirect {
                 attrs: opaque(attrs),
                 meta_attrs: opaque(meta_attrs),
                 on_stack: *on_stack,
             },
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for callconv::CastTarget {
+    type T = CastTarget;
+
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        CastTarget {
+            prefix: self.prefix.iter().map(|reg| reg.stable(tables, cx)).collect(),
+            rest_offset: self.rest_offset.map(|offset| Size::from_bits(offset.bits_usize())),
+            rest: self.rest.stable(tables, cx),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for callconv::Uniform {
+    type T = Uniform;
+
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        Uniform {
+            unit: self.unit.stable(tables, cx),
+            total: Size::from_bits(self.total.bits_usize()),
+            is_consecutive: self.is_consecutive,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_abi::Reg {
+    type T = Reg;
+
+    fn stable<'cx>(
+        &self,
+        _: &mut Tables<'cx, BridgeTys>,
+        _: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        Reg {
+            kind: match self.kind {
+                rustc_abi::RegKind::Integer => RegKind::Integer,
+                rustc_abi::RegKind::Float => RegKind::Float,
+                rustc_abi::RegKind::Vector { .. } => RegKind::Vector,
+            },
+            size: Size::from_bits(self.size.bits_usize()),
         }
     }
 }

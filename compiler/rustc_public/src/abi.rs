@@ -54,10 +54,84 @@ pub enum PassMode {
     ///
     /// The argument has a layout abi of `ScalarPair`.
     Pair(Opaque, Opaque),
-    /// Pass the argument after casting it.
-    Cast { pad_i32: bool, cast: Opaque },
+    /// Pass the argument after casting it to the given target type.
+    Cast { pad_i32: bool, cast: CastTarget },
     /// Pass the argument indirectly via a hidden pointer.
     Indirect { attrs: Opaque, meta_attrs: Opaque, on_stack: bool },
+}
+
+/// Describes the ABI type that an argument is transmuted to for `PassMode::Cast`.
+///
+/// When an argument is "cast," its raw bytes are reinterpreted as a sequence of
+/// register-sized values for passing. This struct describes that target layout:
+///
+/// 1. The `prefix` registers are laid out first, like fields of a `repr(C)` struct
+///    (i.e., with alignment padding between them).
+/// 2. After the prefix, `rest.unit` is repeated enough times to cover `rest.total`,
+///    starting at `rest_offset` (or immediately after the prefix if `None`).
+///
+/// For example, on x86_64 SysV a `struct { i32, f64 }` might be cast to a prefix of
+/// `[Reg::i64()]` followed by a rest of `Reg::f64()` — placing the first eightbyte
+/// in an integer register and the second in an SSE register.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct CastTarget {
+    /// Leading registers of potentially different types, laid out with `repr(C)` padding.
+    pub prefix: Vec<Reg>,
+    /// The byte offset where `rest` begins, if explicitly set.
+    /// When `None`, `rest` starts immediately after the prefix.
+    pub rest_offset: Option<Size>,
+    /// The repeated trailing register type filling the remainder of the value.
+    pub rest: Uniform,
+}
+
+impl CastTarget {
+    /// Return the total size of the ABI type this argument is cast to.
+    pub fn size(&self) -> Size {
+        let prefix_size: usize = self.prefix.iter().map(|r| r.size.bits()).sum();
+        Size::from_bits(prefix_size + self.rest.total.bits())
+    }
+}
+
+/// An argument passed entirely in registers with the same kind (e.g., HFA/HVA on PPC64 and AArch64).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct Uniform {
+    /// The type of register used.
+    pub unit: Reg,
+    /// The total size of the argument, which can be:
+    /// * equal to `unit.size` (one scalar/vector),
+    /// * a multiple of `unit.size` (an array of scalar/vectors),
+    /// * if `unit.kind` is `Integer`, the last element can be shorter, i.e., `{ i64, i64, i32 }`
+    ///   for 64-bit integers with a total size of 20 bytes. When the argument is actually passed,
+    ///   this size will be rounded up to the nearest multiple of `unit.size`.
+    pub total: Size,
+    /// Whether the argument is consecutive: either all values are passed in registers, or all on
+    /// the stack with no additional padding between elements.
+    pub is_consecutive: bool,
+}
+
+impl Uniform {
+    /// Return the number of registers needed to cover `total`.
+    pub fn reg_count(&self) -> usize {
+        if self.unit.size.bits() == 0 {
+            return 0;
+        }
+        (self.total.bits() + self.unit.size.bits() - 1) / self.unit.size.bits()
+    }
+}
+
+/// A register type used in ABI calling conventions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct Reg {
+    pub kind: RegKind,
+    pub size: Size,
+}
+
+/// The kind of a register used in calling conventions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+pub enum RegKind {
+    Integer,
+    Float,
+    Vector,
 }
 
 /// The layout of a type, alongside the type itself.
