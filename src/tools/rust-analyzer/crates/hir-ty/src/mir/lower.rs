@@ -2123,7 +2123,7 @@ fn cast_kind<'db>(
     })
 }
 
-#[salsa_macros::tracked(returns(ref), cycle_result = mir_body_for_closure_cycle_result)]
+#[salsa_macros::tracked(returns(as_ref), cycle_result = mir_body_for_closure_cycle_result)]
 pub fn mir_body_for_closure_query<'db>(
     db: &'db dyn HirDatabase,
     closure: InternedClosureId,
@@ -2282,7 +2282,7 @@ pub fn mir_body_for_closure_query<'db>(
     Ok(ctx.result)
 }
 
-#[salsa_macros::tracked(returns(ref), cycle_result = mir_body_cycle_result)]
+#[salsa_macros::tracked(returns(as_ref), cycle_result = mir_body_cycle_result)]
 pub fn mir_body_query<'db>(db: &'db dyn HirDatabase, def: InferBodyId) -> Result<'db, MirBody> {
     let krate = def.krate(db);
     let edition = krate.data(db).edition;
