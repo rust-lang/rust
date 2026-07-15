@@ -89,6 +89,12 @@ impl<T: ?Sized> WeakFileDescriptionRef<T> {
     pub fn upgrade(&self) -> Option<FileDescriptionRef<T>> {
         self.0.upgrade().map(FileDescriptionRef)
     }
+
+    /// Returns whether the file description that this weak reference points to
+    /// has been closed, i.e., there are no more strong references.
+    pub fn is_closed(&self) -> bool {
+        self.0.strong_count() == 0
+    }
 }
 
 impl<T> VisitProvenance for WeakFileDescriptionRef<T> {
