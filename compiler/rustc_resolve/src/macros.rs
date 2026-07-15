@@ -28,6 +28,7 @@ use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
     UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
+use rustc_span::def_id::ModId;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
@@ -214,8 +215,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId {
-        let parent_module =
-            parent_module_id.map(|module_id| self.owner_def_id(module_id).to_def_id());
+        let parent_module = parent_module_id
+            .map(|module_id| ModId::new_unchecked(self.owner_def_id(module_id).to_def_id()));
         let expn_id = self.tcx.with_stable_hashing_context(|hcx| {
             LocalExpnId::fresh(
                 ExpnData::allow_unstable(
@@ -230,8 +231,9 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             )
         });
 
-        let parent_scope = parent_module
-            .map_or(self.empty_module, |def_id| self.expect_module(def_id).expect_local());
+        let parent_scope = parent_module.map_or(self.empty_module, |mod_id| {
+            self.expect_module(mod_id.to_def_id()).expect_local()
+        });
         self.ast_transform_scopes.insert(expn_id, parent_scope);
 
         expn_id
@@ -1179,7 +1181,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,
             // so it cannot be in scope unless imported.
-            && self.tcx.is_descendant_of(def_id, mod_def_id.to_def_id())
+            && self.tcx.is_descendant_of(def_id, mod_def_id)
         {
             // Try to resolve our ident ignoring `macro_rules` scopes.
             // If such resolution is successful and gives the same result

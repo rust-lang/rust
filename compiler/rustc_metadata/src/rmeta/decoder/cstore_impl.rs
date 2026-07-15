@@ -19,6 +19,7 @@ use rustc_middle::util::Providers;
 use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
 use rustc_session::cstore::{CrateStore, ExternCrate};
+use rustc_span::def_id::ModId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::{Span, Symbol, kw};
 
@@ -188,6 +189,13 @@ impl IntoArgs for DefId {
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self, ())
+    }
+}
+
+impl IntoArgs for ModId {
+    type Other = ();
+    fn into_args(self) -> (DefId, ()) {
+        (self.to_def_id(), ())
     }
 }
 

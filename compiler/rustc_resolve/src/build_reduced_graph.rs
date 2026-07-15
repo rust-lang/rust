@@ -19,12 +19,13 @@ use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
-use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::ty::{TyCtxtFeed, Visibility};
 use rustc_middle::{bug, span_bug};
+use rustc_span::def_id::{CRATE_MOD_ID, ModId};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
@@ -71,7 +72,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         expn_id: LocalExpnId,
     ) {
         let decl =
-            self.arenas.new_def_decl(res, vis.to_def_id(), span, expn_id, Some(parent.to_module()));
+            self.arenas.new_def_decl(res, vis.to_mod_id(), span, expn_id, Some(parent.to_module()));
         let ident = IdentKey::new(orig_ident);
         self.plant_decl_into_local_module(ident, orig_ident.span, ns, decl);
     }
@@ -274,7 +275,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     Ok(Visibility::Public)
                                 }
                                 _ => {
-                                    let vis = Visibility::Restricted(res.def_id());
+                                    let vis =
+                                        Visibility::Restricted(ModId::new_unchecked(res.def_id()));
                                     if self.is_accessible_from(vis, parent_scope.module) {
                                         if finalize {
                                             self.record_partial_res(id, PartialRes::new(res));
@@ -904,7 +906,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     let mut ctor_vis = if vis.is_public()
                         && ast::attr::contains_name(&item.attrs, sym::non_exhaustive)
                     {
-                        Visibility::Restricted(CRATE_DEF_ID)
+                        Visibility::Restricted(CRATE_MOD_ID)
                     } else {
                         vis
                     };
@@ -922,7 +924,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         if ctor_vis.greater_than(field_vis, self.r.tcx) {
                             ctor_vis = field_vis;
                         }
-                        field_visibilities.push(field_vis.to_def_id());
+                        field_visibilities.push(field_vis.to_mod_id());
                     }
                     // If this is a unit or tuple-like struct, register the constructor.
                     let feed = self.create_def(
@@ -940,7 +942,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     self.insert_field_visibilities_local(ctor_def_id.to_def_id(), vdata.fields());
 
                     let ctor =
-                        StructCtor { res: ctor_res, vis: ctor_vis.to_def_id(), field_visibilities };
+                        StructCtor { res: ctor_res, vis: ctor_vis.to_mod_id(), field_visibilities };
                     self.r.struct_ctors.insert(local_def_id, ctor);
                 }
                 self.r.struct_generics.insert(local_def_id, generics.clone());
@@ -1154,7 +1156,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 root_span: span,
                 span,
                 module_path: Vec::new(),
-                vis: Visibility::Restricted(CRATE_DEF_ID),
+                vis: Visibility::Restricted(CRATE_MOD_ID),
                 vis_span: item.vis.span,
                 on_unknown_attr: OnUnknownData::from_attrs(this.r, &item.attrs),
             })
@@ -1310,11 +1312,11 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             let vis = if is_macro_export {
                 Visibility::Public
             } else {
-                Visibility::Restricted(CRATE_DEF_ID)
+                Visibility::Restricted(CRATE_MOD_ID)
             };
             let decl = self.r.arenas.new_def_decl(
                 res,
-                vis.to_def_id(),
+                vis.to_mod_id(),
                 span,
                 expansion,
                 Some(parent_scope.module),
@@ -1516,7 +1518,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         // If the variant is marked as non_exhaustive then lower the visibility to within the crate.
         let ctor_vis =
             if vis.is_public() && ast::attr::contains_name(&variant.attrs, sym::non_exhaustive) {
-                Visibility::Restricted(CRATE_DEF_ID)
+                Visibility::Restricted(CRATE_MOD_ID)
             } else {
                 vis
             };

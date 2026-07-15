@@ -88,7 +88,7 @@ use rustc_data_structures::unhash::UnindexMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{Visitor, walk_expr};
@@ -2348,11 +2348,11 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     false
 }
 
-static TEST_ITEM_NAMES_CACHE: OnceLock<Mutex<FxHashMap<LocalModDefId, Vec<Symbol>>>> = OnceLock::new();
+static TEST_ITEM_NAMES_CACHE: OnceLock<Mutex<FxHashMap<LocalModId, Vec<Symbol>>>> = OnceLock::new();
 
 /// Returns the names of the test items in the given module.
 /// The names are sorted using the default `Symbol` ordering.
-fn test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId) -> Vec<Symbol> {
+fn test_item_names(tcx: TyCtxt<'_>, module: LocalModId) -> Vec<Symbol> {
     let cache = TEST_ITEM_NAMES_CACHE.get_or_init(|| Mutex::new(FxHashMap::default()));
     let mut map = cache.lock().unwrap();
     match map.entry(module) {

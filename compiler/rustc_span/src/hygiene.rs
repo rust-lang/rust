@@ -41,7 +41,7 @@ use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::{debug, trace};
 
-use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, StableCrateId};
+use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, ModId, StableCrateId};
 use crate::edition::Edition;
 use crate::source_map::SourceMap;
 use crate::symbol::{Symbol, kw, sym};
@@ -1012,7 +1012,7 @@ pub struct ExpnData {
     /// if this `ExpnData` corresponds to a macro invocation
     pub macro_def_id: Option<DefId>,
     /// The normal module (`mod`) in which the expanded macro was defined.
-    pub parent_module: Option<DefId>,
+    pub parent_module: Option<ModId>,
     /// Suppresses the `unsafe_code` lint for code produced by this macro.
     pub(crate) allow_internal_unsafe: bool,
     /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
@@ -1037,7 +1037,7 @@ impl ExpnData {
         allow_internal_unstable: Option<Arc<[Symbol]>>,
         edition: Edition,
         macro_def_id: Option<DefId>,
-        parent_module: Option<DefId>,
+        parent_module: Option<ModId>,
         allow_internal_unsafe: bool,
         local_inner_macros: bool,
         collapse_debuginfo: bool,
@@ -1066,7 +1066,7 @@ impl ExpnData {
         call_site: Span,
         edition: Edition,
         macro_def_id: Option<DefId>,
-        parent_module: Option<DefId>,
+        parent_module: Option<ModId>,
     ) -> ExpnData {
         ExpnData {
             kind,
@@ -1091,7 +1091,7 @@ impl ExpnData {
         edition: Edition,
         allow_internal_unstable: Arc<[Symbol]>,
         macro_def_id: Option<DefId>,
-        parent_module: Option<DefId>,
+        parent_module: Option<ModId>,
     ) -> ExpnData {
         ExpnData {
             allow_internal_unstable: Some(allow_internal_unstable),
