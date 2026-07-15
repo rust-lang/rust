@@ -247,6 +247,12 @@ struct MatcherPos {
     /// The index into `TtParser::locs`, which represents the "dot".
     idx: u32,
 
+    /// The input position being targeted.
+    ///
+    /// This is an index into or to the end of `seen_tokens`; in the latter case, it then refers
+    /// to the latest token from `parser`.
+    input_pos: u32,
+
     /// The matches made against metavar decls so far. On a successful match, this vector ends up
     /// with one element per metavar decl in the matcher. Each element records token trees matched
     /// against the relevant metavar by the black box parser. An element will be a `MatchedSeq` if
@@ -523,8 +529,14 @@ impl TtParser {
         track: &mut T,
     ) {
         let matcher_loc = &matcher[mp.idx as usize];
-        track.trying_match(parser.approx_token_stream_pos(), &parser.token, mp.idx);
-        let token = &parser.token;
+        // How far from the latest token are we.
+        let age = parser.approx_token_stream_pos() - mp.input_pos;
+        let token = if age == 0 {
+            &parser.token
+        } else {
+            &self.seen_tokens[self.seen_tokens.len() - age as usize]
+        };
+        track.trying_match(mp.input_pos, token, mp.idx);
 
         match matcher_loc {
             MatcherLoc::Token { token: t } => {
@@ -540,8 +552,9 @@ impl TtParser {
                     mp.idx += 1;
                     self.cur_mps.push(mp);
                 } else if token_name_eq(t, token) {
-                    track.matched_one(parser.approx_token_stream_pos(), mp.idx);
+                    track.matched_one(mp.input_pos, mp.idx);
                     mp.idx += 1;
+                    mp.input_pos += 1;
                     self.next_mps.push(mp);
                 }
             }
@@ -565,7 +578,11 @@ impl TtParser {
                 if matches!(op, KleeneOp::ZeroOrMore | KleeneOp::ZeroOrOne) {
                     // Try zero matches of this sequence, by skipping over it.
                     let idx = idx_first_after.try_into().unwrap();
-                    self.cur_mps.push(MatcherPos { idx, matches: Rc::clone(&mp.matches) });
+                    self.cur_mps.push(MatcherPos {
+                        idx,
+                        input_pos: mp.input_pos,
+                        matches: Rc::clone(&mp.matches),
+                    });
                 }
 
                 // Try one or more matches of this sequence, by entering it.
@@ -578,6 +595,7 @@ impl TtParser {
                 // around the loop.
                 let ending_mp = MatcherPos {
                     idx: mp.idx + 1, // +1 skips the Kleene op
+                    input_pos: mp.input_pos,
                     matches: Rc::clone(&mp.matches),
                 };
                 self.cur_mps.push(ending_mp);
@@ -594,14 +612,16 @@ impl TtParser {
                 // fail quietly when it is processed next time around the loop.
                 let ending_mp = MatcherPos {
                     idx: mp.idx + 2, // +2 skips the separator and the Kleene op
+                    input_pos: mp.input_pos,
                     matches: Rc::clone(&mp.matches),
                 };
                 self.cur_mps.push(ending_mp);
 
                 if token_name_eq(token, separator) {
                     // The separator matches the current token. Advance past it.
-                    track.matched_one(parser.approx_token_stream_pos(), mp.idx);
+                    track.matched_one(mp.input_pos, mp.idx);
                     mp.idx += 1;
+                    mp.input_pos += 1;
                     self.next_mps.push(mp);
                 }
             }
@@ -622,7 +642,7 @@ impl TtParser {
                 // EOF tokens would cause unexpected processing in `match_one()`.
                 debug_assert!(parser.token != token::Eof, "{kind:?} should not accept EOF tokens");
 
-                track.matched_one(parser.approx_token_stream_pos(), mp.idx);
+                track.matched_one(mp.input_pos, mp.idx);
 
                 if self.maybe_ambig_mp.is_some() {
                     self.found_ambiguity = true;
@@ -638,7 +658,7 @@ impl TtParser {
                     return;
                 }
 
-                track.matched_one(parser.approx_token_stream_pos(), mp.idx);
+                track.matched_one(mp.input_pos, mp.idx);
 
                 if self.maybe_ambig_mp.is_some() {
                     self.found_ambiguity = true;
@@ -668,6 +688,7 @@ impl TtParser {
                 mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
 
                 mp.idx += 1;
+                mp.input_pos = parser.approx_token_stream_pos();
                 self.seen_tokens.clear();
                 self.cur_mps.push(mp);
                 None
@@ -697,7 +718,11 @@ impl TtParser {
         // `next_mps` replenish `cur_mps` and we start over again.
         self.cur_mps.clear();
         self.seen_tokens.clear();
-        self.cur_mps.push(MatcherPos { idx: 0, matches: Rc::clone(&self.empty_matches) });
+        self.cur_mps.push(MatcherPos {
+            idx: 0,
+            input_pos: parser.approx_token_stream_pos(),
+            matches: Rc::clone(&self.empty_matches),
+        });
 
         loop {
             assert!(!self.cur_mps.is_empty());
