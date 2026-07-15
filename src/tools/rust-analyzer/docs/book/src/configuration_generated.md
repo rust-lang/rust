@@ -991,7 +991,7 @@ to always show them).
 
 Default: `false`
 
-Show inlay hints for closure captures.
+Show inlay hints for closure and coroutine captures.
 
 
 ## rust-analyzer.inlayHints.closureReturnTypeHints.enable {#inlayHints.closureReturnTypeHints.enable}
