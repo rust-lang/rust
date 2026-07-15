@@ -64,7 +64,7 @@ impl Clone for TestDB {
             files: self.files.clone(),
             crates_map: self.crates_map.clone(),
             events: self.events.clone(),
-            nonce: Nonce::new(),
+            nonce: self.nonce,
         }
     }
 }

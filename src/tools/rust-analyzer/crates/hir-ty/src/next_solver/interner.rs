@@ -2484,34 +2484,37 @@ mod tls_cache {
         db_nonce: Nonce,
     }
 
+    impl Cache {
+        const fn default() -> Cache {
+            Cache {
+                cache: GlobalCache::new(),
+                revision: Revision::max(),
+                db_nonce: Nonce::invalid(),
+            }
+        }
+    }
+
     thread_local! {
-        static GLOBAL_CACHE: RefCell<Option<Cache>> = const { RefCell::new(None) };
+        static GLOBAL_CACHE: RefCell<Cache> = const { RefCell::new(Cache::default()) };
     }
 
     pub(super) fn reinit_cache(db: &dyn HirDatabase) {
         GLOBAL_CACHE.with_borrow_mut(|handle| {
             let (db_nonce, revision) = db.nonce_and_revision();
-            match handle {
-                Some(handle) => {
-                    if handle.revision != revision || db_nonce != handle.db_nonce {
-                        *handle = Cache { cache: GlobalCache::default(), revision, db_nonce };
-                    }
-                }
-                None => *handle = Some(Cache { cache: GlobalCache::default(), revision, db_nonce }),
+            if handle.revision != revision || db_nonce != handle.db_nonce {
+                *handle = Cache { cache: GlobalCache::default(), revision, db_nonce };
             }
         })
     }
 
+    #[inline]
     pub(super) fn borrow_assume_valid<'db, T>(
         db: &'db dyn HirDatabase,
         f: impl FnOnce(&mut GlobalCache<DbInterner<'db>>) -> T,
     ) -> T {
         if cfg!(debug_assertions) {
-            let get_state = || {
-                GLOBAL_CACHE.with_borrow(|handle| {
-                    handle.as_ref().map(|handle| (handle.db_nonce, handle.revision))
-                })
-            };
+            let get_state =
+                || GLOBAL_CACHE.with_borrow(|handle| (handle.db_nonce, handle.revision));
             let old_state = get_state();
             reinit_cache(db);
             let new_state = get_state();
@@ -2519,7 +2522,6 @@ mod tls_cache {
         }
 
         GLOBAL_CACHE.with_borrow_mut(|handle| {
-            let handle = handle.as_mut().expect("you assumed the cache is valid!");
             // SAFETY: No idea
             f(unsafe {
                 std::mem::transmute::<
@@ -2535,7 +2537,7 @@ mod tls_cache {
     /// Should be called before getting memory usage estimations, as the solver cache
     /// is per-revision and usually should be excluded from estimations.
     pub fn clear_tls_solver_cache() {
-        GLOBAL_CACHE.with_borrow_mut(|handle| *handle = None);
+        GLOBAL_CACHE.with_borrow_mut(|handle| *handle = Cache::default());
     }
 }
 
