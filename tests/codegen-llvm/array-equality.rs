@@ -1,5 +1,5 @@
 //@ revisions: llvm-current llvm-next
-//@[llvm-current] ignore-llvm-version: 23-99
+//@[llvm-current] ignore-llvm-version: 23 - 99
 //@[llvm-next] min-llvm-version: 23
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
 //@ only-x86_64
