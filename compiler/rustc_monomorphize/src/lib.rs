@@ -16,6 +16,7 @@ mod collector;
 mod diagnostics;
 mod graph_checks;
 mod mono_checks;
+mod offload_manifest;
 mod partitioning;
 mod util;
 
