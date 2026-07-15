@@ -217,6 +217,29 @@ pub mod epoll {
     }
 }
 
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "illumos"))]
+pub mod eventfd {
+    use super::*;
+
+    // We want to do individual read/write calls here so we avoid read_exact/write_all.
+
+    #[track_caller]
+    pub fn read_val(fd: i32) -> io::Result<u64> {
+        let mut buf = [0u8; 8];
+        let len = errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) })?;
+        assert_eq!(len, 8);
+        Ok(u64::from_ne_bytes(buf))
+    }
+
+    #[track_caller]
+    pub fn write_val(fd: i32, val: u64) -> io::Result<()> {
+        let buf = val.to_ne_bytes();
+        let len = errno_result(unsafe { libc::write(fd, buf.as_ptr().cast(), buf.len()) })?;
+        assert_eq!(len, 8);
+        Ok(())
+    }
+}
+
 pub mod net {
     use super::*;
 
