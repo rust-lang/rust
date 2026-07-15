@@ -1,8 +1,8 @@
 // The `#[expect]` sharing with derive-generated code also applies when the
-// derive itself is expanded from a macros 2.0 macro: the derive expansion is
-// the innermost one, so the expansion-kind gate recognizes the impl no matter
-// what macro produced the derived item. A genuinely unfulfilled expectation
-// is still reported exactly once.
+// derive itself is expanded from a macros 2.0 macro: the impl is still created
+// by the innermost (derive) expansion, so it is recognized as derive-generated
+// no matter what macro produced the derived item. A genuinely unfulfilled
+// expectation is still reported exactly once.
 
 //@ check-pass
 
