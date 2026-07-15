@@ -18,8 +18,8 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
    |
-LL |         let res = errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8) }).unwrap();
-   |                                                                                  ^ thread got stuck here
+LL |         let val = eventfd::read_val(fd).unwrap();
+   |                   ^^^^^^^^^^^^^^^^^^^^^ thread got stuck here
    |
    = note: this is on thread `unnamed-ID`
 note: the current function got called indirectly due to this code
@@ -27,9 +27,11 @@ note: the current function got called indirectly due to this code
    |
 LL |       let thread2 = thread::spawn(move || {
    |  ___________________^
-LL | |         let mut buf: [u8; 8] = [0; 8];
-...  |
-LL | |         assert_eq!(counter, 1_u64);
+LL | |         // This read will block initially, then get unblocked by thread3, then get blocked again
+LL | |         // because the `read` in thread1 executes first and set the counter to 0 again.
+LL | |         let val = eventfd::read_val(fd).unwrap();
+LL | |
+LL | |         assert_eq!(val, 1_u64);
 LL | |     });
    | |______^
 

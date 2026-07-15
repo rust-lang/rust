@@ -381,15 +381,12 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return finish.call(this, Err(ErrorKind::WouldBlock.into()));
             } else {
                 socket.blocked_write_tid.borrow_mut().push(this.active_thread());
-                // Blocking socketpair with a full buffer.
-                // Block the current thread; only keep a weak ref for this.
-                let weak_socket = FileDescriptionRef::downgrade(&socket);
                 this.block_thread(
                     BlockReason::VirtualSocket,
                     None,
                     callback!(
                         @capture<'tcx> {
-                            weak_socket: WeakFileDescriptionRef<VirtualSocket>,
+                            socket: FileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
                             len: usize,
                             is_non_block: bool,
@@ -397,9 +394,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                         |this, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
-                            // If we got unblocked, then our peer successfully upgraded its weak
-                            // ref to us. That means we can also upgrade our weak ref.
-                            let socket = weak_socket.upgrade().unwrap();
                             this.virtual_socket_write(socket, ptr, len, is_non_block, finish)
                         }
                     ),
@@ -478,15 +472,12 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return finish.call(this, Err(ErrorKind::WouldBlock.into()));
             } else {
                 socket.blocked_read_tid.borrow_mut().push(this.active_thread());
-                // Blocking socketpair with writer and empty buffer.
-                // Block the current thread; only keep a weak ref for this.
-                let weak_socket = FileDescriptionRef::downgrade(&socket);
                 this.block_thread(
                     BlockReason::VirtualSocket,
                     None,
                     callback!(
                         @capture<'tcx> {
-                            weak_socket: WeakFileDescriptionRef<VirtualSocket>,
+                            socket: FileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
                             len: usize,
                             is_non_block: bool,
@@ -494,9 +485,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                         |this, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
-                            // If we got unblocked, then our peer successfully upgraded its weak
-                            // ref to us. That means we can also upgrade our weak ref.
-                            let socket = weak_socket.upgrade().unwrap();
                             this.virtual_socket_read(socket, ptr, len, is_non_block, finish)
                         }
                     ),

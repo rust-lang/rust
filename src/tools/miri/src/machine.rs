@@ -2050,7 +2050,7 @@ macro_rules! callback {
         impl<$tcx, $($lft),*> VisitProvenance for Callback<$tcx, $($lft),*> {
             fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
                 $(
-                    self.$name.visit_provenance(_visit);
+                    VisitProvenance::visit_provenance(&self.$name, _visit);
                 )*
             }
         }

@@ -26,27 +26,20 @@ fn main() {
 
     let thread1 = thread::spawn(move || {
         // This read will block initially.
-        let buf: [u8; 8] = read_exact_array(fd).unwrap();
-        let counter = u64::from_ne_bytes(buf);
-        assert_eq!(counter, 1_u64);
+        let val = eventfd::read_val(fd).unwrap();
+        assert_eq!(val, 1_u64);
     });
 
     let thread2 = thread::spawn(move || {
-        let mut buf: [u8; 8] = [0; 8];
         // This read will block initially, then get unblocked by thread3, then get blocked again
         // because the `read` in thread1 executes first and set the counter to 0 again.
-        let res = errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8) }).unwrap();
+        let val = eventfd::read_val(fd).unwrap();
         //~^ERROR: deadlocked
-        assert_eq!(res, 8);
-        let counter = u64::from_ne_bytes(buf);
-        assert_eq!(counter, 1_u64);
+        assert_eq!(val, 1_u64);
     });
 
     let thread3 = thread::spawn(move || {
-        let sized_8_data = 1_u64.to_ne_bytes();
-        // Write 1 to the counter, so both thread1 and thread2 will unblock.
-        // Make sure that write is successful.
-        write_all(fd, &sized_8_data).unwrap();
+        eventfd::write_val(fd, 1).unwrap();
     });
 
     thread1.join().unwrap();
