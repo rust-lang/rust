@@ -334,9 +334,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.tcx.dcx()
     }
 
-    pub(crate) fn report_errors(&mut self, krate: &Crate) {
+    pub(crate) fn report_errors(&mut self, krate: &Crate, use_injections: Vec<UseError<'tcx>>) {
         self.report_delayed_vis_resolution_errors();
-        self.report_with_use_injections(krate);
+        self.report_with_use_injections(krate, use_injections);
 
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
             self.lint_buffer.buffer_lint(
@@ -390,9 +390,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    fn report_with_use_injections(&mut self, krate: &Crate) {
+    fn report_with_use_injections(&mut self, krate: &Crate, use_injections: Vec<UseError<'tcx>>) {
         for UseError { mut err, candidates, node_id, instead, suggestion, path, is_call } in
-            mem::take(&mut self.use_injections)
+            use_injections
         {
             let (span, found_use) = if node_id != DUMMY_NODE_ID {
                 UsePlacementFinder::check(krate, node_id)
