@@ -30,7 +30,6 @@ use rustc_ast::token::{
 };
 use rustc_ast::tokenstream::{
     ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, TokenTreeCursor,
-    WithTokens,
 };
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
@@ -1817,26 +1816,64 @@ impl<'a> Parser<'a> {
     }
 }
 
-// Metavar captures of various kinds. The more complex node kinds (e.g. `Item`, `Expr`) store
-// tokens in the node itself because those tokens are needed for non-terminal parsing and for other
-// reasons (e.g. cfg expansion). Simpler node kinds (e.g. `Block`, `Path`) only need tokens for
-// non-terminal parsing so here they store the tokens next to the node, keeping the node size
-// smaller.
+// Extra data stored here to help re-parse the token streams later.
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
-    Item(Box<ast::Item>),
-    Block(WithTokens<Box<ast::Block>>),
-    Stmt(Box<ast::Stmt>),
-    Pat(WithTokens<Box<ast::Pat>>, NtPatKind),
-    Expr(Box<ast::Expr>, NtExprKind),
-    Literal(Box<ast::Expr>),
-    Ty(WithTokens<Box<ast::Ty>>),
-    // These tokens are for the attr item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
-    Meta(WithTokens<Box<ast::AttrItem>>),
-    Path(WithTokens<Box<ast::Path>>),
-    Vis(WithTokens<Box<ast::Visibility>>),
-    Guard(Box<ast::Guard>),
+    Item(Span, TokenStream),
+    Block(Span, TokenStream),
+    Stmt(Span, TokenStream),
+    Pat(Span, TokenStream, NtPatKind),
+    Expr {
+        span: Span,
+        tokens: TokenStream,
+        kind: NtExprKind,
+        can_begin_literal_maybe_minus: bool,
+        can_begin_string_literal: bool,
+    },
+    Literal(Span, TokenStream),
+    Ty {
+        span: Span,
+        tokens: TokenStream,
+        is_path: bool,
+    },
+    Meta {
+        span: Span,
+        // These tokens are for the attr item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
+        tokens: TokenStream,
+        has_meta_form: bool,
+    },
+    Path(Span, TokenStream),
+    Vis(Span, TokenStream),
+    Guard(Span, TokenStream),
+}
+
+impl ParseNtResult {
+    pub fn metavar_kind(&self) -> MetaVarKind {
+        match self {
+            ParseNtResult::Tt(..) => MetaVarKind::TT,
+            ParseNtResult::Ident(..) => MetaVarKind::Ident,
+            ParseNtResult::Lifetime(..) => MetaVarKind::Lifetime,
+            ParseNtResult::Item(..) => MetaVarKind::Item,
+            ParseNtResult::Block(..) => MetaVarKind::Block,
+            ParseNtResult::Stmt(..) => MetaVarKind::Stmt,
+            &ParseNtResult::Pat(.., pat_kind) => MetaVarKind::Pat(pat_kind),
+            &ParseNtResult::Expr {
+                kind,
+                can_begin_literal_maybe_minus,
+                can_begin_string_literal,
+                ..
+            } => {
+                MetaVarKind::Expr { kind, can_begin_literal_maybe_minus, can_begin_string_literal }
+            }
+            ParseNtResult::Literal(..) => MetaVarKind::Literal,
+            &ParseNtResult::Ty { is_path, .. } => MetaVarKind::Ty { is_path },
+            &ParseNtResult::Meta { has_meta_form, .. } => MetaVarKind::Meta { has_meta_form },
+            ParseNtResult::Path(..) => MetaVarKind::Path,
+            ParseNtResult::Vis(..) => MetaVarKind::Vis,
+            ParseNtResult::Guard(..) => MetaVarKind::Guard,
+        }
+    }
 }

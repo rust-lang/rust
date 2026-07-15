@@ -1,10 +1,9 @@
 use std::mem;
 
 use rustc_ast::token::{
-    self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
+    self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, Token, TokenKind,
 };
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::{ExprKind, StmtKind, TyKind, UnOp};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagCtxtHandle, PResult, listify, pluralize};
 use rustc_parse::lexer::nfc_normalize;
@@ -12,8 +11,7 @@ use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::{
-    BytePos, Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, kw, sym,
-    with_metavar_spans,
+    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans,
 };
 use smallvec::{SmallVec, smallvec};
 
@@ -481,8 +479,9 @@ fn transcribe_pnr<'tx>(
         )
     };
 
-    let tt = match pnr {
-        ParseNtResult::Tt(tt) => {
+    let metavar_kind = pnr.metavar_kind();
+    let tt = match *pnr {
+        ParseNtResult::Tt(ref tt) => {
             // `tt`s are emitted into the output stream directly as "raw tokens",
             // without wrapping them into groups. Other variables are emitted into
             // the output stream as groups with `Delimiter::Invisible` to maintain
@@ -492,92 +491,33 @@ fn transcribe_pnr<'tx>(
         ParseNtResult::Ident(ident, is_raw) => {
             tscx.marker.mark_span(&mut sp);
             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
-            let kind = token::NtIdent(*ident, *is_raw);
+            let kind = token::NtIdent(ident, is_raw);
             TokenTree::token_alone(kind, sp)
         }
         ParseNtResult::Lifetime(ident, is_raw) => {
             tscx.marker.mark_span(&mut sp);
             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
-            let kind = token::NtLifetime(*ident, *is_raw);
+            let kind = token::NtLifetime(ident, is_raw);
             TokenTree::token_alone(kind, sp)
         }
-        ParseNtResult::Item(item) => {
-            mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
-        }
-        ParseNtResult::Block(block) => {
-            mk_delimited(block.node.span, MetaVarKind::Block, TokenStream::from_ast(block))
-        }
-        ParseNtResult::Stmt(stmt) => {
-            let stream = if let StmtKind::Empty = stmt.kind {
-                // FIXME: Properly collect tokens for empty statements.
-                TokenStream::token_alone(token::Semi, stmt.span)
-            } else {
-                TokenStream::from_ast(stmt)
-            };
-            mk_delimited(stmt.span, MetaVarKind::Stmt, stream)
-        }
-        ParseNtResult::Pat(pat, pat_kind) => {
-            mk_delimited(pat.node.span, MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
-        }
-        ParseNtResult::Expr(expr, kind) => {
-            let (can_begin_literal_maybe_minus, can_begin_string_literal) = match &expr.kind {
-                ExprKind::Lit(_) => (true, true),
-                ExprKind::Unary(UnOp::Neg, e) if matches!(&e.kind, ExprKind::Lit(_)) => {
-                    (true, false)
-                }
-                _ => (false, false),
-            };
-            mk_delimited(
-                expr.span,
-                MetaVarKind::Expr {
-                    kind: *kind,
-                    can_begin_literal_maybe_minus,
-                    can_begin_string_literal,
-                },
-                TokenStream::from_ast(expr),
-            )
-        }
-        ParseNtResult::Literal(lit) => {
-            mk_delimited(lit.span, MetaVarKind::Literal, TokenStream::from_ast(lit))
-        }
-        ParseNtResult::Ty(ty) => {
-            let is_path = matches!(&ty.node.kind, TyKind::Path(None, _path));
-            mk_delimited(ty.node.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
-        }
-        ParseNtResult::Meta(attr_item) => {
-            let has_meta_form = attr_item.node.meta_kind().is_some();
-            mk_delimited(
-                attr_item.node.span(),
-                MetaVarKind::Meta { has_meta_form },
-                TokenStream::from_ast(attr_item),
-            )
-        }
-        ParseNtResult::Path(path) => {
-            mk_delimited(path.node.span, MetaVarKind::Path, TokenStream::from_ast(path))
-        }
-        ParseNtResult::Vis(vis) => {
-            mk_delimited(vis.node.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
-        }
-        ParseNtResult::Guard(guard) => {
-            // FIXME(macro_guard_matcher):
-            // Perhaps it would be better to treat the leading `if` as part of `ast::Guard` during parsing?
-            // Currently they are separate, but in macros we match and emit the leading `if` for `:guard` matchers, which creates some inconsistency.
-
-            let leading_if_span =
-                guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
-            let mut ts =
-                TokenStream::token_alone(token::Ident(kw::If, IdentIsRaw::No), leading_if_span);
-            ts.push_stream(TokenStream::from_ast(&guard.cond));
-
-            mk_delimited(guard.span_with_leading_if, MetaVarKind::Guard, ts)
-        }
+        ParseNtResult::Item(span, ref ts)
+        | ParseNtResult::Block(span, ref ts)
+        | ParseNtResult::Stmt(span, ref ts)
+        | ParseNtResult::Pat(span, ref ts, _)
+        | ParseNtResult::Expr { span, tokens: ref ts, .. }
+        | ParseNtResult::Literal(span, ref ts)
+        | ParseNtResult::Ty { span, tokens: ref ts, .. }
+        | ParseNtResult::Meta { span, tokens: ref ts, .. }
+        | ParseNtResult::Path(span, ref ts)
+        | ParseNtResult::Vis(span, ref ts)
+        | ParseNtResult::Guard(span, ref ts) => mk_delimited(span, metavar_kind, ts.clone()),
     };
 
     tscx.result.push(tt);
     Ok(())
 }
 
-/// Turn `${expr(...)}` metavariable expressionss into tokens.
+/// Turn `${expr(...)}` metavariable expressions into tokens.
 fn transcribe_metavar_expr<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     dspan: DelimSpan,
@@ -991,6 +931,17 @@ fn extract_symbol_from_pnr<'a>(
     pnr: &ParseNtResult,
     span_err: Span,
 ) -> PResult<'a, Symbol> {
+    // FIXME(bal-e): traverse delimiters?
+    fn as_single_tok_kind(ts: &TokenStream) -> Option<&TokenKind> {
+        if ts.len() == 1
+            && let Some(TokenTree::Token(t, _)) = ts.get(0)
+        {
+            Some(&t.kind)
+        } else {
+            None
+        }
+    }
+
     match pnr {
         ParseNtResult::Ident(nt_ident, is_raw) => {
             if let IdentIsRaw::Yes = is_raw {
@@ -1016,14 +967,16 @@ fn extract_symbol_from_pnr<'a>(
             },
             _,
         )) => Ok(*symbol),
-        ParseNtResult::Literal(expr)
-            if let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) = &expr.kind =>
+        ParseNtResult::Literal(_, ts)
+            if let Some(TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None })) =
+                as_single_tok_kind(ts) =>
         {
             Ok(*symbol)
         }
-        ParseNtResult::Literal(expr)
-            if let ExprKind::Lit(lit @ Lit { kind: LitKind::Integer, symbol, suffix }) =
-                &expr.kind =>
+        ParseNtResult::Literal(_, ts)
+            if let Some(TokenKind::Literal(
+                lit @ Lit { kind: LitKind::Integer, symbol, suffix },
+            )) = as_single_tok_kind(ts) =>
         {
             if lit.is_semantic_float() {
                 Err(dcx
