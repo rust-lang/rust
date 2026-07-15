@@ -74,7 +74,8 @@ impl fmt::Display for AllocError {
 /// * Moving, subtyping, unsize-coercing, or trait-upcasting an allocator does not change
 ///   what the allocator is equivalent to.
 /// * Copying or cloning allocator results in an allocator that's
-///   equivalent to the initial allocator.
+///   equivalent to the initial allocator, should the [`AllocatorClone`] trait
+///   be implemented.
 ///
 /// Additionally, implementors of `Allocator` may specify additional equivalences
 /// between allocators. It is the responsibility of such implementors to make sure
@@ -86,12 +87,6 @@ impl fmt::Display for AllocError {
 ///   the allocator inside.
 /// * All `Global` allocator instances are equivalent with each other.
 /// * All `System` allocator instances are equivalent with each other.
-///
-/// Note: Currently, the interaction between cloning and unsize-coercing allocators
-/// is unsound, and there is ongoing discussion on how to revise the `Allocator` trait
-/// to fix this. See [#156920].
-///
-/// [#156920]: https://github.com/rust-lang/rust/issues/156920
 ///
 /// ### Currently allocated memory
 ///
@@ -162,8 +157,8 @@ impl fmt::Display for AllocError {
 /// is [*currently allocated*] by the allocator points to valid memory,
 /// until that memory block is [*invalidated*]. The implementor must also
 /// not violate this invariant of `Allocator` via allocator equivalences
-/// that are in the implementor's control (e.g., via a misbehaving
-/// `impl Clone for Box<MyAllocator>`).
+/// that are in the implementor's control (e.g., via an incorrect `unsafe
+/// impl AllocatorClone for MyAllocator`).
 ///
 /// Users of this trait must not rely on side effects of allocating or deallocating method calls
 /// on `Allocator` implementors being observable (i.e. it is sound for an allocation followed
@@ -337,12 +332,9 @@ pub const unsafe trait Allocator {
     /// The memory block will contain the following contents after a successful call to
     /// `grow_zeroed`:
     ///   * Bytes `0..old_layout.size()` are preserved from the original allocation.
-    ///   * Bytes `old_layout.size()..old_size` will either be preserved or zeroed, depending on
-    ///     the allocator implementation. `old_size` refers to the size of the memory block prior
-    ///     to the `grow_zeroed` call, which may be larger than the size that was originally
-    ///     requested when it was allocated.
-    ///   * Bytes `old_size..new_size` are zeroed. `new_size` refers to the size of the memory
-    ///     block returned by the `grow_zeroed` call.
+    ///   * Bytes `old_layout.size()..new_size` are zeroed. `new_size` refers to the size
+    ///     of the memory block returned by the `grow_zeroed` call, which may be larger than
+    ///     `new_layout.size()`.
     ///
     /// # Safety
     ///
@@ -574,7 +566,7 @@ pub unsafe trait NoaliasAllocator: Allocator {}
 ///
 /// Additionally, the bound that allocators do not unwind when (de)allocating also applies
 /// to guaranteeing allocators will not unwind when cloned. This bound trivially holds for
-/// allocators that are `Copy`.
+/// allocators that are `Copy`, assuming the `Clone` implementation is not different.
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait AllocatorClone: Allocator + Clone {}
 

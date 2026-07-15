@@ -146,7 +146,7 @@ pub struct IntoIter<
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, A: AllocatorClone> Clone for IntoIter<T, A> {
+impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
     fn clone(&self) -> Self {
         Self { list: self.list.clone() }
     }
@@ -2160,7 +2160,7 @@ impl<T: Ord, A: Allocator> Ord for LinkedList<T, A> {
 
 // `AllocatorClone` bound is necessary due to the `split_off` in `clone_from`.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, A: AllocatorClone> Clone for LinkedList<T, A> {
+impl<T: Clone, A: Allocator + Clone> Clone for LinkedList<T, A> {
     fn clone(&self) -> Self {
         let mut list = Self::new_in(self.alloc.clone());
         list.extend(self.iter().cloned());
@@ -2175,11 +2175,14 @@ impl<T: Clone, A: AllocatorClone> Clone for LinkedList<T, A> {
     /// resources of `self`'s elements as well.
     fn clone_from(&mut self, source: &Self) {
         let mut source_iter = source.iter();
-        if self.len() > source.len() {
-            self.split_off(source.len());
-        }
-        for (elem, source_elem) in self.iter_mut().zip(&mut source_iter) {
+        for elem in self.iter_mut() {
+            let Some(source_elem) = source_iter.next() else {
+                break;
+            };
             elem.clone_from(source_elem);
+        }
+        while self.len() > source.len() {
+            self.pop_back();
         }
         if !source_iter.is_empty() {
             self.extend(source_iter.cloned());
