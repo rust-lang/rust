@@ -51,6 +51,20 @@ pub(crate) struct CouldntDumpMonoStats {
 }
 
 #[derive(Diagnostic)]
+#[diag("could not write offload monomorphization manifest to `{$path}`: {$err}")]
+pub(crate) struct OffloadManifestWriteError {
+    pub path: String,
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("could not read offload monomorphization manifest from `{$path}`: {$err}")]
+pub(crate) struct OffloadManifestReadError {
+    pub path: String,
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("the above error was encountered while instantiating `{$kind} {$instance}`")]
 pub(crate) struct EncounteredErrorWhileInstantiating<'tcx> {
     #[primary_span]
