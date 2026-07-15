@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-strict-provenance
+//@run-native
 #![feature(
     portable_simd,
     unsized_const_params,
@@ -11,6 +12,8 @@
     f128
 )]
 #![allow(incomplete_features, internal_features, non_camel_case_types)]
+#![cfg_attr(not(miri), allow(unused))]
+
 use std::fmt::{self, Debug, Formatter};
 use std::intrinsics::simd as intrinsics;
 use std::ptr;
@@ -64,6 +67,7 @@ impl<T: Copy, const N: usize> PackedSimd<T, N> {
 #[rustc_nounwind]
 pub const unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
+#[cfg(miri)] // FIXME(f16_f128) doesn't always work natively
 fn simd_ops_f16() {
     use intrinsics::*;
 
@@ -284,6 +288,7 @@ fn simd_ops_f64() {
     assert_eq!(f64x2::from_array([f64::NAN, 0.0]).reduce_min(), 0.0);
 }
 
+#[cfg(miri)] // FIXME(f16_f128) doesn't always work natively
 fn simd_ops_f128() {
     use intrinsics::*;
 
@@ -433,6 +438,11 @@ fn simd_ops_i32() {
     assert_eq!(b & i32x4::splat(2), i32x4::from_array([0, 2, 2, 0]));
     assert_eq!(b | i32x4::splat(2), i32x4::from_array([3, 2, 3, -2]));
     assert_eq!(b ^ i32x4::splat(2), i32x4::from_array([3, 0, 1, -2]));
+    // shr is sign-dependent so also test it unsigned
+    assert_eq!(
+        u32x4::from_array([1, 2, 3, u32::MAX - 3]) >> u32x4::splat(1),
+        u32x4::from_array([0, 1, 1, u32::MAX / 2 - 1]),
+    );
 
     assert_eq!(a.simd_eq(i32x4::splat(5) * b), Mask::from_array([false, true, false, false]));
     assert_eq!(a.simd_ne(i32x4::splat(5) * b), Mask::from_array([true, false, true, true]));
@@ -801,6 +811,7 @@ fn simd_gather_scatter() {
 }
 
 fn simd_round() {
+    #[cfg(miri)] // FIXME(f16_f128) doesn't always work natively
     unsafe {
         use intrinsics::*;
 
@@ -868,6 +879,7 @@ fn simd_round() {
         f64x4::from_array([0.0, 1.0, 2.0, -4.0])
     );
 
+    #[cfg(miri)] // FIXME(f16_f128) doesn't always work natively
     unsafe {
         use intrinsics::*;
 
@@ -1108,9 +1120,11 @@ fn simd_ops_non_pow2() {
 
 fn main() {
     simd_mask();
+    #[cfg(miri)]
     simd_ops_f16();
     simd_ops_f32();
     simd_ops_f64();
+    #[cfg(miri)]
     simd_ops_f128();
     simd_ops_i32();
     simd_ops_non_pow2();
