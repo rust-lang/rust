@@ -1,9 +1,9 @@
 //@only-target: linux android illumos
-// test_epoll_block_then_unblock and test_epoll_race depend on a deterministic schedule.
 //@revisions: edge_triggered level_triggered
 //@run-native
 
 use std::convert::TryInto;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
@@ -26,6 +26,7 @@ fn main() {
     wakeup_on_new_interest();
     multiple_events_wake_multiple_threads();
     waiting_threads_unblocked_after_epoll_close();
+    waiting_threads_unblocked_after_socketpair_close();
 }
 
 // This test allows edge-triggered epoll_wait to block and then unblock
@@ -125,7 +126,7 @@ fn test_notification_after_timeout() {
     check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[0] }], 10);
 }
 
-// This test shows a data race before epoll had vector clocks added.
+// This test shows that there is no data race when synchronizing through an epoll wakeup.
 fn test_epoll_race() {
     // Create an epoll instance.
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -256,4 +257,48 @@ fn waiting_threads_unblocked_after_epoll_close() {
     check_epoll_wait(epfd, &[Ev { events: EPOLLIN, data: fds[0] }], -1);
 
     t1.join().unwrap();
+}
+
+/// Check correct behavior when a socketpair FD is closed while a thread blocks on it.
+/// That thread keeps a reference so it is only really closed when that thread wakes up
+/// again, and at that point an epoll notification should be triggered.
+fn waiting_threads_unblocked_after_socketpair_close() {
+    // Create an epoll instance.
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
+
+    // Create a socketpair instance.
+    let mut fds = [-1, -1];
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
+
+    // And an atomic variable for synchronization.
+    let flag = AtomicBool::new(false);
+
+    thread::scope(|s| {
+        // Thread 1 will block reading on fds[0], thread 2 blocks on epoll for fds[1].
+        s.spawn(|| {
+            let data = read_exact_array::<4>(fds[0]).unwrap();
+            assert_eq!(&data, b"1234");
+            flag.store(true, Ordering::Relaxed);
+        });
+        s.spawn(|| {
+            // Indefinitely block until `fds[1]` becomes readable.
+            epoll_ctl_add(epfd, fds[1], EPOLLIN | EPOLLET_OR_ZERO).unwrap();
+            check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLHUP, data: fds[1] }], -1);
+            flag.store(true, Ordering::Relaxed);
+        });
+
+        // Let the threads go and do their setup.
+        thread::sleep(Duration::from_millis(10));
+
+        // Once they did their setup, close fds[0] (will not really be closed since there is a thread
+        // blocked on it).
+        unsafe { errno_check(libc::close(fds[0])) };
+
+        // This should *not* yet wake up anyone. So we wait a bit and check the flag.
+        thread::sleep(Duration::from_millis(10));
+        assert_eq!(flag.load(Ordering::Relaxed), false);
+
+        // ... and then write to fds[1] to make it readable.
+        write_all(fds[1], b"1234").unwrap();
+    });
 }
