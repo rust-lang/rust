@@ -434,6 +434,13 @@ pub(crate) struct TtParser {
     /// `parse_tt`.
     next_mps: Vec<MatcherPos>,
 
+    /// Previously seen tokens from the parser.
+    ///
+    /// Tokens after the latest meta-variable that have been matched against a fixed token and
+    /// [`Parser::bump()`]-ed past are stored here. This list is cleared every time a meta-variable
+    /// is parsed.
+    seen_tokens: Vec<Token>,
+
     /// Pre-allocate an empty match array, so it can be cloned cheaply for macros with many rules
     /// that have no metavars.
     empty_matches: Rc<Vec<NamedMatch>>,
@@ -455,6 +462,7 @@ impl TtParser {
         TtParser {
             cur_mps: vec![],
             next_mps: vec![],
+            seen_tokens: vec![],
             empty_matches: Rc::new(vec![]),
             maybe_ambig_mp: None,
             found_ambiguity: false,
@@ -499,6 +507,7 @@ impl TtParser {
         // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
         // process the next token.
         self.cur_mps.append(&mut self.next_mps);
+        self.seen_tokens.push(parser.token);
         parser.to_mut().bump();
 
         None
@@ -659,11 +668,13 @@ impl TtParser {
                 mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
 
                 mp.idx += 1;
+                self.seen_tokens.clear();
                 self.cur_mps.push(mp);
                 None
             }
 
             MatcherLoc::Eof => {
+                self.seen_tokens.clear();
                 let matches = Rc::unwrap_or_clone(mp.matches).into_iter();
                 Some(Success(self.nameize(matcher, matches)))
             }
@@ -685,6 +696,7 @@ impl TtParser {
         // possible next positions into `next_mps`. After some post-processing, the contents of
         // `next_mps` replenish `cur_mps` and we start over again.
         self.cur_mps.clear();
+        self.seen_tokens.clear();
         self.cur_mps.push(MatcherPos { idx: 0, matches: Rc::clone(&self.empty_matches) });
 
         loop {
