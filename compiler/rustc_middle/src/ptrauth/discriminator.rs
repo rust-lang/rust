@@ -329,7 +329,8 @@ fn is_complex_compatible_float(ty: Ty<'_>) -> bool {
 }
 
 // Canonicalize `Option<fn ptr>` to `fn ptr`. This is so that we can express C's null ptr argument.
-// Please see pauth-fn-ptr-type-discrimination-null-arg.rs test for an example.
+// Please see: pauth-fn-ptr-type-discrimination-option-callback.rs,
+// pauth-fn-ptr-type-discrimination-option-return.rs and pauth-fn-ptr-type-discrimination-option.rs
 fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     if let ty::Adt(def, args) = ty.kind()
         && tcx.is_diagnostic_item(sym::Option, def.did())
