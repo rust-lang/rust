@@ -68,7 +68,7 @@
 //! [`OnceCell<T>`] is somewhat of a hybrid of `Cell` and `RefCell` that works for values that
 //! typically only need to be set once. This means that a reference `&T` can be obtained without
 //! moving or copying the inner value (unlike `Cell`) but also without runtime checks (unlike
-//! `RefCell`). However, its value can also not be updated once set unless you have a mutable
+//! `RefCell`). However, once set, its value cannot be updated unless you have a mutable
 //! reference to the `OnceCell`.
 //!
 //! `OnceCell` provides the following methods:

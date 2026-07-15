@@ -2025,6 +2025,7 @@ unsafe impl<T: PinCoerceUnsized> PinCoerceUnsized for Pin<T> {}
 #[rustc_diagnostic_item = "pin_macro"]
 // `super` gets removed by rustfmt
 #[rustfmt::skip]
+#[diagnostic::opaque]
 pub macro pin($value:expr $(,)?) {
     'p: {
         super let mut pinned = $value;

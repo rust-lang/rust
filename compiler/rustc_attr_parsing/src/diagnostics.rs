@@ -280,6 +280,10 @@ pub(crate) struct AttrCrateLevelOnly;
 pub(crate) struct DoNotRecommendDoesNotExpectArgs;
 
 #[derive(Diagnostic)]
+#[diag("`#[diagnostic::opaque]` does not expect any arguments")]
+pub(crate) struct OpaqueDoesNotExpectArgs;
+
+#[derive(Diagnostic)]
 #[diag("invalid `crate_type` value")]
 pub(crate) struct UnknownCrateTypes {
     #[subdiagnostic]
