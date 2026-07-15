@@ -1,5 +1,7 @@
 # About this guide
 
+<!-- date-check: Jul 2026 -->
+
 This guide is meant to help document how rustc – the Rust compiler – works,
 as well as to help new contributors get involved in rustc development.
 
