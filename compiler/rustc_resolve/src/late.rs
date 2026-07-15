@@ -5290,7 +5290,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 });
             }
 
-            ExprKind::ForLoop { ref pat, ref iter, ref body, label, kind: _ } => {
+            ExprKind::ForLoop(ForLoop { ref pat, ref iter, ref body, label, kind: _ }) => {
                 self.visit_expr(iter);
                 self.with_rib(ValueNS, RibKind::Normal, |this| {
                     this.resolve_pattern_top(pat, PatternSource::For);

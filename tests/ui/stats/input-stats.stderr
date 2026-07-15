@@ -16,13 +16,13 @@ ast-stats - Ptr                       56 (NN.N%)             1
 ast-stats - Ref                       56 (NN.N%)             1
 ast-stats - ImplicitSelf             112 (NN.N%)             2
 ast-stats - Path                     560 (NN.N%)            10
-ast-stats Expr                     648 (NN.N%)             9            72
-ast-stats - InlineAsm                 72 (NN.N%)             1
-ast-stats - Match                     72 (NN.N%)             1
-ast-stats - Path                      72 (NN.N%)             1
-ast-stats - Struct                    72 (NN.N%)             1
-ast-stats - Lit                      144 (NN.N%)             2
-ast-stats - Block                    216 (NN.N%)             3
+ast-stats Expr                     576 (NN.N%)             9            64
+ast-stats - InlineAsm                 64 (NN.N%)             1
+ast-stats - Match                     64 (NN.N%)             1
+ast-stats - Path                      64 (NN.N%)             1
+ast-stats - Struct                    64 (NN.N%)             1
+ast-stats - Lit                      128 (NN.N%)             2
+ast-stats - Block                    192 (NN.N%)             3
 ast-stats Pat                      448 (NN.N%)             7            64
 ast-stats - Struct                    64 (NN.N%)             1
 ast-stats - Wild                      64 (NN.N%)             1
@@ -57,7 +57,7 @@ ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  7_048                   127
+ast-stats Total                  6_976                   127
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats

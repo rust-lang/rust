@@ -526,7 +526,7 @@ impl<'a> State<'a> {
                 self.space();
                 self.print_block_with_attrs(blk, attrs, cb, ib);
             }
-            ast::ExprKind::ForLoop { pat, iter, body, label, kind } => {
+            ast::ExprKind::ForLoop(ast::ForLoop { pat, iter, body, label, kind }) => {
                 if let Some(label) = label {
                     self.print_ident(label.ident);
                     self.word_space(":");
