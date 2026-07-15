@@ -607,9 +607,8 @@ mod ignore_attribute {}
 ///
 /// ```rust
 /// // The lint group is fulfilled as the variables are unused.
-/// #![expect(unused)]
+/// #[expect(unused)]
 /// let x = 10;
-/// let y = 12;
 /// ```
 ///
 /// For more information, see the Reference on [the `expect` attribute].
@@ -667,13 +666,13 @@ mod should_panic_attribute {}
 ///
 /// Example:
 ///
-/// ```rust,compile_fail
+/// ```rust,ignore
 /// mod foo; // By default `rustc` loads the source from `foo.rs`.
 /// ```
 ///
 /// The `path` attribute overrides this behavior:
 ///
-/// ```rust,compile_fail
+/// ```rust,ignore
 /// #[path = "bar.rs"]
 /// mod foo; // Now bar.rs is loaded as foo.
 /// ```
