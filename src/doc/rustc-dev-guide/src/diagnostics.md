@@ -339,19 +339,18 @@ For example,
 
 Most of these methods will accept strings, but it is recommended that typed
 identifiers for translatable diagnostics be used for new diagnostics (see
-[Translation][translation]).
+[Translation]).
 
 [translation]: ./diagnostics/translation.md
 
 `Diag` allows you to add related notes and suggestions to an error
-before emitting it by calling the [`emit`][emit] method.
+before emitting it by calling the [`emit`] method.
 (Failing to either emit or [cancel] a `Diag` will result in an ICE.) See the
 [docs][diag] for more info on what you can do.
 
 [spanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.span_err
 [strspanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.struct_span_err
-[diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html
-[emit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.emit
+[`emit`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.emit
 [cancel]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.cancel
 
 ```rust,ignore
@@ -390,12 +389,11 @@ To this end,
 suggestions pleasingly in the terminal, or (when the `--error-format json` flag
 is passed) as JSON for consumption by tools like [`rustfix`][rustfix].
 
-[diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html
 [rustfix]: https://github.com/rust-lang/rustfix
 
-Not all suggestions should be applied mechanically, they have a degree of
-confidence in the suggested code, from high
-(`Applicability::MachineApplicable`) to low (`Applicability::MaybeIncorrect`).
+Not all suggestions should be applied mechanically;
+they have a degree of confidence in the suggested code,
+from high (`Applicability::MachineApplicable`) to low (`Applicability::MaybeIncorrect`).
 Be conservative when choosing the level.
 Use the [`span_suggestion`][span_suggestion] method of `Diag` to
 make a suggestion.
@@ -1049,3 +1047,5 @@ Will format the message into
 ```text
 "Self = `i8`, T = `i32`, this = `From`, trait = `From<i32>`, context = `a function`"
 ```
+
+[diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html

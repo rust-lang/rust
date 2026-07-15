@@ -122,7 +122,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = std_crates_for_run_make(&run);
+        let crates = std_crates_for_make_run(&run);
         let builder = run.builder;
 
         // Force compilation of the standard library from source if the `library` is modified. This allows
@@ -479,9 +479,9 @@ fn copy_self_contained_objects(
     target_deps
 }
 
-/// Resolves standard library crates for `Std::run_make` for any build kind (like check, doc,
+/// Resolves standard library crates for [`Std::make_run`] for any build kind (like check, doc,
 /// build, clippy, etc.).
-pub fn std_crates_for_run_make(run: &RunConfig<'_>) -> Vec<String> {
+pub fn std_crates_for_make_run(run: &RunConfig<'_>) -> Vec<String> {
     let mut crates = run.make_run_crates(builder::Alias::Library);
 
     // For no_std targets, we only want to check core and alloc

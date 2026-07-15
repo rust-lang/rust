@@ -125,26 +125,42 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     fn set_bindings_effective_visibilities(&mut self, module_id: LocalDefId) {
         let module = self.r.expect_module(module_id.to_def_id());
         for (_, name_resolution) in self.r.resolutions(module).borrow().iter() {
-            let Some(mut decl) = name_resolution.borrow().best_decl() else {
+            let Some(decl) = name_resolution.borrow().best_decl() else {
                 continue;
             };
-            // Set the given effective visibility level to `Level::Direct` and
-            // sets the rest of the `use` chain to `Level::Reexported` until
-            // we hit the actual exported item.
-            let priv_vis = |this: &Self, parent_id, decl| match parent_id {
-                ParentId::Def(_) => this.current_private_vis,
-                ParentId::Import(_) => this.r.private_vis_decl(decl),
-            };
-            let mut parent_id = ParentId::Def(module_id);
-            while let DeclKind::Import { source_decl, .. } = decl.kind {
-                self.update_import(decl, parent_id, priv_vis(self, parent_id, decl));
-                parent_id = ParentId::Import(decl);
-                decl = source_decl;
+            self.update_decl_chain(decl, ParentId::Def(module_id));
+        }
+    }
+
+    /// Update effective visibilities for the whole reexport chain of a declaration.
+    /// Set the given effective visibility level to `Level::Direct` and
+    /// sets the rest of the `use` chain to `Level::Reexported` until
+    /// we hit the actual exported item.
+    fn update_decl_chain(&mut self, mut decl: Decl<'ra>, mut parent_id: ParentId<'ra>) {
+        let priv_vis = |this: &Self, parent_id, decl| match parent_id {
+            ParentId::Def(_) => this.current_private_vis,
+            ParentId::Import(_) => this.r.private_vis_decl(decl),
+        };
+        while let DeclKind::Import { source_decl, .. } = decl.kind {
+            self.update_import(decl, parent_id, priv_vis(self, parent_id, decl));
+            if let Some(max_vis_decl) = decl.ambiguity_vis_max.get() {
+                // The name is exported with the visibility of the most visible declaration
+                // in its ambiguous glob set (see `DeclData::vis`), so everything on that
+                // declaration's reexport chain, including the final item, must get its
+                // effective visibility from that declaration as well. Otherwise the item
+                // would be considered unreachable by dead code analysis and metadata
+                // encoding despite being exported (see the regression test
+                // `ambiguous-import-visibility-globglob-mir.rs`).
+                // This also avoids the most visible import in an ambiguous glob set
+                // being reported as unused.
+                self.update_decl_chain(max_vis_decl, parent_id);
             }
-            if let Some(def_id) = decl.res().opt_def_id().and_then(|id| id.as_local()) {
-                let priv_vis = priv_vis(self, parent_id, decl);
-                self.update_def(def_id, decl.vis().expect_local(), parent_id, priv_vis);
-            }
+            parent_id = ParentId::Import(decl);
+            decl = source_decl;
+        }
+        if let Some(def_id) = decl.res().opt_def_id().and_then(|id| id.as_local()) {
+            let priv_vis = priv_vis(self, parent_id, decl);
+            self.update_def(def_id, decl.vis().expect_local(), parent_id, priv_vis);
         }
     }
 
@@ -194,10 +210,6 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             parent_id.level(),
             tcx,
         );
-        if let Some(max_vis_decl) = decl.ambiguity_vis_max.get() {
-            // Avoid the most visible import in an ambiguous glob set being reported as unused.
-            self.update_import(max_vis_decl, parent_id, priv_vis);
-        }
     }
 
     fn update_def(

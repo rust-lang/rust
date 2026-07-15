@@ -36,9 +36,8 @@ use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, BinOpKind, ByRef, Const, CoroutineKind,
-    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, ImplRestriction,
-    MutRestriction, Mutability, Recovered, RestrictionKind, Safety, StrLit, Visibility,
-    VisibilityKind,
+    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasTokens, ImplRestriction, MutRestriction,
+    Mutability, Recovered, RestrictionKind, Safety, StrLit, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -1662,7 +1661,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn collect_tokens_no_attrs<R: HasAttrs + HasTokens>(
+    fn collect_tokens_no_attrs<R: HasTokens>(
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, R> {

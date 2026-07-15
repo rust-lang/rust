@@ -2,7 +2,7 @@ use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{
     CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy,
 };
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition::Edition2024;
 
 use super::prelude::*;

@@ -11,7 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, Target, find_attr};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::errors::report_lit_error;
+use rustc_session::diagnostics::report_lit_error;
 use rustc_span::{ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Spanned, Symbol, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 use visit::{Visitor, walk_expr};
@@ -597,7 +597,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         for (idx, arg) in args.iter().cloned().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let node_id = self.next_node_id();
-                self.create_def(node_id, None, DefKind::AnonConst, f.span);
+                self.create_def(node_id, None, DefKind::AnonConst, arg.span);
                 let const_value =
                     if let ControlFlow::Break(span) = WillCreateDefIdsVisitor.visit_expr(&arg) {
                         Box::new(Expr {
@@ -1644,7 +1644,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             && !self.tcx.features().coroutines()
             && !self.tcx.features().gen_blocks()
         {
-            rustc_session::errors::feature_err(
+            rustc_session::diagnostics::feature_err(
                 &self.tcx.sess,
                 sym::yield_expr,
                 span,

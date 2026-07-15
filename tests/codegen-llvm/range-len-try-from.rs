@@ -4,6 +4,7 @@
 
 //@ compile-flags: -Copt-level=3
 //@ only-64bit
+//@ ignore-s390x OPT missing on s390x https://github.com/llvm/llvm-project/issues/208712
 
 #![crate_type = "lib"]
 
