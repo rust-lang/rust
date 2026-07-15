@@ -1673,48 +1673,45 @@ macro_rules! uint_impl {
             self % rhs
         }
 
-        /// Same value as `self | other`, but UB if any bit position is set in both inputs.
+        /// Disjoint, bitwise or. Computes `self | rhs`, assuming no one bits in common.
         ///
-        /// This is a situational micro-optimization for places where you'd rather
-        /// use addition on some platforms and bitwise or on other platforms, based
-        /// on exactly which instructions combine better with whatever else you're
-        /// doing.  Note that there's no reason to bother using this for places
-        /// where it's clear from the operations involved that they can't overlap.
-        /// For example, if you're combining `u16`s into a `u32` with
-        /// `((a as u32) << 16) | (b as u32)`, that's fine, as the backend will
-        /// know those sides of the `|` are disjoint without needing help.
+        /// Practically, this requires that `self | rhs`, `self ^ rhs`, and `self + rhs` all
+        /// yield the same result, allowing for any of the three to be emitted in code gen
+        /// -- depending on whichever is cheapest.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(disjoint_bitor)]
         ///
-        /// // SAFETY: `1` and `4` have no bits in common.
-        /// unsafe {
-        #[doc = concat!("    assert_eq!(1_", stringify!($SelfT), ".unchecked_disjoint_bitor(4), 5);")]
-        /// }
+        /// assert_eq!(
+        ///     // SAFETY: `1` and `4` have no ones in common.
+        #[doc = concat!("    unsafe { 1_", stringify!($SelfT), ".unchecked_disjoint_bitor(4) },")]
+        ///     5,
+        /// );
         /// ```
         ///
         /// # Safety
         ///
-        /// Requires that `(self & other) == 0`, otherwise it's immediate UB.
-        ///
-        /// Equivalently, requires that `(self | other) == (self + other)`.
+        /// This results in undefined behaviour if `self` and `rhs` are not fully disjoint,
+        /// i.e. if `self & rhs == 0` doesn't apply.
         #[unstable(feature = "disjoint_bitor", issue = "135758")]
         #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
         #[inline]
-        pub const unsafe fn unchecked_disjoint_bitor(self, other: Self) -> Self {
+        pub const unsafe fn unchecked_disjoint_bitor(self, rhs: Self) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
-                concat!(stringify!($SelfT), "::unchecked_disjoint_bitor cannot have overlapping bits"),
+                concat!(stringify!($SelfT), "::unchecked_disjoint_bitor cannot bitor overlapping ones"),
                 (
                     lhs: $SelfT = self,
-                    rhs: $SelfT = other,
+                    rhs: $SelfT = rhs,
                 ) => (lhs & rhs) == 0,
             );
 
-            // SAFETY: Same precondition
-            unsafe { intrinsics::disjoint_bitor(self, other) }
+            // SAFETY: Same precondition.
+            unsafe { intrinsics::disjoint_bitor(self, rhs) }
         }
 
         /// Returns the logarithm of the number with respect to an arbitrary base,
@@ -3675,7 +3672,6 @@ macro_rules! uint_impl {
         pub const fn div_euclid(self, rhs: Self) -> Self {
             self / rhs
         }
-
 
         /// Calculates the least remainder of `self` when divided by
         /// `rhs`.
