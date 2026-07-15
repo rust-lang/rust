@@ -108,7 +108,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // If old_fd and new_fd point to the same description, then `dup_fd` ensures we keep the underlying file description alive.
             if let Some(old_new_fd) = this.machine.fds.fds.insert(new_fd_num, fd) {
                 // Ignore close error (not interpreter's) according to dup2() doc.
-                old_new_fd.close_ref(this.machine.communicate(), this)?.ok();
+                old_new_fd.close_ref(this)?.ok();
             }
         }
         interp_ok(Scalar::from_i32(new_fd_num))
@@ -286,7 +286,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.remove(fd_num) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
-        let result = fd.close_ref(this.machine.communicate(), this)?;
+        let result = fd.close_ref(this)?;
         // return `0` if close is successful
         let result = result.map(|()| 0i32);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))

@@ -109,11 +109,10 @@ impl<T> VisitProvenance for FileDescriptionRef<T> {
 pub trait FileDescriptionExt: 'static {
     fn into_rc_any(self: FileDescriptionRef<Self>) -> Rc<dyn Any>;
 
-    /// We wrap the regular `close` function generically, so both handle `Rc::into_inner`
+    /// We wrap the regular `close` function generically, to both handle `Rc::into_inner`
     /// and epoll interest management.
     fn close_ref<'tcx>(
         self: FileDescriptionRef<Self>,
-        communicate_allowed: bool,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>>;
 }
@@ -125,15 +124,17 @@ impl<T: FileDescription + 'static> FileDescriptionExt for T {
 
     fn close_ref<'tcx>(
         self: FileDescriptionRef<Self>,
-        communicate_allowed: bool,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         match Rc::into_inner(self.0) {
             Some(fd) => {
+                // This was the last strong reference.
                 // There might have been readiness watchers interested in this FD. Remove them.
+                // FIXME: this isn't actually reliable, we don't always call `close_ref` when
+                // a FileDescriptionRef gets dropped!
                 ecx.machine.readiness_interests.remove_watchers_for_fd(fd.id);
 
-                fd.inner.destroy(fd.id, communicate_allowed, ecx)
+                interp_ok(Ok(()))
             }
             None => {
                 // Not the last reference.
@@ -204,22 +205,6 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         _offset: SeekFrom,
     ) -> InterpResult<'tcx, io::Result<u64>> {
         throw_unsup_format!("cannot seek on {}", self.name());
-    }
-
-    /// Destroys the file description. Only called when the last duplicate file descriptor is closed.
-    ///
-    /// Note that if you do anything here you must also make sure that any time you drop
-    /// a `FileDescriptionRef` for your description type, that is dropped via `close_ref`!
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>>
-    where
-        Self: Sized,
-    {
-        interp_ok(Ok(()))
     }
 
     /// Returns the metadata for this FD, if available.
