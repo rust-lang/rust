@@ -408,33 +408,6 @@ impl FileDescription for FileHandle {
         interp_ok((&mut &self.file).seek(offset))
     }
 
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        // We sync the file if it was opened in a mode different than read-only.
-        if self.writable {
-            // `File::sync_all` does the checks that are done when closing a file. We do this to
-            // to handle possible errors correctly.
-            let result = self.file.sync_all();
-            // Now we actually close the file and return the result.
-            drop(self.file);
-            interp_ok(result)
-        } else {
-            // We drop the file, this closes it but ignores any errors
-            // produced when closing it. This is done because
-            // `File::sync_all` cannot be done over files like
-            // `/dev/urandom` which are read-only. Check
-            // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
-            // for a deeper discussion.
-            drop(self.file);
-            interp_ok(Ok(()))
-        }
-    }
-
     fn metadata<'tcx>(&self) -> InterpResult<'tcx, Either<io::Result<fs::Metadata>, &'static str>> {
         interp_ok(Either::Left(self.file.metadata()))
     }
