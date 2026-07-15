@@ -245,7 +245,7 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
 #[derive(Debug)]
 struct MatcherPos {
     /// The index into `TtParser::locs`, which represents the "dot".
-    idx: usize,
+    idx: u32,
 
     /// The matches made against metavar decls so far. On a successful match, this vector ends up
     /// with one element per metavar decl in the matcher. Each element records token trees matched
@@ -513,7 +513,7 @@ impl TtParser {
         mut mp: MatcherPos,
         track: &mut T,
     ) {
-        let matcher_loc = &matcher[mp.idx];
+        let matcher_loc = &matcher[mp.idx as usize];
         track.trying_match(parser.approx_token_stream_pos(), &parser.token, mp.idx);
         let token = &parser.token;
 
@@ -555,8 +555,8 @@ impl TtParser {
 
                 if matches!(op, KleeneOp::ZeroOrMore | KleeneOp::ZeroOrOne) {
                     // Try zero matches of this sequence, by skipping over it.
-                    self.cur_mps
-                        .push(MatcherPos { idx: idx_first_after, matches: Rc::clone(&mp.matches) });
+                    let idx = idx_first_after.try_into().unwrap();
+                    self.cur_mps.push(MatcherPos { idx, matches: Rc::clone(&mp.matches) });
                 }
 
                 // Try one or more matches of this sequence, by entering it.
@@ -575,7 +575,7 @@ impl TtParser {
 
                 if op != KleeneOp::ZeroOrOne {
                     // Try another repetition.
-                    mp.idx = idx_first;
+                    mp.idx = idx_first.try_into().unwrap();
                     self.cur_mps.push(mp);
                 }
             }
@@ -599,7 +599,7 @@ impl TtParser {
             &MatcherLoc::SequenceKleeneOpAfterSep { idx_first } => {
                 // We are past the sequence separator. This can't be a `?` Kleene op, because they
                 // don't permit separators. Try another repetition.
-                mp.idx = idx_first;
+                mp.idx = idx_first.try_into().unwrap();
                 self.cur_mps.push(mp);
             }
             &MatcherLoc::MetaVarDecl { kind, .. } => {
@@ -623,7 +623,7 @@ impl TtParser {
             }
             MatcherLoc::Eof => {
                 // We are past the matcher's end, and not in a sequence. Try to end things.
-                debug_assert_eq!(mp.idx, matcher.len() - 1);
+                debug_assert_eq!(mp.idx as usize, matcher.len() - 1);
 
                 if *token != token::Eof {
                     return;
