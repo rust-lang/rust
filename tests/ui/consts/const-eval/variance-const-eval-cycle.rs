@@ -1,6 +1,9 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/41849>.
+//! Evaluating const required to evaluate trait, which required variance
+//! information, which required const to be evaluated.
 //@ run-pass
+
 #![allow(dead_code)]
-// Regression test for #41849.
 
 use std::ops::Mul;
 
