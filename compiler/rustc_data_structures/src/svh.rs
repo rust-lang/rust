@@ -41,6 +41,10 @@ impl Svh {
     pub fn to_hex(self) -> String {
         format!("{:032x}", self.hash.as_u128())
     }
+
+    pub fn as_fingerprint(self) -> Fingerprint {
+        self.hash
+    }
 }
 
 impl fmt::Display for Svh {

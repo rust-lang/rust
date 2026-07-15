@@ -1761,6 +1761,16 @@ impl<'tcx> OwnerInfo<'tcx> {
     pub fn node(&self) -> OwnerNode<'tcx> {
         self.nodes.node()
     }
+
+    // A fingerprint that identifies the contents of the OwnerInfo.
+    // It only depends on `nodes` and `attrs` because `parenting` and `trait_map` are
+    // deterministically calculated from `nodes` and `attrs`.
+    #[inline]
+    pub fn fingerprint(&self) -> Fingerprint {
+        let body = self.nodes.opt_hash.expect("HIR hash requested without needs_hir_hash");
+        let attrs = self.attrs.opt_hash.expect("HIR hash requested without needs_hir_hash");
+        body.combine(attrs)
+    }
 }
 
 #[derive(Copy, Clone, Debug, StableHash)]
