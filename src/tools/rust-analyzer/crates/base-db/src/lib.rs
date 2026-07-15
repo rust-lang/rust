@@ -66,7 +66,6 @@ pub use crate::{
     },
 };
 use dashmap::{DashMap, mapref::entry::Entry};
-pub use query_group;
 use rustc_hash::{FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
