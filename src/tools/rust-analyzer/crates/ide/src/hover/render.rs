@@ -502,7 +502,11 @@ pub(super) fn definition(
         }
         _ => def.label(db, display_target),
     };
-    let docs = def.docs_with_rangemap(db, famous_defs, display_target);
+    let docs = if config.documentation {
+        def.docs_with_rangemap(db, famous_defs, display_target)
+    } else {
+        None
+    };
     let value = || match def {
         Definition::EnumVariant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
