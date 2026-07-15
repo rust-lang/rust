@@ -271,6 +271,7 @@ pub const unsafe trait Allocator {
     /// If this returns `Ok`, then the memory block referenced by `ptr` has been [*invalidated*].
     /// The old `ptr` must not be used to access the memory, even if the allocation was grown in-place.
     /// The newly returned pointer is the only valid pointer for accessing this memory now.
+    /// All bytes past `old_layout.size()` should be assumed to be uninitialised.
     ///
     /// If this method returns `Err`, then the memory block has not been *invalidated*,
     /// and the contents of the memory block are unaltered.
@@ -396,6 +397,7 @@ pub const unsafe trait Allocator {
     /// If this returns `Ok`, then the memory block referenced by `ptr` has been [*invalidated*].
     /// The old `ptr` must not be used to access the memory, even if the allocation was shrunk in-place.
     /// The newly returned pointer is the only valid pointer for accessing this memory now.
+    /// All bytes past `new_layout.size()` should be assumed to be uninitialised.
     ///
     /// If this method returns `Err`, then the memory block has not been *invalidated*,
     /// and the contents of the memory block are unaltered.
