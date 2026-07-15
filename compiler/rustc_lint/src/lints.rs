@@ -3037,3 +3037,7 @@ pub(crate) enum Ptr2IntSuggestion<'tcx> {
         cast_span: Span,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag("crater fail!!!!")]
+pub(crate) struct RestPatternUsedOnStructWithAllPrivateFields;
