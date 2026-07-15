@@ -56,40 +56,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // FIXME: avoid allocating memory
         let dest = this.force_allocation(dest)?;
 
-        match this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, &dest, ret)? {
-            EmulateItemResult::NotSupported => {
-                // We haven't handled the intrinsic, let's see if we can use a fallback body.
-                if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
-                    throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
-                }
-                let intrinsic_fallback_is_spec = Symbol::intern("intrinsic_fallback_is_spec");
-                if this
-                    .tcx
-                    .get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_is_spec])
-                    .next()
-                    .is_none()
-                {
-                    throw_unsup_format!(
-                        "Miri can only use intrinsic fallback bodies that exactly reflect the specification: they fully check for UB and are as non-deterministic as possible. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_is_spec]` attribute to it; also ping @rust-lang/miri when you do that"
-                    );
-                }
-                interp_ok(Some(ty::Instance {
-                    def: ty::InstanceKind::Item(instance.def_id()),
-                    args: instance.args,
-                }))
+        let res =
+            this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, &dest, ret)?;
+        res.jump_to_next_block(this, &dest, ret, unwind, |this| {
+            // We haven't handled the intrinsic, let's see if we can use a fallback body.
+            if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+                throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
             }
-            EmulateItemResult::NeedsReturn => {
-                trace!("{:?}", this.dump_place(&dest.clone().into()));
-                this.return_to_block(ret)?;
-                interp_ok(None)
+            let intrinsic_fallback_is_spec = Symbol::intern("intrinsic_fallback_is_spec");
+            if this
+                .tcx
+                .get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_is_spec])
+                .next()
+                .is_none()
+            {
+                throw_unsup_format!(
+                    "Miri can only use intrinsic fallback bodies that exactly reflect the specification: they fully check for UB and are as non-deterministic as possible. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_is_spec]` attribute to it; also ping @rust-lang/miri when you do that"
+                );
             }
-            EmulateItemResult::NeedsUnwind => {
-                // Jump to the unwind block to begin unwinding.
-                this.unwind_to_block(unwind)?;
-                interp_ok(None)
-            }
-            EmulateItemResult::AlreadyJumped => interp_ok(None),
-        }
+            interp_ok(Some(ty::Instance {
+                def: ty::InstanceKind::Item(instance.def_id()),
+                args: instance.args,
+            }))
+        })
     }
 
     /// Emulates a Miri-supported intrinsic (not supported by the core engine).

@@ -41,3 +41,31 @@ pub enum EmulateItemResult {
     /// The item is not supported.
     NotSupported,
 }
+
+impl EmulateItemResult {
+    pub fn jump_to_next_block<'tcx, T: Default>(
+        self,
+        ecx: &mut crate::MiriInterpCx<'tcx>,
+        dest: &crate::MPlaceTy<'tcx>,
+        ret: Option<rustc_middle::mir::BasicBlock>,
+        unwind: rustc_middle::mir::UnwindAction,
+        not_supported: impl FnOnce(&mut crate::MiriInterpCx<'tcx>) -> crate::InterpResult<'tcx, T>,
+    ) -> crate::InterpResult<'tcx, T> {
+        use crate::*;
+
+        match self {
+            EmulateItemResult::NeedsReturn => {
+                trace!("{:?}", ecx.dump_place(&dest.clone().into()));
+                ecx.return_to_block(ret)?;
+                interp_ok(T::default())
+            }
+            EmulateItemResult::NeedsUnwind => {
+                // Jump to the unwind block to begin unwinding.
+                ecx.unwind_to_block(unwind)?;
+                interp_ok(T::default())
+            }
+            EmulateItemResult::AlreadyJumped => interp_ok(T::default()),
+            EmulateItemResult::NotSupported => not_supported(ecx),
+        }
+    }
+}

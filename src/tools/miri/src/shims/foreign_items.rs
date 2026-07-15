@@ -73,29 +73,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let dest = this.force_allocation(dest)?;
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
-        match this.emulate_foreign_item_inner(link_name, abi, args, &dest)? {
-            EmulateItemResult::NeedsReturn => {
-                trace!("{:?}", this.dump_place(&dest.clone().into()));
-                this.return_to_block(ret)?;
+        let res = this.emulate_foreign_item_inner(link_name, abi, args, &dest)?;
+        res.jump_to_next_block(this, &dest, ret, unwind, |this| {
+            if let Some(body) = this.lookup_exported_symbol(link_name)? {
+                return interp_ok(Some(body));
             }
-            EmulateItemResult::NeedsUnwind => {
-                // Jump to the unwind block to begin unwinding.
-                this.unwind_to_block(unwind)?;
-            }
-            EmulateItemResult::AlreadyJumped => (),
-            EmulateItemResult::NotSupported => {
-                if let Some(body) = this.lookup_exported_symbol(link_name)? {
-                    return interp_ok(Some(body));
-                }
 
-                throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
-                    "can't call foreign function `{link_name}` on OS `{os}`",
-                    os = this.tcx.sess.target.os,
-                )));
-            }
-        }
-
-        interp_ok(None)
+            throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
+                "can't call foreign function `{link_name}` on OS `{os}`",
+                os = this.tcx.sess.target.os,
+            )));
+        })
     }
 
     fn is_dyn_sym(&self, name: &str) -> bool {
