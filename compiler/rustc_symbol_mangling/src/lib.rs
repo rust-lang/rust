@@ -220,11 +220,6 @@ pub fn symbol_name_from_attrs<'tcx>(
             // Use provided name
             return Some(name.to_string());
         }
-
-        if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
-            // Don't mangle
-            return Some(tcx.item_name(def_id).to_string());
-        }
     }
 
     None
