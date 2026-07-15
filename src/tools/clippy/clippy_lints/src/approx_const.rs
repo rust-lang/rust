@@ -75,7 +75,7 @@ impl ApproxConstant {
 }
 
 impl LateLintPass<'_> for ApproxConstant {
-    fn check_lit(&mut self, cx: &LateContext<'_>, _hir_id: HirId, lit: Lit, _negated: bool) {
+    fn check_lit(&mut self, cx: &LateContext<'_>, _hir_id: HirId, lit: Lit, _is_negated_pat: bool) {
         match lit.node {
             LitKind::Float(s, LitFloatType::Suffixed(fty)) => match fty {
                 FloatTy::F16 => self.check_known_consts(cx, lit.span, s, "f16"),

@@ -21,7 +21,7 @@ use rustc_hir::attrs::{
     OptimizeAttr, ReprAttr,
 };
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalModDefId;
+use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
@@ -1801,7 +1801,7 @@ fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) 
     }
 }
 
-fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
+fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModId) {
     let check_attr_visitor = &mut CheckAttrVisitor { tcx, abort: Cell::new(false) };
     tcx.hir_visit_item_likes_in_module(module_def_id, check_attr_visitor);
     if module_def_id.to_local_def_id().is_top_level_module() {
