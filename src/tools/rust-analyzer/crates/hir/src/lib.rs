@@ -94,8 +94,8 @@ use hir_ty::{
     method_resolution::{self, InherentImpls, MethodResolutionContext},
     mir::interpret_mir,
     next_solver::{
-        AliasTy, AnyImplId, ClauseKind, DbInterner, EarlyBinder, ErrorGuaranteed, GenericArg,
-        GenericArgs, ParamEnv, PolyFnSig, Region, SolverDefId, Ty, TyKind, TypingMode,
+        AliasTy, AnyImplId, ClauseKind, DbInterner, EarlyBinder, ErrorGuaranteed, FnSig,
+        GenericArg, GenericArgs, ParamEnv, PolyFnSig, Region, SolverDefId, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
     traits::{self, is_inherent_impl_coherent, structurally_normalize_ty},
@@ -2380,10 +2380,16 @@ impl Function {
         (fn_ptr.owner, sig_tys.with(hdr))
     }
 
+    fn erased_fn_sig<'db>(self, db: &'db dyn HirDatabase) -> (TypeOwnerId, FnSig<'db>) {
+        let (owner, sig) = self.fn_sig(db);
+        let sig = DbInterner::new_no_crate(db).instantiate_bound_regions_with_erased(sig);
+        (owner, sig)
+    }
+
     /// Get this function's return type
     pub fn ret_type(self, db: &dyn HirDatabase) -> Type<'_> {
-        let (owner, sig) = self.fn_sig(db);
-        Type { owner, ty: EarlyBinder::bind(sig.skip_binder().output()) }
+        let (owner, sig) = self.erased_fn_sig(db);
+        Type { owner, ty: EarlyBinder::bind(sig.output()) }
     }
 
     pub fn async_ret_type<'db>(self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
@@ -2393,10 +2399,12 @@ impl Function {
         if !self.is_async(db) {
             return None;
         }
-        let ret_ty =
-            db.callable_item_signature(id.into()).instantiate_identity().skip_binder().output();
+        let interner = DbInterner::new_no_crate(db);
+        let sig = db.callable_item_signature(id.into()).instantiate_identity().skip_norm_wip();
+        let ret_ty = interner.instantiate_bound_regions_with_erased(sig).output();
         for pred in ret_ty.impl_trait_bounds(db).into_iter().flatten() {
-            if let ClauseKind::Projection(projection) = pred.kind().skip_binder()
+            let clause = interner.instantiate_bound_regions_with_erased(pred.kind());
+            if let ClauseKind::Projection(projection) = clause
                 && let Some(output_ty) = projection.term.as_type()
             {
                 return Some(Type::new(id.into(), output_ty));
@@ -2425,15 +2433,14 @@ impl Function {
     }
 
     pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param<'_>> {
-        let (owner, sig) = self.fn_sig(db);
+        let (owner, sig) = self.erased_fn_sig(db);
         let func = match self.id {
             AnyFunctionId::FunctionId(id) => Callee::Def(CallableDefId::FunctionId(id)),
             AnyFunctionId::BuiltinDeriveImplMethod { method, impl_ } => {
                 Callee::BuiltinDeriveImplMethod { method, impl_ }
             }
         };
-        sig.skip_binder()
-            .inputs()
+        sig.inputs()
             .iter()
             .enumerate()
             .map(|(idx, &ty)| Param {
@@ -2819,8 +2826,8 @@ impl SelfParam {
     }
 
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
-        let (owner, sig) = self.func.fn_sig(db);
-        Type { owner, ty: EarlyBinder::bind(sig.skip_binder().inputs()[0]) }
+        let (owner, sig) = self.func.erased_fn_sig(db);
+        Type { owner, ty: EarlyBinder::bind(sig.inputs()[0]) }
     }
 }
 
@@ -6685,6 +6692,10 @@ pub enum CallableKind<'db> {
 }
 
 impl<'db> Callable<'db> {
+    fn erased_sig(&self) -> FnSig<'db> {
+        DbInterner::conjure().instantiate_bound_regions_with_erased(self.sig)
+    }
+
     pub fn kind(&self) -> CallableKind<'db> {
         match self.callee {
             Callee::Def(CallableDefId::FunctionId(it)) => CallableKind::Function(it.into()),
@@ -6725,19 +6736,14 @@ impl<'db> Callable<'db> {
             return None;
         }
         let func = self.as_function()?;
-        Some((
-            func.self_param(db)?,
-            self.ty.derived(self.sig.skip_binder().inputs_and_output.inputs()[0]),
-        ))
+        Some((func.self_param(db)?, self.ty.derived(self.erased_sig().inputs()[0])))
     }
     pub fn n_params(&self) -> usize {
         self.sig.skip_binder().inputs_and_output.inputs().len()
             - if self.is_bound_method { 1 } else { 0 }
     }
     pub fn params(&self) -> Vec<Param<'db>> {
-        self.sig
-            .skip_binder()
-            .inputs_and_output
+        self.erased_sig()
             .inputs()
             .iter()
             .enumerate()
@@ -6747,7 +6753,7 @@ impl<'db> Callable<'db> {
             .collect()
     }
     pub fn return_type(&self) -> Type<'db> {
-        self.ty.derived(self.sig.skip_binder().output())
+        self.ty.derived(self.erased_sig().output())
     }
     pub fn sig(&self) -> impl Eq {
         &self.sig
