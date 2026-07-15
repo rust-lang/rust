@@ -13,10 +13,10 @@ use rustc_middle::middle::codegen_fn_attrs::{
 };
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self as ty, TyCtxt};
+use rustc_middle::ty::{self as ty, Instance, TyCtxt};
 use rustc_session::diagnostics::feature_err;
 use rustc_session::lint;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::Os;
 
 use crate::diagnostics;
@@ -264,12 +264,17 @@ fn process_builtin_attrs(
                     continue;
                 }
 
-                assert!(codegen_fn_attrs.foreign_item_symbol_alias.is_none());
-                codegen_fn_attrs.foreign_item_symbol_alias = Some((
-                    foreign_item,
-                    if i.is_default { Linkage::WeakAny } else { Linkage::External },
-                    Visibility::Default,
-                ));
+                if !i.is_default {
+                    // FIXME is tcx.symbol_name() here safe or should we move this to
+                    // rustc_symbol_mangling?
+                    codegen_fn_attrs.symbol_name = Some(Symbol::intern(
+                        tcx.symbol_name(Instance::mono(tcx, foreign_item)).name,
+                    ));
+                } else {
+                    assert!(codegen_fn_attrs.foreign_item_symbol_alias.is_none());
+                    codegen_fn_attrs.foreign_item_symbol_alias =
+                        Some((foreign_item, Linkage::WeakAny, Visibility::Default));
+                }
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
 
                 // If the declaration is `#[track_caller]`, derive it onto the implementation
