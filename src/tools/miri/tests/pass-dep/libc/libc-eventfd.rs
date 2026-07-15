@@ -7,6 +7,7 @@
 #![allow(static_mut_refs)]
 
 use std::thread;
+use std::time::Duration;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
@@ -22,6 +23,7 @@ fn main() {
     test_blocking_read();
     test_blocking_write();
     test_two_threads_blocked_on_eventfd();
+    test_close_while_blocked();
 }
 
 // We want to do individual read/write calls here so we avoid read_exact/write_all.
@@ -163,4 +165,29 @@ fn test_two_threads_blocked_on_eventfd() {
     thread1.join().unwrap();
     thread2.join().unwrap();
     thread3.join().unwrap();
+}
+
+/// Test what happens when we close the eventfd file *descriptor* while a thread
+/// is blocked on it. We have to keep opemn the file *description* since otherwise
+/// we can never unblock the thread again.
+fn test_close_while_blocked() {
+    let fd = errno_result(unsafe { libc::eventfd(0, libc::EFD_CLOEXEC) }).unwrap();
+    let fd2 = errno_result(unsafe { libc::dup(fd) }).unwrap();
+
+    // Spawn server thread.
+    let server_thread = thread::spawn(move || {
+        if !cfg!(miri) {
+            // Ensure main thread is blocked on reading from the client socket.
+            thread::sleep(Duration::from_millis(10));
+        }
+
+        unsafe { errno_check(libc::close(fd)) };
+
+        eventfd::write_val(fd2, 1).unwrap();
+    });
+
+    let val = eventfd::read_val(fd).unwrap();
+    assert_eq!(val, 1);
+
+    server_thread.join().unwrap();
 }
