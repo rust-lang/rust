@@ -326,13 +326,7 @@ pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<Hove
         _ => return None,
     };
 
-    let tmp;
-    let needle = if is_clippy {
-        tmp = format!("clippy::{}", token.text());
-        &tmp
-    } else {
-        token.text()
-    };
+    let needle = if is_clippy { &format!("clippy::{}", token.text()) } else { token.text() };
 
     let lint =
         lints.binary_search_by_key(&needle, |lint| lint.label).ok().map(|idx| &lints[idx])?;
