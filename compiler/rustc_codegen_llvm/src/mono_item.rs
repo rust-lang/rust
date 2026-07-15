@@ -51,7 +51,9 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         self.assume_dso_local(g, false);
 
         let attrs = self.tcx.codegen_instance_attrs(instance.def);
-        self.add_static_aliases(g, &attrs.foreign_item_symbol_aliases);
+        if let Some(alias) = &attrs.foreign_item_symbol_alias {
+            self.add_static_alias(g, alias);
+        }
 
         self.instances.borrow_mut().insert(instance, g);
     }
@@ -69,7 +71,9 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
         let lldecl =
             self.predefine_without_aliases(instance, &attrs, linkage, visibility, symbol_name);
-        self.add_function_aliases(instance, lldecl, &attrs, &attrs.foreign_item_symbol_aliases);
+        if let Some(alias) = &attrs.foreign_item_symbol_alias {
+            self.add_function_alias(instance, lldecl, &attrs, alias);
+        }
 
         self.instances.borrow_mut().insert(instance, lldecl);
     }
@@ -131,88 +135,88 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// since for those we don't care about target architecture anyway.
     ///
     /// So, this function is for static aliases. See [`add_function_aliases`](Self::add_function_aliases) for the alternative.
-    fn add_static_aliases(&self, aliasee: &llvm::Value, aliases: &[(DefId, Linkage, Visibility)]) {
+    fn add_static_alias(
+        &self,
+        aliasee: &llvm::Value,
+        (alias, linkage, visibility): &(DefId, Linkage, Visibility),
+    ) {
         let ty = self.get_type_of_global(aliasee);
 
-        for (alias, linkage, visibility) in aliases {
-            let instance = Instance::mono(self.tcx, *alias);
-            let symbol_name = self.tcx.symbol_name(instance);
-            tracing::debug!("STATIC ALIAS: {alias:?} {linkage:?} {visibility:?}");
+        let instance = Instance::mono(self.tcx, *alias);
+        let symbol_name = self.tcx.symbol_name(instance);
+        tracing::debug!("STATIC ALIAS: {alias:?} {linkage:?} {visibility:?}");
 
-            let lldecl = llvm::add_alias(
-                self.llmod,
-                ty,
-                AddressSpace::ZERO,
-                aliasee,
-                &CString::new(symbol_name.name).unwrap(),
-            );
-            // Add the alias name to the set of cached items, so there is no duplicate
-            // instance added to it during the normal `external static` codegen
-            let prev_entry = self.instances.borrow_mut().insert(instance, lldecl);
+        let lldecl = llvm::add_alias(
+            self.llmod,
+            ty,
+            AddressSpace::ZERO,
+            aliasee,
+            &CString::new(symbol_name.name).unwrap(),
+        );
+        // Add the alias name to the set of cached items, so there is no duplicate
+        // instance added to it during the normal `external static` codegen
+        let prev_entry = self.instances.borrow_mut().insert(instance, lldecl);
 
-            // If there already was a previous entry, then `add_static_aliases` was called multiple times for the same `alias`
-            // which would result in incorrect codegen
-            assert!(prev_entry.is_none(), "An instance was already present for {instance:?}");
+        // If there already was a previous entry, then `add_static_aliases` was called multiple times for the same `alias`
+        // which would result in incorrect codegen
+        assert!(prev_entry.is_none(), "An instance was already present for {instance:?}");
 
-            llvm::set_visibility(lldecl, base::visibility_to_llvm(*visibility));
-            llvm::set_linkage(lldecl, base::linkage_to_llvm(*linkage));
-        }
+        llvm::set_visibility(lldecl, base::visibility_to_llvm(*visibility));
+        llvm::set_linkage(lldecl, base::linkage_to_llvm(*linkage));
     }
 
     /// See [`add_static_aliases`](Self::add_static_aliases) for docs.
-    fn add_function_aliases(
+    fn add_function_alias(
         &self,
         aliasee_instance: Instance<'tcx>,
         aliasee: &'ll llvm::Value,
         attrs: &Cow<'_, CodegenFnAttrs>,
-        aliases: &[(DefId, Linkage, Visibility)],
+        (alias, linkage, visibility): &(DefId, Linkage, Visibility),
     ) {
-        for (alias, linkage, visibility) in aliases {
-            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
-            tracing::debug!(
-                "FUNCTION ALIAS: generating fn {} that calls {aliasee_instance:?} ({alias:?} {linkage:?} {visibility:?})",
-                symbol_name.name
-            );
+        let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
+        tracing::debug!(
+            "FUNCTION ALIAS: generating fn {} that calls {aliasee_instance:?} ({alias:?} {linkage:?} {visibility:?})",
+            symbol_name.name
+        );
 
-            // predefine another copy of the original instance
-            // with a new symbol name
-            let alias_lldecl = self.predefine_without_aliases(
-                aliasee_instance,
-                attrs,
-                *linkage,
-                *visibility,
-                symbol_name.name,
-            );
+        // predefine another copy of the original instance
+        // with a new symbol name
+        let alias_lldecl = self.predefine_without_aliases(
+            aliasee_instance,
+            attrs,
+            *linkage,
+            *visibility,
+            symbol_name.name,
+        );
 
-            let fn_abi: &FnAbi<'tcx, Ty<'tcx>> =
-                self.fn_abi_of_instance(aliasee_instance, ty::List::empty());
+        let fn_abi: &FnAbi<'tcx, Ty<'tcx>> =
+            self.fn_abi_of_instance(aliasee_instance, ty::List::empty());
 
-            // both the alias and the aliasee have the same ty
-            let fn_ty = fn_abi.llvm_type(self);
-            let start_llbb = Builder::append_block(self, alias_lldecl, "start");
-            let mut start_bx = Builder::build(self, start_llbb);
+        // both the alias and the aliasee have the same ty
+        let fn_ty = fn_abi.llvm_type(self);
+        let start_llbb = Builder::append_block(self, alias_lldecl, "start");
+        let mut start_bx = Builder::build(self, start_llbb);
 
-            let num_params = llvm::count_params(alias_lldecl);
-            let mut args = Vec::with_capacity(num_params as usize);
-            for index in 0..num_params {
-                args.push(llvm::get_param(alias_lldecl, index));
-            }
+        let num_params = llvm::count_params(alias_lldecl);
+        let mut args = Vec::with_capacity(num_params as usize);
+        for index in 0..num_params {
+            args.push(llvm::get_param(alias_lldecl, index));
+        }
 
-            let call = start_bx.call(
-                fn_ty,
-                Some(attrs),
-                Some(fn_abi),
-                aliasee,
-                &args,
-                None,
-                Some(aliasee_instance),
-            );
+        let call = start_bx.call(
+            fn_ty,
+            Some(attrs),
+            Some(fn_abi),
+            aliasee,
+            &args,
+            None,
+            Some(aliasee_instance),
+        );
 
-            match &fn_abi.ret.mode {
-                PassMode::Ignore | PassMode::Indirect { .. } => start_bx.ret_void(),
-                PassMode::Direct(_) | PassMode::Pair { .. } | PassMode::Cast { .. } => {
-                    start_bx.ret(call)
-                }
+        match &fn_abi.ret.mode {
+            PassMode::Ignore | PassMode::Indirect { .. } => start_bx.ret_void(),
+            PassMode::Direct(_) | PassMode::Pair { .. } | PassMode::Cast { .. } => {
+                start_bx.ret(call)
             }
         }
     }

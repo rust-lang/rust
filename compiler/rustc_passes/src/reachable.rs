@@ -189,7 +189,7 @@ impl<'tcx> ReachableContext<'tcx> {
             // (hence alias) that may be in another crate. These functions are marked as always-reachable since
             // it's very hard to track whether the original foreign item was reachable. It may live in another crate
             // and may be reachable from sibling crates.
-            let has_foreign_aliases_eii = !codegen_attrs.foreign_item_symbol_aliases.is_empty();
+            let has_foreign_aliases_eii = codegen_attrs.foreign_item_symbol_alias.is_some();
             if is_extern || has_foreign_aliases_eii {
                 self.reachable_symbols.insert(search_item);
             }
@@ -451,7 +451,7 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         // (hence alias) that may be in another crate. These functions are marked as always-reachable since
         // it's very hard to track whether the original foreign item was reachable. It may live in another crate
         // and may be reachable from sibling crates.
-        || !codegen_attrs.foreign_item_symbol_aliases.is_empty()
+        || codegen_attrs.foreign_item_symbol_alias.is_some()
 }
 
 /// See module-level doc comment above.

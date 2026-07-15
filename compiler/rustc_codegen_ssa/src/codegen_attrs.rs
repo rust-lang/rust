@@ -264,7 +264,8 @@ fn process_builtin_attrs(
                     continue;
                 }
 
-                codegen_fn_attrs.foreign_item_symbol_aliases.push((
+                assert!(codegen_fn_attrs.foreign_item_symbol_alias.is_none());
+                codegen_fn_attrs.foreign_item_symbol_alias = Some((
                     foreign_item,
                     if i.is_default { Linkage::WeakAny } else { Linkage::External },
                     Visibility::Default,
