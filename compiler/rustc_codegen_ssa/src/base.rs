@@ -892,12 +892,8 @@ pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
 ) -> bool {
-    fn is_llvm_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        if let Some(name) = tcx.codegen_fn_attrs(def_id).symbol_name {
-            name.as_str().starts_with("llvm.")
-        } else {
-            false
-        }
+    if let ty::InstanceKind::LlvmIntrinsic(_) = instance.def {
+        return false;
     }
 
     fn is_extern_call_to_local_crate<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
@@ -910,7 +906,6 @@ pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
     let def_id = instance.def_id();
     !def_id.is_local()
         && tcx.is_compiler_builtins(LOCAL_CRATE)
-        && !is_llvm_intrinsic(tcx, def_id)
         && !tcx.should_codegen_locally(instance)
         && !is_extern_call_to_local_crate(tcx, instance)
 }

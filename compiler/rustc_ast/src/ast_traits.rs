@@ -62,7 +62,7 @@ impl<T: HasNodeId> HasNodeId for Box<T> {
 }
 
 /// A trait for AST nodes having (or not having) collected tokens.
-pub trait HasTokens {
+pub trait HasTokens: HasAttrs {
     fn tokens(&self) -> Option<&LazyAttrTokenStream>;
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>>;
 }
@@ -109,7 +109,7 @@ impl_has_tokens_none!(
     WherePredicate
 );
 
-impl<T> HasTokens for WithTokens<T> {
+impl<T: HasAttrs> HasTokens for WithTokens<T> {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         self.tokens.as_ref()
     }

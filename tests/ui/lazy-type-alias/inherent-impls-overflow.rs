@@ -15,14 +15,14 @@ impl Loop {}
 //[next]~| ERROR overflow evaluating the requirement `Loop == _`
 
 type Poly0<T> = Poly1<(T,)>;
-//[current]~^ ERROR overflow normalizing the type alias `Poly0<(((((((...,),),),),),),)>`
+//[current]~^ ERROR overflow normalizing the type alias `Poly0<(((((((_,),),),),),),)>`
 //[next]~^^ ERROR overflow evaluating the requirement
 type Poly1<T> = Poly0<(T,)>;
-//[current]~^ ERROR  overflow normalizing the type alias `Poly1<(((((((...,),),),),),),)>`
+//[current]~^ ERROR  overflow normalizing the type alias `Poly1<(((((((_,),),),),),),)>`
 //[next]~^^ ERROR overflow evaluating the requirement
 
 impl Poly0<()> {}
-//[current]~^ ERROR overflow normalizing the type alias `Poly1<(((((((...,),),),),),),)>`
+//[current]~^ ERROR overflow normalizing the type alias `Poly1<(((((((_,),),),),),),)>`
 //[next]~^^ ERROR overflow evaluating the requirement `Poly0<()> == _`
 //[next]~| ERROR overflow evaluating the requirement
 

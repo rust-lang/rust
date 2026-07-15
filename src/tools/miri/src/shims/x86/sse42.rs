@@ -279,7 +279,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         link_name: Symbol,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx, EmulateItemResult> {
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "sse4.2")?;
         // Prefix should have already been checked.
@@ -428,7 +428,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 if bit_size == 64 && this.tcx.sess.target.arch != Arch::X86_64 {
-                    return interp_ok(EmulateItemResult::NotSupported);
+                    return interp_ok(false);
                 }
 
                 let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
@@ -460,8 +460,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 this.write_scalar(result, dest)?;
             }
-            _ => return interp_ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(false),
         }
-        interp_ok(EmulateItemResult::NeedsReturn)
+        interp_ok(true)
     }
 }
