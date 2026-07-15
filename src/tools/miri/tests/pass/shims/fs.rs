@@ -49,9 +49,8 @@ fn main() {
     if cfg!(not(windows)) {
         test_directory();
         test_canonicalize();
-        #[cfg(not(target_os = "solaris"))]
+        #[cfg(not(target_os = "solaris"))] // does not have flock
         test_flock();
-        #[cfg(not(target_os = "android"))]
         test_hard_link();
 
         test_readv_writev();
@@ -559,8 +558,6 @@ fn test_preadv_pwritev() {
     assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
 }
 
-// std uses `libc::link` on Android which we do not support.
-#[cfg(not(target_os = "android"))]
 fn test_hard_link() {
     let source = utils::prepare_with_content("miri_test_fs_hard_link_source.txt", b"hello");
     let link = utils::prepare("miri_test_fs_hard_link_link.txt");
