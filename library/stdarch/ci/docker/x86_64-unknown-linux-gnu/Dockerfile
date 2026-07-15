@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends intel-oneapi-co
 
 ENV CLANG_PATH="/llvm/bin/clang"
 ENV GCC_PATH="gcc"
-ENV ICX_PATH="/opt/intel/oneapi/compiler/2026.0/bin/icx"
+ENV ICX_PATH="/opt/intel/oneapi/compiler/2026.1/bin/icx"
 
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="/intel-sde/sde64 \
             -cpuid-in /checkout/ci/docker/x86_64-unknown-linux-gnu/cpuid.def \
