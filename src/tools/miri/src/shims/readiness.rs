@@ -426,6 +426,32 @@ impl ReadinessInterestTable {
     }
 }
 
+/// If a file description's readiness is known to change but we don't have an `ecx` around to update
+/// it immediately, we arange for a referene to the delayed readiness updates queue to be available
+/// and perform the update on the next scheduler call.
+#[derive(Default, Debug)]
+pub struct DelayedReadinessUpdates {
+    to_update: RefCell<Vec<DynFileDescriptionRef>>,
+}
+
+impl DelayedReadinessUpdates {
+    pub fn add(&self, fd: DynFileDescriptionRef) {
+        self.to_update.borrow_mut().push(fd);
+    }
+
+    pub fn process<'tcx>(ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx> {
+        loop {
+            // Avoid keeping the RefCell open over the `update_fd_readiness` as that can invoke
+            // arbitrary code via the unblock callback.
+            let Some(fd) = ecx.machine.delayed_readiness_updates.to_update.borrow_mut().pop()
+            else {
+                return interp_ok(());
+            };
+            ecx.update_fd_readiness(fd, /* force_edge */ false)?;
+        }
+    }
+}
+
 impl<'tcx> EvalContextExt<'tcx> for MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Returns whether the given FD has any readiness watcher with a blocked thread watching it.

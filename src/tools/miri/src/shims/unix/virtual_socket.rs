@@ -5,13 +5,15 @@
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
 use std::io::{self, ErrorKind, Read};
+use std::rc::Rc;
 
 use rustc_target::spec::Os;
 
 use crate::concurrency::VClock;
 use crate::shims::files::{
-    EvalContextExt as _, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
+    EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
+use crate::shims::readiness::DelayedReadinessUpdates;
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::*;
@@ -53,8 +55,11 @@ struct VirtualSocket {
     blocked_write_tid: RefCell<Vec<ThreadId>>,
     /// Whether this fd is non-blocking or not.
     is_nonblock: Cell<bool>,
-    // Differentiate between different virtual socket fd types.
+    /// Differentiate between different virtual socket fd types.
     fd_type: VirtualSocketType,
+    /// We need to update the peer_fd readiness when we get dropped, so we keep a reference
+    /// to the readiness update queue
+    delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
 }
 
 #[derive(Debug)]
@@ -75,6 +80,22 @@ impl VirtualSocket {
     }
 }
 
+impl Drop for VirtualSocket {
+    fn drop(&mut self) {
+        if let Some(peer_fd) = self.peer_fd().upgrade() {
+            // If the current readbuf is non-empty when the file description is closed,
+            // notify the peer that data lost has happened in current file description.
+            if let Some(readbuf) = &self.readbuf {
+                if !readbuf.borrow().buf.is_empty() {
+                    peer_fd.peer_lost_data.set(true);
+                }
+            }
+            // Notify peer fd that close has happened, since that can unblock reads and writes.
+            self.delayed_readiness_updates.add(peer_fd);
+        }
+    }
+}
+
 impl FileDescription for VirtualSocket {
     fn name(&self) -> &'static str {
         match self.fd_type {
@@ -91,26 +112,6 @@ impl FileDescription for VirtualSocket {
             VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => "S_IFIFO",
         };
         interp_ok(Either::Right(mode_name))
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        if let Some(peer_fd) = self.peer_fd().upgrade() {
-            // If the current readbuf is non-empty when the file description is closed,
-            // notify the peer that data lost has happened in current file description.
-            if let Some(readbuf) = &self.readbuf {
-                if !readbuf.borrow().buf.is_empty() {
-                    peer_fd.peer_lost_data.set(true);
-                }
-            }
-            // Notify peer fd that close has happened, since that can unblock reads and writes.
-            ecx.update_fd_readiness(peer_fd, /* force_edge */ false)?;
-        }
-        interp_ok(Ok(()))
     }
 
     fn read<'tcx>(
@@ -607,6 +608,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
         });
         let fd1 = fds.new_ref(VirtualSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
@@ -616,6 +618,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
         });
 
         // Make the file descriptions point to each other.
@@ -677,6 +680,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeRead,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
         });
         let fd1 = fds.new_ref(VirtualSocket {
             readbuf: None,
@@ -686,6 +690,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeWrite,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
         });
 
         // Make the file descriptions point to each other.
