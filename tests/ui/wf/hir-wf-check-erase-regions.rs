@@ -3,6 +3,7 @@
 
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ revisions: nll polonius
+//@ [nll] compile-flags: -Zpolonius=nll
 //@ [polonius] compile-flags: -Zpolonius=next
 
 pub struct Table<T, const N: usize>([Option<T>; N]);

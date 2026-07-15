@@ -2,6 +2,7 @@
 
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ revisions: nll polonius
+//@ [nll] compile-flags: -Zpolonius=nll
 //@ [polonius] compile-flags: -Zpolonius=next
 
 trait Decode<'a> {

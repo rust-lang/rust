@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*o` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-51545.rs:17:17
+  --> $DIR/nll-problem-case-3-issue-51545.rs:18:17
    |
 LL | fn borrow(o: &mut Option<i32>) -> Option<&mut i32> {
    |              - let's call the lifetime of this reference `'1`

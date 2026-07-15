@@ -1,6 +1,7 @@
 //@ revisions: edition2024 polonius_alpha
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ edition: 2024
+//@ [edition2024] compile-flags: -Zpolonius=nll
 //@ [polonius_alpha] compile-flags: -Zpolonius=next
 
 // Tests that liveness for regions in associated types considers outlives

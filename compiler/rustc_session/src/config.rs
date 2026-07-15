@@ -3428,9 +3428,9 @@ impl PatchableFunctionEntry {
 /// or future prototype.
 #[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
 pub enum Polonius {
-    /// The default value: disabled.
+    /// Polonius is disabled, only use NLL.
     #[default]
-    Off,
+    NLL,
 
     /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
     Legacy,
