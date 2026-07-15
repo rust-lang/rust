@@ -45,4 +45,12 @@ weak_only_lang_items! {
     MemCmp,
     Bcmp,
     StrLen,
+    Open,
+    Read,
+    Write,
+    Close,
+    Malloc,
+    Realloc,
+    Free,
+    Exit,
 }
