@@ -5,11 +5,13 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::GenericParamKind;
 use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
-    DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
+    DivergingFallbackBehavior, EditionRedirect, RustcCleanAttribute, RustcCleanQueries,
+    RustcMirKind,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::AttributeStability;
 use rustc_span::Symbol;
+use rustc_span::edition::Edition;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
@@ -339,6 +341,101 @@ impl AttributeParser for RustcCguTestAttributeParser {
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         Some(AttributeKind::RustcCguTestAttr(self.items))
+    }
+}
+
+pub(crate) struct RustcEditionRedirectParser;
+
+impl CombineAttributeParser for RustcEditionRedirectParser {
+    const PATH: &[Symbol] = &[sym::rustc_edition_redirect];
+    type Item = EditionRedirect;
+    const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::RustcEditionRedirect(items);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Const),
+        Allow(Target::Enum),
+        Allow(Target::ExternCrate),
+        Allow(Target::Fn),
+        Allow(Target::MacroDef),
+        Allow(Target::Mod),
+        Allow(Target::Static),
+        Allow(Target::Struct),
+        Allow(Target::Trait),
+        Allow(Target::TraitAlias),
+        Allow(Target::TyAlias),
+        Allow(Target::Union),
+        Allow(Target::Use),
+    ]);
+    const TEMPLATE: AttributeTemplate =
+        template!(List: &[r#"before = "2024", target(path::to::item)"#]);
+    const STABILITY: AttributeStability = unstable!(edition_redirect);
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let list = cx.expect_list(args, cx.attr_span)?;
+        let mut before = None;
+        let mut target = None;
+
+        for item in list.mixed() {
+            let Some(meta) = item.meta_item() else {
+                cx.adcx().expected_identifier(item.span());
+                return None;
+            };
+            let Some(name) = meta.path().word() else {
+                cx.adcx()
+                    .expected_specific_argument(meta.path().span(), &[sym::before, sym::target]);
+                return None;
+            };
+            match name.name {
+                sym::before if before.is_none() => {
+                    let Some(value) =
+                        cx.expect_name_value(meta.args(), item.span(), Some(sym::before))
+                    else {
+                        return None;
+                    };
+                    let Some(value) = cx.expect_string_literal(value) else { return None };
+                    before = Some(value);
+                }
+                sym::target if target.is_none() => {
+                    let Some(single) = cx.expect_single_element_list(meta.args(), item.span())
+                    else {
+                        return None;
+                    };
+                    let Some(target_path) = single.meta_item_no_args() else {
+                        cx.adcx().expected_not_literal(single.span());
+                        return None;
+                    };
+                    target = Some(target_path.path().0.clone());
+                }
+                sym::before | sym::target => {
+                    cx.adcx().duplicate_key(item.span(), name.name);
+                    return None;
+                }
+                _ => {
+                    cx.adcx().expected_specific_argument(item.span(), &[sym::before, sym::target]);
+                    return None;
+                }
+            }
+        }
+
+        let Some(before) = before else {
+            cx.dcx().span_err(cx.attr_span, "missing `before` argument");
+            return None;
+        };
+        let Some(target) = target else {
+            cx.dcx().span_err(cx.attr_span, "missing `target` argument");
+            return None;
+        };
+        let before = match before.as_str().parse::<Edition>() {
+            Ok(before) => before,
+            Err(()) => {
+                cx.dcx().span_err(cx.attr_span, "invalid edition in edition redirect");
+                return None;
+            }
+        };
+
+        Some(EditionRedirect { before, target, span: cx.attr_span })
     }
 }
 
