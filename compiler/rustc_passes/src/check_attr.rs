@@ -17,8 +17,8 @@ use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{
-    AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    OptimizeAttr, ReprAttr,
+    AttributeKind, DocAttribute, DocInline, EditionRedirect, EiiDecl, EiiImpl, EiiImplResolution,
+    InlineAttr, OptimizeAttr, ReprAttr,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModId;
@@ -238,6 +238,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             AttributeKind::Linkage(_linkage, span) => {
                 self.check_linkage(*span, hir_id, target, item)
+            }
+            AttributeKind::RustcEditionRedirect(redirects) => {
+                self.check_rustc_edition_redirect(item, redirects)
             }
 
             // All of the following attributes have no specific checks.
@@ -465,6 +468,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             is_out_of_line || has_path_attr || self.has_nested_module_path_dependency(child_module)
         })
+    }
+
+    /// Rejects the use of edition redirect on non-single use statements.
+    fn check_rustc_edition_redirect(&self, item: Option<&Item<'_>>, redirects: &[EditionRedirect]) {
+        let Some(Item { kind: ItemKind::Use(_, use_kind), .. }) = item else {
+            return;
+        };
+        if matches!(use_kind, hir::UseKind::Single(_)) {
+            return;
+        }
+        if let Some(redirect) = redirects.first() {
+            self.dcx()
+                .emit_err(diagnostics::EditionRedirectNonSingleUse { attr_span: redirect.span });
+        }
     }
 
     fn check_rustc_must_implement_one_of(

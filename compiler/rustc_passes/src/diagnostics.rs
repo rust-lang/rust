@@ -13,6 +13,14 @@ use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
 
 #[derive(Diagnostic)]
+#[diag("`#[rustc_edition_redirect]` can only be applied to a single import")]
+#[help("use a separate, non-braced `use` item")]
+pub(crate) struct EditionRedirectNonSingleUse {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`")]
 pub(crate) struct MixedExportNameAndNoMangle {
     #[label("`{$no_mangle_attr}` is ignored")]
