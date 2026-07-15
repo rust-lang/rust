@@ -1,4 +1,5 @@
 //@ revisions: ice_155125 ice_155127 ice_155128 ice_155164 ice_155202
+//@[ice_155202] edition: 2024
 
 #![feature(min_generic_const_args, fn_delegation)]
 
@@ -57,14 +58,14 @@ mod ice_155164 {
 }
 
 #[cfg(ice_155202)]
+#[deny(unconditional_recursion)]
 mod ice_155202 {
     trait Trait {
         fn bar(self);
     }
     impl Trait for () {
-        reuse Trait::bar {
-            async || {}; //[ice_155202]~ ERROR: mismatched types
-            //[ice_155202]~^ ERROR: cannot find value `async` in this scope
+        reuse Trait::bar { //[ice_155202]~ ERROR: cannot return without recursing
+            async || {};
         }
     }
 }
