@@ -346,12 +346,10 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                         // have this problem. Remove the line below when triomphe::Arc has an UnwindSafe impl
                         // like std::sync::Arc's.
                         let world = world;
-                        stdx::always!(
-                            world.flycheck.len() == 1,
-                            "should have exactly one flycheck handle when invocation strategy is once"
-                        );
                         let saved_file = vfs_path.as_path().map(ToOwned::to_owned);
-                        world.flycheck[0].restart_workspace(saved_file);
+                        if let Some(flycheck) = world.flycheck.first() {
+                            flycheck.restart_workspace(saved_file);
+                        }
                         Ok(())
                     })
                 }
