@@ -1,3 +1,4 @@
+//@run-native
 #![feature(core_intrinsics, funnel_shifts)]
 use std::intrinsics::*;
 
