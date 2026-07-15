@@ -50,6 +50,17 @@ LL |     my_recursive_macro!();
    = note: expanding `my_recursive_macro! {  }`
    = note: to `my_recursive_macro! ();`
 
+error: macro expansion ignores `;` and any tokens following
+  --> $DIR/trace_faulty_macros.rs:13:41
+   |
+LL |         pat_macro!(A{a:a, b:0, c:_, ..});
+   |                                         ^
+...
+LL |     let a = pat_macro!();
+   |             ------------ caused by the macro expansion here
+   |
+   = note: the usage of `pat_macro!` is likely invalid in expression context
+
 error: expected expression, found `pat` metavariable
   --> $DIR/trace_faulty_macros.rs:16:9
    |
@@ -102,6 +113,6 @@ LL |     test!(let x = 1+1);
    = note: expanding `test! { (x, 1+1) }`
    = note: to `let x = 1+1;`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0774`.

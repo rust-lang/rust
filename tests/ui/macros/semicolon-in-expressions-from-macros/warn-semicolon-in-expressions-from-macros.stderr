@@ -1,17 +1,17 @@
 error: macro expansion ignores `;` and any tokens following
-  --> $DIR/macro-in-expression-context.rs:5:29
+  --> $DIR/warn-semicolon-in-expressions-from-macros.rs:5:13
    |
-LL |         assert_eq!("A", "A");
-   |                             ^
+LL |         true;
+   |             ^
 ...
-LL |     foo!()
-   |     ------ caused by the macro expansion here
+LL |         _ => foo!()
+   |              ------ caused by the macro expansion here
    |
    = note: the usage of `foo!` is likely invalid in expression context
 help: you might be missing a semicolon here
    |
-LL |     foo!();
-   |           +
+LL |         _ => foo!();
+   |                    +
 
 error: aborting due to 1 previous error
 

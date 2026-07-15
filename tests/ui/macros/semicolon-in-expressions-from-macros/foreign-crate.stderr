@@ -1,0 +1,15 @@
+error: macro expansion ignores `;` and any tokens following
+  --> $DIR/auxiliary/foreign-crate.rs:3:17
+   |
+LL |     () => { true; }
+   |                 ^
+   |
+  ::: $DIR/foreign-crate.rs:8:13
+   |
+LL |     let _ = foreign_crate::my_macro!();
+   |             -------------------------- caused by the macro expansion here
+   |
+   = note: the usage of `my_macro!` is likely invalid in expression context
+
+error: aborting due to 1 previous error
+

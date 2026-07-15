@@ -9,11 +9,11 @@ LL |     let a: m!();
    |
    = note: the usage of `m!` is likely invalid in type context
 
-error: macro expansion ignores reserved keyword `typeof` and any tokens following
-  --> $DIR/macro-context.rs:3:17
+error: macro expansion ignores `;` and any tokens following
+  --> $DIR/macro-context.rs:3:15
    |
 LL |     () => ( i ; typeof );
-   |                 ^^^^^^
+   |               ^
 ...
 LL |     let i = m!();
    |             ---- caused by the macro expansion here
@@ -68,35 +68,6 @@ LL |     let i = m!();
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: trailing semicolon in macro used in expression position
-  --> $DIR/macro-context.rs:3:15
-   |
-LL |     () => ( i ; typeof );
-   |               ^
-...
-LL |     let i = m!();
-   |             ---- in this macro invocation
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-   = note: `#[deny(semicolon_in_expressions_from_macros)]` (part of `#[deny(future_incompatible)]`) on by default
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0425`.
-Future incompatibility report: Future breakage diagnostic:
-error: trailing semicolon in macro used in expression position
-  --> $DIR/macro-context.rs:3:15
-   |
-LL |     () => ( i ; typeof );
-   |               ^
-...
-LL |     let i = m!();
-   |             ---- in this macro invocation
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-   = note: `#[deny(semicolon_in_expressions_from_macros)]` (part of `#[deny(future_incompatible)]`) on by default
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
-

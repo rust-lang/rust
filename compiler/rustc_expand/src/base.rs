@@ -274,11 +274,7 @@ impl<'cx> MacroExpanderResult<'cx> {
         arm_span: Span,
         macro_ident: Ident,
     ) -> Self {
-        // Emit the SEMICOLON_IN_EXPRESSIONS_FROM_MACROS deprecation lint.
-        let is_local = true;
-
-        let parser =
-            ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, is_local, macro_ident, &[], &[]);
+        let parser = ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, macro_ident, &[], &[]);
         ExpandResult::Ready(Box::new(parser))
     }
 }
@@ -1178,7 +1174,6 @@ pub struct ExpansionData {
     pub dir_ownership: DirOwnership,
     /// Some parent node that is close to this macro call
     pub lint_node_id: NodeId,
-    pub is_trailing_mac: bool,
 }
 
 /// One of these is made during expansion and incrementally updated as we go;
@@ -1230,7 +1225,6 @@ impl<'a> ExtCtxt<'a> {
                 module: Default::default(),
                 dir_ownership: DirOwnership::Owned { relative: None },
                 lint_node_id: ast::CRATE_NODE_ID,
-                is_trailing_mac: false,
             },
             force_mode: false,
             expansions: FxIndexMap::default(),

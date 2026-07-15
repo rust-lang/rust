@@ -22,11 +22,11 @@ error: expected expression, found `$`
 LL | expand_expr_fail!(echo_pm!($));
    |                            ^ expected expression
 
-error: macro expansion ignores `hello` and any tokens following
-  --> $DIR/expand-expr.rs:118:47
+error: macro expansion ignores `;` and any tokens following
+  --> $DIR/expand-expr.rs:118:45
    |
 LL | expand_expr_is!("string", echo_tts!("string"; hello));
-   |                           --------------------^^^^^- caused by the macro expansion here
+   |                           ------------------^------- caused by the macro expansion here
    |
    = note: the usage of `echo_tts!` is likely invalid in expression context
 help: you might be missing a semicolon here

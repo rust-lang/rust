@@ -636,17 +636,6 @@ pub(crate) struct OrPatternsBackCompat {
 }
 
 #[derive(Diagnostic)]
-#[diag("trailing semicolon in macro used in expression position")]
-pub(crate) struct TrailingMacro {
-    #[note("macro invocations at the end of a block are treated as expressions")]
-    #[note(
-        "to ignore the value produced by the macro, add a semicolon after the invocation of `{$name}`"
-    )]
-    pub is_trailing: bool,
-    pub name: Ident,
-}
-
-#[derive(Diagnostic)]
 #[diag("unused attribute `{$attr_name}`")]
 pub(crate) struct UnusedBuiltinAttribute {
     #[note(

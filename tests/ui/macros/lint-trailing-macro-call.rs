@@ -4,8 +4,7 @@
 
 macro_rules! expand_it {
     () => {
-        #[cfg(false)] 25; //~  ERROR trailing semicolon in macro
-                          //~| WARN this was previously
+        #[cfg(false)] 25; //~ ERROR macro expansion ignores `;`
     }
 }
 

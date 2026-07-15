@@ -2,11 +2,15 @@
 // Checks that we properly fire lints that occur inside
 // anon consts.
 
-#![deny(semicolon_in_expressions_from_macros)]
+#![deny(unused_attributes)]
+
+macro_rules! len2 {
+    () => { };
+}
 
 macro_rules! len {
-    () => { 0; }; //~  ERROR trailing semicolon
-                  //~| WARN this was previously accepted
+    () => { { #[inline] len2!(); 0 } }; //~ ERROR `#[inline]` attribute cannot be used on macro calls
+                                        //~| WARN this was previously accepted
 }
 
 fn main() {
