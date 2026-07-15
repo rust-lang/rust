@@ -107,7 +107,8 @@ pub(crate) struct Candidate<'tcx> {
 enum InherentOrExtension {
     /// Inherent candidates
     Inherent,
-    /// Candidates for a trait object's trait & supertraits.
+    /// Candidates for a trait object's supertraits
+    /// (but not the trait itself).
     /// Take precedence over other extension candidates,
     /// but not inherent candidates
     DynExtension,
@@ -997,7 +998,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             |this, new_trait_ref, item| {
                 this.push_candidate(
                     Candidate { item, kind: ObjectCandidate(new_trait_ref), import_ids: &[] },
-                    InherentOrExtension::DynExtension,
+                    if new_trait_ref == trait_ref {
+                        InherentOrExtension::Inherent
+                    } else {
+                        InherentOrExtension::DynExtension
+                    },
                 );
             },
         );
