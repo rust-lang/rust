@@ -251,6 +251,7 @@ impl_sv!("lsx", lsx_vrepli_b, simd_ext_splat, m128i, i8x16, 10);
 impl_sv!("lsx", lsx_vrepli_h, simd_ext_splat, m128i, i16x8, 10);
 impl_sv!("lsx", lsx_vrepli_w, simd_ext_splat, m128i, i32x4, 10);
 impl_sv!("lsx", lsx_vrepli_d, simd_ext_splat, m128i, i64x2, 10);
+impl_sv!("lsx", lsx_vldi, simd_ext_ldi, m128i, i64x2, 13, const);
 
 impl_vvv!("lsx", lsx_vadd_b, simd_add, m128i, i8x16);
 impl_vvv!("lsx", lsx_vadd_h, simd_add, m128i, i16x8);
@@ -520,3 +521,96 @@ impl_vugv!("lsx", lsx_vinsgr2vr_b, simd_insert, m128i, i8x16, i32, 4);
 impl_vugv!("lsx", lsx_vinsgr2vr_h, simd_insert, m128i, i16x8, i32, 3);
 impl_vugv!("lsx", lsx_vinsgr2vr_w, simd_insert, m128i, i32x4, i32, 2);
 impl_vugv!("lsx", lsx_vinsgr2vr_d, simd_insert, m128i, i64x2, i64, 1);
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        core_arch::{loongarch64::*, simd::*},
+        mem::transmute,
+    };
+    use stdarch_test::simd_test;
+
+    #[simd_test(enable = "lsx")]
+    unsafe fn vldi() {
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<0>()));
+        let r = i8x16::new(
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        );
+        assert_eq!(r, transmute(lsx_vldi::<255>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<1024>()));
+        let r = i8x16::new(0, -2, 0, -2, 0, -2, 0, -2, 0, -2, 0, -2, 0, -2, 0, -2);
+        assert_eq!(r, transmute(lsx_vldi::<1536>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<2048>()));
+        let r = i8x16::new(0, -2, -1, -1, 0, -2, -1, -1, 0, -2, -1, -1, 0, -2, -1, -1);
+        assert_eq!(r, transmute(lsx_vldi::<2560>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<3072>()));
+        let r = i8x16::new(0, -2, -1, -1, -1, -1, -1, -1, 0, -2, -1, -1, -1, -1, -1, -1);
+        assert_eq!(r, transmute(lsx_vldi::<3584>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-4096>()));
+        let r = i8x16::new(-128, 0, 0, 0, -128, 0, 0, 0, -128, 0, 0, 0, -128, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-3968>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-3840>()));
+        let r = i8x16::new(0, -128, 0, 0, 0, -128, 0, 0, 0, -128, 0, 0, 0, -128, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-3712>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-3584>()));
+        let r = i8x16::new(0, 0, -128, 0, 0, 0, -128, 0, 0, 0, -128, 0, 0, 0, -128, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-3456>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-3328>()));
+        let r = i8x16::new(0, 0, 0, -128, 0, 0, 0, -128, 0, 0, 0, -128, 0, 0, 0, -128);
+        assert_eq!(r, transmute(lsx_vldi::<-3200>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-3072>()));
+        let r = i8x16::new(
+            -128, 0, -128, 0, -128, 0, -128, 0, -128, 0, -128, 0, -128, 0, -128, 0,
+        );
+        assert_eq!(r, transmute(lsx_vldi::<-2944>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-2816>()));
+        let r = i8x16::new(
+            0, -128, 0, -128, 0, -128, 0, -128, 0, -128, 0, -128, 0, -128, 0, -128,
+        );
+        assert_eq!(r, transmute(lsx_vldi::<-2688>()));
+        let r = i8x16::new(-1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-2560>()));
+        let r = i8x16::new(
+            -1, -128, 0, 0, -1, -128, 0, 0, -1, -128, 0, 0, -1, -128, 0, 0,
+        );
+        assert_eq!(r, transmute(lsx_vldi::<-2432>()));
+        let r = i8x16::new(-1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-2304>()));
+        let r = i8x16::new(
+            -1, -1, -128, 0, -1, -1, -128, 0, -1, -1, -128, 0, -1, -1, -128, 0,
+        );
+        assert_eq!(r, transmute(lsx_vldi::<-2176>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-2048>()));
+        let r = i8x16::new(
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        );
+        assert_eq!(r, transmute(lsx_vldi::<-1793>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-1792>()));
+        let r = i8x16::new(0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1);
+        assert_eq!(r, transmute(lsx_vldi::<-1622>()));
+        let r = i8x16::new(0, 0, 0, 64, 0, 0, 0, 64, 0, 0, 0, 64, 0, 0, 0, 64);
+        assert_eq!(r, transmute(lsx_vldi::<-1536>()));
+        let r = i8x16::new(0, 0, 80, -63, 0, 0, 80, -63, 0, 0, 80, -63, 0, 0, 80, -63);
+        assert_eq!(r, transmute(lsx_vldi::<-1366>()));
+        let r = i8x16::new(0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-1280>()));
+        let r = i8x16::new(0, 0, 80, -63, 0, 0, 0, 0, 0, 0, 80, -63, 0, 0, 0, 0);
+        assert_eq!(r, transmute(lsx_vldi::<-1110>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 64);
+        assert_eq!(r, transmute(lsx_vldi::<-1024>()));
+        let r = i8x16::new(0, 0, 0, 0, 0, 0, 42, -64, 0, 0, 0, 0, 0, 0, 42, -64);
+        assert_eq!(r, transmute(lsx_vldi::<-854>()));
+    }
+}

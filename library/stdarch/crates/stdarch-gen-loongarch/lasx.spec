@@ -2696,6 +2696,7 @@ asm-fmts = xd, xj, xk
 data-types = UV32QI, UV32QI, UV32QI
 
 /// lasx_xvldi
+impl = portable
 name = lasx_xvldi
 asm-fmts = xd, i13
 data-types = V4DI, HI
