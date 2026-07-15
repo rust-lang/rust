@@ -1,0 +1,78 @@
+error: edition redirect for `Public` must have the same visibility as its default item
+  --> $DIR/invalid.rs:26:1
+   |
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple edition redirects with edition 2024 for `Duplicate`
+  --> $DIR/invalid.rs:44:1
+   |
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: edition redirect for `Restricted` must have the same visibility as its default item
+  --> $DIR/invalid.rs:52:1
+   |
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: edition redirect for `MissingDefault` has no default item
+  --> $DIR/invalid.rs:60:1
+   |
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0364]: `Old` is only public within the crate, and cannot be re-exported outside
+  --> $DIR/invalid.rs:28:9
+   |
+LL | pub use private::Old as Public;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider marking `Old` as `pub` in the imported module
+  --> $DIR/invalid.rs:28:9
+   |
+LL | pub use private::Old as Public;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0432]: unresolved import `source::Missing`
+  --> $DIR/invalid.rs:34:9
+   |
+LL | pub use source::Missing as Unresolved;
+   |         ^^^^^^^^-------^^^^^^^^^^^^^^
+   |                 |
+   |                 no `Missing` in `source`
+
+error: the `rustc_edition_redirect` attribute cannot be used on structs
+  --> $DIR/invalid.rs:5:3
+   |
+LL | #[rustc_edition_redirect = "2024"]
+   |   ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the `rustc_edition_redirect` attribute can only be applied to use statements
+
+error: invalid edition in edition redirect
+  --> $DIR/invalid.rs:64:1
+   |
+LL | #[rustc_edition_redirect = "not an edition"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[rustc_edition_redirect]` can only be applied to a single import
+  --> $DIR/invalid.rs:14:1
+   |
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a separate, non-braced `use` item
+
+error: `#[rustc_edition_redirect]` can only be applied to a single import
+  --> $DIR/invalid.rs:18:1
+   |
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a separate, non-braced `use` item
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0364, E0432.
+For more information about an error, try `rustc --explain E0364`.

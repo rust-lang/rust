@@ -16,6 +16,7 @@ use rustc_macros::{
     Decodable, Decodable_NoContext, Encodable, Encodable_NoContext, PrintAttribute, StableHash,
 };
 use rustc_span::def_id::DefId;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_structures::{CollapseMacroDebuginfo, CrateType, Limit, NativeLibKind, SanitizerSet};
@@ -117,6 +118,12 @@ pub enum InstrumentFnAttr {
     On,
     /// `#[instrument_fn = "off"]`
     Off,
+}
+
+#[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
+pub struct EditionRedirect {
+    pub edition: Edition,
+    pub span: Span,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, PrintAttribute)]
@@ -1266,6 +1273,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_dyn_incompatible_trait]`.
     RustcDynIncompatibleTrait(Span),
+
+    /// Represents `#[rustc_edition_redirect = "..."]`.
+    RustcEditionRedirect(EditionRedirect),
 
     /// Represents `#[rustc_effective_visibility]`.
     RustcEffectiveVisibility,
