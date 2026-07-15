@@ -218,7 +218,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         self.current = Some((which_matcher, matcher));
     }
 
-    fn trying_match(&mut self, input_pos: u32, token: &Token, loc_index: usize) {
+    fn trying_match(&mut self, input_pos: u32, token: &Token, loc_index: u32) {
         let old_token = self.tokens.insert(input_pos, *token);
         debug_assert!(old_token.is_none_or(|t| t == *token));
 
@@ -228,8 +228,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         self.matches.entry(m).or_insert(MatchResult::Failure);
     }
 
-    fn matched_one(&mut self, input_pos: u32, loc_index: usize) {
-        let loc_index: u32 = loc_index.try_into().unwrap();
+    fn matched_one(&mut self, input_pos: u32, loc_index: u32) {
         let m = Match { input_pos, loc_index };
         let match_result =
             self.matches.get_mut(&m).unwrap_or_else(|| bug!("no corresponding `trying_match()`"));
