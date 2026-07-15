@@ -1755,3 +1755,18 @@ enum MyEnum {}
         "#]],
     );
 }
+
+#[test]
+fn regression_22806() {
+    compute_crate_def_map(
+        r#"
+#![crate_type = "proc-macro"]
+
+fn foo() {}
+
+#[proc_macro]
+fn foo() {}
+    "#,
+        |_| (),
+    )
+}
