@@ -33,11 +33,11 @@ use tracing::debug;
 
 use crate::back::link::ensure_removed;
 use crate::back::lto::{self, SerializedModule, check_lto_allowed};
-use crate::errors::ErrorCreatingRemarkDir;
+use crate::diagnostics::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, ModuleKind,
-    errors,
+    diagnostics,
 };
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
@@ -515,10 +515,10 @@ pub fn produce_final_output_artifacts(
     // Produce final compile outputs.
     let copy_gracefully = |from: &Path, to: &OutFileName| match to {
         OutFileName::Stdout if let Err(e) = copy_to_stdout(from) => {
-            sess.dcx().emit_err(errors::CopyPath::new(from, to.as_path(), e));
+            sess.dcx().emit_err(diagnostics::CopyPath::new(from, to.as_path(), e));
         }
         OutFileName::Real(path) if let Err(e) = fs::copy(from, path) => {
-            sess.dcx().emit_err(errors::CopyPath::new(from, path, e));
+            sess.dcx().emit_err(diagnostics::CopyPath::new(from, path, e));
         }
         _ => {}
     };
@@ -530,8 +530,9 @@ pub fn produce_final_output_artifacts(
             let path = crate_output.temp_path_for_cgu(output_type, &module.name);
             let output = crate_output.path(output_type);
             if !output_type.is_text_output() && output.is_tty() {
-                sess.dcx()
-                    .emit_err(errors::BinaryOutputToTty { shorthand: output_type.shorthand() });
+                sess.dcx().emit_err(diagnostics::BinaryOutputToTty {
+                    shorthand: output_type.shorthand(),
+                });
             } else {
                 copy_gracefully(&path, &output);
             }
@@ -543,12 +544,14 @@ pub fn produce_final_output_artifacts(
             if crate_output.outputs.contains_explicit_name(&output_type) {
                 // 2) Multiple codegen units, with `--emit foo=some_name`. We have
                 //    no good solution for this case, so warn the user.
-                sess.dcx()
-                    .emit_warn(errors::IgnoringEmitPath { extension: output_type.extension() });
+                sess.dcx().emit_warn(diagnostics::IgnoringEmitPath {
+                    extension: output_type.extension(),
+                });
             } else if crate_output.single_output_file.is_some() {
                 // 3) Multiple codegen units, with `-o some_name`. We have
                 //    no good solution for this case, so warn the user.
-                sess.dcx().emit_warn(errors::IgnoringOutput { extension: output_type.extension() });
+                sess.dcx()
+                    .emit_warn(diagnostics::IgnoringOutput { extension: output_type.extension() });
             } else {
                 // 4) Multiple codegen units, but no explicit name. We
                 //    just leave the `foo.0.x` files in place.
@@ -900,7 +903,7 @@ fn execute_copy_from_cache_work_item(
                 Some(output_path)
             }
             Err(error) => {
-                dcx.emit_err(errors::CopyPathBuf {
+                dcx.emit_err(diagnostics::CopyPathBuf {
                     source_file: source_file_in_incr_comp_dir,
                     output_path,
                     error,
@@ -945,7 +948,7 @@ fn execute_copy_from_cache_work_item(
             None
         };
     if should_emit_obj && object.is_none() {
-        dcx.emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
+        dcx.emit_fatal(diagnostics::NoSavedObjectFile { cgu_name: &module.name })
     }
 
     CompiledModule {
