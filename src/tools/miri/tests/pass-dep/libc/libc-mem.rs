@@ -206,7 +206,7 @@ fn test_aligned_alloc() {
     for _ in 0..16 {
         // alignment 1, size 4 should succeed and actually must align to 4 (because C says so...)
         // ... but on native macOS they don't seem to actually implement this correctly.
-        if cfg!(miri) || cfg!(not(target_vendor = "apple")) {
+        if cfg!(miri) || cfg!(not(target_os = "macos")) {
             unsafe {
                 let p = libc::aligned_alloc(1, 4);
                 assert!(!p.is_null());

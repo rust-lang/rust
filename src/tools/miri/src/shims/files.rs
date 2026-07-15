@@ -99,9 +99,14 @@ impl<T: ?Sized> WeakFileDescriptionRef<T> {
 
 impl<T> VisitProvenance for WeakFileDescriptionRef<T> {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // A weak reference can never be the only reference to some pointer or place.
-        // Since the actual file description is tracked by strong ref somewhere,
-        // it is ok to make this a NOP operation.
+        // All our FileDescription instances do not have any provenance.
+        // And even if they did, it would be visited by a strong reference somewhere.
+    }
+}
+
+impl<T> VisitProvenance for FileDescriptionRef<T> {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+        // All our FileDescription instances do not have any provenance.
     }
 }
 
@@ -516,7 +521,7 @@ pub struct FdTable {
 
 impl VisitProvenance for FdTable {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // All our FileDescription instances do not have any tags.
+        // All our FileDescription instances do not have any provenance.
     }
 }
 

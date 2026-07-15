@@ -16,12 +16,6 @@ pub struct Epoll {
     watcher: Rc<ReadinessWatcher>,
 }
 
-impl VisitProvenance for FileDescriptionRef<Epoll> {
-    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // No provenance anywhere in this type.
-    }
-}
-
 impl FileDescription for Epoll {
     fn name(&self) -> &'static str {
         "epoll"

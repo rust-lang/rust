@@ -1516,12 +1516,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 }
 
-impl VisitProvenance for FileDescriptionRef<TcpSocket> {
-    // A socket doesn't contain any references to machine memory
-    // and thus we don't need to propagate the visit.
-    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
-}
-
 impl SourceFileDescription for TcpSocket {
     fn with_source(&self, f: &mut dyn FnMut(&mut dyn Source) -> io::Result<()>) -> io::Result<()> {
         let mut state = self.state.borrow_mut();
