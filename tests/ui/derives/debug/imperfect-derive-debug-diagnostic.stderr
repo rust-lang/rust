@@ -1,0 +1,22 @@
+error[E0277]: `B` doesn't implement `Debug`
+  --> $DIR/imperfect-derive-debug-diagnostic.rs:14:15
+   |
+LL |     println!("{value:?}");
+   |               ^^^^^^^^^ `B` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+note: required for `Foo<B>` to implement `Debug`
+  --> $DIR/imperfect-derive-debug-diagnostic.rs:7:8
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+LL | struct Foo<B: Bar>(B::Item);
+   |        ^^^ - type parameter would need to implement `Debug`
+   = help: consider manually implementing `Debug` to avoid undesired bounds
+help: consider further restricting type parameter `B` with trait `Debug`
+   |
+LL | fn print<B: Bar + std::fmt::Debug>(value: Foo<B>) {
+   |                 +++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
