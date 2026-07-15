@@ -1,6 +1,7 @@
-//@ run-pass
-// Regression test for #42210.
+//! Regression test for <https://github.com/rust-lang/rust/issues/42210>.
+//! Tuple with unsized tail caused ICE.
 
+//@ run-pass
 //@ compile-flags: -g
 
 trait Foo {

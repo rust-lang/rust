@@ -1,5 +1,6 @@
-// check that we substitute type parameters before we suggest anything - otherwise
-// we would suggest function such as `as_slice` for the `&[u16]`.
+//! Regression test for <https://github.com/rust-lang/rust/issues/43420>.
+//! Check that we substitute type parameters before we suggest anything - otherwise
+//! we would suggest function such as `as_slice` for the `&[u16]`.
 
 fn foo(b: &[u16]) {}
 

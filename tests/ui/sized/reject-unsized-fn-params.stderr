@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `<Self as Deref>::Target` cannot be known at compilation time
-  --> $DIR/issue-42312.rs:4:15
+  --> $DIR/reject-unsized-fn-params.rs:8:15
    |
 LL |     fn baz(_: Self::Target) where Self: Deref {}
    |               ^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -16,7 +16,7 @@ LL |     fn baz(_: &Self::Target) where Self: Deref {}
    |               +
 
 error[E0277]: the size for values of type `(dyn ToString + 'static)` cannot be known at compilation time
-  --> $DIR/issue-42312.rs:8:13
+  --> $DIR/reject-unsized-fn-params.rs:12:13
    |
 LL | pub fn f(_: dyn ToString) {}
    |             ^^^^^^^^^^^^ doesn't have a size known at compile-time

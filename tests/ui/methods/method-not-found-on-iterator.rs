@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/41880>.
+//! This used to cause ICE.
+
 fn iterate<T, F>(initial: T, f: F) -> Iterate<T, F> {
     Iterate {
         state: initial,
