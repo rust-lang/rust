@@ -262,6 +262,8 @@ declare_features! (
     (internal, const_param_ty_unchecked, "1.97.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
+    /// Allows defining edition redirects and preserving redirects on re-exports.
+    (internal, edition_redirect, "CURRENT_RUSTC_VERSION", None),
     /// Implementation details of externally implementable items
     (internal, eii_internals, "1.94.0", None),
     /// Implementation details of field representing types.
