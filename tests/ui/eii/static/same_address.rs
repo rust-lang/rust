@@ -2,6 +2,9 @@
 //@ check-run-results
 // FIXME(#125418): linking on Windows GNU targets is not yet supported.
 //@ ignore-windows-gnu
+// FIXME GCC seems to treat integers as if they have provenance, causing the comparison to fail
+// despite identical address.
+//@ ignore-backends: gcc
 // Tests whether EIIs and their declarations share the same address
 #![feature(extern_item_impls)]
 
