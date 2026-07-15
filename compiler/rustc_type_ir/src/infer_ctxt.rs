@@ -9,7 +9,7 @@ use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::solve::VisibleForLeakCheck;
+use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{self as ty, Interner, TyVid};
 
 mod private {
@@ -391,7 +391,7 @@ pub trait InferCtxtLike: Sized {
         vid: ty::RegionVid,
     ) -> <Self::Interner as Interner>::Region;
 
-    fn is_changed_arg(&self, arg: <Self::Interner as Interner>::GenericArg) -> bool;
+    fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
     fn next_region_infer(&self) -> <Self::Interner as Interner>::Region;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;

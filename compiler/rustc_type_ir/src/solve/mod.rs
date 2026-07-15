@@ -12,11 +12,13 @@ use rustc_type_ir_macros::{
 };
 use tracing::debug;
 
+use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::region_constraint::RegionConstraint;
 use crate::search_graph::PathKind;
 use crate::{
-    self as ty, Canonical, CanonicalVarValues, CantBeErased, Interner, TypingMode, Upcast,
+    self as ty, Canonical, CanonicalVarValues, CantBeErased, ConstVid, FloatVid, GenericArgKind,
+    InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
@@ -940,5 +942,116 @@ impl SizedTraitKind {
             SizedTraitKind::Sized => SolverTraitLangItem::Sized,
             SizedTraitKind::MetaSized => SolverTraitLangItem::MetaSized,
         })
+    }
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub enum SucceededInErased<I: Interner> {
+    /// This goal previously succeeded in erased mode, which based on `accessed_opaques`
+    /// might make us take a fast path slightly more often.
+    Yes {
+        accessed_opaques: AccessedOpaques<I>,
+    },
+    No,
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub enum GoalStalledOnReason<I: Interner> {
+    /// This goal got stalled in `compute_goal_fast_path`. Usually this means
+    /// the goal is stalled on not that much, only one or two variables, and
+    /// definitely nothing to do with opaque types. So we don't store that information.
+    FastPath,
+    Other {
+        num_opaques: usize,
+        previously_succeeded_in_erased: SucceededInErased<I>,
+    },
+}
+
+/// The conditions that must change for a goal to warrant
+#[derive_where(Clone, Debug; I: Interner)]
+pub struct GoalStalledOn<I: Interner> {
+    pub stalled_vars: Vec<TyOrConstInferVar>,
+    pub sub_roots: Vec<TyVid>,
+    /// The certainty that will be returned on subsequent evaluations if this
+    /// goal remains stalled.
+    pub stalled_certainty: Certainty,
+    pub reason: GoalStalledOnReason<I>,
+}
+
+/// For some goals we can trivially answer some questions without going through
+/// canonicalization. There are three options:
+#[derive(Clone, Debug)]
+pub enum ComputeGoalFastPathOutcome<I: Interner> {
+    /// Do not attempt the fast path. Compute as normal.
+    NoFastPath,
+    /// The goal trivially holds, immediately produce a result with [`Certainty::Yes`]
+    TriviallyHolds,
+    /// The goal is trivially stalled: we know for sure that it makes no sense to compute it right
+    /// now, but can return information about what its stalled on and when it can be computed for real.
+    TriviallyStalled { stalled_on: GoalStalledOn<I> },
+}
+
+/// Helper for `InferCtxt::ty_or_const_infer_var_changed` (see comment on that), currently
+/// used only for `traits::fulfill`'s list of `stalled_on` inference variables.
+#[derive(Copy, Clone, Debug)]
+pub enum TyOrConstInferVar {
+    /// Equivalent to `ty::Infer(ty::TyVar(_))`.
+    Ty(TyVid),
+    /// Equivalent to `ty::Infer(ty::IntVar(_))`.
+    TyInt(IntVid),
+    /// Equivalent to `ty::Infer(ty::FloatVar(_))`.
+    TyFloat(FloatVid),
+
+    /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
+    Const(ConstVid),
+}
+
+impl TyOrConstInferVar {
+    pub fn as_type<I: Interner>(&self, interner: I) -> Option<I::Ty> {
+        match self {
+            Self::Ty(vid) => Some(I::Ty::new_var(interner, *vid)),
+            Self::TyInt(_) | Self::TyFloat(_) | Self::Const(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_generic_arg<I: Interner>(arg: I::GenericArg) -> Option<Self> {
+        match arg.kind() {
+            GenericArgKind::Type(ty) => Self::maybe_from_ty::<I>(ty),
+            GenericArgKind::Const(ct) => Self::maybe_from_const::<I>(ct),
+            GenericArgKind::Lifetime(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_term<I: Interner>(term: I::Term) -> Option<Self> {
+        match term.kind() {
+            TermKind::Ty(ty) => Self::maybe_from_ty::<I>(ty),
+            TermKind::Const(ct) => Self::maybe_from_const::<I>(ct),
+        }
+    }
+
+    /// Tries to extract an inference variable from a type, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
+    fn maybe_from_ty<I: Interner>(ty: I::Ty) -> Option<Self> {
+        match ty.kind() {
+            ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
+            ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
+            ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),
+            _ => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a constant, returns `None`
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    fn maybe_from_const<I: Interner>(ct: I::Const) -> Option<Self> {
+        match ct.kind() {
+            ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
+            _ => None,
+        }
     }
 }
