@@ -97,13 +97,6 @@ impl<T: ?Sized> WeakFileDescriptionRef<T> {
     }
 }
 
-impl<T> VisitProvenance for WeakFileDescriptionRef<T> {
-    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // All our FileDescription instances do not have any provenance.
-        // And even if they did, it would be visited by a strong reference somewhere.
-    }
-}
-
 impl<T> VisitProvenance for FileDescriptionRef<T> {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
         // All our FileDescription instances do not have any provenance.

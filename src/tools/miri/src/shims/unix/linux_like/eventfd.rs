@@ -4,7 +4,7 @@ use std::io;
 use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
-use crate::shims::files::{FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
+use crate::shims::files::{FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::*;
 
@@ -234,7 +234,6 @@ fn eventfd_write<'tcx>(
 
             eventfd.blocked_write_tid.borrow_mut().push(ecx.active_thread());
 
-            let weak_eventfd = FileDescriptionRef::downgrade(&eventfd);
             ecx.block_thread(
                 BlockReason::Eventfd,
                 None,
@@ -243,14 +242,11 @@ fn eventfd_write<'tcx>(
                         num: u64,
                         buf_place: MPlaceTy<'tcx>,
                         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-                        weak_eventfd: WeakFileDescriptionRef<EventFd>,
+                        eventfd: FileDescriptionRef<EventFd>,
                     }
                     |this, unblock: UnblockKind| {
                         assert_eq!(unblock, UnblockKind::Ready);
-                        // When we get unblocked, try again. We know the ref is still valid,
-                        // otherwise there couldn't be a `write` that unblocks us.
-                        let eventfd_ref = weak_eventfd.upgrade().unwrap();
-                        eventfd_write(buf_place, eventfd_ref, this, finish)
+                        eventfd_write(buf_place, eventfd, this, finish)
                     }
                 ),
             );
@@ -278,7 +274,6 @@ fn eventfd_read<'tcx>(
 
         eventfd.blocked_read_tid.borrow_mut().push(ecx.active_thread());
 
-        let weak_eventfd = FileDescriptionRef::downgrade(&eventfd);
         ecx.block_thread(
             BlockReason::Eventfd,
             None,
@@ -286,14 +281,11 @@ fn eventfd_read<'tcx>(
                 @capture<'tcx> {
                     buf_place: MPlaceTy<'tcx>,
                     finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-                    weak_eventfd: WeakFileDescriptionRef<EventFd>,
+                    eventfd: FileDescriptionRef<EventFd>,
                 }
                 |this, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    // When we get unblocked, try again. We know the ref is still valid,
-                    // otherwise there couldn't be a `write` that unblocks us.
-                    let eventfd_ref = weak_eventfd.upgrade().unwrap();
-                    eventfd_read(buf_place, eventfd_ref, this, finish)
+                    eventfd_read(buf_place, eventfd, this, finish)
                 }
             ),
         );
