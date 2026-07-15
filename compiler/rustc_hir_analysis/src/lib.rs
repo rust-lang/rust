@@ -60,7 +60,6 @@ This API is completely unstable and subject to change.
 #![feature(gen_blocks)]
 #![feature(iter_intersperse)]
 #![feature(never_type)]
-#![feature(option_into_flat_iter)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
