@@ -146,6 +146,7 @@ pub trait HirDatabase: SourceDatabase {
     }
 
     #[salsa::invoke(crate::dyn_compatibility::dyn_compatibility_of_trait_query)]
+    #[salsa::transparent]
     fn dyn_compatibility_of_trait(&self, trait_: TraitId) -> Option<DynCompatibilityViolation>;
 
     #[salsa::invoke(crate::lower::ty_query)]
