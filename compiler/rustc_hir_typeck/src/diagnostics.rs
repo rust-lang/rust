@@ -15,6 +15,7 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Spanned, Symbol};
+use rustc_trait_selection::diagnostics::SourceKindSubdiag;
 
 use crate::FnCtxt;
 
@@ -1319,4 +1320,15 @@ pub(crate) struct FloatLiteralF32Fallback {
         applicability = "machine-applicable"
     )]
     pub span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[help("specify the types explicitly")]
+#[note("in the future, the requirement `{$obligation}` will fail")]
+#[diag("dependency on trait impl fallback")]
+pub(crate) struct DependencyOnTraitImplFallback<'tcx, 'a> {
+    pub obligation_span: Span,
+    pub obligation: ty::Predicate<'tcx>,
+    #[subdiagnostic]
+    pub subdiagnostic: Option<SourceKindSubdiag<'a>>,
 }

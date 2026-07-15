@@ -527,6 +527,16 @@ impl NoArgsAttributeParser for RustcLintUntrackedQueryInformationParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintUntrackedQueryInformation;
 }
 
+pub(crate) struct RustcLowPriorityImplParser;
+
+impl NoArgsAttributeParser for RustcLowPriorityImplParser {
+    const PATH: &[Symbol] = &[sym::rustc_low_priority_impl];
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::Impl { of_trait: true })]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLowPriorityImpl;
+}
+
 pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
 
 impl SingleAttributeParser for RustcSimdMonomorphizeLaneLimitParser {

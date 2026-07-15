@@ -4269,7 +4269,7 @@ declare_lint! {
     ///  --> src/lib.rs:3:10
     ///   |
     /// 3 | #[derive(Trait)]
-    ///   |          ^^^^^
+  ///   |          ^^^^^
     /// ```
     pub AMBIGUOUS_DERIVE_HELPERS,
     Warn,
@@ -5534,4 +5534,52 @@ declare_lint! {
     Allow,
     "usage of `unsafe` code and other potentially unsound constructs",
     @eval_always = true
+}
+
+declare_lint! {
+    /// The `trait_impl_fallback` lint detects code depending on the compiler
+    /// to choose a particular trait implementation when multiple apply.
+    ///
+    /// ### Example
+    ///
+    /// ```
+    /// #![feature(rustc_attrs)]
+    ///
+    /// struct X;
+    /// struct Y;
+    ///
+    /// #[rustc_low_priority_impl]
+    /// impl From<Y> for X {
+    ///     fn from(Y: Y) -> X {
+    ///         X
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let _: X = From::from(loop {} as _);
+    /// }
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// When there is only one applicable implementation of a trait, `rustc`
+    /// uses it. While convenient, this leads to adding trait implementations
+    /// being a breaking change (as it can lead to the number of applicable
+    /// implementations to go from 1 to 2).
+    ///
+    /// To allow evolution of the standard library, `rustc` provides an
+    /// attribute to mark the newly added implementation as "low priority".
+    /// The compiler then chooses the old implementation over the "low
+    /// priority" ones, if there is exactly 1 normal priority applicabble
+    /// implementation.
+    ///
+    /// This is a [future-incompatible] lint, in the future we will remove the
+    /// low priority annotations, breaking code which depends on them.
+    pub TRAIT_IMPL_FALLBACK,
+    Warn,
+    "code depending on fallback to an older implementation of a trait",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #0),
+        report_in_deps: true,
+    };
 }

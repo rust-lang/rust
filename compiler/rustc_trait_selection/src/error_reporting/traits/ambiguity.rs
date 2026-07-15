@@ -1,11 +1,10 @@
 use std::ops::ControlFlow;
 
 use rustc_errors::{Applicability, Diag, E0283, E0284, E0790, MultiSpan, struct_span_code_err};
-use rustc_hir as hir;
-use rustc_hir::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor as _;
+use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_infer::infer::{BoundRegionConversionTime, InferCtxt};
 use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{
@@ -23,10 +22,17 @@ use crate::error_reporting::traits::{FindExprBySpan, to_pretty_impl_header};
 use crate::traits::ObligationCtxt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum CandidateSource {
     DefId(DefId),
     ParamEnv(Span),
+}
+
+impl CandidateSource {
+    #[instrument(target = "meow", level = "debug", skip(tcx), ret)]
+    pub fn is_low_priority(self, tcx: TyCtxt<'_>) -> bool {
+        matches!(self, Self::DefId(def_id) if find_attr!(tcx, def_id, RustcLowPriorityImpl))
+    }
 }
 
 pub fn compute_applicable_impls_for_diagnostics<'tcx>(

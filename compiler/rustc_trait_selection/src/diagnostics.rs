@@ -259,7 +259,7 @@ pub(crate) struct InferenceBadError<'a> {
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum SourceKindSubdiag<'a> {
+pub enum SourceKindSubdiag<'a> {
     #[suggestion(
         "{$kind ->
             [with_pattern] consider giving `{$name}` an explicit type
@@ -376,7 +376,7 @@ impl<'a> SourceKindSubdiag<'a> {
 
 /// Suggestion to specify generic parameter(s) via `::<>`.
 #[derive(Subdiagnostic)]
-pub(crate) enum SpecifyGenericParamsSuggestion {
+pub enum SpecifyGenericParamsSuggestion {
     #[suggestion(
         "consider specifying the generic {$arg_count ->
             [one] argument

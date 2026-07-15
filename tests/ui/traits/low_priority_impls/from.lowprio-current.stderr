@@ -1,0 +1,36 @@
+ WARN rustc_trait_selection::error_reporting::infer::need_type_info resolved ty var in error message
+warning: dependency on trait impl fallback
+  --> $DIR/from.rs:46:16
+   |
+LL |     let _: X = Meow::f(<_>::default());
+   |                ^^^^^^^ cannot infer type of the type parameter `T` declared on the trait `Meow`
+   |
+   = help: specify the types explicitly
+   = note: in the future, the requirement `X: Meow<_>` will fail
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #0 <https://github.com/rust-lang/rust/issues/0>
+   = note: `#[warn(trait_impl_fallback)]` on by default
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: X = Meow::</* Type */>::f(<_>::default());
+   |                    ++++++++++++++
+
+warning: 1 warning emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: dependency on trait impl fallback
+  --> $DIR/from.rs:46:16
+   |
+LL |     let _: X = Meow::f(<_>::default());
+   |                ^^^^^^^ cannot infer type of the type parameter `T` declared on the trait `Meow`
+   |
+   = help: specify the types explicitly
+   = note: in the future, the requirement `X: Meow<_>` will fail
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #0 <https://github.com/rust-lang/rust/issues/0>
+   = note: `#[warn(trait_impl_fallback)]` on by default
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: X = Meow::</* Type */>::f(<_>::default());
+   |                    ++++++++++++++
+

@@ -349,6 +349,10 @@ where
             .map(|(o, _)| o)
             .collect()
     }
+
+    fn is_in_probe(&self, infcx: &InferCtxt<'_>) -> bool {
+        self.usable_in_snapshot != infcx.num_open_snapshots()
+    }
 }
 
 pub enum NextSolverError<'tcx> {
