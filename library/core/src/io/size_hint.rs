@@ -40,6 +40,7 @@ pub trait SizeHint {
     /// `(self.lower_bound(), self.upper_bound())`.
     ///
     /// Without specialization, types implementing this trait will return `(0, None)`.
+    #[inline]
     final fn size_hint(&self) -> (usize, Option<usize>) {
         (self.lower_bound(), self.upper_bound())
     }

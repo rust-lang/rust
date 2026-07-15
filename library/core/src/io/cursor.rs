@@ -96,6 +96,7 @@ impl<T> Cursor<T> {
     /// # fn force_inference(_: &Cursor<Vec<u8>>) {}
     /// # force_inference(&buff);
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
     pub const fn new(inner: T) -> Cursor<T> {
@@ -115,6 +116,7 @@ impl<T> Cursor<T> {
     ///
     /// let vec = buff.into_inner();
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> T {
         self.inner
@@ -133,6 +135,7 @@ impl<T> Cursor<T> {
     ///
     /// let reference = buff.get_ref();
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
     pub const fn get_ref(&self) -> &T {
@@ -155,6 +158,7 @@ impl<T> Cursor<T> {
     ///
     /// let reference = buff.get_mut();
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_mut_cursor", since = "1.86.0")]
     pub const fn get_mut(&mut self) -> &mut T {
@@ -180,6 +184,7 @@ impl<T> Cursor<T> {
     /// buff.seek(SeekFrom::Current(-1)).unwrap();
     /// assert_eq!(buff.position(), 1);
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
     pub const fn position(&self) -> u64 {
@@ -203,6 +208,7 @@ impl<T> Cursor<T> {
     /// buff.set_position(4);
     /// assert_eq!(buff.position(), 4);
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_mut_cursor", since = "1.86.0")]
     pub const fn set_position(&mut self, pos: u64) {
@@ -239,6 +245,7 @@ where
     /// buff.set_position(6);
     /// assert_eq!(buff.split(), ([1, 2, 3, 4, 5].as_slice(), [].as_slice()));
     /// ```
+    #[inline]
     #[unstable(feature = "cursor_split", issue = "86369")]
     pub fn split(&self) -> (&[u8], &[u8]) {
         let slice = self.inner.as_ref();
@@ -270,6 +277,7 @@ where
     /// buff.set_position(6);
     /// assert_eq!(buff.split_mut(), ([1, 2, 3, 4, 5].as_mut_slice(), [].as_mut_slice()));
     /// ```
+    #[inline]
     #[unstable(feature = "cursor_split", issue = "86369")]
     pub fn split_mut(&mut self) -> (&mut [u8], &mut [u8]) {
         let slice = self.inner.as_mut();
@@ -438,6 +446,7 @@ impl<T> io::Seek for Cursor<T>
 where
     T: AsRef<[u8]>,
 {
+    #[inline]
     fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
         let (base_pos, offset) = match style {
             SeekFrom::Start(n) => {
@@ -459,10 +468,12 @@ where
         }
     }
 
+    #[inline]
     fn stream_len(&mut self) -> io::Result<u64> {
         Ok(self.get_ref().as_ref().len() as u64)
     }
 
+    #[inline]
     fn stream_position(&mut self) -> io::Result<u64> {
         Ok(self.position())
     }

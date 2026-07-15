@@ -228,6 +228,7 @@ impl Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<crate::ffi::NulError> for Error {
     /// Converts a [`crate::ffi::NulError`] into a [`Error`].
+    #[inline]
     fn from(_: crate::ffi::NulError) -> Error {
         const_error!(ErrorKind::InvalidInput, "data provided contains a nul byte")
     }
@@ -239,6 +240,7 @@ impl From<crate::collections::TryReserveError> for Error {
     ///
     /// `TryReserveError` won't be available as the error `source()`,
     /// but this may change in the future.
+    #[inline]
     fn from(_: crate::collections::TryReserveError) -> Error {
         // ErrorData::Custom allocates, which isn't great for handling OOM errors.
         ErrorKind::OutOfMemory.into()

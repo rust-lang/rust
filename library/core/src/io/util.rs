@@ -150,6 +150,7 @@ impl Seek for Empty {
 /// io::empty().read_to_string(&mut buffer).unwrap();
 /// assert!(buffer.is_empty());
 /// ```
+#[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
@@ -197,6 +198,7 @@ impl SizeHint for Repeat {
 /// io::repeat(0b101).read_exact(&mut buffer).unwrap();
 /// assert_eq!(buffer, [0b101, 0b101, 0b101]);
 /// ```
+#[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
@@ -315,6 +317,7 @@ impl Write for &Sink {
 /// let num_bytes = io::sink().write(&buffer).unwrap();
 /// assert_eq!(num_bytes, 5);
 /// ```
+#[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
@@ -379,6 +382,7 @@ impl<T, U> Chain<T, U> {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn into_inner(self) -> (T, U) {
         (self.first, self.second)
@@ -406,6 +410,7 @@ impl<T, U> Chain<T, U> {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn get_ref(&self) -> (&T, &U) {
         (&self.first, &self.second)
@@ -433,6 +438,7 @@ impl<T, U> Chain<T, U> {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn get_mut(&mut self) -> (&mut T, &mut U) {
         (&mut self.first, &mut self.second)
@@ -513,6 +519,7 @@ impl<T> Take<T> {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn limit(&self) -> u64 {
         self.limit
@@ -548,6 +555,7 @@ impl<T> Take<T> {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "take_set_limit", since = "1.27.0")]
     pub fn set_limit(&mut self, limit: u64) {
         self.len = limit;
@@ -574,6 +582,7 @@ impl<T> Take<T> {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "io_take_into_inner", since = "1.15.0")]
     pub fn into_inner(self) -> T {
         self.inner
@@ -603,6 +612,7 @@ impl<T> Take<T> {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn get_ref(&self) -> &T {
         &self.inner
@@ -632,6 +642,7 @@ impl<T> Take<T> {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.inner
@@ -640,6 +651,7 @@ impl<T> Take<T> {
 
 #[stable(feature = "seek_io_take", since = "1.89.0")]
 impl<T: Seek> Seek for Take<T> {
+    #[inline]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64> {
         let new_position = match pos {
             SeekFrom::Start(v) => Some(v),
@@ -663,14 +675,17 @@ impl<T: Seek> Seek for Take<T> {
         Ok(new_position)
     }
 
+    #[inline]
     fn stream_len(&mut self) -> Result<u64> {
         Ok(self.len)
     }
 
+    #[inline]
     fn stream_position(&mut self) -> Result<u64> {
         Ok(self.position())
     }
 
+    #[inline]
     fn seek_relative(&mut self, offset: i64) -> Result<()> {
         if !self.position().checked_add_signed(offset).is_some_and(|p| p <= self.len) {
             return Err(ErrorKind::InvalidInput.into());

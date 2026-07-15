@@ -73,6 +73,7 @@ pub trait Seek {
     /// assert_eq!(&buf, hello);
     /// # std::io::Result::Ok(())
     /// ```
+    #[inline]
     #[stable(feature = "seek_rewind", since = "1.55.0")]
     fn rewind(&mut self) -> Result<()> {
         self.seek(SeekFrom::Start(0))?;
@@ -113,6 +114,7 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[unstable(feature = "seek_stream_len", issue = "59359")]
     fn stream_len(&mut self) -> Result<u64> {
         stream_len_default(self)
@@ -141,6 +143,7 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "seek_convenience", since = "1.51.0")]
     fn stream_position(&mut self) -> Result<u64> {
         self.seek(SeekFrom::Current(0))
@@ -167,6 +170,7 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "seek_seek_relative", since = "1.80.0")]
     fn seek_relative(&mut self, offset: i64) -> Result<()> {
         self.seek(SeekFrom::Current(offset))?;
@@ -177,6 +181,7 @@ pub trait Seek {
 /// The default implementation of [`Seek::stream_len`].
 /// This may be desirable in `libstd` where the default implementation is desirable,
 /// but additional work needs to be done before or after.
+#[inline]
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub fn stream_len_default<T: Seek + ?Sized>(self_: &mut T) -> Result<u64> {

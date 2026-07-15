@@ -131,6 +131,7 @@ pub trait Write {
     /// ```
     ///
     /// [`write`]: Write::write
+    #[inline]
     #[stable(feature = "iovec", since = "1.36.0")]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
         default_write_vectored(|b| self.write(b), bufs)
@@ -146,6 +147,7 @@ pub trait Write {
     /// The default implementation returns `false`.
     ///
     /// [`write_vectored`]: Write::write_vectored
+    #[inline]
     #[unstable(feature = "can_vector", issue = "69941")]
     fn is_write_vectored(&self) -> bool {
         false
@@ -210,6 +212,7 @@ pub trait Write {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_all(&mut self, mut buf: &[u8]) -> Result<()> {
         while !buf.is_empty() {
@@ -274,6 +277,7 @@ pub trait Write {
     /// assert_eq!(writer, &[1, 2, 3, 4, 5, 6]);
     /// # Ok(()) }
     /// ```
+    #[inline]
     #[unstable(feature = "write_all_vectored", issue = "70436")]
     fn write_all_vectored(&mut self, mut bufs: &mut [IoSlice<'_>]) -> Result<()> {
         // Guarantee that bufs is empty if it contains no data,
@@ -327,6 +331,7 @@ pub trait Write {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> Result<()> {
         if let Some(s) = args.as_statically_known_str() {
@@ -357,6 +362,7 @@ pub trait Write {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self
     where
@@ -368,6 +374,7 @@ pub trait Write {
 
 /// Default implementation of [`Write::write_vectored`], which is currently used
 /// in `libstd` for file system implementations of similar methods.
+#[inline]
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub fn default_write_vectored<F>(write: F, bufs: &[IoSlice<'_>]) -> Result<usize>

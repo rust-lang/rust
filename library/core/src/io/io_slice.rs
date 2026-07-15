@@ -154,6 +154,7 @@ impl<'a> IoSliceMut<'a> {
     ///
     /// assert_eq!(&data, b"Abcdef");
     /// ```
+    #[inline]
     #[unstable(feature = "io_slice_as_bytes", issue = "132818")]
     pub const fn into_slice(self) -> &'a mut [u8] {
         self.0.into_slice()
@@ -322,6 +323,7 @@ impl<'a> IoSlice<'a> {
     ///
     /// assert_eq!(io_slice.as_slice(), b"def");
     /// ```
+    #[inline]
     #[unstable(feature = "io_slice_as_bytes", issue = "132818")]
     pub const fn as_slice(self) -> &'a [u8] {
         self.0.as_slice()

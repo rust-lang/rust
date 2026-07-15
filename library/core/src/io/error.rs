@@ -620,6 +620,7 @@ impl Custom {
     /// * `error_drop` must be safe to call for the pointer `error` exactly once.
     /// * `outer_drop` must be safe to call on a pointer to this instance of `Custom`
     ///   if it were stored within a [`CustomOwner`].
+    #[inline]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub unsafe fn from_raw(
         kind: ErrorKind,
@@ -630,6 +631,7 @@ impl Custom {
         Custom { kind, error, error_drop, outer_drop }
     }
 
+    #[inline]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub fn into_raw(self) -> crate::ptr::NonNull<dyn error::Error + Send + Sync> {
         let ptr = self.error;
@@ -680,12 +682,14 @@ impl CustomOwner {
     /// # Safety
     ///
     /// * The `outer_drop` of the provided `custom` must be safe to call exactly once.
+    #[inline]
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub unsafe fn from_raw(custom: crate::ptr::NonNull<Custom>) -> CustomOwner {
         CustomOwner(custom)
     }
 
+    #[inline]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub fn into_raw(self) -> crate::ptr::NonNull<Custom> {
         let ptr = self.0;
