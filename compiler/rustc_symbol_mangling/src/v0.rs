@@ -1,5 +1,5 @@
 use std::fmt::Write;
-use std::hash::{Hash, Hasher};
+use std::hash::Hasher;
 use std::iter;
 use std::ops::Range;
 
@@ -8,7 +8,7 @@ use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hash::StableHasher;
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -330,10 +330,12 @@ impl<'tcx> V0SymbolMangler<'tcx> {
         param_layout: ty::ParamLayout<'tcx>,
     ) -> Result<(), std::fmt::Error> {
         // TODO: this hashing is a really hacky temporary approach
-        let mut hasher = std::hash::DefaultHasher::new();
-        param_layout.hash(&mut hasher);
-        let hash = hasher.finish();
-        self.push_integer_62(hash);
+        let hash: Hash64 = self.tcx.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
+            param_layout.stable_hash(&mut hcx, &mut hasher);
+            hasher.finish()
+        });
+        self.push_integer_62(hash.as_u64());
         Ok(())
     }
 }

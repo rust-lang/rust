@@ -131,7 +131,7 @@ pub fn simplify_type<I: Interner>(
             TreatParams::AsRigid => Some(SimplifiedType::Placeholder),
             TreatParams::InstantiateWithInfer => None,
         },
-        ty::Erased(..) => None,
+        ty::Erased(..) => Some(SimplifiedType::Placeholder),
         ty::Alias(..) => match treat_params {
             // When treating `ty::Param` as a placeholder, projections also
             // don't unify with anything else as long as they are fully normalized.

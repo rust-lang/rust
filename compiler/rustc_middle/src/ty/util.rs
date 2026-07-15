@@ -1555,7 +1555,13 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::Str => Ok(SmallVec::new()),
 
         // Foreign types can never have destructors.
+        // FIXME: here, foreign types are ignored, but in the NeedsDropTypes iterator,
+        // foreign types are considered to be needing drop always. noticed in the course
+        // of an unrelated change.
         ty::Foreign(..) => Ok(SmallVec::new()),
+
+        // TODO: this should be changed once Erased types can have drop impls
+        ty::Erased(..) => Ok(SmallVec::new()),
 
         // FIXME(zetanumbers): Temporary workaround for async drop of dynamic types
         ty::Dynamic(..) | ty::Error(_) => {
@@ -1592,7 +1598,6 @@ pub fn needs_drop_components_with_async<'tcx>(
         ty::Adt(..)
         | ty::Alias(..)
         | ty::Param(_)
-        | ty::Erased(..)
         | ty::Bound(..)
         | ty::Placeholder(..)
         | ty::Infer(_)

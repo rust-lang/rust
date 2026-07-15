@@ -592,6 +592,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::Never
+            | ty::Erased(..)
             | ty::Tuple(_)
             | ty::UnsafeBinder(_) => {
                 if let Some(simp) = ty::fast_reject::simplify_type(
@@ -664,7 +665,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             // These variants should not exist as a self type.
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Param(_)
-            | ty::Erased(..)
             | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
         }
 

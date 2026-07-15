@@ -1016,7 +1016,9 @@ impl<'tcx> Instance<'tcx> {
                 |(idx, arg)| match arg.kind() {
                     ty::GenericArgKind::Type(ty) => {
                         let param_ty = ParamTy::for_def(generics.param_at(idx, tcx));
-                        if is_ty_param_polymorphizable(tcx, &clauses, param_ty) {
+                        if is_ty_param_polymorphizable(tcx, &clauses, param_ty)
+                            && !ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized())
+                        {
                             let layout_result = tcx
                                 .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty));
                             let param_layout = ty::ParamLayout(layout_result.unwrap().layout);
@@ -1039,16 +1041,12 @@ fn is_ty_param_polymorphizable<'tcx>(
     clauses: &[ty::Clause<'tcx>],
     param_ty: ParamTy,
 ) -> bool {
-    let mut found_copy_bound = false;
     for clause in clauses {
         // FIXME: is skip_binder appropriate?
         match clause.kind().skip_binder() {
             ty::ClauseKind::Trait(trait_predicate) => {
                 let is_for_param = trait_predicate.self_ty().is_param(param_ty.index);
-                if is_for_param && tcx.is_lang_item(trait_predicate.def_id(), LangItem::Copy) {
-                    found_copy_bound = true;
-                    debug!(?found_copy_bound);
-                } else if is_for_param
+                if is_for_param
                     && tcx.is_lang_item(trait_predicate.def_id(), LangItem::Sized)
                 {
                     // FIXME: what about rest of Sized hierarchy?
@@ -1080,7 +1078,7 @@ fn is_ty_param_polymorphizable<'tcx>(
             | ty::ClauseKind::UnstableFeature(..) => {}
         }
     }
-    found_copy_bound
+    true
 }
 
 fn has_param<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(param_ty: ParamTy, t: T) -> bool {

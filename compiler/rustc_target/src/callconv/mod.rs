@@ -899,19 +899,25 @@ where
                 // Ensure there is no padding.
                 && s1.size(cx) + s2.size(cx) == layout.size
         }
-        BackendRepr::Memory { .. } => match layout.fields {
-            FieldsShape::Primitive | FieldsShape::Union(_) => false,
-            // Array elements are at stride offsets with no inter-element gaps.
-            FieldsShape::Array { stride: _, count } => {
-                count == 0 || layout_is_noundef(layout.field(cx, 0), cx)
+        BackendRepr::Memory { .. } => {
+            if Ty::is_erased_ty(layout) {
+                return false;
             }
-            FieldsShape::Arbitrary { .. } => {
-                // With `Variants::Multiple`, `layout.fields` only covers shared
-                // bytes (niche/discriminant); per-variant data is absent, so
-                // full coverage cannot be proven.
-                matches!(layout.variants, Variants::Single { .. }) && fields_are_noundef(layout, cx)
+            match layout.fields {
+                FieldsShape::Primitive | FieldsShape::Union(_) => false,
+                // Array elements are at stride offsets with no inter-element gaps.
+                FieldsShape::Array { stride: _, count } => {
+                    count == 0 || layout_is_noundef(layout.field(cx, 0), cx)
+                }
+                FieldsShape::Arbitrary { .. } => {
+                    // With `Variants::Multiple`, `layout.fields` only covers shared
+                    // bytes (niche/discriminant); per-variant data is absent, so
+                    // full coverage cannot be proven.
+                    matches!(layout.variants, Variants::Single { .. })
+                        && fields_are_noundef(layout, cx)
+                }
             }
-        },
+        }
         BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => false,
     }
 }

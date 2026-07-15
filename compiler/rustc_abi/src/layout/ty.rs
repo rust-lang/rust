@@ -115,6 +115,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo>;
+    fn is_erased_ty(this: TyAndLayout<'a, Self>) -> bool;
     fn is_adt(this: TyAndLayout<'a, Self>) -> bool;
     fn is_never(this: TyAndLayout<'a, Self>) -> bool;
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;

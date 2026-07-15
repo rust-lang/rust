@@ -80,7 +80,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
-        ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) | ty::Foreign(..) | ty::Coroutine(..) | ty::Str
+        ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) | ty::Foreign(..) | ty::Coroutine(..) | ty::Str|ty::Erased(..)
             // For performance reasons we use names only when emitting LLVM IR.
             if !cx.sess().fewer_names() =>
         {
@@ -101,6 +101,21 @@ fn uncached_llvm_type<'a, 'tcx>(
         }
         _ => None,
     };
+
+    if layout.ty.is_erased() {
+        // Erased types are represented opaquely since we don't know the types
+        // and exact layouts of their fields.
+        let fill = cx.type_padding_filler(layout.size, layout.align.abi);
+        let packed = false;
+        return match name {
+            None => cx.type_struct(&[fill], packed),
+            Some(ref name) => {
+                let llty = cx.type_named_struct(name);
+                cx.set_struct_body(llty, &[fill], packed);
+                llty
+            }
+        };
+    }
 
     match layout.fields {
         FieldsShape::Primitive | FieldsShape::Union(_) => {
@@ -135,6 +150,7 @@ fn struct_llfields<'a, 'tcx>(
     layout: TyAndLayout<'tcx>,
 ) -> (Vec<&'a Type>, bool) {
     debug!("struct_llfields: {:#?}", layout);
+
     let field_count = layout.fields.count();
 
     let mut packed = false;

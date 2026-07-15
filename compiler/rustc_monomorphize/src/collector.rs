@@ -1088,7 +1088,10 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> 
         return true;
     }
 
-    if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(tcx).is_some() {
+    // TODO: polymorphize should not be ad hoc like this
+    if tcx.is_reachable_non_generic(def_id)
+        || instance.polymorphize(tcx).upstream_monomorphization(tcx).is_some()
+    {
         // We can link to the item in question, no instance needed in this crate.
         return false;
     }

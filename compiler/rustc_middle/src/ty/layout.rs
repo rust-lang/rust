@@ -1096,6 +1096,8 @@ where
                 })
             }
 
+            ty::Erased(..) => None,
+
             _ => {
                 let mut data_variant = match &this.variants {
                     // Within the discriminant field, only the niche itself is
@@ -1183,6 +1185,10 @@ where
         );
 
         pointee_info
+    }
+
+    fn is_erased_ty(this: TyAndLayout<'tcx>) -> bool {
+        this.ty.is_erased()
     }
 
     fn is_adt(this: TyAndLayout<'tcx>) -> bool {

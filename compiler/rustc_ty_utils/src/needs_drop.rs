@@ -276,11 +276,7 @@ where
                             queue_type(self, required);
                         }
                     }
-                    ty::Alias(..)
-                    | ty::Array(..)
-                    | ty::Placeholder(_)
-                    | ty::Param(_)
-                    | ty::Erased(..) => {
+                    ty::Alias(..) | ty::Array(..) | ty::Placeholder(_) | ty::Param(_) => {
                         if ty == component {
                             // Return the type to the caller: they may be able
                             // to normalize further than we can.
@@ -313,6 +309,7 @@ where
                     | ty::Tuple(_)
                     | ty::Bound(..)
                     | ty::Never
+                    | ty::Erased(..)
                     | ty::Infer(_)
                     | ty::Error(_) => {
                         bug!("unexpected type returned by `needs_drop_components`: {component}")
