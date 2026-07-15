@@ -93,8 +93,11 @@ fn process_builtin_attrs(
             AttributeKind::LinkSection { name } => codegen_fn_attrs.link_section = Some(*name),
             AttributeKind::NoMangle(attr_span) => {
                 interesting_spans.no_mangle = Some(*attr_span);
-                if tcx.opt_item_name(did.to_def_id()).is_some() {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+                if let Some(name) = tcx.opt_item_name(did.to_def_id()) {
+                    // Don't override #[link_name] or #[export_name]
+                    if codegen_fn_attrs.symbol_name.is_none() {
+                        codegen_fn_attrs.symbol_name = Some(name);
+                    }
                 } else {
                     tcx.dcx()
                         .span_delayed_bug(*attr_span, "no_mangle should be on a named function");
@@ -405,7 +408,7 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             // import will *still* be mangled despite this.
             //
             // if none of the exceptions apply; apply no_mangle
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+            codegen_fn_attrs.symbol_name = Some(tcx.item_name(did));
         }
     }
 }
@@ -538,22 +541,24 @@ fn handle_lang_items(
     // strippable by the linker.
     //
     // Additionally weak lang items have predetermined symbol names.
-    if let Some(lang_item) = lang_item
+    let link_name_override = if let Some(lang_item) = lang_item
         && let Some(link_name) = lang_item.link_name()
     {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-        codegen_fn_attrs.symbol_name = Some(link_name);
-    }
+        Some(link_name)
+    } else {
+        None
+    };
 
-    // error when using no_mangle on a lang item item
+    // error when using no_mangle, or export_name on a lang item item
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-        && codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
+        && codegen_fn_attrs.symbol_name.is_some()
     {
         let mut err = tcx
             .dcx()
             .struct_span_err(
                 interesting_spans.no_mangle.unwrap_or_default(),
-                "`#[no_mangle]` cannot be used on internal language items",
+                "`#[no_mangle]` and `#[export_name]` cannot be used on internal language items",
             )
             .with_note("Rustc requires this item to have a specific mangled name.")
             .with_span_label(tcx.def_span(did), "should be the internal language item");
@@ -568,6 +573,10 @@ fn handle_lang_items(
                 ))
         }
         err.emit();
+    }
+
+    if let Some(link_name_override) = link_name_override {
+        codegen_fn_attrs.symbol_name = Some(link_name_override);
     }
 }
 
