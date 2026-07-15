@@ -31,7 +31,7 @@ use rustc_span::{Symbol, sym};
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target};
 
 use crate::config::{CrateType, FmtDebug};
-use crate::{Session, errors};
+use crate::{Session, diagnostics};
 
 /// The parsed `--cfg` options that define the compilation environment of the
 /// crate, used to drive conditional compilation.
@@ -105,7 +105,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
             None,
             ast::CRATE_NODE_ID,
-            errors::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.into(),
+            diagnostics::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.into(),
         )
     };
 

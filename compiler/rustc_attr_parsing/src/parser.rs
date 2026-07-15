@@ -23,7 +23,7 @@ use rustc_errors::{Applicability, Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
 use rustc_parse::exp;
 use rustc_parse::parser::{ForceCollect, Parser, PathStyle, Recovery, token_descr};
-use rustc_session::errors::create_lit_error;
+use rustc_session::diagnostics::create_lit_error;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;

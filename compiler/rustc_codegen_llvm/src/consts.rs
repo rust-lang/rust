@@ -425,8 +425,11 @@ impl<'ll> CodegenCx<'ll, '_> {
         let dso_local = self.assume_dso_local(g, true);
 
         if !def_id.is_local() {
+            let is_eii = fn_attrs.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM);
             let needs_dll_storage_attr = self.use_dll_storage_attrs
-                && !self.tcx.is_foreign_item(def_id)
+                // EII static declarations are encoded as foreign items, but their symbols are
+                // resolved by Rust crates, not native libraries.
+                && (!self.tcx.is_foreign_item(def_id) || is_eii)
                 // Local definitions can never be imported, so we must not apply
                 // the DLLImport annotation.
                 && !dso_local
@@ -446,10 +449,11 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             if needs_dll_storage_attr {
                 // This item is external but not foreign, i.e., it originates from an external Rust
-                // crate. Since we don't know whether this crate will be linked dynamically or
-                // statically in the final application, we always mark such symbols as 'dllimport'.
-                // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs
-                // to make things work.
+                // crate. EII static declarations are handled the same way, even though they are
+                // represented as foreign items. Since we don't know whether this crate will be
+                // linked dynamically or statically in the final application, we always mark such
+                // symbols as 'dllimport'. If final linkage happens to be static, we rely on
+                // compiler-emitted __imp_ stubs to make things work.
                 //
                 // However, in some scenarios we defer emission of statics to downstream
                 // crates, so there are cases where a static with an upstream DefId

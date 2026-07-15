@@ -72,6 +72,7 @@
 
 use std::borrow::Cow;
 use std::fmt::Display;
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 pub(crate) use NamedMatch::*;
@@ -82,7 +83,6 @@ use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_middle::span_bug;
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
-use smallvec::SmallVec;
 
 use crate::mbe::macro_rules::Tracker;
 use crate::mbe::{KleeneOp, TokenTree};
@@ -433,12 +433,12 @@ pub(crate) struct TtParser {
     /// `parse_tt`.
     next_mps: Vec<MatcherPos>,
 
-    /// The set of mps that are waiting for the black-box parser.
-    bb_mps: Vec<MatcherPos>,
-
     /// Pre-allocate an empty match array, so it can be cloned cheaply for macros with many rules
     /// that have no metavars.
     empty_matches: Rc<Vec<NamedMatch>>,
+
+    /// Whether an ambiguity error has occurred.
+    found_ambiguity: bool,
 }
 
 impl TtParser {
@@ -446,8 +446,8 @@ impl TtParser {
         TtParser {
             cur_mps: vec![],
             next_mps: vec![],
-            bb_mps: vec![],
             empty_matches: Rc::new(vec![]),
+            found_ambiguity: false,
         }
     }
 
@@ -464,52 +464,45 @@ impl TtParser {
     /// track of through the mps generated.
     fn parse_tt_inner<'matcher, T: Tracker<'matcher>>(
         &mut self,
-        parser: &Parser<'_>,
+        parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
     ) -> Option<NamedParseResult> {
-        // Matcher positions that would be valid if the macro invocation was over now. Only
-        // modified if `token == Eof`.
-        let mut eof_mps = SmallVec::<[MatcherPos; 1]>::new();
-
         while let Some(mp) = self.cur_mps.pop() {
-            self.match_one(parser, matcher, mp, track, &mut eof_mps);
+            if let Some(result) = self.match_one(parser, matcher, mp, track, false) {
+                return Some(result);
+            }
         }
 
-        // If we reached the end of input, check that there is EXACTLY ONE possible matcher.
-        // Otherwise, either the parse is ambiguous (which is an error) or there is a syntax error.
-        let token = &parser.token;
-        if *token == token::Eof {
-            assert!(self.next_mps.is_empty());
-            assert!(self.bb_mps.is_empty());
+        // FIXME: Error messages here could be improved with links to original rules.
 
-            Some(match *eof_mps {
-                [_] => {
-                    let eof_mp = eof_mps.pop().unwrap();
-                    let matches = Rc::unwrap_or_clone(eof_mp.matches).into_iter();
-                    Success(self.nameize(matcher, matches))
-                }
-                [] => {
-                    track.failure(parser);
-                    Failure
-                }
-                _ => self.ambiguity_error(parser, matcher, track),
-            })
-        } else {
-            None
+        if self.next_mps.is_empty() {
+            // There are no possible next positions: syntax error.
+            track.failure(parser);
+            return Some(Failure);
         }
+
+        // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
+        // process the next token.
+        self.cur_mps.append(&mut self.next_mps);
+        parser.to_mut().bump();
+
+        None
     }
 
     /// Match a single [`MatcherPos`].
+    ///
+    /// If a meta-variable is encountered and `checking_for_ambiguity` is `false`, `cur_mps` will be
+    /// drained to eagerly check for ambiguity, and `parser` will be modified.
     #[inline(always)] // must be inlined in `parse_tt_inner()`
     fn match_one<'matcher, T: Tracker<'matcher>>(
         &mut self,
-        parser: &Parser<'_>,
+        parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         mut mp: MatcherPos,
         track: &mut T,
-        eof_mps: &mut SmallVec<[MatcherPos; 1]>,
-    ) {
+        checking_for_ambiguity: bool,
+    ) -> Option<NamedParseResult> {
         let matcher_loc = &matcher[mp.idx];
         track.before_match_loc(self, matcher_loc);
         let token = &parser.token;
@@ -528,6 +521,7 @@ impl TtParser {
                     mp.idx += 1;
                     self.cur_mps.push(mp);
                 } else if token_name_eq(t, token) {
+                    track.matched_one(parser, mp.idx);
                     mp.idx += 1;
                     self.next_mps.push(mp);
                 }
@@ -587,6 +581,7 @@ impl TtParser {
 
                 if token_name_eq(token, separator) {
                     // The separator matches the current token. Advance past it.
+                    track.matched_one(parser, mp.idx);
                     mp.idx += 1;
                     self.next_mps.push(mp);
                 }
@@ -597,21 +592,95 @@ impl TtParser {
                 mp.idx = idx_first;
                 self.cur_mps.push(mp);
             }
-            &MatcherLoc::MetaVarDecl { kind, .. } => {
+            &MatcherLoc::MetaVarDecl { kind, next_metavar, seq_depth, .. } => {
                 // Built-in nonterminals never start with these tokens, so we can eliminate them
                 // from consideration. We use the span of the metavariable declaration to determine
                 // any edition-specific matching behavior for non-terminals.
-                if Parser::nonterminal_may_begin_with(kind, token) {
-                    self.bb_mps.push(mp);
+                if !Parser::nonterminal_may_begin_with(kind, token) {
+                    return None;
                 }
+
+                // EOF tokens would cause unexpected processing in `match_one()`.
+                debug_assert!(parser.token != token::Eof, "{kind:?} should not accept EOF tokens");
+
+                track.matched_one(parser, mp.idx);
+
+                if let ControlFlow::Break(result) =
+                    self.check_for_ambiguity(parser, matcher, track, checking_for_ambiguity)
+                {
+                    return result;
+                }
+
+                // We use the span of the metavariable declaration to determine any
+                // edition-specific matching behavior for non-terminals.
+                let nt = match parser.to_mut().parse_nonterminal(kind) {
+                    Err(err) => return Some(self.nt_parsing_error(matcher_loc, err)),
+                    Ok(nt) => nt,
+                };
+                mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
+
+                mp.idx += 1;
+                self.cur_mps.push(mp);
             }
             MatcherLoc::Eof => {
                 // We are past the matcher's end, and not in a sequence. Try to end things.
                 debug_assert_eq!(mp.idx, matcher.len() - 1);
-                if *token == token::Eof {
-                    eof_mps.push(mp);
+
+                if *token != token::Eof {
+                    return None;
                 }
+
+                track.matched_one(parser, mp.idx);
+
+                if let ControlFlow::Break(result) =
+                    self.check_for_ambiguity(parser, matcher, track, checking_for_ambiguity)
+                {
+                    return result;
+                }
+
+                let matches = Rc::unwrap_or_clone(mp.matches).into_iter();
+                return Some(Success(self.nameize(matcher, matches)));
             }
+        }
+
+        None
+    }
+
+    /// Look for ambiguity before parsing a non-terminal.
+    ///
+    /// - When `checking_for_ambiguity`: immediately an ambiguity error.
+    /// - Otherwise: eagerly consumes [`Self::cur_mps`] to check for ambiguity.
+    ///
+    /// If [`ControlFlow::Continue`] is returned, ambiguity has not been detected.
+    fn check_for_ambiguity<'matcher, R, T: Tracker<'matcher>>(
+        &mut self,
+        parser: &mut Cow<'_, Parser<'_>>,
+        matcher: &'matcher [MatcherLoc],
+        track: &mut T,
+        checking_for_ambiguity: bool,
+    ) -> ControlFlow<Option<ParseResult<R>>> {
+        if checking_for_ambiguity {
+            // This was called in the context of a _different_ `MatcherLoc` that was about to be
+            // matched. Prevent the caller from doing more work, but don't prepare the actual error
+            // yet; let the outer `check_for_ambiguity()` do that.
+            self.found_ambiguity = true;
+            return ControlFlow::Break(None);
+        }
+
+        assert!(!self.found_ambiguity);
+
+        // Consume all pending mps at the current input position.
+        while let Some(mp) = self.cur_mps.pop() {
+            let result = self.match_one(parser, matcher, mp, track, true);
+            // A result cannot be returned when `check_for_ambiguity` is `true`.
+            assert!(result.is_none());
+        }
+
+        if std::mem::take(&mut self.found_ambiguity) || !self.next_mps.is_empty() {
+            track.ambiguity(parser);
+            ControlFlow::Break(Some(Ambiguity))
+        } else {
+            ControlFlow::Continue(())
         }
     }
 
@@ -631,67 +700,19 @@ impl TtParser {
         self.cur_mps.push(MatcherPos { idx: 0, matches: Rc::clone(&self.empty_matches) });
 
         loop {
+            assert!(!self.cur_mps.is_empty());
             self.next_mps.clear();
-            self.bb_mps.clear();
 
-            // Process `cur_mps` until either we have finished the input or we need to get some
-            // parsing from the black-box parser done.
+            // Parse all mps at the current input position, then progress the parser.
             let res = self.parse_tt_inner(parser, matcher, track);
 
             if let Some(res) = res {
                 return res;
             }
-
-            // `parse_tt_inner` handled all of `cur_mps`, so it's empty.
-            assert!(self.cur_mps.is_empty());
-
-            // Error messages here could be improved with links to original rules.
-            match (self.next_mps.len(), self.bb_mps.len()) {
-                (0, 0) => {
-                    // There are no possible next positions AND we aren't waiting for the black-box
-                    // parser: syntax error.
-                    track.failure(parser);
-                    return Failure;
-                }
-
-                (_, 0) => {
-                    // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
-                    // process the next token.
-                    self.cur_mps.append(&mut self.next_mps);
-                    parser.to_mut().bump();
-                }
-
-                (0, 1) => {
-                    // We need to call the black-box parser to get some nonterminal.
-                    let mut mp = self.bb_mps.pop().unwrap();
-                    let loc = &matcher[mp.idx];
-                    let MatcherLoc::MetaVarDecl { kind, next_metavar, seq_depth, .. } = *loc else {
-                        unreachable!()
-                    };
-
-                    // We use the span of the metavariable declaration to determine any
-                    // edition-specific matching behavior for non-terminals.
-                    let nt = match parser.to_mut().parse_nonterminal(kind) {
-                        Err(err) => return self.nt_parsing_error(loc, err),
-                        Ok(nt) => nt,
-                    };
-                    mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
-
-                    mp.idx += 1;
-                    self.cur_mps.push(mp);
-                }
-
-                (_, _) => {
-                    // Too many possibilities!
-                    return self.ambiguity_error(parser, matcher, track);
-                }
-            }
-
-            assert!(!self.cur_mps.is_empty());
         }
     }
 
-    fn nt_parsing_error(&self, loc: &MatcherLoc, err: Diag<'_>) -> NamedParseResult {
+    fn nt_parsing_error<R>(&self, loc: &MatcherLoc, err: Diag<'_>) -> ParseResult<R> {
         let &MatcherLoc::MetaVarDecl { span, kind, .. } = loc else { unreachable!() };
         let guarantee = err
             .with_span_label(
@@ -700,22 +721,6 @@ impl TtParser {
             )
             .emit();
         ErrorReported(guarantee)
-    }
-
-    fn ambiguity_error<'matcher, T: Tracker<'matcher>>(
-        &mut self,
-        parser: &Parser<'_>,
-        matcher: &'matcher [MatcherLoc],
-        track: &mut T,
-    ) -> NamedParseResult {
-        // Use a reasonable and deterministic ordering for data in the error message.
-        self.bb_mps.sort_unstable_by_key(|mp| mp.idx);
-        self.next_mps.sort_unstable_by_key(|mp| mp.idx);
-
-        let bb_locs = self.bb_mps.iter().map(|mp| &matcher[mp.idx]);
-        let next_locs = self.next_mps.iter().map(|mp| &matcher[mp.idx]);
-        track.ambiguity(parser, bb_locs, next_locs);
-        Ambiguity
     }
 
     fn nameize<I: Iterator<Item = NamedMatch>>(

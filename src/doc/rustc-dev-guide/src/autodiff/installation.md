@@ -3,7 +3,7 @@
 Most users can enable `std::autodiff` on their latest nightly toolchain by installing the `enzyme` component with rustup, if they are using one of these platforms:
 
 - **Linux**: with `x86_64-unknown-linux-gnu` or `aarch64-unknown-linux-gnu`
-- **macOS**: with `aarch64-apple-darwin`
+- **macOS**: with `aarch64-apple-darwin` or `x86_64-apple-darwin`
 - **Windows**: with `x86_64-llvm-mingw` or `aarch64-llvm-mingw`
 
 As a rustc/enzyme/autodiff contributor, or if you need any other platform, you can build rustc including autodiff from source.
@@ -15,6 +15,12 @@ If you want to use `std::autodiff` on Linux, macOS, or Windows and don't plan to
 Please run:
 
 ```console
+rustup +nightly component add enzyme
+```
+
+Older rustup versions are not aware of this component, so if you run into issues try updating rustup itself:
+```console
+rustup update
 rustup +nightly component add enzyme
 ```
 

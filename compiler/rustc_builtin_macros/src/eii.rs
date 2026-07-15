@@ -309,15 +309,12 @@ fn generate_default_impl(
         },
         span: eii_attr_span,
         is_default: true,
-        known_eii_macro_resolution: Some(ast::EiiDecl {
-            foreign_item: ecx.path(
-                foreign_item_name.span,
-                // prefix self to explicitly escape the const block generated below
-                // NOTE: this is why EIIs can't be used on statements
-                vec![Ident::from_str_and_span("self", foreign_item_name.span), foreign_item_name],
-            ),
-            impl_unsafe,
-        }),
+        known_eii_macro_resolution: Some(ecx.path(
+            foreign_item_name.span,
+            // prefix self to explicitly escape the const block generated below
+            // NOTE: this is why EIIs can't be used on statements
+            vec![Ident::from_str_and_span("self", foreign_item_name.span), foreign_item_name],
+        )),
     };
 
     let mut item_kind = item_kind.clone();

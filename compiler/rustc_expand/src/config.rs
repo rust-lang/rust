@@ -27,7 +27,7 @@ use rustc_hir::{
 };
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::instrument;
 
@@ -167,7 +167,7 @@ macro_rules! configure {
 }
 
 impl<'a> StripUnconfigured<'a> {
-    pub fn configure<T: HasAttrs + HasTokens>(&self, mut node: T) -> Option<T> {
+    pub fn configure<T: HasTokens>(&self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
         self.in_cfg(node.attrs()).then(|| {
             self.try_configure_tokens(&mut node);

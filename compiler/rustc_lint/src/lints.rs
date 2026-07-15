@@ -266,7 +266,7 @@ impl<'a> Diagnostic<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         let mut diag = Diag::new(dcx, level, "`#[track_caller]` on async functions is a no-op")
             .with_span_label(self.label, "this function will not propagate the caller location");
-        rustc_session::errors::add_feature_diagnostics(
+        rustc_session::diagnostics::add_feature_diagnostics(
             &mut diag,
             self.session,
             sym::async_fn_track_caller,
@@ -600,8 +600,6 @@ pub(crate) struct BuiltinDerefNullptr {
     #[label("this code causes undefined behavior when executed")]
     pub label: Span,
 }
-
-// FIXME: migrate fluent::lint::builtin_asm_labels
 
 #[derive(Diagnostic)]
 pub(crate) enum BuiltinSpecialModuleNameUsed {

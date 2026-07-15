@@ -7,13 +7,14 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, find_attr};
 use rustc_macros::Diagnostic;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, InstrumentFnAttr, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint;
 use rustc_span::{Span, sym};
 use rustc_target::spec::Os;
@@ -238,7 +239,7 @@ fn process_builtin_attrs(
                             };
                             extern_item
                         }
-                        EiiImplResolution::Known(decl) => decl.foreign_item,
+                        EiiImplResolution::Known(def_id) => def_id,
                         EiiImplResolution::Error(_eg) => continue,
                     };
 
@@ -253,7 +254,10 @@ fn process_builtin_attrs(
                         // iterate over all implementations *in the current crate*
                         // (this is ok since we generate codegen fn attrs in the local crate)
                         // if any of them is *not default* then don't emit the alias.
-                        && tcx.externally_implementable_items(LOCAL_CRATE).get(&foreign_item).expect("at least one").1.iter().any(|(_, imp)| !imp.is_default)
+                        && {
+                            let (_, impls) = tcx.externally_implementable_items(LOCAL_CRATE).get(&foreign_item).unwrap_or_else(|| bug!("EII impl should have an entry"));
+                            impls.iter().any(|(_, imp)| !imp.is_default)
+                        }
                     {
                         continue;
                     }
