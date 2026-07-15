@@ -80,7 +80,7 @@ pub struct CodegenFnAttrs {
     /// generate this function under its real name,
     /// but *also* under the same name as this foreign function so that the foreign function has an implementation.
     // FIXME: make "SymbolName<'tcx>"
-    pub foreign_item_symbol_aliases: Vec<(DefId, Linkage, Visibility)>,
+    pub foreign_item_symbol_alias: Option<(DefId, Linkage, Visibility)>,
     /// The `#[link_ordinal = "..."]` attribute, indicating an ordinal an
     /// imported function has in the dynamic library. Note that this must not
     /// be set when `link_name` is set. This is for foreign items with the
@@ -256,7 +256,7 @@ impl CodegenFnAttrs {
             symbol_name: None,
             link_ordinal: None,
             target_features: vec![],
-            foreign_item_symbol_aliases: vec![],
+            foreign_item_symbol_alias: None,
             safe_target_features: false,
             linkage: None,
             import_linkage: None,
