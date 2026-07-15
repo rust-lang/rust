@@ -30,7 +30,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         link_name: Symbol,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.").unwrap();
@@ -42,7 +42,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
             "addcarry.32" | "addcarry.64" | "subborrow.32" | "subborrow.64" => {
                 if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != Arch::X86_64 {
-                    return interp_ok(false);
+                    return interp_ok(EmulateItemResult::NotSupported);
                 }
 
                 let [cb_in, a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
@@ -147,9 +147,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 );
             }
 
-            _ => return interp_ok(false),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
-        interp_ok(true)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }
 

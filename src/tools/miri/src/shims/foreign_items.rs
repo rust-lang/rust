@@ -74,7 +74,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
         let res = this.emulate_foreign_item_inner(link_name, abi, args, &dest)?;
-        res.jump_to_next_block(this, &dest, ret, unwind, |this| {
+        res.jump_to_next_block(this, &dest, ret, Some(unwind), |this| {
             if let Some(body) = this.lookup_exported_symbol(link_name)? {
                 return interp_ok(Some(body));
             }

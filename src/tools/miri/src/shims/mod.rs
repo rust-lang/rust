@@ -45,7 +45,7 @@ impl EmulateItemResult {
         ecx: &mut crate::MiriInterpCx<'tcx>,
         dest: &crate::MPlaceTy<'tcx>,
         ret: Option<rustc_middle::mir::BasicBlock>,
-        unwind: rustc_middle::mir::UnwindAction,
+        unwind: Option<rustc_middle::mir::UnwindAction>,
         not_supported: impl FnOnce(&mut crate::MiriInterpCx<'tcx>) -> crate::InterpResult<'tcx, T>,
     ) -> crate::InterpResult<'tcx, T> {
         use crate::*;
@@ -58,7 +58,7 @@ impl EmulateItemResult {
             }
             EmulateItemResult::NeedsUnwind => {
                 // Jump to the unwind block to begin unwinding.
-                ecx.unwind_to_block(unwind)?;
+                ecx.unwind_to_block(unwind.unwrap())?;
                 interp_ok(T::default())
             }
             EmulateItemResult::AlreadyJumped => interp_ok(T::default()),
