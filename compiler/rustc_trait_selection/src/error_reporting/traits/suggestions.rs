@@ -4258,9 +4258,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err.span_note(spans, msg);
                         if derived && trait_name != "Copy" {
                             err.help(format!(
-                                "consider manually implementing `{trait_name}` to avoid undesired \
-                                 bounds",
+                                "consider manually implementing `{trait_name}` to avoid undesired bounds caused by \"imperfect derives\"",
                             ));
+                            err.note(
+                                "to learn more, visit <https://github.com/rust-lang/rust/issues/26925>",
+                            );
                         }
                         point_at_assoc_type_restriction(
                             tcx,
