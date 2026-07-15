@@ -1085,7 +1085,7 @@ pub enum AttributeKind {
     EiiDeclaration(EiiDecl),
 
     /// Implementation detail of `#[eii]`
-    EiiImpls(ThinVec<EiiImpl>),
+    EiiImpl(EiiImpl),
 
     /// Represents [`#[export_name]`](https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute).
     ExportName {

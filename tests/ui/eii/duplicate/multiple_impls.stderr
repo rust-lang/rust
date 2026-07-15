@@ -1,0 +1,30 @@
+error: a single item cannot implement multiple EIIs
+  --> $DIR/multiple_impls.rs:15:1
+   |
+LL | #[b]
+   | ^^^^
+
+error: a single item cannot implement multiple EIIs
+  --> $DIR/multiple_impls.rs:29:1
+   |
+LL | #[d]
+   | ^^^^
+
+error: `#[a]` function required, but not found
+  --> $DIR/multiple_impls.rs:8:4
+   |
+LL | fn a(x: u64);
+   |    ^ expected because `#[a]` was declared here in crate `multiple_impls`
+   |
+   = help: expected at least one implementation in crate `multiple_impls` or any of its dependencies
+
+error: `#[c]` static required, but not found
+  --> $DIR/multiple_impls.rs:21:7
+   |
+LL | #[eii(c)]
+   |       ^ expected because `#[c]` was declared here in crate `multiple_impls`
+   |
+   = help: expected at least one implementation in crate `multiple_impls` or any of its dependencies
+
+error: aborting due to 4 previous errors
+

@@ -225,32 +225,31 @@ fn process_builtin_attrs(
             AttributeKind::RustcEiiForeignItem => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
             }
-            AttributeKind::EiiImpls(impls) => {
-                for i in impls {
-                    let foreign_item = match i.resolution {
-                        EiiImplResolution::Macro(def_id) => {
-                            let Some(extern_item) = find_attr!(tcx, def_id, EiiDeclaration(target) => target.foreign_item
-                            ) else {
-                                tcx.dcx().span_delayed_bug(
-                                    i.span,
-                                    "resolved to something that's not an EII",
-                                );
-                                continue;
-                            };
-                            extern_item
-                        }
-                        EiiImplResolution::Known(def_id) => def_id,
-                        EiiImplResolution::Error(_eg) => continue,
-                    };
+            AttributeKind::EiiImpl(i) => {
+                let foreign_item = match i.resolution {
+                    EiiImplResolution::Macro(def_id) => {
+                        let Some(extern_item) = find_attr!(tcx, def_id, EiiDeclaration(target) => target.foreign_item
+                        ) else {
+                            tcx.dcx().span_delayed_bug(
+                                i.span,
+                                "resolved to something that's not an EII",
+                            );
+                            continue;
+                        };
+                        extern_item
+                    }
+                    EiiImplResolution::Known(def_id) => def_id,
+                    EiiImplResolution::Error(_eg) => continue,
+                };
 
-                    // this is to prevent a bug where a single crate defines both the default and explicit implementation
-                    // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
-                    // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
-                    // However, the fact that the default one of has weak linkage isn't considered and you sometimes get that
-                    // the default implementation is used while an explicit implementation is given.
-                    if
-                    // if this is a default impl
-                    i.is_default
+                // this is to prevent a bug where a single crate defines both the default and explicit implementation
+                // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
+                // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
+                // However, the fact that the default one of has weak linkage isn't considered and you sometimes get that
+                // the default implementation is used while an explicit implementation is given.
+                if
+                // if this is a default impl
+                i.is_default
                         // iterate over all implementations *in the current crate*
                         // (this is ok since we generate codegen fn attrs in the local crate)
                         // if any of them is *not default* then don't emit the alias.
@@ -258,28 +257,27 @@ fn process_builtin_attrs(
                             let (_, impls) = tcx.externally_implementable_items(LOCAL_CRATE).get(&foreign_item).unwrap_or_else(|| bug!("EII impl should have an entry"));
                             impls.iter().any(|(_, imp)| !imp.is_default)
                         }
-                    {
-                        continue;
-                    }
+                {
+                    continue;
+                }
 
-                    codegen_fn_attrs.foreign_item_symbol_aliases.push((
-                        foreign_item,
-                        if i.is_default { Linkage::WeakAny } else { Linkage::External },
-                        Visibility::Default,
-                    ));
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+                codegen_fn_attrs.foreign_item_symbol_aliases.push((
+                    foreign_item,
+                    if i.is_default { Linkage::WeakAny } else { Linkage::External },
+                    Visibility::Default,
+                ));
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
 
-                    // If the declaration is `#[track_caller]`, derive it onto the implementation
-                    // too. The shim that forwards to this impl (see `add_function_aliases`) takes
-                    // its ABI from the impl's `fn_abi`, so every impl must agree on whether the
-                    // caller-location argument is present, otherwise it would be silently dropped.
-                    if tcx
-                        .codegen_fn_attrs(foreign_item)
-                        .flags
-                        .contains(CodegenFnAttrFlags::TRACK_CALLER)
-                    {
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
-                    }
+                // If the declaration is `#[track_caller]`, derive it onto the implementation
+                // too. The shim that forwards to this impl (see `add_function_aliases`) takes
+                // its ABI from the impl's `fn_abi`, so every impl must agree on whether the
+                // caller-location argument is present, otherwise it would be silently dropped.
+                if tcx
+                    .codegen_fn_attrs(foreign_item)
+                    .flags
+                    .contains(CodegenFnAttrFlags::TRACK_CALLER)
+                {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
                 }
             }
             AttributeKind::ThreadLocal => {

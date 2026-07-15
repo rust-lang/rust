@@ -286,7 +286,7 @@ impl<'a> Parser<'a> {
                 contract,
                 body,
                 define_opaque: None,
-                eii_impls: ThinVec::new(),
+                eii_impl: None,
             }))
         } else if self.eat_keyword_case(exp!(Extern), case) {
             if self.eat_keyword_case(exp!(Crate), case) {
@@ -1260,7 +1260,7 @@ impl<'a> Parser<'a> {
                             mutability: _,
                             expr,
                             define_opaque,
-                            eii_impls: _,
+                            eii_impl: _,
                         }) => {
                             self.dcx()
                                 .emit_err(diagnostics::AssociatedStaticItemNotAllowed { span });
@@ -1526,7 +1526,7 @@ impl<'a> Parser<'a> {
                                 expr: body,
                                 safety: Safety::Default,
                                 define_opaque: None,
-                                eii_impls: ThinVec::default(),
+                                eii_impl: None,
                             }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
@@ -1664,15 +1664,8 @@ impl<'a> Parser<'a> {
 
         self.expect_semi()?;
 
-        let item = StaticItem {
-            ident,
-            ty,
-            safety,
-            mutability,
-            expr,
-            define_opaque: None,
-            eii_impls: ThinVec::default(),
-        };
+        let item =
+            StaticItem { ident, ty, safety, mutability, expr, define_opaque: None, eii_impl: None };
         Ok(ItemKind::Static(Box::new(item)))
     }
 
