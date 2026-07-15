@@ -87,7 +87,10 @@ use hir_ty::{
     GenericPredicates, InferBodyId, InferenceResult, ParamEnvAndCrate, TyDefId,
     TyLoweringDiagnostic, ValueTyDefId, all_super_traits, autoderef, check_orphan_rules,
     consteval::try_const_usize,
-    db::{AnonConstId, InternedClosure, InternedClosureId, InternedCoroutineClosureId},
+    db::{
+        AnonConstId, InternedClosure, InternedClosureId, InternedCoroutineClosureId,
+        InternedCoroutineId,
+    },
     diagnostics::BodyValidationDiagnostic,
     direct_super_traits, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
@@ -4937,15 +4940,7 @@ impl<'db> Closure<'db> {
             AnyClosureId::ClosureId(it) => it.loc(db),
             AnyClosureId::CoroutineClosureId(it) => it.loc(db),
         };
-        let InternedClosure { owner: infer_owner, expr: closure, .. } = closure;
-        let infer = InferenceResult::of(db, infer_owner);
-        let owner = infer_owner.expression_store_owner(db);
-        infer.closures_data[&closure]
-            .min_captures
-            .values()
-            .flatten()
-            .map(|capture| ClosureCapture { owner, infer_owner, closure, capture })
-            .collect()
+        captured_items(db, closure)
     }
 
     pub fn fn_trait(&self, _db: &dyn HirDatabase) -> FnTrait {
@@ -4962,6 +4957,34 @@ impl<'db> Closure<'db> {
             },
         }
     }
+}
+
+/// A coroutine expression, including async, generator, and async-generator coroutines.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Coroutine {
+    id: InternedCoroutineId,
+}
+
+impl Coroutine {
+    /// Returns the values captured by this coroutine.
+    pub fn captured_items<'db>(&self, db: &'db dyn HirDatabase) -> Vec<ClosureCapture<'db>> {
+        captured_items(db, self.id.loc(db))
+    }
+}
+
+fn captured_items<'db>(
+    db: &'db dyn HirDatabase,
+    closure: InternedClosure,
+) -> Vec<ClosureCapture<'db>> {
+    let InternedClosure { owner: infer_owner, expr: closure, .. } = closure;
+    let infer = InferenceResult::of(db, infer_owner);
+    let owner = infer_owner.expression_store_owner(db);
+    infer.closures_data[&closure]
+        .min_captures
+        .values()
+        .flatten()
+        .map(|capture| ClosureCapture { owner, infer_owner, closure, capture })
+        .collect()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -5948,6 +5971,14 @@ impl<'db> Type<'db> {
                 subst,
                 owner: self.owner,
             }),
+            _ => None,
+        }
+    }
+
+    /// Returns this type as a coroutine.
+    pub fn as_coroutine(&self) -> Option<Coroutine> {
+        match self.ty.skip_binder().kind() {
+            TyKind::Coroutine(id, _) => Some(Coroutine { id: id.0 }),
             _ => None,
         }
     }

@@ -235,9 +235,22 @@ fn hints(
                         param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it))
                     }
                     ast::Expr::ClosureExpr(it) => {
-                        closure_captures::hints(hints, famous_defs, config, it.clone(), file_id.edition(sema.db));
+                        closure_captures::hints(
+                            hints,
+                            famous_defs,
+                            config,
+                            Either::Left(it.clone()),
+                            file_id.edition(sema.db),
+                        );
                         closure_ret::hints(hints, famous_defs, config, display_target, it)
                     },
+                    ast::Expr::BlockExpr(it) => closure_captures::hints(
+                        hints,
+                        famous_defs,
+                        config,
+                        Either::Right(it),
+                        file_id.edition(sema.db),
+                    ),
                     ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, it),
                     ast::Expr::Literal(it) => ra_fixture::hints(hints, famous_defs.0, file_id, config, it),
                     _ => Some(()),
