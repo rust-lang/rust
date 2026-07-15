@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
+use rustc_abi::{self as abi, BackendRepr, ExternAbi, FIRST_VARIANT};
 use rustc_index::IndexVec;
 use rustc_middle::ptrauth::{
     clone_discriminated_ptrauth_schema_for, compute_fn_ptr_type_discriminator_for,
@@ -700,6 +700,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     def_id,
                                     args,
                                     ty::ClosureKind::FnOnce,
+                                );
+                                assert!(
+                                    !matches!(
+                                        bx.cx().tcx().fn_sig(instance.def_id()).skip_binder().abi(),
+                                        ExternAbi::C { .. } | ExternAbi::System { .. }
+                                    )
                                 );
                                 OperandValue::Immediate(
                                     // A closure coerced to a function pointer retains the Rust
