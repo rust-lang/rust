@@ -72,7 +72,9 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         }
 
         #[cfg(feature = "master")]
-        self.add_static_aliases(gcc_type, global_name, attrs, &attrs.foreign_item_symbol_aliases);
+        if let Some(alias) = attrs.foreign_item_symbol_alias {
+            self.add_static_alias(gcc_type, global_name, attrs, alias);
+        }
 
         self.instances.borrow_mut().insert(instance, global);
     }
@@ -92,7 +94,9 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             self.predefine_without_aliases(instance, &attrs, linkage, visibility, symbol_name);
 
         #[cfg(feature = "master")]
-        self.add_function_aliases(instance, decl, &attrs, &attrs.foreign_item_symbol_aliases);
+        if let Some(alias) = attrs.foreign_item_symbol_alias {
+            self.add_function_alias(instance, decl, &attrs, alias);
+        }
 
         self.functions.borrow_mut().insert(symbol_name.to_string(), decl);
         self.function_instances.borrow_mut().insert(instance, decl);
@@ -101,78 +105,74 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     #[cfg(feature = "master")]
-    fn add_static_aliases(
+    fn add_static_alias(
         &self,
         gcc_type: Type<'gcc>,
         aliased: &str,
         attrs: &CodegenFnAttrs,
-        aliases: &[(DefId, Linkage, Visibility)],
+        (alias, linkage, visibility): (DefId, Linkage, Visibility),
     ) {
         let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
 
-        for &(alias, linkage, visibility) in aliases {
-            let instance = Instance::mono(self.tcx, alias);
-            let symbol_name = self.tcx.symbol_name(instance);
+        let instance = Instance::mono(self.tcx, alias);
+        let symbol_name = self.tcx.symbol_name(instance);
 
-            let alias = self.declare_global(
-                symbol_name.name,
-                gcc_type,
-                GlobalKind::Imported,
-                is_tls,
-                attrs.link_section,
-            );
-            alias.add_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
-            alias.add_attribute(VarAttribute::Alias(aliased));
-            if linkage == Linkage::WeakAny {
-                alias.add_attribute(VarAttribute::Weak);
-            }
-
-            // Add the alias name to the set of cached items, so there is no duplicate
-            // instance added to it during the normal `external static` codegen
-            let prev_entry = self.instances.borrow_mut().insert(instance, alias);
-
-            // If there already was a previous entry, then `add_static_aliases` was called multiple times for the same `alias`
-            // which would result in incorrect codegen
-            assert!(prev_entry.is_none(), "An instance was already present for {instance:?}");
+        let alias = self.declare_global(
+            symbol_name.name,
+            gcc_type,
+            GlobalKind::Imported,
+            is_tls,
+            attrs.link_section,
+        );
+        alias.add_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
+        alias.add_attribute(VarAttribute::Alias(aliased));
+        if linkage == Linkage::WeakAny {
+            alias.add_attribute(VarAttribute::Weak);
         }
+
+        // Add the alias name to the set of cached items, so there is no duplicate
+        // instance added to it during the normal `external static` codegen
+        let prev_entry = self.instances.borrow_mut().insert(instance, alias);
+
+        // If there already was a previous entry, then `add_static_aliases` was called multiple times for the same `alias`
+        // which would result in incorrect codegen
+        assert!(prev_entry.is_none(), "An instance was already present for {instance:?}");
     }
 
     #[cfg(feature = "master")]
-    fn add_function_aliases(
+    fn add_function_alias(
         &self,
         aliased_instance: Instance<'tcx>,
         aliased: Function<'gcc>,
         attrs: &CodegenFnAttrs,
-        aliases: &[(DefId, Linkage, Visibility)],
+        (alias, linkage, visibility): (DefId, Linkage, Visibility),
     ) {
-        for &(alias, linkage, visibility) in aliases {
-            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, alias));
+        let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, alias));
 
-            // predefine another copy of the original instance
-            // with a new symbol name
-            let alias_fn_decl = self.predefine_without_aliases(
-                aliased_instance,
-                attrs,
-                linkage,
-                visibility,
-                symbol_name.name,
-            );
+        // predefine another copy of the original instance
+        // with a new symbol name
+        let alias_fn_decl = self.predefine_without_aliases(
+            aliased_instance,
+            attrs,
+            linkage,
+            visibility,
+            symbol_name.name,
+        );
 
-            let block = alias_fn_decl.new_block("start");
-            let nb_params = alias_fn_decl.get_param_count();
-            let mut args = Vec::with_capacity(nb_params);
-            for idx in 0..nb_params {
-                args.push(alias_fn_decl.get_param(idx as _).to_rvalue());
-            }
+        let block = alias_fn_decl.new_block("start");
+        let nb_params = alias_fn_decl.get_param_count();
+        let mut args = Vec::with_capacity(nb_params);
+        for idx in 0..nb_params {
+            args.push(alias_fn_decl.get_param(idx as _).to_rvalue());
+        }
 
-            let void_type = self.context.new_type::<()>();
-            let call = self.context.new_call(None, aliased, &args);
-            if alias_fn_decl.get_return_type() == void_type {
-                block.add_eval(None, call);
-                block.end_with_void_return(None);
-            } else {
-                block.end_with_return(None, call);
-            }
+        let void_type = self.context.new_type::<()>();
+        let call = self.context.new_call(None, aliased, &args);
+        if alias_fn_decl.get_return_type() == void_type {
+            block.add_eval(None, call);
+            block.end_with_void_return(None);
+        } else {
+            block.end_with_return(None, call);
         }
     }
 
