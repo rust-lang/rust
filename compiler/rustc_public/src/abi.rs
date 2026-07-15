@@ -8,7 +8,7 @@ use crate::compiler_interface::with;
 use crate::mir::FieldIdx;
 use crate::target::{MachineInfo, MachineSize as Size};
 use crate::ty::{Align, Ty, VariantIdx, index_impl};
-use crate::{Error, Opaque, ThreadLocalIndex, error};
+use crate::{Error, ThreadLocalIndex, error};
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -40,24 +40,88 @@ pub struct ArgAbi {
 }
 
 /// How a function argument should be passed in to the target function.
+///
+/// The pass mode is determined by the platform's calling convention and the
+/// argument's type layout. The same Rust type may use different pass modes
+/// on different targets or when register availability changes.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum PassMode {
     /// Ignore the argument.
     ///
-    /// The argument is either uninhabited or a ZST.
+    /// The argument is either uninhabited or a ZST (zero-sized type).
     Ignore,
-    /// Pass the argument directly.
+    /// Pass the argument directly in a single register.
     ///
-    /// The argument has a layout abi of `Scalar` or `Vector`.
-    Direct(Opaque),
-    /// Pass a pair's elements directly in two arguments.
+    /// Used for primitive types and small values that fit in one register.
+    Direct(ArgAttributes),
+    /// Pass the argument directly in two registers.
     ///
-    /// The argument has a layout abi of `ScalarPair`.
-    Pair(Opaque, Opaque),
-    /// Pass the argument after casting it to the given target type.
+    /// Used for types represented as a pair of values (e.g., a fat pointer
+    /// consisting of a data pointer and a length/vtable pointer).
+    Pair(ArgAttributes, ArgAttributes),
+    /// Pass the argument after reinterpreting it as a different register layout.
+    ///
+    /// Used for aggregates (structs, tuples) that the platform ABI passes in
+    /// registers. The argument's bytes are reinterpreted as the register
+    /// sequence described by [`CastTarget`]. See its documentation for details.
     Cast { pad_i32: bool, cast: CastTarget },
-    /// Pass the argument indirectly via a hidden pointer.
-    Indirect { attrs: Opaque, meta_attrs: Opaque, on_stack: bool },
+    /// Pass the argument indirectly via a pointer.
+    ///
+    /// The caller places the value in memory and passes a pointer to it.
+    /// When `on_stack` is true, the value is placed at a fixed stack offset
+    /// rather than passed as a regular pointer argument.
+    Indirect {
+        attrs: ArgAttributes,
+        /// Attributes for the metadata pointer (vtable or length) of unsized arguments.
+        /// Only present for unsized types (e.g., `dyn Trait`, `[T]`).
+        meta_attrs: Option<ArgAttributes>,
+        on_stack: bool,
+    },
+}
+
+/// Attributes of a function argument that affect its ABI.
+///
+/// Not all internal compiler attributes are exposed here, as some are
+/// LLVM-specific optimization hints. The internal representation is kept
+/// private so it can be expanded in the future.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct ArgAttributes {
+    pub(crate) arg_ext: ArgExtension,
+    pub(crate) pointee_size: Size,
+    pub(crate) pointee_align: Option<Align>,
+}
+
+impl ArgAttributes {
+    /// Return how this argument should be extended when passed in a register.
+    ///
+    /// Relevant for integer arguments smaller than the register width.
+    pub fn arg_extension(&self) -> ArgExtension {
+        self.arg_ext
+    }
+
+    /// Return the minimum alignment of the pointee, if applicable.
+    ///
+    /// This is relevant for `PassMode::Indirect` arguments where the pointer
+    /// must satisfy a particular alignment.
+    pub fn pointee_align(&self) -> Option<Align> {
+        self.pointee_align
+    }
+
+    /// Return the minimum dereferenceable size of the pointee, if known.
+    pub fn pointee_size(&self) -> Size {
+        self.pointee_size
+    }
+}
+
+/// How a small integer argument should be extended to fill a register.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+pub enum ArgExtension {
+    /// No extension required.
+    None,
+    /// Zero-extend to the register width.
+    Zext,
+    /// Sign-extend to the register width.
+    Sext,
 }
 
 /// Describes the ABI type that an argument is transmuted to for `PassMode::Cast`.
@@ -70,9 +134,9 @@ pub enum PassMode {
 /// 2. After the prefix, `rest.unit` is repeated enough times to cover `rest.total`,
 ///    starting at `rest_offset` (or immediately after the prefix if `None`).
 ///
-/// For example, on x86_64 SysV a `struct { i32, f64 }` might be cast to a prefix of
-/// `[Reg::i64()]` followed by a rest of `Reg::f64()` — placing the first eightbyte
-/// in an integer register and the second in an SSE register.
+/// For example, on x86_64 a `struct { i32, f64 }` might be cast to a prefix of
+/// `[Reg::i64()]` followed by a rest of `Reg::f64()` — placing the first 8 bytes
+/// in an integer register and the second 8 bytes in a floating-point register.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct CastTarget {
     /// Leading registers of potentially different types, laid out with `repr(C)` padding.
@@ -92,7 +156,7 @@ impl CastTarget {
     }
 }
 
-/// An argument passed entirely in registers with the same kind (e.g., HFA/HVA on PPC64 and AArch64).
+/// A sequence of registers of the same kind used to pass an argument.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct Uniform {
     /// The type of register used.

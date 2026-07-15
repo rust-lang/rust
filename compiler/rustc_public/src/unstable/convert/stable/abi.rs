@@ -8,17 +8,17 @@ use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
 use rustc_target::callconv;
 
+use crate::IndexedVal;
 use crate::abi::{
-    AddressSpace, ArgAbi, CallConvention, CastTarget, FieldsShape, FloatLength, FnAbi,
-    IntegerLength, IntegerType, Layout, LayoutShape, NumScalableVectors, PassMode, Primitive, Reg,
-    RegKind, ReprFlags, ReprOptions, Scalar, TagEncoding, TyAndLayout, Uniform, ValueAbi,
-    VariantFields, VariantsShape, WrappingRange,
+    AddressSpace, ArgAbi, ArgAttributes, ArgExtension, CallConvention, CastTarget, FieldsShape,
+    FloatLength, FnAbi, IntegerLength, IntegerType, Layout, LayoutShape, NumScalableVectors,
+    PassMode, Primitive, Reg, RegKind, ReprFlags, ReprOptions, Scalar, TagEncoding, TyAndLayout,
+    Uniform, ValueAbi, VariantFields, VariantsShape, WrappingRange,
 };
 use crate::compiler_interface::BridgeTys;
 use crate::target::MachineSize as Size;
 use crate::ty::{Align, VariantIdx};
 use crate::unstable::Stable;
-use crate::{IndexedVal, opaque};
 
 impl<'tcx> Stable<'tcx> for rustc_abi::VariantIdx {
     type T = VariantIdx;
@@ -165,16 +165,16 @@ impl<'tcx> Stable<'tcx> for callconv::PassMode {
     ) -> Self::T {
         match self {
             callconv::PassMode::Ignore => PassMode::Ignore,
-            callconv::PassMode::Direct(attr) => PassMode::Direct(opaque(attr)),
+            callconv::PassMode::Direct(attr) => PassMode::Direct(attr.stable(tables, cx)),
             callconv::PassMode::Pair(first, second) => {
-                PassMode::Pair(opaque(first), opaque(second))
+                PassMode::Pair(first.stable(tables, cx), second.stable(tables, cx))
             }
             callconv::PassMode::Cast { pad_i32, cast } => {
                 PassMode::Cast { pad_i32: *pad_i32, cast: cast.stable(tables, cx) }
             }
             callconv::PassMode::Indirect { attrs, meta_attrs, on_stack } => PassMode::Indirect {
-                attrs: opaque(attrs),
-                meta_attrs: opaque(meta_attrs),
+                attrs: attrs.stable(tables, cx),
+                meta_attrs: meta_attrs.map(|a| a.stable(tables, cx)),
                 on_stack: *on_stack,
             },
         }
@@ -228,6 +228,26 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Reg {
                 rustc_abi::RegKind::Vector { .. } => RegKind::Vector,
             },
             size: Size::from_bits(self.size.bits_usize()),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for callconv::ArgAttributes {
+    type T = ArgAttributes;
+
+    fn stable<'cx>(
+        &self,
+        _: &mut Tables<'cx, BridgeTys>,
+        _: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        ArgAttributes {
+            arg_ext: match self.arg_ext {
+                callconv::ArgExtension::None => ArgExtension::None,
+                callconv::ArgExtension::Zext => ArgExtension::Zext,
+                callconv::ArgExtension::Sext => ArgExtension::Sext,
+            },
+            pointee_size: Size::from_bits(self.pointee_size.bits_usize()),
+            pointee_align: self.pointee_align.map(|a| a.bytes()),
         }
     }
 }
