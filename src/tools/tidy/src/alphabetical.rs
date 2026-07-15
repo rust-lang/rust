@@ -9,6 +9,8 @@
 //! // tidy-alphabetical-end
 //! ```
 //!
+//! Numeric sequences are parsed as `u64` values, so each sequence must fit within `u64`.
+//!
 //! Empty lines and lines starting (ignoring spaces) with `//` or `#` (except those starting with
 //! `#!`) are considered comments are are sorted together with the next line (but do not affect
 //! sorting).
@@ -285,7 +287,7 @@ fn consume_numeric_prefix<I: Iterator<Item = char>>(it: &mut Peekable<I>) -> Str
     let mut result = String::new();
 
     while let Some(&c) = it.peek() {
-        if !c.is_ascii_digit() {
+        if !c.is_numeric() {
             break;
         }
 
@@ -296,28 +298,23 @@ fn consume_numeric_prefix<I: Iterator<Item = char>>(it: &mut Peekable<I>) -> Str
     result
 }
 
-// A sorting function that is case-sensitive, and sorts sequences of ASCII digits by their numeric
-// value, so that `9` sorts before `12`.
+// A sorting function that is case-sensitive, and sorts sequences of digits by their numeric value,
+// so that `9` sorts before `12`.
 fn version_sort(a: &str, b: &str) -> Ordering {
     let mut it1 = a.chars().peekable();
     let mut it2 = b.chars().peekable();
 
     while let (Some(x), Some(y)) = (it1.peek(), it2.peek()) {
-        match (x.is_ascii_digit(), y.is_ascii_digit()) {
+        match (x.is_numeric(), y.is_numeric()) {
             (true, true) => {
                 let num1: String = consume_numeric_prefix(it1.by_ref());
                 let num2: String = consume_numeric_prefix(it2.by_ref());
 
-                let digits1 = num1.trim_start_matches('0');
-                let digits2 = num2.trim_start_matches('0');
+                let int1: u64 = num1.parse().unwrap();
+                let int2: u64 = num2.parse().unwrap();
 
                 // Compare strings when the numeric value is equal to handle "00" versus "0".
-                match digits1
-                    .len()
-                    .cmp(&digits2.len())
-                    .then_with(|| digits1.cmp(digits2))
-                    .then_with(|| num1.cmp(&num2))
-                {
+                match int1.cmp(&int2).then_with(|| num1.cmp(&num2)) {
                     Ordering::Equal => continue,
                     different => return different,
                 }

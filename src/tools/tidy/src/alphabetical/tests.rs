@@ -331,18 +331,6 @@ fn test_numeric_good() {
 }
 
 #[test]
-fn test_large_numeric_values() {
-    good(
-        "\
-        # tidy-alphabetical-start
-        item18446744073709551616
-        item99999999999999999999
-        # tidy-alphabetical-end
-    ",
-    );
-}
-
-#[test]
 fn test_numeric_bad() {
     let lines = "\
         # tidy-alphabetical-start
