@@ -272,8 +272,6 @@ impl CodegenFnAttrs {
         }
 
         self.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-            // note: for these we do also set a symbol name so technically also handled by the
-            // condition below. However, I think that regardless these should be treated as extern.
             || self.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM)
             // `#[rustc_offload_kernel]`: this item is an externally-launched kernel entry point.
             || self.flags.contains(CodegenFnAttrFlags::OFFLOAD_KERNEL)
