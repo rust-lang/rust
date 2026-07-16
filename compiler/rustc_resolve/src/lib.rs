@@ -1382,8 +1382,6 @@ pub struct Resolver<'ra, 'tcx> {
     /// Ambiguity errors are delayed for deduplication.
     ambiguity_errors: Vec<AmbiguityError<'ra>> = Vec::new(),
     issue_145575_hack_applied: bool = false,
-    /// `use` injections are delayed for better placement and deduplication.
-    use_injections: Vec<UseError<'tcx>> = Vec::new(),
     /// Visibility path resolution failures are delayed until all modules are collected.
     delayed_vis_resolution_errors: Vec<DelayedVisResolutionError<'ra>> = Vec::new(),
     /// Crate-local macro expanded `macro_export` referred to by a module-relative path.
@@ -2052,11 +2050,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.tcx
                 .sess
                 .time("finalize_macro_resolutions", || self.finalize_macro_resolutions(krate));
-            let use_items =
+            let (use_items, use_injections) =
                 self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
             self.tcx.sess.time("resolve_main", || self.resolve_main());
             self.tcx.sess.time("resolve_check_unused", || self.check_unused(use_items));
-            self.tcx.sess.time("resolve_report_errors", || self.report_errors(krate));
+            self.tcx
+                .sess
+                .time("resolve_report_errors", || self.report_errors(krate, use_injections));
             self.tcx
                 .sess
                 .time("resolve_postprocess", || self.cstore_mut().postprocess(self.tcx, krate));
