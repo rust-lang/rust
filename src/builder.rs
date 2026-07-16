@@ -36,7 +36,6 @@ use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 use crate::abi::FnAbiGccExt;
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
-use crate::errors;
 use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
@@ -312,13 +311,47 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.block.get_function()
     }
 
+    /// Shared implementation of `call` and `tail_call`. For tail call it is important that this
+    /// returns a bare call, and not the result assigned to a local, or the result of `add_eval`.
+    fn build_call(
+        &mut self,
+        typ: Type<'gcc>,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        func: RValue<'gcc>,
+        args: &[RValue<'gcc>],
+        funclet: Option<&Funclet>,
+        must_tail: bool,
+    ) -> RValue<'gcc> {
+        // FIXME(antoyo): remove when having a proper API.
+        let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
+        let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
+            // FIXME(antoyo): remove when the API supports a different type for functions.
+            let func: Function<'gcc> = self.cx.rvalue_as_function(func);
+            self.function_call(func, args, funclet, must_tail)
+        } else {
+            // If it's a not function that was defined, it's a function pointer.
+            self.function_ptr_call(typ, fn_abi, func, args, funclet, must_tail)
+        };
+        if let Some(_fn_abi) = fn_abi {
+            // FIXME(bjorn3): Apply function attributes
+        }
+        call
+    }
+
     pub fn function_call(
         &mut self,
         func: Function<'gcc>,
         args: &[RValue<'gcc>],
         _funclet: Option<&Funclet>,
+        must_tail: bool,
     ) -> RValue<'gcc> {
         let args = self.check_call("call", func, args);
+
+        let call = self.cx.context.new_call(self.location, func, &args);
+        if must_tail {
+            // Return the bare tail call, don't assign or `add_eval` it yet.
+            return call;
+        }
 
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
@@ -331,15 +364,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 return_type,
                 format!("returnValue{}", self.next_value_counter()),
             );
-            self.block.add_assignment(
-                self.location,
-                result,
-                self.cx.context.new_call(self.location, func, &args),
-            );
+            self.block.add_assignment(self.location, result, call);
             result.to_rvalue()
         } else {
-            self.block
-                .add_eval(self.location, self.cx.context.new_call(self.location, func, &args));
+            self.block.add_eval(self.location, call);
             // Return dummy value when not having return value.
             self.context.new_rvalue_zero(self.isize_type)
         }
@@ -352,6 +380,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         mut func_ptr: RValue<'gcc>,
         args: &[RValue<'gcc>],
         _funclet: Option<&Funclet>,
+        must_tail: bool,
     ) -> RValue<'gcc> {
         let func_ptr_type = {
             let func_ptr_type = func_ptr.get_type();
@@ -375,6 +404,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         };
         let args_adjusted = args.len() != previous_arg_count;
         let args = self.check_ptr_call("call", func_ptr, &args, &on_stack_param_indices);
+
+        if must_tail {
+            // Return the bare tail call, don't assign or `add_eval` it yet.
+            let call = self.cx.context.new_call_through_ptr(self.location, func_ptr, &args);
+            return call;
+        }
 
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
@@ -1798,34 +1833,34 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         funclet: Option<&Funclet>,
         _instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
-        // FIXME(antoyo): remove when having a proper API.
-        let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
-        let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
-            // FIXME(antoyo): remove when the API supports a different type for functions.
-            let func: Function<'gcc> = self.cx.rvalue_as_function(func);
-            self.function_call(func, args, funclet)
-        } else {
-            // If it's a not function that was defined, it's a function pointer.
-            self.function_ptr_call(typ, fn_abi, func, args, funclet)
-        };
-        if let Some(_fn_abi) = fn_abi {
-            // FIXME(bjorn3): Apply function attributes
-        }
-        call
+        self.build_call(typ, fn_abi, func, args, funclet, false)
     }
 
     fn tail_call(
         &mut self,
-        _llty: Self::Type,
+        llty: Self::Type,
         _fn_attrs: Option<&CodegenFnAttrs>,
-        _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        _llfn: Self::Value,
-        _args: &[Self::Value],
-        _funclet: Option<&Self::Funclet>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: Self::Value,
+        args: &[Self::Value],
+        funclet: Option<&Self::Funclet>,
         _instance: Option<Instance<'tcx>>,
     ) {
-        // FIXME: implement support for explicit tail calls like rustc_codegen_llvm.
-        self.tcx.dcx().emit_fatal(errors::ExplicitTailCallsUnsupported);
+        // `emit_call` returns a bare call for here, it has not been assigned or passed to add_eval.
+        let call = self.build_call(llty, Some(fn_abi), llfn, args, funclet, true);
+        call.set_require_tail_call(true);
+
+        let return_type = self.current_func().get_return_type();
+        let void_type = self.context.new_type::<()>();
+
+        if return_type == void_type {
+            // For a void return the call is emitted as its own statement, immediately
+            // followed by a void return, so the tail call sits in tail position.
+            self.llbb().add_eval(self.location, call);
+            self.ret_void();
+        } else {
+            self.ret(call)
+        }
     }
 
     fn zext(&mut self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {
