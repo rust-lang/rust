@@ -210,7 +210,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             &AttributeKind::RustcPubTransparent(attr_span) => {
                 self.check_rustc_pub_transparent(attr_span, span, attrs)
             }
-            AttributeKind::Naked(..) => self.check_naked(hir_id, target),
+            AttributeKind::Naked(naked_span) => {
+                self.check_naked(hir_id, *naked_span, attrs, target)
+            }
             AttributeKind::TrackCaller(attr_span) => {
                 self.check_track_caller(hir_id, *attr_span, attrs, target)
             }
@@ -728,7 +730,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[naked]` is applied to a function definition.
-    fn check_naked(&self, hir_id: HirId, target: Target) {
+    fn check_naked(&self, hir_id: HirId, naked_span: Span, attrs: &[Attribute], target: Target) {
         match target {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
@@ -745,6 +747,24 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         ),
                     )
                     .emit();
+                }
+
+                // EII forwards calls to an implementation through a shim the compiler synthesizes
+                // around its body. A naked function's body is exactly the user's `naked_asm!`, so
+                // the shim has nowhere to go. See <https://github.com/rust-lang/rust/issues/158293>.
+                if let Some(impls) = find_attr!(attrs, EiiImpls(impls) => impls) {
+                    for i in impls {
+                        let name = match i.resolution {
+                            EiiImplResolution::Macro(def_id) => self.tcx.item_name(def_id),
+                            EiiImplResolution::Known(def_id) => self.tcx.item_name(def_id),
+                            EiiImplResolution::Error(_eg) => continue,
+                        };
+                        self.dcx().emit_err(diagnostics::EiiWithNaked {
+                            naked_span,
+                            name,
+                            impl_span: i.span,
+                        });
+                    }
                 }
             }
             _ => {}

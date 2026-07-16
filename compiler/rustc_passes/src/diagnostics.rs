@@ -1088,6 +1088,16 @@ pub(crate) struct EiiWithTrackCaller {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[{$name}]` is not allowed to be `#[naked]`")]
+pub(crate) struct EiiWithNaked {
+    #[primary_span]
+    pub naked_span: Span,
+    pub name: Symbol,
+    #[label("`#[{$name}]` implementation cannot be `#[naked]`")]
+    pub impl_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[{$name}]` {$kind} required, but not found")]
 pub(crate) struct EiiWithoutImpl {
     #[primary_span]

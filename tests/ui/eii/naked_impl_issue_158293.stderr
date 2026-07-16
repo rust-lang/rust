@@ -1,0 +1,18 @@
+error: `#[requires_impl]` is not allowed to be `#[naked]`
+  --> $DIR/naked_impl_issue_158293.rs:13:1
+   |
+LL | #[crate::requires_impl]
+   | ----------------------- `#[requires_impl]` implementation cannot be `#[naked]`
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^
+
+error: `#[opt_impl]` is not allowed to be `#[naked]`
+  --> $DIR/naked_impl_issue_158293.rs:24:1
+   |
+LL | #[crate::opt_impl]
+   | ------------------ `#[opt_impl]` implementation cannot be `#[naked]`
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
