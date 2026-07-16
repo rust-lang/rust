@@ -1,4 +1,4 @@
-#![feature(where_clause_attrs, lazy_type_alias)]
+#![feature(where_clause_attrs, checked_type_aliases)]
 #![expect(incomplete_features)]
 
 struct Foo;

@@ -332,12 +332,12 @@ rustc_queries! {
         }
     }
 
-    /// Returns whether the type alias given by `DefId` is lazy.
+    /// Returns whether the type alias given by `DefId` is checked.
     ///
     /// I.e., if the type alias expands / ought to expand to a [free] [alias type]
     /// instead of the underlying aliased type.
     ///
-    /// Relevant for features `lazy_type_alias` and `type_alias_impl_trait`.
+    /// Relevant for features `checked_type_aliases` and `type_alias_impl_trait`.
     ///
     /// # Panics
     ///
@@ -345,9 +345,9 @@ rustc_queries! {
     ///
     /// [free]: rustc_middle::ty::Free
     /// [alias type]: rustc_middle::ty::AliasTy
-    query type_alias_is_lazy(key: DefId) -> bool {
+    query type_alias_is_checked(key: DefId) -> bool {
         desc {
-            "computing whether the type alias `{path}` is lazy",
+            "computing whether the type alias `{path}` is checked",
             path = tcx.def_path_str(key),
         }
         separate_provide_extern

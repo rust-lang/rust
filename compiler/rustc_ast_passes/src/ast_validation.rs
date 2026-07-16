@@ -1595,7 +1595,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 }
                 self.check_type_no_bounds(bounds, "this context");
 
-                if self.features.lazy_type_alias() {
+                if self.features.checked_type_aliases() {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.dcx().emit_err(err);
                     }

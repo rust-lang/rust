@@ -539,9 +539,9 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
     }
 }
 
-pub(crate) fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
+pub(crate) fn type_alias_is_checked<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
     use hir::intravisit::Visitor;
-    if tcx.features().lazy_type_alias() {
+    if tcx.features().checked_type_aliases() {
         return true;
     }
     struct HasTait;
