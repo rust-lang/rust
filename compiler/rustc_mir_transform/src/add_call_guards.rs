@@ -42,7 +42,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
             Asm { target_index: usize },
         }
 
-        let mut work = Vec::with_capacity(body.basic_blocks.len());
+        let mut work = Vec::new();
         for (bb, block) in body.basic_blocks.iter_enumerated() {
             let term = block.terminator();
             match term.kind {

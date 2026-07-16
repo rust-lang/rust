@@ -444,18 +444,19 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
         // fixedpoint where there are no more unused locals.
         remove_unused_definitions_helper(&mut used_locals, body);
 
+        if body.local_decls.indices().all(|local| used_locals.is_used(local)) {
+            return;
+        }
+
         // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the
         // `Local`s.
         let map = make_local_map(&mut body.local_decls, &used_locals);
 
-        // Only bother running the `LocalUpdater` if we actually found locals to remove.
-        if map.iter().any(Option::is_none) {
-            // Update references to all vars and tmps now
-            let mut updater = LocalUpdater { map, tcx };
-            updater.visit_body_preserves_cfg(body);
+        // Update references to all vars and tmps now.
+        let mut updater = LocalUpdater { map, tcx };
+        updater.visit_body_preserves_cfg(body);
 
-            body.local_decls.shrink_to_fit();
-        }
+        body.local_decls.shrink_to_fit();
     }
 
     fn is_required(&self) -> bool {
