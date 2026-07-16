@@ -222,9 +222,10 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_fs_util::try_canonicalize;
-use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
+use rustc_proc_macro::bridge::server::DynClient;
 use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
@@ -357,6 +358,20 @@ impl<'a> CrateLocator<'a> {
         self.target = &sess.target;
         self.tuple = sess.opts.target_triple.clone();
         self.filesearch = sess.target_filesearch();
+        self.path_kind = path_kind;
+    }
+
+    pub(crate) fn for_wasm_proc_macro(
+        &mut self,
+        path_kind: PathKind,
+        wasm_tuple: TargetTuple,
+        wasm_target: &'a Target,
+        wasm_filesearch: &'a FileSearch,
+    ) {
+        self.is_proc_macro = true;
+        self.target = wasm_target;
+        self.tuple = wasm_tuple;
+        self.filesearch = wasm_filesearch;
         self.path_kind = path_kind;
     }
 
@@ -742,6 +757,8 @@ impl<'a> CrateLocator<'a> {
         &self,
         crate_rejections: &mut CrateRejections,
     ) -> Result<Option<Library>, CrateError> {
+        debug!("find_commandline_library {}", self.crate_name);
+
         // First, filter out all libraries that look suspicious. We only accept
         // files which actually exist that have the correct naming scheme for
         // rlibs/dylibs.
@@ -986,7 +1003,7 @@ pub fn get_proc_macros(
     path: &Path,
     metadata_loader: &dyn MetadataLoader,
     cfg_version: &'static str,
-) -> IoResult<Vec<(ProcMacroClient, ProcMacroKind)>> {
+) -> IoResult<Vec<(IntoDynSyncSend<DynClient>, ProcMacroKind)>> {
     let metadata =
         get_metadata_section(target, CrateFlavor::Dylib, path, metadata_loader, cfg_version, None)
             .map_err(|err| io::Error::other(err.to_string()))?;
@@ -1000,7 +1017,7 @@ pub fn get_proc_macros(
     let proc_macro_info = metadata.get_proc_macro_info();
     assert_eq!(proc_macro_info.len(), clients.len());
 
-    Ok(clients.into_iter().copied().zip(proc_macro_info).collect())
+    Ok(clients.into_iter().zip(proc_macro_info).collect())
 }
 
 // ------------------------------------------ Error reporting -------------------------------------

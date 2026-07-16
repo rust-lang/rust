@@ -78,6 +78,7 @@ struct ProcMacroLibrary {
 impl ProcMacroLibrary {
     fn open(path: &Utf8Path) -> io::Result<Self> {
         let proc_macros = rustc_span::create_default_session_globals_then(|| {
+            // FIXME support wasm proc-macros
             let (target, _) =
                 Target::search(&TargetTuple::from_tuple(host_tuple()), Path::new(""), false)
                     .unwrap();
