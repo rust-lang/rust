@@ -12,6 +12,7 @@
 //!     will still not cause any further changes.
 //!
 
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -45,6 +46,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     // record it as (block, argument index).
     let mut call_operands_to_move = Vec::new();
     let mut patch = Vec::new();
+    let mut state = None;
 
     for (bb, bb_data) in traversal::preorder(body) {
         if let TerminatorKind::Call { ref args, ref destination, .. } = bb_data.terminator().kind {
@@ -52,11 +54,12 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
 
             // Position ourselves between the evaluation of `args` and the write to `destination`.
             live.seek_to_block_end(bb);
-            let mut state = live.get().clone();
+            let state = state.get_or_insert_with(|| DenseBitSet::new_empty(body.local_decls.len()));
+            state.clone_from(live.get());
 
             // Don't turn into a move if the local is used as an index
             // projection for the destination place.
-            LivenessTransferFunction(&mut state).visit_place(
+            LivenessTransferFunction(state).visit_place(
                 destination,
                 visit::PlaceContext::MutatingUse(visit::MutatingUseContext::Call),
                 loc,
@@ -79,7 +82,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
                 }
 
                 // Account that `arg` is read from, so we don't promote another argument to a move.
-                LivenessTransferFunction(&mut state).visit_operand(arg, loc);
+                LivenessTransferFunction(state).visit_operand(arg, loc);
             }
         }
 
