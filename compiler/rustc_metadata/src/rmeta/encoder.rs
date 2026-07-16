@@ -1582,9 +1582,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::TyAlias = def_kind {
                 self.tables
-                    .type_alias_is_lazy
-                    .set(def_id.index, self.tcx.type_alias_is_lazy(def_id));
-                if self.tcx.type_alias_is_lazy(def_id) {
+                    .type_alias_is_checked
+                    .set(def_id.index, self.tcx.type_alias_is_checked(def_id));
+                if self.tcx.type_alias_is_checked(def_id) {
                     record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
                 }
             }

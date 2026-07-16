@@ -315,7 +315,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         // placeholders as the trait solver does not expect to encounter escaping bound
         // vars in obligations.
         //
-        // FIXME(lazy_type_alias): Check how much this actually matters for perf before
+        // FIXME(checked_type_alias): Check how much this actually matters for perf before
         // stabilization. This is a bit weird and generally not how we handle binders in
         // the compiler so ideally we'd do the same boundvar->placeholder->boundvar dance
         // that other kinds of normalization do.

@@ -2322,7 +2322,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
 
         ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
-            if cx.tcx.features().lazy_type_alias() {
+            if cx.tcx.features().checked_type_aliases() {
                 // Free type alias `data` represents the `type X` in `type X = Y`. If we need `Y`,
                 // we need to use `type_of`.
                 let path =
