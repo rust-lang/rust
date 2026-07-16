@@ -1,5 +1,7 @@
 //@only-target: linux android illumos
 //@revisions: edge_triggered level_triggered
+// We need to control yielding.
+//@compile-flags: -Zmiri-deterministic-concurrency
 //@run-native
 
 use std::convert::TryInto;
@@ -263,42 +265,66 @@ fn waiting_threads_unblocked_after_epoll_close() {
 /// That thread keeps a reference so it is only really closed when that thread wakes up
 /// again, and at that point an epoll notification should be triggered.
 fn waiting_threads_unblocked_after_socketpair_close() {
-    // Create an epoll instance.
-    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
-
-    // Create a socketpair instance.
-    let mut fds = [-1, -1];
-    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
-
-    // And an atomic variable for synchronization.
-    let flag = AtomicBool::new(false);
-
-    thread::scope(|s| {
-        // Thread 1 will block reading on fds[0], thread 2 blocks on epoll for fds[1].
-        s.spawn(|| {
-            let data = read_exact_array::<4>(fds[0]).unwrap();
-            assert_eq!(&data, b"1234");
-            flag.store(true, Ordering::Relaxed);
-        });
-        s.spawn(|| {
-            // Indefinitely block until `fds[1]` becomes readable.
-            epoll_ctl_add(epfd, fds[1], EPOLLIN | EPOLLET_OR_ZERO).unwrap();
-            check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLHUP, data: fds[1] }], -1);
-            flag.store(true, Ordering::Relaxed);
+    // There are multiple variants of this test.
+    for variant in 0..=1 {
+        // Create a socketpair instance.
+        let mut fds = [-1, -1];
+        errno_check(unsafe {
+            libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr())
         });
 
-        // Let the threads go and do their setup.
-        thread::sleep(Duration::from_millis(10));
+        // Create an epoll instance, register `fds[1]`.
+        let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
+        epoll_ctl_add(epfd, fds[1], EPOLLIN | EPOLLET_OR_ZERO).unwrap();
 
-        // Once they did their setup, close fds[0] (will not really be closed since there is a thread
-        // blocked on it).
-        unsafe { errno_check(libc::close(fds[0])) };
+        // And an atomic variable for synchronization.
+        let flag = AtomicBool::new(false);
 
-        // This should *not* yet wake up anyone. So we wait a bit and check the flag.
-        thread::sleep(Duration::from_millis(10));
-        assert_eq!(flag.load(Ordering::Relaxed), false);
+        thread::scope(|s| {
+            // Thread 1 will block reading on fds[0], thread 2 blocks on epoll for fds[1].
+            s.spawn(|| {
+                let data = read_exact_array::<4>(fds[0]).unwrap();
+                assert_eq!(&data, b"1234");
+                flag.store(true, Ordering::Relaxed);
+            });
+            if variant == 0 {
+                // In variant 1, the event is consumed below (for edge-triggered).
+                s.spawn(|| {
+                    // Indefinitely block until `fds[1]` becomes readable.
+                    check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLHUP, data: fds[1] }], -1);
+                    flag.store(true, Ordering::Relaxed);
+                });
+            }
 
-        // ... and then write to fds[1] to make it readable.
-        write_all(fds[1], b"1234").unwrap();
-    });
+            // Let the threads go and do their setup.
+            thread::sleep(Duration::from_millis(10));
+
+            // Once they did their setup, close fds[0] (will not really be closed since there is a
+            // thread blocked on it).
+            unsafe { errno_check(libc::close(fds[0])) };
+
+            // This should *not* yet wake up anyone. So we wait a bit and check the flag.
+            thread::sleep(Duration::from_millis(10));
+            assert_eq!(flag.load(Ordering::Relaxed), false);
+
+            // ... and then write to fds[1] to make it readable.
+            write_all(fds[1], b"1234").unwrap();
+
+            // We want to both test "delayed readiness processed by scheduler" and "delayed
+            // readiness processed by epoll_wait", so we have two variants of this test.
+            if variant == 1 {
+                // Now readiness should be updated, even before we schedule to another thread. Needs to be
+                // non-blocking to hit what used to be a buggy codepath! Interestingly, we do *not* always
+                // immediately see the new events on native runs -- it's almost as if Linux also delays
+                // updating the readiness. We still want to update readiness immediately in Miri as
+                // otherwise we'd have to give up on a nice strong invariant and disable a sanity check.
+                // So we give the native kernel a bit of time to update the readiness.
+                if !cfg!(miri) {
+                    // Give the kernel some time to process.
+                    thread::sleep(Duration::from_millis(10));
+                }
+                check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLIN | EPOLLHUP, data: fds[1] }]);
+            }
+        });
+    }
 }

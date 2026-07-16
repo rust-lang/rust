@@ -292,6 +292,9 @@ impl ReadinessWatcher {
         count: usize,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Vec<ReadinessInterest>> {
+        // Process delayed readiness updates, to ensure we have fully up-to-date information.
+        DelayedReadinessUpdates::process(ecx)?;
+
         let interests = self.interests.borrow();
         let mut ready = self.ready.borrow_mut();
 
