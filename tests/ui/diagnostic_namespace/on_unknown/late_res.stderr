@@ -1,26 +1,34 @@
-error[E0531]: cannot find unit struct, unit variant or constant `blah` in module `empty`
+error[E0531]: it works
   --> $DIR/late_res.rs:9:16
    |
 LL |         empty::blah => {}
    |                ^^^^ not found in `empty`
+   |
+   = note: cannot find unit struct, unit variant or constant `blah` in module `empty`
 
-error[E0425]: cannot find value `blah` in module `empty`
+error[E0425]: it works
   --> $DIR/late_res.rs:14:27
    |
 LL |     println!("{}", empty::blah);
    |                           ^^^^ not found in `empty`
+   |
+   = note: cannot find value `blah` in module `empty`
 
-error[E0425]: cannot find value `blah` in module `empty`
+error[E0425]: it works
   --> $DIR/late_res.rs:18:16
    |
 LL |         empty::blah,
    |                ^^^^ not found in `empty`
+   |
+   = note: cannot find value `blah` in module `empty`
 
-error[E0425]: cannot find value `blah2` in module `empty`
+error[E0425]: it works
   --> $DIR/late_res.rs:21:16
    |
 LL |         empty::blah2,
    |                ^^^^^ not found in `empty`
+   |
+   = note: cannot find value `blah2` in module `empty`
 
 error: aborting due to 4 previous errors
 
