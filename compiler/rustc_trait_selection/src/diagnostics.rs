@@ -1203,9 +1203,9 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
 #[diag("`impl` item signature doesn't match `trait` item signature")]
 pub(crate) struct TraitImplDiff {
     #[primary_span]
-    #[label("found `{$found}`")]
+    #[label("found `{$found_short}`")]
     pub sp: Span,
-    #[label("expected `{$expected}`")]
+    #[label("expected `{$expected_short}`")]
     pub trait_sp: Span,
     #[note(
         "expected signature `{$expected}`
@@ -1218,6 +1218,8 @@ pub(crate) struct TraitImplDiff {
         "verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output"
     )]
     pub rel_help: bool,
+    pub expected_short: String,
+    pub found_short: String,
     pub expected: String,
     pub found: String,
 }
