@@ -217,6 +217,7 @@ impl ProjectWorkspace {
             rustc_source,
             extra_args,
             metadata_extra_args,
+            config_path,
             extra_env,
             set_test,
             cfg_overrides,
@@ -269,7 +270,8 @@ impl ProjectWorkspace {
 
         tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.rust_lib_src_root(), root = ?sysroot.root(), "Using sysroot");
         progress("querying project metadata".to_owned());
-        let config_file = CargoConfigFile::load(cargo_toml, extra_env, &sysroot);
+        let config_file =
+            CargoConfigFile::load(cargo_toml, extra_env, &sysroot, config_path.as_deref());
         let config_file_ = config_file.clone();
         let toolchain_config = QueryConfig::Cargo(&sysroot, cargo_toml, &config_file_);
         let targets =
@@ -291,6 +293,7 @@ impl ProjectWorkspace {
                 targets: targets.clone(),
                 extra_args: extra_args.clone(),
                 metadata_extra_args: metadata_extra_args.clone(),
+                config_path: config_path.clone(),
                 extra_env: extra_env.clone(),
                 toolchain_version: toolchain.clone(),
                 kind: "workspace",
@@ -346,6 +349,7 @@ impl ProjectWorkspace {
                             targets: targets.clone(),
                             extra_args: extra_args.clone(),
                             metadata_extra_args: metadata_extra_args.clone(),
+                            config_path: config_path.clone(),
                             extra_env: extra_env.clone(),
                             toolchain_version: toolchain.clone(),
                             kind: "rustc-dev"
@@ -549,7 +553,12 @@ impl ProjectWorkspace {
             None => Sysroot::empty(),
         };
 
-        let config_file = CargoConfigFile::load(detached_file, &config.extra_env, &sysroot);
+        let config_file = CargoConfigFile::load(
+            detached_file,
+            &config.extra_env,
+            &sysroot,
+            config.config_path.as_deref(),
+        );
         let query_config = QueryConfig::Cargo(&sysroot, detached_file, &config_file);
         let toolchain = version::get(query_config, &config.extra_env).ok().flatten();
         let targets = target_tuple::get(query_config, config.target.as_deref(), &config.extra_env)
@@ -579,6 +588,7 @@ impl ProjectWorkspace {
                 targets,
                 extra_args: config.extra_args.clone(),
                 metadata_extra_args: config.metadata_extra_args.clone(),
+                config_path: config.config_path.clone(),
                 extra_env: config.extra_env.clone(),
                 toolchain_version: toolchain.clone(),
                 kind: "detached-file",
@@ -811,6 +821,7 @@ impl ProjectWorkspace {
                     .packages()
                     .map(|pkg| {
                         let is_local = cargo[pkg].is_local;
+                        let is_member = cargo[pkg].is_member;
                         let pkg_root = cargo[pkg].manifest.parent().to_path_buf();
 
                         let mut include = vec![pkg_root.clone()];
@@ -844,9 +855,11 @@ impl ProjectWorkspace {
                         let mut exclude = vec![pkg_root.join(".git")];
                         if is_local {
                             include.extend(self.extra_includes.iter().cloned());
-
                             exclude.push(pkg_root.join("target"));
-                        } else {
+                        }
+                        if !is_member {
+                            // For non-workspace-members, we only resolve library targets,
+                            // so none of these need to be loaded into the VFS.
                             exclude.push(pkg_root.join("tests"));
                             exclude.push(pkg_root.join("examples"));
                             exclude.push(pkg_root.join("benches"));
@@ -874,6 +887,7 @@ impl ProjectWorkspace {
                 .chain(cargo_script.iter().flat_map(|(cargo, build_scripts, _)| {
                     cargo.packages().map(|pkg| {
                         let is_local = cargo[pkg].is_local;
+                        let is_member = cargo[pkg].is_member;
                         let pkg_root = cargo[pkg].manifest.parent().to_path_buf();
 
                         let mut include = vec![pkg_root.clone()];
@@ -909,7 +923,10 @@ impl ProjectWorkspace {
                             include.extend(self.extra_includes.iter().cloned());
 
                             exclude.push(pkg_root.join("target"));
-                        } else {
+                        }
+                        if !is_member {
+                            // For non-workspace-members, we only resolve library targets,
+                            // so none of these need to be loaded into the VFS.
                             exclude.push(pkg_root.join("tests"));
                             exclude.push(pkg_root.join("examples"));
                             exclude.push(pkg_root.join("benches"));
@@ -1945,8 +1962,15 @@ fn sysroot_metadata_config(
     CargoMetadataConfig {
         features: Default::default(),
         targets,
+        // NOTE: Not passing extra_args / metadata_extra_args / config_path here is very
+        // intentional. The sysroot config has nothing to do with the workspace's config, so it's
+        // very unlikely to do the right thing (e.g. it'd could try to use vendored dependencies in
+        // the project's config for libstd or what not).
         extra_args: Default::default(),
-        metadata_extra_args: config.metadata_extra_args.clone(),
+        metadata_extra_args: Default::default(),
+        config_path: Default::default(),
+        // FIXME: Passing extra_env is somewhat dubious here, for the same reason we don't pass
+        // extra_args.
         extra_env: config.extra_env.clone(),
         toolchain_version,
         kind: "sysroot",

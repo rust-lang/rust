@@ -300,15 +300,15 @@ pub enum FakeBorrowKind {
 /// Not all of these are allowed at every [`MirPhase`]. Check the documentation there to see which
 /// ones you do not have to worry about. The MIR validator will generally enforce such restrictions,
 /// causing an ICE if they are violated.
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, StableHash)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum StatementKind<'tcx> {
     /// Assign statements roughly correspond to an assignment in Rust proper (`x = ...`) except
     /// without the possibility of dropping the previous value (that must be done separately, if at
     /// all). The *exact* way this works is undecided. It probably does something like evaluating
-    /// the LHS to a place and the RHS to a value, and then storing the value to the place. Various
-    /// parts of this may do type specific things that are more complicated than simply copying
-    /// bytes. In particular, the assignment will typically erase the contents of padding,
+    /// the LHS to a place, then the RHS to a value, and then storing the value to the place.
+    /// Various parts of this may do type specific things that are more complicated than simply
+    /// copying bytes. In particular, the assignment will typically erase the contents of padding,
     /// erase provenance from non-pointer types, and implicitly "retag" all references and boxes
     /// that it copies, meaning that the resulting value is not an exact duplicate for all intents
     /// and purposes of the original value.
@@ -455,17 +455,8 @@ pub enum StatementKind<'tcx> {
     },
 }
 
-#[derive(
-    Clone,
-    TyEncodable,
-    TyDecodable,
-    Debug,
-    PartialEq,
-    Hash,
-    StableHash,
-    TypeFoldable,
-    TypeVisitable
-)]
+#[derive(Clone, TyEncodable, TyDecodable, Debug, PartialEq, StableHash)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum NonDivergingIntrinsic<'tcx> {
     /// Denotes a call to the intrinsic function `assume`.
     ///
@@ -492,7 +483,7 @@ pub enum NonDivergingIntrinsic<'tcx> {
 }
 
 /// Describes whether this operand use performs a retag.
-#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, Hash, StableHash)]
+#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, StableHash)]
 #[rustc_pass_by_value]
 pub enum WithRetag {
     Yes,
@@ -511,7 +502,7 @@ impl WithRetag {
 }
 
 /// The `FakeReadCause` describes the type of pattern why a FakeRead statement exists.
-#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, Hash, StableHash, PartialEq)]
+#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, StableHash, PartialEq)]
 pub enum FakeReadCause {
     /// A fake read injected into a match guard to ensure that the discriminants
     /// that are being matched on aren't modified while the match guard is being
@@ -617,7 +608,7 @@ pub enum FakeReadCause {
     ForIndex,
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, StableHash)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct CopyNonOverlapping<'tcx> {
     pub src: Operand<'tcx>,
@@ -628,7 +619,7 @@ pub struct CopyNonOverlapping<'tcx> {
 
 /// Represents how a [`TerminatorKind::Call`] was constructed.
 /// Used only for diagnostics.
-#[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, PartialEq, Hash, StableHash)]
+#[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, PartialEq, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum CallSource {
     /// This came from something such as `a > b` or `a + b`. In THIR, if `from_hir_call`
@@ -648,7 +639,7 @@ pub enum CallSource {
     Normal,
 }
 
-#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, Hash, StableHash, PartialEq)]
+#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, StableHash, PartialEq)]
 #[derive(TypeFoldable, TypeVisitable)]
 /// The macro that an inline assembly block was created by
 pub enum InlineAsmMacro {
@@ -688,7 +679,7 @@ pub enum InlineAsmMacro {
 ///     deleting self edges and duplicate edges in the process. Now remove all vertices from `G`
 ///     that are not cleanup vertices or are not reachable. The resulting graph must be an inverted
 ///     tree, that is each vertex may have at most one successor and there may be no cycles.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, StableHash, PartialEq, TypeFoldable, TypeVisitable)]
+#[derive(Clone, TyEncodable, TyDecodable, StableHash, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum TerminatorKind<'tcx> {
     /// Block has one successor; we continue execution there.
     Goto { target: BasicBlock },
@@ -788,6 +779,9 @@ pub enum TerminatorKind<'tcx> {
     /// **Needs clarification**: The exact semantics of this. Current backends rely on `move`
     /// operands not aliasing the return place. It is unclear how this is justified in MIR, see
     /// [#71117].
+    ///
+    /// The evaluation order is currently "first compute destination place, then `func` operand,
+    /// then the arguments in left-to-right order".
     ///
     /// [#71117]: https://github.com/rust-lang/rust/issues/71117
     Call {
@@ -973,22 +967,13 @@ pub enum TerminatorKind<'tcx> {
     },
 }
 
-#[derive(
-    Clone,
-    Debug,
-    TyEncodable,
-    TyDecodable,
-    Hash,
-    StableHash,
-    PartialEq,
-    TypeFoldable,
-    TypeVisitable
-)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash, PartialEq)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum BackwardIncompatibleDropReason {
     Edition2024,
 }
 
-#[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, StableHash, PartialEq)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, StableHash, PartialEq)]
 pub struct SwitchTargets {
     /// Possible values. For each value, the location to branch to is found in
     /// the corresponding element in the `targets` vector.
@@ -1018,7 +1003,7 @@ pub struct SwitchTargets {
 }
 
 /// Action to be taken when a stack unwind happens.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, StableHash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum UnwindAction {
     /// No action is to be taken. Continue unwinding.
@@ -1037,7 +1022,7 @@ pub enum UnwindAction {
 }
 
 /// The reason we are terminating the process during unwinding.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, StableHash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum UnwindTerminateReason {
     /// Unwinding is just not possible given the ABI of this function.
@@ -1048,7 +1033,7 @@ pub enum UnwindTerminateReason {
 }
 
 /// Information about an assertion failure.
-#[derive(Clone, Hash, StableHash, PartialEq, Debug)]
+#[derive(Clone, StableHash, PartialEq, Debug)]
 #[derive(TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum AssertKind<O> {
     BoundsCheck { len: O, index: O },
@@ -1061,10 +1046,11 @@ pub enum AssertKind<O> {
     ResumedAfterDrop(CoroutineKind),
     MisalignedPointerDereference { required: O, found: O },
     NullPointerDereference,
+    NullReferenceConstructed,
     InvalidEnumConstruction(O),
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, StableHash)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum InlineAsmOperand<'tcx> {
     In {
@@ -1292,7 +1278,7 @@ pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 /// **Needs clarification:** Is loading a place that has its variant index set well-formed? Miri
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, StableHash, TypeFoldable, TypeVisitable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub enum Operand<'tcx> {
     /// Creates a value by loading the given place.
     ///
@@ -1327,7 +1313,7 @@ pub enum Operand<'tcx> {
     RuntimeChecks(RuntimeChecks),
 }
 
-#[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, Hash, StableHash)]
+#[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct ConstOperand<'tcx> {
     pub span: Span,
@@ -1352,7 +1338,7 @@ pub struct ConstOperand<'tcx> {
 /// Computing any rvalue begins by evaluating the places and operands in some order (**Needs
 /// clarification**: Which order?). These are then used to produce a "value" - the same kind of
 /// value that an [`Operand`] produces.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, StableHash, PartialEq, TypeFoldable, TypeVisitable)]
+#[derive(Clone, TyEncodable, TyDecodable, StableHash, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum Rvalue<'tcx> {
     /// Yields the operand unchanged, except for a potential retag.
     Use(Operand<'tcx>, WithRetag),
@@ -1511,7 +1497,7 @@ pub enum CastKind {
     /// but running a transmute between differently-sized types is UB.
     Transmute,
 
-    /// A `Subtype` cast is applied to any `StatementKind::Assign` where
+    /// A `Subtype` cast is applied to any [`StatementKind::Assign`] where
     /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
     /// explicit during optimizations and codegen.
     ///
@@ -1534,7 +1520,7 @@ pub enum CoercionSource {
     Implicit,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, StableHash)]
+#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum AggregateKind<'tcx> {
     /// The type is of the element
@@ -1703,7 +1689,7 @@ pub enum BinOp {
 
 // Assignment operators, e.g. `+=`. See comments on the corresponding variants
 // in `BinOp` for details.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, StableHash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, StableHash)]
 pub enum AssignOp {
     AddAssign,
     SubAssign,

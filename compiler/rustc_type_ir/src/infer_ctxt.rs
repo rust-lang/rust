@@ -502,7 +502,10 @@ pub trait InferCtxtLike: Sized {
         &self,
         prev_entries: Self::OpaqueTypeStorageEntries,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
-    fn opaques_with_sub_unified_hidden_type(&self, ty: TyVid) -> Vec<ty::AliasTy<Self::Interner>>;
+    fn opaques_with_sub_unified_hidden_type(
+        &self,
+        ty: TyVid,
+    ) -> Vec<ty::OpaqueAliasTy<Self::Interner>>;
 
     fn register_hidden_type_in_storage(
         &self,
@@ -529,8 +532,8 @@ where
     Infcx: InferCtxtLike<Interner = I>,
 {
     // Iterate through all goals in param_env to find the one that has the same symbol.
-    for pred in param_env.caller_bounds().iter() {
-        if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
+    for clause in param_env.caller_bounds().iter() {
+        if let ty::ClauseKind::UnstableFeature(sym) = clause.kind().skip_binder() {
             if sym == symbol {
                 return true;
             }

@@ -44,7 +44,10 @@ impl<'tcx> MiriMachine<'tcx> {
                 Self::weak_symbol_extern_statics(ecx, &["getrandom", "gettid", "statx", "strlen"])?;
             }
             Os::Android => {
-                Self::weak_symbol_extern_statics(ecx, &["signal", "getrandom", "gettid"])?;
+                Self::weak_symbol_extern_statics(
+                    ecx,
+                    &["signal", "getrandom", "gettid", "futimens"],
+                )?;
             }
             Os::Windows => {
                 // "_tls_used"

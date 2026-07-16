@@ -1,50 +1,53 @@
 # Installation
 
-In the near future, `std::autodiff` should become available for users via rustup.
-As a rustc/enzyme/autodiff contributor however, you will still need to build rustc from source.
-For the meantime, you can download up-to-date builds to enable `std::autodiff` on your latest nightly toolchain, if you are using either of:
-**Linux**, with `x86_64-unknown-linux-gnu` or `aarch64-unknown-linux-gnu`
-**Windows**, with `x86_64-llvm-mingw` or `aarch64-llvm-mingw`
+Most users can enable `std::autodiff` on their latest nightly toolchain by installing the `enzyme` component with rustup, if they are using one of these platforms:
 
-In the past you could also download builds for **Apple** (aarch64-apple), however they are not usable at the moment.
+- **Linux**: with `x86_64-unknown-linux-gnu` or `aarch64-unknown-linux-gnu`
+- **macOS**: with `aarch64-apple-darwin` or `x86_64-apple-darwin`
+- **Windows**: with `x86_64-llvm-mingw` or `aarch64-llvm-mingw`
 
-If you need any other platform, you can build rustc including autodiff from source.
-Please open an issue if you want to help enabling automatic builds for your prefered target.
+As a rustc/enzyme/autodiff contributor, or if you need any other platform, you can build rustc including autodiff from source.
+Please open an issue if you want help enabling automatic builds for your preferred target.
 
 ## Installation guide
 
-If you want to use `std::autodiff` on Linux or Windows and don't plan to contribute PR's to the project, then we recommend to just use your existing nightly installation and download the missing component. Please run:
+If you want to use `std::autodiff` on Linux, macOS, or Windows and don't plan to contribute PR's to the project, then we recommend to just use your existing nightly installation and download the missing component.
+Please run:
 
 ```console
 rustup +nightly component add enzyme
 ```
 
-Apple support was temporarily reverted, due to downstream breakages. Please build it from source till we can re-enable it.
+Older rustup versions are not aware of this component, so if you run into issues try updating rustup itself:
+```console
+rustup update
+rustup +nightly component add enzyme
+```
 
-## Installation guide for Nix user.
+## Installation guide for Nix
 
-This setup was recommended by a nix and autodiff user.
-It uses [`Overlay`].
-Please verify for yourself if you are comfortable using that repository.
-In that case you might use the following nix configuration to get a rustc that supports `std::autodiff`.
+On [Nix], you can declare a nightly Rust toolchain with the Enzyme component using the [oxalica rust-overlay].
+
+For example:
+
 ```nix
-{
-  enzymeLib = pkgs.fetchzip {
-    url = "https://ci-artifacts.rust-lang.org/rustc-builds/ec818fda361ca216eb186f5cf45131bd9c776bb4/enzyme-nightly-x86_64-unknown-linux-gnu.tar.xz";
-    sha256 = "sha256-Rnrop44vzS+qmYNaRoMNNMFyAc3YsMnwdNGYMXpZ5VY=";
-  };
+rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
+  extensions = [ "enzyme" ];
+})
+```
 
-  rustToolchain = pkgs.symlinkJoin {
-    name = "rust-with-enzyme";
-    paths = [pkgs.rust-bin.nightly.latest.default];
-    nativeBuildInputs = [pkgs.makeWrapper];
-    postBuild = ''
-      libdir=$out/lib/rustlib/x86_64-unknown-linux-gnu/lib
-      cp ${enzymeLib}/enzyme-preview/lib/rustlib/x86_64-unknown-linux-gnu/lib/libEnzyme-22.so $libdir/
-      wrapProgram $out/bin/rustc --add-flags "--sysroot $out"
-    '';
-  };
-}
+Alternatively, you can create a [toolchain file] that declares the Enzyme component such as
+
+```toml
+[toolchain]
+channel = "nightly-2026-06-23"
+components = [ "enzyme" ]
+```
+
+and consume it in the overlay
+
+```nix
+rust-bin.fromRustupToolchainFile ./rust-toolchain.toml
 ```
 
 ## Build instructions
@@ -138,4 +141,6 @@ This will build Enzyme, and you can find it in `Enzyme/enzyme/build/lib/<LLD/Cla
 (Endings might differ based on your OS).
 
 [`Repo`]: https://github.com/rust-lang/rust/
-[`Overlay`]: https://github.com/oxalica/rust-overlay
+[Nix]: https://nixos.org/
+[oxalica rust-overlay]: https://github.com/oxalica/rust-overlay
+[toolchain file]: https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file

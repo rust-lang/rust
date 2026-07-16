@@ -1047,6 +1047,25 @@ mod cfg {
     }
 
     #[test]
+    fn inside_cfg_attr_gating_attr_macro() {
+        check(
+            r#"
+//- proc_macros: identity
+//- /main.rs cfg:feature=on
+#[cfg_attr(feat$0ure = "on", proc_macros::identity)]
+fn f() {}
+"#,
+            expect![[r#"
+                ba all
+                ba any
+                ba feature
+                ba not
+                ba true
+            "#]],
+        );
+    }
+
+    #[test]
     fn complete_key_attr() {
         check_edit(
             "test",

@@ -32,6 +32,7 @@ use rustc_serialize::{Decodable, Decoder};
 use rustc_session::config::TargetModifier;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::cstore::{CrateSource, ExternCrate};
+use rustc_span::def_id::ModId;
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, Pos, RemapPathScopeComponents, SpanData,
@@ -1173,14 +1174,14 @@ impl CrateMetadata {
         )
     }
 
-    fn get_visibility(&self, tcx: TyCtxt<'_>, id: DefIndex) -> Visibility<DefId> {
+    fn get_visibility(&self, tcx: TyCtxt<'_>, id: DefIndex) -> Visibility<ModId> {
         self.root
             .tables
             .visibility
             .get(self, id)
             .unwrap_or_else(|| self.missing("visibility", id))
             .decode((self, tcx))
-            .map_id(|index| self.local_def_id(index))
+            .map_id(|index| ModId::new_unchecked(self.local_def_id(index)))
     }
 
     fn get_safety(&self, id: DefIndex) -> Safety {
@@ -2038,10 +2039,12 @@ impl CrateMetadata {
         krate: CrateNum,
     ) -> impl Iterator<Item = DefId> {
         gen move {
-            for def_id in self.root.proc_macro_data.as_ref().into_iter().flat_map(move |data| {
-                data.macros.decode((self, tcx)).map(move |(index, _)| DefId { index, krate })
-            }) {
-                yield def_id;
+            if let Some(data) = &self.root.proc_macro_data {
+                for def_id in
+                    data.macros.decode((self, tcx)).map(move |(index, _)| DefId { index, krate })
+                {
+                    yield def_id;
+                }
             }
         }
     }

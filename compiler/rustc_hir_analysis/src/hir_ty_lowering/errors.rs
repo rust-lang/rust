@@ -16,7 +16,7 @@ use rustc_middle::ty::{
     self, AdtDef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt,
     suggest_constraining_type_param,
 };
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
@@ -409,9 +409,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     pub(super) fn report_ambiguous_assoc_item(
         &self,
-        bound1: ty::PolyTraitRef<'tcx>,
-        bound2: ty::PolyTraitRef<'tcx>,
-        matching_candidates: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+        matching_candidates: &[ty::PolyTraitRef<'tcx>],
         qself: AssocItemQSelf,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
@@ -443,7 +441,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // predicates!).
         // FIXME: Turn this into a structured, translatable & more actionable suggestion.
         let mut where_bounds = vec![];
-        for bound in [bound1, bound2].into_iter().chain(matching_candidates) {
+        for &bound in matching_candidates {
             let bound_id = bound.def_id();
             let assoc_item = tcx.associated_items(bound_id).find_by_ident_and_kind(
                 tcx,
@@ -473,6 +471,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                             res: Res::Err,
                                             args: Some(constraint.gen_args),
                                             infer_args: false,
+                                            delegation_child_segment: false,
                                         };
 
                                         let alias_args = self.lower_generic_args_of_assoc_item(
@@ -985,15 +984,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                     // `<Foo as Iterator>::Item = String`.
                     let projection_term = pred.projection_term;
+                    let term = pred.term;
+                    let self_ty = projection_term.args.get(0).and_then(|arg| arg.as_type())?;
+
+                    let obligation = format!("{projection_term} = {term}");
                     let quiet_projection_term = projection_term
                         .with_replaced_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
-
-                    let term = pred.term;
-                    let obligation = format!("{projection_term} = {term}");
                     let quiet = format!("{quiet_projection_term} = {term}");
 
-                    bound_span_label(projection_term.self_ty(), &obligation, &quiet);
-                    Some((obligation, projection_term.self_ty()))
+                    bound_span_label(self_ty, &obligation, &quiet);
+
+                    Some(obligation)
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(poly_trait_ref)) => {
                     let p = poly_trait_ref.trait_ref;
@@ -1002,7 +1003,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     let obligation = format!("{self_ty}: {path}");
                     let quiet = format!("_: {path}");
                     bound_span_label(self_ty, &obligation, &quiet);
-                    Some((obligation, self_ty))
+                    Some(obligation)
                 }
                 _ => None,
             }
@@ -1014,7 +1015,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .into_iter()
             .map(|error| error.root_obligation.predicate)
             .filter_map(format_pred)
-            .map(|(p, _)| format!("`{p}`"))
+            .map(|p| format!("`{p}`"))
             .collect();
         bounds.sort();
         bounds.dedup();

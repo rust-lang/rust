@@ -1,0 +1,29 @@
+error[E0277]: the trait bound `Test: Foo<'_>` is not satisfied
+  --> $DIR/conditionally-implemented-trait-158423.rs:25:21
+   |
+LL | fn test() { process(Test(0, 1)) }
+   |             ------- ^^^^^^^^^^ unsatisfied trait bound
+   |             |
+   |             required by a bound introduced by this call
+   |
+help: the trait `Foo<'_>` is not implemented for `Test`
+  --> $DIR/conditionally-implemented-trait-158423.rs:1:1
+   |
+LL | struct Test(i32, i64);
+   | ^^^^^^^^^^^
+help: the trait `Foo<'_>` is conditionally implemented for `Test`
+  --> $DIR/conditionally-implemented-trait-158423.rs:20:1
+   |
+LL | impl<'a> Foo<'a> for Test where i32: Foo<'a, Assoc = i32>, i64: Foo<'a, Assoc = i64> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^
+   |                                                                         |
+   |                                                                         unsatisfied requirement introduced here: `<i64 as Foo<'_>>::Assoc == i64`
+note: required by a bound in `process`
+  --> $DIR/conditionally-implemented-trait-158423.rs:24:19
+   |
+LL | fn process<'a, T: Foo<'a>>(_input: T) {}
+   |                   ^^^^^^^ required by this bound in `process`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

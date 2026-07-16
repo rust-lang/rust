@@ -23,7 +23,7 @@ extern "C" {
 #[no_mangle]
 pub unsafe fn apple() -> u32 {
     // CHECK-LABEL: @apple()
-    // CHECK-SAME: [[APPLEATTRS:#[0-9]+]] {
+    // CHECK-SAME: [[APPLEATTRS:#[0-9]+]]
     // CHECK: {{.*}}call{{.*}}@peach
     peach()
 }
@@ -32,7 +32,7 @@ pub unsafe fn apple() -> u32 {
 #[no_mangle]
 pub unsafe fn banana() -> u32 {
     // CHECK-LABEL: @banana()
-    // CHECK-SAME: [[BANANAATTRS:#[0-9]+]] {
+    // CHECK-SAME: [[BANANAATTRS:#[0-9]+]]
     // COMPAT: {{.*}}call{{.*}}@peach
     // INCOMPAT: {{.*}}call{{.*}}@apple
     apple() // Compatible for inline in COMPAT revision and can't be inlined in INCOMPAT

@@ -226,7 +226,7 @@
 -     bb22: {
 -         drop(_2) -> [return: bb24, unwind: bb26];
 +     bb19: {
-+         goto -> bb26;
++         goto -> bb24;
       }
   
 -     bb23: {
@@ -245,7 +245,7 @@
 -     bb25 (cleanup): {
 -         drop(_2) -> [return: bb26, unwind terminate(cleanup)];
 +     bb22 (cleanup): {
-+         goto -> bb27;
++         goto -> bb23;
       }
   
 -     bb26 (cleanup): {
@@ -255,18 +255,6 @@
 + 
 +     bb24: {
 +         goto -> bb21;
-+     }
-+ 
-+     bb25 (cleanup): {
-+         goto -> bb23;
-+     }
-+ 
-+     bb26: {
-+         goto -> bb24;
-+     }
-+ 
-+     bb27 (cleanup): {
-+         goto -> bb23;
       }
   }
   

@@ -7,6 +7,7 @@ vendor/
 *.log
 *.iml
 .vscode/settings.json
+.vim/coc-settings.json
 .DS_Store
 /out/
 /dump.lsif

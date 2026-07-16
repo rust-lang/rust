@@ -63,14 +63,17 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         match *t.kind() {
             // Projections are not injective in general.
-            ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
-                ..
-            }) if !self.include_nonconstraining => {
+            ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
+                    ..
+                },
+            ) if !self.include_nonconstraining => {
                 return;
             }
             // All free alias types should've been expanded beforehand.
-            ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. })
+            ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. })
                 if !self.include_nonconstraining =>
             {
                 bug!("unexpected free alias type")
@@ -90,7 +93,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
 
     fn visit_const(&mut self, c: ty::Const<'tcx>) {
         match c.kind() {
-            ty::ConstKind::Unevaluated(..) if !self.include_nonconstraining => {
+            ty::ConstKind::Alias(..) if !self.include_nonconstraining => {
                 // Constant expressions are not injective in general.
                 return;
             }

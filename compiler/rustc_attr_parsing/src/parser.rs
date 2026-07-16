@@ -23,7 +23,7 @@ use rustc_errors::{Applicability, Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
 use rustc_parse::exp;
 use rustc_parse::parser::{ForceCollect, Parser, PathStyle, Recovery, token_descr};
-use rustc_session::errors::create_lit_error;
+use rustc_session::diagnostics::create_lit_error;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
@@ -301,11 +301,13 @@ impl MetaItemOrLitParser {
     }
 }
 
-// FIXME(scrabsha): once #155696 is merged, update this and mention the higher-level APIs.
 /// Utility that deconstructs a MetaItem into usable parts.
 ///
 /// MetaItems are syntactically extremely flexible, but specific attributes want to parse
-/// them in custom, more restricted ways. This can be done using this struct.
+/// them in custom, more restricted ways. For common argument shapes, prefer the higher-level
+/// [`AcceptContext::expect_list`](crate::context::AcceptContext::expect_list) and
+/// [`AcceptContext::expect_single`](crate::context::AcceptContext::expect_single) helpers.
+/// Use this struct when parsing a custom restricted syntax.
 ///
 /// MetaItems consist of some path, and some args. The args could be empty. In other words:
 ///

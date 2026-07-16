@@ -3,6 +3,7 @@ use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
 use rustc_feature::AttributeStability;
 use rustc_hir::attrs::IntType::{SignedInt, UnsignedInt};
 use rustc_hir::attrs::ReprAttr;
+use rustc_session::diagnostics::feature_err;
 
 use super::prelude::*;
 use crate::session_diagnostics;
@@ -63,7 +64,7 @@ impl CombineAttributeParser for ReprParser {
         reprs
     }
 
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::ManuallyChecked;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::ManuallyChecked;
     const STABILITY: AttributeStability = AttributeStability::Stable;
 }
 
@@ -141,13 +142,16 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             Some(ReprC)
         }
         Some(sym::simd) => {
-            cx.check_target(
-                "(simd)",
-                &AllowedTargets::AllowList(&[
-                    Allow(Target::Struct),   // Feature gated in `rustc_ast_passes`
-                    Warn(Target::MacroCall), // FIXME: This is not feature gated (!!)
-                ]),
-            );
+            if cx.features.is_some_and(|feats| !feats.repr_simd()) {
+                feature_err(
+                    &cx.sess(),
+                    sym::repr_simd,
+                    param.span(),
+                    "SIMD types are experimental and possibly buggy",
+                )
+                .emit();
+            }
+            cx.check_target("(simd)", &AllowedTargets::AllowList(&[Allow(Target::Struct)]));
             cx.expect_no_args(param.args())?;
             Some(ReprSimd)
         }
@@ -306,7 +310,7 @@ impl RustcAlignParser {
 impl AttributeParser for RustcAlignParser {
     const ATTRIBUTES: AcceptMapping<Self> =
         &[(Self::PATH, Self::TEMPLATE, unstable!(fn_align), Self::parse)];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
@@ -336,7 +340,7 @@ impl RustcAlignStaticParser {
 impl AttributeParser for RustcAlignStaticParser {
     const ATTRIBUTES: AcceptMapping<Self> =
         &[(Self::PATH, Self::TEMPLATE, unstable!(static_align), Self::parse)];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {

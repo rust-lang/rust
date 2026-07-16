@@ -67,46 +67,24 @@
 
 use std::{error::Error, io::Write};
 
+use lsp_types::{
+    CompletionItem, CompletionItemKind, CompletionOptions, CompletionRequest, CompletionResponse,
+    Contents, DefinitionRequest, Diagnostic, DiagnosticSeverity, DidChangeTextDocumentNotification,
+    DidChangeTextDocumentParams, DidOpenTextDocumentNotification, DidOpenTextDocumentParams,
+    DocumentFormattingParams, DocumentFormattingRequest, Hover, HoverProvider, HoverRequest,
+    InitializeParams, LspNotificationMethod, LspRequestMethod, MarkupContent, Notification,
+    Position, PublishDiagnosticsNotification, PublishDiagnosticsParams, Range, Request,
+    ServerCapabilities, TextDocumentSync, TextEdit, Uri,
+};
 use rustc_hash::FxHashMap; // fast hash map
 use std::process::Stdio;
 use toolchain::command; // clippy-approved wrapper
 
 #[allow(clippy::print_stderr, clippy::disallowed_types, clippy::disallowed_methods)]
 use anyhow::{Context, Result, anyhow, bail};
-use lsp_server::{Connection, Message, Request as ServerRequest, RequestId, Response};
-use lsp_types::notification::Notification as _; // for METHOD consts
-use lsp_types::request::Request as _;
-use lsp_types::{
-    CompletionItem,
-    CompletionItemKind,
-    // capability helpers
-    CompletionOptions,
-    CompletionResponse,
-    Diagnostic,
-    DiagnosticSeverity,
-    DidChangeTextDocumentParams,
-    DidOpenTextDocumentParams,
-    DocumentFormattingParams,
-    Hover,
-    HoverContents,
-    HoverProviderCapability,
-    // core
-    InitializeParams,
-    MarkedString,
-    OneOf,
-    Position,
-    PublishDiagnosticsParams,
-    Range,
-    ServerCapabilities,
-    TextDocumentSyncCapability,
-    TextDocumentSyncKind,
-    TextEdit,
-    Url,
-    // notifications
-    notification::{DidChangeTextDocument, DidOpenTextDocument, PublishDiagnostics},
-    // requests
-    request::{Completion, Formatting, GotoDefinition, HoverRequest},
-}; // for METHOD consts
+use lsp_server::{
+    Connection, Message, Request as ServerRequest, RequestId, Response, ResponseKind,
+};
 
 // =====================================================================
 // main
@@ -121,11 +99,11 @@ fn main() -> std::result::Result<(), Box<dyn Error + Sync + Send>> {
 
     // advertised capabilities
     let caps = ServerCapabilities {
-        text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
+        text_document_sync: Some(TextDocumentSync::Kind(lsp_types::TextDocumentSyncKind::Full)),
         completion_provider: Some(CompletionOptions::default()),
-        definition_provider: Some(OneOf::Left(true)),
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
-        document_formatting_provider: Some(OneOf::Left(true)),
+        definition_provider: Some(lsp_types::DefinitionProvider::Bool(true)),
+        hover_provider: Some(HoverProvider::Bool(true)),
+        document_formatting_provider: Some(lsp_types::DocumentFormattingProvider::Bool(true)),
         ..Default::default()
     };
     let init_value = serde_json::json!({
@@ -149,7 +127,7 @@ fn main_loop(
     params: serde_json::Value,
 ) -> std::result::Result<(), Box<dyn Error + Sync + Send>> {
     let _init: InitializeParams = serde_json::from_value(params)?;
-    let mut docs: FxHashMap<Url, String> = FxHashMap::default();
+    let mut docs: FxHashMap<Uri, String> = FxHashMap::default();
 
     for msg in &connection.receiver {
         match msg {
@@ -158,7 +136,7 @@ fn main_loop(
                     break;
                 }
                 if let Err(err) = handle_request(&connection, &req, &mut docs) {
-                    log::error!("[lsp] request {} failed: {err}", &req.method);
+                    log::error!("[lsp] request {} failed: {err}", req.method);
                 }
             }
             Message::Notification(note) => {
@@ -179,20 +157,25 @@ fn main_loop(
 fn handle_notification(
     conn: &Connection,
     note: &lsp_server::Notification,
-    docs: &mut FxHashMap<Url, String>,
+    docs: &mut FxHashMap<Uri, String>,
 ) -> Result<()> {
-    match note.method.as_str() {
-        DidOpenTextDocument::METHOD => {
+    let method: LspNotificationMethod<'_> = note.method.as_str().into();
+    match method {
+        DidOpenTextDocumentNotification::METHOD => {
             let p: DidOpenTextDocumentParams = serde_json::from_value(note.params.clone())?;
             let uri = p.text_document.uri;
             docs.insert(uri.clone(), p.text_document.text);
             publish_dummy_diag(conn, &uri)?;
         }
-        DidChangeTextDocument::METHOD => {
+        DidChangeTextDocumentNotification::METHOD => {
             let p: DidChangeTextDocumentParams = serde_json::from_value(note.params.clone())?;
             if let Some(change) = p.content_changes.into_iter().next() {
-                let uri = p.text_document.uri;
-                docs.insert(uri.clone(), change.text);
+                let uri = p.text_document.text_document_identifier.uri;
+                let text = match change {
+                    lsp_types::TextDocumentContentChangeEvent::TextDocumentContentChangePartial(partial) => partial.text,
+                    lsp_types::TextDocumentContentChangeEvent::TextDocumentContentChangeWholeDocument(whole) => whole.text,
+                };
+                docs.insert(uri.clone(), text);
                 publish_dummy_diag(conn, &uri)?;
             }
         }
@@ -208,31 +191,44 @@ fn handle_notification(
 fn handle_request(
     conn: &Connection,
     req: &ServerRequest,
-    docs: &mut FxHashMap<Url, String>,
+    docs: &mut FxHashMap<Uri, String>,
 ) -> Result<()> {
-    match req.method.as_str() {
-        GotoDefinition::METHOD => {
-            send_ok(conn, req.id.clone(), &lsp_types::GotoDefinitionResponse::Array(Vec::new()))?;
+    let parsed: LspRequestMethod<'_> = req.method.as_str().into();
+    match parsed {
+        DefinitionRequest::METHOD => {
+            send_ok(
+                conn,
+                req.id.clone(),
+                &lsp_types::DefinitionResponse::DefinitionLinkList(Vec::new()),
+            )?;
         }
-        Completion::METHOD => {
+        CompletionRequest::METHOD => {
             let item = CompletionItem {
                 label: "HelloFromLSP".into(),
-                kind: Some(CompletionItemKind::FUNCTION),
+                kind: Some(CompletionItemKind::Function),
                 detail: Some("dummy completion".into()),
                 ..Default::default()
             };
-            send_ok(conn, req.id.clone(), &CompletionResponse::Array(vec![item]))?;
+            let items = vec![item];
+            let completion_list = CompletionResponse::CompletionList(lsp_types::CompletionList {
+                is_incomplete: false,
+                item_defaults: None,
+                apply_kind: None,
+                items,
+            });
+            send_ok(conn, req.id.clone(), &completion_list)?;
         }
         HoverRequest::METHOD => {
             let hover = Hover {
-                contents: HoverContents::Scalar(MarkedString::String(
-                    "Hello from *minimal_lsp*".into(),
-                )),
+                contents: Contents::MarkupContent(MarkupContent {
+                    value: "Hello from *minimal_lsp*".into(),
+                    kind: lsp_types::MarkupKind::Markdown,
+                }),
                 range: None,
             };
             send_ok(conn, req.id.clone(), &hover)?;
         }
-        Formatting::METHOD => {
+        DocumentFormattingRequest::METHOD => {
             let p: DocumentFormattingParams = serde_json::from_value(req.params.clone())?;
             let uri = p.text_document.uri;
             let text = docs
@@ -255,10 +251,10 @@ fn handle_request(
 // =====================================================================
 // diagnostics
 // =====================================================================
-fn publish_dummy_diag(conn: &Connection, uri: &Url) -> Result<()> {
+fn publish_dummy_diag(conn: &Connection, uri: &Uri) -> Result<()> {
     let diag = Diagnostic {
         range: Range::new(Position::new(0, 0), Position::new(0, 1)),
-        severity: Some(DiagnosticSeverity::INFORMATION),
+        severity: Some(DiagnosticSeverity::Information),
         code: None,
         code_description: None,
         source: Some("minimal_lsp".into()),
@@ -270,7 +266,7 @@ fn publish_dummy_diag(conn: &Connection, uri: &Url) -> Result<()> {
     let params =
         PublishDiagnosticsParams { uri: uri.clone(), diagnostics: vec![diag], version: None };
     conn.sender.send(Message::Notification(lsp_server::Notification::new(
-        PublishDiagnostics::METHOD.to_owned(),
+        PublishDiagnosticsNotification::METHOD.into(),
         params,
     )))?;
     Ok(())
@@ -310,7 +306,8 @@ fn full_range(text: &str) -> Range {
 }
 
 fn send_ok<T: serde::Serialize>(conn: &Connection, id: RequestId, result: &T) -> Result<()> {
-    let resp = Response { id, result: Some(serde_json::to_value(result)?), error: None };
+    let resp =
+        Response { id, response_kind: ResponseKind::Ok { result: serde_json::to_value(result)? } };
     conn.sender.send(Message::Response(resp))?;
     Ok(())
 }
@@ -323,12 +320,9 @@ fn send_err(
 ) -> Result<()> {
     let resp = Response {
         id,
-        result: None,
-        error: Some(lsp_server::ResponseError {
-            code: code as i32,
-            message: msg.into(),
-            data: None,
-        }),
+        response_kind: ResponseKind::Err {
+            error: lsp_server::ResponseError { code: code as i32, message: msg.into(), data: None },
+        },
     };
     conn.sender.send(Message::Response(resp))?;
     Ok(())

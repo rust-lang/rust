@@ -6,7 +6,7 @@
 trait Test {}
 
 #[diagnostic::on_unimplemented(message = "blah", label = "blah", note = "blah")]
-//~^ WARN `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
+//~^ WARN cannot be used on
 trait Alias = Test;
 
 // Use trait alias as bound on type parameter.

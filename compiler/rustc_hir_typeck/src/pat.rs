@@ -21,7 +21,7 @@ use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -2745,6 +2745,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The expected type for the deref pat's inner pattern is `<expected as Deref>::Target`.
         let target_ty = Ty::new_projection(
             tcx,
+            ty::IsRigid::No,
             tcx.require_lang_item(hir::LangItem::DerefTarget, span),
             [source_ty],
         );

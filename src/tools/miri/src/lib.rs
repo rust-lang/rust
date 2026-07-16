@@ -18,6 +18,7 @@
 #![feature(try_blocks)]
 #![feature(io_error_more)]
 #![feature(io_error_inprogress)]
+#![cfg_attr(not(bootstrap), feature(io_error_too_many_open_files))]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(pointer_is_aligned_to)]
@@ -49,6 +50,7 @@
     clippy::too_long_first_doc_paragraph,
     clippy::len_zero,
     clippy::collapsible_match,
+    clippy::question_mark,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]
@@ -137,8 +139,7 @@ pub use crate::borrow_tracker::{
 };
 pub use crate::clock::{Deadline, Instant, MonotonicClock, TimeoutClock, TimeoutStyle};
 pub use crate::concurrency::blocking_io::{
-    BlockingIoInterest, BlockingIoManager, BlockingIoSourceReadiness, EvalContextExt as _,
-    SourceFileDescription,
+    BlockingIoInterest, BlockingIoManager, EvalContextExt as _, SourceFileDescription,
 };
 pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{
@@ -173,6 +174,10 @@ pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
 pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::EvalContextExt as _;
+pub use crate::shims::readiness::{
+    EvalContextExt as _, Readiness, ReadinessInterest, ReadinessInterestKey,
+    ReadinessInterestTable, ReadinessWatcher,
+};
 pub use crate::shims::sig::EvalContextExt as _;
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;

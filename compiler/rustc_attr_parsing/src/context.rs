@@ -36,6 +36,7 @@ use crate::attributes::diagnostic::on_type_error::*;
 use crate::attributes::diagnostic::on_unimplemented::*;
 use crate::attributes::diagnostic::on_unknown::*;
 use crate::attributes::diagnostic::on_unmatched_args::*;
+use crate::attributes::diagnostic::opaque::*;
 use crate::attributes::doc::*;
 use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
@@ -85,7 +86,7 @@ pub(super) struct GroupTypeInner {
 pub(super) struct GroupTypeInnerAccept {
     pub(super) template: AttributeTemplate,
     pub(super) accept_fn: AcceptFn,
-    pub(super) allowed_targets: AllowedTargets,
+    pub(super) allowed_targets: AllowedTargets<'static>,
     pub(super) safety: AttributeSafety,
     pub(super) stability: AttributeStability,
     pub(super) finalizer: FinalizeFn,
@@ -151,6 +152,7 @@ attribute_parsers!(
         OnUnimplementedParser,
         OnUnknownParser,
         OnUnmatchedArgsParser,
+        OpaqueParser,
         RustcAlignParser,
         RustcAlignStaticParser,
         RustcCguTestAttributeParser,
@@ -328,6 +330,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcSpecializationTraitParser>>,
         Single<WithoutArgs<RustcStdInternalSymbolParser>>,
         Single<WithoutArgs<RustcStrictCoherenceParser>>,
+        Single<WithoutArgs<RustcTestEntrypointMarkerParser>>,
         Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
         Single<WithoutArgs<RustcUnsafeSpecializationMarkerParser>>,
         Single<WithoutArgs<SplatParser>>,

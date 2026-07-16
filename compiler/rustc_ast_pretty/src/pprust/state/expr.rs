@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use ast::{ForLoopKind, MatchKind};
-use itertools::{Itertools, Position};
+use itertools::Itertools;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
@@ -170,8 +170,8 @@ impl<'a> State<'a> {
         }
         let cb = self.cbox(0);
         for (pos, field) in fields.iter().with_position() {
-            let is_first = matches!(pos, Position::First | Position::Only);
-            let is_last = matches!(pos, Position::Last | Position::Only);
+            let is_first = pos.is_first();
+            let is_last = pos.is_last();
             self.maybe_print_comment(field.span.hi());
             self.print_outer_attributes(&field.attrs);
             if is_first {
@@ -526,7 +526,7 @@ impl<'a> State<'a> {
                 self.space();
                 self.print_block_with_attrs(blk, attrs, cb, ib);
             }
-            ast::ExprKind::ForLoop { pat, iter, body, label, kind } => {
+            ast::ExprKind::ForLoop(ast::ForLoop { pat, iter, body, label, kind }) => {
                 if let Some(label) = label {
                     self.print_ident(label.ident);
                     self.word_space(":");
@@ -778,7 +778,7 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::InlineAsm(a) => {
                 // FIXME: Print `builtin # asm` once macro `asm` uses `builtin_syntax`.
-                self.word("asm!");
+                self.word(format!("{}!", a.asm_macro.macro_name()));
                 self.print_inline_asm(a);
             }
             ast::ExprKind::FormatArgs(fmt) => {
@@ -882,6 +882,12 @@ impl<'a> State<'a> {
                 self.popen();
                 self.word("/*DUMMY*/");
                 self.pclose();
+            }
+            ast::ExprKind::DirectConstArg(expr) => {
+                self.word_nbsp("core::direct_const_arg!");
+                self.popen();
+                self.print_expr(expr, FixupContext::default());
+                self.pclose()
             }
         }
 

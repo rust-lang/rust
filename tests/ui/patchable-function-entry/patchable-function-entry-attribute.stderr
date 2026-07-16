@@ -9,7 +9,7 @@ LL | #[patchable_function_entry(prefix_nops = 256, entry_nops = 0)]
 help: must be of the form
    |
 LL - #[patchable_function_entry(prefix_nops = 256, entry_nops = 0)]
-LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n)]
+LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
    |
 
 error[E0539]: malformed `patchable_function_entry` attribute input
@@ -23,7 +23,7 @@ LL | #[patchable_function_entry(prefix_nops = "stringvalue", entry_nops = 0)]
 help: must be of the form
    |
 LL - #[patchable_function_entry(prefix_nops = "stringvalue", entry_nops = 0)]
-LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n)]
+LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
    |
 
 error[E0539]: malformed `patchable_function_entry` attribute input
@@ -34,8 +34,8 @@ LL | #[patchable_function_entry]
    |
 help: must be of the form
    |
-LL | #[patchable_function_entry(prefix_nops = m, entry_nops = n)]
-   |                           +++++++++++++++++++++++++++++++++
+LL | #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
+   |                           ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0539]: malformed `patchable_function_entry` attribute input
   --> $DIR/patchable-function-entry-attribute.rs:16:1
@@ -48,7 +48,7 @@ LL | #[patchable_function_entry(prefix_nops = 10, something = 0)]
 help: must be of the form
    |
 LL - #[patchable_function_entry(prefix_nops = 10, something = 0)]
-LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n)]
+LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
    |
 
 error[E0539]: malformed `patchable_function_entry` attribute input
@@ -61,8 +61,8 @@ LL | #[patchable_function_entry()]
    |
 help: must be of the form
    |
-LL | #[patchable_function_entry(prefix_nops = m, entry_nops = n)]
-   |                            +++++++++++++++++++++++++++++++
+LL | #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
+   |                            ++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0538]: malformed `patchable_function_entry` attribute input
   --> $DIR/patchable-function-entry-attribute.rs:24:1
@@ -75,10 +75,50 @@ LL | #[patchable_function_entry(prefix_nops = 255, prefix_nops = 255)]
 help: must be of the form
    |
 LL - #[patchable_function_entry(prefix_nops = 255, prefix_nops = 255)]
-LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n)]
+LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
    |
 
-error: aborting due to 6 previous errors
+error[E0539]: malformed `patchable_function_entry` attribute input
+  --> $DIR/patchable-function-entry-attribute.rs:28:1
+   |
+LL | #[patchable_function_entry(section = 255)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^
+   |                                      |
+   |                                      expected a string literal here
+   |
+help: must be of the form
+   |
+LL - #[patchable_function_entry(section = 255)]
+LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
+   |
 
-Some errors have detailed explanations: E0538, E0539.
+error[E0538]: malformed `patchable_function_entry` attribute input
+  --> $DIR/patchable-function-entry-attribute.rs:32:1
+   |
+LL | #[patchable_function_entry(section = "foo", section = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^^^^
+   |                                             |
+   |                                             found `section` used as a key more than once
+   |
+help: must be of the form
+   |
+LL - #[patchable_function_entry(section = "foo", section = "bar")]
+LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
+   |
+
+error[E0648]: `section` may not contain null characters
+  --> $DIR/patchable-function-entry-attribute.rs:36:38
+   |
+LL | #[patchable_function_entry(section = "fo\0o")]
+   |                                      ^^^^^^^
+
+error: `section` may not be empty
+  --> $DIR/patchable-function-entry-attribute.rs:40:38
+   |
+LL | #[patchable_function_entry(section = "")]
+   |                                      ^^
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0538, E0539, E0648.
 For more information about an error, try `rustc --explain E0538`.

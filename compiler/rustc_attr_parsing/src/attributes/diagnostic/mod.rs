@@ -28,6 +28,7 @@ pub(crate) mod on_type_error;
 pub(crate) mod on_unimplemented;
 pub(crate) mod on_unknown;
 pub(crate) mod on_unmatched_args;
+pub(crate) mod opaque;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {
@@ -460,6 +461,7 @@ fn parse_arg(
 
             (Mode::DiagnosticOnTypeError, sym::Found) => FormatArg::Found,
             (Mode::DiagnosticOnTypeError, sym::Expected) => FormatArg::Expected,
+            (Mode::DiagnosticOnUnknown, sym::Unresolved) => FormatArg::Unresolved,
 
             // Some diagnostic attributes can use `{This}` to refer to the annotated item.
             // For those that don't, we continue and maybe use it as a generic parameter.

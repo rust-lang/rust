@@ -21,8 +21,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed};
 pub use valtree::*;
 
 pub type ConstKind<'tcx> = ir::ConstKind<TyCtxt<'tcx>>;
-pub type UnevaluatedConst<'tcx> = ir::UnevaluatedConst<TyCtxt<'tcx>>;
-pub type UnevaluatedConstKind<'tcx> = ir::UnevaluatedConstKind<TyCtxt<'tcx>>;
+pub type AliasConst<'tcx> = ir::AliasConst<TyCtxt<'tcx>>;
+pub type AliasConstKind<'tcx> = ir::AliasConstKind<TyCtxt<'tcx>>;
 
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(ConstKind<'_>, 32);
@@ -107,8 +107,12 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn new_unevaluated(tcx: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Const<'tcx> {
-        Const::new(tcx, ty::ConstKind::Unevaluated(uv))
+    pub fn new_alias(
+        tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        alias_const: ty::AliasConst<'tcx>,
+    ) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Alias(is_rigid, alias_const))
     }
 
     #[inline]
@@ -153,7 +157,7 @@ impl<'tcx> Const<'tcx> {
                 true
             }
             ty::ConstKind::Infer(_)
-            | ty::ConstKind::Unevaluated(..)
+            | ty::ConstKind::Alias(..)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => false,
@@ -190,8 +194,12 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_placeholder(tcx, placeholder)
     }
 
-    fn new_unevaluated(interner: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Self {
-        Const::new_unevaluated(interner, uv)
+    fn new_alias(
+        interner: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        alias_const: ty::AliasConst<'tcx>,
+    ) -> Self {
+        Const::new_alias(interner, is_rigid, alias_const)
     }
 
     fn new_expr(interner: TyCtxt<'tcx>, expr: ty::Expr<'tcx>) -> Self {

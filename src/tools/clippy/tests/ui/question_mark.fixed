@@ -1,9 +1,10 @@
 #![feature(try_blocks)]
+#![warn(clippy::question_mark)]
 #![allow(
-    clippy::unnecessary_wraps,
-    clippy::no_effect,
     clippy::needless_return,
-    clippy::toplevel_ref_arg
+    clippy::no_effect,
+    clippy::toplevel_ref_arg,
+    clippy::unnecessary_wraps
 )]
 
 use std::sync::MutexGuard;
@@ -404,7 +405,6 @@ fn issue_13417_mut(foo: &mut StructWithOptionString) -> Option<String> {
 }
 
 #[allow(clippy::disallowed_names)]
-#[allow(unused)]
 fn issue_13417_weirder(foo: &mut StructWithOptionString, mut bar: Option<WrapperStructWithString>) -> Option<()> {
     let x @ y = foo.opt_x.as_ref()?;
     //~^^^ question_mark

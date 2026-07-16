@@ -106,8 +106,10 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-nvptx64-nvidia-cuda",
     "ignore-openbsd",
     "ignore-parallel-frontend",
+    "ignore-pauthtest",
     "ignore-powerpc",
     "ignore-powerpc64",
+    "ignore-qnx",
     "ignore-remote",
     "ignore-riscv32",
     "ignore-riscv64",
@@ -247,6 +249,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-musl",
     "only-nightly",
     "only-nvptx64",
+    "only-pauthtest",
     "only-powerpc",
     "only-riscv32",
     "only-riscv64",
@@ -324,5 +327,23 @@ pub(crate) const KNOWN_HTMLDOCCK_DIRECTIVE_NAMES: &[&str] = &[
     "!snapshot",
 ];
 
-pub(crate) const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
-    &["count", "!count", "has", "!has", "is", "!is", "ismany", "!ismany", "set", "!set"];
+pub(crate) const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] = &[
+    "count",
+    "!count",
+    "has",
+    "!has",
+    "is",
+    "!is",
+    "ismany",
+    "!ismany",
+    "set",
+    "jq_count",
+    "!jq_count",
+    "jq_has",
+    "!jq_has",
+    "jq_is",
+    "!jq_is",
+    "jq_ismany",
+    "!jq_ismany",
+    "jq_set",
+];

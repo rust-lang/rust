@@ -245,8 +245,7 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
 #![allow(internal_features)]
-#![deny(fuzzy_provenance_casts)]
-#![deny(lossy_provenance_casts)]
+#![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
@@ -277,6 +276,7 @@
 #![feature(asm_experimental_arch)]
 #![feature(autodiff)]
 #![feature(cfg_sanitizer_cfi)]
+#![feature(cfg_target_has_threads)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(const_trait_impl)]
@@ -287,6 +287,7 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(exact_div)]
 #![feature(f16)]
 #![feature(f128)]
 #![feature(ffi_const)]
@@ -321,6 +322,8 @@
 #![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(c_size_t)]
+#![feature(can_vector)]
 #![feature(cast_maybe_uninit)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
@@ -354,7 +357,9 @@
 #![feature(hint_must_use)]
 #![feature(int_from_ascii)]
 #![feature(io_error_inprogress)]
+#![feature(io_error_input_output_error)]
 #![feature(io_error_more)]
+#![feature(io_error_too_many_open_files)]
 #![feature(io_error_uncategorized)]
 #![feature(io_slice_as_bytes)]
 #![feature(ip)]
@@ -374,6 +379,7 @@
 #![feature(random)]
 #![feature(raw_os_error_ty)]
 #![feature(seek_io_take_position)]
+#![feature(seek_stream_len)]
 #![feature(share_trait)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
@@ -386,10 +392,12 @@
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
 #![feature(used_with_arg)]
+#![feature(write_all_vectored)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):
 // tidy-alphabetical-start
+#![feature(alloc_io)]
 #![feature(allocator_api)]
 #![feature(clone_from_ref)]
 #![feature(get_mut_unchecked)]
@@ -639,6 +647,9 @@ pub mod process;
 pub mod random;
 pub mod sync;
 pub mod time;
+#[cfg_attr(feature = "nightly", not(bootstrap))]
+#[unstable(feature = "view_type_macro", issue = "155938")]
+pub mod view;
 
 // Pull in `std_float` crate  into std. The contents of
 // `std_float` are in a different repository: rust-lang/portable-simd.
@@ -725,13 +736,7 @@ pub mod alloc;
 mod panicking;
 
 #[path = "../../backtrace/src/lib.rs"]
-#[allow(
-    dead_code,
-    unused_attributes,
-    fuzzy_provenance_casts,
-    lossy_provenance_casts,
-    unsafe_op_in_unsafe_fn
-)]
+#[allow(dead_code, unused_attributes, implicit_provenance_casts, unsafe_op_in_unsafe_fn)]
 mod backtrace_rs;
 
 #[stable(feature = "cfg_select", since = "1.95.0")]
@@ -777,20 +782,23 @@ pub mod from {
     pub use core::from::From;
 }
 
-// Include a number of private modules that exist solely to provide
-// the rustdoc documentation for primitive types. Using `include!`
-// because rustdoc only looks for these modules at the crate level.
-include!("../../core/src/primitive_docs.rs");
+// We include the following files here *again* (they are already included in libcore)
+// so that they show up in search results for the std crate, and to avoid breaking
+// existing links:
+
+// documentation for built-in attributes. Using `include!` because rustdoc
+// only looks for these modules at the crate level.
+include!("../../core/src/attribute_docs.rs");
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for the existing keywords. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
-include!("keyword_docs.rs");
+include!("../../core/src/keyword_docs.rs");
 
-// Include private modules that exist solely to provide rustdoc
-// documentation for built-in attributes. Using `include!` because rustdoc
-// only looks for these modules at the crate level.
-include!("attribute_docs.rs");
+// Include a number of private modules that exist solely to provide
+// the rustdoc documentation for primitive types. Using `include!`
+// because rustdoc only looks for these modules at the crate level.
+include!("../../core/src/primitive_docs.rs");
 
 // This is required to avoid an unstable error when `restricted-std` is not
 // enabled. The use of #![feature(restricted_std)] in rustc-std-workspace-std

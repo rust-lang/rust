@@ -267,16 +267,18 @@ target | std | host | notes
 -------|:---:|:----:|-------
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 [`aarch64-nintendo-switch-freestanding`](platform-support/aarch64-nintendo-switch-freestanding.md) | * |  | ARM64 Nintendo Switch, Horizon
+[`aarch64-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | ARM64 OpenEmbedded/Yocto Linux (GNU)
 [`aarch64-unknown-helenos`](platform-support/helenos.md) | ✓ |  | ARM64 HelenOS
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
 [`aarch64-unknown-illumos`](platform-support/illumos.md) | ✓ | ✓ | ARM64 illumos
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
+[`aarch64-unknown-linux-pauthtest`](platform-support/aarch64-unknown-linux-pauthtest.md) | ✓ | ✓ | ARM64 PAC ELF ABI
 [`aarch64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | ARM64 Managarm
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
-[`aarch64-unknown-nto-qnx700`](platform-support/nto-qnx.md) | ? |  | ARM64 QNX Neutrino 7.0 RTOS |
-[`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS with default network stack (io-pkt) |
-[`aarch64-unknown-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS with new network stack (io-sock) |
-[`aarch64-unknown-nto-qnx800`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 8.0 RTOS |
+[`aarch64-unknown-nto-qnx700`](platform-support/nto-qnx.md) | ? |  | ARM64 QNX SDP 7.0 |
+[`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX SDP 7.1 with default network stack (io-pkt) |
+[`aarch64-unknown-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX SDP 7.1 with new network stack (io-sock) |
+[`aarch64-unknown-qnx`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX SDP 8.0+ |
 [`aarch64-unknown-nuttx`](platform-support/nuttx.md) | ✓ |  | ARM64 with NuttX
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
 [`aarch64-unknown-redox`](platform-support/redox.md) | ✓ |  | ARM64 Redox OS
@@ -309,6 +311,7 @@ target | std | host | notes
 [`armv6-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | Armv6 FreeBSD
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | Armv6 NetBSD w/hard-float
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | Armv6k Nintendo 3DS, Horizon (Requires devkitARM toolchain)
+[`armv7-oe-linux-gnueabihf`](platform-support/oe-linux-gnu.md) | ✓ |  | ARMv7 OpenEmbedded/Yocto Linux (GNU)
 [`armv7-rtems-eabihf`](platform-support/armv7-rtems-eabihf.md) | ? |  | RTEMS OS for ARM BSPs
 [`armv7-sony-vita-newlibeabihf`](platform-support/armv7-sony-vita-newlibeabihf.md) | ✓ |  | Armv7-A Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)
 [`armv7-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | Armv7-A FreeBSD
@@ -336,7 +339,8 @@ target | std | host | notes
 [`i586-unknown-netbsd`](platform-support/netbsd.md) | ✓ |  | 32-bit x86 (original Pentium) [^x86_32-floats-x87]
 [`i586-unknown-redox`](platform-support/redox.md) | ✓ |  | 32-bit x86 Redox OS (PentiumPro) [^x86_32-floats-x87]
 [`i686-apple-darwin`](platform-support/apple-darwin.md) | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+, Penryn) [^x86_32-floats-return-ABI]
-[`i686-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS (Pentium 4) [^x86_32-floats-return-ABI]
+[`i686-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | 32-bit x86 OpenEmbedded/Yocto Linux (GNU)
+[`i686-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX SDP 7.0 (Pentium 4) [^x86_32-floats-return-ABI]
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku (Pentium 4) [^x86_32-floats-return-ABI]
 [`i686-unknown-helenos`](platform-support/helenos.md) | ✓ |  | HelenOS IA-32 (see docs for pending issues)
 [`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd (Pentium 4) [^x86_32-floats-return-ABI]
@@ -397,6 +401,7 @@ target | std | host | notes
 `riscv32gc-unknown-linux-musl` | ? |  | RISC-V Linux (kernel 5.4, musl 1.2.5)
 [`riscv32im-risc0-zkvm-elf`](platform-support/riscv32im-risc0-zkvm-elf.md) | ? |  | RISC Zero's zero-knowledge Virtual Machine (RV32IM ISA)
 [`riscv32ima-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IMA ISA)
+[`riscv32imfc-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IMFC ISA, hardware single-float, no atomics)
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imac-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 32bit with NuttX
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
@@ -405,6 +410,7 @@ target | std | host | notes
 [`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imc-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 32bit with NuttX
 [`riscv64-linux-android`](platform-support/android.md) | ? |  | RISC-V 64-bit Android
+[`riscv64-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | RISC-V OpenEmbedded/Yocto Linux (GNU)
 [`riscv64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 `riscv64gc-unknown-freebsd` | ? |  | RISC-V FreeBSD
 `riscv64gc-unknown-fuchsia` | ? |  | RISC-V Fuchsia
@@ -442,10 +448,11 @@ target | std | host | notes
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-lynx-lynxos178`](platform-support/lynxos178.md) |  |  | x86_64 LynxOS-178
+[`x86_64-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | x86 64-bit OpenEmbedded/Yocto Linux (GNU)
 [`x86_64-pc-cygwin`](platform-support/x86_64-pc-cygwin.md) | ✓ |  | 64-bit x86 Cygwin |
-[`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS with default network stack (io-pkt) |
-[`x86_64-pc-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS with new network stack (io-sock) |
-[`x86_64-pc-nto-qnx800`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 8.0 RTOS |
+[`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX SDP 7.1 with default network stack (io-pkt) |
+[`x86_64-pc-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX SDP 7.1 with new network stack (io-sock) |
+[`x86_64-pc-qnx`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX SDP 8.0+ |
 [`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |  | 64-bit Unikraft with musl 1.2.5
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku

@@ -207,24 +207,14 @@ fn run_server() -> anyhow::Result<()> {
 
     tracing::info!("InitializeParams: {}", initialize_params);
     let lsp_types::InitializeParams {
+        #[expect(deprecated, reason = "compatibility with old clients")]
         root_uri,
-        mut capabilities,
-        workspace_folders,
+        capabilities,
+        workspace_folders_initialize_params,
         initialization_options,
         client_info,
         ..
     } = from_json::<lsp_types::InitializeParams>("InitializeParams", &initialize_params)?;
-
-    // lsp-types has a typo in the `/capabilities/workspace/diagnostics` field, its typoed as `diagnostic`
-    if let Some(val) = initialize_params.pointer("/capabilities/workspace/diagnostics")
-        && let Ok(diag_caps) = from_json::<lsp_types::DiagnosticWorkspaceClientCapabilities>(
-            "DiagnosticWorkspaceClientCapabilities",
-            val,
-        )
-    {
-        tracing::info!("Patching lsp-types workspace diagnostics capabilities: {diag_caps:#?}");
-        capabilities.workspace.get_or_insert_default().diagnostic.get_or_insert(diag_caps);
-    }
 
     let root_path = match root_uri
         .and_then(|it| it.to_file_path().ok())
@@ -247,7 +237,14 @@ fn run_server() -> anyhow::Result<()> {
         );
     }
 
-    let workspace_roots = workspace_folders
+    let workspace_roots = workspace_folders_initialize_params
+        .workspace_folders
+        .and_then(|workspaces| match workspaces {
+            lsp_types::WorkspaceFolders::WorkspaceFolderList(workspace_folders) => {
+                Some(workspace_folders)
+            }
+            lsp_types::WorkspaceFolders::Null => None,
+        })
         .map(|workspaces| {
             workspaces
                 .into_iter()
@@ -269,12 +266,11 @@ fn run_server() -> anyhow::Result<()> {
 
         if !error_sink.is_empty() {
             use lsp_types::{
-                MessageType, ShowMessageParams,
-                notification::{Notification, ShowMessage},
+                MessageType, Notification as _, ShowMessageNotification, ShowMessageParams,
             };
             let not = lsp_server::Notification::new(
-                ShowMessage::METHOD.to_owned(),
-                ShowMessageParams { typ: MessageType::WARNING, message: error_sink.to_string() },
+                ShowMessageNotification::METHOD.into(),
+                ShowMessageParams { kind: MessageType::Warning, message: error_sink.to_string() },
             );
             connection.sender.send(lsp_server::Message::Notification(not)).unwrap();
         }
@@ -288,7 +284,6 @@ fn run_server() -> anyhow::Result<()> {
             name: String::from("rust-analyzer"),
             version: Some(rust_analyzer::version().to_string()),
         }),
-        offset_encoding: None,
     };
 
     let initialize_result = serde_json::to_value(initialize_result).unwrap();

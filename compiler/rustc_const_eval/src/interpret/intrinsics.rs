@@ -530,6 +530,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.typed_swap_nonoverlapping_intrinsic(&args[0], &args[1])?;
             }
 
+            sym::volatile_load => {
+                let [ptr] = args else {
+                    span_bug!(self.cur_span(), "invalid `volatile_load` call")
+                };
+                let place = self.deref_pointer(ptr)?;
+                self.copy_op(&place, dest)?;
+            }
+            sym::volatile_store => {
+                let [ptr, val] = args else {
+                    span_bug!(self.cur_span(), "invalid `volatile_store` call")
+                };
+                let place = self.deref_pointer(ptr)?;
+                self.copy_op(val, &place)?;
+            }
+            sym::volatile_set_memory => {
+                let [ptr, val_byte, count] = args else {
+                    span_bug!(self.cur_span(), "invalid `volatile_set_memory` call")
+                };
+                self.write_bytes_intrinsic(ptr, val_byte, count, "volatile_set_memory")?;
+            }
+
             sym::vtable_size => {
                 let ptr = self.read_pointer(&args[0])?;
                 // `None` because we don't know which trait to expect here; any vtable is okay.
@@ -725,13 +746,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             sym::va_copy => {
                 let va_list = self.deref_pointer(&args[0])?;
+
                 let key_mplace = self.va_list_key_field(&va_list)?;
                 let key = self.read_pointer(&key_mplace)?;
 
                 let varargs = self.get_ptr_va_list(key)?;
                 let copy_key = self.va_list_ptr(varargs.clone());
 
-                let copy_key_mplace = self.va_list_key_field(dest)?;
+                // Zero the destination VaList, so it is fully initialized.
+                let dest = self.force_allocation(dest)?;
+                let zeros = std::iter::repeat_n(0u8, dest.layout.size.bytes_usize());
+                self.write_bytes_ptr(dest.ptr(), zeros)?;
+
+                let copy_key_mplace = self.va_list_key_field(&dest)?;
                 self.write_pointer(copy_key, &copy_key_mplace)?;
             }
 

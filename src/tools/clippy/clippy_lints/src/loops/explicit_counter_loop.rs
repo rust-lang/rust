@@ -87,7 +87,7 @@ pub(super) fn check<'tcx>(
                 // If the loop variable is unused and the range is `0..n`, suggest `(init..).take(n)`.
                 if pat_snippet == "_"
                     && let Some(range) = Range::hir(cx, arg)
-                    && range.limits == RangeLimits::HalfOpen
+                    && range.ty.limits() == RangeLimits::HalfOpen
                     && range.start.is_some_and(|start| is_integer_literal(start, 0))
                     && let Some(end) = range.end
                 {

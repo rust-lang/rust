@@ -1,5 +1,5 @@
 //@ known-bug: #121575
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 #![feature(generic_const_exprs)]
 
 use std::array;

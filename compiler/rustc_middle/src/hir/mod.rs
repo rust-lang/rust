@@ -12,7 +12,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModId};
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_macros::{Decodable, Encodable, StableHash};
@@ -28,7 +28,7 @@ pub struct ModuleItems {
     /// Whether this represents the whole crate, in which case we need to add `CRATE_OWNER_ID` to
     /// the iterators if we want to account for the crate root.
     add_root: bool,
-    submodules: Box<[OwnerId]>,
+    submodules: Box<[LocalModId]>,
     free_items: Box<[ItemId]>,
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,
@@ -36,11 +36,12 @@ pub struct ModuleItems {
     opaques: Box<[LocalDefId]>,
     body_owners: Box<[LocalDefId]>,
     nested_bodies: Box<[LocalDefId]>,
-    // only filled with hir_crate_items, not with hir_module_items
-    delayed_lint_items: Box<[OwnerId]>,
 
     /// Statics and functions with an `EiiImpls` or `EiiExternTarget` attribute
     eiis: Box<[LocalDefId]>,
+
+    // only filled with hir_crate_items, not with hir_module_items
+    proc_macro_decls: Option<LocalDefId>,
 }
 
 impl ModuleItems {
@@ -58,8 +59,9 @@ impl ModuleItems {
         self.trait_items.iter().copied()
     }
 
-    pub fn delayed_lint_items(&self) -> impl Iterator<Item = OwnerId> {
-        self.delayed_lint_items.iter().copied()
+    #[inline]
+    pub fn proc_macro_decls(&self) -> Option<LocalDefId> {
+        self.proc_macro_decls
     }
 
     pub fn eiis(&self) -> impl Iterator<Item = LocalDefId> {
@@ -144,22 +146,22 @@ impl ModuleItems {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn parent_module(self, id: HirId) -> LocalModDefId {
+    pub fn parent_module(self, id: HirId) -> LocalModId {
         if !id.is_owner() && self.def_kind(id.owner) == DefKind::Mod {
-            LocalModDefId::new_unchecked(id.owner.def_id)
+            LocalModId::new_unchecked(id.owner.def_id)
         } else {
             self.parent_module_from_def_id(id.owner.def_id)
         }
     }
 
-    pub fn parent_module_from_def_id(self, mut id: LocalDefId) -> LocalModDefId {
+    pub fn parent_module_from_def_id(self, mut id: LocalDefId) -> LocalModId {
         while let Some(parent) = self.opt_local_parent(id) {
             id = parent;
             if self.def_kind(id) == DefKind::Mod {
                 break;
             }
         }
-        LocalModDefId::new_unchecked(id)
+        LocalModId::new_unchecked(id)
     }
 
     /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).

@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::ast::{BindingMode, Pat, PatKind};
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use clippy_utils::in_automatically_derived;
+use rustc_hir::{BindingMode, Pat, PatKind};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -29,10 +30,11 @@ declare_clippy_lint! {
 
 declare_lint_pass!(RefPatterns => [REF_PATTERNS]);
 
-impl EarlyLintPass for RefPatterns {
-    fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
-        if let PatKind::Ident(BindingMode::REF, _, _) = pat.kind
+impl<'tcx> LateLintPass<'tcx> for RefPatterns {
+    fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'tcx>) {
+        if let PatKind::Binding(BindingMode::REF, _, _, _) = pat.kind
             && !pat.span.from_expansion()
+            && !in_automatically_derived(cx.tcx, pat.hir_id)
         {
             #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
             span_lint_and_then(cx, REF_PATTERNS, pat.span, "usage of ref pattern", |diag| {

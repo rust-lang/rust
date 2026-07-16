@@ -5,7 +5,6 @@ use std::iter::once;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
 use rustc_hir::HirId;
-use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
@@ -15,6 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
+use rustc_span::def_id::LocalModId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::constructor::Constructor::*;
@@ -84,7 +84,7 @@ pub struct RustcPatCtxt<'p, 'tcx: 'p> {
     /// inhabited can depend on whether it was defined in the current module or
     /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
     /// outside its module and should not be matchable with an empty match statement.
-    pub module: DefId,
+    pub module: LocalModId,
     pub typing_env: ty::TypingEnv<'tcx>,
     /// To allocate the result of `self.ctor_sub_tys()`
     pub dropless_arena: &'p DroplessArena,
@@ -126,7 +126,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     #[inline]
     pub fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
         fn reveal_inner<'tcx>(cx: &RustcPatCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
-            let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *ty.kind()
+            debug_assert!(!cx.tcx.next_trait_solver_globally());
+            let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *ty.kind()
             else {
                 bug!()
             };
@@ -138,7 +139,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             }
             RevealedTy(ty)
         }
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) = ty.kind() {
+        if let ty::Alias(ty::IsRigid::No, ty::AliasTy { kind: ty::Opaque { .. }, .. }) = ty.kind() {
             reveal_inner(self, ty)
         } else {
             RevealedTy(ty)
@@ -426,7 +427,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::UnsafeBinder(_)
-            | ty::Alias(_)
+            | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Error(_) => ConstructorSet::Unlistable,
             ty::CoroutineWitness(_, _) | ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {

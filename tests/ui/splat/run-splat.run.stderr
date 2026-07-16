@@ -1,0 +1,3 @@
+[$DIR/run-splat.rs:23:9] self.1 = "hello splat"
+[$DIR/run-splat.rs:23:9] self.0 = 42
+[$DIR/run-splat.rs:29:9] self.0 = 3.141

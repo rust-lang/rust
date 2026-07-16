@@ -1,25 +1,27 @@
 use query_group_macro::query_group;
 
+#[salsa::input(singleton)]
+struct InputString {
+    inner: String,
+}
+
 #[query_group]
 pub trait DatabaseOne: salsa::Database {
-    #[salsa::input]
-    fn input_string(&self) -> String;
-
     // unadorned query
-    #[salsa::invoke_interned(length)]
+    #[salsa::transparent]
     fn length(&self, key: ()) -> usize;
 }
 
 #[query_group]
 pub trait DatabaseTwo: DatabaseOne {
-    #[salsa::invoke_interned(second_length)]
+    #[salsa::transparent]
     fn second_length(&self, key: ()) -> usize;
 }
 
 fn length(db: &dyn DatabaseOne, _key: ()) -> usize {
-    db.input_string().len()
+    InputString::get(db).inner(db).len()
 }
 
 fn second_length(db: &dyn DatabaseTwo, _key: ()) -> usize {
-    db.input_string().len()
+    InputString::get(db).inner(db).len()
 }

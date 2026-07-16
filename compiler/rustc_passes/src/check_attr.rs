@@ -21,11 +21,12 @@ use rustc_hir::attrs::{
     OptimizeAttr, ReprAttr,
 };
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalModDefId;
+use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParamKind, HirId,
-    Item, ItemKind, MethodKind, Node, ParamName, Target, TraitItem, find_attr,
+    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
+    GenericParamKind, HirId, Item, ItemKind, MethodKind, Node, ParamName, Target, TraitItem,
+    find_attr,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -36,7 +37,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
@@ -193,12 +194,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Inline(kind, attr_span) => {
                 self.check_inline(hir_id, *attr_span, kind, target)
             }
-            AttributeKind::LoopMatch(attr_span) => {
-                self.check_loop_match(hir_id, *attr_span, target)
-            }
-            AttributeKind::ConstContinue(attr_span) => {
-                self.check_const_continue(hir_id, *attr_span, target)
-            }
             AttributeKind::AllowInternalUnsafe(attr_span)
             | AttributeKind::AllowInternalUnstable(.., attr_span) => {
                 self.check_macro_only_attr(*attr_span, span, target, attrs)
@@ -209,16 +204,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Deprecated { span: attr_span, .. } => {
                 self.check_deprecated(hir_id, *attr_span, target)
             }
-            AttributeKind::TargetFeature { attr_span, .. } => {
-                self.check_target_feature(hir_id, *attr_span, target, attrs)
-            }
             AttributeKind::RustcDumpObjectLifetimeDefaults => {
                 self.check_dump_object_lifetime_defaults(hir_id);
             }
             &AttributeKind::RustcPubTransparent(attr_span) => {
                 self.check_rustc_pub_transparent(attr_span, span, attrs)
             }
-            AttributeKind::RustcAlign { .. } => {}
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::TrackCaller(attr_span) => {
                 self.check_track_caller(hir_id, *attr_span, attrs, target)
@@ -226,7 +217,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::NonExhaustive(attr_span) => {
                 self.check_non_exhaustive(*attr_span, span, target, item)
             }
-            &AttributeKind::FfiPure(attr_span) => self.check_ffi_pure(attr_span, attrs),
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
@@ -243,8 +233,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::OnUnimplemented { directive } => {
                 self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())
             }
-            AttributeKind::OnConst { span, .. } => {
-                self.check_diagnostic_on_const(*span, hir_id, target, item)
+            AttributeKind::OnConst { span, directive } => {
+                self.check_diagnostic_on_const(*span, hir_id, target, item, directive.as_deref())
             }
             AttributeKind::OnMove { directive } => {
                 self.check_diagnostic_on_move(hir_id, directive.as_deref())
@@ -262,6 +252,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Cold => (),
             AttributeKind::CollapseDebugInfo(..) => (),
             AttributeKind::CompilerBuiltins => (),
+            AttributeKind::ConstContinue(..) => {}
             AttributeKind::Coroutine => (),
             AttributeKind::Coverage(..) => (),
             AttributeKind::CrateName { .. } => (),
@@ -277,6 +268,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ExportStable => (),
             AttributeKind::Feature(..) => (),
             AttributeKind::FfiConst => (),
+            AttributeKind::FfiPure(..) => (),
             AttributeKind::Fundamental => (),
             AttributeKind::Ignore { .. } => (),
             AttributeKind::InstructionSet(..) => (),
@@ -286,6 +278,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
             AttributeKind::Linkage(..) => (),
+            AttributeKind::LoopMatch(..) => {}
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroUse { .. } => (),
             AttributeKind::Marker => (),
@@ -303,6 +296,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::NoStd { .. } => (),
             AttributeKind::OnUnknown { .. } => (),
             AttributeKind::OnUnmatchedArgs { .. } => (),
+            AttributeKind::Opaque => (),
             AttributeKind::Optimize(..) => (),
             AttributeKind::PanicRuntime => (),
             AttributeKind::PatchableFunctionEntry { .. } => (),
@@ -317,6 +311,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // handled below this loop and elsewhere
             AttributeKind::Repr { .. } => (),
             AttributeKind::RustcAbi { .. } => (),
+            AttributeKind::RustcAlign { .. } => {}
             AttributeKind::RustcAllocator => (),
             AttributeKind::RustcAllocatorZeroed => (),
             AttributeKind::RustcAllocatorZeroedVariant { .. } => (),
@@ -401,6 +396,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcSpecializationTrait => (),
             AttributeKind::RustcStdInternalSymbol => (),
             AttributeKind::RustcStrictCoherence(..) => (),
+            AttributeKind::RustcTestEntrypointMarker => (),
             AttributeKind::RustcTestMarker(..) => (),
             AttributeKind::RustcThenThisWouldNeed(..) => (),
             AttributeKind::RustcTrivialFieldReads => (),
@@ -409,6 +405,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ShouldPanic { .. } => (),
             AttributeKind::Splat(..) => (),
             AttributeKind::Stability { .. } => (),
+            AttributeKind::TargetFeature { .. } => {}
             AttributeKind::TestRunner(..) => (),
             AttributeKind::ThreadLocal => (),
             AttributeKind::TypeLengthLimit { .. } => (),
@@ -491,13 +488,30 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            if let EiiImplResolution::Macro(eii_macro) = resolution
-                && find_attr!(self.tcx, *eii_macro, EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
-                && !impl_marked_unsafe
-            {
+            let needs_unsafe = match resolution {
+                EiiImplResolution::Macro(eii_macro) => {
+                    find_attr!(self.tcx, *eii_macro, EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
+                }
+                EiiImplResolution::Known(foreign_item_did) => {
+                    let foreign_item_did = *foreign_item_did;
+                    self.tcx
+                        .externally_implementable_items(foreign_item_did.krate)
+                        .get(&foreign_item_did)
+                        .map(|(decl, _)| decl.impl_unsafe)
+                        .unwrap_or(false)
+                }
+                EiiImplResolution::Error(_) => false,
+            };
+
+            if needs_unsafe && !impl_marked_unsafe {
+                let name = match resolution {
+                    EiiImplResolution::Macro(eii_macro) => self.tcx.item_name(*eii_macro),
+                    EiiImplResolution::Known(def_id) => self.tcx.item_name(*def_id),
+                    EiiImplResolution::Error(_) => unreachable!(),
+                };
                 self.dcx().emit_err(diagnostics::EiiImplRequiresUnsafe {
                     span: *span,
-                    name: self.tcx.item_name(*eii_macro),
+                    name,
                     suggestion: diagnostics::EiiImplRequiresUnsafeSuggestion {
                         left: inner_span.shrink_to_lo(),
                         right: inner_span.shrink_to_hi(),
@@ -550,10 +564,36 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         hir_id: HirId,
         target: Target,
         item: Option<ItemLike<'_>>,
+        directive: Option<&Directive>,
     ) {
         // We only check the non-constness here. A diagnostic for use
         // on not-trait impl items is issued during attribute parsing.
         if target == (Target::Impl { of_trait: true }) {
+            if let Some(directive) = directive
+                && let Node::Item(Item { kind: ItemKind::Impl(hir::Impl { generics, .. }), .. }) =
+                    self.tcx.hir_node(hir_id)
+            {
+                directive.visit_params(&mut |argument_name, span| {
+                    let has_generic = generics.params.iter().any(|p| {
+                        if !matches!(p.kind, GenericParamKind::Lifetime { .. })
+                            && let ParamName::Plain(name) = p.name
+                            && name.name == argument_name
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    });
+                    if !has_generic {
+                        self.tcx.emit_node_span_lint(
+                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                            hir_id,
+                            span,
+                            diagnostics::OnConstMalformedFormatLiterals { name: argument_name },
+                        )
+                    }
+                });
+            }
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
                     Constness::Const { .. } => {
@@ -571,9 +611,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ItemLike::ForeignItem => {}
             }
         }
-        // FIXME(#155570) Can we do something with generic args here?
-        // regardless, we don't check the validity of generic args here
-        // ...whose generics would that be, anyway? The traits' or the impls'?
     }
 
     /// Checks use of generic formatting parameters in `#[diagnostic::on_move]`
@@ -760,7 +797,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     for i in impls {
                         let name = match i.resolution {
                             EiiImplResolution::Macro(def_id) => self.tcx.item_name(def_id),
-                            EiiImplResolution::Known(decl) => decl.name.name,
+                            EiiImplResolution::Known(def_id) => self.tcx.item_name(def_id),
                             EiiImplResolution::Error(_eg) => continue,
                         };
                         self.dcx().emit_err(diagnostics::EiiWithTrackCaller {
@@ -795,37 +832,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.dcx().emit_err(diagnostics::NonExhaustiveWithDefaultFieldValues {
                         attr_span,
                         defn_span: span,
-                    });
-                }
-            }
-            _ => {}
-        }
-    }
-
-    /// Checks if the `#[target_feature]` attribute on `item` is valid.
-    fn check_target_feature(
-        &self,
-        hir_id: HirId,
-        attr_span: Span,
-        target: Target,
-        attrs: &[Attribute],
-    ) {
-        match target {
-            Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
-            | Target::Fn => {
-                // `#[target_feature]` is not allowed in lang items.
-                if let Some(lang_item) = find_attr!(attrs, Lang(lang ) => lang)
-                    // Calling functions with `#[target_feature]` is
-                    // not unsafe on WASM, see #84988
-                    && !self.tcx.sess.target.is_like_wasm
-                    && !self.tcx.sess.opts.actually_rustdoc
-                {
-                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
-
-                    self.dcx().emit_err(diagnostics::LangItemWithTargetFeature {
-                        attr_span,
-                        name: lang_item.name(),
-                        sig_span: sig.span,
                     });
                 }
             }
@@ -891,7 +897,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Delegation { .. }
             | Target::Loop
             | Target::ForLoop
-            | Target::While => None,
+            | Target::While
+            | Target::Break => None,
         } {
             self.tcx.dcx().emit_err(diagnostics::DocAliasBadLocation { span, location });
             return;
@@ -1115,21 +1122,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_ffi_pure(&self, attr_span: Span, attrs: &[Attribute]) {
-        if find_attr!(attrs, FfiConst) {
-            // `#[ffi_const]` functions cannot be `#[ffi_pure]`
-            self.dcx().emit_err(diagnostics::BothFfiConstAndPure { attr_span });
-        }
-    }
-
     /// Checks if `#[may_dangle]` is applied to a lifetime or type generic parameter in `Drop` impl.
     fn check_may_dangle(&self, hir_id: HirId, attr_span: Span) {
-        if let hir::Node::GenericParam(param) = self.tcx.hir_node(hir_id)
-            && matches!(
-                param.kind,
-                hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. }
-            )
-            && matches!(param.source, hir::GenericParamSource::Generics)
+        let hir::Node::GenericParam(
+            param @ GenericParam {
+                kind: hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. },
+                ..
+            },
+        ) = self.tcx.hir_node(hir_id)
+        else {
+            self.dcx().delayed_bug("Checked in attr parser");
+            return;
+        };
+
+        if matches!(param.source, hir::GenericParamSource::Generics)
             && let parent_hir_id = self.tcx.parent_hir_id(hir_id)
             && let hir::Node::Item(item) = self.tcx.hir_node(parent_hir_id)
             && let hir::ItemKind::Impl(impl_) = item.kind
@@ -1662,30 +1668,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 .emit_err(diagnostics::BothOptimizeNoneAndInline { optimize_span, inline_span });
         }
     }
-
-    fn check_loop_match(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let node_span = self.tcx.hir_span(hir_id);
-
-        if !matches!(target, Target::Expression) {
-            return; // Handled in target checking during attr parse
-        }
-
-        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Loop(..)) {
-            self.dcx().emit_err(diagnostics::LoopMatchAttr { attr_span, node_span });
-        };
-    }
-
-    fn check_const_continue(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let node_span = self.tcx.hir_span(hir_id);
-
-        if !matches!(target, Target::Expression) {
-            return; // Handled in target checking during attr parse
-        }
-
-        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Break(..)) {
-            self.dcx().emit_err(diagnostics::ConstContinueAttr { attr_span, node_span });
-        };
-    }
 }
 
 impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
@@ -1819,7 +1801,7 @@ fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) 
     }
 }
 
-fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
+fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModId) {
     let check_attr_visitor = &mut CheckAttrVisitor { tcx, abort: Cell::new(false) };
     tcx.hir_visit_item_likes_in_module(module_def_id, check_attr_visitor);
     if module_def_id.to_local_def_id().is_top_level_module() {

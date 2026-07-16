@@ -178,7 +178,7 @@ impl LivenessValues {
 
     /// Returns an iterator of all the points where `region` is live.
     fn live_points(&self, region: RegionVid) -> impl Iterator<Item = PointIndex> {
-        self.point_liveness(region).into_iter().flat_map(|set| set.iter())
+        self.point_liveness(region).map(|set| set.iter()).into_flat_iter()
     }
 
     /// For debugging purposes, returns a pretty-printed string of the points where the `region` is
@@ -348,13 +348,13 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     pub(crate) fn locations_outlived_by(&self, r: N) -> impl Iterator<Item = Location> {
         self.points
             .row(r)
-            .into_iter()
-            .flat_map(move |set| set.iter().map(move |p| self.location_map.to_location(p)))
+            .map(move |set| set.iter().map(move |p| self.location_map.to_location(p)))
+            .into_flat_iter()
     }
 
     /// Returns just the universal regions that are contained in a given region's value.
     pub(crate) fn universal_regions_outlived_by(&self, r: N) -> impl Iterator<Item = RegionVid> {
-        self.free_regions.row(r).into_iter().flat_map(|set| set.iter())
+        self.free_regions.row(r).map(|set| set.iter()).into_flat_iter()
     }
 
     /// Returns all the elements contained in a given region's value.
@@ -364,8 +364,8 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     ) -> impl Iterator<Item = ty::PlaceholderRegion<'tcx>> {
         self.placeholders
             .row(r)
-            .into_iter()
-            .flat_map(|set| set.iter())
+            .map(|set| set.iter())
+            .into_flat_iter()
             .map(move |p| self.placeholder_indices.lookup_placeholder(p))
     }
 

@@ -13,11 +13,11 @@ use rustc_session::config::{
     AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CodegenRetagOptions, CoverageLevel,
     CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation,
     Externs, FmtDebug, FunctionReturn, IncrementalStateAssertion, InliningThreshold, Input,
-    InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli,
-    MirIncludeSpans, NextSolverConfig, Offload, Options, OutFileName, OutputType, OutputTypes,
-    PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip,
-    SwitchWithOptPath, SymbolManglingVersion, WasiExecModel, build_configuration,
-    build_session_options, rustc_optgroups,
+    InstrumentCoverage, InstrumentMcount, InstrumentXRay, LinkSelfContained, LinkerPluginLto,
+    LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, Offload, Options, OutFileName,
+    OutputType, OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius,
+    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+    build_configuration, build_session_options, rustc_optgroups,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -788,6 +788,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(annotate_moves, AnnotateMoves::Enabled(Some(1234)));
     tracked!(assume_incomplete_release, true);
     tracked!(autodiff, vec![AutoDiff::Enable, AutoDiff::NoTT]);
+    tracked!(autodiff_post_passes, Some("function(mem2reg,instsimplify,simplifycfg)".to_string()));
     tracked!(binary_dep_depinfo, true);
     tracked!(box_noalias, false);
     tracked!(
@@ -834,7 +835,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
     tracked!(inline_mir_threshold, Some(123));
-    tracked!(instrument_mcount, true);
+    tracked!(instrument_mcount, InstrumentMcount::Mcount);
     tracked!(instrument_xray, Some(InstrumentXRay::default()));
     tracked!(link_directives, false);
     tracked!(link_only, true);
@@ -851,7 +852,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(mir_preserve_ub, true);
     tracked!(move_size_limit, Some(4096));
-    tracked!(mutable_noalias, false);
     tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
@@ -866,7 +866,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(panic_in_drop, PanicStrategy::Abort);
     tracked!(
         patchable_function_entry,
-        PatchableFunctionEntry::from_total_and_prefix_nops(10, 5)
+        PatchableFunctionEntry::from_parts(10, 5, None)
             .expect("total must be greater than or equal to prefix")
     );
     tracked!(plt, Some(true));

@@ -181,15 +181,15 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector<'tcx> {
             match t.kind() {
                 // If we are only looking for "constrained" regions, we have to ignore the
                 // inputs to a projection as they may not appear in the normalized form.
-                ty::Alias(ty::AliasTy {
-                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
-                    ..
-                }) => {
-                    return;
-                }
-                // All free alias types should've been expanded beforehand.
-                ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => {
-                    bug!("unexpected free alias type")
+                ty::Alias(_, alias_ty) => {
+                    match alias_ty.kind {
+                        ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. } => return,
+
+                        // All free alias types should've been expanded beforehand.
+                        ty::Free { .. } => {
+                            bug!("unexpected free alias type")
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -200,10 +200,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector<'tcx> {
 
     fn visit_const(&mut self, c: ty::Const<'tcx>) {
         // if we are only looking for "constrained" region, we have to
-        // ignore the inputs of an unevaluated const, as they may not appear
+        // ignore the inputs of an alias const, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            if let ty::ConstKind::Unevaluated(..) = c.kind() {
+            if let ty::ConstKind::Alias(..) = c.kind() {
                 return;
             }
         }

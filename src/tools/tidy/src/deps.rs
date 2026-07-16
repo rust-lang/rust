@@ -242,8 +242,18 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
 
 const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     // tidy-alphabetical-start
+    ("aws-lc-rs", "ISC AND (Apache-2.0 OR ISC)"),
+    (
+        "aws-lc-sys",
+        "ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0)",
+    ),
+    ("brotli", "BSD-3-Clause AND MIT"),
+    ("fast-srgb8", "MIT OR Apache-2.0 OR CC0-1.0"),
     ("inferno", "CDDL-1.0"),
     ("option-ext", "MPL-2.0"),
+    ("wasite", "Apache-2.0 OR BSL-1.0 OR MIT"),
+    ("webpki-root-certs", "CDLA-Permissive-2.0"),
+    ("whoami", "Apache-2.0 OR BSL-1.0 OR MIT"),
     // tidy-alphabetical-end
 ];
 
@@ -359,6 +369,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "itoa",
     "jiff",
     "jiff-static",
+    "jiff-tzdb",
+    "jiff-tzdb-platform",
     "jobserver",
     "lazy_static",
     "leb128",
@@ -692,6 +704,9 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
 
 /// Ensure the list of proc-macro crate transitive dependencies is up to date
 fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, check: &mut RunningCheck) {
+    if std::env::var("RUSTC").is_err() {
+        panic!("tidy must be run under bootstrap (./x test tidy), not as a standalone command");
+    }
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.cargo_path(cargo)
         .manifest_path(root.join("Cargo.toml"))

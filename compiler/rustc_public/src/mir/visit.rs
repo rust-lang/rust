@@ -139,9 +139,9 @@ macro_rules! make_mir_visitor {
             fn super_basic_block(&mut self, bb: &$($mutability)? BasicBlock) {
                 let BasicBlock { statements, terminator } = bb;
                 for stmt in statements {
-                    self.visit_statement(stmt, Location(stmt.span));
+                    self.visit_statement(stmt, Location(stmt.source_info.span));
                 }
-                self.visit_terminator(terminator, Location(terminator.span));
+                self.visit_terminator(terminator, Location(terminator.source_info.span));
             }
 
             fn super_local_decl(&mut self, local: Local, decl: &$($mutability)? LocalDecl) {
@@ -159,8 +159,8 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_statement(&mut self, stmt: &$($mutability)? Statement, location: Location) {
-                let Statement { kind, span } = stmt;
-                self.visit_span(span);
+                let Statement { kind, source_info } = stmt;
+                self.visit_span(&$($mutability)? source_info.span);
                 match kind {
                     StatementKind::Assign(place, rvalue) => {
                         self.visit_place(place, PlaceContext::MUTATING, location);
@@ -199,8 +199,8 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_terminator(&mut self, term: &$($mutability)? Terminator, location: Location) {
-                let Terminator { kind, span } = term;
-                self.visit_span(span);
+                let Terminator { kind, source_info } = term;
+                self.visit_span(&$($mutability)? source_info.span);
                 match kind {
                     TerminatorKind::Goto { .. }
                     | TerminatorKind::Resume
@@ -369,6 +369,7 @@ macro_rules! make_mir_visitor {
                     AssertMessage::ResumedAfterReturn(_)
                     | AssertMessage::ResumedAfterPanic(_)
                     | AssertMessage::NullPointerDereference
+                    | AssertMessage::NullReferenceConstructed
                     | AssertMessage::ResumedAfterDrop(_) => {
                         //nothing to visit
                     }
@@ -540,7 +541,7 @@ impl Location {
 pub fn statement_location(body: &Body, bb_idx: &BasicBlockIdx, stmt_idx: usize) -> Location {
     let bb = &body.blocks[*bb_idx];
     let stmt = &bb.statements[stmt_idx];
-    Location(stmt.span)
+    Location(stmt.source_info.span)
 }
 
 /// Location of the terminator for a given basic block. Assumes that `bb_idx` is valid for a given
@@ -548,7 +549,7 @@ pub fn statement_location(body: &Body, bb_idx: &BasicBlockIdx, stmt_idx: usize) 
 pub fn terminator_location(body: &Body, bb_idx: &BasicBlockIdx) -> Location {
     let bb = &body.blocks[*bb_idx];
     let terminator = &bb.terminator;
-    Location(terminator.span)
+    Location(terminator.source_info.span)
 }
 
 /// Reference to a place used to represent a partial projection.

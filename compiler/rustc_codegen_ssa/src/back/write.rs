@@ -15,9 +15,7 @@ use rustc_errors::{
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::find_attr;
-use rustc_incremental::{
-    copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
-};
+use rustc_incremental::{copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir_sess};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::bug;
@@ -108,6 +106,7 @@ pub struct ModuleConfig {
     pub emit_lifetime_markers: bool,
     pub llvm_plugins: Vec<String>,
     pub autodiff: Vec<config::AutoDiff>,
+    pub autodiff_post_passes: Option<String>,
     pub offload: Vec<config::Offload>,
 }
 
@@ -259,6 +258,10 @@ impl ModuleConfig {
             emit_lifetime_markers: sess.emit_lifetime_markers(),
             llvm_plugins: if_regular!(sess.opts.unstable_opts.llvm_plugins.clone(), vec![]),
             autodiff: if_regular!(sess.opts.unstable_opts.autodiff.clone(), vec![]),
+            autodiff_post_passes: if_regular!(
+                sess.opts.unstable_opts.autodiff_post_passes.clone(),
+                None
+            ),
             offload: if_regular!(sess.opts.unstable_opts.offload.clone(), vec![]),
         }
     }
@@ -884,20 +887,24 @@ fn execute_copy_from_cache_work_item(
     let mut links_from_incr_cache = Vec::new();
 
     let mut load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
-        let source_file = in_incr_comp_dir(incr_comp_session_dir, saved_path);
+        let source_file_in_incr_comp_dir = incr_comp_session_dir.join(saved_path);
         debug!(
             "copying preexisting module `{}` from {:?} to {}",
             module.name,
-            source_file,
+            source_file_in_incr_comp_dir,
             output_path.display()
         );
-        match link_or_copy(&source_file, &output_path) {
+        match link_or_copy(&source_file_in_incr_comp_dir, &output_path) {
             Ok(_) => {
-                links_from_incr_cache.push(source_file);
+                links_from_incr_cache.push(source_file_in_incr_comp_dir);
                 Some(output_path)
             }
             Err(error) => {
-                dcx.emit_err(errors::CopyPathBuf { source_file, output_path, error });
+                dcx.emit_err(errors::CopyPathBuf {
+                    source_file: source_file_in_incr_comp_dir,
+                    output_path,
+                    error,
+                });
                 None
             }
         }

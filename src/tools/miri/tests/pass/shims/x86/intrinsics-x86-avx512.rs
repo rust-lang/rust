@@ -1,6 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512bitalg,+avx512vpopcntdq,+avx512vnni,+avx512vbmi
+//@run-native
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
@@ -9,6 +10,13 @@ use std::arch::x86_64::*;
 use std::mem::transmute;
 
 fn main() {
+    if !is_x86_feature_detected!("avx512f") {
+        // GH runners don't have this, but we still want to run this natively if
+        // the machine happens to have AVX512. So we bail out dynamically.
+        println!("warning: skipping avx512 tests");
+        return;
+    }
+
     assert!(is_x86_feature_detected!("avx512f"));
     assert!(is_x86_feature_detected!("avx512vl"));
     assert!(is_x86_feature_detected!("avx512bw"));
@@ -758,7 +766,7 @@ unsafe fn test_avx512bw() {
     test_mm512_packus_epi32();
 }
 
-#[target_feature(enable = "avx512vbmi")]
+#[target_feature(enable = "avx512vbmi,avx512vl")]
 unsafe fn test_avx512vbmi() {
     #[target_feature(enable = "avx512vbmi")]
     unsafe fn test_mm512_permutex2var_epi8() {
@@ -864,6 +872,101 @@ unsafe fn test_avx512vbmi() {
         assert_eq_m512i(_mm512_permutex2var_epi8(a, idx, b), e);
     }
     test_mm512_permutex2var_epi8();
+
+    #[target_feature(enable = "avx512vbmi")]
+    unsafe fn test_mm512_permutexvar_epi8() {
+        // Only the lower 6 bits of the index are used, the rest is masked off.
+        #[rustfmt::skip]
+        let idx_arr: [u8; 64] = [
+            34, 58, 27, 72, 19, 38, 53,  0, 44, 15, 29, 81, 20, 35, 62,  6,
+            24, 49, 10, 68, 22, 57, 40, 13, 52,  1, 30, 95, 16, 33,  4, 55,
+            26, 47, 11, 74, 21, 59, 36,  8, 50,  3, 28, 99, 14, 45, 61,  2,
+            18, 39,  7, 64, 23, 54,  9,127, 12, 31, 88,  5, 42, 17,  0, u8::MAX,
+        ];
+
+        #[rustfmt::skip]
+        let a_arr: [i8; 64] = [
+             -93,  -94,  -95,  -96,  -97,  -98,  -99, -100,
+            -101, -102, -103, -104, -105, -106, -107, -108,
+            -109, -110, -111, -112, -113, -114, -115, -116,
+            -117, -118, -119, -120, -121, -122, -123, -124,
+            -125, -126, -127, -128,  127,  126,  125,  124,
+             123,  122,  121,  120,  119,  118,  117,  116,
+             115,  114,  113,  112,  111,  110,  109,  108,
+             107,  106,  105,  104,  103,  102,  101,  100,
+        ];
+
+        let idx = transmute(idx_arr);
+        let a = transmute(a_arr);
+
+        let r = _mm512_permutexvar_epi8(idx, a);
+
+        let e_arr = std::array::from_fn(|i| a_arr[(idx_arr[i] & 0b0011_1111) as usize]);
+        let e = transmute::<[i8; 64], _>(e_arr);
+
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_permutexvar_epi8();
+
+    #[target_feature(enable = "avx512vbmi,avx512vl")]
+    unsafe fn test_mm256_permutexvar_epi8() {
+        // Only the lower 5 bits of the index are used, the rest is masked off.
+        #[rustfmt::skip]
+        let idx_arr: [u8; 32] = [
+            26, 47, 11, 42, 21, 59, 36,  8,
+            18,  3, 28, 31, 14, 45, 29,  2,
+            24, 17, 10, 30, 22, 25, 12, 13,
+            20,  1,  6, 15, 16,  9,  0, u8::MAX,
+        ];
+
+        #[rustfmt::skip]
+        let a_arr: [i8; 32] = [
+            -93, -94, -95, -96, -97, -98, -99, -100,
+            -101, -102, -103, -104, -105, -106, -107, -108,
+            -109, -110, -111, -112, -113, -114, -115, -116,
+            -117, -118, -119, -120, -121, -122, -123, -124,
+        ];
+
+        let idx = transmute(idx_arr);
+        let a = transmute(a_arr);
+        let r = _mm256_permutexvar_epi8(idx, a);
+
+        let e_arr = std::array::from_fn(|i| a_arr[(idx_arr[i] & 0b0001_1111) as usize]);
+        let e = transmute::<[i8; 32], _>(e_arr);
+
+        assert_eq_m256i(r, e);
+    }
+    test_mm256_permutexvar_epi8();
+
+    #[target_feature(enable = "avx512vbmi,avx512vl")]
+    unsafe fn test_mm_permutexvar_epi8() {
+        // Only the lower 4 bits of the index are used, the rest is masked off.
+        #[rustfmt::skip]
+        let idx_arr: [u8; 16] = [
+            14, 3, 12, 7,
+            8, 1, 10, 15,
+            4, 9, 2, 13,
+            6, 11, 0, u8::MAX,
+        ];
+
+        #[rustfmt::skip]
+        let a_arr: [i8; 16] = [
+            -93, -94, -95, -96,
+            -97, -98, -99, -100,
+            -101, -102, -103, -104,
+            -105, -106, -107, -108,
+        ];
+
+        let idx = transmute(idx_arr);
+        let a = transmute(a_arr);
+        let r = _mm_permutexvar_epi8(idx, a);
+
+        let e_arr = std::array::from_fn(|i| a_arr[(idx_arr[i] & 0b0000_1111) as usize]);
+        let e = transmute::<[i8; 16], _>(e_arr);
+
+        assert_eq_m128i(r, e);
+    }
+    test_mm_permutexvar_epi8();
 }
 
 #[track_caller]

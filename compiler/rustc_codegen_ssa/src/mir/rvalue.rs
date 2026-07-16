@@ -1,5 +1,6 @@
 use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
+use rustc_index::IndexVec;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Mutability, Ty, TyCtxt};
@@ -15,6 +16,79 @@ use crate::traits::*;
 use crate::{MemFlags, base};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    fn try_codegen_const_aggregate_as_immediate(
+        &mut self,
+        bx: &mut Bx,
+        dest: PlaceRef<'tcx, Bx::Value>,
+        kind: &mir::AggregateKind<'tcx>,
+        operands: &IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
+    ) -> bool {
+        // Keep this allowlist limited to aggregate kinds with direct codegen coverage.
+        // Extract the variant index at the same time so we can verify it against
+        // the layout below. Tuples always use `FIRST_VARIANT` (index 0); the
+        // `None` in the `Adt` arm excludes unions (which carry an active field).
+        let variant_index = match kind {
+            mir::AggregateKind::Tuple => FIRST_VARIANT,
+            mir::AggregateKind::Adt(_, variant_index, _, _, None) => *variant_index,
+            _ => return false,
+        };
+        if !matches!(dest.layout.fields, abi::FieldsShape::Arbitrary { .. }) {
+            return false;
+        }
+        // `dest.layout` is the layout of the *overall* type, not a specific
+        // variant. When the layout is `Variants::Single { index: M }`, the
+        // field offsets and counts below all refer to variant M. If the MIR
+        // aggregate is constructing a different variant N (e.g. because N is
+        // uninhabited and the layout collapsed to M), using `dest.layout`
+        // directly would read the wrong field metadata. Bail out and let the
+        // normal codegen path handle it via `project_downcast`.
+        if !matches!(dest.layout.variants, abi::Variants::Single { index } if index == variant_index)
+        {
+            return false;
+        }
+        // Now that the variant indices are known to match, the operand count
+        // and the layout field count must agree.
+        debug_assert_eq!(operands.len(), dest.layout.fields.count());
+
+        let size = dest.layout.size.bytes();
+        let llty = match size {
+            1 => bx.cx().type_i8(),
+            2 => bx.cx().type_i16(),
+            4 => bx.cx().type_i32(),
+            8 => bx.cx().type_i64(),
+            16 => bx.cx().type_i128(),
+            _ => return false,
+        };
+
+        let mut value = 0u128;
+        for (field_idx, operand) in operands.iter_enumerated() {
+            let field_layout = dest.layout.field(bx.cx(), field_idx.as_usize());
+            if field_layout.is_zst() {
+                continue;
+            }
+            let mir::Operand::Constant(constant) = operand else {
+                return false;
+            };
+            let Some(field_value) = self.eval_mir_constant(constant).try_to_bits(field_layout.size)
+            else {
+                return false;
+            };
+
+            let field_size = field_layout.size.bytes();
+            let field_offset = dest.layout.fields.offset(field_idx.as_usize()).bytes();
+            debug_assert!(field_offset + field_size <= size);
+            let shift = match bx.tcx().data_layout.endian {
+                abi::Endian::Little => field_offset * 8,
+                abi::Endian::Big => (size - field_offset - field_size) * 8,
+            };
+            value |= field_value << shift;
+        }
+
+        let value = bx.cx().const_uint_big(llty, value);
+        bx.store_to_place(value, dest.val);
+        true
+    }
+
     #[instrument(level = "trace", skip(self, bx))]
     pub(crate) fn codegen_rvalue(
         &mut self,
@@ -36,7 +110,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // semantics regarding when assignment operators allow overlap of LHS and RHS.
                 if matches!(
                     cg_operand.layout.backend_repr,
-                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..),
+                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. },
                 ) {
                     debug_assert!(!matches!(cg_operand.val, OperandValue::Ref(..)));
                 }
@@ -179,6 +253,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Aggregate(ref kind, ref operands)
                 if !matches!(**kind, mir::AggregateKind::RawPtr(..)) =>
             {
+                if self.try_codegen_const_aggregate_as_immediate(bx, dest, kind, operands) {
+                    return;
+                }
+
                 let (variant_index, variant_dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
                         let variant_dest = dest.project_downcast(bx, variant_index);
@@ -323,9 +401,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             (
                 OperandValue::Pair(imm_a, imm_b),
-                abi::BackendRepr::ScalarPair(in_a, in_b),
-                abi::BackendRepr::ScalarPair(out_a, out_b),
-            ) if in_a.size(cx) == out_a.size(cx) && in_b.size(cx) == out_b.size(cx) => {
+                abi::BackendRepr::ScalarPair { a: in_a, b: in_b, b_offset: in_offset },
+                abi::BackendRepr::ScalarPair { a: out_a, b: out_b, b_offset: out_offset },
+            ) if in_a.size(cx) == out_a.size(cx)
+                && in_b.size(cx) == out_b.size(cx)
+                && in_offset == out_offset =>
+            {
                 OperandValue::Pair(
                     transmute_scalar(bx, imm_a, in_a, out_a),
                     transmute_scalar(bx, imm_b, in_b, out_b),
@@ -431,10 +512,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     bx.tcx(),
                                     bx.typing_env(),
                                     def_id,
-                                    args,
+                                    args.no_bound_vars().unwrap(),
                                 )
                                 .unwrap();
-                                OperandValue::Immediate(bx.get_fn_addr(instance))
+                                OperandValue::Immediate(
+                                    bx.get_fn_addr(
+                                        instance,
+                                        bx.sess().pointer_authentication_functions(),
+                                    ),
+                                )
                             }
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
@@ -448,7 +534,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     args,
                                     ty::ClosureKind::FnOnce,
                                 );
-                                OperandValue::Immediate(bx.cx().get_fn_addr(instance))
+                                OperandValue::Immediate(
+                                    bx.cx().get_fn_addr(
+                                        instance,
+                                        bx.sess().pointer_authentication_functions(),
+                                    ),
+                                )
                             }
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),
                         }
@@ -665,10 +756,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let static_ = if !def_id.is_local() && bx.cx().tcx().needs_thread_local_shim(def_id)
                 {
                     let instance = ty::Instance {
-                        def: ty::InstanceKind::ThreadLocalShim(def_id),
+                        def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(def_id)),
                         args: ty::GenericArgs::empty(),
                     };
-                    let fn_ptr = bx.get_fn_addr(instance);
+                    let fn_ptr =
+                        bx.get_fn_addr(instance, bx.sess().pointer_authentication_functions());
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
                     let fn_ty = bx.fn_decl_backend_type(fn_abi);
                     let fn_attrs = if bx.tcx().def_kind(instance.def_id()).has_codegen_attrs() {

@@ -90,7 +90,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_resolve_for_typeck(
         self,
         typing_env: ty::TypingEnv<'tcx>,
-        ct: ty::UnevaluatedConst<'tcx>,
+        ct: ty::AliasConst<'tcx>,
         span: Span,
     ) -> ConstToValTreeResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
@@ -104,10 +104,10 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let def_id = match ct.kind {
-            ty::UnevaluatedConstKind::Projection { def_id }
-            | ty::UnevaluatedConstKind::Inherent { def_id }
-            | ty::UnevaluatedConstKind::Free { def_id }
-            | ty::UnevaluatedConstKind::Anon { def_id } => def_id,
+            ty::AliasConstKind::Projection { def_id }
+            | ty::AliasConstKind::Inherent { def_id }
+            | ty::AliasConstKind::Free { def_id }
+            | ty::AliasConstKind::Anon { def_id } => def_id,
         };
 
         let cid = match ty::Instance::try_resolve(self, typing_env, def_id, ct.args) {
@@ -227,6 +227,13 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     ValTreeCreationError::InvalidConst => {
                         let handled = self.dcx().emit_err(error::InvalidConstInValtree {
+                            span,
+                            global_const_id: cid.display(self),
+                        });
+                        Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
+                    }
+                    ValTreeCreationError::CyclicConst => {
+                        let handled = self.dcx().emit_err(error::CyclicConstInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });

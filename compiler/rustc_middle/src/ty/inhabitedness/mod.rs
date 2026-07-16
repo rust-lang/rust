@@ -43,6 +43,7 @@
 //! This code should only compile in modules where the uninhabitedness of `Foo`
 //! is visible.
 
+use rustc_span::def_id::LocalModId;
 use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
@@ -93,7 +94,7 @@ impl<'tcx> VariantDef {
                 match field.vis {
                     Visibility::Public => pred,
                     Visibility::Restricted(from) => {
-                        pred.or(tcx, InhabitedPredicate::NotInModule(from))
+                        InhabitedPredicate::NotInModule(from).or(tcx, pred)
                     }
                 }
             }),
@@ -113,12 +114,16 @@ impl<'tcx> Ty<'tcx> {
                 InhabitedPredicate::True
             }
             Never => InhabitedPredicate::False,
+            // FIXME(#155345): This should only encounter rigid aliases with the new solver.
             Param(_)
-            | Alias(ty::AliasTy {
-                kind: ty::Inherent { .. } | ty::Projection { .. } | ty::Free { .. },
-                ..
-            }) => InhabitedPredicate::GenericType(self),
-            &Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+            | Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Inherent { .. } | ty::Projection { .. } | ty::Free { .. },
+                    ..
+                },
+            ) => InhabitedPredicate::GenericType(self),
+            &Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 match def_id.as_local() {
                     // Foreign opaque is considered inhabited.
                     None => InhabitedPredicate::True,
@@ -180,7 +185,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_inhabited_from(
         self,
         tcx: TyCtxt<'tcx>,
-        module: DefId,
+        module: LocalModId,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> bool {
         self.inhabited_predicate(tcx).apply(tcx, typing_env, module)

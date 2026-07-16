@@ -1,5 +1,5 @@
 //@ build-fail
-//@ ignore-parallel-frontend different alloc ids
+
 #![feature(c_variadic)]
 #![feature(const_c_variadic)]
 #![feature(const_trait_impl)]
@@ -119,6 +119,15 @@ unsafe fn read_cast_pointer() {
     //~^ ERROR requested `*const u8` is incompatible with next argument of type `usize`
 }
 
+unsafe fn read_cast_lifetime() {
+    // The types are equal up to free lifetimes.
+    const { read_as::<*const &'static i32>(std::ptr::dangling::<&i32>()) };
+
+    // Bound lifetimes do matter.
+    const { read_as::<*const fn(&'static ())>(std::ptr::dangling::<for<'a> fn(&'a ())>()) };
+    //~^ ERROR va_arg type mismatch: requested `*const fn(&())` is incompatible with next argument of type `*const for<'a> fn(&'a ())`
+}
+
 fn use_after_free() {
     const unsafe extern "C" fn helper(ap: ...) -> [u8; size_of::<VaList>()] {
         unsafe { std::mem::transmute(ap) }
@@ -129,7 +138,7 @@ fn use_after_free() {
             let ap = helper(1, 2, 3);
             let mut ap = std::mem::transmute::<_, VaList>(ap);
             ap.next_arg::<i32>();
-            //~^ ERROR memory access failed: ALLOC0 has been freed, so this pointer is dangling [E0080]
+            //~^ ERROR memory access failed: ALLOC$ID has been freed, so this pointer is dangling [E0080]
         }
     };
 }
@@ -151,7 +160,7 @@ fn manual_copy_drop() {
     }
 
     const { unsafe { helper(1, 2, 3) } };
-    //~^ ERROR using ALLOC0 as variable argument list pointer but it does not point to a variable argument list [E0080]
+    //~^ ERROR using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list [E0080]
 }
 
 fn manual_copy_forget() {
@@ -167,7 +176,7 @@ fn manual_copy_forget() {
     }
 
     const { unsafe { helper(1, 2, 3) } };
-    //~^ ERROR using ALLOC0 as variable argument list pointer but it does not point to a variable argument list [E0080]
+    //~^ ERROR using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list [E0080]
 }
 
 fn manual_copy_read() {
@@ -180,7 +189,7 @@ fn manual_copy_read() {
     }
 
     const { unsafe { helper(1, 2, 3) } };
-    //~^ ERROR using ALLOC0 as variable argument list pointer but it does not point to a variable argument list [E0080]
+    //~^ ERROR using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list [E0080]
 }
 
 fn drop_of_invalid() {
@@ -196,6 +205,7 @@ fn main() {
         read_too_many();
         read_cast_numeric();
         read_cast_pointer();
+        read_cast_lifetime();
         manual_copy_read();
         manual_copy_drop();
         manual_copy_forget();

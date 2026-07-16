@@ -673,7 +673,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut coercion = self.unify_and(
             coerce_target,
             target,
-            reborrow.into_iter().flat_map(|(deref, autoref)| [deref, autoref]),
+            reborrow.map(|(deref, autoref)| [deref, autoref]).into_flat_iter(),
             Adjust::Pointer(PointerCoercion::Unsize),
             ForceLeakCheck::No,
         )?;
@@ -736,19 +736,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     if traits.contains(&trait_pred.def_id()) =>
                 {
                     self.resolve_vars_if_possible(trait_pred)
-                }
-                // Eagerly process alias-relate obligations in new trait solver,
-                // since these can be emitted in the process of solving trait goals,
-                // but we need to constrain vars before processing goals mentioning
-                // them.
-                Some(ty::PredicateKind::AliasRelate(..)) => {
-                    let ocx = ObligationCtxt::new(self);
-                    ocx.register_obligation(obligation);
-                    if !ocx.try_evaluate_obligations().is_empty() {
-                        return Err(TypeError::Mismatch);
-                    }
-                    coercion.obligations.extend(ocx.into_pending_obligations());
-                    continue;
                 }
                 _ => {
                     coercion.obligations.push(obligation);
@@ -1271,7 +1258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sig = if fn_attrs.safe_target_features {
             // Allow the coercion if the current function has all the features that would be
             // needed to call the coercee safely.
-            match tcx.adjust_target_feature_sig(def_id, sig, self.body_id.into()) {
+            match tcx.adjust_target_feature_sig(def_id, sig, self.body_def_id.into()) {
                 Some(adjusted_sig) => adjusted_sig,
                 None if matches!(expected_safety, Some(hir::Safety::Safe)) => {
                     return Err(TypeError::TargetFeatureCast(def_id));
@@ -1490,12 +1477,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 pub fn can_coerce<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
     ty: Ty<'tcx>,
     output_ty: Ty<'tcx>,
 ) -> bool {
-    let root_ctxt = crate::typeck_root_ctxt::TypeckRootCtxt::new(tcx, body_id);
-    let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, body_id);
+    let root_ctxt = crate::typeck_root_ctxt::TypeckRootCtxt::new(tcx, body_def_id);
+    let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, body_def_id);
     fn_ctxt.may_coerce(ty, output_ty)
 }
 
@@ -2070,7 +2057,7 @@ impl<'tcx> CoerceMany<'tcx> {
         if due_to_block
             && let Some(expr) = expression
             && let Some(parent_fn_decl) =
-                fcx.tcx.hir_fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_id))
+                fcx.tcx.hir_fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_def_id))
         {
             fcx.suggest_missing_break_or_return_expr(
                 &mut err,
@@ -2079,14 +2066,14 @@ impl<'tcx> CoerceMany<'tcx> {
                 expected,
                 found,
                 block_or_return_id,
-                fcx.body_id,
+                fcx.body_def_id,
             );
         }
 
         let is_return_position = fcx
             .tcx
             .hir_get_fn_id_for_return_block(block_or_return_id)
-            .is_some_and(|fn_id| fn_id == fcx.tcx.local_def_id_to_hir_id(fcx.body_id));
+            .is_some_and(|fn_id| fn_id == fcx.tcx.local_def_id_to_hir_id(fcx.body_def_id));
 
         if is_return_position
             && let Some(sp) = fcx.ret_coercion_span.get()
@@ -2096,7 +2083,7 @@ impl<'tcx> CoerceMany<'tcx> {
             // may occur at the first return expression we see in the closure
             // (if it conflicts with the declared return type). Skip adding a
             // note in this case, since it would be incorrect.
-            && let Some(fn_sig) = fcx.body_fn_sig()
+            && let Some(fn_sig) = fcx.fn_sig()
             && fn_sig.output().is_ty_var()
         {
             err.span_note(sp, format!("return type inferred to be `{expected}` here"));
@@ -2109,7 +2096,7 @@ impl<'tcx> CoerceMany<'tcx> {
     /// sure we consider `dyn Trait: Sized` where clauses, which are trivially
     /// false but technically valid for typeck.
     fn is_return_ty_definitely_unsized(&self, fcx: &FnCtxt<'_, 'tcx>) -> bool {
-        if let Some(sig) = fcx.body_fn_sig() {
+        if let Some(sig) = fcx.fn_sig() {
             !fcx.predicate_may_hold(&Obligation::new(
                 fcx.tcx,
                 ObligationCause::dummy(),

@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::HasSession;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_span::def_id::CRATE_MOD_ID;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -45,11 +44,11 @@ pub struct RedundantPubCrate {
 
 impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if cx.tcx.visibility(item.owner_id.def_id) == ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())
+        if cx.tcx.local_visibility(item.owner_id.def_id) == ty::Visibility::Restricted(CRATE_MOD_ID)
             && !cx.effective_visibilities.is_exported(item.owner_id.def_id)
             && self.is_exported.last() == Some(&false)
             && !is_ignorable_export(item)
-            && !item.span.in_external_macro(cx.sess().source_map())
+            && !item.span.in_external_macro(cx.tcx.sess.source_map())
         {
             let span = item
                 .kind

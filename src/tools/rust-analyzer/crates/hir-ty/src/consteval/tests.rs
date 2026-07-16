@@ -2634,6 +2634,19 @@ fn const_generic_subst_fn() {
 }
 
 #[test]
+fn const_generic_fixed_width() {
+    check_number(
+        r#"
+    const fn m<const N: u64>() -> u64 {
+        N
+    }
+    const GOAL: u64 = m::<0>();
+    "#,
+        0,
+    );
+}
+
+#[test]
 fn layout_of_type_with_associated_type_field_defined_inside_body() {
     check_number(
         r#"

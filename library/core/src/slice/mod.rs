@@ -906,16 +906,12 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     pub const fn swap(&mut self, a: usize, b: usize) {
-        // FIXME: use swap_unchecked here (https://github.com/rust-lang/rust/pull/88540#issuecomment-944344343)
-        // Can't take two mutable loans from one vector, so instead use raw pointers.
-        let pa = &raw mut self[a];
-        let pb = &raw mut self[b];
-        // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
-        // to elements in the slice and therefore are guaranteed to be valid and aligned.
-        // Note that accessing the elements behind `a` and `b` is checked and will
-        // panic when out of bounds.
+        // Bounds checks that panic exactly like indexing would.
+        let _ = &self[a];
+        let _ = &self[b];
+        // SAFETY: `a` and `b` were checked to be in bounds above.
         unsafe {
-            ptr::swap(pa, pb);
+            self.swap_unchecked(a, b);
         }
     }
 
@@ -2530,6 +2526,7 @@ impl<T> [T] {
         F: FnMut(&T) -> bool,
     {
         let index = self.iter().position(pred)?;
+        // Slice bounds checks optimized are away (as of June 2026)
         Some((&self[..index], &self[index + 1..]))
     }
 
@@ -2558,6 +2555,7 @@ impl<T> [T] {
         F: FnMut(&T) -> bool,
     {
         let index = self.iter().rposition(pred)?;
+        // Slice bounds checks optimized are away (as of June 2026)
         Some((&self[..index], &self[index + 1..]))
     }
 
@@ -2736,10 +2734,12 @@ impl<T> [T] {
 
     /// Returns a subslice with the prefix and suffix removed.
     ///
-    /// If the slice starts with `prefix` and ends with `suffix`, returns the subslice after the
-    /// prefix and before the suffix, wrapped in `Some`.
+    /// If the slice starts with `prefix`, ends with `suffix`, and
+    /// the prefix and suffix don't overlap, returns the subslice after
+    /// the prefix and before the suffix, wrapped in `Some`.
     ///
-    /// If the slice does not start with `prefix` or does not end with `suffix`, returns `None`.
+    /// If the slice does not start with `prefix`, does not end with `suffix`,
+    /// or the prefix and suffix overlap in the slice, returns `None`.
     ///
     /// # Examples
     ///
@@ -2752,9 +2752,10 @@ impl<T> [T] {
     /// assert_eq!(v.strip_circumfix(&[10], &[40]), None);
     /// assert_eq!(v.strip_circumfix(&[], &[40, 30]), Some(&[10, 50][..]));
     /// assert_eq!(v.strip_circumfix(&[10, 50], &[]), Some(&[40, 30][..]));
+    /// assert_eq!(v.strip_circumfix(&[10, 50, 40], &[50, 40, 30]), None);
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[stable(feature = "strip_circumfix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "strip_circumfix", since = "1.98.0")]
     pub fn strip_circumfix<S, P>(&self, prefix: &P, suffix: &S) -> Option<&[T]>
     where
         T: PartialEq,
@@ -3687,18 +3688,22 @@ impl<T> [T] {
         self.partition_dedup_by(|a, b| a == b)
     }
 
-    /// Moves all but the first of consecutive elements to the end of the slice satisfying
-    /// a given equality relation.
+    /// Moves all but the first of consecutive elements to the end of the slice that are
+    /// "equal" according to the given predicate function.
     ///
     /// Returns two slices. The first contains no consecutive repeated elements.
     /// The second contains all the duplicates in no specified order.
     ///
-    /// The `same_bucket` function is passed references to two elements from the slice and
-    /// must determine if the elements compare equal. The elements are passed in opposite order
-    /// from their order in the slice, so if `same_bucket(a, b)` returns `true`, `a` is moved
-    /// at the end of the slice.
+    /// The predicate `same_bucket(x, p)` is passed references to two elements from
+    /// the slice and must determine if the elements compare equal. The element `p` occurs
+    /// *before* `x` in the slice (`[.., p, .., x, ..]`), so `same_bucket(x, p)`
+    /// is receiving them in reversed order.
     ///
-    /// If the slice is sorted, the first returned slice contains no duplicates.
+    /// If the slice is sorted, the first returned slice contains no duplicates. For more
+    /// complicated predicates however, the order (ascending vs. descending) can matter.
+    ///
+    /// Both references passed to `same_bucket` are mutable.
+    /// This allows merged elements in the first slice by mutating `p` and returning `true`.
     ///
     /// # Examples
     ///
@@ -3707,7 +3712,7 @@ impl<T> [T] {
     ///
     /// let mut slice = ["foo", "Foo", "BAZ", "Bar", "bar", "baz", "BAZ"];
     ///
-    /// let (dedup, duplicates) = slice.partition_dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+    /// let (dedup, duplicates) = slice.partition_dedup_by(|x, p| x.eq_ignore_ascii_case(p));
     ///
     /// assert_eq!(dedup, ["foo", "BAZ", "Bar", "baz"]);
     /// assert_eq!(duplicates, ["bar", "Foo", "BAZ"]);
@@ -3788,7 +3793,7 @@ impl<T> [T] {
         // are less than `len`, thus are inside `self`. `prev_ptr_write` points to
         // one element before `ptr_write`, but `next_write` starts at 1, so
         // `prev_ptr_write` is never less than 0 and is inside the slice.
-        // This fulfils the requirements for dereferencing `ptr_read`, `prev_ptr_write`
+        // This fulfills the requirements for dereferencing `ptr_read`, `prev_ptr_write`
         // and `ptr_write`, and for using `ptr.add(next_read)`, `ptr.add(next_write - 1)`
         // and `prev_ptr_write.offset(1)`.
         //
@@ -5298,7 +5303,6 @@ impl<T> [T] {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// #![feature(substr_range)]
     /// use core::range::Range;
     ///
     /// let nums = &[0, 5, 10, 0, 0, 5];
@@ -5313,7 +5317,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(Range { start: 5, end: 6 }));
     /// ```
     #[must_use]
-    #[unstable(feature = "substr_range", issue = "126769")]
+    #[stable(feature = "substr_range", since = "1.98.0")]
     pub fn subslice_range(&self, subslice: &[T]) -> Option<core::range::Range<usize>> {
         if T::IS_ZST {
             panic!("elements are zero-sized");

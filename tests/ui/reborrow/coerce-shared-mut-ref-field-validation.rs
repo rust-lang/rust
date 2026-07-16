@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};
@@ -25,7 +27,6 @@ struct AliasRef<'a> {
 }
 
 impl<'a> CoerceShared<AliasRef<'a>> for AliasMut<'a> {}
-//~^ ERROR
 
 struct InnerLifetimeMut<'a> {
     value: &'a mut &'static (),

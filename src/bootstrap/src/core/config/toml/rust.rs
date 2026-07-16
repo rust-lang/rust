@@ -5,7 +5,7 @@ use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
+use crate::core::config::{CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
 use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
 
 define_config! {
@@ -28,6 +28,7 @@ define_config! {
         debuginfo_level_std: Option<DebuginfoLevel> = "debuginfo-level-std",
         debuginfo_level_tools: Option<DebuginfoLevel> = "debuginfo-level-tools",
         debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
+        compress_debuginfo: Option<CompressDebuginfo> = "compress-debuginfo",
         backtrace: Option<bool> = "backtrace",
         incremental: Option<bool> = "incremental",
         default_linker: Option<String> = "default-linker",
@@ -63,8 +64,10 @@ define_config! {
         ehcont_guard: Option<bool> = "ehcont-guard",
         new_symbol_mangling: Option<bool> = "new-symbol-mangling",
         annotate_moves_size_limit: Option<u64> = "annotate-moves-size-limit",
-        profile_generate: Option<String> = "profile-generate",
-        profile_use: Option<String> = "profile-use",
+        // FIXME: Remove this option at the end of 2026
+        profile_generate: Option<PathBuf> = "profile-generate",
+        // FIXME: Remove this option at the end of 2026
+        profile_use: Option<PathBuf> = "profile-use",
         // ignored; this is set from an env var set by bootstrap.py
         download_rustc: Option<StringOrBool> = "download-rustc",
         lto: Option<String> = "lto",
@@ -322,6 +325,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         randomize_layout,
         debug_logging,
         debuginfo_level_rustc,
+        compress_debuginfo,
         llvm_tools,
         llvm_bitcode_linker,
         stack_protector,
@@ -389,6 +393,7 @@ pub fn check_incompatible_options_for_ci_rustc(
 
     err!(current_rust_config.optimize, optimize, "rust");
     err!(current_rust_config.randomize_layout, randomize_layout, "rust");
+    err!(current_rust_config.compress_debuginfo, compress_debuginfo, "rust");
     err!(current_rust_config.debug_logging, debug_logging, "rust");
     err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc, "rust");
     err!(current_rust_config.rpath, rpath, "rust");
@@ -422,23 +427,33 @@ pub(crate) fn parse_codegen_backends(
                 Please, use '{stripped}' instead."
             )
         }
-        if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.as_str()) {
-            if CiEnv::is_rust_lang_managed_ci_job() {
-                eprintln!("Unknown codegen backend {backend}");
-                exit!(1);
-            }
-
-            println!(
-                "HELP: '{backend}' for '{section}.codegen-backends' might fail. \
-                List of known codegen backends: {BUILTIN_CODEGEN_BACKENDS:?}"
-            );
-        }
         let backend = match backend.as_str() {
             "llvm" => CodegenBackendKind::Llvm,
             "cranelift" => CodegenBackendKind::Cranelift,
             "gcc" => CodegenBackendKind::Gcc,
             backend => CodegenBackendKind::Custom(backend.to_string()),
         };
+
+        if found_backends.contains(&backend) {
+            panic!(
+                "Duplicate value '{}' for '{section}.codegen-backends'. \
+                Each codegen backend should only be specified once.",
+                backend.name()
+            );
+        }
+
+        if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.name()) {
+            if CiEnv::is_rust_lang_managed_ci_job() {
+                eprintln!("Unknown codegen backend {}", backend.name());
+                exit!(1);
+            }
+
+            println!(
+                "HELP: '{}' for '{section}.codegen-backends' might fail. \
+                List of known codegen backends: {BUILTIN_CODEGEN_BACKENDS:?}",
+                backend.name()
+            );
+        }
         found_backends.push(backend);
     }
     if found_backends.is_empty() {

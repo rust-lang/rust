@@ -201,6 +201,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let Some((reuse_addr, clock)) =
             reuse.take_addr(&mut *rng, info.size, info.align, memory_kind, this.active_thread())
         {
+            // If we use some other thread's address, that implies a happens-before.
             if let Some(clock) = clock {
                 this.acquire_clock(&clock)?;
             }

@@ -14,6 +14,13 @@ use crate::AttributeTemplate;
 use crate::context::Suggestion;
 
 #[derive(Diagnostic)]
+#[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
+pub(crate) struct BothFfiConstAndPure {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("{$attr_str} attribute cannot have empty value")]
 pub(crate) struct DocAliasEmpty<'a> {
     #[primary_span]
@@ -71,6 +78,26 @@ pub(crate) struct DocAttributeNotAttribute {
     #[primary_span]
     pub span: Span,
     pub attribute: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "`#[target_feature]` cannot be applied to a {$kind ->
+        [panic_handler] `#[panic_handler]`
+        *[other] lang item
+    } function"
+)]
+pub(crate) struct TargetFeatureOnLangItem {
+    #[primary_span]
+    pub attr_span: Span,
+    pub kind: Symbol,
+    #[label(
+        "{$kind ->
+            [panic_handler] `#[panic_handler]`
+            *[other] lang item
+        } function is not allowed to have `#[target_feature]`"
+    )]
+    pub item_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -266,6 +293,13 @@ pub(crate) struct EmptyExportName {
 }
 
 #[derive(Diagnostic)]
+#[diag("`section` may not be empty")]
+pub(crate) struct EmptySection {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`export_name` may not contain null characters", code = E0648)]
 pub(crate) struct NullOnExport {
     #[primary_span]
@@ -296,6 +330,13 @@ pub(crate) struct NullOnObjcClass {
 #[derive(Diagnostic)]
 #[diag("`objc::selector!` may not contain null characters")]
 pub(crate) struct NullOnObjcSelector {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`section` may not contain null characters", code = E0648)]
+pub(crate) struct NullOnSection {
     #[primary_span]
     pub span: Span,
 }
@@ -337,13 +378,17 @@ pub(crate) struct InvalidTarget {
     pub target: &'static str,
     pub applied: DiagArgValue,
     pub only: &'static str,
-    pub attribute_args: &'static str,
+    pub attribute_args: String,
     #[subdiagnostic]
     pub help: Option<InvalidTargetHelp>,
     #[warning(
         "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
     )]
     pub previously_accepted: bool,
+    #[note(
+        "placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute"
+    )]
+    pub on_macro_call: bool,
 }
 
 #[derive(Subdiagnostic)]

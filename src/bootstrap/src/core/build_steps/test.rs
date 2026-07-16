@@ -4,15 +4,14 @@
 //! However, this contains ~all test parts we expect people to be able to build and run locally.
 
 // (This file should be split up, but having tidy block all changes is not helpful.)
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 
 use std::collections::HashSet;
 use std::env::split_paths;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::{env, fs, iter};
-
-use build_helper::exit;
 
 use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
@@ -43,7 +42,7 @@ use crate::utils::helpers::{
     up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify};
+use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify, exit};
 
 mod compiletest;
 pub mod failed_tests;
@@ -992,6 +991,142 @@ impl Step for StdarchVerify {
     }
 }
 
+/// Runs stdarch's intrinsic-test binary crate to verify that Rust's `core::arch`
+/// SIMD intrinsics produce the same results as their C counterparts.
+///
+/// First runs the `intrinsic-test` binary, which generates C wrapper programs
+/// and a Rust Cargo workspace. Then runs `cargo test` on that workspace
+/// which compiles both versions and compares their outputs on random inputs.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct IntrinsicTest {
+    host: TargetSelection,
+}
+
+impl Step for IntrinsicTest {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("library/stdarch/crates/intrinsic-test")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let target = run.target;
+        if !target.contains("aarch64-unknown-linux") && !target.contains("x86_64-unknown-linux") {
+            return;
+        }
+        run.builder.ensure(IntrinsicTest { host: target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let host = self.host;
+
+        let (input_file, skip_file, cflags, sde_runner) = if host.contains("x86_64-unknown-linux") {
+            let cpuid_def =
+                builder.src.join("library/stdarch/ci/docker/x86_64-unknown-linux-gnu/cpuid.def");
+            let sde_runner = format!(
+                "/intel-sde/sde64 -cpuid-in {} -rtm-mode full -tsx --",
+                cpuid_def.display()
+            );
+            (
+                builder.src.join("library/stdarch/intrinsics_data/x86-intel.xml"),
+                [
+                    builder
+                        .src
+                        .join("library/stdarch/crates/intrinsic-test/missing_x86_common.txt"),
+                    builder.src.join("library/stdarch/crates/intrinsic-test/missing_x86_gcc.txt"),
+                ],
+                "-I/usr/include/x86_64-linux-gnu/",
+                Some(sde_runner),
+            )
+        } else if host.contains("aarch64-unknown-linux") {
+            (
+                builder.src.join("library/stdarch/intrinsics_data/arm_intrinsics.json"),
+                [
+                    builder
+                        .src
+                        .join("library/stdarch/crates/intrinsic-test/missing_aarch64_common.txt"),
+                    builder
+                        .src
+                        .join("library/stdarch/crates/intrinsic-test/missing_aarch64_gcc.txt"),
+                ],
+                "-I/usr/aarch64-linux-gnu/include/",
+                None,
+            )
+        } else {
+            panic!("intrinsic-test only supports aarch64/x86_64 Linux, got {host}");
+        };
+
+        let out_dir = builder.out.join(host).join("intrinsic-test");
+        t!(fs::create_dir_all(&out_dir));
+
+        let crates_link = out_dir.join("crates");
+        if !crates_link.exists() {
+            t!(
+                helpers::symlink_dir(
+                    &builder.config,
+                    &builder.src.join("library/stdarch/crates"),
+                    &crates_link
+                ),
+                format!("failed to symlink stdarch crates into {}", crates_link.display())
+            );
+        }
+
+        let mut cmd = builder.tool_cmd(Tool::IntrinsicTest);
+        cmd.current_dir(&out_dir);
+        cmd.arg(&input_file);
+        cmd.arg("--target").arg(&*host.triple);
+        for skip in &skip_file {
+            cmd.arg("--skip").arg(skip);
+        }
+        cmd.arg("--sample-percentage").arg("10");
+        cmd.arg("--cc-arg-style").arg("gcc");
+        cmd.env("CC", builder.cc(host));
+        cmd.env("CFLAGS", cflags);
+        // intrinsic-test shells out to `cargo` and `rustfmt` make bootstrap's
+        // managed binaries findable by prepending their dirs to PATH.
+        let Some(rustfmt_path) = builder.config.initial_rustfmt.clone() else {
+            eprintln!(
+                "WARNING: intrinsic-test skipped because rustfmt is required but not available on this channel"
+            );
+            return;
+        };
+
+        let mut path_dirs: Vec<PathBuf> = Vec::new();
+        if let Some(cargo_dir) = builder.initial_cargo.parent() {
+            path_dirs.push(cargo_dir.to_path_buf());
+        }
+        if let Some(rustfmt_dir) = rustfmt_path.parent() {
+            path_dirs.push(rustfmt_dir.to_path_buf());
+        }
+        let old_path = env::var_os("PATH").unwrap_or_default();
+        let new_path = env::join_paths(path_dirs.into_iter().chain(env::split_paths(&old_path)))
+            .expect("could not build PATH for intrinsic-test");
+        cmd.env("PATH", new_path);
+        cmd.run(builder);
+
+        let tested_compiler = builder.compiler(builder.top_stage, host);
+        builder.std(tested_compiler, host);
+        let rustc = builder.rustc(tested_compiler);
+
+        let manifest = out_dir.join("rust_programs/Cargo.toml");
+        let mut cargo = command(&builder.initial_cargo);
+        cargo.arg("test");
+        cargo.arg("--tests");
+        cargo.arg("--manifest-path").arg(&manifest);
+        cargo.arg("--target").arg(&*host.triple);
+        cargo.arg("--profile").arg("release");
+        cargo.env("CC", builder.cc(host));
+        cargo.env("CFLAGS", cflags);
+        cargo.env("RUSTC", rustc);
+        cargo.env("RUSTC_BOOTSTRAP", "1");
+        if let Some(runner) = sde_runner {
+            cargo.env("CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER", runner);
+        }
+        cargo.run(builder);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     compilers: RustcPrivateCompilers,
@@ -1842,6 +1977,12 @@ impl Step for Coverage {
         for mode in Self::ALL_MODES {
             run = run.alias(mode.as_str());
         }
+
+        // Allow `./x test --skip=tests` to properly skip the coverage tests,
+        // by not treating the `coverage-map` and `coverage-run` aliases as
+        // implied command-line arguments.
+        run = run.default_to_suites_only();
+
         run
     }
 
@@ -1882,13 +2023,6 @@ impl Step for Coverage {
         modes.retain(|mode| {
             !run.builder.config.skip.iter().any(|skip| skip == Path::new(mode.as_str()))
         });
-
-        // FIXME(Zalathar): Make these commands skip all coverage tests, as expected:
-        // - `./x test --skip=tests`
-        // - `./x test --skip=tests/coverage`
-        // - `./x test --skip=coverage`
-        // Skip handling currently doesn't have a way to know that skipping the coverage
-        // suite should also skip the `coverage-map` and `coverage-run` aliases.
 
         for mode in modes {
             run.builder.ensure(Coverage { compiler, target, mode });
@@ -2340,7 +2474,13 @@ Please disable assertions with `rust.debug-assertions = false`.
                 "-Lnative={}",
                 builder.test_helpers_out(test_compiler.host).display()
             ));
-            targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
+            let target_helpers = builder.test_helpers_out(target);
+            targetflags.push(format!("-Lnative={}", target_helpers.display()));
+            if target.is_pauthtest() {
+                // For the pauthtest target, embed an rpath to the directory containing the helper
+                // dynamic library.
+                targetflags.push(format!("-Clink-arg=-Wl,-rpath,{}", target_helpers.display()));
+            }
         }
 
         for flag in hostflags {
@@ -2541,9 +2681,9 @@ Please disable assertions with `rust.debug-assertions = false`.
         // Only pass correct values for these flags for the `run-make` suite as it
         // requires that a C++ compiler was configured which isn't always the case.
         if !builder.config.dry_run() && mode == CompiletestMode::RunMake {
-            let mut cflags = builder.cc_handled_clags(target, CLang::C);
+            let mut cflags = builder.cc_handled_cflags(target, CLang::C);
             cflags.extend(builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
-            let mut cxxflags = builder.cc_handled_clags(target, CLang::Cxx);
+            let mut cxxflags = builder.cc_handled_cflags(target, CLang::Cxx);
             cxxflags.extend(builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
             cmd.arg("--cc")
                 .arg(builder.cc(target))
@@ -3986,32 +4126,54 @@ impl Step for TestHelpers {
         };
         let dst = builder.test_helpers_out(target);
         let src = builder.src.join("tests/auxiliary/rust_test_helpers.c");
-        if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
-            return;
-        }
-
         let _guard = builder.msg_unstaged(Kind::Build, "test helpers", target);
         t!(fs::create_dir_all(&dst));
-        let mut cfg = cc::Build::new();
 
-        // We may have found various cross-compilers a little differently due to our
-        // extra configuration, so inform cc of these compilers. Note, though, that
-        // on MSVC we still need cc's detection of env vars (ugh).
-        if !target.is_msvc() {
-            if let Some(ar) = builder.ar(target) {
-                cfg.archiver(ar);
+        if !up_to_date(&src, &dst.join("librust_test_helpers.a")) {
+            let mut cfg = cc::Build::new();
+
+            // We may have found various cross-compilers a little differently due to our
+            // extra configuration, so inform cc of these compilers. Note, though, that
+            // on MSVC we still need cc's detection of env vars (ugh).
+            if !target.is_msvc() {
+                if let Some(ar) = builder.ar(target) {
+                    cfg.archiver(ar);
+                }
+                cfg.compiler(builder.cc(target));
             }
-            cfg.compiler(builder.cc(target));
+            cfg.cargo_metadata(false)
+                .out_dir(&dst)
+                .target(&target.triple)
+                .host(&builder.config.host_target.triple)
+                .opt_level(0)
+                .warnings(false)
+                .debug(false)
+                .file(builder.src.join("tests/auxiliary/rust_test_helpers.c"))
+                .compile("rust_test_helpers");
         }
-        cfg.cargo_metadata(false)
-            .out_dir(&dst)
-            .target(&target.triple)
-            .host(&builder.config.host_target.triple)
-            .opt_level(0)
-            .warnings(false)
-            .debug(false)
-            .file(builder.src.join("tests/auxiliary/rust_test_helpers.c"))
-            .compile("rust_test_helpers");
+        if target.is_pauthtest() {
+            let so = dst.join("librust_test_helpers.so");
+            if up_to_date(&src, &so) {
+                return;
+            }
+
+            let status = Command::new(builder.cc(target))
+                .arg("-target")
+                .arg(target.triple)
+                .arg("-march=armv8.3-a+pauth")
+                .arg("-fPIC")
+                .arg("-shared")
+                .arg("-O0") // Use O0 to match what static library is compiled at.
+                .arg("-o")
+                .arg(&so)
+                .arg(&src)
+                .status()
+                .unwrap_or_else(|_| panic!("Failed to run clang for {} toolchain", target.triple));
+
+            if !status.success() {
+                panic!("Linking of librust_test_helpers.so failed (target: {})", target.triple);
+            }
+        }
     }
 }
 

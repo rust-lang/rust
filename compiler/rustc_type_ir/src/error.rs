@@ -2,7 +2,7 @@ use derive_where::derive_where;
 use rustc_abi::ExternAbi;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::solve::NoSolution;
+use crate::solve::{NoSolution, NoSolutionOrRerunNonErased};
 use crate::{self as ty, Interner};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -41,6 +41,7 @@ pub enum TypeError<I: Interner> {
     ArgumentSorts(ExpectedFound<I::Ty>, usize),
     Traits(ExpectedFound<I::TraitId>),
     VariadicMismatch(ExpectedFound<bool>),
+    SplatMismatch(ExpectedFound<Option<u8>>),
 
     /// Instantiating a type variable with the given type would have
     /// created a cycle (because it appears somewhere within that
@@ -76,7 +77,7 @@ impl<I: Interner> TypeError<I> {
         match self {
             CyclicTy(_) | CyclicConst(_) | SafetyMismatch(_) | PolarityMismatch(_) | Mismatch
             | AbiMismatch(_) | ArraySize(_) | ArgumentSorts(..) | Sorts(_)
-            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            | VariadicMismatch(_) | SplatMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | ArgumentMutability(_)
@@ -98,5 +99,11 @@ impl<I: Interner> TypeError<I> {
 impl<I: Interner> From<TypeError<I>> for NoSolution {
     fn from(_: TypeError<I>) -> NoSolution {
         NoSolution
+    }
+}
+
+impl<I: Interner> From<TypeError<I>> for NoSolutionOrRerunNonErased {
+    fn from(_: TypeError<I>) -> NoSolutionOrRerunNonErased {
+        NoSolutionOrRerunNonErased::NoSolution(NoSolution)
     }
 }

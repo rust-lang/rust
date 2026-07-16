@@ -74,6 +74,32 @@ impl_binder_encode_decode! {
     ty::HostEffectPredicate<I>,
 }
 
+#[cfg(feature = "nightly")]
+impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, E: rustc_serialize::Encoder>
+    rustc_serialize::Encodable<E> for ty::Binder<I, T>
+where
+    T: rustc_serialize::Encodable<E>,
+    I::BoundVarKinds: rustc_serialize::Encodable<E>,
+{
+    fn encode(&self, e: &mut E) {
+        self.bound_vars().encode(e);
+        self.as_ref().skip_binder().encode(e);
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, D: rustc_serialize::Decoder>
+    rustc_serialize::Decodable<D> for ty::Binder<I, T>
+where
+    T: TypeVisitable<I> + rustc_serialize::Decodable<D>,
+    I::BoundVarKinds: rustc_serialize::Decodable<D>,
+{
+    fn decode(decoder: &mut D) -> Self {
+        let bound_vars = rustc_serialize::Decodable::decode(decoder);
+        ty::Binder::bind_with_vars(rustc_serialize::Decodable::decode(decoder), bound_vars)
+    }
+}
+
 impl<I: Interner, T> Binder<I, T>
 where
     T: TypeVisitable<I>,
@@ -369,11 +395,33 @@ generate!(
     impl<I: Interner, T> !TypeVisitable<I> for ty::EarlyBinder<I, T> {}
 );
 
-impl<I: Interner, T> EarlyBinder<I, T> {
-    pub fn bind(value: T) -> EarlyBinder<I, T> {
+impl<I: Interner, T: TypeFoldable<I>> EarlyBinder<I, T> {
+    pub fn bind(cx: I, value: T) -> EarlyBinder<I, T> {
+        // Instantiation will require normalization.
+        let value = ty::set_aliases_to_non_rigid(cx, value).skip_normalization();
         EarlyBinder { value, _tcx: PhantomData }
     }
+}
 
+impl<I: Interner, T: IntoIterator<Item: TypeVisitable<I>> + Clone> EarlyBinder<I, T> {
+    pub fn bind_iter(value: T) -> EarlyBinder<I, T> {
+        #[cfg(debug_assertions)]
+        {
+            value.clone().into_iter().for_each(|v| assert!(!v.has_rigid_aliases()));
+        }
+
+        EarlyBinder { value, _tcx: PhantomData }
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>> EarlyBinder<I, T> {
+    pub fn bind_no_rigid_aliases(value: T) -> EarlyBinder<I, T> {
+        debug_assert!(!value.has_rigid_aliases());
+        EarlyBinder { value, _tcx: PhantomData }
+    }
+}
+
+impl<I: Interner, T> EarlyBinder<I, T> {
     pub fn as_ref(&self) -> EarlyBinder<I, &T> {
         EarlyBinder { value: &self.value, _tcx: PhantomData }
     }
@@ -423,6 +471,12 @@ impl<I: Interner, T> EarlyBinder<I, T> {
     /// the analogous operation on [`Binder`].
     pub fn skip_binder(self) -> T {
         self.value
+    }
+}
+
+impl<I: Interner> EarlyBinder<I, ty::TraitRef<I>> {
+    pub fn def_id(&self) -> I::TraitId {
+        self.value.def_id
     }
 }
 
@@ -523,6 +577,14 @@ pub struct IterInstantiatedCopied<'a, I: Interner, Iter: IntoIterator> {
     args: &'a [I::GenericArg],
 }
 
+impl<'a, I: Interner, Iter: IntoIterator<IntoIter: Clone>> Clone
+    for IterInstantiatedCopied<'a, I, Iter>
+{
+    fn clone(&self) -> IterInstantiatedCopied<'a, I, Iter> {
+        IterInstantiatedCopied { it: self.it.clone(), cx: self.cx, args: self.args }
+    }
+}
+
 impl<I: Interner, Iter: IntoIterator> Iterator for IterInstantiatedCopied<'_, I, Iter>
 where
     Iter::Item: Deref,
@@ -565,6 +627,12 @@ where
 pub struct IterIdentityCopied<I: Interner, Iter: IntoIterator> {
     it: Iter::IntoIter,
     _tcx: PhantomData<fn() -> I>,
+}
+
+impl<I: Interner, Iter: IntoIterator<IntoIter: Clone>> Clone for IterIdentityCopied<I, Iter> {
+    fn clone(&self) -> IterIdentityCopied<I, Iter> {
+        IterIdentityCopied { it: self.it.clone(), _tcx: self._tcx }
+    }
 }
 
 impl<I: Interner, Iter: IntoIterator> Iterator for IterIdentityCopied<I, Iter>

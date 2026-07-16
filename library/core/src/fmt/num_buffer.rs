@@ -3,22 +3,27 @@ use crate::mem::MaybeUninit;
 /// Trait used to describe the maximum number of digits in decimal base of the implemented integer.
 #[unstable(feature = "fmt_internals", issue = "none")]
 pub trait NumBufferTrait {
-    /// Maximum number of digits in decimal base of the implemented integer.
+    /// Used for initializing the `NumberBuffer` value.
     #[unstable(feature = "fmt_internals", issue = "none")]
-    const BUF_SIZE: usize;
+    const DEFAULT: Self::Buf;
+    /// The actual underlying type.
+    #[unstable(feature = "fmt_internals", issue = "none")]
+    type Buf: AsRef<[MaybeUninit<u8>]> + AsMut<[MaybeUninit<u8>]>;
 }
 
 macro_rules! impl_NumBufferTrait {
     ($($signed:ident, $unsigned:ident,)*) => {
         $(
-            #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "int_format_into", since = "1.98.0")]
             impl NumBufferTrait for $signed {
                 // `+ 2` and not `+ 1` to include the `-` character.
-                const BUF_SIZE: usize = $signed::MAX.ilog(10) as usize + 2;
+                const DEFAULT: Self::Buf = [MaybeUninit::<u8>::uninit(); $signed::MAX.ilog10() as usize + 2];
+                type Buf = [MaybeUninit<u8>; $signed::MAX.ilog10() as usize + 2];
             }
-            #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "int_format_into", since = "1.98.0")]
             impl NumBufferTrait for $unsigned {
-                const BUF_SIZE: usize = $unsigned::MAX.ilog(10) as usize + 1;
+                const DEFAULT: Self::Buf = [MaybeUninit::<u8>::uninit(); $unsigned::MAX.ilog10() as usize + 1];
+                type Buf = [MaybeUninit<u8>; $unsigned::MAX.ilog10() as usize + 1];
             }
         )*
     }
@@ -50,32 +55,25 @@ impl_NumBufferTrait! {
 /// let n2 = -1972i32;
 /// assert_eq!(n2.format_into(&mut buf), "-1972");
 /// ```
-#[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "int_format_into", since = "1.98.0")]
 pub struct NumBuffer<T: NumBufferTrait> {
-    // FIXME: Once const generics feature is working, use `T::BUF_SIZE` instead of 40.
-    pub(crate) buf: [MaybeUninit<u8>; 40],
-    // FIXME: Remove this field once we can actually use `T`.
+    pub(crate) buf: T::Buf,
     phantom: core::marker::PhantomData<T>,
 }
 
-#[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "int_format_into", since = "1.98.0")]
 impl<T: NumBufferTrait> core::fmt::Debug for NumBuffer<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("NumBuffer").finish()
     }
 }
 
-#[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "int_format_into", since = "1.98.0")]
 impl<T: NumBufferTrait> NumBuffer<T> {
     /// Initializes internal buffer.
-    #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "int_format_into", since = "1.98.0")]
+    #[rustc_const_stable(feature = "int_format_into", since = "1.98.0")]
     pub const fn new() -> Self {
-        // FIXME: Once const generics feature is working, use `T::BUF_SIZE` instead of 40.
-        NumBuffer { buf: [MaybeUninit::<u8>::uninit(); 40], phantom: core::marker::PhantomData }
-    }
-
-    pub(crate) const fn capacity(&self) -> usize {
-        self.buf.len()
+        NumBuffer { buf: T::DEFAULT, phantom: core::marker::PhantomData }
     }
 }

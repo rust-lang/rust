@@ -184,7 +184,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     // Declare the bindings, which may create a source scope.
                     let remainder_span = remainder_scope.span(this.tcx, this.region_scope_tree);
-                    this.push_scope((*remainder_scope, source_info));
+                    this.push_scope(*remainder_scope);
                     let_scope_stack.push(remainder_scope);
 
                     let visibility_scope =
@@ -242,7 +242,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
                     // Enter the remainder scope, i.e., the bindings' destruction scope.
-                    this.push_scope((*remainder_scope, source_info));
+                    this.push_scope(*remainder_scope);
                     let_scope_stack.push(remainder_scope);
 
                     // Declare the bindings, which may create a source scope.
@@ -335,7 +335,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if destination_ty.is_unit()
                 || matches!(
                     destination_ty.kind(),
-                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
+                    ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })
                 )
             {
                 // We only want to assign an implicit `()` as the return value of the block if the
@@ -346,7 +346,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Finally, we pop all the let scopes before exiting out from the scope of block
         // itself.
         for scope in let_scope_stack.into_iter().rev() {
-            block = this.pop_scope((*scope, source_info), block).into_block();
+            block = this.pop_scope(*scope, block).into_block();
         }
         // Restore the original source scope.
         this.source_scope = outer_source_scope;

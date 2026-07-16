@@ -581,6 +581,7 @@
 use crate::clone::TrivialClone;
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::marker::Destruct;
+use crate::num::NonZero;
 use crate::ops::{self, ControlFlow, Deref, DerefMut, Residual, Try};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
@@ -1292,7 +1293,7 @@ impl<T> Option<T> {
     ///
     /// [default value]: Default::default
     #[inline]
-    #[stable(feature = "result_option_map_or_default", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "result_option_map_or_default", since = "1.98.0")]
     #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
     pub const fn map_or_default<U, F>(self, f: F) -> U
     where
@@ -2081,10 +2082,7 @@ impl<T: IntoIterator> Option<T> {
     /// assert_eq!(o2.into_flat_iter().collect::<Vec<_>>(), Vec::<&usize>::new());
     /// ```
     #[unstable(feature = "option_into_flat_iter", issue = "148441")]
-    pub fn into_flat_iter<A>(self) -> OptionFlatten<A>
-    where
-        T: IntoIterator<IntoIter = A>,
-    {
+    pub fn into_flat_iter(self) -> OptionFlatten<T::IntoIter> {
         OptionFlatten { iter: self.map(IntoIterator::into_iter) }
     }
 }
@@ -2666,18 +2664,111 @@ impl<A: Iterator> Iterator for OptionFlatten<A> {
     type Item = A::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.as_mut()?.next()
+        match &mut self.iter {
+            Some(iter) => iter.next(),
+            None => None,
+        }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.as_ref().map(|i| i.size_hint()).unwrap_or((0, Some(0)))
+        match &self.iter {
+            Some(iter) => iter.size_hint(),
+            None => (0, Some(0)),
+        }
+    }
+
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        match &mut self.iter {
+            Some(iter) => iter.advance_by(n),
+            None => NonZero::new(n).map_or(Ok(()), Err),
+        }
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        match &mut self.iter {
+            Some(iter) => iter.nth(n),
+            None => None,
+        }
+    }
+
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        match self.iter {
+            Some(iter) => iter.fold(init, fold),
+            None => init,
+        }
+    }
+
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>,
+    {
+        match &mut self.iter {
+            Some(iter) => iter.try_fold(init, fold),
+            None => try { init },
+        }
+    }
+
+    fn count(self) -> usize {
+        match self.iter {
+            Some(iter) => iter.count(),
+            None => 0,
+        }
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        match self.iter {
+            Some(iter) => iter.last(),
+            None => None,
+        }
     }
 }
 
 #[unstable(feature = "option_into_flat_iter", issue = "148441")]
 impl<A: DoubleEndedIterator> DoubleEndedIterator for OptionFlatten<A> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.iter.as_mut()?.next_back()
+        match &mut self.iter {
+            Some(iter) => iter.next_back(),
+            None => None,
+        }
+    }
+
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        match &mut self.iter {
+            Some(iter) => iter.advance_back_by(n),
+            None => NonZero::new(n).map_or(Ok(()), Err),
+        }
+    }
+
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        match &mut self.iter {
+            Some(iter) => iter.nth_back(n),
+            None => None,
+        }
+    }
+
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        match self.iter {
+            Some(iter) => iter.rfold(init, fold),
+            None => init,
+        }
+    }
+
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>,
+    {
+        match &mut self.iter {
+            Some(iter) => iter.try_rfold(init, fold),
+            None => try { init },
+        }
     }
 }
 

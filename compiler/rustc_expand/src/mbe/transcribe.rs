@@ -505,7 +505,7 @@ fn transcribe_pnr<'tx>(
             mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
         }
         ParseNtResult::Block(block) => {
-            mk_delimited(block.span, MetaVarKind::Block, TokenStream::from_ast(block))
+            mk_delimited(block.node.span, MetaVarKind::Block, TokenStream::from_ast(block))
         }
         ParseNtResult::Stmt(stmt) => {
             let stream = if let StmtKind::Empty = stmt.kind {
@@ -517,7 +517,7 @@ fn transcribe_pnr<'tx>(
             mk_delimited(stmt.span, MetaVarKind::Stmt, stream)
         }
         ParseNtResult::Pat(pat, pat_kind) => {
-            mk_delimited(pat.span, MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
+            mk_delimited(pat.node.span, MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
         }
         ParseNtResult::Expr(expr, kind) => {
             let (can_begin_literal_maybe_minus, can_begin_string_literal) = match &expr.kind {
@@ -541,22 +541,22 @@ fn transcribe_pnr<'tx>(
             mk_delimited(lit.span, MetaVarKind::Literal, TokenStream::from_ast(lit))
         }
         ParseNtResult::Ty(ty) => {
-            let is_path = matches!(&ty.kind, TyKind::Path(None, _path));
-            mk_delimited(ty.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
+            let is_path = matches!(&ty.node.kind, TyKind::Path(None, _path));
+            mk_delimited(ty.node.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
         }
         ParseNtResult::Meta(attr_item) => {
-            let has_meta_form = attr_item.meta_kind().is_some();
+            let has_meta_form = attr_item.node.meta_kind().is_some();
             mk_delimited(
-                attr_item.span(),
+                attr_item.node.span(),
                 MetaVarKind::Meta { has_meta_form },
                 TokenStream::from_ast(attr_item),
             )
         }
         ParseNtResult::Path(path) => {
-            mk_delimited(path.span, MetaVarKind::Path, TokenStream::from_ast(path))
+            mk_delimited(path.node.span, MetaVarKind::Path, TokenStream::from_ast(path))
         }
         ParseNtResult::Vis(vis) => {
-            mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
+            mk_delimited(vis.node.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
         }
         ParseNtResult::Guard(guard) => {
             // FIXME(macro_guard_matcher):

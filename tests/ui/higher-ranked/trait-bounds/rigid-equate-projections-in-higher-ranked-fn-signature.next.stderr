@@ -1,10 +1,10 @@
 error[E0284]: type annotations needed
-  --> $DIR/rigid-equate-projections-in-higher-ranked-fn-signature.rs:27:50
+  --> $DIR/rigid-equate-projections-in-higher-ranked-fn-signature.rs:27:12
    |
 LL |     let _: for<'a> fn(<_ as Trait<'a>>::Assoc) = foo::<T>();
-   |                                                  ^^^^^^^^^^ cannot infer type
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
    |
-   = note: cannot satisfy `for<'a> <_ as Trait<'a>>::Assoc == <T as Trait<'_>>::Assoc`
+   = note: cannot satisfy `for<'a> <_ as Trait<'a>>::Assoc == _`
 
 error: aborting due to 1 previous error
 

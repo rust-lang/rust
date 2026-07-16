@@ -1,8 +1,9 @@
 //@ignore-target: windows # No libc socketpair on Windows
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
+//@run-native
 
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
 use std::thread;
@@ -17,7 +18,6 @@ fn main() {
     test_race();
     test_blocking_read();
     test_blocking_write();
-    test_socketpair_setfl_getfl();
 }
 
 fn test_socketpair() {
@@ -30,11 +30,35 @@ fn test_socketpair() {
     let buf = read_exact_array::<5>(fds[1]).unwrap();
     assert_eq!(&buf, data);
 
+    // Test reading and writing using `send` and `recv` instead of
+    // `write` and `read`.
+    let data = b"some data";
+    unsafe {
+        libc_utils::write_all_generic(
+            data.as_ptr().cast(),
+            data.len(),
+            libc_utils::NoRetry,
+            |buf, count| libc::send(fds[1], buf, count, 0),
+        )
+        .unwrap()
+    };
+    let mut buffer = [0u8; 9];
+    unsafe {
+        libc_utils::read_exact_generic(
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc_utils::NoRetry,
+            |buf, count| libc::recv(fds[0], buf, count, 0),
+        )
+        .unwrap()
+    };
+    assert_eq!(&buffer, data);
+
     // Read size > data available in buffer.
     let data = b"abc";
     write_all(fds[0], data).unwrap();
     let mut buf2: [u8; 5] = [0; 5];
-    let (read, rest) = read_split_slice(fds[1], &mut buf2).unwrap();
+    let (read, rest) = read_partial(fds[1], &mut buf2).unwrap();
     assert_eq!(read[..], data[..read.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
     write_all(fds[0], b"12").unwrap();
@@ -52,7 +76,7 @@ fn test_socketpair() {
     let data = b"abc";
     write_all(fds[1], data).unwrap();
     let mut buf4: [u8; 5] = [0; 5];
-    let (read, rest) = read_split_slice(fds[0], &mut buf4).unwrap();
+    let (read, rest) = read_partial(fds[0], &mut buf4).unwrap();
     assert_eq!(read[..], data[..read.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
     write_all(fds[1], b"12").unwrap();
@@ -64,9 +88,9 @@ fn test_socketpair() {
     errno_check(unsafe { libc::close(fds[0]) });
     // Reading the other end should return that data, then EOF.
     let mut buf: [u8; 5] = [0; 5];
-    let (read, _tail) = read_split_slice(fds[1], &mut buf).unwrap();
+    let (read, _tail) = read_partial(fds[1], &mut buf).unwrap();
     assert_eq!(read, data);
-    let (read, _tail) = read_split_slice(fds[1], &mut buf).unwrap();
+    let (read, _tail) = read_partial(fds[1], &mut buf).unwrap();
     assert_eq!(read, &[]);
     // Writing the other end should emit EPIPE.
     let err = write_all(fds[1], &mut buf).unwrap_err();
@@ -132,6 +156,11 @@ fn test_blocking_read() {
 
 // Test the behaviour of a socketpair getting blocked on write and subsequently unblocked.
 fn test_blocking_write() {
+    // The test uses Miri's exact buffer size.
+    if !cfg!(miri) {
+        return;
+    }
+
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     let arr1: [u8; 0x34000] = [1; 0x34000];
@@ -148,31 +177,4 @@ fn test_blocking_write() {
     });
     thread1.join().unwrap();
     thread2.join().unwrap();
-}
-
-/// Basic test for socketpair fcntl's F_SETFL and F_GETFL flag.
-fn test_socketpair_setfl_getfl() {
-    // Initialise socketpair fds.
-    let mut fds = [-1, -1];
-    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
-
-    // Test if both sides have O_RDWR.
-    assert_eq!(errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap(), libc::O_RDWR);
-    assert_eq!(errno_result(unsafe { libc::fcntl(fds[1], libc::F_GETFL) }).unwrap(), libc::O_RDWR);
-
-    // Add the O_NONBLOCK flag with F_SETFL.
-    errno_check(unsafe { libc::fcntl(fds[0], libc::F_SETFL, libc::O_NONBLOCK) });
-
-    // Test if the O_NONBLOCK flag is successfully added.
-    assert_eq!(
-        errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap(),
-        libc::O_RDWR | libc::O_NONBLOCK
-    );
-
-    // The other side remains unchanged.
-    assert_eq!(errno_result(unsafe { libc::fcntl(fds[1], libc::F_GETFL) }).unwrap(), libc::O_RDWR);
-
-    // Test if O_NONBLOCK flag can be unset.
-    errno_check(unsafe { libc::fcntl(fds[0], libc::F_SETFL, 0) });
-    assert_eq!(errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap(), libc::O_RDWR);
 }

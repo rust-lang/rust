@@ -7,7 +7,7 @@
 #![warn(unused)]
 
 fn main() {
-    let x: ! = panic!("aah"); //~ WARN unused
+    let x: ! = panic!("aah");
     drop(x); //~ WARN unreachable
     //~^ WARN unreachable
 }

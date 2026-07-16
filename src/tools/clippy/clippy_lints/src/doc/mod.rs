@@ -69,18 +69,18 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Detects doc comment linebreaks that use double spaces to separate lines, instead of back-slash (`\`).
+    /// Detects doc comments that use double spaces as hard line break, instead of backslash (`\`).
     ///
     /// ### Why is this bad?
-    /// Double spaces, when used as doc comment linebreaks, can be difficult to see, and may
-    /// accidentally be removed during automatic formatting or manual refactoring. The use of a back-slash (`\`)
+    /// Double spaces, when used as hard line break in doc comments, can be difficult to see, and may
+    /// accidentally be removed during automatic formatting or manual refactoring. The use of a backslash (`\`)
     /// is clearer in this regard.
     ///
     /// ### Example
-    /// The two replacement dots in this example represent a double space.
+    /// The two replacement dots (`··`) in this example represent a double space.
     /// ```no_run
-    /// /// This command takes two numbers as inputs and··
-    /// /// adds them together, and then returns the result.
+    /// /// This function adds two numbers and returns the result··
+    /// /// Overflow can occur when the max value is exceeded.
     /// fn add(l: i32, r: i32) -> i32 {
     ///     l + r
     /// }
@@ -88,8 +88,8 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// /// This command takes two numbers as inputs and\
-    /// /// adds them together, and then returns the result.
+    /// /// This function adds two numbers and returns the result\
+    /// /// Overflow can occur when the max value is exceeded.
     /// fn add(l: i32, r: i32) -> i32 {
     ///     l + r
     /// }
@@ -97,7 +97,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.87.0"]
     pub DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS,
     pedantic,
-    "double-space used for doc comment linebreak instead of `\\`"
+    "double space used for doc comment hard line break instead of `\\`"
 }
 
 declare_clippy_lint! {
@@ -1124,6 +1124,9 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 
     let mut containers = Vec::new();
 
+    // Skip collecting text and the per-word scan when `DOC_MARKDOWN` (pedantic) is allowed.
+    let check_doc_markdown = !clippy_utils::is_lint_allowed(cx, DOC_MARKDOWN, cx.last_node_with_lint_attrs);
+
     let mut events = events.peekable();
 
     while let Some((event, range)) = events.next() {
@@ -1238,19 +1241,22 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 if let End(TagEnd::Item) = event {
                     containers.pop();
                 }
-                if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone()) {
-                    span_lint_and_help(
-                        cx,
-                        DOC_MARKDOWN,
-                        span,
-                        "backticks are unbalanced",
-                        None,
-                        "a backtick may be missing a pair",
-                    );
-                    text_to_check.clear();
-                } else {
-                    for (text, range, assoc_code_level) in text_to_check.drain(..) {
-                        markdown::check(cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level);
+                if check_doc_markdown {
+                    if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone())
+                    .or_else(|| span_of_fragments(fragments.fragments)) {
+                        span_lint_and_help(
+                            cx,
+                            DOC_MARKDOWN,
+                            span,
+                            "backticks are unbalanced",
+                            None,
+                            "a backtick may be missing a pair",
+                        );
+                        text_to_check.clear();
+                    } else {
+                        for (text, range, assoc_code_level) in text_to_check.drain(..) {
+                            markdown::check(cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level);
+                        }
                     }
                 }
             },
@@ -1331,7 +1337,9 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         // Don't check the text associated with external URLs
                         continue;
                     }
-                    text_to_check.push((text, range.clone(), code_level));
+                    if check_doc_markdown {
+                        text_to_check.push((text, range.clone(), code_level));
+                    }
                     doc_suspicious_footnotes::check(cx, doc, range, &fragments, attrs);
                 }
             }

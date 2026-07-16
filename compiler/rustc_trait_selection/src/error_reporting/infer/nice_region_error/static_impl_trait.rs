@@ -162,7 +162,12 @@ pub fn suggest_new_region_bound(
             TyKind::OpaqueDef(opaque) => {
                 // Get the identity type for this RPIT
                 let did = opaque.def_id.to_def_id();
-                let ty = Ty::new_opaque(tcx, did, ty::GenericArgs::identity_for_item(tcx, did));
+                let ty = Ty::new_opaque(
+                    tcx,
+                    ty::IsRigid::No,
+                    did,
+                    ty::GenericArgs::identity_for_item(tcx, did),
+                );
 
                 if let Some(span) = opaque.bounds.iter().find_map(|arg| match arg {
                     GenericBound::Outlives(Lifetime {

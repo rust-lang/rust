@@ -135,7 +135,20 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
                 PathResolution::SelfType(imp) => {
                     concrete_type = imp.source(ctx.db())?.value.self_ty()?;
                 }
-                // FIXME: should also work in ADT definitions
+                PathResolution::Def(hir::ModuleDef::Adt(adt)) => {
+                    let make = SyntaxFactory::without_mappings();
+                    let src = adt.source(ctx.db())?.value;
+                    let name = src.name()?;
+                    let generic_params = src.generic_param_list();
+                    let name_ref = make.name_ref(&name.text());
+                    let segment = match generic_params {
+                        Some(params) => {
+                            make.path_segment_generics(name_ref, params.to_generic_args(&make))
+                        }
+                        None => make.path_segment(name_ref),
+                    };
+                    concrete_type = make.ty_path_from_segments([segment], false);
+                }
                 _ => return None,
             }
 
@@ -991,6 +1004,68 @@ impl<T, const C: usize> Tr<'static, u8> for Strukt<'_, T, C> {
             r#"
 trait Tr {
     fn new() -> Self$0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn inline_self_type_in_adt_definition() {
+        check_assist(
+            inline_type_alias,
+            r#"
+enum Foo {
+    A(i32),
+    B(Box<Self$0>),
+}
+"#,
+            r#"
+enum Foo {
+    A(i32),
+    B(Box<Foo>),
+}
+"#,
+        );
+        check_assist(
+            inline_type_alias,
+            r#"
+struct Foo {
+    a: Box<Self$0>,
+}
+"#,
+            r#"
+struct Foo {
+    a: Box<Foo>,
+}
+"#,
+        );
+        check_assist(
+            inline_type_alias,
+            r#"
+struct Foo<T> {
+    a: T,
+    b: Box<Self$0>,
+}
+"#,
+            r#"
+struct Foo<T> {
+    a: T,
+    b: Box<Foo<T>>,
+}
+"#,
+        );
+        check_assist(
+            inline_type_alias,
+            r#"
+union Foo {
+    a: u32,
+    b: std::mem::ManuallyDrop<Box<Self$0>>,
+}
+"#,
+            r#"
+union Foo {
+    a: u32,
+    b: std::mem::ManuallyDrop<Box<Foo>>,
 }
 "#,
         );

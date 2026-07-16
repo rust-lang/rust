@@ -1280,10 +1280,10 @@ fn no_inherent_candidates_proposed() {
     check(
         r#"
 mod baz {
-    pub trait DefDatabase {
+    pub trait SourceDatabase {
         fn method1(&self);
     }
-    pub trait HirDatabase: DefDatabase {
+    pub trait HirDatabase: SourceDatabase {
         fn method2(&self);
     }
 }
@@ -1299,10 +1299,10 @@ mod bar {
     check(
         r#"
 mod baz {
-    pub trait DefDatabase {
+    pub trait SourceDatabase {
         fn method1(&self);
     }
-    pub trait HirDatabase: DefDatabase {
+    pub trait HirDatabase: SourceDatabase {
         fn method2(&self);
     }
 }
@@ -1318,10 +1318,10 @@ mod bar {
     check(
         r#"
 mod baz {
-    pub trait DefDatabase {
+    pub trait SourceDatabase {
         fn method1(&self);
     }
-    pub trait HirDatabase: DefDatabase {
+    pub trait HirDatabase: SourceDatabase {
         fn method2(&self);
     }
 }

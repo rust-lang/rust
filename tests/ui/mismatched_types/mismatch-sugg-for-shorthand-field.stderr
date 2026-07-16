@@ -55,7 +55,7 @@ LL |     let a = async { 42 };
    |             ----- the found `async` block
 ...
 LL |     let s = Demo { a };
-   |                    ^ expected `Pin<Box<...>>`, found `async` block
+   |                    ^ expected `Pin<Box<_>>`, found `async` block
    |
    = note:     expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
            found `async` block `{async block@$DIR/mismatch-sugg-for-shorthand-field.rs:53:13: 53:18}`

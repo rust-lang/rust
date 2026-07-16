@@ -13,7 +13,7 @@ use crate::{
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken,
     ast::{self, AstNode, HasName, make},
-    syntax_editor::{Position, SyntaxEditor, SyntaxMappingBuilder},
+    syntax_editor::{Position, Removable, SyntaxEditor, SyntaxMappingBuilder},
 };
 
 use super::syntax_factory::SyntaxFactory;
@@ -263,6 +263,109 @@ pub fn indent(node: &SyntaxNode, level: IndentLevel) -> SyntaxNode {
     level.clone_increase_indent(node)
 }
 
+impl ast::GenericParamList {
+    /// Constructs a matching [`ast::GenericArgList`]
+    pub fn to_generic_args(&self, make: &SyntaxFactory) -> ast::GenericArgList {
+        let args = self.generic_params().filter_map(|param| match param {
+            ast::GenericParam::LifetimeParam(it) => {
+                Some(ast::GenericArg::LifetimeArg(make.lifetime_arg(it.lifetime()?)))
+            }
+            ast::GenericParam::TypeParam(it) => {
+                Some(ast::GenericArg::TypeArg(make.type_arg(make.ty_name(it.name()?))))
+            }
+            ast::GenericParam::ConstParam(it) => {
+                // Name-only const params get parsed as `TypeArg`s
+                Some(ast::GenericArg::TypeArg(make.type_arg(make.ty_name(it.name()?))))
+            }
+        });
+
+        make::generic_arg_list(args)
+    }
+}
+
+impl ast::UseTree {
+    /// Deletes the usetree node represented by the input. Recursively removes parents, including use nodes that become empty.
+    pub fn remove_recursive(self, editor: &SyntaxEditor) {
+        let parent = self.syntax().parent();
+
+        if let Some(u) = parent.clone().and_then(ast::Use::cast) {
+            u.remove(editor);
+        } else if let Some(u) = parent.and_then(ast::UseTreeList::cast) {
+            if u.use_trees().nth(1).is_none()
+                || u.use_trees().all(|use_tree| {
+                    use_tree.syntax() == self.syntax() || editor.deleted(use_tree.syntax())
+                })
+            {
+                u.parent_use_tree().remove_recursive(editor);
+                return;
+            }
+            self.remove(editor);
+            u.remove_unnecessary_braces(editor);
+        }
+    }
+
+    /// Splits off the given prefix, making it the path component of the use tree,
+    /// appending the rest of the path to all UseTreeList items.
+    ///
+    /// # Examples
+    ///
+    /// `prefix$0::suffix` -> `prefix::{suffix}`
+    ///
+    /// `prefix$0` -> `prefix::{self}`
+    ///
+    /// `prefix$0::*` -> `prefix::{*}`
+    pub fn split_prefix_with_editor(&self, editor: &SyntaxEditor, prefix: &ast::Path) {
+        debug_assert_eq!(self.path(), Some(prefix.top_path()));
+
+        let make = editor.make();
+        let path = self.path().unwrap();
+        let suffix = if path == *prefix {
+            if self.use_tree_list().is_some() {
+                return;
+            } else if self.star_token().is_some() {
+                make.use_tree_glob()
+            } else {
+                let self_path = make.path_unqualified(make.path_segment_self());
+                make.use_tree(self_path, None, self.rename(), false)
+            }
+        } else {
+            let suffix_segments = path.segments().skip(prefix.segments().count());
+            let suffix_path = make.path_from_segments(suffix_segments, false);
+            make.use_tree(
+                suffix_path,
+                self.use_tree_list(),
+                self.rename(),
+                self.star_token().is_some(),
+            )
+        };
+        let use_tree_list = make.use_tree_list(once(suffix));
+        let new_use_tree = make.use_tree(prefix.clone(), Some(use_tree_list), None, false);
+
+        editor.replace(self.syntax(), new_use_tree.syntax());
+    }
+}
+
+impl ast::RecordExprField {
+    /// This will either replace the initializer, or in the case that this is a shorthand convert
+    /// the initializer into the name ref and insert the expr as the new initializer.
+    pub fn replace_expr(&self, editor: &SyntaxEditor, expr: ast::Expr) {
+        if self.name_ref().is_some() {
+            if let Some(prev) = self.expr() {
+                editor.replace(prev.syntax(), expr.syntax());
+            }
+        } else if let Some(ast::Expr::PathExpr(path_expr)) = self.expr()
+            && let Some(path) = path_expr.path()
+            && let Some(name_ref) = path.as_single_name_ref()
+        {
+            // shorthand `{ x }` → expand to `{ x: expr }`
+            let new_field = editor
+                .make()
+                .record_expr_field(editor.make().name_ref(&name_ref.text()), Some(expr));
+            editor.replace(self.syntax(), new_field.syntax());
+        }
+    }
+}
+
 #[test]
 fn test_increase_indent() {
     let arm_list = {
@@ -284,4 +387,30 @@ fn test_increase_indent() {
             _ => (),
         }"
     );
+}
+
+#[test]
+fn split_prefix_inserts_self() {
+    check_split_prefix("use foo;", "foo::{self}");
+}
+
+#[test]
+fn split_prefix_preserves_rename() {
+    check_split_prefix("use foo as bar;", "foo::{self as bar}");
+}
+
+#[test]
+fn split_prefix_wraps_glob() {
+    check_split_prefix("use foo::*;", "foo::{*}");
+}
+
+#[cfg(test)]
+fn check_split_prefix(before: &str, expected: &str) {
+    let source = crate::SourceFile::parse(before, parser::Edition::CURRENT).tree();
+    let use_tree = source.syntax().descendants().find_map(ast::UseTree::cast).unwrap();
+    let (editor, use_tree) = SyntaxEditor::with_ast_node(&use_tree);
+    let prefix = use_tree.path().unwrap();
+    use_tree.split_prefix_with_editor(&editor, &prefix);
+    let edit = editor.finish();
+    assert_eq!(edit.new_root().to_string(), expected);
 }

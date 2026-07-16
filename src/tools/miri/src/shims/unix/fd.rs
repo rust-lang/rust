@@ -8,9 +8,10 @@ use rand::RngExt;
 use rustc_abi::{Align, Size};
 use rustc_target::spec::Os;
 
+use crate::shims::FileDescriptionRef;
 use crate::shims::files::{DynFileDescriptionRef, FileDescription};
 use crate::shims::sig::check_min_vararg_count;
-use crate::shims::unix::linux_like::epoll::EpollReadiness;
+use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -76,9 +77,12 @@ pub trait UnixFileDescription: FileDescription {
         throw_unsup_format!("cannot use ioctl on {}", self.name());
     }
 
-    /// Return which epoll events are currently active.
-    fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadiness> {
-        throw_unsup_format!("{}: epoll does not support this file description", self.name());
+    /// Returns this file description as a Unix socket, if it represents one.
+    fn as_socket<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &MiriInterpCx<'tcx>,
+    ) -> Option<FileDescriptionRef<dyn UnixSocketFileDescription>> {
+        None
     }
 }
 

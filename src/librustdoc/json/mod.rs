@@ -134,7 +134,7 @@ impl<'tcx> JsonRenderer<'tcx> {
 impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     const DESCR: &'static str = "json";
     const RUN_ON_MODULE: bool = false;
-    const NON_STATIC_FILE_EMIT_TYPE: EmitType = EmitType::JsonFiles;
+    const NON_STATIC_FILE_EMIT_TYPE: EmitType = EmitType::IrJsonFiles;
 
     type ModuleData = ();
 
@@ -361,6 +361,6 @@ mod size_asserts {
     // tidy-alphabetical-end
 
     // These contains a `PathBuf`, which is different sizes on different OSes.
-    static_assert_size!(Item, 528 + size_of::<std::path::PathBuf>());
+    static_assert_size!(Item, 544 + size_of::<std::path::PathBuf>());
     static_assert_size!(ExternalCrate, 48 + size_of::<std::path::PathBuf>());
 }

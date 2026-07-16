@@ -1,168 +1,489 @@
+//@aux-build:proc_macros.rs
+
+#![feature(never_type)]
 #![warn(clippy::redundant_else)]
-#![allow(clippy::needless_return, clippy::if_same_then_else, clippy::needless_late_init)]
+#![expect(clippy::unnecessary_operation)]
 
+extern crate proc_macros;
+use proc_macros::{external, inline_macros, with_span};
+
+use core::hint::black_box;
+use core::ops::{Add, Deref, Not};
+
+#[inline_macros]
 fn main() {
-    loop {
-        // break
-        if foo() {
-            println!("Love your neighbor;");
-            break;
+    // then syntactic diverge final expr.
+    {
+        if black_box(false) {
+            return;
         } else {
             //~^ redundant_else
+            black_box(0)
+        };
 
-            println!("yet don't pull down your hedge.");
+        loop {
+            if black_box(false) {
+                break;
+            } else {
+                //~^ redundant_else
+                black_box(0)
+            };
         }
-        // continue
-        if foo() {
-            println!("He that lies down with Dogs,");
-            continue;
+
+        loop {
+            if black_box(false) {
+                continue;
+            } else {
+                //~^ redundant_else
+                black_box(0)
+            };
+        }
+    }
+
+    // then syntactic diverge final stmt.
+    {
+        if black_box(false) {
+            return;
         } else {
             //~^ redundant_else
+            black_box(0)
+        };
 
-            println!("shall rise up with fleas.");
+        loop {
+            if black_box(false) {
+                break;
+            } else {
+                //~^ redundant_else
+                black_box(0)
+            };
+            if black_box(false) {
+                continue;
+            } else {
+                //~^ redundant_else
+                black_box(0)
+            };
         }
-        // match block
-        if foo() {
-            match foo() {
-                1 => break,
-                _ => return,
+    }
+
+    // then panic
+    {
+        if black_box(false) {
+            panic!();
+        } else {
+            //~^ redundant_else
+            black_box(())
+        };
+
+        if black_box(false) {
+            panic!("msg");
+        } else {
+            //~^ redundant_else
+            black_box(0)
+        };
+
+        if black_box(false) {
+            panic!("{}", 0);
+        } else {
+            //~^ redundant_else
+            black_box(0i32)
+        };
+    };
+
+    // no semi on if
+    {
+        if black_box(false) {
+            return;
+        } else {
+            //~^ redundant_else
+            black_box(0);
+        }
+
+        if black_box(false) {
+            return;
+        } else {
+            //~^ redundant_else
+            let _ = 0;
+            black_box(())
+        }
+
+        if black_box(false) {
+            return;
+        } else {
+            //~^ redundant_else
+            { black_box(()) }
+        }
+
+        if black_box(false) {
+            return;
+        } else {
+            //~^ redundant_else
+            if black_box(true) {
+                black_box(0);
+            }
+        }
+
+        if black_box(false) {
+            return;
+        } else {
+            //~^ redundant_else
+            if black_box(true) {
+                // empty
+            } else {
+                black_box(())
+            }
+        }
+
+        if black_box(false) {
+            return;
+        } else {
+            //~^ redundant_else
+            match black_box(0) {
+                0 => {},
+                1 => {
+                    let _ = 0;
+                },
+                _ => black_box(()),
+            }
+        }
+
+        if black_box(false) {
+            return;
+        } else {
+            //~^ redundant_else
+            loop {
+                if black_box(true) {
+                    break black_box(());
+                }
+            }
+        }
+
+        if black_box(false) {
+            return;
+        } else {
+            //~^ redundant_else
+            while black_box(true) {
+                if black_box(true) {
+                    break;
+                }
+            }
+        }
+
+        if black_box(false) {
+            return;
+        } else {
+            //~^ redundant_else
+            for _ in black_box(0..0) {
+                if black_box(true) {
+                    break;
+                }
+            }
+        }
+
+        if black_box(false) {
+            return;
+        } else {
+            //~^ redundant_else
+            black_box(1)
+        }
+    };
+
+    // then nested block diverge
+    {
+        if black_box(false) {
+            {
+                let _ = black_box(0);
+                panic!()
             }
         } else {
             //~^ redundant_else
+            black_box(0)
+        };
 
-            println!("You may delay, but time will not.");
-        }
-    }
-    // else if
-    if foo() {
-        return;
-    } else if foo() {
-        return;
-    } else {
-        //~^ redundant_else
-
-        println!("A fat kitchen makes a lean will.");
-    }
-    // let binding outside of block
-    let _ = {
-        if foo() {
-            return;
+        if black_box(false) {
+            {
+                let _ = black_box(0);
+                return;
+            }
         } else {
             //~^ redundant_else
+            black_box(0)
+        };
+    }
 
-            1
+    // then nested branch diverge
+    {
+        loop {
+            if black_box(false) {
+                match black_box(0) {
+                    0 => return,
+                    1 => panic!(),
+                    2 => break,
+                    _ => continue,
+                }
+            } else {
+                //~^ redundant_else
+                black_box(0)
+            };
         }
-    };
-    // else if with let binding outside of block
-    let _ = {
-        if foo() {
-            return;
-        } else if foo() {
-            return;
+
+        if black_box(false) {
+            if black_box(true) {
+                panic!();
+            } else {
+                //~^ redundant_else
+                return;
+            }
         } else {
             //~^ redundant_else
+            black_box(0)
+        };
+    }
 
-            2
-        }
-    };
-    // inside if let
-    let _ = if let Some(1) = foo() {
-        let _ = 1;
-        if foo() {
+    // if chain diverge
+    {
+        if black_box(false) {
+            panic!()
+        } else if black_box(true) {
             return;
+        } else if black_box(true) {
+            let x = 0;
+            black_box(x + 2 * 55);
+            panic!();
         } else {
             //~^ redundant_else
-
-            1
-        }
-    } else {
-        1
-    };
-
-    //
-    // non-lint cases
-    //
-
-    // sanity check
-    if foo() {
-        let _ = 1;
-    } else {
-        println!("Who is wise? He that learns from every one.");
+            black_box(0)
+        };
     }
-    // else if without else
-    if foo() {
-        return;
-    } else if foo() {
-        foo()
-    };
-    // nested if return
-    if foo() {
-        if foo() {
+
+    // then misc fn diverge
+    {
+        struct S;
+        impl Deref for S {
+            type Target = !;
+            fn deref(&self) -> &! {
+                panic!()
+            }
+        };
+        impl Not for S {
+            type Output = !;
+            fn not(self) -> ! {
+                panic!()
+            }
+        }
+        impl Add for S {
+            type Output = !;
+            fn add(self, other: Self) -> ! {
+                panic!()
+            }
+        }
+
+        if black_box(true) {
+            *S
+        } else if black_box(true) {
+            !S
+        } else if black_box(true) {
+            S + S
+        } else if black_box(true) {
+            S.not()
+        } else if black_box(true) {
+            S::add(S, S)
+        } else {
+            //~^ redundant_else
+            black_box(0)
+        };
+
+        if black_box(true) {
+            *S;
+        } else if black_box(true) {
+            !S;
+        } else if black_box(true) {
+            S + S;
+        } else if black_box(true) {
+            S.not();
+        } else if black_box(true) {
+            S::add(S, S);
+        } else {
+            //~^ redundant_else
+            black_box(0)
+        };
+    }
+
+    // then no diverge
+    {
+        if black_box(true) {
+            black_box(1)
+        } else {
+            black_box(0)
+        };
+
+        if black_box(true) {
+            if black_box(true) { black_box(0) } else { return }
+        } else {
+            black_box(0)
+        };
+
+        if black_box(true) {
+            if black_box(true) { return } else { black_box(0) }
+            //~^ redundant_else
+        } else {
+            black_box(0)
+        };
+
+        loop {
+            if black_box(true) {
+                match black_box(1) {
+                    0 => panic!(),
+                    1 => return,
+                    2 => break,
+                    _ => {
+                        if black_box(true) {
+                            break;
+                        } else if black_box(true) {
+                            panic!()
+                        } else if black_box(true) {
+                            black_box(0)
+                        } else {
+                            return;
+                        }
+                    },
+                }
+            } else {
+                black_box(0)
+            };
+        }
+    }
+
+    // nested in various weird positions
+    {
+        black_box(if black_box(true) {
             return;
-        }
-    } else {
-        foo()
-    };
-    // match with non-breaking branch
-    if foo() {
-        match foo() {
-            1 => foo(),
-            _ => return,
-        }
-    } else {
-        println!("Three may keep a secret, if two of them are dead.");
-    }
-    // let binding
-    let _ = if foo() {
-        return;
-    } else {
-        1
-    };
-    // assign
-    let mut a;
-    a = if foo() {
-        return;
-    } else {
-        1
-    };
-    // assign-op
-    a += if foo() {
-        return;
-    } else {
-        1
-    };
-    // if return else if else
-    if foo() {
-        return;
-    } else if foo() {
-        1
-    } else {
-        2
-    };
-    // if else if return else
-    if foo() {
-        1
-    } else if foo() {
-        return;
-    } else {
-        2
-    };
-    // else if with let binding
-    let _ = if foo() {
-        return;
-    } else if foo() {
-        return;
-    } else {
-        2
-    };
-    // inside function call
-    Box::new(if foo() {
-        return;
-    } else {
-        1
-    });
-}
+        } else {
+            black_box(0)
+        });
 
-fn foo<T>() -> T {
-    unimplemented!("I'm not Santa Claus")
+        let _ = if black_box(true) {
+            return;
+        } else {
+            black_box(0)
+        };
+
+        let _ = black_box([0, 1, 2].as_slice())[if black_box(true) {
+            return;
+        } else {
+            black_box(0)
+        }];
+
+        (if black_box(true) {
+            return;
+        } else {
+            black_box(0i32)
+        })
+        .ilog2();
+
+        return if black_box(true) {
+            return;
+        } else {
+            black_box(())
+        };
+
+        1 + if black_box(true) {
+            return;
+        } else {
+            black_box(0)
+        };
+    }
+
+    // external macros
+    {
+        external! {{
+            if black_box(true) {
+                return
+            } else {
+                black_box(0)
+            };
+        }}
+        with_span! {
+            span
+            {
+                if black_box(true) {
+                    return
+                } else {
+                    black_box(0)
+                };
+            }
+        }
+    }
+
+    // internal macros
+    {
+        fn diverge() -> ! {
+            panic!()
+        }
+
+        inline! {{
+            if black_box(true) {
+                return
+            } else {
+                //~^ redundant_else
+                black_box(0);
+            }
+
+            if black_box(true) {
+                return;
+            } else {
+                //~^ redundant_else
+                black_box(0);
+            }
+
+            if black_box(true) {
+                if black_box(true) {
+                    return;
+                } else {
+                    //~^ redundant_else
+                    let _ = ();
+                    return
+                }
+            } else {
+                //~^ redundant_else
+                black_box(0);
+            }
+
+            if black_box(true) {
+                #[expect(clippy::redundant_else)]
+                if black_box(true) {
+                    return;
+                } else {
+                    let _ = ();
+                    return;
+                };
+            } else {
+                //~^ redundant_else
+                black_box(0);
+            }
+
+            if black_box(true) {
+                diverge();
+            } else {
+                black_box(0);
+            }
+
+            // Needs a semicolon in the suggestion due to the macro call
+            if black_box(true) {
+                return
+            } else {
+                //~^ redundant_else
+                inline!({ black_box(()); })
+            }
+
+            // Needs a semicolon in the suggestion due to the context switch
+            if black_box(true) {
+                return
+            } else {
+                //~^ redundant_else
+                $({ black_box(()) })
+            }
+
+            let _ = 0;
+        }};
+    }
 }

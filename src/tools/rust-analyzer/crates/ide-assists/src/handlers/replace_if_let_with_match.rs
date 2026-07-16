@@ -1,10 +1,9 @@
-use hir::db::ExpandDatabase;
 use itertools::Itertools;
 use std::iter::successors;
 
 use ide_db::{RootDatabase, defs::NameClass, ty_filter::TryEnum};
 use syntax::{
-    AstNode, Edition, SyntaxKind, T, TextRange,
+    AstNode, SyntaxKind, T, TextRange,
     ast::{
         self, HasName,
         edit::{AstNodeEdit, IndentLevel},
@@ -17,7 +16,7 @@ use crate::{
     AssistContext, AssistId, Assists,
     utils::{
         does_pat_match_variant, does_pat_variant_nested_or_literal, unwrap_trivial_block,
-        wrap_paren,
+        wrap_paren_in_guard_chain,
     },
 };
 
@@ -241,28 +240,19 @@ pub(crate) fn replace_match_with_if_let(
         return None;
     }
 
-    let mut arms = match_arm_list.arms();
-    let (first_arm, second_arm) = (arms.next()?, arms.next()?);
-    if arms.next().is_some() || second_arm.guard().is_some() {
-        return None;
-    }
-    if first_arm.guard().is_some() && ctx.edition() < Edition::Edition2024 {
+    let arms = match_arm_list
+        .arms()
+        .map(|arm| Some((arm.pat()?, arm.expr()?, arm.guard())))
+        .collect::<Option<Vec<_>>>()?;
+
+    if arms.len() < 2 {
         return None;
     }
 
-    let (if_let_pat, guard, then_expr, else_expr) = pick_pattern_and_expr_order(
-        &ctx.sema,
-        first_arm.pat()?,
-        second_arm.pat()?,
-        first_arm.expr()?,
-        second_arm.expr()?,
-        first_arm.guard(),
-        second_arm.guard(),
-    )?;
+    let (if_exprs, else_expr) = pick_pattern_and_expr_order(&ctx.sema, arms)?;
     let scrutinee = match_expr.expr()?.reset_indent();
-    let guard = guard.and_then(|it| it.condition());
 
-    let let_ = match &if_let_pat {
+    let let_ = match &if_exprs.first()?.0 {
         ast::Pat::LiteralPat(p)
             if p.literal()
                 .map(|it| it.token().kind())
@@ -289,36 +279,51 @@ pub(crate) fn replace_match_with_if_let(
                 }
             };
 
-            let condition = match if_let_pat {
-                ast::Pat::LiteralPat(p)
-                    if p.literal().is_some_and(|it| it.token().kind() == T![true]) =>
+            let if_branches = if_exprs.into_iter().map(|(pat, then_expr, guard)| {
+                let guard = guard.and_then(|it| it.condition());
+
+                let condition = match pat {
+                    ast::Pat::LiteralPat(p)
+                        if p.literal().is_some_and(|it| it.token().kind() == T![true]) =>
+                    {
+                        scrutinee.clone()
+                    }
+                    ast::Pat::LiteralPat(p)
+                        if p.literal().is_some_and(|it| it.token().kind() == T![false]) =>
+                    {
+                        make.expr_prefix(T![!], scrutinee.clone()).into()
+                    }
+                    ast::Pat::WildcardPat(_) => make.expr_literal("true").into(),
+                    _ => make.expr_let(pat, scrutinee.clone()).into(),
+                };
+                let condition = if condition.syntax().text() == "true"
+                    && let Some(guard) = guard
                 {
-                    scrutinee
-                }
-                ast::Pat::LiteralPat(p)
-                    if p.literal().is_some_and(|it| it.token().kind() == T![false]) =>
-                {
-                    make.expr_prefix(T![!], scrutinee).into()
-                }
-                _ => make.expr_let(if_let_pat, scrutinee).into(),
-            };
-            let condition = if let Some(guard) = guard {
-                let guard = wrap_paren(guard, make, ast::prec::ExprPrecedence::LAnd);
-                make.expr_bin(condition, ast::BinaryOp::LogicOp(ast::LogicOp::And), guard).into()
-            } else {
-                condition
-            };
-            let then_expr = then_expr.reset_indent();
+                    guard
+                } else if let Some(guard) = guard {
+                    let guard = wrap_paren_in_guard_chain(guard, make);
+                    make.expr_bin(condition, ast::BinaryOp::LogicOp(ast::LogicOp::And), guard)
+                        .into()
+                } else {
+                    condition
+                };
+
+                let then_expr = then_expr.reset_indent();
+                let then_block = make_block_expr(then_expr);
+
+                (condition, then_block)
+            });
+
             let else_expr = else_expr.reset_indent();
-            let then_block = make_block_expr(then_expr);
             let else_expr = if is_empty_expr(&else_expr) { None } else { Some(else_expr) };
-            let if_let_expr = make
-                .expr_if(
-                    condition,
-                    then_block,
-                    else_expr.map(make_block_expr).map(ast::ElseBranch::Block),
-                )
-                .indent(IndentLevel::from_node(match_expr.syntax()));
+            let else_branch = else_expr.map(make_block_expr).map(ast::ElseBranch::Block);
+
+            let if_let_expr =
+                if_branches.rfold(else_branch, |else_branch, (condition, then_branch)| {
+                    Some(make.expr_if(condition, then_branch, else_branch).into())
+                });
+            let Some(ast::ElseBranch::IfExpr(if_let_expr)) = if_let_expr else { unreachable!() };
+            let if_let_expr = if_let_expr.indent(match_expr.indent_level());
 
             editor.replace(match_expr.syntax(), if_let_expr.syntax());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
@@ -329,37 +334,33 @@ pub(crate) fn replace_match_with_if_let(
 /// Pick the pattern for the if let condition and return the expressions for the `then` body and `else` body in that order.
 fn pick_pattern_and_expr_order(
     sema: &hir::Semantics<'_, RootDatabase>,
-    pat: ast::Pat,
-    pat2: ast::Pat,
-    expr: ast::Expr,
-    expr2: ast::Expr,
-    guard: Option<ast::MatchGuard>,
-    guard2: Option<ast::MatchGuard>,
-) -> Option<(ast::Pat, Option<ast::MatchGuard>, ast::Expr, ast::Expr)> {
-    if guard.is_some() && guard2.is_some() {
+    mut arms: Vec<(ast::Pat, ast::Expr, Option<ast::MatchGuard>)>,
+) -> Option<(Vec<(ast::Pat, ast::Expr, Option<ast::MatchGuard>)>, ast::Expr)> {
+    if arms.last()?.2.is_some() {
         return None;
     }
-    let res = match (pat, pat2) {
-        (ast::Pat::WildcardPat(_), _) => return None,
-        (pat, ast::Pat::WildcardPat(_)) => (pat, guard, expr, expr2),
-        (pat, _) if is_empty_expr(&expr2) => (pat, guard, expr, expr2),
-        (_, pat) if is_empty_expr(&expr) => (pat, guard, expr2, expr),
-        (pat, pat2) => match (binds_name(sema, &pat), binds_name(sema, &pat2)) {
-            (true, true) => return None,
-            (true, false) => (pat, guard, expr, expr2),
-            (false, true) => {
-                // This pattern triggers an invalid transformation.
-                // See issues #11373, #19443
-                if let ast::Pat::IdentPat(_) = pat2 {
-                    return None;
-                }
-                (pat2, guard2, expr2, expr)
-            }
-            _ if is_sad_pat(sema, &pat) => (pat2, guard2, expr2, expr),
-            (false, false) => (pat, guard, expr, expr2),
-        },
-    };
-    Some(res)
+
+    if matches!(arms.last()?.0, ast::Pat::WildcardPat(_)) {
+        let (_, last, _) = arms.pop()?;
+        return Some((arms, last));
+    }
+
+    if let Some(sad_arm) = arms.iter().rposition(|arm| {
+        matches!(arm, (_, expr, None) if is_empty_expr(expr)) || is_sad_pat(sema, &arm.0)
+    }) {
+        let (_, sad_arm, _) = arms.remove(sad_arm);
+        return Some((arms, sad_arm));
+    }
+
+    // This pattern triggers an invalid transformation.
+    // See issues #11373, #19443
+    // XXX: Perhaps we can extract a let statement to improve
+    if !binds_name(sema, &arms.last()?.0) {
+        let (_, last, _) = arms.pop()?;
+        return Some((arms, last));
+    }
+
+    None
 }
 
 fn is_empty_expr(expr: &ast::Expr) -> bool {
@@ -510,7 +511,7 @@ fn pretty_pat_inside_macro(
         let pretty_node = hir::prettify_macro_expansion(
             db,
             pat,
-            db.expansion_span_map(file_id),
+            file_id.expansion_span_map(db),
             scope.module().krate(db).into(),
         );
         ast::Pat::cast(pretty_node)
@@ -712,13 +713,11 @@ impl VariantData {
         check_assist(
             replace_if_let_with_match,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     if $0let true = true && let Some(1) = None {} else { other() }
 }
 "#,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     match true {
         true if let Some(1) = None => {}
@@ -731,7 +730,6 @@ fn main() {
         check_assist(
             replace_if_let_with_match,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     if true {
         $0if let ParenExpr(expr) = cond
@@ -758,7 +756,6 @@ fn main() {
 }
 "#,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     if true {
         match cond {
@@ -816,13 +813,11 @@ fn main() {
         check_assist(
             replace_if_let_with_match,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     if $0let true = true && let Some(1) = None {}
 }
 "#,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     match true {
         true if let Some(1) = None => {}
@@ -2460,7 +2455,7 @@ fn main() {
     }
 
     #[test]
-    fn test_replace_match_with_if_let_chain() {
+    fn test_replace_match_with_if_let_with_simple_guard() {
         check_assist(
             replace_match_with_if_let,
             r#"
@@ -2496,6 +2491,127 @@ fn main() {
 fn main() {
     if let Some(n) = Some(0) && (n % 2 == 0 || n == 7) {
         ()
+    } else {
+        code()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_replace_match_with_if_let_with_if_let_guard() {
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    match$0 Some(0) {
+        Some(n) if let Some(m) = n.checked_add(1) => (),
+        _ => code(),
+    }
+}
+"#,
+            r#"
+fn main() {
+    if let Some(n) = Some(0) && let Some(m) = n.checked_add(1) {
+        ()
+    } else {
+        code()
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    match$0 Some(0) {
+        Some(n) if let Some(m) = n.checked_add(1) && m > 5 => (),
+        _ => code(),
+    }
+}
+        "#,
+            r#"
+fn main() {
+    if let Some(n) = Some(0) && let Some(m) = n.checked_add(1) && m > 5 {
+        ()
+    } else {
+        code()
+    }
+}
+        "#,
+        );
+
+        // what if the `let` expr is not the first one in the guard?
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    match$0 Some(0) {
+        Some(n) if n > 5 && let Some(m) = n.checked_add(1) => (),
+        _ => code(),
+    }
+}
+        "#,
+            r#"
+fn main() {
+    if let Some(n) = Some(0) && n > 5 && let Some(m) = n.checked_add(1) {
+        ()
+    } else {
+        code()
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_replace_match_multi_arms_with_if_let() {
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    match$0 Some(0) {
+        Some(n) if n % 2 == 0 && n != 6 => (),
+        Some(n) if valided(n) => foo(),
+        _ => code(),
+    }
+}
+"#,
+            r#"
+fn main() {
+    if let Some(n) = Some(0) && (n % 2 == 0 && n != 6) {
+        ()
+    } else if let Some(n) = Some(0) && valided(n) {
+        foo()
+    } else {
+        code()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_replace_match_with_if_let_other_guards() {
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    match$0 Some(0) {
+        Some(n) if n % 2 == 0 && n != 6 => (),
+        _ if cond => foo(),
+        _ => code(),
+    }
+}
+"#,
+            r#"
+fn main() {
+    if let Some(n) = Some(0) && (n % 2 == 0 && n != 6) {
+        ()
+    } else if cond {
+        foo()
     } else {
         code()
     }

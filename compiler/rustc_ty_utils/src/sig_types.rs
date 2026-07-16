@@ -21,6 +21,24 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
 ) -> V::Result {
     let kind = tcx.def_kind(item);
     trace!(?kind);
+    let mut visit_alias = || {
+        if let Some(ty) = tcx.hir_node_by_def_id(item).ty() {
+            // If the type of the item uses `_`, we're gonna error out anyway, but
+            // typeck (which type_of invokes below), will call back into opaque_types_defined_by
+            // causing a cycle. So we just bail out in this case.
+            if ty.is_suggestable_infer_ty() {
+                return V::Result::output();
+            }
+            // Associated types in traits don't necessarily have a type that we can visit
+            try_visit!(
+                visitor.visit(ty.span, tcx.type_of(item).instantiate_identity().skip_norm_wip())
+            );
+        }
+        for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
+            try_visit!(visitor.visit(span, pred.skip_norm_wip()));
+        }
+        V::Result::output()
+    };
     match kind {
         // Walk over the signature of the function
         DefKind::AssocFn | DefKind::Fn => {
@@ -46,25 +64,16 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         | DefKind::AssocTy
         | DefKind::Static { .. }
         | DefKind::Const { .. }
-        | DefKind::AssocConst { .. }
-        | DefKind::AnonConst => {
-            if let Some(ty) = tcx.hir_node_by_def_id(item).ty() {
-                // If the type of the item uses `_`, we're gonna error out anyway, but
-                // typeck (which type_of invokes below), will call back into opaque_types_defined_by
-                // causing a cycle. So we just bail out in this case.
-                if ty.is_suggestable_infer_ty() {
-                    return V::Result::output();
-                }
-                // Associated types in traits don't necessarily have a type that we can visit
-                try_visit!(
-                    visitor
-                        .visit(ty.span, tcx.type_of(item).instantiate_identity().skip_norm_wip())
-                );
-            }
-            for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
-                try_visit!(visitor.visit(span, pred.skip_norm_wip()));
-            }
+        | DefKind::AssocConst { .. } => return visit_alias(),
+        DefKind::AnonConst
+            if tcx.anon_const_kind(item) != ty::AnonConstKind::NonTypeSystemInline =>
+        {
+            return visit_alias();
         }
+        // These are not part of a public API, they can only appear as hidden types, and there
+        // the interesting parts are solely in the signature of the containing item's opaque type
+        // or dyn type.
+        DefKind::AnonConst | DefKind::Closure | DefKind::SyntheticCoroutineBody => {}
         DefKind::OpaqueTy => {
             for (pred, span) in tcx
                 .explicit_item_bounds(item)
@@ -91,10 +100,6 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 try_visit!(visitor.visit(span, pred.skip_norm_wip()));
             }
         }
-        // These are not part of a public API, they can only appear as hidden types, and there
-        // the interesting parts are solely in the signature of the containing item's opaque type
-        // or dyn type.
-        DefKind::InlineConst | DefKind::Closure | DefKind::SyntheticCoroutineBody => {}
         DefKind::Impl { of_trait } => {
             if of_trait {
                 let span = tcx

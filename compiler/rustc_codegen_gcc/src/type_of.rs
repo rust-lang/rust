@@ -75,7 +75,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
                 };
             return cx.context.new_vector_type(element, count);
         }
-        BackendRepr::ScalarPair(..) => {
+        BackendRepr::ScalarPair { .. } => {
             return cx.type_struct(
                 &[
                     layout.scalar_pair_element_gcc_type(cx, 0),
@@ -182,13 +182,13 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => true,
             // FIXME(rustc_scalable_vector): Not yet implemented in rustc_codegen_gcc.
             BackendRepr::SimdScalableVector { .. } => todo!(),
-            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
+            BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => false,
         }
     }
 
     fn is_gcc_scalar_pair(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::ScalarPair(..) => true,
+            BackendRepr::ScalarPair { .. } => true,
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
             | BackendRepr::SimdScalableVector { .. }
@@ -308,8 +308,8 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
-        let (a, b) = match self.backend_repr {
-            BackendRepr::ScalarPair(ref a, ref b) => (a, b),
+        let (a, b, b_offset) = match self.backend_repr {
+            BackendRepr::ScalarPair { ref a, ref b, b_offset } => (a, b, b_offset),
             _ => bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self),
         };
         let scalar = [a, b][index];
@@ -325,7 +325,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             return cx.type_i1();
         }
 
-        let offset = if index == 0 { Size::ZERO } else { a.size(cx).align_to(b.align(cx).abi) };
+        let offset = if index == 0 { Size::ZERO } else { b_offset };
         self.scalar_gcc_type_at(cx, scalar, offset)
     }
 

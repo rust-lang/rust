@@ -13,6 +13,7 @@ fn main() {
     //~^ tuple_array_conversions
     let x = &[1, 2];
     let x = (x[0], x[1]);
+    //~^ tuple_array_conversions
 
     let t1: &[(u32, u32)] = &[(1, 2), (3, 4)];
     let v1: Vec<[u32; 2]> = t1.iter().map(|&(a, b)| [a, b]).collect();
@@ -115,6 +116,7 @@ fn msrv_juust_right() {
     //~^ tuple_array_conversions
     let x = &[1, 2];
     let x = (x[0], x[1]);
+    //~^ tuple_array_conversions
 }
 
 fn issue16192() {

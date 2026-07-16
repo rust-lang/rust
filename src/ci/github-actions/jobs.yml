@@ -2,7 +2,12 @@
 # dynamically in CI from ci.yml.
 runners:
   - &base-job
-    env: { }
+    env:
+      # This force enables the new Cargo build-dir layout for all CI jobs.
+      # The new layout will become the default soon so we enable it on everything
+      # to catch issues as soon as possible.
+      # See: https://github.com/rust-lang/cargo/issues/15010
+      CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT: true
 
   - &job-linux-4c
     os: ubuntu-24.04
@@ -156,11 +161,11 @@ pr:
     env:
       CODEGEN_BACKENDS: gcc
     <<: *job-linux-4c
-  
+
   # This job tests features we want to stabilize soon, to ensure they don't
   # regress.
-  - name: x86_64-gnu-pre-stabilization
-    doc_url: https://rustc-dev-guide.rust-lang.org/tests/pre-stabilization-ci-job.html
+  - name: x86_64-gnu-next-trait-solver-polonius
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/x86_64-gnu-next-trait-solver-polonius-ci-job.html
     env:
       CODEGEN_BACKENDS: llvm
     <<: *job-linux-4c
@@ -375,6 +380,8 @@ auto:
   - name: optional-x86_64-gnu-parallel-frontend
     # This test can be flaky, so do not cancel CI if it fails, for now.
     continue_on_error: true
+    env:
+      DOCKER_SCRIPT: optional-x86_64-gnu-parallel-frontend.sh
     <<: *job-linux-4c
 
   # This job ensures commits landing on nightly still pass the full
@@ -469,7 +476,7 @@ auto:
   - name: dist-x86_64-apple
     env:
       SCRIPT: >-
-        ./x.py dist bootstrap
+        ./x.py dist bootstrap enzyme
         --include-default-paths
         --host=x86_64-apple-darwin
         --target=x86_64-apple-darwin
@@ -715,6 +722,7 @@ auto:
         --target=i686-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
+        --disable-docs
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift

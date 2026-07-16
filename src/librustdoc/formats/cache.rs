@@ -233,6 +233,30 @@ impl Cache {
     }
 }
 
+impl CacheBuilder<'_, '_> {
+    /// Extends `dids` with ones that an impl should be associated with for a type appearing in its
+    /// `Self` type or trait generic arguments, accounting for references and `#[fundamental]`
+    /// wrappers.
+    ///
+    /// This ensures that impls like `impl Trait<Box<Local>> for Foreign`, `impl Trait for
+    /// Box<Local>`, and other variations of these, are documented on `Local`'s page.
+    fn extend_with_fundamental_dids(&self, ty: &clean::Type, dids: &mut FxIndexSet<DefId>) {
+        dids.extend(ty.def_id(self.cache));
+        // without_borrowed_ref allows cases like `impl Trait<&Box<Local>> for Foreign` to be
+        // handled by this function. (This is rare in practice, but easy to handle here.)
+        if let clean::Type::Path { path } = ty.without_borrowed_ref()
+            && let Some(generics) = path.generics()
+            && let ty::Adt(adt, _) =
+                self.tcx.type_of(path.def_id()).instantiate_identity().skip_norm_wip().kind()
+            && adt.is_fundamental()
+        {
+            for inner in generics {
+                self.extend_with_fundamental_dids(inner, dids);
+            }
+        }
+    }
+}
+
 impl DocFolder for CacheBuilder<'_, '_> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if item.item_id.is_local() {
@@ -418,22 +442,9 @@ impl DocFolder for CacheBuilder<'_, '_> {
                 // Note: matching twice to restrict the lifetime of the `i` borrow.
                 let mut dids = FxIndexSet::default();
                 match i.for_ {
-                    clean::Type::Path { ref path }
-                    | clean::BorrowedRef { type_: clean::Type::Path { ref path }, .. } => {
-                        dids.insert(path.def_id());
-                        if let Some(generics) = path.generics()
-                            && let ty::Adt(adt, _) = self
-                                .tcx
-                                .type_of(path.def_id())
-                                .instantiate_identity()
-                                .skip_norm_wip()
-                                .kind()
-                            && adt.is_fundamental()
-                        {
-                            for ty in generics {
-                                dids.extend(ty.def_id(self.cache));
-                            }
-                        }
+                    clean::Type::Path { .. }
+                    | clean::BorrowedRef { type_: clean::Type::Path { .. }, .. } => {
+                        self.extend_with_fundamental_dids(&i.for_, &mut dids);
                     }
                     clean::DynTrait(ref bounds, _)
                     | clean::BorrowedRef { type_: clean::DynTrait(ref bounds, _), .. } => {
@@ -452,7 +463,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
                     && let Some(generics) = trait_.generics()
                 {
                     for bound in generics {
-                        dids.extend(bound.def_id(self.cache));
+                        self.extend_with_fundamental_dids(bound, &mut dids);
                     }
                 }
                 let impl_item = Impl { impl_item: item };

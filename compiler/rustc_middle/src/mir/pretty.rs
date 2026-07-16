@@ -218,7 +218,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
         // All drop shims have the same DefId, so we have to add the type
         // to get unique file names.
         let shim_disambiguator = match source.instance {
-            ty::InstanceKind::DropGlue(_, Some(ty)) => {
+            ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(ty))) => {
                 // Unfortunately, pretty-printed types are not very filename-friendly.
                 // We do some filtering.
                 let mut s = ".".to_owned();
@@ -229,7 +229,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::AsyncDropGlueCtorShim(_, ty) => {
+            ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, ty)) => {
                 let mut s = ".".to_owned();
                 s.extend(ty.to_string().chars().filter_map(|c| match c {
                     ' ' => None,
@@ -238,7 +238,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::AsyncDropGlue(_, ty) => {
+            ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, ty)) => {
                 let ty::Coroutine(_, args) = ty.kind() else {
                     bug!();
                 };
@@ -251,7 +251,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::FutureDropPollShim(_, proxy_cor, impl_cor) => {
+            ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_, proxy_cor, impl_cor)) => {
                 let mut s = ".".to_owned();
                 s.extend(proxy_cor.to_string().chars().filter_map(|c| match c {
                     ' ' => None,
@@ -693,8 +693,8 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
             write!(w, "static mut ")?
         }
         (_, _) if is_function => write!(w, "fn ")?,
-        // things like anon const, not an item
-        (DefKind::AnonConst | DefKind::InlineConst, _) => {}
+        // anon consts are not an item and have no sig
+        (DefKind::AnonConst, _) => {}
         // `global_asm!` have fake bodies, which we may dump after mir-build
         (DefKind::GlobalAsm, _) => {}
         _ => bug!("Unexpected def kind {:?}", kind),
@@ -1491,16 +1491,14 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             let val = match const_ {
                 Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("ty::Param({p})"),
-                    ty::ConstKind::Unevaluated(uv) => {
-                        let kind = match uv.kind {
-                            ty::UnevaluatedConstKind::Projection { def_id }
-                            | ty::UnevaluatedConstKind::Inherent { def_id }
-                            | ty::UnevaluatedConstKind::Free { def_id }
-                            | ty::UnevaluatedConstKind::Anon { def_id } => {
-                                self.tcx.def_path_str(def_id)
-                            }
+                    ty::ConstKind::Alias(_, alias_const) => {
+                        let kind = match alias_const.kind {
+                            ty::AliasConstKind::Projection { def_id }
+                            | ty::AliasConstKind::Inherent { def_id }
+                            | ty::AliasConstKind::Free { def_id }
+                            | ty::AliasConstKind::Anon { def_id } => self.tcx.def_path_str(def_id),
                         };
-                        format!("ty::Unevaluated({}, {:?})", kind, uv.args)
+                        format!("ty::AliasConst({}, {:?})", kind, alias_const.args)
                     }
                     ty::ConstKind::Value(cv) => {
                         format!("ty::Valtree({})", fmt_valtree(&cv))
@@ -2037,7 +2035,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;
-            p.pretty_print_value_path(*d, s)?;
+            p.pretty_print_value_path(*d, s.no_bound_vars().unwrap())?;
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }

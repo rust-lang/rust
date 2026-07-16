@@ -1,4 +1,4 @@
-error[E0277]: expected a `Fn(&'a ())` closure, found `()`
+error[E0277]: expected an `Fn(&'a ())` closure, found `()`
   --> $DIR/const-host-effect-hrtb-no-ice.rs:9:21
    |
 LL |     with_positive::<()>();

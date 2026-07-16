@@ -215,7 +215,13 @@ fn check_call_site_abi<'tcx>(
             if tcx.intrinsic(def_id).is_some() {
                 return;
             }
-            let instance = ty::Instance::expect_resolve(tcx, typing_env, def_id, args, DUMMY_SP);
+            let instance = ty::Instance::expect_resolve(
+                tcx,
+                typing_env,
+                def_id,
+                args.no_bound_vars().unwrap(),
+                DUMMY_SP,
+            );
             tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
         }
         _ => {
@@ -242,7 +248,7 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
                 let callee_ty = instance.instantiate_mir_and_normalize_erasing_regions(
                     tcx,
                     ty::TypingEnv::fully_monomorphized(),
-                    ty::EarlyBinder::bind(callee_ty),
+                    ty::EarlyBinder::bind(tcx, callee_ty),
                 );
                 check_call_site_abi(tcx, callee_ty, body.source.instance, || {
                     let loc = Location {

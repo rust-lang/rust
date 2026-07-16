@@ -49,7 +49,7 @@ pub(super) fn apply_member_constraints<'tcx>(
             rcx.scc_values.add_region(scc_a, scc_b);
         }
 
-        for defining_use in member_constraints.get(&scc_a).into_iter().flatten() {
+        for defining_use in member_constraints.get(&scc_a).into_flat_iter() {
             apply_member_constraint(rcx, scc_a, &defining_use.arg_regions);
         }
     }
@@ -176,7 +176,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CollectMemberConstraintsVisitor<'_, '_,
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => self.visit_closure_args(def_id, args),
 
-            ty::Alias(ty::AliasTy { kind, args, .. })
+            ty::Alias(_, ty::AliasTy { kind, args, .. })
                 if let Some(variances) = self.cx().opt_alias_variances(kind) =>
             {
                 // Skip lifetime parameters that are not captured, since they do

@@ -1,4 +1,5 @@
 use rustc_abi::{BackendRepr, FieldIdx, VariantIdx};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ValTreeCreationError};
 use rustc_middle::traits::ObligationCause;
@@ -17,13 +18,15 @@ use crate::interpret::{
     intern_const_alloc_recursive,
 };
 
-#[instrument(skip(ecx), level = "debug")]
+#[instrument(skip(ecx, visited, settled), level = "debug")]
 fn branches<'tcx>(
     ecx: &CompileTimeInterpCx<'tcx>,
     place: &MPlaceTy<'tcx>,
     field_count: usize,
     variant: Option<VariantIdx>,
     num_nodes: &mut usize,
+    visited: &mut FxHashSet<MPlaceTy<'tcx>>,
+    settled: &mut FxHashMap<MPlaceTy<'tcx>, EvalToValTreeResult<'tcx>>,
 ) -> EvalToValTreeResult<'tcx> {
     let place = match variant {
         Some(variant) => ecx.project_downcast(place, variant).unwrap(),
@@ -45,7 +48,7 @@ fn branches<'tcx>(
 
     for i in 0..field_count {
         let field = ecx.project_field(&place, FieldIdx::from_usize(i)).unwrap();
-        let valtree = const_to_valtree_inner(ecx, &field, num_nodes)?;
+        let valtree = const_to_valtree_inner(ecx, &field, num_nodes, visited, settled)?;
         branches.push(ty::Const::new_value(*ecx.tcx, valtree, field.layout.ty));
     }
 
@@ -57,39 +60,53 @@ fn branches<'tcx>(
     Ok(ty::ValTree::from_branches(*ecx.tcx, branches))
 }
 
-#[instrument(skip(ecx), level = "debug")]
+#[instrument(skip(ecx, visited, settled), level = "debug")]
 fn slice_branches<'tcx>(
     ecx: &CompileTimeInterpCx<'tcx>,
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
+    visited: &mut FxHashSet<MPlaceTy<'tcx>>,
+    settled: &mut FxHashMap<MPlaceTy<'tcx>, EvalToValTreeResult<'tcx>>,
 ) -> EvalToValTreeResult<'tcx> {
     let n = place.len(ecx).unwrap_or_else(|_| panic!("expected to use len of place {place:?}"));
 
     let mut elems = Vec::with_capacity(n as usize);
     for i in 0..n {
         let place_elem = ecx.project_index(place, i).unwrap();
-        let valtree = const_to_valtree_inner(ecx, &place_elem, num_nodes)?;
+        let valtree = const_to_valtree_inner(ecx, &place_elem, num_nodes, visited, settled)?;
         elems.push(ty::Const::new_value(*ecx.tcx, valtree, place_elem.layout.ty));
     }
 
     Ok(ty::ValTree::from_branches(*ecx.tcx, elems))
 }
 
-#[instrument(skip(ecx), level = "debug")]
+#[instrument(skip(ecx, visited, settled), level = "debug")]
 fn const_to_valtree_inner<'tcx>(
     ecx: &CompileTimeInterpCx<'tcx>,
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
+    visited: &mut FxHashSet<MPlaceTy<'tcx>>,
+    settled: &mut FxHashMap<MPlaceTy<'tcx>, EvalToValTreeResult<'tcx>>,
 ) -> EvalToValTreeResult<'tcx> {
     let tcx = *ecx.tcx;
     let ty = place.layout.ty;
     debug!("ty kind: {:?}", ty.kind());
 
+    if let Some(&result) = settled.get(place) {
+        return result;
+    }
+
+    if visited.contains(place) {
+        return Err(ValTreeCreationError::CyclicConst);
+    }
+
     if *num_nodes >= VALTREE_MAX_NODES {
         return Err(ValTreeCreationError::NodesOverflow);
     }
 
-    match ty.kind() {
+    visited.insert(place.clone());
+
+    let result = ensure_sufficient_stack(|| match ty.kind() {
         ty::FnDef(..) => {
             *num_nodes += 1;
             Ok(ty::ValTree::zst(tcx))
@@ -108,7 +125,7 @@ fn const_to_valtree_inner<'tcx>(
             // Since the returned valtree does not contain the type or layout, we can just
             // switch to the base type.
             place.layout = ecx.layout_of(*base).unwrap();
-            ensure_sufficient_stack(|| const_to_valtree_inner(ecx, &place, num_nodes))
+            const_to_valtree_inner(ecx, &place, num_nodes, visited, settled)
         }
 
         ty::RawPtr(_, _) => {
@@ -119,17 +136,17 @@ fn const_to_valtree_inner<'tcx>(
             let val = ecx.read_immediate(place).report_err()?;
             // We could allow wide raw pointers where both sides are integers in the future,
             // but for now we reject them.
-            if matches!(val.layout.backend_repr, BackendRepr::ScalarPair(..)) {
-                return Err(ValTreeCreationError::NonSupportedType(ty));
+            if matches!(val.layout.backend_repr, BackendRepr::ScalarPair { .. }) {
+                Err(ValTreeCreationError::NonSupportedType(ty))
+            } else {
+                let val = val.to_scalar();
+                // We are in the CTFE machine, so ptr-to-int casts will fail.
+                // This can only be `Ok` if `val` already is an integer.
+                match val.try_to_scalar_int() {
+                    Ok(val) => Ok(ty::ValTree::from_scalar_int(tcx, val)),
+                    Err(_) => Err(ValTreeCreationError::NonSupportedType(ty)),
+                }
             }
-            let val = val.to_scalar();
-            // We are in the CTFE machine, so ptr-to-int casts will fail.
-            // This can only be `Ok` if `val` already is an integer.
-            let Ok(val) = val.try_to_scalar_int() else {
-                return Err(ValTreeCreationError::NonSupportedType(ty));
-            };
-            // It's just a ScalarInt!
-            Ok(ty::ValTree::from_scalar_int(tcx, val))
         }
 
         // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
@@ -138,33 +155,39 @@ fn const_to_valtree_inner<'tcx>(
 
         ty::Ref(_, _, _) => {
             let derefd_place = ecx.deref_pointer(place).report_err()?;
-            const_to_valtree_inner(ecx, &derefd_place, num_nodes)
+            const_to_valtree_inner(ecx, &derefd_place, num_nodes, visited, settled)
         }
 
-        ty::Str | ty::Slice(_) | ty::Array(_, _) => slice_branches(ecx, place, num_nodes),
+        ty::Str | ty::Slice(_) | ty::Array(_, _) => {
+            slice_branches(ecx, place, num_nodes, visited, settled)
+        }
         // Trait objects are not allowed in type level constants, as we have no concept for
         // resolving their backing type, even if we can do that at const eval time. We may
         // hypothetically be able to allow `dyn StructuralPartialEq` trait objects in the future,
         // but it is unclear if this is useful.
         ty::Dynamic(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
 
-        ty::Tuple(elem_tys) => branches(ecx, place, elem_tys.len(), None, num_nodes),
+        ty::Tuple(elem_tys) => {
+            branches(ecx, place, elem_tys.len(), None, num_nodes, visited, settled)
+        }
 
         ty::Adt(def, _) => {
             if def.is_union() {
-                return Err(ValTreeCreationError::NonSupportedType(ty));
+                Err(ValTreeCreationError::NonSupportedType(ty))
             } else if def.variants().is_empty() {
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
+            } else {
+                let variant = ecx.read_discriminant(place).report_err()?;
+                branches(
+                    ecx,
+                    place,
+                    def.variant(variant).fields.len(),
+                    def.is_enum().then_some(variant),
+                    num_nodes,
+                    visited,
+                    settled,
+                )
             }
-
-            let variant = ecx.read_discriminant(place).report_err()?;
-            branches(
-                ecx,
-                place,
-                def.variant(variant).fields.len(),
-                def.is_enum().then_some(variant),
-                num_nodes,
-            )
         }
 
         // FIXME(oli-obk): we could look behind opaque types
@@ -186,7 +209,11 @@ fn const_to_valtree_inner<'tcx>(
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
         | ty::UnsafeBinder(_) => Err(ValTreeCreationError::NonSupportedType(ty)),
-    }
+    });
+
+    visited.remove(place);
+    settled.insert(place.clone(), result);
+    result
 }
 
 /// Valtrees don't store the `MemPlaceMeta` that all dynamically sized values have in the interpreter.
@@ -257,7 +284,9 @@ pub(crate) fn eval_to_valtree<'tcx>(
     debug!(?place);
 
     let mut num_nodes = 0;
-    const_to_valtree_inner(&ecx, &place, &mut num_nodes)
+    let mut visited = FxHashSet::default();
+    let mut settled = FxHashMap::default();
+    const_to_valtree_inner(&ecx, &place, &mut num_nodes, &mut visited, &mut settled)
 }
 
 /// Converts a `ValTree` to a `ConstValue`, which is needed after mir

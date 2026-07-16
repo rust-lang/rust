@@ -25,7 +25,7 @@ use hir_def::{
     src::HasSource,
     type_ref::TypeRefId,
 };
-use hir_expand::{FileRange, InFile, db::ExpandDatabase};
+use hir_expand::{FileRange, InFile};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
@@ -278,7 +278,7 @@ fn expr_node(
 ) -> Option<InFile<SyntaxNode>> {
     Some(match body_source_map.expr_syntax(expr) {
         Ok(sp) => {
-            let root = db.parse_or_expand(sp.file_id);
+            let root = sp.file_id.parse_or_expand(db);
             sp.map(|ptr| ptr.to_node(&root).syntax().clone())
         }
         Err(SyntheticSyntax) => return None,
@@ -292,7 +292,7 @@ fn pat_node(
 ) -> Option<InFile<SyntaxNode>> {
     Some(match body_source_map.pat_syntax(pat) {
         Ok(sp) => {
-            let root = db.parse_or_expand(sp.file_id);
+            let root = sp.file_id.parse_or_expand(db);
             sp.map(|ptr| ptr.to_node(&root).syntax().clone())
         }
         Err(SyntheticSyntax) => return None,
@@ -306,7 +306,7 @@ fn type_node(
 ) -> Option<InFile<SyntaxNode>> {
     Some(match body_source_map.type_syntax(type_ref) {
         Ok(sp) => {
-            let root = db.parse_or_expand(sp.file_id);
+            let root = sp.file_id.parse_or_expand(db);
             sp.map(|ptr| ptr.to_node(&root).syntax().clone())
         }
         Err(SyntheticSyntax) => return None,
@@ -349,7 +349,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             if let Some((binding_id, syntax_ptr)) = self_param {
                 let ty = &inference_result.type_of_binding[binding_id];
                 if let Some(syntax_ptr) = syntax_ptr {
-                    let root = db.parse_or_expand(syntax_ptr.file_id);
+                    let root = syntax_ptr.file_id.parse_or_expand(&db);
                     let node = syntax_ptr.map(|ptr| ptr.to_node(&root).syntax().clone());
                     types.push((node, ty.as_ref()));
                 }
@@ -361,7 +361,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                 }
                 let node = match source_map.pat_syntax(pat) {
                     Ok(sp) => {
-                        let root = db.parse_or_expand(sp.file_id);
+                        let root = sp.file_id.parse_or_expand(&db);
                         sp.map(|ptr| ptr.to_node(&root).syntax().clone())
                     }
                     Err(SyntheticSyntax) => continue,
@@ -375,7 +375,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             for (expr, ty) in inference_result.type_of_expr.iter() {
                 let node = match source_map.expr_syntax(expr) {
                     Ok(sp) => {
-                        let root = db.parse_or_expand(sp.file_id);
+                        let root = sp.file_id.parse_or_expand(&db);
                         sp.map(|ptr| ptr.to_node(&root).syntax().clone())
                     }
                     Err(SyntheticSyntax) => continue,
@@ -514,7 +514,8 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         for (def, krate) in defs {
             let (body, source_map) = Body::with_source_map(&db, def);
             let infer = InferenceResult::of(&db, def);
-            let self_param = body.self_param().map(|id| (id, source_map.self_param_syntax()));
+            let self_param =
+                body.self_param.map(|param| (param.formal, source_map.self_param_syntax()));
             infer_def(infer, body, source_map, self_param, krate);
         }
 

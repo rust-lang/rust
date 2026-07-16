@@ -23,7 +23,7 @@ use crate::errors::{Error, ErrorKind, load_errors};
 use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::runtest::compute_diff::{DiffLine, diff_by_lines, make_diff, write_diff};
-use crate::util::{Utf8PathBufExt, add_dylib_path, static_regex};
+use crate::util::{ArgFileCommand, Utf8PathBufExt, add_dylib_path, static_regex};
 use crate::{json, stamp_file_path};
 
 // Helper modules that implement test running logic for each test suite.
@@ -383,7 +383,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    /// Runs a [`Command`] and waits for it to finish, then converts its exit
+    /// Runs a [`ArgFileCommand`] and waits for it to finish, then converts its exit
     /// status and output streams into a [`ProcRes`].
     ///
     /// The command might have succeeded or failed; it is the caller's
@@ -393,7 +393,8 @@ impl<'test> TestCx<'test> {
     /// Panics if the command couldn't be executed at all
     /// (e.g. because the executable could not be found).
     #[must_use = "caller should check whether the command succeeded"]
-    fn run_command_to_procres(&self, cmd: &mut Command) -> ProcRes {
+    fn run_command_to_procres(&self, cmd: ArgFileCommand) -> ProcRes {
+        let (mut cmd, _arg_file) = cmd.build().unwrap();
         let output = cmd
             .output()
             .unwrap_or_else(|e| self.fatal(&format!("failed to exec `{cmd:?}` because: {e}")));
@@ -2579,31 +2580,52 @@ impl<'test> TestCx<'test> {
         // that actually appear in the output.
         // We use uppercase ALLOC to distinguish from the non-normalized version.
         {
-            let mut seen_allocs = indexmap::IndexSet::new();
+            match self.config.mode {
+                // Unfortunately, due to parallel frontend assigning alloc-ids
+                // nondeterministically we resort to dropping ids altogether for now
+                // in ui tests
+                TestMode::Ui => {
+                    // The alloc-id appears in pretty-printed allocations.
+                    normalized = static_regex!(
+                        r"╾─*(a(lloc)?|A(LLOC)?)\d+(\+0x[0-9a-f]+)?(<imm>)?( ?\(\d+ ptr bytes\))?─*╼"
+                    )
+                    .replace_all(&normalized, |_: &Captures<'_>| "╾ALLOC$ID╼".to_string())
+                    .into_owned();
 
-            // The alloc-id appears in pretty-printed allocations.
-            normalized = static_regex!(
-                r"╾─*a(lloc)?([0-9]+)(\+0x[0-9a-f]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼"
-            )
-            .replace_all(&normalized, |caps: &Captures<'_>| {
-                // Renumber the captured index.
-                let index = caps.get(2).unwrap().as_str().to_string();
-                let (index, _) = seen_allocs.insert_full(index);
-                let offset = caps.get(3).map_or("", |c| c.as_str());
-                let imm = caps.get(4).map_or("", |c| c.as_str());
-                // Do not bother keeping it pretty, just make it deterministic.
-                format!("╾ALLOC{index}{offset}{imm}╼")
-            })
-            .into_owned();
+                    // The alloc-id appears in a sentence.
+                    normalized = static_regex!(r"\b(alloc|ALLOC)\d+\b")
+                        .replace_all(&normalized, |_: &Captures<'_>| "ALLOC$ID".to_string())
+                        .into_owned();
+                }
+                // use consistent `AllocId`s in other test modes, where parallel frontend
+                // should not (theoretically) be an issue
+                _ => {
+                    let mut seen_allocs = indexmap::IndexSet::new();
+                    // The alloc-id appears in pretty-printed allocations.
+                    normalized = static_regex!(
+                        r"╾─*a(lloc)?([0-9]+)(\+0x[0-9a-f]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼"
+                    )
+                    .replace_all(&normalized, |caps: &Captures<'_>| {
+                        // Renumber the captured index.
+                        let index = caps.get(2).unwrap().as_str().to_string();
+                        let (index, _) = seen_allocs.insert_full(index);
+                        let offset = caps.get(3).map_or("", |c| c.as_str());
+                        let imm = caps.get(4).map_or("", |c| c.as_str());
+                        // Do not bother keeping it pretty, just make it deterministic.
+                        format!("╾ALLOC{index}{offset}{imm}╼")
+                    })
+                    .into_owned();
 
-            // The alloc-id appears in a sentence.
-            normalized = static_regex!(r"\balloc([0-9]+)\b")
-                .replace_all(&normalized, |caps: &Captures<'_>| {
-                    let index = caps.get(1).unwrap().as_str().to_string();
-                    let (index, _) = seen_allocs.insert_full(index);
-                    format!("ALLOC{index}")
-                })
-                .into_owned();
+                    // The alloc-id appears in a sentence.
+                    normalized = static_regex!(r"\balloc([0-9]+)\b")
+                        .replace_all(&normalized, |caps: &Captures<'_>| {
+                            let index = caps.get(1).unwrap().as_str().to_string();
+                            let (index, _) = seen_allocs.insert_full(index);
+                            format!("ALLOC{index}")
+                        })
+                        .into_owned();
+                }
+            }
         }
 
         // Custom normalization rules

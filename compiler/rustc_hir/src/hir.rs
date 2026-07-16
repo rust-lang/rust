@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 use std::borrow::Cow;
 use std::fmt;
 use std::ops::Not;
@@ -17,6 +17,7 @@ pub use rustc_ast::{
     MetaItemInner, MetaItemLit, Movability, Mutability, Pinnedness, UnOp,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
@@ -387,12 +388,24 @@ pub struct PathSegment<'hir> {
     /// out of those only the segments with no type parameters
     /// to begin with, e.g., `Vec::new` is `<Vec<..>>::new::<..>`.
     pub infer_args: bool,
+
+    /// Whether this segment is a delegation's child segment:
+    /// `reuse Trait::foo`, in this case `foo` is a delegation's child segment.
+    /// Used for faster check during generic args lowering.
+    pub delegation_child_segment: bool,
 }
 
 impl<'hir> PathSegment<'hir> {
     /// Converts an identifier to the corresponding segment.
     pub fn new(ident: Ident, hir_id: HirId, res: Res) -> PathSegment<'hir> {
-        PathSegment { ident, hir_id, res, infer_args: true, args: None }
+        PathSegment {
+            ident,
+            hir_id,
+            res,
+            infer_args: true,
+            args: None,
+            delegation_child_segment: false,
+        }
     }
 
     pub fn invalid() -> Self {
@@ -499,7 +512,7 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
 #[derive(Clone, Copy, Debug, StableHash)]
 #[repr(u8, C)]
 pub enum ConstArgKind<'hir, Unambig = ()> {
-    Tup(&'hir [&'hir ConstArg<'hir, Unambig>]),
+    Tup(&'hir [&'hir ConstArg<'hir>]),
     /// **Note:** Currently this is only used for bare const params
     /// (`N` where `fn foo<const N: usize>(...)`),
     /// not paths to any const (`N` where `const N: usize = ...`).
@@ -3280,7 +3293,6 @@ pub struct TraitItem<'hir> {
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
     pub defaultness: Defaultness,
-    pub has_delayed_lints: bool,
 }
 
 macro_rules! expect_methods_self_kind {
@@ -3384,7 +3396,6 @@ pub struct ImplItem<'hir> {
     pub kind: ImplItemKind<'hir>,
     pub impl_kind: ImplItemImplKind,
     pub span: Span,
-    pub has_delayed_lints: bool,
 }
 
 #[derive(Debug, Clone, Copy, StableHash)]
@@ -3855,24 +3866,46 @@ pub enum OpaqueTyOrigin<D> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
-pub struct DelegationInfo {
-    pub call_expr_id: HirId,
-    pub call_path_res: Option<DefId>,
-    pub parent_args_segment_id: Option<HirId>,
-    pub child_args_segment_id: Option<HirId>,
-    pub self_ty_id: Option<HirId>,
-    pub propagate_self_ty: bool,
-    pub group_id: Option<(LocalExpnId, bool /* unused_target_expr */)>,
+pub enum DelegationSelfTyPropagationKind {
+    /// Used when self type is explicitly specified in free-to-trait reuse
+    /// `reuse <() as Trait>::foo;`.
+    SelfTy(HirId /* Self ty id */),
+    /// Used when infer instead of a self type is specified or self type
+    /// is not specified at all: `reuse Trait::foo; reuse <_ as Trait>::foo;`.
+    SelfParam,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
+#[derive(Debug, StableHash)]
+pub struct DelegationInfo {
+    pub call_expr_id: HirId,
+    pub call_path_res: DefId,
+
+    /// Id of the child segment in delegation: `reuse Trait::foo`,
+    /// `child_seg_id` points to `foo`.
+    pub child_seg_id: HirId,
+
+    /// Ids of parent and child segments, `Some` when we need to take
+    /// generic args of those segments for signature/predicates inheritance.
+    /// `None` in trait impl case or when error delegation is generated, meaning
+    /// we should not access those segments for generic args lowering.
+    /// When `child_seg_id_for_sig` is Some it always equals `child_seg_id`.
+    pub parent_seg_id_for_sig: Option<HirId>,
+    pub child_seg_id_for_sig: Option<HirId>,
+
+    pub self_ty_propagation_kind: Option<DelegationSelfTyPropagationKind>,
+    pub group_id: Option<(LocalExpnId, bool /* unused_target_expr */)>,
+
+    pub arguments_to_map: FxIndexSet<usize>,
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
 pub enum InferDelegationSig<'hir> {
     Input(usize),
     // Place delegation info here, as we always specify output type for delegations.
     Output(&'hir DelegationInfo),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
+#[derive(Debug, Clone, Copy, StableHash)]
 pub enum InferDelegation<'hir> {
     /// Infer the type of this `DefId` through `tcx.type_of(def_id).instantiate_identity()`,
     /// used for const types propagation.
@@ -3930,6 +3963,8 @@ pub enum TyKind<'hir, Unambig = ()> {
     ///
     /// The optional ident is the variant when an enum is passed `field_of!(Enum, Variant.field)`.
     FieldOf(&'hir Ty<'hir>, &'hir TyFieldPath),
+    /// A view of a type. `T.{ field_1, field_2 }`.
+    View(&'hir Ty<'hir>, &'hir [Ident]),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     ///
@@ -4027,12 +4062,12 @@ pub struct Param<'hir> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SplattedArgIndexError {
     /// The splatted argument index is invalid.
-    /// Currently the only unsupported index is `u16::MAX`, which is used to indicate that no argument
-    /// is splatted.
-    InvalidIndex { splatted_arg_index: u16 },
+    /// A `u8::MAX` argument index used to indicate that no argument is splatted.
+    /// Higher values are also not supported, for performance reasons.
+    InvalidIndex { splatted_arg_index: u8 },
 
     /// The splatted argument index is outside the bounds of the function arguments.
-    OutOfBounds { splatted_arg_index: u16, args_len: u16 },
+    OutOfBounds { splatted_arg_index: u8, args_len: u16 },
 }
 
 /// Contains the packed non-type fields of a function declaration.
@@ -4043,9 +4078,9 @@ pub struct FnDeclFlags {
     flags: u8,
 
     /// Which function argument is splatted into multiple arguments in callers, if any?
-    /// Splatting functions with `u16::MAX` arguments is not supported, see `FnSigKind` for
+    /// Splatting functions with `>= u8::MAX` arguments is not supported, see `FnSigKind` for
     /// details.
-    splatted: u16,
+    splatted: u8,
 }
 
 impl fmt::Debug for FnDeclFlags {
@@ -4083,13 +4118,13 @@ impl FnDeclFlags {
 
     /// Marker index for "no splatted argument".
     /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `rustc_ast::FnDecl::NO_SPLATTED_ARG_INDEX`.
-    const NO_SPLATTED_ARG_INDEX: u16 = u16::MAX;
+    const NO_SPLATTED_ARG_INDEX: u8 = u8::MAX;
 
     /// Create a new FnDeclKind with no implicit self, no lifetime elision, no C-style variadic
     /// argument, and no splatting.
     /// To modify these flags, use the `set_*` methods, for readability.
     // FIXME: use Default instead when that trait is const stable.
-    pub const fn default() -> Self {
+    pub fn default() -> Self {
         Self { flags: 0, splatted: 0 }
             .set_implicit_self(ImplicitSelfKind::None)
             .set_lifetime_elision_allowed(false)
@@ -4099,7 +4134,7 @@ impl FnDeclFlags {
 
     /// Set the implicit self kind.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_implicit_self(mut self, implicit_self: ImplicitSelfKind) -> Self {
+    pub fn set_implicit_self(mut self, implicit_self: ImplicitSelfKind) -> Self {
         self.flags &= !Self::IMPLICIT_SELF_MASK;
 
         match implicit_self {
@@ -4115,7 +4150,7 @@ impl FnDeclFlags {
 
     /// Set the C-style variadic argument flag.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_c_variadic(mut self, c_variadic: bool) -> Self {
+    pub fn set_c_variadic(mut self, c_variadic: bool) -> Self {
         if c_variadic {
             self.flags |= Self::C_VARIADIC_FLAG;
         } else {
@@ -4127,7 +4162,7 @@ impl FnDeclFlags {
 
     /// Set the lifetime elision allowed flag.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_lifetime_elision_allowed(mut self, allowed: bool) -> Self {
+    pub fn set_lifetime_elision_allowed(mut self, allowed: bool) -> Self {
         if allowed {
             self.flags |= Self::LIFETIME_ELISION_ALLOWED_FLAG;
         } else {
@@ -4140,16 +4175,17 @@ impl FnDeclFlags {
     /// Set the splatted argument index.
     /// The number of function arguments is used for error checking.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_splatted(
+    pub fn set_splatted(
         mut self,
-        splatted: Option<u16>,
+        splatted: Option<u8>,
         args_len: usize,
     ) -> Result<Self, SplattedArgIndexError> {
         if let Some(splatted_arg_index) = splatted {
             if splatted_arg_index == Self::NO_SPLATTED_ARG_INDEX {
                 // This index value is used as a marker for "no splatting", so it is unsupported.
+                // Higher values are also not supported, for performance reasons.
                 return Err(SplattedArgIndexError::InvalidIndex { splatted_arg_index });
-            } else if splatted_arg_index as usize >= args_len {
+            } else if usize::from(splatted_arg_index) >= args_len {
                 return Err(SplattedArgIndexError::OutOfBounds {
                     splatted_arg_index,
                     args_len: args_len as u16,
@@ -4166,14 +4202,14 @@ impl FnDeclFlags {
 
     /// Set "no splatted arguments" for the function declaration.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_no_splatted_args(mut self) -> Self {
+    pub fn set_no_splatted_args(mut self) -> Self {
         self.splatted = Self::NO_SPLATTED_ARG_INDEX;
 
         self
     }
 
     /// Get the implicit self kind.
-    pub const fn implicit_self(self) -> ImplicitSelfKind {
+    pub fn implicit_self(self) -> ImplicitSelfKind {
         match self.flags & Self::IMPLICIT_SELF_MASK {
             0 => ImplicitSelfKind::None,
             1 => ImplicitSelfKind::Imm,
@@ -4185,17 +4221,17 @@ impl FnDeclFlags {
     }
 
     /// Do the function arguments end with a C-style variadic argument?
-    pub const fn c_variadic(self) -> bool {
+    pub fn c_variadic(self) -> bool {
         self.flags & Self::C_VARIADIC_FLAG != 0
     }
 
     /// Is lifetime elision allowed?
-    pub const fn lifetime_elision_allowed(self) -> bool {
+    pub fn lifetime_elision_allowed(self) -> bool {
         self.flags & Self::LIFETIME_ELISION_ALLOWED_FLAG != 0
     }
 
     /// Get the splatted argument index, if any.
-    pub const fn splatted(self) -> Option<u16> {
+    pub fn splatted(self) -> Option<u8> {
         if self.splatted == Self::NO_SPLATTED_ARG_INDEX { None } else { Some(self.splatted) }
     }
 }
@@ -4245,7 +4281,7 @@ impl<'hir> FnDecl<'hir> {
         self.fn_decl_kind.lifetime_elision_allowed()
     }
 
-    pub fn splatted(&self) -> Option<u16> {
+    pub fn splatted(&self) -> Option<u8> {
         self.fn_decl_kind.splatted()
     }
 
@@ -4462,6 +4498,7 @@ pub struct PolyTraitRef<'hir> {
 pub struct FieldDef<'hir> {
     pub span: Span,
     pub vis_span: Span,
+    pub mut_restriction: &'hir MutRestriction<'hir>,
     pub ident: Ident,
     #[stable_hash(ignore)]
     pub hir_id: HirId,
@@ -4560,7 +4597,6 @@ pub struct Item<'hir> {
     pub kind: ItemKind<'hir>,
     pub span: Span,
     pub vis_span: Span,
-    pub has_delayed_lints: bool,
     /// hint to speed up collection: true if the item is a static or function and has
     /// either an `EiiImpls` or `EiiExternTarget` attribute
     pub eii: bool,
@@ -4573,6 +4609,7 @@ impl<'hir> Item<'hir> {
         HirId::make_owner(self.owner_id.def_id)
     }
 
+    #[inline]
     pub fn item_id(&self) -> ItemId {
         ItemId { owner_id: self.owner_id }
     }
@@ -4715,6 +4752,12 @@ impl fmt::Display for Constness {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct ImplRestriction<'hir> {
+    pub kind: RestrictionKind<'hir>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
+pub struct MutRestriction<'hir> {
     pub kind: RestrictionKind<'hir>,
     pub span: Span,
 }
@@ -4955,7 +4998,6 @@ pub struct ForeignItem<'hir> {
     pub owner_id: OwnerId,
     pub span: Span,
     pub vis_span: Span,
-    pub has_delayed_lints: bool,
 }
 
 impl ForeignItem<'_> {
@@ -5467,7 +5509,7 @@ mod size_asserts {
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);
-    static_assert_size!(ForeignItem<'_>, 96);
+    static_assert_size!(ForeignItem<'_>, 88);
     static_assert_size!(ForeignItemKind<'_>, 56);
     static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 64);

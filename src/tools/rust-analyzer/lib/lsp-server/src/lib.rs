@@ -22,7 +22,9 @@ use crossbeam_channel::{Receiver, RecvError, RecvTimeoutError, Sender};
 
 pub use crate::{
     error::{ExtractError, ProtocolError},
-    msg::{ErrorCode, Message, Notification, Request, RequestId, Response, ResponseError},
+    msg::{
+        ErrorCode, Message, Notification, Request, RequestId, Response, ResponseError, ResponseKind,
+    },
     req_queue::{Incoming, Outgoing, ReqQueue},
     stdio::IoThreads,
 };
@@ -376,9 +378,10 @@ impl Connection {
 #[cfg(test)]
 mod tests {
     use crossbeam_channel::unbounded;
-    use lsp_types::notification::{Exit, Initialized, Notification};
-    use lsp_types::request::{Initialize, Request};
-    use lsp_types::{InitializeParams, InitializedParams};
+    use lsp_types::{
+        ExitNotification, InitializeParams, InitializeRequest, InitializedNotification,
+        InitializedParams, Notification as _, Request as _,
+    };
     use serde_json::to_value;
 
     use crate::{Connection, Message, ProtocolError, RequestId};
@@ -406,7 +409,7 @@ mod tests {
     #[test]
     fn not_exit_notification() {
         let notification = crate::Notification {
-            method: Initialized::METHOD.to_owned(),
+            method: InitializedNotification::METHOD.to_string(),
             params: to_value(InitializedParams {}).unwrap(),
         };
 
@@ -414,7 +417,7 @@ mod tests {
         let req_id = RequestId::from(234);
         let request = crate::Request {
             id: req_id.clone(),
-            method: Initialize::METHOD.to_owned(),
+            method: InitializeRequest::METHOD.to_string(),
             params: params_as_value.clone(),
         };
 
@@ -426,8 +429,10 @@ mod tests {
 
     #[test]
     fn exit_notification() {
-        let notification =
-            crate::Notification { method: Exit::METHOD.to_owned(), params: to_value(()).unwrap() };
+        let notification = crate::Notification {
+            method: ExitNotification::METHOD.to_string(),
+            params: to_value(()).unwrap(),
+        };
         let notification_msg = Message::from(notification);
 
         initialize_start_test(TestCase {

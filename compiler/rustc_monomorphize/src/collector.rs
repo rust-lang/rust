@@ -226,8 +226,8 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, ShimKind, Ty, TyCtxt,
+    TypeFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
@@ -447,7 +447,7 @@ fn collect_items_rec<'tcx>(
                     used_items.push(respan(
                         starting_item.span,
                         MonoItem::Fn(Instance {
-                            def: InstanceKind::ThreadLocalShim(def_id),
+                            def: InstanceKind::Shim(ShimKind::ThreadLocal(def_id)),
                             args: GenericArgs::empty(),
                         }),
                     ));
@@ -633,7 +633,7 @@ fn check_normalization_error<'tcx>(
             match self.instance.try_instantiate_mir_and_normalize_erasing_regions(
                 self.tcx,
                 ty::TypingEnv::fully_monomorphized(),
-                ty::EarlyBinder::bind(t),
+                ty::EarlyBinder::bind(self.tcx, t),
             ) {
                 Ok(_) => ControlFlow::Continue(()),
                 Err(_) => ControlFlow::Break(()),
@@ -697,7 +697,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
             ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(value),
+            ty::EarlyBinder::bind(self.tcx, value),
         )
     }
 
@@ -843,7 +843,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                             self.tcx,
                             ty::TypingEnv::fully_monomorphized(),
                             def_id,
-                            args,
+                            args.no_bound_vars().unwrap(),
                             source,
                         )
                         && instance.def.requires_caller_location(self.tcx)
@@ -899,6 +899,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 mir::AssertKind::NullPointerDereference => {
                     push_mono_lang_item(self, LangItem::PanicNullPointerDereference);
                 }
+                mir::AssertKind::NullReferenceConstructed => {
+                    push_mono_lang_item(self, LangItem::PanicNullReferenceConstructed);
+                }
                 mir::AssertKind::InvalidEnumConstruction(_) => {
                     push_mono_lang_item(self, LangItem::PanicInvalidEnumConstruction);
                 }
@@ -949,6 +952,7 @@ fn visit_fn_use<'tcx>(
     output: &mut MonoItems<'tcx>,
 ) {
     if let ty::FnDef(def_id, args) = *ty.kind() {
+        let args = args.no_bound_vars().unwrap();
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(
                 tcx,
@@ -995,11 +999,18 @@ fn visit_instance_use<'tcx>(
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
             }
         } else if !intrinsic.must_be_overridden
-            && !tcx.sess.replaced_intrinsics.contains(&intrinsic.name)
+            && (tcx.sess.opts.unstable_opts.force_intrinsic_fallback
+                || !tcx.sess.replaced_intrinsics.contains(&intrinsic.name))
         {
             // Codegen the fallback body of intrinsics with fallback bodies.
             // We have to skip this otherwise as there's no body to codegen.
-            // We also skip intrinsics the backend handles, to reduce monomorphizations.
+            //
+            // We also skip `replaced_intrinsics` which are always replaced by the backend and hence
+            // monomorphizing the fallback body would be pointless.
+            //
+            // However, when -Zforce-intrinsic-fallback is set (e.g. to test the fallback
+            // implementations) we ignore the optimization hint and do monomorphize
+            // the fallback body.
             let instance = ty::Instance::new_raw(instance.def_id(), instance.args);
             if tcx.should_codegen_locally(instance) {
                 output.push(create_fn_mono_item(tcx, instance, source));
@@ -1008,15 +1019,17 @@ fn visit_instance_use<'tcx>(
     }
 
     match instance.def {
-        ty::InstanceKind::Virtual(..) | ty::InstanceKind::Intrinsic(_) => {
+        ty::InstanceKind::Virtual(..)
+        | ty::InstanceKind::Intrinsic(_)
+        | ty::InstanceKind::LlvmIntrinsic(_) => {
             if !is_direct_call {
                 bug!("{:?} being reified", instance);
             }
         }
-        ty::InstanceKind::ThreadLocalShim(..) => {
+        ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..)) => {
             bug!("{:?} being reified", instance);
         }
-        ty::InstanceKind::DropGlue(_, None) => {
+        ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) => {
             // Don't need to emit noop drop glue if we are calling directly.
             //
             // Note that we also optimize away the call to visit_instance_use in vtable construction
@@ -1025,18 +1038,18 @@ fn visit_instance_use<'tcx>(
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
         }
-        ty::InstanceKind::DropGlue(_, Some(_))
-        | ty::InstanceKind::FutureDropPollShim(..)
-        | ty::InstanceKind::AsyncDropGlue(_, _)
-        | ty::InstanceKind::AsyncDropGlueCtorShim(_, _)
-        | ty::InstanceKind::VTableShim(..)
-        | ty::InstanceKind::ReifyShim(..)
-        | ty::InstanceKind::ClosureOnceShim { .. }
-        | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceKind::Item(..)
-        | ty::InstanceKind::FnPtrShim(..)
-        | ty::InstanceKind::CloneShim(..)
-        | ty::InstanceKind::FnPtrAddrShim(..) => {
+        ty::InstanceKind::Item(..)
+        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(_)))
+        | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, _))
+        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, _))
+        | ty::InstanceKind::Shim(ty::ShimKind::VTable(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::Reify(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnce { .. })
+        | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure { .. })
+        | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(..)) => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
     }
@@ -1390,6 +1403,7 @@ fn visit_mentioned_item<'tcx>(
     match *item {
         MentionedItem::Fn(ty) => {
             if let ty::FnDef(def_id, args) = *ty.kind() {
+                let args = args.no_bound_vars().unwrap();
                 let instance = Instance::expect_resolve(
                     tcx,
                     ty::TypingEnv::fully_monomorphized(),

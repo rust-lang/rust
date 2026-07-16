@@ -13,7 +13,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::PrintPolyTraitPredicateExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _, Unnormalized};
-use rustc_session::errors::feature_err_unstable_feature_bound;
+use rustc_session::diagnostics::feature_err_unstable_feature_bound;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 
@@ -144,14 +144,14 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
         },
     );
 
-    // If our `body_id` has been set (and isn't just from a dummy obligation cause),
+    // If our `body_def_id` has been set (and isn't just from a dummy obligation cause),
     // then try to look for a param-env clause that would apply. The way we compute
     // this is somewhat manual, since we need the spans, so we elaborate this directly
     // from `predicates_of` rather than actually looking at the param-env which
     // otherwise would be more appropriate.
-    let body_id = obligation.cause.body_id;
-    if body_id != CRATE_DEF_ID {
-        let predicates = tcx.predicates_of(body_id.to_def_id()).instantiate_identity(tcx);
+    let body_def_id = obligation.cause.body_def_id;
+    if body_def_id != CRATE_DEF_ID {
+        let predicates = tcx.predicates_of(body_def_id.to_def_id()).instantiate_identity(tcx);
         for (pred, span) in
             elaborate(tcx, predicates.into_iter().map(|(c, s)| (c.skip_norm_wip(), s)))
         {
@@ -231,7 +231,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return match self.tainted_by_errors() {
                         None => self
                             .emit_inference_failure_err(
-                                obligation.cause.body_id,
+                                obligation.cause.body_def_id,
                                 span,
                                 trait_pred.self_ty().skip_binder().into(),
                                 TypeAnnotationNeeded::E0282,
@@ -285,7 +285,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         })
                         .collect();
                     self.emit_inference_failure_err_with_type_hint(
-                        obligation.cause.body_id,
+                        obligation.cause.body_def_id,
                         span,
                         term,
                         TypeAnnotationNeeded::E0283,
@@ -369,7 +369,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             impl_candidates.as_slice(),
                             obligation,
                             trait_pred,
-                            obligation.cause.body_id,
+                            obligation.cause.body_def_id,
                             &mut err,
                             false,
                             obligation.param_env,
@@ -384,7 +384,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
 
                 if term.is_some_and(|term| term.as_type().is_some())
-                    && let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id)
+                    && let Some(body) =
+                        self.tcx.hir_maybe_body_owned_by(obligation.cause.body_def_id)
                 {
                     let mut expr_finder = FindExprBySpan::new(span, self.tcx);
                     expr_finder.visit_expr(&body.value);
@@ -546,7 +547,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
 
                 self.emit_inference_failure_err(
-                    obligation.cause.body_id,
+                    obligation.cause.body_def_id,
                     span,
                     term,
                     TypeAnnotationNeeded::E0282,
@@ -565,7 +566,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
                 self.emit_inference_failure_err(
-                    obligation.cause.body_id,
+                    obligation.cause.body_def_id,
                     span,
                     a.into(),
                     TypeAnnotationNeeded::E0282,
@@ -599,7 +600,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let predicate = self.tcx.short_string(predicate, &mut long_ty_path);
                 if let Some(term) = term {
                     self.emit_inference_failure_err(
-                        obligation.cause.body_id,
+                        obligation.cause.body_def_id,
                         span,
                         term,
                         TypeAnnotationNeeded::E0284,
@@ -631,7 +632,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     data.walk().filter_map(ty::GenericArg::as_term).find(|term| term.is_infer());
                 if let Some(term) = term {
                     self.emit_inference_failure_err(
-                        obligation.cause.body_id,
+                        obligation.cause.body_def_id,
                         span,
                         term,
                         TypeAnnotationNeeded::E0284,
@@ -653,7 +654,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ..)) => self
                 .emit_inference_failure_err(
-                    obligation.cause.body_id,
+                    obligation.cause.body_def_id,
                     span,
                     ct.into(),
                     TypeAnnotationNeeded::E0284,

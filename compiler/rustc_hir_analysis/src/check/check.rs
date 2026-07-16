@@ -24,7 +24,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
-use rustc_span::{DesugaringKind, sym};
+use rustc_span::sym;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits;
@@ -337,7 +337,7 @@ fn check_opaque_meets_bounds<'tcx>(
         }),
     };
 
-    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
+    let opaque_ty = Ty::new_opaque(tcx, ty::IsRigid::No, def_id.to_def_id(), args);
 
     // `ReErased` regions appear in the "parent_args" of closures/coroutines.
     // We're ignoring them here and replacing them with fresh region variables.
@@ -534,7 +534,7 @@ fn sanity_check_found_hidden_type<'tcx>(
         // Nothing was actually constrained.
         return Ok(());
     }
-    if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.ty.kind() {
+    if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.ty.kind() {
         if def_id == key.def_id.to_def_id() && args == key.args {
             // Nothing was actually constrained, this is an opaque usage that was
             // only discovered to be opaque after inference vars resolved.
@@ -778,8 +778,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 if has_default {
                     // need to store default and type of default
                     let ct = tcx.const_param_default(param.def_id).skip_binder();
-                    if let ty::ConstKind::Unevaluated(uv) = ct.kind()
-                        && let Some(def_id) = uv.kind.opt_def_id()
+                    if let ty::ConstKind::Alias(_, alias_const) = ct.kind()
+                        && let Some(def_id) = alias_const.kind.opt_def_id()
                     {
                         tcx.ensure_ok().type_of(def_id);
                     }
@@ -839,9 +839,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().associated_items(def_id);
             if of_trait {
                 let impl_trait_header = tcx.impl_trait_header(def_id);
-                res = res.and(tcx.ensure_result().coherent_trait(
-                    impl_trait_header.trait_ref.instantiate_identity().skip_norm_wip().def_id,
-                ));
+                res = res
+                    .and(tcx.ensure_result().coherent_trait(impl_trait_header.trait_ref.def_id()));
 
                 if res.is_ok() {
                     // Checking this only makes sense if the all trait impls satisfy basic
@@ -1172,7 +1171,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
 
         // These have no wf checks
         DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::ExternCrate
         | DefKind::Macro(..)
         | DefKind::Use
@@ -1255,7 +1253,7 @@ fn check_overriding_final_trait_item<'tcx>(
     trait_item: ty::AssocItem,
     impl_item: ty::AssocItem,
 ) {
-    if trait_item.defaultness(tcx).is_final() {
+    if trait_item.is_fn() && trait_item.defaultness(tcx).is_final() {
         tcx.dcx().emit_err(diagnostics::OverridingFinalTraitFunction {
             impl_span: tcx.def_span(impl_item.def_id),
             trait_span: tcx.def_span(trait_item.def_id),
@@ -2117,9 +2115,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             // * check for emptiness to detect lone user-written `?Sized` bounds
             // * compare the param span to the pred span to detect lone user-written `Sized` bounds
             let has_explicit_bounds = bounded_params.is_empty()
-                || (*bounded_params).get(&param.index).is_some_and(|&&pred_sp| {
-                    !pred_sp.is_desugaring(DesugaringKind::DefaultBound { def: param.def_id })
-                });
+                || (*bounded_params).get(&param.index).is_some_and(|&&pred_sp| pred_sp != span);
             let const_param_help = !has_explicit_bounds;
 
             let mut diag = tcx.dcx().create_err(diagnostics::UnusedGenericParameter {
@@ -2193,7 +2189,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                 impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) {
                         match *t.kind() {
-                            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: def }, .. }) => {
+                            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: def }, .. }) => {
                                 self.opaques.push(def);
                             }
                             ty::Closure(def_id, ..) | ty::Coroutine(def_id, ..) => {
@@ -2226,10 +2222,13 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                     let mut label_match = |ty: Ty<'_>, span| {
                         for arg in ty.walk() {
                             if let ty::GenericArgKind::Type(ty) = arg.kind()
-                                && let ty::Alias(ty::AliasTy {
-                                    kind: ty::Opaque { def_id: captured_def_id },
-                                    ..
-                                }) = *ty.kind()
+                                && let ty::Alias(
+                                    _,
+                                    ty::AliasTy {
+                                        kind: ty::Opaque { def_id: captured_def_id },
+                                        ..
+                                    },
+                                ) = *ty.kind()
                                 && captured_def_id == opaque_def_id.to_def_id()
                             {
                                 err.span_label(

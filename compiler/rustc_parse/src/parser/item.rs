@@ -23,7 +23,7 @@ use super::{
     AllowConstBlockItems, AttrWrapper, ExpKeywordPair, ExpTokenPair, FollowedByType, ForceCollect,
     Parser, PathStyle, Recovered, Trailing, UsePreAttrPos,
 };
-use crate::errors::{
+use crate::diagnostics::{
     self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField,
     UseDoubleColonSuggestion, UseRegularStructSuggestion,
 };
@@ -196,7 +196,7 @@ impl<'a> Parser<'a> {
             // At this point, we have failed to parse an item.
             if !matches!(vis.kind, VisibilityKind::Inherited) {
                 let vis_str = pprust::vis_to_string(&vis).trim_end().to_string();
-                let mut err = this.dcx().create_err(errors::VisibilityNotFollowedByItem {
+                let mut err = this.dcx().create_err(diagnostics::VisibilityNotFollowedByItem {
                     span: vis.span,
                     vis: vis_str,
                 });
@@ -206,7 +206,7 @@ impl<'a> Parser<'a> {
                         .name
                         .find_similar(&rustc_span::symbol::used_keywords(|| ident.span.edition()))
                 {
-                    err.subdiagnostic(errors::MisspelledKw {
+                    err.subdiagnostic(diagnostics::MisspelledKw {
                         similar_kw: similar_kw.to_string(),
                         span: ident.span,
                         is_incorrect_case,
@@ -216,9 +216,9 @@ impl<'a> Parser<'a> {
             }
 
             if let Defaultness::Default(span) = def {
-                this.dcx().emit_err(errors::DefaultNotFollowedByItem { span });
+                this.dcx().emit_err(diagnostics::DefaultNotFollowedByItem { span });
             } else if let Defaultness::Final(span) = def {
-                this.dcx().emit_err(errors::FinalNotFollowedByItem { span });
+                this.dcx().emit_err(diagnostics::FinalNotFollowedByItem { span });
             }
 
             if !attrs_allowed {
@@ -232,14 +232,14 @@ impl<'a> Parser<'a> {
     fn error_on_unconsumed_default(&self, def: Defaultness, kind: &ItemKind) {
         match def {
             Defaultness::Default(span) => {
-                self.dcx().emit_err(errors::InappropriateDefault {
+                self.dcx().emit_err(diagnostics::InappropriateDefault {
                     span,
                     article: kind.article(),
                     descr: kind.descr(),
                 });
             }
             Defaultness::Final(span) => {
-                self.dcx().emit_err(errors::InappropriateFinal {
+                self.dcx().emit_err(diagnostics::InappropriateFinal {
                     span,
                     article: kind.article(),
                     descr: kind.descr(),
@@ -423,7 +423,7 @@ impl<'a> Parser<'a> {
         self.bump();
         match self.parse_use_item() {
             Ok(u) => {
-                self.dcx().emit_err(errors::RecoverImportAsUse { span, token_name });
+                self.dcx().emit_err(diagnostics::RecoverImportAsUse { span, token_name });
                 Ok(Some(u))
             }
             Err(e) => {
@@ -510,14 +510,22 @@ impl<'a> Parser<'a> {
             // possible struct or enum definition where `struct` or `enum` was forgotten
             if self.look_ahead(1, |t| *t == token::CloseBrace) {
                 // `S {}` could be unit enum or struct
-                Some(errors::MissingKeywordForItemDefinition::EnumOrStruct { span })
+                Some(diagnostics::MissingKeywordForItemDefinition::EnumOrStruct { span })
             } else if self.look_ahead(2, |t| *t == token::Colon)
                 || self.look_ahead(3, |t| *t == token::Colon)
             {
                 // `S { f:` or `S { pub f:`
-                Some(errors::MissingKeywordForItemDefinition::Struct { span, insert_span, ident })
+                Some(diagnostics::MissingKeywordForItemDefinition::Struct {
+                    span,
+                    insert_span,
+                    ident,
+                })
             } else {
-                Some(errors::MissingKeywordForItemDefinition::Enum { span, insert_span, ident })
+                Some(diagnostics::MissingKeywordForItemDefinition::Enum {
+                    span,
+                    insert_span,
+                    ident,
+                })
             }
         } else if self.check(exp!(OpenParen)) {
             // possible function or tuple struct definition where `fn` or `struct` was forgotten
@@ -531,30 +539,38 @@ impl<'a> Parser<'a> {
                 self.bump(); // `{`
                 self.consume_block(exp!(OpenBrace), exp!(CloseBrace), ConsumeClosingDelim::Yes);
                 if is_method {
-                    errors::MissingKeywordForItemDefinition::Method { span, insert_span, ident }
+                    diagnostics::MissingKeywordForItemDefinition::Method {
+                        span,
+                        insert_span,
+                        ident,
+                    }
                 } else {
-                    errors::MissingKeywordForItemDefinition::Function { span, insert_span, ident }
+                    diagnostics::MissingKeywordForItemDefinition::Function {
+                        span,
+                        insert_span,
+                        ident,
+                    }
                 }
             } else if is_pub && self.check(exp!(Semi)) {
-                errors::MissingKeywordForItemDefinition::Struct { span, insert_span, ident }
+                diagnostics::MissingKeywordForItemDefinition::Struct { span, insert_span, ident }
             } else {
-                errors::MissingKeywordForItemDefinition::Ambiguous {
+                diagnostics::MissingKeywordForItemDefinition::Ambiguous {
                     span,
                     subdiag: if found_generics {
                         None
                     } else if let Ok(snippet) = self.span_to_snippet(ident_span) {
-                        Some(errors::AmbiguousMissingKwForItemSub::SuggestMacro {
+                        Some(diagnostics::AmbiguousMissingKwForItemSub::SuggestMacro {
                             span: ident_span,
                             snippet,
                         })
                     } else {
-                        Some(errors::AmbiguousMissingKwForItemSub::HelpMacro)
+                        Some(diagnostics::AmbiguousMissingKwForItemSub::HelpMacro)
                     },
                 }
             };
             Some(err)
         } else if found_generics {
-            Some(errors::MissingKeywordForItemDefinition::Ambiguous { span, subdiag: None })
+            Some(diagnostics::MissingKeywordForItemDefinition::Ambiguous { span, subdiag: None })
         } else {
             None
         };
@@ -662,11 +678,20 @@ impl<'a> Parser<'a> {
         let constness = self.parse_constness(Case::Sensitive);
         let safety = self.parse_safety(Case::Sensitive);
         self.expect_keyword(exp!(Impl))?;
-
+        let mut generics_snapshot = None;
         // First, parse generic parameters if necessary.
         let mut generics = if self.choose_generics_over_qpath(0) {
             self.parse_generics()?
         } else {
+            // We might be mistakenly trying to use a generic type as a generic parameter.
+            // impl<X<T>> Trait for Y<T> { ... }
+            if self.look_ahead(0, |t| t == &token::Lt)
+                && self.look_ahead(1, |t| t.is_ident())
+                && self.look_ahead(2, |t| t == &token::Lt)
+            {
+                generics_snapshot = Some(self.create_snapshot_for_diagnostic());
+            }
+
             let mut generics = Generics::default();
             // impl A for B {}
             //    /\ this is where `generics.span` should point when there are no type params.
@@ -684,7 +709,7 @@ impl<'a> Parser<'a> {
             || self.is_kw_followed_by_ident(kw::Async)
         {
             self.bump();
-            self.dcx().emit_err(errors::AsyncImpl { span: self.prev_token.span });
+            self.dcx().emit_err(diagnostics::AsyncImpl { span: self.prev_token.span });
         }
 
         let polarity = self.parse_polarity();
@@ -693,14 +718,18 @@ impl<'a> Parser<'a> {
         let ty_first = if self.token.is_keyword(kw::For) && self.look_ahead(1, |t| t != &token::Lt)
         {
             let span = self.prev_token.span.between(self.token.span);
-            return Err(self.dcx().create_err(errors::MissingTraitInTraitImpl {
+            return Err(self.dcx().create_err(diagnostics::MissingTraitInTraitImpl {
                 span,
                 for_span: span.to(self.token.span),
             }));
         } else {
-            self.parse_ty_with_generics_recovery(&generics)?
+            self.parse_ty_with_generics_recovery(&generics).map_err(|e| {
+                let Some(mut snapshot) = generics_snapshot else {
+                    return e;
+                };
+                snapshot.maybe_type_in_generic_parameter(e)
+            })?
         };
-
         // If `for` is missing we try to recover.
         let has_for = self.eat_keyword(exp!(For));
         let missing_for_span = self.prev_token.span.between(self.token.span);
@@ -731,7 +760,8 @@ impl<'a> Parser<'a> {
             Some(ty_second) => {
                 // impl Trait for Type
                 if !has_for {
-                    self.dcx().emit_err(errors::MissingForInTraitImpl { span: missing_for_span });
+                    self.dcx()
+                        .emit_err(diagnostics::MissingForInTraitImpl { span: missing_for_span });
                 }
 
                 let ty_first = *ty_first;
@@ -747,14 +777,16 @@ impl<'a> Parser<'a> {
                             // `impl<T: Default> impl Default for Wrapper<T>`
                             //                   ^^^^^
                             let extra_impl_kw = ty_first.span.until(bound.span());
-                            self.dcx().emit_err(errors::ExtraImplKeywordInTraitImpl {
+                            self.dcx().emit_err(diagnostics::ExtraImplKeywordInTraitImpl {
                                 extra_impl_kw,
                                 impl_trait_span: ty_first.span,
                             });
                             poly_trait_ref.trait_ref.path.clone()
                         } else {
                             return Err(self.dcx().create_err(
-                                errors::ExpectedTraitInTraitImplFoundType { span: ty_first.span },
+                                diagnostics::ExpectedTraitInTraitImplFoundType {
+                                    span: ty_first.span,
+                                },
                             ));
                         }
                     }
@@ -768,7 +800,7 @@ impl<'a> Parser<'a> {
             None => {
                 let self_ty = ty_first;
                 let error = |modifier, modifier_name, modifier_span| {
-                    self.dcx().create_err(errors::TraitImplModifierInInherentImpl {
+                    self.dcx().create_err(diagnostics::TraitImplModifierInInherentImpl {
                         span: self_ty.span,
                         modifier,
                         modifier_name,
@@ -838,7 +870,7 @@ impl<'a> Parser<'a> {
         let Some(of_trait) = of_trait else {
             return Err(self
                 .dcx()
-                .create_err(errors::ImplReuseInherentImpl { span: until_expr_span }));
+                .create_err(diagnostics::ImplReuseInherentImpl { span: until_expr_span }));
         };
 
         let body = self.parse_delegation_body()?;
@@ -849,11 +881,7 @@ impl<'a> Parser<'a> {
             attrs: Default::default(),
             span: whole_reuse_span,
             tokens: None,
-            vis: Visibility {
-                kind: VisibilityKind::Inherited,
-                span: whole_reuse_span,
-                tokens: None,
-            },
+            vis: Visibility { kind: VisibilityKind::Inherited, span: whole_reuse_span },
             kind: AssocItemKind::DelegationMac(Box::new(DelegationMac {
                 qself: None,
                 prefix: of_trait.trait_ref.path.clone(),
@@ -918,7 +946,7 @@ impl<'a> Parser<'a> {
 
         // Recover `impl Ty;` instead of `impl Ty {}`
         if self.token == TokenKind::Semi {
-            self.dcx().emit_err(errors::UseEmptyBlockNotSemi { span: self.token.span });
+            self.dcx().emit_err(diagnostics::UseEmptyBlockNotSemi { span: self.token.span });
             self.bump();
             return Ok(ThinVec::new());
         }
@@ -1135,14 +1163,14 @@ impl<'a> Parser<'a> {
         // Parse optional colon and supertrait bounds.
         let had_colon = self.eat(exp!(Colon));
         let span_at_colon = self.prev_token.span;
-        let bounds = if had_colon { self.parse_generic_bounds()? } else { Vec::new() };
+        let bounds = if had_colon { self.parse_generic_bounds()? } else { ThinVec::new() };
 
         let span_before_eq = self.prev_token.span;
         if self.eat(exp!(Eq)) {
             // It's a trait alias.
             if had_colon {
                 let span = span_at_colon.to(span_before_eq);
-                self.dcx().emit_err(errors::BoundsNotAllowedOnTraitAliases { span });
+                self.dcx().emit_err(diagnostics::BoundsNotAllowedOnTraitAliases { span });
             }
 
             let bounds = self.parse_generic_bounds()?;
@@ -1151,13 +1179,14 @@ impl<'a> Parser<'a> {
 
             let whole_span = lo.to(self.prev_token.span);
             if is_auto == IsAuto::Yes {
-                self.dcx().emit_err(errors::TraitAliasCannotBeAuto { span: whole_span });
+                self.dcx().emit_err(diagnostics::TraitAliasCannotBeAuto { span: whole_span });
             }
             if let Safety::Unsafe(_) = safety {
-                self.dcx().emit_err(errors::TraitAliasCannotBeUnsafe { span: whole_span });
+                self.dcx().emit_err(diagnostics::TraitAliasCannotBeUnsafe { span: whole_span });
             }
             if let RestrictionKind::Restricted { .. } = impl_restriction.kind {
-                self.dcx().emit_err(errors::TraitAliasCannotBeImplRestricted { span: whole_span });
+                self.dcx()
+                    .emit_err(diagnostics::TraitAliasCannotBeImplRestricted { span: whole_span });
             }
 
             self.psess.gated_spans.gate(sym::trait_alias, whole_span);
@@ -1226,7 +1255,8 @@ impl<'a> Parser<'a> {
                             define_opaque,
                             eii_impls: _,
                         }) => {
-                            self.dcx().emit_err(errors::AssociatedStaticItemNotAllowed { span });
+                            self.dcx()
+                                .emit_err(diagnostics::AssociatedStaticItemNotAllowed { span });
                             AssocItemKind::Const(Box::new(ConstItem {
                                 defaultness: Defaultness::Implicit,
                                 ident,
@@ -1253,7 +1283,8 @@ impl<'a> Parser<'a> {
         let mut generics = self.parse_generics()?;
 
         // Parse optional colon and param bounds.
-        let bounds = if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { Vec::new() };
+        let bounds =
+            if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { ThinVec::new() };
         generics.where_clause = self.parse_where_clause()?;
 
         let ty = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
@@ -1284,8 +1315,7 @@ impl<'a> Parser<'a> {
     fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.token.span;
 
-        let mut prefix =
-            ast::Path { segments: ThinVec::new(), span: lo.shrink_to_lo(), tokens: None };
+        let mut prefix = ast::Path { segments: ThinVec::new(), span: lo.shrink_to_lo() };
         let kind =
             if self.check(exp!(OpenBrace)) || self.check(exp!(Star)) || self.is_import_coupler() {
                 // `use *;` or `use ::*;` or `use {...};` or `use ::{...};`
@@ -1306,8 +1336,9 @@ impl<'a> Parser<'a> {
                 } else {
                     // Recover from using a colon as path separator.
                     while self.eat_noexpect(&token::Colon) {
-                        self.dcx()
-                            .emit_err(errors::SingleColonImportPath { span: self.prev_token.span });
+                        self.dcx().emit_err(diagnostics::SingleColonImportPath {
+                            span: self.prev_token.span,
+                        });
 
                         // We parse the rest of the path and append it to the original prefix.
                         self.parse_path_segments(&mut prefix.segments, PathStyle::Mod, None)?;
@@ -1411,9 +1442,9 @@ impl<'a> Parser<'a> {
             write!(fixed_name, "_{}", part.name).unwrap();
         }
 
-        self.dcx().emit_err(errors::ExternCrateNameWithDashes {
+        self.dcx().emit_err(diagnostics::ExternCrateNameWithDashes {
             span: fixed_name_sp,
-            sugg: errors::ExternCrateNameWithDashesSugg { dashes },
+            sugg: diagnostics::ExternCrateNameWithDashesSugg { dashes },
         });
 
         Ok(Ident::from_str_and_span(&fixed_name, fixed_name_sp))
@@ -1476,7 +1507,7 @@ impl<'a> Parser<'a> {
                         ItemKind::Const(ConstItem { ident, ty, rhs_kind, .. }) => {
                             let const_span = Some(span.with_hi(ident.span.lo()))
                                 .filter(|span| span.can_be_used_for_suggestions());
-                            self.dcx().emit_err(errors::ExternItemCannotBeConst {
+                            self.dcx().emit_err(diagnostics::ExternItemCannotBeConst {
                                 ident_span: ident.span,
                                 const_span,
                             });
@@ -1514,7 +1545,7 @@ impl<'a> Parser<'a> {
             }) => false,
             _ => true,
         };
-        self.dcx().emit_err(errors::BadItemKind { span, descr, ctx, help });
+        self.dcx().emit_err(diagnostics::BadItemKind { span, descr, ctx, help });
         None
     }
 
@@ -1584,10 +1615,11 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp!(Mut)) {
             let span = self.prev_token.span;
             self.dcx()
-                .emit_err(errors::ConstGlobalCannotBeMutable { ident_span: span, const_span });
+                .emit_err(diagnostics::ConstGlobalCannotBeMutable { ident_span: span, const_span });
         } else if self.eat_keyword(exp!(Let)) {
             let span = self.prev_token.span;
-            self.dcx().emit_err(errors::ConstLetMutuallyExclusive { span: const_span.to(span) });
+            self.dcx()
+                .emit_err(diagnostics::ConstLetMutuallyExclusive { span: const_span.to(span) });
         }
     }
 
@@ -1614,7 +1646,7 @@ impl<'a> Parser<'a> {
 
         if self.token == TokenKind::Lt && self.may_recover() {
             let generics = self.parse_generics()?;
-            self.dcx().emit_err(errors::StaticWithGenerics { span: generics.span });
+            self.dcx().emit_err(diagnostics::StaticWithGenerics { span: generics.span });
         }
 
         // Parse the type of a static item. That is, the `":" $ty` fragment.
@@ -1682,9 +1714,9 @@ impl<'a> Parser<'a> {
             if self.may_recover() { self.parse_where_clause()? } else { WhereClause::default() };
 
         let rhs = match (self.eat(exp!(Eq)), const_arg) {
-            (true, true) => ConstItemRhsKind::TypeConst {
-                rhs: Some(self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?),
-            },
+            (true, true) => {
+                ConstItemRhsKind::TypeConst { rhs: Some(self.parse_expr_anon_const()?) }
+            }
             (true, false) => ConstItemRhsKind::Body { rhs: Some(self.parse_expr()?) },
             (false, true) => ConstItemRhsKind::TypeConst { rhs: None },
             (false, false) => ConstItemRhsKind::Body { rhs: None },
@@ -1698,13 +1730,13 @@ impl<'a> Parser<'a> {
         if before_where_clause.has_where_token
             && let Some(rhs_span) = rhs.span()
         {
-            self.dcx().emit_err(errors::WhereClauseBeforeConstBody {
+            self.dcx().emit_err(diagnostics::WhereClauseBeforeConstBody {
                 span: before_where_clause.span,
                 name: ident.span,
                 body: rhs_span,
                 sugg: if !after_where_clause.has_where_token {
                     self.psess.source_map().span_to_snippet(rhs_span).ok().map(|body_s| {
-                        errors::WhereClauseBeforeConstBodySugg {
+                        diagnostics::WhereClauseBeforeConstBodySugg {
                             left: before_where_clause.span.shrink_to_lo(),
                             snippet: body_s,
                             right: before_where_clause.span.shrink_to_hi().to(rhs_span),
@@ -1772,19 +1804,19 @@ impl<'a> Parser<'a> {
         };
 
         let span = self.prev_token.span.shrink_to_hi();
-        let err = self.dcx().create_err(errors::MissingConstType { span, colon, kind });
+        let err = self.dcx().create_err(diagnostics::MissingConstType { span, colon, kind });
         err.stash(span, StashKey::ItemNoType);
 
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
-        Box::new(Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID, tokens: None })
+        Box::new(Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID })
     }
 
     /// Parses an enum declaration.
     fn parse_item_enum(&mut self) -> PResult<'a, ItemKind> {
         if self.token.is_keyword(kw::Struct) {
             let span = self.prev_token.span.to(self.token.span);
-            let err = errors::EnumStructMutuallyExclusive { span };
+            let err = diagnostics::EnumStructMutuallyExclusive { span };
             if self.look_ahead(1, |t| t.is_ident()) {
                 self.bump();
                 self.dcx().emit_err(err);
@@ -1800,7 +1832,7 @@ impl<'a> Parser<'a> {
 
         // Possibly recover `enum Foo;` instead of `enum Foo {}`
         let (variants, _) = if self.token == TokenKind::Semi {
-            self.dcx().emit_err(errors::UseEmptyBlockNotSemi { span: self.token.span });
+            self.dcx().emit_err(diagnostics::UseEmptyBlockNotSemi { span: self.token.span });
             self.bump();
             (thin_vec![], Trailing::No)
         } else {
@@ -1904,11 +1936,8 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             };
 
-            let disr_expr = if this.eat(exp!(Eq)) {
-                Some(this.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?)
-            } else {
-                None
-            };
+            let disr_expr =
+                if this.eat(exp!(Eq)) { Some(this.parse_expr_anon_const()?) } else { None };
 
             let span = vlo.to(this.prev_token.span);
             if ident.name == kw::Underscore {
@@ -1993,7 +2022,7 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
             body
         } else {
-            let err = errors::UnexpectedTokenAfterStructName::new(self.token.span, self.token);
+            let err = diagnostics::UnexpectedTokenAfterStructName::new(self.token.span, self.token);
             return Err(self.dcx().create_err(err));
         };
 
@@ -2129,7 +2158,7 @@ impl<'a> Parser<'a> {
                 if p.token == token::Eq {
                     let mut snapshot = p.create_snapshot_for_diagnostic();
                     snapshot.bump();
-                    match snapshot.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst) {
+                    match snapshot.parse_expr_anon_const() {
                         Ok(const_expr) => {
                             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
                             p.psess.gated_spans.gate(sym::default_field_values, sp);
@@ -2234,7 +2263,7 @@ impl<'a> Parser<'a> {
             token::CloseBrace => {}
             token::DocComment(..) => {
                 let previous_span = self.prev_token.span;
-                let mut err = errors::DocCommentDoesNotDocumentAnything {
+                let mut err = diagnostics::DocCommentDoesNotDocumentAnything {
                     span: self.token.span,
                     missing_comma: None,
                 };
@@ -2358,7 +2387,7 @@ impl<'a> Parser<'a> {
         }
         let default = if self.token == token::Eq {
             self.bump();
-            let const_expr = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
+            let const_expr = self.parse_expr_anon_const()?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
             self.psess.gated_spans.gate(sym::default_field_values, sp);
             Some(const_expr)
@@ -2389,8 +2418,7 @@ impl<'a> Parser<'a> {
         {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
-                let inherited_vis =
-                    Visibility { span: DUMMY_SP, kind: VisibilityKind::Inherited, tokens: None };
+                let inherited_vis = Visibility { span: DUMMY_SP, kind: VisibilityKind::Inherited };
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode =
                     FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true };
@@ -2511,7 +2539,7 @@ impl<'a> Parser<'a> {
                 return IsMacroRulesItem::Yes { has_bang: true };
             } else if self.look_ahead(1, |t| t.is_ident()) {
                 // macro_rules foo
-                self.dcx().emit_err(errors::MacroRulesMissingBang {
+                self.dcx().emit_err(diagnostics::MacroRulesMissingBang {
                     span: macro_rules_span,
                     hi: macro_rules_span.shrink_to_hi(),
                 });
@@ -2539,7 +2567,7 @@ impl<'a> Parser<'a> {
         if self.eat(exp!(Bang)) {
             // Handle macro_rules! foo!
             let span = self.prev_token.span;
-            self.dcx().emit_err(errors::MacroNameRemoveBang { span });
+            self.dcx().emit_err(diagnostics::MacroNameRemoveBang { span });
         }
 
         let body = self.parse_delim_args()?;
@@ -2562,9 +2590,10 @@ impl<'a> Parser<'a> {
         let vstr = pprust::vis_to_string(vis);
         let vstr = vstr.trim_end();
         if macro_rules {
-            self.dcx().emit_err(errors::MacroRulesVisibility { span: vis.span, vis: vstr });
+            self.dcx().emit_err(diagnostics::MacroRulesVisibility { span: vis.span, vis: vstr });
         } else {
-            self.dcx().emit_err(errors::MacroInvocationVisibility { span: vis.span, vis: vstr });
+            self.dcx()
+                .emit_err(diagnostics::MacroInvocationVisibility { span: vis.span, vis: vstr });
         }
     }
 
@@ -2632,7 +2661,7 @@ impl<'a> Parser<'a> {
             if self.token == token::Comma {
                 item = item.to(self.token.span);
             }
-            self.dcx().emit_err(errors::NestedAdt {
+            self.dcx().emit_err(diagnostics::NestedAdt {
                 span: kw_token.span,
                 item,
                 kw_str,
@@ -2754,7 +2783,7 @@ impl<'a> Parser<'a> {
                 // If we see `for Ty ...` then user probably meant `impl` item.
                 if self.token.is_keyword(kw::For) {
                     old_err.cancel();
-                    return Err(self.dcx().create_err(errors::FnTypoWithImpl { fn_span }));
+                    return Err(self.dcx().create_err(diagnostics::FnTypoWithImpl { fn_span }));
                 } else {
                     return Err(old_err);
                 }
@@ -2836,7 +2865,7 @@ impl<'a> Parser<'a> {
                     if let Some(fn_trait_span) = fn_trait_span {
                         // Typo'd Fn* trait bounds such as
                         // fn foo<F>() where F: FnOnce -> () {}
-                        err.subdiagnostic(errors::FnTraitMissingParen { span: fn_trait_span });
+                        err.subdiagnostic(diagnostics::FnTraitMissingParen { span: fn_trait_span });
                     } else if let Ok(snippet) = self.psess.source_map().span_to_snippet(ret_ty_span)
                     {
                         // If token behind right arrow is not a Fn* trait, the programmer
@@ -2845,7 +2874,7 @@ impl<'a> Parser<'a> {
                         err.primary_message(
                             "return type should be specified after the function parameters",
                         );
-                        err.subdiagnostic(errors::MisplacedReturnType {
+                        err.subdiagnostic(diagnostics::MisplacedReturnType {
                             fn_params_end,
                             snippet,
                             ret_ty_span,
@@ -2904,9 +2933,12 @@ impl<'a> Parser<'a> {
             let _ = self.parse_expr()?;
             self.expect_semi()?; // `;`
             let span = eq_sp.to(self.prev_token.span);
-            let guar = self.dcx().emit_err(errors::FunctionBodyEqualsExpr {
+            let guar = self.dcx().emit_err(diagnostics::FunctionBodyEqualsExpr {
                 span,
-                sugg: errors::FunctionBodyEqualsExprSugg { eq: eq_sp, semi: self.prev_token.span },
+                sugg: diagnostics::FunctionBodyEqualsExprSugg {
+                    eq: eq_sp,
+                    semi: self.prev_token.span,
+                },
             });
             (AttrVec::new(), Some(self.mk_block_err(span, guar)))
         } else {
@@ -3081,9 +3113,9 @@ impl<'a> Parser<'a> {
 
         if let Some(CoroutineKind::Async { span, .. }) = coroutine_kind {
             if span.is_rust_2015() {
-                self.dcx().emit_err(errors::AsyncFnIn2015 {
+                self.dcx().emit_err(diagnostics::AsyncFnIn2015 {
                     span,
-                    help: errors::HelpUseLatestEdition::new(),
+                    help: diagnostics::HelpUseLatestEdition::new(),
                 });
             }
         }
@@ -3332,8 +3364,9 @@ impl<'a> Parser<'a> {
         && !self.token.is_keyword(kw::For)
         {
             // recover from missing argument list, e.g. `fn main -> () {}`
-            self.dcx()
-                .emit_err(errors::MissingFnParams { span: self.prev_token.span.shrink_to_hi() });
+            self.dcx().emit_err(diagnostics::MissingFnParams {
+                span: self.prev_token.span.shrink_to_hi(),
+            });
             return Ok(ThinVec::new());
         }
 
@@ -3399,7 +3432,7 @@ impl<'a> Parser<'a> {
                     VARARGS_WITHOUT_PATTERN,
                     this.token.span,
                     ast::CRATE_NODE_ID,
-                    errors::VarargsWithoutPattern { span: this.token.span },
+                    diagnostics::VarargsWithoutPattern { span: this.token.span },
                 );
                 false
             } else {
@@ -3410,6 +3443,7 @@ impl<'a> Parser<'a> {
                 let (pat, colon) = this.parse_fn_param_pat_colon()?;
                 if !colon {
                     let mut err = this.unexpected().unwrap_err();
+                    let pat_span = pat.span;
                     return if let Some(ident) = this.parameter_without_type(
                         &mut err,
                         pat,
@@ -3418,7 +3452,9 @@ impl<'a> Parser<'a> {
                         fn_parse_mode,
                     ) {
                         let guar = err.emit();
-                        Ok((dummy_arg(ident, guar), Trailing::No, UsePreAttrPos::No))
+                        let mut arg = dummy_arg(ident, guar);
+                        arg.span = pat_span;
+                        Ok((arg, Trailing::No, UsePreAttrPos::No))
                     } else {
                         Err(err)
                     };
@@ -3531,9 +3567,9 @@ impl<'a> Parser<'a> {
                     let snap = this.create_snapshot_for_diagnostic();
                     match this.parse_ty() {
                         Ok(ty) => {
-                            this.dcx().emit_err(errors::IncorrectTypeOnSelf {
+                            this.dcx().emit_err(diagnostics::IncorrectTypeOnSelf {
                                 span: ty.span,
-                                move_self_modifier: errors::MoveSelfModifier {
+                                move_self_modifier: diagnostics::MoveSelfModifier {
                                     removal_span: modifier_span,
                                     insertion_span: ty.span.shrink_to_lo(),
                                     modifier: modifier.to_ref_suggestion(),
@@ -3550,7 +3586,7 @@ impl<'a> Parser<'a> {
             };
         // Recover for the grammar `*self`, `*const self`, and `*mut self`.
         let recover_self_ptr = |this: &mut Self| {
-            this.dcx().emit_err(errors::SelfArgumentPointer { span: this.token.span });
+            this.dcx().emit_err(diagnostics::SelfArgumentPointer { span: this.token.span });
 
             Ok((SelfKind::Value(Mutability::Not), expect_self_ident(this), this.prev_token.span))
         };

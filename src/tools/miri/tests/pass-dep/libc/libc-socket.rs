@@ -853,7 +853,7 @@ fn test_sockopt_sndtimeo() {
             Err(err) if err.kind() == ErrorKind::WouldBlock => {
                 // The last write should return an EAGAIN/EWOULDBLOCK after ~40ms instead
                 // of blocking indefinitely.
-                assert!(Instant::now().duration_since(before) >= Duration::from_millis(40));
+                assert!(before.elapsed() >= Duration::from_millis(40));
                 break;
             }
             Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
@@ -899,5 +899,5 @@ fn test_sockopt_rcvtimeo() {
     };
     assert_eq!(err.kind(), ErrorKind::WouldBlock);
     // Ensure that we blocked for at least 40 milliseconds.
-    assert!(Instant::now().duration_since(before) >= Duration::from_millis(40))
+    assert!(before.elapsed() >= Duration::from_millis(40))
 }

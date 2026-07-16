@@ -6,7 +6,7 @@ use base_db::Crate;
 use hir_def::{
     AdtId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, GenericParamId, HasModule,
     ItemContainerId, LocalFieldId, Lookup, TraitId,
-    expr_store::{Body, ExpressionStore, HygieneId, path::Path},
+    expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ClosureKind, ExprId, ExprOrPatId,
         LabelId, Literal, MatchArm, Pat, PatId, RecordLitField, RecordSpread,
@@ -1404,11 +1404,14 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         expr_id: ExprId,
     ) -> Result<'db, ()> {
         if let Expr::Field { expr, name } = &self.store[expr_id] {
-            if let TyKind::Tuple(..) = self.expr_ty_after_adjustments(*expr).kind() {
+            if let TyKind::Tuple(tys) = self.expr_ty_after_adjustments(*expr).kind() {
                 let index =
                     name.as_tuple_index().ok_or(MirLowerError::TypeError("named field on tuple"))?
                         as u32;
-                *place = place.project(ProjectionElem::Field(FieldIndex(index)))
+                if tys.get(index as usize).is_none() {
+                    return Err(MirLowerError::TypeError("tuple field index out of range"));
+                }
+                *place = place.project(ProjectionElem::Field(FieldIndex(index)));
             } else {
                 let field = self
                     .infer
@@ -2312,7 +2315,7 @@ pub fn mir_body_query<'db>(db: &'db dyn HirDatabase, def: InferBodyId) -> Result
     let (store, root_expr, self_param, params) = match def {
         InferBodyId::DefWithBodyId(def) => {
             let body = Body::of(db, def);
-            (&**body, body.root_expr(), body.self_param(), &*body.params)
+            (&**body, body.root_expr(), body.self_param.map(|param| param.formal), &*body.params)
         }
         InferBodyId::AnonConstId(def) => {
             let loc = def.loc(db);
@@ -2351,7 +2354,7 @@ pub fn lower_body_to_mir<'db>(
     infer: &InferenceResult,
     root_expr: ExprId,
     self_param: Option<BindingId>,
-    params: &[PatId],
+    params: &[Param<PatId>],
 ) -> Result<'db, MirBody> {
     // Extract params and self_param only when lowering the body's root expression for a function.
     if let Some(fid) = owner.as_function() {
@@ -2366,7 +2369,7 @@ pub fn lower_body_to_mir<'db>(
             store,
             infer,
             root_expr,
-            params.iter().copied().zip(param_tys),
+            params.iter().map(|param| param.formal).zip(param_tys),
             self_param,
         )
     } else {

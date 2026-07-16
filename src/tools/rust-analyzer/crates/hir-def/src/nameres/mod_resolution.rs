@@ -1,9 +1,9 @@
 //! This module resolves `mod foo;` declaration to file.
 use arrayvec::ArrayVec;
-use base_db::AnchoredPath;
+use base_db::{AnchoredPath, SourceDatabase};
 use hir_expand::{EditionedFileId, name::Name};
 
-use crate::{HirFileId, db::DefDatabase};
+use crate::HirFileId;
 
 const MOD_DEPTH_LIMIT: usize = 32;
 
@@ -58,7 +58,7 @@ impl ModDir {
 
     pub(super) fn resolve_declaration(
         &self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         file_id: HirFileId,
         name: &Name,
         attr_path: Option<&str>,

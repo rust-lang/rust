@@ -44,7 +44,7 @@ use hir_def::{
     FunctionId, GenericDefId, GenericParamId, HasModule, LocalFieldId, Lookup, StaticId, TraitId,
     TupleFieldId, TupleId, VariantId,
     attrs::AttrFlags,
-    expr_store::{Body, ExpressionStore, HygieneId, path::Path},
+    expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
     hir::{BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::LangItems,
     layout::Integer,
@@ -145,7 +145,9 @@ pub fn infer_query_with_inspect<'db>(
     }
 
     match def {
-        DefWithBodyId::FunctionId(f) => ctx.collect_fn(f, body.self_param(), &body.params),
+        DefWithBodyId::FunctionId(f) => {
+            ctx.collect_fn(f, body.self_param.map(|param| param.formal), &body.params)
+        }
         DefWithBodyId::ConstId(c) => ctx.collect_const(c, ConstSignature::of(db, c)),
         DefWithBodyId::StaticId(s) => ctx.collect_static(s, StaticSignature::of(db, s)),
         DefWithBodyId::VariantId(v) => {
@@ -379,6 +381,14 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         variant: VariantId,
     },
+    UnionPatMustHaveExactlyOneField {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
+    UnionPatHasRest {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
     FunctionalRecordUpdateOnNonStruct {
         #[type_visitable(ignore)]
         base_expr: ExprId,
@@ -408,6 +418,10 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         expr: ExprId,
         found: StoredTy,
+    },
+    MutRefInImmRefPat {
+        #[type_visitable(ignore)]
+        pat: PatId,
     },
     CannotImplicitlyDerefTraitObject {
         #[type_visitable(ignore)]
@@ -503,6 +517,10 @@ pub enum InferenceDiagnostic {
     MutableRefBinding {
         #[type_visitable(ignore)]
         pat: PatId,
+    },
+    YieldOutsideCoroutine {
+        #[type_visitable(ignore)]
+        expr: ExprId,
     },
 }
 
@@ -1691,7 +1709,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.return_ty = return_ty;
     }
 
-    fn collect_fn(&mut self, func: FunctionId, self_param: Option<BindingId>, params: &[PatId]) {
+    fn collect_fn(
+        &mut self,
+        func: FunctionId,
+        self_param: Option<BindingId>,
+        params: &[Param<PatId>],
+    ) {
         let data = FunctionSignature::of(self.db, func);
         let mut param_tys = self.with_ty_lowering(
             &data.store,
@@ -1730,7 +1753,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             let ty = param_tys.next().unwrap_or_else(|| self.table.next_ty_var(Span::Dummy));
             let ty = self.process_user_written_ty(ty);
 
-            self.infer_top_pat(*pat, ty, PatOrigin::Param);
+            self.infer_top_pat(pat.formal, ty, PatOrigin::Param);
         }
         self.return_ty = match data.ret_type {
             Some(return_ty) => {

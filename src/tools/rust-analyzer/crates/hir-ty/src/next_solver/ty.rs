@@ -1514,6 +1514,7 @@ impl<'db> DbInterner<'db> {
                 TyKind::Tuple(params) => params,
                 _ => panic!(),
             };
+            // Ignore splatting, it is unsupported on closures.
             self.mk_fn_sig(params, s.output(), s.c_variadic(), safety, ExternAbi::Rust)
         })
     }
