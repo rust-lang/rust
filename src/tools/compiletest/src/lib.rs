@@ -561,19 +561,28 @@ fn run_tests(config: Arc<Config>) {
     if let TestMode::DebugInfo = config.mode {
         // Debugging emscripten code doesn't make sense today
         if !config.target.contains("emscripten") {
-            match config.debugger {
-                Some(Debugger::Cdb) => configs.extend(debuggers::configure_cdb(&config)),
-                Some(Debugger::Gdb) => configs.extend(debuggers::configure_gdb(&config)),
-                Some(Debugger::Lldb) => configs.extend(debuggers::configure_lldb(&config)),
-                // FIXME: the *implicit* debugger discovery makes it really difficult to control
-                // which {`cdb`, `gdb`, `lldb`} are used. These should **not** be implicitly
-                // discovered by `compiletest`; these should be explicit `bootstrap` configuration
-                // options that are passed to `compiletest`!
-                None => {
-                    configs.extend(debuggers::configure_cdb(&config));
-                    configs.extend(debuggers::configure_gdb(&config));
-                    configs.extend(debuggers::configure_lldb(&config));
-                }
+            // FIXME: ideally, we would just have one config, and then have some mechanism of
+            // generating multiple variants of a test, one for each debugger (something like
+            // debuginfo revisions). But for now, we just create three configs.
+            configs.extend([
+                Arc::new(Config { debugger: Some(Debugger::Cdb), ..config.as_ref().clone() }),
+                Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.as_ref().clone() }),
+                Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.as_ref().clone() }),
+            ]);
+
+            // FIXME: this should ideally happen somewhere else..
+            if config.target.contains("android") {
+                println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
+
+                // android debug-info test uses remote debugger so, we test 1 thread
+                // at once as they're all sharing the same TCP port to communicate
+                // over.
+                //
+                // we should figure out how to lift this restriction! (run them all
+                // on different ports allocated dynamically).
+                //
+                // SAFETY: at this point we are still single-threaded.
+                unsafe { env::set_var("RUST_TEST_THREADS", "1") };
             }
         }
     } else {
@@ -946,11 +955,10 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
 
         // If a test's inputs haven't changed since the last time it ran,
         // mark it as ignored so that the executor will skip it.
-        if !desc.ignore
+        if !desc.is_ignored()
             && !cx.config.force_rerun
             && is_up_to_date(cx, testpaths, &aux_props, revision)
         {
-            desc.ignore = true;
             // Keep this in sync with the "up-to-date" message detected by bootstrap.
             // FIXME(Zalathar): Now that we are no longer tied to libtest, we could
             // find a less fragile way to communicate this status to bootstrap.

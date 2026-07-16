@@ -1,58 +1,6 @@
-use std::env;
 use std::process::Command;
-use std::sync::Arc;
 
 use camino::Utf8Path;
-
-use crate::common::{Config, Debugger};
-
-pub(crate) fn configure_cdb(config: &Config) -> Option<Arc<Config>> {
-    config.cdb.as_ref()?;
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Cdb), ..config.clone() }))
-}
-
-pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
-    config.gdb_version?;
-
-    if config.matches_env("msvc") {
-        return None;
-    }
-
-    if config.remote_test_client.is_some() && !config.target.contains("android") {
-        println!(
-            "WARNING: debuginfo tests are not available when \
-             testing with remote"
-        );
-        return None;
-    }
-
-    if config.target.contains("android") {
-        println!(
-            "{} debug-info test uses tcp 5039 port.\
-             please reserve it",
-            config.target
-        );
-
-        // android debug-info test uses remote debugger so, we test 1 thread
-        // at once as they're all sharing the same TCP port to communicate
-        // over.
-        //
-        // we should figure out how to lift this restriction! (run them all
-        // on different ports allocated dynamically).
-        //
-        // SAFETY: at this point we are still single-threaded.
-        unsafe { env::set_var("RUST_TEST_THREADS", "1") };
-    }
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.clone() }))
-}
-
-pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
-    config.lldb.as_ref()?;
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.clone() }))
-}
 
 pub(crate) fn query_cdb_version(cdb: &Utf8Path) -> Option<[u16; 4]> {
     let mut version = None;
