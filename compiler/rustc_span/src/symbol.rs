@@ -970,6 +970,7 @@ symbols! {
         field_projections,
         field_representing_type,
         field_representing_type_actual_type_id,
+        field_representing_type_name,
         field_representing_type_raw,
         field_type,
         fields,

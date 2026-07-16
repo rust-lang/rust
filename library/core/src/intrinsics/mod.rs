@@ -3178,6 +3178,16 @@ pub fn field_representing_type_actual_type_id(
     _frt_type_id: crate::any::TypeId,
 ) -> crate::any::TypeId;
 
+/// Gets the name of the field represented by the [`FieldRepresentingType`]'s `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::name`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'static str;
+
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
 /// This is used to implement functions like `slice::from_raw_parts_mut` and

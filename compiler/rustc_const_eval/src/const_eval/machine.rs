@@ -21,9 +21,9 @@ use super::error::*;
 use crate::diagnostics::{LongRunning, LongRunningWarn};
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, RetagMode,
-    Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok, throw_exhaust,
-    throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
+    GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet,
+    RetagMode, Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok,
+    throw_exhaust, throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
     type_implements_dyn_trait,
 };
 
@@ -710,6 +710,27 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let offset = layout.fields.offset(field.index()).bytes();
 
                 ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
+            }
+
+            sym::field_representing_type_name => {
+                let frt_ty = ecx.read_type_id(&args[0])?;
+
+                let field_name = if let ty::Adt(def, args) = frt_ty.kind()
+                    && let Some(FieldInfo { name, .. }) =
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                {
+                    name
+                } else {
+                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
+                };
+                let ptr = ecx.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
+                ecx.write_immediate(
+                    Immediate::ScalarPair(
+                        Scalar::from_pointer(ptr, ecx),
+                        Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
+                    ),
+                    dest,
+                )?;
             }
 
             sym::field_representing_type_actual_type_id => {
