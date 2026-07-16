@@ -134,7 +134,9 @@ fn foo<T: Sized>() {
 }
 ```
 
-However, to avoid most of the problems involved in allowing generic parameters in anon const const arguments we require that the constant be evaluated before monomorphization (e.g. during type checking). In some sense we only allow generic parameters here when they are semantically unused.
+However, to avoid most of the problems involved in allowing generic parameters in anon const const arguments,
+we require that the constant be evaluated before monomorphization (e.g. during type checking).
+In some sense we only allow generic parameters here when they are semantically unused.
 
 In the previous example the anon const can be evaluated for any type parameter `T` because raw pointers to sized types always have the same size (e.g. `8` on 64bit platforms).
 
