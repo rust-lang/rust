@@ -405,3 +405,153 @@ mod warn_attribute {}
 /// [`Result`]: result::Result
 /// [the `no_std` attribute]: ../reference/names/preludes.html#the-no_std-attribute
 mod no_std_attribute {}
+
+#[doc(attribute = "inline")]
+//
+/// Suggest that the compiler inline a function at its call sites.
+///
+/// Inlining replaces a call with a copy of the called function's body, which can remove the
+/// overhead of the call. The `inline` attribute is only a hint: the compiler may ignore it, and
+/// it already inlines functions on its own when that looks worthwhile. Poor choices about what to
+/// inline can make a program larger or slower.
+///
+/// Where it does matter is inlining across crate boundaries. A non-generic function is not
+/// normally inlined into another crate, since the calling crate compiles against only its
+/// signature. Marking it `#[inline]` makes the body available to other crates so they can inline
+/// it too:
+///
+/// ```rust
+/// # #![allow(dead_code)]
+/// #[inline]
+/// pub fn square(x: i32) -> i32 {
+///     x * x
+/// }
+/// ```
+///
+/// Generic functions do not need this. They are instantiated in each crate that uses them, so
+/// their bodies are already available to inline.
+///
+/// The attribute applies to functions and has three forms:
+///
+/// - `#[inline]` suggests inlining the function.
+/// - `#[inline(always)]` suggests inlining it at every call site.
+/// - `#[inline(never)]` suggests never inlining it.
+///
+/// You should almost never need `#[inline(always)]`: prefer to let the compiler decide unless
+/// profiling shows a small, hot function that benefits from it. `#[inline(never)]` is useful to
+/// keep a rarely used path, such as a function that only reports an error, out of its caller.
+///
+/// For more information, see the Reference on [the `inline` attribute].
+///
+/// [the `inline` attribute]: ../reference/attributes/codegen.html#the-inline-attribute
+mod inline_attribute {}
+
+#[doc(attribute = "cold")]
+//
+/// Hint to the compiler that a function is unlikely to be called.
+///
+/// Marking a function `#[cold]` tells the compiler that calls to it are rare, so it can
+/// optimize for the common case where the function is not called. It is only a hint: the
+/// compiler may ignore it, and it does not change the function's behavior.
+///
+/// It is typically used on functions that handle uncommon cases, such as error or panic paths:
+///
+/// ```rust
+/// # #![allow(dead_code)]
+/// fn check(value: i32) {
+///     if value < 0 {
+///         report_error("value must be non-negative");
+///     }
+///     // ... the common case continues here ...
+/// }
+///
+/// #[cold]
+/// fn report_error(message: &str) {
+///     eprintln!("error: {message}");
+/// }
+/// ```
+///
+/// For more information, see the Reference on [the `cold` attribute].
+///
+/// [the `cold` attribute]: ../reference/attributes/codegen.html#the-cold-attribute
+mod cold_attribute {}
+
+#[doc(attribute = "track_caller")]
+//
+/// Make a function report the location of its caller instead of its own.
+///
+/// When a function panics, the panic message normally points at the line inside that function
+/// where the panic happened. `#[track_caller]` changes that: it lets the function see the
+/// [`Location`] it was called from, so the panic (and any direct use of [`Location::caller`])
+/// points at the call site instead. The standard library uses this on methods like
+/// [`Option::unwrap`], so a failed `unwrap` blames the line that called it rather than a line
+/// inside the standard library.
+///
+/// ```rust,should_panic
+/// #[track_caller]
+/// fn assert_even(n: i32) {
+///     assert!(n % 2 == 0, "{n} is not even");
+/// }
+///
+/// // The panic blames this line, not the `assert!` inside `assert_even`.
+/// assert_even(3);
+/// ```
+///
+/// The attribute applies to functions with the default `"Rust"` ABI, other than `fn main`.
+///
+/// For more information, see the Reference on [the `track_caller` attribute].
+///
+/// [`Location`]: panic::Location
+/// [`Location::caller`]: panic::Location::caller
+/// [`Option::unwrap`]: Option::unwrap
+/// [the `track_caller` attribute]: ../reference/attributes/codegen.html#the-track_caller-attribute
+mod track_caller_attribute {}
+
+#[doc(attribute = "proc_macro")]
+//
+/// Defines a function-like procedural macro.
+///
+/// Applied to a `pub` function at the root of a proc-macro crate, `proc_macro` makes that function usable as a macro invoked as
+/// `foo!(...)` in other crates. The function receives the tokens written inside the invocation as a [`TokenStream`] and returns
+/// the [`TokenStream`] that replaces the invocation:
+///
+/// ```rust, ignore (requires depending on the proc-macro crate)
+/// # extern crate proc_macro;
+/// use proc_macro::TokenStream;
+///
+/// #[proc_macro]
+/// pub fn foo(input: TokenStream) -> TokenStream {
+///    "fn answer() -> u32 { 67 }".parse().unwrap()
+/// }
+/// ```
+///
+/// The macro can only be invoked from other crates, not from the crate where it is defined:
+///
+/// ```rust,ignore (requires depending on the proc-macro crate)
+/// use my_macro_crate::foo;
+///
+/// // Expands to `fn answer() -> u32 { 67 }`.
+/// foo!();
+///
+/// fn main() {
+///    println!("{}", answer()); // Prints 67
+/// }
+/// ```
+///
+/// The attribute is only usable with crates of the `proc-macro` crate type, which is set in the crate's `Cargo.toml`
+/// with `proc-macro = true` in the `[lib]` section. Using it anywhere else is a compilation error:
+///
+/// ```text
+///error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
+/// --> src/lib.rs:4:1
+///  |
+/// 4| #[proc_macro]
+///  | ^^^^^^^^^^^^
+/// ```
+///
+/// For more information, see the Reference on [function-like procedural macros] and the [`proc_macro`] crate documentation.
+///
+/// [`TokenStream`]: ../proc_macro/struct.TokenStream.html
+/// [function-like procedural macros]: ../reference/procedural-macros.html#the-proc_macro-attribute
+/// [`proc_macro`]: ../proc_macro/index.html
+mod proc_macro_attribute {}

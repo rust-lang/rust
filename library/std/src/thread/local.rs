@@ -346,6 +346,7 @@ pub macro thread_local_process_attrs {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "thread_local_macro")]
 #[allow_internal_unstable(thread_local_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! thread_local {
     () => {};
 

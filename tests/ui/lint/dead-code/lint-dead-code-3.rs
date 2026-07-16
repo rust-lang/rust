@@ -48,24 +48,28 @@ mod blah {
     enum c_void {}
 
     extern "C" {
-        fn free(p: *const c_void);
-        fn malloc(size: usize) -> *const c_void;
+        fn my_free(p: *const c_void);
+        fn my_malloc(size: usize) -> *const c_void;
     }
 
     pub fn baz() {
-        unsafe { free(malloc(4)); }
+        unsafe {
+            my_free(my_malloc(4));
+        }
     }
 }
 
 enum c_void {} //~ ERROR: enum `c_void` is never used
 extern "C" {
-    fn free(p: *const c_void); //~ ERROR: function `free` is never used
+    fn my_free(p: *const c_void); //~ ERROR: function `my_free` is never used
 }
 
 // Check provided method
 mod inner {
     pub trait Trait {
-        fn f(&self) { f(); }
+        fn f(&self) {
+            f();
+        }
     }
 
     impl Trait for isize {}

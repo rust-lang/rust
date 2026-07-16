@@ -129,4 +129,32 @@ impl bool {
     ) -> Result<(), E> {
         if self { Ok(()) } else { Err(f()) }
     }
+
+    /// Toggles `self` in-place.
+    ///
+    /// - If `self` is [`true`], sets `self` to [`false`].
+    /// - If `self` is [`false`], sets `self` to [`true`].
+    ///
+    /// Equivalent to `value = !value`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bool_toggle)]
+    /// let mut boolean = false;
+    ///
+    /// boolean.toggle();
+    /// assert_eq!(boolean, true);
+    ///
+    /// boolean.toggle();
+    /// assert_eq!(boolean, false);
+    /// ```
+    ///
+    /// [`true`]: ../std/keyword.true.html
+    /// [`false`]: ../std/keyword.false.html
+    #[unstable(feature = "bool_toggle", issue = "159298")]
+    #[inline]
+    pub const fn toggle(&mut self) {
+        *self = !*self;
+    }
 }

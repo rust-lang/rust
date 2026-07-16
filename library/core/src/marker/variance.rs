@@ -234,6 +234,7 @@ phantom_type! {
 }
 
 mod private_items {
+    #[unstable(feature = "std_internals", issue = "none")]
     pub trait PrivateItems {
         const VALUE: Self;
     }

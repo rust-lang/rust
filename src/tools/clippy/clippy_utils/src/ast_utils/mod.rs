@@ -183,22 +183,13 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (While(lc, lt, ll), While(rc, rt, rl)) => {
             eq_label(ll.as_ref(), rl.as_ref()) && eq_expr(lc, rc) && eq_block(lt, rt)
         },
-        (
-            ForLoop {
-                pat: lp,
-                iter: li,
-                body: lt,
-                label: ll,
-                kind: lk,
-            },
-            ForLoop {
-                pat: rp,
-                iter: ri,
-                body: rt,
-                label: rl,
-                kind: rk,
-            },
-        ) => eq_label(ll.as_ref(), rl.as_ref()) && eq_pat(lp, rp) && eq_expr(li, ri) && eq_block(lt, rt) && lk == rk,
+        (ForLoop(lf), ForLoop(rf)) => {
+            eq_label(lf.label.as_ref(), rf.label.as_ref())
+                && eq_pat(&lf.pat, &rf.pat)
+                && eq_expr(&lf.iter, &rf.iter)
+                && eq_block(&lf.body, &rf.body)
+                && lf.kind == rf.kind
+        }
         (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lb, rb),
         (TryBlock(lb, lt), TryBlock(rb, rt)) => eq_block(lb, rb) && both(lt.as_deref(), rt.as_deref(), eq_ty),

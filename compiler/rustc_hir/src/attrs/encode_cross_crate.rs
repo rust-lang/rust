@@ -83,6 +83,7 @@ impl AttributeKind {
             OnUnimplemented { .. } => Yes,
             OnUnknown { .. } => Yes,
             OnUnmatchedArgs { .. } => Yes,
+            Opaque => Yes,
             Optimize(..) => No,
             PanicRuntime => No,
             PatchableFunctionEntry { .. } => Yes,

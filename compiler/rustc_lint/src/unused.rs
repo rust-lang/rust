@@ -1,5 +1,5 @@
 use rustc_ast::util::{classify, parser};
-use rustc_ast::{self as ast, ExprKind, FnRetTy, HasAttrs as _, StmtKind};
+use rustc_ast::{self as ast, ExprKind, FnRetTy, ForLoop, HasAttrs as _, StmtKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_hir::{self as hir};
@@ -381,7 +381,7 @@ trait UnusedDelimLint {
                 (cond, UnusedDelimsCtx::WhileCond, true, Some(left), Some(right), true)
             }
 
-            ForLoop { ref iter, ref body, .. } => {
+            ForLoop(ast::ForLoop { ref iter, ref body, .. }) => {
                 (iter, UnusedDelimsCtx::ForIterExpr, true, None, Some(body.span.lo()), true)
             }
 
@@ -728,7 +728,7 @@ impl EarlyLintPass for UnusedParens {
         }
 
         match e.kind {
-            ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop { ref pat, .. } => {
+            ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop(ForLoop { ref pat, .. }) => {
                 self.check_unused_parens_pat(cx, pat, false, false, (true, true));
             }
             // We ignore parens in cases like `if (((let Some(0) = Some(1))))` because we already

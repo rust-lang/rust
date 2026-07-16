@@ -620,7 +620,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 other => bug!("{key:?} is not an assoc item of a trait impl: {other:?}"),
             }
         }
-        TyCtxtFeed { tcx: self, key }.visibility(vis.to_def_id())
+        TyCtxtFeed { tcx: self, key }.visibility(vis.to_mod_id())
     }
 }
 
@@ -1324,8 +1324,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // Visibilities for opaque types are meaningless, but still provided
         // so that all items have visibilities.
         if matches!(def_kind, DefKind::Closure | DefKind::OpaqueTy) {
-            let parent_mod = self.parent_module_from_def_id(def_id).to_def_id();
-            feed.visibility(ty::Visibility::Restricted(parent_mod));
+            let parent_mod = self.parent_module_from_def_id(def_id);
+            feed.visibility(ty::Visibility::Restricted(parent_mod.to_mod_id()));
         }
 
         feed

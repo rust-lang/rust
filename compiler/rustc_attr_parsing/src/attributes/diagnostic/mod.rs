@@ -28,6 +28,7 @@ pub(crate) mod on_type_error;
 pub(crate) mod on_unimplemented;
 pub(crate) mod on_unknown;
 pub(crate) mod on_unmatched_args;
+pub(crate) mod opaque;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {

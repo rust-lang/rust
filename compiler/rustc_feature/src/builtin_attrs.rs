@@ -321,6 +321,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // Used by the `rustc::bad_opt_access` lint on fields
     // types (as well as any others in future).
     sym::rustc_lint_opt_deny_field_access,
+    sym::rustc_diagnostic_opaque,
 
     // ==========================================================================
     // Internal attributes, Const related:
