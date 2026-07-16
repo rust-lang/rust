@@ -595,4 +595,26 @@ impl FieldId {
     pub fn type_id(self) -> TypeId {
         intrinsics::field_representing_type_actual_type_id(self.frt_type_id)
     }
+
+    /// Returns the name of the field.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// struct Point {
+    ///     x: u32,
+    ///     y: u32,
+    /// }
+    /// assert_eq!(
+    ///     const { TypeId::of::<Point>().field(0, 0).name() },
+    ///     "a",
+    /// );
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn name(self) -> &'static str {
+        intrinsics::field_representing_type_name(self.frt_type_id)
+    }
 }

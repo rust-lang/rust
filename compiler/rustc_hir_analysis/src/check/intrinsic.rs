@@ -115,6 +115,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::fdiv_algebraic
         | sym::field_offset
         | sym::field_representing_type_actual_type_id
+        | sym::field_representing_type_name
         | sym::floorf16
         | sym::floorf32
         | sym::floorf64
@@ -349,6 +350,7 @@ pub(crate) fn check_intrinsic_type(
             tcx.type_of(tcx.lang_items().type_struct().unwrap()).no_bound_vars().unwrap(),
         ),
         sym::field_representing_type_actual_type_id => (0, 0, vec![type_id_ty()], type_id_ty()),
+        sym::field_representing_type_name => (0, 0, vec![type_id_ty()], Ty::new_static_str(tcx)),
         sym::offload => (
             3,
             0,
