@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, VecDeque};
 use std::rc::{Rc, Weak};
 
 use crate::concurrency::VClock;
-use crate::shims::files::{DynFileDescriptionRef, FdNum};
+use crate::shims::files::{DynFileDescriptionRef, FdNum, WeakDynFileDescriptionRef};
 use crate::shims::*;
 use crate::*;
 
@@ -170,7 +170,7 @@ impl ReadinessWatcher {
             // This is the first time this FD got added to the watcher.
             // We need to remember that in the global list such that we
             // get notified about FD events.
-            ecx.machine.readiness_interests.insert(fd_id, self);
+            ecx.machine.readiness_interests.insert(&fd_ref, self);
         }
         if interests.try_insert(key, interest).is_err() {
             return interp_ok(Err(()));
@@ -349,7 +349,12 @@ pub struct ReadinessInterestTable {
     /// separately so we can access it without calling `upgrade`. The list
     /// is sorted by that id. We use an ID so that we can identify the watcher even after it has
     /// been dropped.
-    interests: BTreeMap<FdId, Vec<(ReadinessWatcherId, Weak<ReadinessWatcher>)>>,
+    /// We also store a weak reference to the watched file description, so we can clean them up
+    /// when they get freed.
+    interests: BTreeMap<
+        FdId,
+        (WeakDynFileDescriptionRef, Vec<(ReadinessWatcherId, Weak<ReadinessWatcher>)>),
+    >,
 }
 
 impl ReadinessInterestTable {
@@ -371,22 +376,30 @@ impl ReadinessInterestTable {
         }
     }
 
-    /// Add an interest for `watcher` for the file description with id `fd_id`.
-    fn insert(&mut self, fd_id: FdId, watcher: &Rc<ReadinessWatcher>) {
-        let watchers = self.interests.entry(fd_id).or_default();
+    /// Add an interest for `watcher` for the `watched_fd` file description.
+    fn insert(&mut self, watched_fd: &DynFileDescriptionRef, watcher: &Rc<ReadinessWatcher>) {
+        let watchers = self
+            .interests
+            .entry(watched_fd.id())
+            .or_insert_with(|| (FileDescriptionRef::downgrade(watched_fd), Vec::new()));
         let idx = watchers
+            .1
             .binary_search_by_key(&watcher.id, |&(id, _)| id)
-            .expect_err("watcher already has a registered interest in the provided fd");
-        watchers.insert(idx, (watcher.id, Rc::downgrade(watcher)));
+            .expect_err("watcher already has a registered interest in the provided watched fd");
+        watchers.1.insert(idx, (watcher.id, Rc::downgrade(watcher)));
     }
 
     /// Remove the interest of `watcher` for the file description with id `fd_id`.
-    fn remove(&mut self, fd_id: FdId, watcher: &ReadinessWatcher) {
-        let watchers = self.interests.entry(fd_id).or_default();
+    fn remove(&mut self, watched_fd: FdId, watcher: &ReadinessWatcher) {
+        let watchers = self
+            .interests
+            .get_mut(&watched_fd)
+            .expect("watcher has no registered interest in the provided watched fd");
         let idx = watchers
+            .1
             .binary_search_by_key(&watcher.id, |&(id, _)| id)
-            .expect("watcher has no registered interest in the provided fd");
-        watchers.remove(idx);
+            .expect("watcher has no registered interest in the provided watched fd");
+        watchers.1.remove(idx);
     }
 
     /// Get all watchers which have a registered interest in the file description
@@ -398,7 +411,7 @@ impl ReadinessInterestTable {
         let watchers = self.interests.get(&fd_id)?;
         // Ignore weak refs that cannot be upgraded -- those correspond to closed
         // file descriptions and will be cleaned up by the GC eventually.
-        Some(watchers.iter().filter_map(|(_id, watcher)| watcher.upgrade()))
+        Some(watchers.1.iter().filter_map(|(_id, watcher)| watcher.upgrade()))
     }
 
     /// Remove all watchers for the file description with id `fd_id`.
@@ -407,7 +420,7 @@ impl ReadinessInterestTable {
             return;
         };
 
-        for watcher in watchers.iter().filter_map(|(_id, watcher)| Weak::upgrade(watcher)) {
+        for watcher in watchers.1.iter().filter_map(|(_id, watcher)| Weak::upgrade(watcher)) {
             // This is a still-live watcher with interest in this FD. Remove all
             // relevant interests (including from the ready set).
             watcher
@@ -425,7 +438,7 @@ impl ReadinessInterestTable {
     pub fn run_gc(&mut self) {
         self.interests
             .values_mut()
-            .for_each(|watchers| watchers.retain(|(_id, watcher)| watcher.strong_count() > 0));
+            .for_each(|watchers| watchers.1.retain(|(_id, watcher)| watcher.strong_count() > 0));
     }
 }
 

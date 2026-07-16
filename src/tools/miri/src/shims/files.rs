@@ -40,6 +40,7 @@ struct FdIdWith<T: ?Sized> {
 /// globally unique ID of this file description.
 #[repr(transparent)]
 #[derive(CoercePointee, Debug)]
+// Sadly `CoercePointee` does not let us keep the `FdId` *outside* the `Rc`.
 pub struct FileDescriptionRef<T: ?Sized>(Rc<FdIdWith<T>>);
 
 impl<T: ?Sized> Clone for FileDescriptionRef<T> {
@@ -145,6 +146,7 @@ impl<T: FileDescription + 'static> FileDescriptionExt for T {
 }
 
 pub type DynFileDescriptionRef = FileDescriptionRef<dyn FileDescription>;
+pub type WeakDynFileDescriptionRef = WeakFileDescriptionRef<dyn FileDescription>;
 
 impl FileDescriptionRef<dyn FileDescription> {
     pub fn downcast<T: FileDescription + 'static>(self) -> Option<FileDescriptionRef<T>> {
