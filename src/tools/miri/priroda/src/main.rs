@@ -18,7 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 use std::path::PathBuf;
 
-use miri::Immediate::{Scalar, ScalarPair, Uninit};
+use miri::Immediate::Uninit;
 use miri::{interpret, *};
 use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
@@ -399,6 +399,49 @@ impl<'tcx> PrirodaContext<'tcx> {
         self.build_local_descs(frame)
     }
 
+    fn render_mplace_bytes(&self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx, String> {
+        let size = match self.ecx.size_and_align_of_val(mplace)? {
+            Some((size, _)) => size,
+            None => {
+                // Extern types cannot currently be executed as by-value locals,
+                // so this path cannot yet be covered by a Priroda UI fixture.
+                // FIXME: Add coverage once Priroda supports printing dereferenced places.
+                return interp_ok("<unsupported-unsized>".to_string());
+            }
+        };
+
+        let size = size.bytes_usize();
+        if size == 0 {
+            return interp_ok("[]".to_string());
+        }
+
+        let (alloc_id, offset, _) =
+            self.ecx.ptr_get_alloc_id(mplace.ptr(), size.try_into().unwrap())?;
+        let offset = offset.bytes_usize();
+        let range = offset..offset.strict_add(size);
+        let alloc = self.ecx.get_alloc_raw(alloc_id)?;
+
+        let mut rendered = Vec::with_capacity(size);
+
+        for chunk in alloc.init_mask().range_as_init_chunks(range.into()) {
+            let chunk_range = chunk.range();
+            let chunk_range = chunk_range.start.bytes_usize()..chunk_range.end.bytes_usize();
+
+            if chunk.is_init() {
+                rendered.extend(
+                    alloc
+                        .inspect_with_uninit_and_ptr_outside_interpreter(chunk_range)
+                        .iter()
+                        .map(|byte| format!("{byte:02x}")),
+                );
+            } else {
+                rendered.extend(std::iter::repeat_n("__".to_string(), chunk_range.len()));
+            }
+        }
+
+        interp_ok(format!("[{}]", rendered.join(" ")))
+    }
+
     /// Render the source-side path from composite debug info, such as `.field`.
     fn render_source_projection(
         fragment: Option<&VarDebugInfoFragment<'tcx>>,
@@ -489,25 +532,19 @@ impl<'tcx> PrirodaContext<'tcx> {
             Some(Either::Right(Uninit)) => local_desc.value = "<uninit>".to_string(),
 
             Some(Either::Left(_) | Either::Right(_)) => {
-                match self.ecx.local_to_op(local, None).report_err() {
-                    Ok(op) => {
-                        local_desc.value = match op.as_mplace_or_imm() {
-                            Either::Right(imm) => format!("{imm}"),
+                let op = self
+                    .ecx
+                    .local_to_op(local, None)
+                    .expect("this error can only occur in CTFE on generic code");
+                local_desc.value = match op.as_mplace_or_imm() {
+                    Either::Right(imm) => format!("{imm}"),
 
-                            Either::Left(mplace_ty) => {
-                                match mplace_ty.ptr().provenance.and_then(|p| p.get_alloc_id()) {
-                                    Some(alloc_id) =>
-                                        format!("{:#?}", self.ecx.dump_alloc(alloc_id)),
-                                    None => "<indirect>".to_string(),
-                                }
-                            }
-                        };
-                    }
-                    Err(err) => {
-                        local_desc.value =
-                            format!("<error: {}>", interpret::format_interp_error(err));
-                    }
-                }
+                    Either::Left(mplace) =>
+                        match self.render_mplace_bytes(&mplace).report_err() {
+                            Ok(bytes) => bytes,
+                            Err(err) => format!("<error: {}>", interpret::format_interp_error(err)),
+                        },
+                };
             }
         };
 
