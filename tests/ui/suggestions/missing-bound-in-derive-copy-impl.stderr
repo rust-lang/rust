@@ -66,8 +66,6 @@ LL | #[derive(Debug, Copy, Clone)]
    |          ----- in this derive macro expansion
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |            ^^^^^^^            ---- unsatisfied trait bound
-   = help: consider manually implementing `Debug` to avoid undesired bounds caused by "imperfect derives"
-   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
    = note: required for the cast from `&Vector2<K>` to `&dyn Debug`
 help: consider restricting type parameter `K` with trait `Copy`
    |
@@ -137,8 +135,6 @@ LL | #[derive(Debug, Copy, Clone)]
    |                       ----- in this derive macro expansion
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |            ^^^^^^^            ---- unsatisfied trait bound
-   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
-   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 help: consider restricting type parameter `K` with trait `Copy`
    |
 LL | pub struct AABB<K: std::marker::Copy> {
