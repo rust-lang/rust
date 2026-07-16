@@ -81,6 +81,8 @@ fn range_for_id(id: FdId) -> std::ops::RangeInclusive<ReadinessInterestKey> {
 
 #[derive(Debug, Clone)]
 pub struct ReadinessInterest {
+    /// The FD we are interested in.
+    watched_fd: WeakDynFileDescriptionRef,
     /// The mask of events the interest is interested in
     /// for this file descriptor.
     pub relevant: Readiness,
@@ -159,6 +161,7 @@ impl ReadinessWatcher {
         let key = (fd_id, fd_num);
 
         let interest = ReadinessInterest {
+            watched_fd: FileDescriptionRef::downgrade(&fd_ref),
             active: Readiness::EMPTY,
             clock: VClock::default(),
             relevant,
@@ -278,7 +281,7 @@ impl ReadinessWatcher {
         self.ready.borrow().len()
     }
 
-    /// Get at most the first `count` ready interests from the ready queue.
+    /// Get at most the first `max` ready interests from the ready queue.
     ///
     /// If the interest is a level-triggered interest, it's automatically
     /// added to the end of the queue again such that it will only be reported
@@ -289,10 +292,16 @@ impl ReadinessWatcher {
     /// are level-triggered interests.
     pub fn get_ready_interests<'tcx>(
         &self,
-        count: usize,
+        max: usize,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Vec<ReadinessInterest>> {
+        // The goal below is to do work proportyional to how much we're actually reporting to the
+        // client, i.e., how many interests of this watcher are ready. In particular, we do *not*
+        // iterate over all interests of this watcher, or all watchers, or all FDs being watched, or
+        // anything like that.
+
         // Process delayed readiness updates, to ensure we have fully up-to-date information.
+        // This is almost always a NOP.
         DelayedReadinessUpdates::process(ecx)?;
 
         let interests = self.interests.borrow();
@@ -300,34 +309,42 @@ impl ReadinessWatcher {
 
         // Sanity-check to ensure that all event info is up-to-date.
         if cfg!(debug_assertions) {
-            for (key, interest) in interests.iter() {
-                // Ensure this matches the latest readiness of this FD.
-                // We have to do an FD lookup by ID for this. The FdNum might be already closed.
-                let fd = ecx.machine.fds.fds.values().find(|fd| fd.id() == key.0).unwrap();
+            for interest in interests.values() {
+                // Ensure this matches the latest readiness of this FD, if the FD is still open.
+                let Some(fd) = interest.watched_fd.upgrade() else { continue };
                 let current_active = fd.readiness()?;
                 assert_eq!(interest.active(), &(current_active & interest.relevant.clone()));
             }
         }
 
-        // Compute how many events we can actually return.
-        let count = count.min(ready.len());
-        let mut ready_interests = Vec::with_capacity(count);
+        let mut ready_interests = Vec::with_capacity(max.min(ready.len()));
+        let mut re_add_interests = Vec::new();
 
-        // We have to bound this iterator by `count`. Iterating until `ready` is empty would not
-        // work since we are re-adding level-triggered events to `ready` during the loop.
-        while ready_interests.len() < count {
-            let key = ready.pop_front().unwrap();
+        // Continue while we haven't yet gotten `max` events, and while there are more to add.
+        while ready_interests.len() < max
+            && let Some(key) = ready.pop_front()
+        {
             let interest = interests.get(&key).expect("non-existing interest in ready set");
+            if interest.watched_fd.is_closed() {
+                // "A file descriptor is removed from an interest list only after all the file
+                // descriptors referring to the underlying open file description have been closed."
+                // So, we should have removed this FD from the interest list, we just didn't get
+                // around to that yet. Pretend it does not exist. It will not be re-added to the
+                // ready list, and it will eventually be cleaned up by the GC.
+                continue;
+            }
 
             if !interest.is_edge_triggered {
-                // This is a level-triggered interest, so we need to re-add the event
-                // at the end of the ready queue like Linux does with epoll:
-                // <https://github.com/torvalds/linux/blob/HEAD/fs/eventpoll.c#L1835-L1847>
-                ready.push_back(key);
+                // This is a level-triggered interest, so we need to re-add the event:
+                // <https://github.com/torvalds/linux/blob/HEAD/fs/eventpoll.c#L1835-L1847>.
+                // We delay adding them back so they do not get picked up by later loop iterations.
+                re_add_interests.push(key);
             }
 
             ready_interests.push(interest.clone());
         }
+        // Add back the level-triggered ones.
+        ready.extend(re_add_interests);
 
         interp_ok(ready_interests)
     }
@@ -351,6 +368,8 @@ pub struct ReadinessInterestTable {
     /// been dropped.
     /// We also store a weak reference to the watched file description, so we can clean them up
     /// when they get freed.
+    /// FIXME: a better place to store this would probably be the relevant FD itself. Experiment
+    /// with delegation to easily do that for all FD types, once that is ready.
     interests: BTreeMap<
         FdId,
         (WeakDynFileDescriptionRef, Vec<(ReadinessWatcherId, Weak<ReadinessWatcher>)>),
@@ -378,67 +397,62 @@ impl ReadinessInterestTable {
 
     /// Add an interest for `watcher` for the `watched_fd` file description.
     fn insert(&mut self, watched_fd: &DynFileDescriptionRef, watcher: &Rc<ReadinessWatcher>) {
-        let watchers = self
+        let (_watched, watchers) = self
             .interests
             .entry(watched_fd.id())
             .or_insert_with(|| (FileDescriptionRef::downgrade(watched_fd), Vec::new()));
         let idx = watchers
-            .1
             .binary_search_by_key(&watcher.id, |&(id, _)| id)
             .expect_err("watcher already has a registered interest in the provided watched fd");
-        watchers.1.insert(idx, (watcher.id, Rc::downgrade(watcher)));
+        watchers.insert(idx, (watcher.id, Rc::downgrade(watcher)));
     }
 
     /// Remove the interest of `watcher` for the file description with id `fd_id`.
     fn remove(&mut self, watched_fd: FdId, watcher: &ReadinessWatcher) {
-        let watchers = self
+        let (_watched, watchers) = self
             .interests
             .get_mut(&watched_fd)
             .expect("watcher has no registered interest in the provided watched fd");
         let idx = watchers
-            .1
             .binary_search_by_key(&watcher.id, |&(id, _)| id)
             .expect("watcher has no registered interest in the provided watched fd");
-        watchers.1.remove(idx);
+        watchers.remove(idx);
     }
 
-    /// Get all watchers which have a registered interest in the file description
-    /// with id `fd_id`.
+    /// Get all watchers which have a registered interest in the file description with id `fd_id`.
     fn get_watchers_for_fd(
         &self,
         fd_id: FdId,
     ) -> Option<impl Iterator<Item = Rc<ReadinessWatcher>>> {
-        let watchers = self.interests.get(&fd_id)?;
+        let (_watched, watchers) = self.interests.get(&fd_id)?;
         // Ignore weak refs that cannot be upgraded -- those correspond to closed
         // file descriptions and will be cleaned up by the GC eventually.
-        Some(watchers.1.iter().filter_map(|(_id, watcher)| watcher.upgrade()))
+        Some(watchers.iter().filter_map(|(_id, watcher)| watcher.upgrade()))
     }
 
-    /// Remove all watchers for the file description with id `fd_id`.
-    pub fn remove_watchers_for_fd(&mut self, fd_id: FdId) {
-        let Some(watchers) = self.interests.remove(&fd_id) else {
-            return;
-        };
-
-        for watcher in watchers.1.iter().filter_map(|(_id, watcher)| Weak::upgrade(watcher)) {
-            // This is a still-live watcher with interest in this FD. Remove all
-            // relevant interests (including from the ready set).
-            watcher
-                .interests
-                .borrow_mut()
-                .extract_if(range_for_id(fd_id), |_, _| true)
-                // Consume the iterator.
-                .for_each(drop);
-            // Remove the ready interests for this file description.
-            watcher.ready.borrow_mut().retain(|(id, _)| id != &fd_id);
-        }
-    }
-
-    /// Run garbage collector to remove all dropped watchers from the interests map.
+    /// Run garbage collector to remove all dropped watchers and dropped watched FDs.
     pub fn run_gc(&mut self) {
-        self.interests
-            .values_mut()
-            .for_each(|watchers| watchers.1.retain(|(_id, watcher)| watcher.strong_count() > 0));
+        self.interests.retain(|&fd_id, (watched, watchers)| {
+            if watched.is_closed() {
+                // An FD we were watching got closed. Remove it from the watcher as well.
+                for watcher in watchers.iter().filter_map(|(_id, watcher)| Weak::upgrade(watcher)) {
+                    // This is a still-live watcher with interest in this FD. Remove all
+                    // relevant interests (including from the ready set).
+                    watcher
+                        .interests
+                        .borrow_mut()
+                        .extract_if(range_for_id(fd_id), |_, _| true)
+                        // Consume the iterator.
+                        .for_each(drop);
+                    // Remove the ready interests for this file description.
+                    watcher.ready.borrow_mut().retain(|(id, _)| id != &fd_id);
+                }
+                return false; // delete this one
+            }
+            // Keep this one, but clean up the watchers.
+            watchers.retain(|(_id, watcher)| watcher.strong_count() > 0);
+            true
+        });
     }
 }
 
@@ -547,7 +561,7 @@ pub trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
                 // We need to ensure that this event is not already part of the `ready` queue
                 // before enqueueing, as Linux does it with epoll:
-                // <https://github.com/torvalds/linux/blob/HEAD/fs/eventpoll.c#L1292-L1296>
+                // <https://github.com/torvalds/linux/blob/13dce771bbad42da6ecf086446d8ddfd1fce3a1b/fs/eventpoll.c#L1290-L1293>
                 if !ready.contains(&key) {
                     ready.push_back(key);
                 }
