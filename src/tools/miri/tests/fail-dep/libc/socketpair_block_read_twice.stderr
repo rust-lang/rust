@@ -29,7 +29,7 @@ LL |       let thread2 = thread::spawn(move || {
    |  ___________________^
 LL | |         // Let this thread block on read.
 LL | |         let mut buf: [u8; 1] = [0; 1];
-LL | |         let res = unsafe {
+LL | |         let res = errno_result(unsafe {
 ...  |
 LL | |         assert_eq!(&buf, "a".as_bytes());
 LL | |     });
