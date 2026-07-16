@@ -77,23 +77,11 @@ struct ClashingExternDeclarations {
     seen_decls: UnordMap<Symbol, hir::OwnerId>,
 }
 
-/// Differentiate between whether the name for an extern decl came from the link_name attribute or
-/// just from declaration itself. This is important because we don't want to report clashes on
-/// symbol name if they don't actually clash because one or the other links against a symbol with a
-/// different name.
-enum SymbolName {
-    /// The name of the symbol + the span of the annotation which introduced the link name.
-    Link(Symbol, Span),
-    /// No link name, so just the name of the symbol.
-    Normal(Symbol),
-}
-
-impl SymbolName {
-    fn get_name(&self) -> Symbol {
-        match self {
-            SymbolName::Link(s, _) | SymbolName::Normal(s) => *s,
-        }
-    }
+struct SymbolName {
+    /// The name of the symbol that will be linked against.
+    link_name: Symbol,
+    /// The span of the annotation which introduced the link name.
+    span: Option<Span>,
 }
 
 impl ClashingExternDeclarations {
@@ -140,7 +128,7 @@ impl ClashingExternDeclarations {
 
             // Finally, emit the diagnostic.
             let this = tcx.item_name(this_fi.owner_id.to_def_id());
-            let orig = orig.get_name();
+            let orig = orig.link_name;
             let previous_decl_label = get_relevant_span(tcx, existing_did);
             let mismatch_label = get_relevant_span(tcx, this_fi.owner_id);
             let sub =
@@ -176,28 +164,24 @@ impl ClashingExternDeclarations {
 /// the name specified in a #[link_name = ...] attribute if one was specified, else, just the
 /// symbol's name.
 fn name_of_extern_decl(tcx: TyCtxt<'_>, fi: hir::OwnerId) -> SymbolName {
-    if let Some((overridden_link_name, overridden_link_name_span)) =
-        tcx.codegen_fn_attrs(fi).symbol_name.map(|overridden_link_name| {
-            // FIXME: Instead of searching through the attributes again to get span
-            // information, we could have codegen_fn_attrs also give span information back for
-            // where the attribute was defined. However, until this is found to be a
-            // bottleneck, this does just fine.
-            (overridden_link_name, find_attr!(tcx, fi, LinkName {span, ..} => *span).unwrap())
-        })
-    {
-        SymbolName::Link(overridden_link_name, overridden_link_name_span)
-    } else {
-        SymbolName::Normal(tcx.item_name(fi.to_def_id()))
+    // FIXME if symbol_name is not set, this is likely a #[rustc_std_internal_symbol] or EII which
+    // actually have their name mangled and thus should use the mangled name here.
+    let link_name =
+        tcx.codegen_fn_attrs(fi).symbol_name.unwrap_or_else(|| tcx.item_name(fi.to_def_id()));
+    SymbolName {
+        link_name,
+        // FIXME: Instead of searching through the attributes again to get span
+        // information, we could have codegen_fn_attrs also give span information back for
+        // where the attribute was defined. However, until this is found to be a
+        // bottleneck, this does just fine.
+        span: find_attr!(tcx, fi, LinkName {span, ..} => *span),
     }
 }
 
 /// We want to ensure that we use spans for both decls that include where the
 /// name was defined, whether that was from the link_name attribute or not.
 fn get_relevant_span(tcx: TyCtxt<'_>, fi: hir::OwnerId) -> Span {
-    match name_of_extern_decl(tcx, fi) {
-        SymbolName::Normal(_) => tcx.def_span(fi),
-        SymbolName::Link(_, annot_span) => annot_span,
-    }
+    if let Some(span) = name_of_extern_decl(tcx, fi).span { span } else { tcx.def_span(fi) }
 }
 
 /// Checks whether two types are structurally the same enough that the declarations shouldn't
