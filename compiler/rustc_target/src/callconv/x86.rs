@@ -207,9 +207,9 @@ where
 {
     // Perform some sign/arg extension on integers to mirror our C ABI
     for arg in fn_abi.args.iter_mut() {
-        arg.extend_integer_width_to(32);
+        arg.extend_integer_width_to(8);
     }
-    fn_abi.ret.extend_integer_width_to(32);
+    fn_abi.ret.extend_integer_width_to(8);
 
     // Avoid returning floats in x87 registers on x86 as loading and storing from x87
     // registers will quiet signalling NaNs. Also avoid using SSE registers since they
