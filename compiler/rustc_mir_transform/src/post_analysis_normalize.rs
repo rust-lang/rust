@@ -46,12 +46,11 @@ impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
             //
             // Performance optimization: don't reintern if there is no `OpaqueCast` to remove.
             if place.projection.iter().any(|elem| matches!(elem, ProjectionElem::OpaqueCast(_))) {
-                place.projection = self.tcx.mk_place_elems(
-                    &place
+                place.projection = self.tcx.mk_place_elems_from_iter(
+                    place
                         .projection
                         .into_iter()
-                        .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(_)))
-                        .collect::<Vec<_>>(),
+                        .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(_))),
                 );
             };
         }
