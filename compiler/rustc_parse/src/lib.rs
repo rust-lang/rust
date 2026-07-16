@@ -270,7 +270,7 @@ fn source_file_to_stream<'psess>(
         ));
     });
 
-    lexer::lex_token_trees(psess, src.as_str(), source_file.start_pos, override_span, strip_tokens)
+    lexer::lex_token_trees2(psess, src.as_str(), source_file.start_pos, override_span, strip_tokens)
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
