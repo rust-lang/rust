@@ -41,7 +41,9 @@ pub(crate) fn run(
         let mut out_file = out_dir.join(name.as_str());
         out_file.set_extension(if is_json { "json" } else { "txt" });
         let buf = try_err!(File::create_buffered(&out_file), out_file);
-        calc.print_results(buf).map_err(|error| Error::new(error, out_file))
+        calc.print_results(buf).map_err(|error| Error::new(error, &out_file))?;
+        println!("Generated output into {out_file:?}");
+        Ok(())
     }
 }
 
