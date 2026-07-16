@@ -267,6 +267,25 @@ fn main() {
     }
 
     #[test]
+    fn nested_coroutine_does_not_capture_parent_local() {
+        check_with_config(
+            InlayHintsConfig { closure_capture_hints: true, ..DISABLED_CONFIG },
+            r#"
+//- minicore: copy, future
+fn main() {
+    async {
+        let foo = 1;
+        async {
+           // ^ move(&foo)
+            foo;
+        }
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
     fn coroutine_blocks() {
         check_with_config(
             InlayHintsConfig { closure_capture_hints: true, ..DISABLED_CONFIG },

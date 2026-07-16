@@ -1364,16 +1364,18 @@ impl<'db> ExprCollector<'db> {
                     let capture_by =
                         if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
                     self.with_label_rib(RibKind::Closure, |this| {
-                        this.with_awaitable_block(Awaitable::Yes, |this| {
-                            this.collect_block_(e, |this, id, statements, tail| {
-                                this.desugared_coroutine_expr(
-                                    CoroutineKind::Async,
-                                    CoroutineSource::Block,
-                                    capture_by,
-                                    id,
-                                    statements,
-                                    tail,
-                                )
+                        this.with_binding_owner(|this| {
+                            this.with_awaitable_block(Awaitable::Yes, |this| {
+                                this.collect_block_(e, |this, id, statements, tail| {
+                                    this.desugared_coroutine_expr(
+                                        CoroutineKind::Async,
+                                        CoroutineSource::Block,
+                                        capture_by,
+                                        id,
+                                        statements,
+                                        tail,
+                                    )
+                                })
                             })
                         })
                     })
@@ -1382,16 +1384,18 @@ impl<'db> ExprCollector<'db> {
                     let capture_by =
                         if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
                     self.with_label_rib(RibKind::Closure, |this| {
-                        this.with_awaitable_block(Awaitable::No("non-async gen block"), |this| {
-                            this.collect_block_(e, |this, id, statements, tail| {
-                                this.desugared_coroutine_expr(
-                                    CoroutineKind::Gen,
-                                    CoroutineSource::Block,
-                                    capture_by,
-                                    id,
-                                    statements,
-                                    tail,
-                                )
+                        this.with_binding_owner(|this| {
+                            this.with_awaitable_block(Awaitable::No("non-async gen block"), |this| {
+                                this.collect_block_(e, |this, id, statements, tail| {
+                                    this.desugared_coroutine_expr(
+                                        CoroutineKind::Gen,
+                                        CoroutineSource::Block,
+                                        capture_by,
+                                        id,
+                                        statements,
+                                        tail,
+                                    )
+                                })
                             })
                         })
                     })
@@ -1400,16 +1404,18 @@ impl<'db> ExprCollector<'db> {
                     let capture_by =
                         if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
                     self.with_label_rib(RibKind::Closure, |this| {
-                        this.with_awaitable_block(Awaitable::Yes, |this| {
-                            this.collect_block_(e, |this, id, statements, tail| {
-                                this.desugared_coroutine_expr(
-                                    CoroutineKind::AsyncGen,
-                                    CoroutineSource::Block,
-                                    capture_by,
-                                    id,
-                                    statements,
-                                    tail,
-                                )
+                        this.with_binding_owner(|this| {
+                            this.with_awaitable_block(Awaitable::Yes, |this| {
+                                this.collect_block_(e, |this, id, statements, tail| {
+                                    this.desugared_coroutine_expr(
+                                        CoroutineKind::AsyncGen,
+                                        CoroutineSource::Block,
+                                        capture_by,
+                                        id,
+                                        statements,
+                                        tail,
+                                    )
+                                })
                             })
                         })
                     })
