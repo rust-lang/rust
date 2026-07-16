@@ -24,6 +24,7 @@ fn main() {
     test_blocking_write();
     test_two_threads_blocked_on_eventfd();
     test_close_while_blocked();
+    test_initval();
 }
 
 // We want to do individual read/write calls here so we avoid read_exact/write_all.
@@ -190,4 +191,10 @@ fn test_close_while_blocked() {
     assert_eq!(val, 1);
 
     server_thread.join().unwrap();
+}
+
+fn test_initval() {
+    let fd = errno_result(unsafe { libc::eventfd(10, 0) }).unwrap();
+    let val = eventfd::read_val(fd).unwrap();
+    assert_eq!(val, 10);
 }

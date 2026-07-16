@@ -287,7 +287,7 @@ fn waiting_threads_unblocked_after_socketpair_close() {
                 assert_eq!(&data, b"1234");
                 flag.store(true, Ordering::Relaxed);
             });
-            if variant == 0 {
+            if cfg!(level_triggered) || variant == 0 {
                 // In variant 1, the event is consumed below (for edge-triggered).
                 s.spawn(|| {
                     // Indefinitely block until `fds[1]` becomes readable.
