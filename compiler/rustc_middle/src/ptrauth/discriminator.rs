@@ -316,8 +316,21 @@ enum ClangDiscTy<'tcx> {
     Void,
 }
 
-// Canonicalize `Option<fn ptr>` to `fn ptr`. This is so that we can express C's null ptr argument.
-// Please see: pauth-fn-ptr-type-discrimination-option-callback.rs,
+// Canonicalize Option-wrapped pointer types used to model C nullable pointers.
+//
+// Rust and Clang should compute identical discriminators for equivalent C APIs.
+// Clang does not distinguish nullable from non-nullable pointer types when
+// computing function pointer authentication discriminators, so
+// `Option<fn>` and `Option<*mut T>` are encoded identically to their
+// underlying pointer types.
+//
+// Although `Option<*mut T>` is not considered FFI-safe by Rust and triggers the
+// `improper_ctypes`/`improper_ctypes_definitions` lints, this is a warning
+// rather than a hard error. Canonicalizing it here preserves Clang-compatible
+// discriminator computation.
+//
+// Please see the following tests for sample use cases:
+// pauth-fn-ptr-type-discrimination-option-callback.rs,
 // pauth-fn-ptr-type-discrimination-option-return.rs and pauth-fn-ptr-type-discrimination-option.rs
 fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     if let ty::Adt(def, args) = ty.kind()
@@ -325,8 +338,9 @@ fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     {
         let inner = args.type_at(0);
 
-        if matches!(inner.kind(), ty::FnPtr(..)) {
-            return inner;
+        match inner.kind() {
+            ty::FnPtr(..) | ty::RawPtr(..) => return inner,
+            _ => {}
         }
     }
 
