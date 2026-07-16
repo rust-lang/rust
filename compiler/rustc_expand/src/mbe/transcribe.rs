@@ -547,7 +547,7 @@ fn transcribe_pnr<'tx>(
         ParseNtResult::Meta(attr_item) => {
             let has_meta_form = attr_item.node.meta_kind().is_some();
             mk_delimited(
-                attr_item.node.span(),
+                attr_item.node.span,
                 MetaVarKind::Meta { has_meta_form },
                 TokenStream::from_ast(attr_item),
             )
