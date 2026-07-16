@@ -121,7 +121,7 @@ use redundant_semicolon::*;
 use reference_casting::*;
 use runtime_symbols::*;
 use rustc_data_structures::unord::UnordSet;
-use rustc_hir::def_id::LocalModDefId;
+use rustc_hir::def_id::LocalModId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
@@ -154,8 +154,8 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { lint_mod, ..*providers };
 }
 
-fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    late_lint_mod(tcx, module_def_id, BuiltinCombinedLateLintModPass::new());
+fn lint_mod(tcx: TyCtxt<'_>, mod_id: LocalModId) {
+    late_lint_mod(tcx, mod_id, BuiltinCombinedLateLintModPass::new());
 }
 
 early_lint_methods!(

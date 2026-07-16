@@ -28,7 +28,6 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `amx-fp8`
 `amx-int8`
 `amx-movrs`
-`amx-tf32`
 `amx-tile`
 `apxf`
 `atomics`

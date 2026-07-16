@@ -29,7 +29,7 @@ error: lifetime may not live long enough
 LL |       (async move || {
    |  ______-------------_^
    | |      |           |
-   | |      |           return type of async closure `{async closure body@$DIR/issue-74072-lifetime-name-annotations.rs:13:20: 19:6}` contains a lifetime `'2`
+   | |      |           return type of async closure is &'2 i32
    | |      lifetime `'1` represents this closure's body
 LL | |
 LL | |
@@ -78,7 +78,7 @@ error: lifetime may not live long enough
 LL |       (async move || -> &i32 {
    |  ______---------------------_^
    | |      |                |
-   | |      |                return type of async closure `{async closure body@$DIR/issue-74072-lifetime-name-annotations.rs:23:28: 29:6}` contains a lifetime `'2`
+   | |      |                let's call the lifetime of this reference `'2`
    | |      lifetime `'1` represents this closure's body
 LL | |
 LL | |

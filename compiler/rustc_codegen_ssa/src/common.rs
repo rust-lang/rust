@@ -119,7 +119,7 @@ pub(crate) fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let instance = ty::Instance::mono(tcx, def_id);
     (
         bx.fn_abi_of_instance(instance, ty::List::empty()),
-        bx.get_fn_addr(instance, Some(PacMetadata::default())),
+        bx.get_fn_addr(instance, tcx.sess.pointer_authentication_functions()),
         instance,
     )
 }

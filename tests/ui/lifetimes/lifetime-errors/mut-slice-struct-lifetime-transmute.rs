@@ -1,3 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/40288>.
+//! We were subtyping in the wrong direction, allowing any lifetime to
+//! become 'static, which made use-after-free possible.
+
 fn prove_static<T: 'static + ?Sized>(_: &'static T) {}
 
 fn lifetime_transmute_slice<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {

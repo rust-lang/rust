@@ -14,7 +14,8 @@ LL | #[derive(PartialEq, Eq)]
    |          --------- in this derive macro expansion
 LL | pub struct Id<T>(PhantomData<T>);
    |            ^^ - type parameter would need to implement `PartialEq`
-   = help: consider manually implementing `PartialEq` to avoid undesired bounds
+   = help: consider manually implementing `PartialEq` to avoid undesired bounds caused by "imperfect derives"
+   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 note: required by a bound in `accept_eq`
   --> $DIR/derive-implicit-bound.rs:17:23
    |

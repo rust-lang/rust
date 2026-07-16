@@ -71,6 +71,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
+use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
@@ -706,7 +707,7 @@ impl<'ra> ModuleData<'ra> {
         expansion: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-        vis: Visibility<DefId>,
+        vis: Visibility<ModId>,
         arenas: &'ra ResolverArenas<'ra>,
     ) -> Self {
         let is_foreign = !kind.is_local();
@@ -840,11 +841,11 @@ impl<'ra> Module<'ra> {
         }
     }
 
-    /// The [`DefId`] of the nearest `mod` item ancestor (which may be this module).
+    /// The [`ModId`] of the nearest `mod` item ancestor (which may be this module).
     /// This may be the crate root.
-    fn nearest_parent_mod(self) -> DefId {
+    fn nearest_parent_mod(self) -> ModId {
         match self.kind {
-            ModuleKind::Def(DefKind::Mod, def_id, _, _) => def_id,
+            ModuleKind::Def(DefKind::Mod, def_id, _, _) => ModId::new_unchecked(def_id),
             _ => self.parent.expect("non-root module without parent").nearest_parent_mod(),
         }
     }
@@ -894,7 +895,7 @@ impl<'ra> LocalModule<'ra> {
     fn new(
         parent: Option<LocalModule<'ra>>,
         kind: ModuleKind,
-        vis: Visibility<DefId>,
+        vis: Visibility<ModId>,
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
@@ -916,7 +917,7 @@ impl<'ra> ExternModule<'ra> {
     fn new(
         parent: Option<ExternModule<'ra>>,
         kind: ModuleKind,
-        vis: Visibility<DefId>,
+        vis: Visibility<ModId>,
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
@@ -980,7 +981,7 @@ struct DeclData<'ra> {
     ambiguity: CmCell<Option<(Decl<'ra>, bool /*warning*/)>>,
     expansion: LocalExpnId,
     span: Span,
-    initial_vis: Visibility<DefId>,
+    initial_vis: Visibility<ModId>,
     /// If the declaration refers to an ambiguous glob set, then this is the most visible
     /// declaration from the set, if its visibility is different from `initial_vis`.
     ambiguity_vis_max: CmCell<Option<Decl<'ra>>>,
@@ -1099,12 +1100,12 @@ struct AmbiguityError<'ra> {
 }
 
 impl<'ra> DeclData<'ra> {
-    fn vis(&self) -> Visibility<DefId> {
+    fn vis(&self) -> Visibility<ModId> {
         // Select the maximum visibility if there are multiple ambiguous glob imports.
         self.ambiguity_vis_max.get().map(|d| d.vis()).unwrap_or_else(|| self.initial_vis)
     }
 
-    fn min_vis(&self) -> Visibility<DefId> {
+    fn min_vis(&self) -> Visibility<ModId> {
         // Select the minimum visibility if there are multiple ambiguous glob imports.
         self.ambiguity_vis_min.get().map(|d| d.vis()).unwrap_or_else(|| self.initial_vis)
     }
@@ -1490,8 +1491,8 @@ pub struct Resolver<'ra, 'tcx> {
     effective_visibilities: EffectiveVisibilities,
     macro_reachable_adts: FxIndexMap<LocalDefId, FxIndexSet<LocalDefId>>,
 
-    doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
-    doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
+    doc_link_resolutions: FxIndexMap<LocalModId, DocLinkResMap>,
+    doc_link_traits_in_scope: FxIndexMap<LocalModId, Vec<DefId>>,
     all_macro_rules: UnordSet<Symbol> = Default::default(),
 
     /// Invocation ids of all glob delegations.
@@ -1539,7 +1540,7 @@ impl<'ra> ResolverArenas<'ra> {
     fn new_def_decl(
         &'ra self,
         res: Res,
-        vis: Visibility<DefId>,
+        vis: Visibility<ModId>,
         span: Span,
         expansion: LocalExpnId,
         parent_module: Option<Module<'ra>>,
@@ -1924,7 +1925,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn feed_visibility(&mut self, feed: TyCtxtFeed<'tcx, LocalDefId>, vis: Visibility) {
-        feed.visibility(vis.to_def_id());
+        feed.visibility(vis.to_mod_id());
         self.visibilities_for_hashing.push((feed.def_id(), vis));
     }
 
@@ -2359,10 +2360,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn resolve_self(&self, ctxt: &mut SyntaxContext, module: Module<'ra>) -> Module<'ra> {
-        let mut module = self.expect_module(module.nearest_parent_mod());
+        let mut module = self.expect_module(module.nearest_parent_mod().to_def_id());
         while module.span.ctxt().normalize_to_macros_2_0() != *ctxt {
             let parent = module.parent.unwrap_or_else(|| self.expn_def_scope(ctxt.remove_mark()));
-            module = self.expect_module(parent.nearest_parent_mod());
+            module = self.expect_module(parent.nearest_parent_mod().to_def_id());
         }
         module
     }
@@ -2749,7 +2750,7 @@ enum Stage {
 #[derive(Copy, Clone, Debug)]
 struct ImportSummary {
     vis: Visibility,
-    nearest_parent_mod: LocalDefId,
+    nearest_parent_mod: LocalModId,
     is_single: bool,
     priv_macro_use: bool,
     span: Span,

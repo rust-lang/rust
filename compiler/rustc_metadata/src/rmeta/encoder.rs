@@ -28,6 +28,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
+use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
@@ -1455,8 +1456,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.codegen_fn_attrs[def_id] <- self.tcx.codegen_fn_attrs(def_id));
             }
             if should_encode_visibility(def_kind) {
-                let vis =
-                    self.tcx.local_visibility(local_id).map_id(|def_id| def_id.local_def_index);
+                let vis = self
+                    .tcx
+                    .local_visibility(local_id)
+                    .map_id(|mod_id| mod_id.to_local_def_id().local_def_index);
                 record!(self.tables.visibility[def_id] <- vis);
             }
             if should_encode_stability(def_kind) {
@@ -1979,16 +1982,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.tables.def_kind.set_some(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
             record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
             self.encode_attrs(LOCAL_CRATE.as_def_id().expect_local());
-            let vis = tcx.local_visibility(CRATE_DEF_ID).map_id(|def_id| def_id.local_def_index);
+            let vis = tcx
+                .local_visibility(CRATE_DEF_ID)
+                .map_id(|mod_id| mod_id.to_local_def_id().local_def_index);
             record!(self.tables.visibility[LOCAL_CRATE.as_def_id()] <- vis);
             if let Some(stability) = stability {
                 record!(self.tables.lookup_stability[LOCAL_CRATE.as_def_id()] <- stability);
             }
             self.encode_deprecation(LOCAL_CRATE.as_def_id());
-            if let Some(res_map) = tcx.resolutions(()).doc_link_resolutions.get(&CRATE_DEF_ID) {
+            if let Some(res_map) = tcx.resolutions(()).doc_link_resolutions.get(&CRATE_MOD_ID) {
                 record!(self.tables.doc_link_resolutions[LOCAL_CRATE.as_def_id()] <- res_map);
             }
-            if let Some(traits) = tcx.resolutions(()).doc_link_traits_in_scope.get(&CRATE_DEF_ID) {
+            if let Some(traits) = tcx.resolutions(()).doc_link_traits_in_scope.get(&CRATE_MOD_ID) {
                 record_array!(self.tables.doc_link_traits_in_scope[LOCAL_CRATE.as_def_id()] <- traits);
             }
 

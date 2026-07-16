@@ -779,8 +779,8 @@ PR #{number} "{title}" fixes a regression and has been nominated for backport.
 This topic will help T-compiler getting context about it.
 
 Tip: to approve or decline from this Zulip thread, use:
-@_**triagebot** backport approve beta #{number}
-@_**triagebot** backport decline beta #{number}
+@_**triagebot** backport approve
+@_**triagebot** backport decline
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -809,8 +809,8 @@ PR #{number} "{title}" fixes a regression and has been nominated for backport.
 This topic will help T-compiler getting context about it.
 
 Tip: to approve or decline from this Zulip thread, use:
-@_**triagebot** backport approve stable #{number}
-@_**triagebot** backport decline stable #{number}
+@_**triagebot** backport approve
+@_**triagebot** backport decline
 """,
     """\
 /poll Approve stable backport of #{number}?
