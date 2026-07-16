@@ -15,12 +15,12 @@ where
         &mut self,
         goal: Goal<I, ty::ProjectionPredicate<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let uv = goal.predicate.projection_term.expect_ct();
+        let alias_const = goal.predicate.projection_term.expect_ct();
         self.evaluate_const_and_instantiate_projection_term(
             goal.param_env,
             goal.predicate.projection_term,
             goal.predicate.term,
-            uv,
+            alias_const,
         )
     }
 }

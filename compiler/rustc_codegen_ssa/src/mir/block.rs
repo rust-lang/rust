@@ -1,6 +1,9 @@
 use std::cmp;
+use std::ops::Range;
 
-use rustc_abi::{Align, BackendRepr, ExternAbi, HasDataLayout, Reg, Size, WrappingRange};
+use rustc_abi::{
+    Align, ArmCall, BackendRepr, CanonAbi, ExternAbi, HasDataLayout, Reg, Size, WrappingRange,
+};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::packed::Pu128;
@@ -597,6 +600,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
                 };
+
+                if self.fn_abi.conv == CanonAbi::Arm(ArmCall::CCmseNonSecureEntry) {
+                    // The return value of an `extern "cmse-nonsecure-entry"` function crosses the
+                    // secure boundary. Zero padding bytes so information does not leak.
+                    //
+                    // This only zeroes "guaranteed" padding. There may be more bytes that are
+                    // padding for some but not all variants of this type; those are not zeroed.
+                    //
+                    // Returning a value with value-dependent padding will instead trigger a lint.
+                    let ret_layout = self.fn_abi.ret.layout;
+                    let uninit_ranges = ret_layout.padding_ranges(bx.cx());
+                    self.zero_byte_ranges(bx, llslot, ret_layout.size, &uninit_ranges);
+                }
+
                 load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align.abi)
             }
         };
@@ -618,7 +635,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let ty = self.monomorphize(ty);
         let drop_fn = Instance::resolve_drop_glue(bx.tcx(), ty);
 
-        if let ty::InstanceKind::DropGlue(_, None) = drop_fn.def {
+        if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = drop_fn.def {
             // we don't actually need to drop anything.
             return helper.funclet_br(self, bx, target, mergeable_succ, &[]);
         }
@@ -669,7 +686,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => (
                 false,
-                bx.get_fn_addr(drop_fn),
+                bx.get_fn_addr(drop_fn, bx.sess().pointer_authentication_functions()),
                 bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
                 drop_fn,
             ),
@@ -771,6 +788,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // It's `fn panic_null_pointer_dereference()`,
                 // `#[track_caller]` adds an implicit argument.
                 (LangItem::PanicNullPointerDereference, vec![location])
+            }
+            AssertKind::NullReferenceConstructed => {
+                // It's `fn panic_null_reference_constructed()`,
+                // `#[track_caller]` adds an implicit argument.
+                (LangItem::PanicNullReferenceConstructed, vec![location])
             }
             AssertKind::InvalidEnumConstruction(source) => {
                 let source = self.codegen_operand(bx, source).immediate();
@@ -927,14 +949,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.tcx(),
                     bx.typing_env(),
                     def_id,
-                    generic_args,
+                    generic_args.no_bound_vars().unwrap(),
                     fn_span,
                 );
 
                 match instance.def {
                     // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
                     // it is `func returning noop future`
-                    ty::InstanceKind::DropGlue(_, None) => {
+                    ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) => {
                         // Empty drop glue; a no-op.
                         let target = target.unwrap();
                         return helper.funclet_br(self, bx, target, mergeable_succ, &[]);
@@ -1076,11 +1098,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx.tcx(),
                             bx.typing_env(),
                             def_id,
-                            generic_args,
+                            generic_args.no_bound_vars().unwrap(),
                         )
                         .unwrap();
 
-                        (None, Some(bx.get_fn_addr(instance)))
+                        (
+                            None,
+                            Some(bx.get_fn_addr(
+                                instance,
+                                bx.sess().pointer_authentication_functions(),
+                            )),
+                        )
                     }
                     _ => (Some(instance), None),
                 }
@@ -1090,8 +1118,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if let Some(instance) = instance
+            && let ty::InstanceKind::LlvmIntrinsic(_) = instance.def
             && let Some(name) = bx.tcx().codegen_fn_attrs(instance.def_id()).symbol_name
-            && name.as_str().starts_with("llvm.")
             // This is the only LLVM intrinsic we use that unwinds
             // FIXME either add unwind support to codegen_llvm_intrinsic_call or replace usage of
             // this intrinsic with something else
@@ -1185,6 +1213,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         // Split the rust-call tupled arguments off.
+        // FIXME(splat): un-tuple splatted arguments in codegen, for performance
         let (first_args, untuple) = if sig.abi() == ExternAbi::RustCall
             && let Some((tup, args)) = args.split_last()
         {
@@ -1317,7 +1346,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     LocalRef::Operand(arg) => {
                         let Ref(place_value) = arg.val else {
-                            bug!("only `Ref` should use `PassMode::Indirect`");
+                            bug!(
+                                "only `Ref` should use `PassMode::Indirect`, but got {:?}",
+                                arg.val
+                            );
                         };
                         bx.typed_place_copy(place_value, tmp.val, fn_abi.args[i].layout);
                         op.val = arg.val;
@@ -1338,6 +1370,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             self.codegen_argument(
                 bx,
+                fn_abi.conv,
                 op,
                 by_move,
                 &mut llargs,
@@ -1348,6 +1381,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let num_untupled = untuple.map(|tup| {
             self.codegen_arguments_untupled(
                 bx,
+                fn_abi.conv,
                 &tup.node,
                 &mut llargs,
                 &fn_abi.args[first_args.len()..],
@@ -1377,6 +1411,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let last_arg = fn_abi.args.last().unwrap();
             self.codegen_argument(
                 bx,
+                fn_abi.conv,
                 location,
                 /* by_move */ false,
                 &mut llargs,
@@ -1386,7 +1421,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let fn_ptr = match (instance, llfn) {
-            (Some(instance), None) => bx.get_fn_addr(instance),
+            (Some(instance), None) => {
+                bx.get_fn_addr(instance, bx.sess().pointer_authentication_functions())
+            }
             (_, Some(llfn)) => llfn,
             _ => span_bug!(fn_span, "no instance or llfn for call"),
         };
@@ -1457,7 +1494,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx.tcx(),
                             bx.typing_env(),
                             def_id,
-                            args,
+                            args.no_bound_vars().unwrap(),
                         )
                         .unwrap();
                         InlineAsmOperandRef::SymFn { instance }
@@ -1693,9 +1730,31 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
+    fn zero_byte_ranges(
+        &mut self,
+        bx: &mut Bx,
+        ptr: Bx::Value,
+        limit: Size,
+        ranges: &[Range<Size>],
+    ) {
+        let zero = bx.const_u8(0);
+
+        for range in ranges {
+            let end = cmp::min(range.end, limit);
+            if range.start >= end {
+                continue;
+            }
+            let offset = bx.const_usize(range.start.bytes());
+            let len = bx.const_usize((end - range.start).bytes());
+            let ptr = bx.inbounds_ptradd(ptr, offset);
+            bx.memset(ptr, zero, len, Align::ONE, MemFlags::empty());
+        }
+    }
+
     fn codegen_argument(
         &mut self,
         bx: &mut Bx,
+        conv: CanonAbi,
         op: OperandRef<'tcx, Bx::Value>,
         by_move: bool,
         llargs: &mut Vec<Bx::Value>,
@@ -1819,6 +1878,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     MemFlags::empty(),
                     None,
                 );
+
+                // The arguments of an `extern "cmse-nonsecure-call"` function cross the secure
+                // boundary. Zero padding bytes so information does not leak.
+                //
+                // This only zeroes "guaranteed" padding. There may be more bytes that are
+                // padding for some but not all variants of this type; those are not zeroed.
+                //
+                // Passing an argument with value-dependent padding will instead trigger a lint.
+                if conv == CanonAbi::Arm(ArmCall::CCmseNonSecureCall) {
+                    self.zero_byte_ranges(
+                        bx,
+                        llscratch,
+                        Size::from_bytes(copy_bytes),
+                        &arg.layout.padding_ranges(bx.cx()),
+                    );
+                }
+
                 // ...and then load it with the ABI type.
                 llval = load_cast(bx, cast, llscratch, scratch_align);
                 bx.lifetime_end(llscratch, scratch_size);
@@ -1845,6 +1921,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn codegen_arguments_untupled(
         &mut self,
         bx: &mut Bx,
+        conv: CanonAbi,
         operand: &mir::Operand<'tcx>,
         llargs: &mut Vec<Bx::Value>,
         args: &[ArgAbi<'tcx, Ty<'tcx>>],
@@ -1864,6 +1941,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let field = bx.load_operand(field_ptr);
                 self.codegen_argument(
                     bx,
+                    conv,
                     field,
                     by_move,
                     llargs,
@@ -1875,7 +1953,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
                 let op = tuple.extract_field(self, bx, i);
-                self.codegen_argument(bx, op, by_move, llargs, &args[i], lifetime_ends_after_call);
+                self.codegen_argument(
+                    bx,
+                    conv,
+                    op,
+                    by_move,
+                    llargs,
+                    &args[i],
+                    lifetime_ends_after_call,
+                );
             }
         }
         tuple.layout.fields.count()

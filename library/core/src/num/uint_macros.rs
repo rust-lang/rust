@@ -1721,8 +1721,8 @@ macro_rules! uint_impl {
         /// rounded down.
         ///
         /// This method might not be optimized owing to implementation details;
-        /// `ilog2` can produce results more efficiently for base 2, and `ilog10`
-        /// can produce results more efficiently for base 10.
+        /// [`ilog2`](Self::ilog2) can produce results more efficiently for base 2,
+        /// and [`ilog10`](Self::ilog10) can produce results more efficiently for base 10.
         ///
         /// # Panics
         ///
@@ -2827,7 +2827,7 @@ macro_rules! uint_impl {
         ///
         /// Beware that, unlike most other `wrapping_*` methods on integers, this
         /// does *not* give the same result as doing the shift in infinite precision
-        /// then truncating as needed.  The behaviour matches what shift instructions
+        /// then truncating as needed. Instead, the behaviour of this method matches what shift instructions
         /// do on many processors, and is what the `<<` operator does when overflow
         /// checks are disabled, but numerically it's weird.  Consider, instead,
         /// using [`Self::unbounded_shl`] which has nicer behaviour.
@@ -2871,7 +2871,7 @@ macro_rules! uint_impl {
         ///
         /// Beware that, unlike most other `wrapping_*` methods on integers, this
         /// does *not* give the same result as doing the shift in infinite precision
-        /// then truncating as needed.  The behaviour matches what shift instructions
+        /// then truncating as needed. Instead, the behaviour of this method matches what shift instructions
         /// do on many processors, and is what the `>>` operator does when overflow
         /// checks are disabled, but numerically it's weird.  Consider, instead,
         /// using [`Self::unbounded_shr`] which has nicer behaviour.

@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce(&bool)` closure, found `bool`
+error[E0277]: expected an `FnOnce(&bool)` closure, found `bool`
   --> $DIR/block_instead_of_closure_in_arg.rs:3:23
    |
 LL |        Some(true).filter({

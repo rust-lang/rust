@@ -32,7 +32,7 @@ fn get(
 pub(crate) struct DeprecatedParser;
 impl SingleAttributeParser for DeprecatedParser {
     const PATH: &[Symbol] = &[sym::deprecated];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Mod),
         Allow(Target::Struct),

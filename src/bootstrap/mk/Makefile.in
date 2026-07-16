@@ -106,15 +106,15 @@ prepare:
 SKIP_COMPILER := --skip=compiler
 SKIP_SRC := --skip=src
 TEST_SET1 := $(SKIP_COMPILER) $(SKIP_SRC)
-TEST_SET2 := --skip=tests --skip=coverage-map --skip=coverage-run --skip=library --skip=tidyselftest
+TEST_SET2 := --skip=tests --skip=library --skip=tidyselftest
 
 ## MSVC native builders
 
 # this intentionally doesn't use `$(BOOTSTRAP)` so we can test the shebang on Windows
 ci-msvc-py:
-	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 $(TEST_SET1)
+	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 $(TEST_SET1) --skip=src/tools/linkchecker
 ci-msvc-ps1:
-	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 $(TEST_SET2)
+	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 $(TEST_SET2) --skip=src/tools/linkchecker
 ci-msvc: ci-msvc-py ci-msvc-ps1
 
 ## MingW native builders

@@ -5,7 +5,7 @@ use std::slice;
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
     HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
-    db::{ExpandDatabase, HirDatabase},
+    db::HirDatabase,
 };
 use ide_db::{
     RootDatabase,
@@ -108,6 +108,26 @@ fn needs_parens_in_call(make: &SyntaxFactory, param: &ast::Expr) -> bool {
     let call = make.expr_call(make.expr_unit(), make.arg_list(Vec::new()));
     let callable = call.expr().expect("invalid make call");
     param.needs_parens_in_place_of(call.syntax(), callable.syntax())
+}
+
+pub(crate) fn wrap_paren_in_guard_chain(guard: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
+    if needs_parens_in_guard_chain(make, &guard) { make.expr_paren(guard).into() } else { guard }
+}
+
+fn needs_parens_in_guard_chain(make: &SyntaxFactory, guard: &ast::Expr) -> bool {
+    let ast::Expr::BinExpr(if_let_and_guard) = make.expr_bin_op(
+        make.expr_unit(),
+        ast::BinaryOp::LogicOp(ast::LogicOp::And),
+        make.expr_unit(),
+    ) else {
+        stdx::never!("`SyntaxFactory::expr_bin_op` returns a `BinExpr`");
+        return false;
+    };
+    let Some(fake_guard) = if_let_and_guard.rhs() else {
+        stdx::never!("invalid make call");
+        return false;
+    };
+    guard.needs_parens_in_place_of(if_let_and_guard.syntax(), fake_guard.syntax())
 }
 
 /// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
@@ -221,7 +241,7 @@ pub fn add_trait_assoc_items_to_impl(
         .map(|InFile { file_id, value: original_item }| {
             let mut cloned_item = {
                 if let Some(macro_file) = file_id.macro_file() {
-                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let span_map = macro_file.expansion_span_map(sema.db);
                     let item_prettified = prettify_macro_expansion(
                         sema.db,
                         original_item.syntax().clone(),
@@ -1175,6 +1195,15 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
         !is_const
     });
     is_const
+}
+
+pub(crate) fn original_range_in(
+    file_id: hir::EditionedFileId,
+    sema: &Semantics<'_, RootDatabase>,
+    value: &SyntaxNode,
+) -> Option<TextRange> {
+    let original = sema.original_range_opt(value)?;
+    (original.file_id == file_id).then_some(original.range)
 }
 
 // FIXME: #20460 When hir-ty can analyze the `never` statement at the end of block, remove it

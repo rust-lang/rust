@@ -8,7 +8,7 @@ pub(crate) struct InstructionSetParser;
 
 impl SingleAttributeParser for InstructionSetParser {
     const PATH: &[Symbol] = &[sym::instruction_set];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Closure),
         Allow(Target::Method(MethodKind::Inherent)),

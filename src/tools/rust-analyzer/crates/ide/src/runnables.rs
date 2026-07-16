@@ -545,7 +545,6 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
     .call_site();
     nav.focus_range = None;
     nav.description = None;
-    nav.docs = None;
     nav.kind = None;
     let res = Runnable {
         use_name_in_title: false,

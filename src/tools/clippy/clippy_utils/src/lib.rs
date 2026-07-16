@@ -46,7 +46,6 @@ mod check_proc_macro;
 pub mod comparisons;
 pub mod consts;
 pub mod diagnostics;
-pub mod disallowed_profiles;
 pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
@@ -76,7 +75,7 @@ use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
 use std::iter::{once, repeat_n, zip};
-use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::sync::{Mutex, OnceLock};
 
 use itertools::Itertools;
 use rustc_abi::Integer;
@@ -89,7 +88,7 @@ use rustc_data_structures::unhash::UnindexMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{Visitor, walk_expr};
@@ -116,14 +115,14 @@ use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{InnerSpan, Span, SyntaxContext};
-use source::{SpanRangeExt, walk_span_to_context};
+use source::{SpanExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::ast_utils::unordered_over;
-use crate::consts::ConstEvalCtxt;
 use crate::higher::Range;
 use crate::msrvs::Msrv;
 use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use crate::source::HasSourceMap;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
@@ -1329,59 +1328,23 @@ pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     })
 }
 
-/// Checks whether the given `Expr` is a range equivalent to a `RangeFull`.
-///
-/// For the lower bound, this means that:
-/// - either there is none
-/// - or it is the smallest value that can be represented by the range's integer type
-///
-/// For the upper bound, this means that:
-/// - either there is none
-/// - or it is the largest value that can be represented by the range's integer type and is
-///   inclusive
-/// - or it is a call to some container's `len` method and is exclusive, and the range is passed to
-///   a method call on that same container (e.g. `v.drain(..v.len())`)
-///
-/// If the given `Expr` is not some kind of range, the function returns `false`.
-pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Option<&Path<'_>>) -> bool {
-    let ty = cx.typeck_results().expr_ty(expr);
-    if let Some(Range { start, end, limits, .. }) = Range::hir(cx, expr) {
-        let start_is_none_or_min = start.is_none_or(|start| {
-            if let rustc_ty::Adt(_, subst) = ty.kind()
-                && let bnd_ty = subst.type_at(0)
-                && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
-            {
-                start_const.is_numeric_min(cx.tcx, bnd_ty)
-            } else {
-                false
-            }
-        });
-        let end_is_none_or_max = end.is_none_or(|end| match limits {
-            RangeLimits::Closed => {
-                if let rustc_ty::Adt(_, subst) = ty.kind()
-                    && let bnd_ty = subst.type_at(0)
-                    && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
+/// Checks whether the given `Expr` is a range over the entire container.
+pub fn is_full_collection_range(cx: &LateContext<'_>, container: Option<HirId>, expr: &Expr<'_>) -> bool {
+    if let Some(Range { start, end, ty, .. }) = Range::hir(cx, expr) {
+        start.is_none_or(|start| is_integer_literal(start, 0))
+            && end.is_none_or(|end| {
+                if ty.limits() == RangeLimits::HalfOpen
+                    && let Some(container) = container
+                    && let ExprKind::MethodCall(seg, recv, [], _) = end.kind
                 {
-                    end_const.is_numeric_max(cx.tcx, bnd_ty)
+                    seg.ident.name == sym::len && recv.res_local_id() == Some(container)
                 } else {
                     false
                 }
-            },
-            RangeLimits::HalfOpen => {
-                if let Some(container_path) = container_path
-                    && let ExprKind::MethodCall(name, self_arg, [], _) = end.kind
-                    && name.ident.name == sym::len
-                    && let ExprKind::Path(QPath::Resolved(None, path)) = self_arg.kind
-                {
-                    container_path.res == path.res
-                } else {
-                    false
-                }
-            },
-        });
-        return start_is_none_or_min && end_is_none_or_max;
+            })
+    } else {
+        false
     }
-    false
 }
 
 /// Checks whether the given expression is a constant literal of the given value.
@@ -2385,16 +2348,15 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     false
 }
 
-static TEST_ITEM_NAMES_CACHE: OnceLock<Mutex<FxHashMap<LocalModDefId, Vec<Symbol>>>> = OnceLock::new();
+static TEST_ITEM_NAMES_CACHE: OnceLock<Mutex<FxHashMap<LocalModId, Vec<Symbol>>>> = OnceLock::new();
 
-/// Apply `f()` to the set of test item names.
+/// Returns the names of the test items in the given module.
 /// The names are sorted using the default `Symbol` ordering.
-fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&[Symbol]) -> bool) -> bool {
+fn test_item_names(tcx: TyCtxt<'_>, module: LocalModId) -> Vec<Symbol> {
     let cache = TEST_ITEM_NAMES_CACHE.get_or_init(|| Mutex::new(FxHashMap::default()));
-    let mut map: MutexGuard<'_, FxHashMap<LocalModDefId, Vec<Symbol>>> = cache.lock().unwrap();
-    let value = map.entry(module);
-    match value {
-        Entry::Occupied(entry) => f(entry.get()),
+    let mut map = cache.lock().unwrap();
+    match map.entry(module) {
+        Entry::Occupied(entry) => entry.get().clone(),
         Entry::Vacant(entry) => {
             let mut names = Vec::new();
             for id in tcx.hir_module_free_items(module) {
@@ -2410,7 +2372,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&
                 }
             }
             names.sort_unstable();
-            f(entry.insert(names))
+            entry.insert(names).clone()
         },
     }
 }
@@ -2419,23 +2381,25 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&
 ///
 /// Note: Add `//@compile-flags: --test` to UI tests with a `#[test]` function
 pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    with_test_item_names(tcx, tcx.parent_module(id), |names| {
-        let node = tcx.hir_node(id);
-        once((id, node))
-            .chain(tcx.hir_parent_iter(id))
-            // Since you can nest functions we need to collect all until we leave
-            // function scope
-            .any(|(_id, node)| {
-                if let Node::Item(item) = node
-                    && let ItemKind::Fn { ident, .. } = item.kind
-                {
-                    // Note that we have sorted the item names in the visitor,
-                    // so the binary_search gets the same as `contains`, but faster.
-                    return names.binary_search(&ident.name).is_ok();
-                }
-                false
-            })
-    })
+    let names = test_item_names(tcx, tcx.parent_module(id));
+    // Without `--test` there are no test items, so the parent walk can never match.
+    if names.is_empty() {
+        return false;
+    }
+    once((id, tcx.hir_node(id)))
+        .chain(tcx.hir_parent_iter(id))
+        // Since you can nest functions we need to collect all until we leave
+        // function scope
+        .any(|(_id, node)| {
+            if let Node::Item(item) = node
+                && let ItemKind::Fn { ident, .. } = item.kind
+            {
+                // Note that we have sorted the item names in the visitor,
+                // so the binary_search gets the same as `contains`, but faster.
+                return names.binary_search(&ident.name).is_ok();
+            }
+            false
+        })
 }
 
 /// Checks if `fn_def_id` has a `#[test]` attribute applied
@@ -2449,9 +2413,9 @@ pub fn is_test_function(tcx: TyCtxt<'_>, fn_def_id: LocalDefId) -> bool {
     if let Node::Item(item) = tcx.hir_node(id)
         && let ItemKind::Fn { ident, .. } = item.kind
     {
-        with_test_item_names(tcx, tcx.parent_module(id), |names| {
-            names.binary_search(&ident.name).is_ok()
-        })
+        test_item_names(tcx, tcx.parent_module(id))
+            .binary_search(&ident.name)
+            .is_ok()
     } else {
         false
     }
@@ -2880,8 +2844,8 @@ pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str, Inn
 
 /// Checks whether a given span has any comment token
 /// This checks for all types of comment: line "//", block "/**", doc "///" "//!"
-pub fn span_contains_comment(cx: &impl source::HasSession, span: Span) -> bool {
-    span.check_source_text(cx, |snippet| {
+pub fn span_contains_comment<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> bool {
+    span.check_text(sm, |snippet| {
         tokenize(snippet, FrontmatterAllowed::No).any(|token| {
             matches!(
                 token.kind,
@@ -2895,8 +2859,8 @@ pub fn span_contains_comment(cx: &impl source::HasSession, span: Span) -> bool {
 /// token, including comments unless `skip_comments` is set.
 /// This is useful to determine if there are any actual code tokens in the span that are omitted in
 /// the late pass, such as platform-specific code.
-pub fn span_contains_non_whitespace(cx: &impl source::HasSession, span: Span, skip_comments: bool) -> bool {
-    span.check_source_text(cx, |snippet| {
+pub fn span_contains_non_whitespace<'sm>(sm: impl HasSourceMap<'sm>, span: Span, skip_comments: bool) -> bool {
+    span.check_text(sm, |snippet| {
         tokenize_with_text(snippet).any(|(token, _, _)| match token {
             TokenKind::Whitespace => false,
             TokenKind::BlockComment { .. } | TokenKind::LineComment { .. } => !skip_comments,
@@ -2904,18 +2868,19 @@ pub fn span_contains_non_whitespace(cx: &impl source::HasSession, span: Span, sk
         })
     })
 }
+
 /// Returns all the comments a given span contains
 ///
 /// Comments are returned wrapped with their relevant delimiters
-pub fn span_extract_comment(cx: &impl source::HasSession, span: Span) -> String {
-    span_extract_comments(cx, span).join("\n")
+pub fn span_extract_comment<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> String {
+    span_extract_comments(sm, span).join("\n")
 }
 
 /// Returns all the comments a given span contains.
 ///
 /// Comments are returned wrapped with their relevant delimiters.
-pub fn span_extract_comments(cx: &impl source::HasSession, span: Span) -> Vec<String> {
-    span.with_source_text(cx, |snippet| {
+pub fn span_extract_comments<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Vec<String> {
+    span.with_source_text(sm, |snippet| {
         tokenize_with_text(snippet)
             .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
             .map(|(_, s, _)| s.to_string())
@@ -3293,7 +3258,10 @@ fn get_path_to_ty<'tcx>(tcx: TyCtxt<'tcx>, from: LocalDefId, ty: Ty<'tcx>, args:
         | rustc_ty::RawPtr(_, _)
         | rustc_ty::Ref(..)
         | rustc_ty::Slice(_)
-        | rustc_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(ty).instantiate(tcx, args).skip_norm_wip()),
+        | rustc_ty::Tuple(_) => format!(
+            "<{}>",
+            EarlyBinder::bind(tcx, ty).instantiate(tcx, args).skip_norm_wip()
+        ),
         _ => ty.to_string(),
     }
 }

@@ -23,6 +23,7 @@
 #![allow(internal_features)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
+#![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
 #![feature(titlecase)]
 #![feature(try_blocks)]
@@ -32,6 +33,7 @@ mod async_closures;
 mod async_fn_in_trait;
 mod autorefs;
 pub mod builtin;
+mod c_void_returns;
 mod context;
 mod dangling;
 mod default_could_be_derived;
@@ -45,10 +47,10 @@ mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
 mod function_cast_as_integer;
-mod fuzzy_provenance_casts;
 mod gpukernel_abi;
 mod if_let_rescope;
 mod impl_trait_overcaptures;
+mod implicit_provenance_casts;
 mod interior_mutable_consts;
 mod internal;
 mod invalid_from_utf8;
@@ -57,7 +59,6 @@ mod let_underscore;
 mod levels;
 pub mod lifetime_syntax;
 mod lints;
-mod lossy_provenance_casts;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
 mod multiple_supertrait_upcastable;
@@ -72,6 +73,7 @@ mod precedence;
 mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
+mod runtime_symbols;
 mod shadowed_into_iter;
 mod static_mut_refs;
 mod traits;
@@ -86,6 +88,7 @@ use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use autorefs::*;
 use builtin::*;
+use c_void_returns::*;
 use dangling::*;
 use default_could_be_derived::DefaultCouldBeDerived;
 use deref_into_dyn_supertrait::*;
@@ -94,16 +97,15 @@ use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use function_cast_as_integer::*;
-use fuzzy_provenance_casts::FuzzyProvenanceCasts;
 use gpukernel_abi::*;
 use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
+use implicit_provenance_casts::ImplicitProvenanceCasts;
 use interior_mutable_consts::*;
 use internal::*;
 use invalid_from_utf8::*;
 use let_underscore::*;
 use lifetime_syntax::*;
-use lossy_provenance_casts::LossyProvenanceCasts;
 use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
 use multiple_supertrait_upcastable::*;
@@ -117,7 +119,9 @@ use precedence::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
-use rustc_hir::def_id::LocalModDefId;
+use runtime_symbols::*;
+use rustc_data_structures::unord::UnordSet;
+use rustc_hir::def_id::LocalModId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
@@ -150,8 +154,8 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { lint_mod, ..*providers };
 }
 
-fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+fn lint_mod(tcx: TyCtxt<'_>, mod_id: LocalModId) {
+    late_lint_mod(tcx, mod_id, BuiltinCombinedLateLintModPass::new());
 }
 
 early_lint_methods!(
@@ -204,7 +208,7 @@ early_lint_methods!(
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
-        BuiltinCombinedModuleLateLintPass,
+        BuiltinCombinedLateLintModPass,
         [
             ForLoopsOverFallibles: ForLoopsOverFallibles,
             DefaultCouldBeDerived: DefaultCouldBeDerived,
@@ -258,6 +262,7 @@ late_lint_methods!(
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
             InteriorMutableConsts: InteriorMutableConsts,
+            RuntimeSymbols: RuntimeSymbols,
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
@@ -266,8 +271,8 @@ late_lint_methods!(
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
-            FuzzyProvenanceCasts: FuzzyProvenanceCasts,
-            LossyProvenanceCasts: LossyProvenanceCasts,
+            ImplicitProvenanceCasts: ImplicitProvenanceCasts,
+            CVoidReturns: CVoidReturns,
         ]
     ]
 );
@@ -275,7 +280,7 @@ late_lint_methods!(
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
-        InternalCombinedModuleLateLintPass,
+        InternalCombinedLateLintModPass,
         [
             DefaultHashTypes: DefaultHashTypes,
             QueryStability: QueryStability,
@@ -313,7 +318,7 @@ fn register_builtins(store: &mut LintStore) {
 
     store.register_lints(&BuiltinCombinedPreExpansionLintPass::lint_vec());
     store.register_lints(&BuiltinCombinedEarlyLintPass::lint_vec());
-    store.register_lints(&BuiltinCombinedModuleLateLintPass::lint_vec());
+    store.register_lints(&BuiltinCombinedLateLintModPass::lint_vec());
     store.register_lints(&foreign_modules::lint_vec());
     store.register_lints(&hardwired::lint_vec());
 
@@ -406,6 +411,8 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("static_mut_ref", "static_mut_refs");
     store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
     store.register_renamed("elided_named_lifetimes", "mismatched_lifetime_syntaxes");
+    store.register_renamed("fuzzy_provenance_casts", "implicit_provenance_casts");
+    store.register_renamed("lossy_provenance_casts", "implicit_provenance_casts");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
@@ -694,10 +701,12 @@ fn register_builtins(store: &mut LintStore) {
 
 fn register_internals(store: &mut LintStore) {
     store.register_lints(&InternalCombinedEarlyLintPass::lint_vec());
-    store.register_early_pass(|| Box::new(InternalCombinedEarlyLintPass::new()));
+    store.register_early_lint_pass(Box::new(|| Box::new(InternalCombinedEarlyLintPass::new())));
 
-    store.register_lints(&InternalCombinedModuleLateLintPass::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(InternalCombinedModuleLateLintPass::new()));
+    store.register_lints(&InternalCombinedLateLintModPass::lint_vec());
+    store.register_late_lint_mod_pass(Box::new(|_| {
+        Box::new(InternalCombinedLateLintModPass::new())
+    }));
 
     store.register_group(
         false,
@@ -740,6 +749,22 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(RUSTC_MUST_MATCH_EXHAUSTIVELY),
         ],
     );
+}
+
+/// Is a pass (which contains `lints`) required to run? Maybe not, e.g. for dependencies built with
+/// `--cap-lints=allow`.
+///
+/// Note: this is a conservative estimate intended for optimization purposes. It might return
+/// `true` for a pass that need not run, but it will never return `false` for a pass that must run.
+pub fn is_lint_pass_required(skippable: &UnordSet<LintId>, lints: &LintVec) -> bool {
+    // A pass without any lints? Clippy sometimes does this, to collect things while traversing.
+    // Such a pass must always run.
+    if lints.is_empty() {
+        return true;
+    }
+
+    // Otherwise, the pass must run unless all lints within are skippable.
+    !lints.iter().all(|lint| skippable.contains(&LintId::of(lint)))
 }
 
 #[cfg(test)]

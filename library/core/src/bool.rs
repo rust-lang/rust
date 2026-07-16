@@ -93,7 +93,7 @@ impl bool {
     /// // evaluated eagerly.
     /// assert_eq!(a, 2);
     /// ```
-    #[stable(feature = "bool_to_result", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "bool_to_result", since = "1.98.0")]
     #[rustc_const_unstable(feature = "const_bool", issue = "151531")]
     #[inline]
     pub const fn ok_or<E: [const] Destruct>(self, err: E) -> Result<(), E> {
@@ -120,7 +120,7 @@ impl bool {
     /// // `ok_or_else`.
     /// assert_eq!(a, 1);
     /// ```
-    #[stable(feature = "bool_to_result", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "bool_to_result", since = "1.98.0")]
     #[rustc_const_unstable(feature = "const_bool", issue = "151531")]
     #[inline]
     pub const fn ok_or_else<E, F: [const] FnOnce() -> E + [const] Destruct>(
@@ -128,5 +128,33 @@ impl bool {
         f: F,
     ) -> Result<(), E> {
         if self { Ok(()) } else { Err(f()) }
+    }
+
+    /// Toggles `self` in-place.
+    ///
+    /// - If `self` is [`true`], sets `self` to [`false`].
+    /// - If `self` is [`false`], sets `self` to [`true`].
+    ///
+    /// Equivalent to `value = !value`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bool_toggle)]
+    /// let mut boolean = false;
+    ///
+    /// boolean.toggle();
+    /// assert_eq!(boolean, true);
+    ///
+    /// boolean.toggle();
+    /// assert_eq!(boolean, false);
+    /// ```
+    ///
+    /// [`true`]: ../std/keyword.true.html
+    /// [`false`]: ../std/keyword.false.html
+    #[unstable(feature = "bool_toggle", issue = "159298")]
+    #[inline]
+    pub const fn toggle(&mut self) {
+        *self = !*self;
     }
 }

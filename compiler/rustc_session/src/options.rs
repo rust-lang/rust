@@ -771,6 +771,7 @@ mod desc {
     pub(crate) const parse_list: &str = "a space-separated list of strings";
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
+    pub(crate) const parse_pointer_authentication_list_with_polarity: &str = "a comma-separated list of options, each of the form `+<name>` or `-<name>`, where `<name>` is one of: `aarch64-jump-table-hardening`, `auth-traps`, `calls`, `elf-got`, `function-pointer-type-discrimination`, `indirect-gotos`, `init-fini`, `init-fini-address-discrimination`, `intrinsics`, `return-addresses`, `typeinfo-vt-ptr-discrimination`, `vt-ptr-addr-discrimination` or `vt-ptr-type-discrimination`";
     pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`, `NoTT`";
     pub(crate) const parse_offload: &str =
         "a comma separated list of settings: `Host=<Absolute-Path>`, `Device`, `Test`";
@@ -784,7 +785,7 @@ mod desc {
     pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
     pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
-    pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
+    pub(crate) const parse_patchable_function_entry: &str = "a comma separated list of (prefix_nops,total_nops,section_name), (prefix_nops,total_nops), or (total_nops). Where prefix_nops <= total_nops where 0 < total_nops <= 255 and prefix_nops <= total_nops";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
     pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
@@ -804,6 +805,8 @@ mod desc {
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
     pub(crate) const parse_codegen_retag_options: &str =
         "either no value or a comma-separated list of settings: `no-precise-im`, `no-precise-pin`";
+    pub(crate) const parse_instrument_mcount: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc), or `fentry` on supported targets.";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -1034,6 +1037,37 @@ pub mod parse {
         }
     }
 
+    pub(crate) fn parse_pointer_authentication_list_with_polarity(
+        slot: &mut Vec<(PointerAuthOption, bool)>,
+        v: Option<&str>,
+    ) -> bool {
+        let Some(s) = v else {
+            return false;
+        };
+
+        let mut map = BTreeMap::<PointerAuthOption, bool>::new();
+
+        for item in s.split(',') {
+            let Some(name) = item.strip_prefix(&['+', '-'][..]) else {
+                return false;
+            };
+
+            let Some(opt) = PointerAuthOption::parse(name) else {
+                return false;
+            };
+
+            let enabled = item.starts_with('+');
+
+            // Last occurrence wins.
+            map.insert(opt, enabled);
+        }
+
+        slot.clear();
+        slot.extend(map);
+
+        true
+    }
+
     pub(crate) fn parse_fmt_debug(opt: &mut FmtDebug, v: Option<&str>) -> bool {
         *opt = match v {
             Some("full") => FmtDebug::Full,
@@ -1204,20 +1238,24 @@ pub mod parse {
     ) -> bool {
         let mut total_nops = 0;
         let mut prefix_nops = 0;
+        let mut section = None;
 
         if !parse_number(&mut total_nops, v) {
-            let parts = v.and_then(|v| v.split_once(',')).unzip();
-            if !parse_number(&mut total_nops, parts.0) {
+            let parts: Vec<_> = v.unwrap_or("").split(',').collect();
+            if parts.len() < 2 || parts.len() > 3 {
                 return false;
             }
-            if !parse_number(&mut prefix_nops, parts.1) {
+
+            if !parse_number(&mut total_nops, Some(parts[0])) {
                 return false;
             }
+            if !parse_number(&mut prefix_nops, Some(parts[1])) {
+                return false;
+            }
+            section = parts.get(2).map(|x| x.to_string());
         }
 
-        if let Some(pfe) =
-            PatchableFunctionEntry::from_total_and_prefix_nops(total_nops, prefix_nops)
-        {
+        if let Some(pfe) = PatchableFunctionEntry::from_parts(total_nops, prefix_nops, section) {
             *slot = pfe;
             return true;
         }
@@ -1583,6 +1621,19 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_instrument_mcount(slot: &mut InstrumentMcount, v: Option<&str>) -> bool {
+        let mut use_mcount = false;
+        if parse_bool(&mut use_mcount, v) {
+            *slot = if use_mcount { InstrumentMcount::Mcount } else { InstrumentMcount::Disabled };
+            true
+        } else if let Some("fentry") = v {
+            *slot = InstrumentMcount::Fentry;
+            true
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn parse_instrument_xray(
         slot: &mut Option<InstrumentXRay>,
         v: Option<&str>,
@@ -1602,7 +1653,7 @@ pub mod parse {
         let mut seen_instruction_threshold = false;
         let mut seen_skip_entry = false;
         let mut seen_skip_exit = false;
-        for option in v.into_iter().flat_map(|v| v.split(',')) {
+        for option in v.map(|v| v.split(',')).into_flat_iter() {
             match option {
                 "always" if !seen_always && !seen_never => {
                     options.always = true;
@@ -2279,6 +2330,8 @@ options! {
         `=LooseTypes`
         `=Inline`
         Multiple options can be combined with commas."),
+    autodiff_post_passes: Option<String> = (None, parse_opt_string, [TRACKED],
+        "set llvm passes to run after enzyme (no passes run when it is empty)"),
     #[rustc_lint_opt_deny_field_access("use `Session::binary_dep_depinfo` instead of this field")]
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info \
@@ -2332,6 +2385,8 @@ options! {
         "disable various performance optimizations in trait solving"),
     disable_incr_comp_backend_caching: bool = (false, parse_bool, [TRACKED],
         "disable caching of compiled objects by the codegen backend during incremental compilation"),
+    disable_param_env_normalization_hack: bool = (false, parse_bool, [TRACKED],
+        "do not treat all aliases in the environment as rigid with `-Znext-solver`"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -2398,6 +2453,9 @@ options! {
     fmt_debug: FmtDebug = (FmtDebug::Full, parse_fmt_debug, [TRACKED],
         "how detailed `#[derive(Debug)]` should be. `full` prints types recursively, \
         `shallow` prints only type names, `none` prints nothing and disables `{:?}`. (default: `full`)"),
+    force_intrinsic_fallback: bool = (false, parse_bool, [TRACKED],
+        "always use the fallback body of an intrinsic, if it has one, instead of lowering \
+        the intrinsic in the codegen backend (default: no)."),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
     function_return: FunctionReturn = (FunctionReturn::default(), parse_function_return, [TRACKED],
@@ -2418,6 +2476,8 @@ options! {
         "allow deducing higher-ranked outlives assumptions from coroutines when proving auto traits"),
     hint_mostly_unused: bool = (false, parse_bool, [TRACKED],
         "hint that most of this crate will go unused, to minimize work for uncalled functions"),
+    hint_msrv: Option<RustcVersion> = (None, parse_rust_version, [TRACKED],
+        "control the minimum rust version for lints"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
         "generate human-readable, predictable names for codegen units (default: no)"),
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
@@ -2451,7 +2511,7 @@ options! {
         "a default MIR inlining threshold (default: 50)"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about AST and HIR (default: no)"),
-    instrument_mcount: bool = (false, parse_bool, [TRACKED],
+    instrument_mcount: InstrumentMcount = (InstrumentMcount::Disabled, parse_instrument_mcount, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
         "insert function instrument code for XRay-based tracing (default: no)
@@ -2486,8 +2546,6 @@ options! {
         "lint LLVM IR (default: no)"),
     lint_mir: bool = (false, parse_bool, [UNTRACKED],
         "lint MIR before and after each transformation"),
-    lint_rust_version: Option<RustcVersion> = (None, parse_rust_version, [TRACKED],
-        "control the minimum rust version for lints"),
     llvm_module_flag: Vec<(String, u32, String)> = (Vec::new(), parse_llvm_module_flag, [TRACKED],
         "a list of module flags to pass to LLVM (space separated)"),
     llvm_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
@@ -2542,8 +2600,6 @@ options! {
         "Whether to remove some of the MIR debug info from methods.  Default: None"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "the size at which the `large_assignments` lint starts to be emitted"),
-    mutable_noalias: bool = (true, parse_bool, [TRACKED],
-        "emit noalias metadata for mutable references (default: yes)"),
     namespaced_crates: bool = (false, parse_bool, [TRACKED],
         "allow crates to be namespaced by other crates (default: no)"),
     next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
@@ -2602,6 +2658,26 @@ options! {
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled on x86_64)"),
+    pointer_authentication: Vec<(PointerAuthOption, bool)> = (
+        Vec::new(),
+        parse_pointer_authentication_list_with_polarity,
+        [TRACKED]
+        { TARGET_MODIFIER: PointerAuthentication },
+        "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
+        `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
+        `auth-traps` - trap immediately on pointer authentication failure
+        `calls` - enable signing and authentication of all indirect calls
+        `elf-got` - enable authentication of pointers from GOT (ELF only)
+        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
+        `indirect-gotos` - enable signing and authentication of indirect goto targets
+        `init-fini` - enable signing of function pointers in init/fini arrays
+        `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
+        `intrinsics` - pointer authentication intrinsics
+        `return-addresses` - enable signing and authentication of return addresses
+        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
+        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
+        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
+        Example: `-Zpointer-authentication=+calls,-init-fini`."),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],
@@ -2654,6 +2730,8 @@ options! {
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),
+    renormalize_rigid_aliases: bool = (false, parse_bool, [TRACKED],
+        "do not skip rigid aliases in normalization for internal debugging"),
     retpoline: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: Retpoline },
         "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
     retpoline_external_thunk: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: RetpolineExternalThunk },

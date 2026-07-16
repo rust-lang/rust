@@ -1,19 +1,22 @@
-error[E0282]: type annotations needed
-  --> $DIR/question-mark-type-inference-in-chain.rs:33:9
+warning: method call on a diverging inference variable
+  --> $DIR/question-mark-type-inference-in-chain.rs:35:10
    |
-LL |     let mut tags = lines.iter().map(|e| parse(e)).collect()?;
-   |         ^^^^^^^^
-...
 LL |     tags.sort();
-   |     ---- type must be known at this point
+   |          ^^^^
    |
-help: consider giving `tags` an explicit type
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
+
+error[E0599]: no method named `sort` found for type `!` in the current scope
+  --> $DIR/question-mark-type-inference-in-chain.rs:35:10
    |
-LL |     let mut tags: Vec<_> = lines.iter().map(|e| parse(e)).collect()?;
-   |                 ++++++++
+LL |     tags.sort();
+   |          ^^^^ method not found in `!`
 
 error[E0283]: type annotations needed
-  --> $DIR/question-mark-type-inference-in-chain.rs:43:65
+  --> $DIR/question-mark-type-inference-in-chain.rs:48:65
    |
 LL |     let mut tags: Vec<Version> = lines.iter().map(|e| parse(e)).collect()?;
    |                                                                 ^^^^^^^ cannot infer type of the type parameter `B` declared on the method `collect`
@@ -27,27 +30,43 @@ LL |     let mut tags: Vec<Version> = lines.iter().map(|e| parse(e)).collect::<R
    |                                                                        ++++++++++++++++
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
-  --> $DIR/question-mark-type-inference-in-chain.rs:55:20
+  --> $DIR/question-mark-type-inference-in-chain.rs:60:20
    |
 LL |     let mut tags = lines.iter().map(|e| parse(e)).collect::<Vec<_>>()?;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `Vec<std::result::Result<Version, Error>>`
    |
    = help: the nightly-only, unstable trait `Try` is not implemented for `Vec<std::result::Result<Version, Error>>`
 
+warning: method call on a diverging inference variable
+  --> $DIR/question-mark-type-inference-in-chain.rs:66:10
+   |
+LL |     tags.sort();
+   |          ^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+
+error[E0599]: no method named `sort` found for type `!` in the current scope
+  --> $DIR/question-mark-type-inference-in-chain.rs:66:10
+   |
+LL |     tags.sort();
+   |          ^^^^ method not found in `!`
+
 error[E0277]: a value of type `std::result::Result<Vec<Version>, AnotherError>` cannot be built from an iterator over elements of type `std::result::Result<Version, Error>`
-  --> $DIR/question-mark-type-inference-in-chain.rs:74:20
+  --> $DIR/question-mark-type-inference-in-chain.rs:85:20
    |
 LL |         .collect::<Result<Vec<Version>>>()?;
    |          -------   ^^^^^^^^^^^^^^^^^^^^ value of type `std::result::Result<Vec<Version>, AnotherError>` cannot be built from `std::iter::Iterator<Item=std::result::Result<Version, Error>>`
    |          |
    |          required by a bound introduced by this call
    |
-help: the trait `FromIterator<std::result::Result<_, Error>>` is not implemented for `std::result::Result<Vec<Version>, AnotherError>`
-      but trait `FromIterator<std::result::Result<_, AnotherError>>` is implemented for it
+help: the trait `FromIterator<Result<_, Error>>` is not implemented for `std::result::Result<Vec<Version>, AnotherError>`
+      but trait `FromIterator<Result<_, AnotherError>>` is implemented for it
   --> $SRC_DIR/core/src/result.rs:LL:COL
    = help: for that trait implementation, expected `AnotherError`, found `Error`
 note: the method call chain might not have had the expected associated types
-  --> $DIR/question-mark-type-inference-in-chain.rs:71:10
+  --> $DIR/question-mark-type-inference-in-chain.rs:82:10
    |
 LL |     let mut tags = lines
    |                    ----- this expression has type `&[&str]`
@@ -60,7 +79,31 @@ LL |         .map(|e| parse(e))
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors; 2 warnings emitted
 
-Some errors have detailed explanations: E0277, E0282, E0283.
+Some errors have detailed explanations: E0277, E0283, E0599.
 For more information about an error, try `rustc --explain E0277`.
+Future incompatibility report: Future breakage diagnostic:
+warning: method call on a diverging inference variable
+  --> $DIR/question-mark-type-inference-in-chain.rs:35:10
+   |
+LL |     tags.sort();
+   |          ^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+warning: method call on a diverging inference variable
+  --> $DIR/question-mark-type-inference-in-chain.rs:66:10
+   |
+LL |     tags.sort();
+   |          ^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
+

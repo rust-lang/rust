@@ -1,6 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+aes,+vaes,+avx512f
+//@run-native
 
 use core::mem::transmute;
 #[cfg(target_arch = "x86")]
@@ -11,7 +12,6 @@ use std::arch::x86_64::*;
 fn main() {
     assert!(is_x86_feature_detected!("aes"));
     assert!(is_x86_feature_detected!("vaes"));
-    assert!(is_x86_feature_detected!("avx512f"));
 
     unsafe {
         test_aes();
@@ -86,7 +86,7 @@ unsafe fn test_aes() {
 // be interpreted as integers; signedness does not make sense for them, but
 // __m128i happens to be defined in terms of signed integers.
 #[allow(overflowing_literals)]
-#[target_feature(enable = "vaes,avx512f")]
+#[target_feature(enable = "vaes")]
 unsafe fn test_vaes() {
     #[target_feature(enable = "avx")]
     unsafe fn get_a256() -> __m256i {
@@ -176,6 +176,13 @@ unsafe fn test_vaes() {
         }
     }
     test_mm256_aesenclast_epi128();
+
+    // The tests below require avx512. GH runners don't have this, but we still want to run this
+    // natively if the machine happens to have AVX512. So we bail out dynamically.
+    if !is_x86_feature_detected!("avx512f") {
+        println!("warning: skipping avx512 tests");
+        return;
+    }
 
     #[target_feature(enable = "avx512f")]
     unsafe fn get_a512() -> __m512i {

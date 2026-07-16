@@ -403,6 +403,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     && let Some(intrinsic) = this.tcx.intrinsic(def_id)
                     && matches!(intrinsic.name, sym::write_via_move | sym::write_box_via_move) =>
             {
+                let generic_args = generic_args.no_bound_vars().unwrap();
                 // We still have to evaluate the callee expression as normal (but we don't care
                 // about its result).
                 let _fun = unpack!(block = this.as_local_operand(block, fun));
@@ -531,7 +532,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let success = this.cfg.start_new_block();
                     let clone_trait = this.tcx.require_lang_item(LangItem::Clone, span);
                     let clone_fn = this.tcx.associated_item_def_ids(clone_trait)[0];
-                    let func = Operand::function_handle(this.tcx, clone_fn, [ty.into()], expr_span);
+                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                    let func = Operand::function_handle(
+                        this.tcx,
+                        clone_fn,
+                        ty::Binder::dummy([ty.into()]),
+                        expr_span,
+                    );
                     let ref_ty = Ty::new_imm_ref(this.tcx, this.tcx.lifetimes.re_erased, ty);
                     let ref_place = this.temp(ref_ty, span);
                     this.cfg.push_assign(

@@ -95,7 +95,7 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `location_map` -- map between MIR `Location` and `PointIndex`
 pub(crate) fn type_check<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &BorrowCheckRootCtxt<'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
@@ -198,7 +198,6 @@ pub(crate) fn type_check<'tcx>(
         debug!("encountered an error region; removing constraints!");
         constraints.outlives_constraints = Default::default();
         constraints.type_tests = Default::default();
-        root_cx.set_tainted_by_errors(guar);
         infcx.set_tainted_by_errors(guar);
     }
 
@@ -229,7 +228,7 @@ enum FieldAccessError {
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
-    root_cx: &'a mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &'a BorrowCheckRootCtxt<'tcx>,
     infcx: &'a BorrowckInferCtxt<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
@@ -469,7 +468,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Necessary for non-trivial patterns whose user-type annotation is an opaque type,
             // e.g. `let (_a,): Tait = whatever`, see #105897
             if !self.infcx.next_trait_solver()
-                && let ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
+                && let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
                     curr_projected_ty.ty.kind()
             {
                 // There is nothing that we can compare here if we go through an opaque type.
@@ -820,12 +819,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // don't have to check it twice.
                 //
                 // See #91068 for an example.
-                self.prove_predicates(
-                    unnormalized_sig.inputs_and_output.iter().map(|ty| {
-                        ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
-                            ty.into(),
-                        )))
-                    }),
+                self.prove_clauses(
+                    unnormalized_sig
+                        .inputs_and_output
+                        .iter()
+                        .map(|ty| ty::ClauseKind::WellFormed(ty.into())),
                     term_location.to_locations(),
                     ConstraintCategory::Boring,
                 );
@@ -835,12 +833,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // with built-in `Fn` implementations, since the impl may not be
                 // well-formed itself.
                 if sig != unnormalized_sig {
-                    self.prove_predicates(
-                        sig.inputs_and_output.iter().map(|ty| {
-                            ty::Binder::dummy(ty::PredicateKind::Clause(
-                                ty::ClauseKind::WellFormed(ty.into()),
-                            ))
-                        }),
+                    self.prove_clauses(
+                        sig.inputs_and_output
+                            .iter()
+                            .map(|ty| ty::ClauseKind::WellFormed(ty.into())),
                         term_location.to_locations(),
                         ConstraintCategory::Boring,
                     );
@@ -929,7 +925,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_local_decl(local, local_decl);
 
         for user_ty in
-            local_decl.user_ty.as_deref().into_iter().flat_map(UserTypeProjections::projections)
+            local_decl.user_ty.as_deref().map(UserTypeProjections::projections).into_flat_iter()
         {
             let span = self.user_type_annotations[user_ty.base].span;
 
@@ -996,8 +992,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
             Rvalue::Repeat(operand, len) => {
                 let array_ty = rvalue.ty(self.body.local_decls(), tcx);
-                self.prove_predicate(
-                    ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(array_ty.into())),
+                self.prove_clause(
+                    ty::ClauseKind::WellFormed(array_ty.into()),
                     Locations::Single(location),
                     ConstraintCategory::Boring,
                 );
@@ -1082,7 +1078,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 src_sig,
                             );
                             let src_ty = Ty::new_fn_ptr(self.tcx(), ty::Binder::dummy(src_sig));
-                            self.prove_predicate(
+                            self.prove_clause(
                                 ty::ClauseKind::WellFormed(src_ty.into()),
                                 location.to_locations(),
                                 ConstraintCategory::Cast {
@@ -1120,7 +1116,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // well-formed, because we don't enforce that via the WF of FnDef
                         // types normally. This should be removed when we improve the tracking
                         // of implied bounds of fn signatures.
-                        self.prove_predicate(
+                        self.prove_clause(
                             ty::ClauseKind::WellFormed(src_ty.into()),
                             location.to_locations(),
                             ConstraintCategory::Cast {
@@ -1713,7 +1709,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 if uv.promoted.is_none() {
                     let tcx = self.tcx();
                     let def_id = uv.def;
-                    if tcx.def_kind(def_id) == DefKind::InlineConst {
+                    if tcx.def_kind(def_id) == DefKind::AnonConst
+                        && tcx.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline
+                    {
                         let def_id = def_id.expect_local();
                         let predicates = self.prove_closure_bounds(tcx, def_id, uv.args, location);
                         self.normalize_and_prove_instantiated_predicates(
@@ -1760,13 +1758,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             let tcx = self.tcx();
             let maybe_uneval = match constant.const_ {
                 Const::Ty(_, ct) => match ct.kind() {
-                    ty::ConstKind::Unevaluated(uv) => match uv.kind {
-                        ty::UnevaluatedConstKind::Projection { def_id }
-                        | ty::UnevaluatedConstKind::Inherent { def_id }
-                        | ty::UnevaluatedConstKind::Free { def_id }
-                        | ty::UnevaluatedConstKind::Anon { def_id } => {
-                            Some(UnevaluatedConst { def: def_id, args: uv.args, promoted: None })
-                        }
+                    ty::ConstKind::Alias(_, alias_const) => match alias_const.kind {
+                        ty::AliasConstKind::Projection { def_id }
+                        | ty::AliasConstKind::Inherent { def_id }
+                        | ty::AliasConstKind::Free { def_id }
+                        | ty::AliasConstKind::Anon { def_id } => Some(UnevaluatedConst {
+                            def: def_id,
+                            args: alias_const.args,
+                            promoted: None,
+                        }),
                     },
                     _ => None,
                 },
@@ -1830,6 +1830,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
 
             if let ty::FnDef(def_id, args) = *constant.const_.ty().kind() {
+                let args = args.no_bound_vars().unwrap();
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
                 self.normalize_and_prove_instantiated_predicates(
                     def_id,
@@ -1838,7 +1839,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 );
 
                 assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
-                self.prove_predicates(
+                self.prove_clauses(
                     args.types().map(|ty| ty::ClauseKind::WellFormed(ty.into())),
                     locations,
                     ConstraintCategory::Boring,
@@ -2655,7 +2656,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // length as the `typeck_root_args`.
                 &args[..typeck_root_args.len()]
             }
-            DefKind::InlineConst => args.as_inline_const().parent_args(),
+            DefKind::AnonConst
+                if tcx.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline =>
+            {
+                args.as_inline_const().parent_args()
+            }
             other => bug!("unexpected item {:?}", other),
         };
         let parent_args = tcx.mk_args(parent_args);

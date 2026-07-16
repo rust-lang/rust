@@ -87,18 +87,24 @@ fn intern_const_ref<'db>(
     let valtree = match (ty.kind(), value) {
         (TyKind::Uint(uint), Literal::Uint(value, _)) => {
             let size = uint.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
-            let scalar = ScalarInt::try_from_uint(*value, size).unwrap();
+            let Some(scalar) = ScalarInt::try_from_uint(*value, size) else {
+                return Ok(Const::error(interner));
+            };
             ValTreeKind::Leaf(scalar)
         }
         (TyKind::Uint(uint), Literal::Int(value, _)) => {
             // `Literal::Int` is the default, so we also need to account for the type being uint.
             let size = uint.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
-            let scalar = ScalarInt::try_from_uint(*value as u128, size).unwrap();
+            let Some(scalar) = ScalarInt::try_from_uint(*value as u128, size) else {
+                return Ok(Const::error(interner));
+            };
             ValTreeKind::Leaf(scalar)
         }
         (TyKind::Int(int), Literal::Int(value, _)) => {
             let size = int.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
-            let scalar = ScalarInt::try_from_int(*value, size).unwrap();
+            let Some(scalar) = ScalarInt::try_from_int(*value, size) else {
+                return Ok(Const::error(interner));
+            };
             ValTreeKind::Leaf(scalar)
         }
         (TyKind::Bool, Literal::Bool(value)) => ValTreeKind::Leaf(ScalarInt::from(*value)),
@@ -219,7 +225,9 @@ pub fn usize_const<'db>(db: &'db dyn HirDatabase, value: Option<u128>, krate: Cr
         return Const::error(interner);
     };
     let usize_ty = interner.default_types().types.usize;
-    let scalar = ScalarInt::try_from_uint(value, data_layout.pointer_size()).unwrap();
+    let Some(scalar) = ScalarInt::try_from_uint(value, data_layout.pointer_size()) else {
+        return Const::error(interner);
+    };
     Const::new_valtree(interner, usize_ty, ValTreeKind::Leaf(scalar))
 }
 

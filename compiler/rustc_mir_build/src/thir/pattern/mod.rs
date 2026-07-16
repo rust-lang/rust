@@ -548,7 +548,8 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
                     let args = match ty.kind() {
-                        ty::Adt(_, args) | ty::FnDef(_, args) => args,
+                        ty::FnDef(_, args) => args.no_bound_vars().unwrap(),
+                        ty::Adt(_, args) => args,
                         ty::Error(e) => {
                             // Avoid ICE (#50585)
                             return Box::new(Pat {
@@ -657,11 +658,12 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let args = self.typeck_results.node_args(id);
         // FIXME(mgca): we will need to special case IACs here to have type system compatible
         // generic args, instead of how we represent them in body expressions.
-        let c = ty::Const::new_unevaluated(
+        let c = ty::Const::new_alias(
             self.tcx,
-            ty::UnevaluatedConst::new(
+            ty::IsRigid::No,
+            ty::AliasConst::new(
                 self.tcx,
-                ty::UnevaluatedConstKind::new_from_def_id(self.tcx, def_id),
+                ty::AliasConstKind::new_from_def_id(self.tcx, def_id),
                 args,
             ),
         );

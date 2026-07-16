@@ -2,6 +2,7 @@
 //! read-only code browsers and emitting LSIF
 
 use arrayvec::ArrayVec;
+use either::Either;
 use hir::{Crate, Module, Semantics, db::HirDatabase};
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
@@ -11,13 +12,12 @@ use ide_db::{
     famous_defs::FamousDefs,
     ra_fixture::RaFixtureConfig,
 };
-use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange};
+use syntax::{AstNode, AstToken, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, ast};
 
 use crate::navigation_target::UpmappingResult;
 use crate::{
-    Analysis, Fold, HoverConfig, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
+    Analysis, Fold, HoverConfig, HoverResult, TryToNav,
     hover::{SubstTyLen, hover_for_definition},
-    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve, TypeHintsPlacement},
     moniker::{MonikerResult, SymbolInformationKind, def_to_kind, def_to_moniker},
     parent_module::crates_for,
 };
@@ -53,6 +53,22 @@ pub struct TokenStaticData {
     ///
     /// For example, in `fn foo() {}` this is the position from `fn`
     /// to the closing brace.
+    ///
+    /// This excludes trivia (whitespace/comments) other than doc
+    /// comments. This differs from LSP, which includes trivia.
+    ///
+    /// SCIP:
+    ///
+    /// > source range of the nearest non-trivial enclosing AST node.
+    ///
+    /// <https://github.com/scip-code/scip/blob/20459645420419b3c2a10d6a9f57436abeeb273b/scip.proto#L747-L796>
+    ///
+    /// LSP:
+    ///
+    /// > range enclosing this symbol not including leading/trailing
+    /// > whitespace but everything else like comments.
+    ///
+    /// <https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#locationLink>
     pub definition_body: Option<FileRange>,
     pub references: Vec<ReferenceData>,
     pub moniker: Option<MonikerResult>,
@@ -97,7 +113,6 @@ impl TokenStore {
 pub struct StaticIndexedFile {
     pub file_id: FileId,
     pub folds: Vec<Fold>,
-    pub inlay_hints: Vec<InlayHint>,
     pub tokens: Vec<(TextRange, TokenId)>,
 }
 
@@ -153,49 +168,6 @@ impl StaticIndex<'_> {
     fn add_file(&mut self, file_id: FileId) {
         let current_crate = crates_for(self.db, file_id).pop().map(Into::into);
         let folds = self.analysis.folding_ranges(file_id, true).unwrap();
-        let inlay_hints = self
-            .analysis
-            .inlay_hints(
-                &InlayHintsConfig {
-                    render_colons: true,
-                    discriminant_hints: crate::DiscriminantHints::Fieldless,
-                    type_hints: true,
-                    type_hints_placement: TypeHintsPlacement::Inline,
-                    sized_bound: false,
-                    parameter_hints: true,
-                    parameter_hints_for_missing_arguments: false,
-                    generic_parameter_hints: crate::GenericParameterHints {
-                        type_hints: false,
-                        lifetime_hints: false,
-                        const_hints: true,
-                    },
-                    chaining_hints: true,
-                    closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
-                    lifetime_elision_hints: crate::LifetimeElisionHints::Never,
-                    adjustment_hints: crate::AdjustmentHints::Never,
-                    adjustment_hints_disable_reborrows: true,
-                    adjustment_hints_mode: AdjustmentHintsMode::Prefix,
-                    adjustment_hints_hide_outside_unsafe: false,
-                    implicit_drop_hints: false,
-                    implied_dyn_trait_hints: false,
-                    hide_inferred_type_hints: false,
-                    hide_named_constructor_hints: false,
-                    hide_closure_initialization_hints: false,
-                    hide_closure_parameter_hints: false,
-                    closure_style: hir::ClosureStyle::ImplFn,
-                    param_names_for_lifetime_elision_hints: false,
-                    binding_mode_hints: false,
-                    max_length: Some(25),
-                    closure_capture_hints: false,
-                    closing_brace_hints_min_lines: Some(25),
-                    fields_to_resolve: InlayFieldsToResolve::empty(),
-                    range_exclusive_hints: false,
-                    ra_fixture: RaFixtureConfig::default(),
-                },
-                file_id,
-                None,
-            )
-            .unwrap();
         // hovers
         let sema = hir::Semantics::new(self.db);
         let root = sema.parse_guess_edition(file_id).syntax().clone();
@@ -221,12 +193,13 @@ impl StaticIndex<'_> {
             show_drop_glue: true,
             ra_fixture: RaFixtureConfig::default(),
         };
-        let mut result = StaticIndexedFile { file_id, inlay_hints, folds, tokens: vec![] };
+        let mut result = StaticIndexedFile { file_id, folds, tokens: vec![] };
 
         let mut add_token = |def: Definition, range: TextRange, scope_node: &SyntaxNode| {
             let id = if let Some(it) = self.def_map.get(&def) {
                 *it
             } else {
+                let nav = def.try_to_nav(&sema).map(UpmappingResult::call_site);
                 let it = self.tokens.insert(TokenStaticData {
                     documentation: documentation_for_definition(&sema, def, scope_node),
                     hover: Some(hover_for_definition(
@@ -241,13 +214,14 @@ impl StaticIndex<'_> {
                         edition,
                         display_target,
                     )),
-                    definition: def.try_to_nav(&sema).map(UpmappingResult::call_site).map(|it| {
-                        FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
+                    definition: nav.as_ref().map(|it| FileRange {
+                        file_id: it.file_id,
+                        range: it.focus_or_full_range(),
                     }),
-                    definition_body: def
-                        .try_to_nav(&sema)
-                        .map(UpmappingResult::call_site)
-                        .map(|it| FileRange { file_id: it.file_id, range: it.full_range }),
+                    definition_body: nav.as_ref().map(|it| FileRange {
+                        file_id: it.file_id,
+                        range: definition_range_excluding_trivia(&sema, it.file_id, it.full_range),
+                    }),
                     references: vec![],
                     moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
                     display_name: def
@@ -331,6 +305,59 @@ impl StaticIndex<'_> {
             this
         })
     }
+}
+
+fn definition_range_excluding_trivia(
+    sema: &Semantics<'_, RootDatabase>,
+    file_id: FileId,
+    range: TextRange,
+) -> TextRange {
+    let root = sema.parse_guess_edition(file_id).syntax().clone();
+    if range == root.text_range() {
+        return range;
+    }
+    if !root.text_range().contains_range(range) {
+        return range;
+    }
+
+    let element = root.covering_element(range);
+    let tokens = match element {
+        NodeOrToken::Node(node) => Either::Left(node.descendants_with_tokens().filter_map(|it| {
+            let token = it.into_token()?;
+            range.contains_range(token.text_range()).then_some(token)
+        })),
+        NodeOrToken::Token(token) => Either::Right(std::iter::once(token)),
+    };
+
+    let mut first = None;
+    let mut last = None;
+    for token in tokens {
+        if first.is_none() && !is_leading_trivia_excluding_docs(&token) {
+            first = Some(token.clone());
+        }
+        if !is_trailing_trivia(&token) {
+            last = Some(token);
+        }
+    }
+
+    match (first, last) {
+        (Some(first), Some(last)) => {
+            TextRange::new(first.text_range().start(), last.text_range().end())
+        }
+        _ => range,
+    }
+}
+
+fn is_leading_trivia_excluding_docs(token: &SyntaxToken) -> bool {
+    match token.kind() {
+        SyntaxKind::WHITESPACE => true,
+        SyntaxKind::COMMENT => ast::Comment::cast(token.clone()).is_none_or(|it| !it.is_outer()),
+        _ => false,
+    }
+}
+
+fn is_trailing_trivia(token: &SyntaxToken) -> bool {
+    matches!(token.kind(), SyntaxKind::WHITESPACE | SyntaxKind::COMMENT)
 }
 
 #[cfg(test)]

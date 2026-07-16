@@ -14,3 +14,14 @@ fn issue15143() {
     //~^ std_instead_of_core
     //~| std_instead_of_alloc
 }
+
+#[rustfmt::skip]
+fn pr16964() {
+    use std::{
+        borrow::Cow,
+        //~^ std_instead_of_alloc
+        collections::BTreeSet,
+        //~^ std_instead_of_alloc
+        ffi::OsString,
+    };
+}

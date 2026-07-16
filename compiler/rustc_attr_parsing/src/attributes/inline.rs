@@ -13,7 +13,7 @@ pub(crate) struct InlineParser;
 impl SingleAttributeParser for InlineParser {
     const PATH: &[Symbol] = &[sym::inline];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
@@ -66,7 +66,7 @@ pub(crate) struct RustcForceInlineParser;
 
 impl SingleAttributeParser for RustcForceInlineParser {
     const PATH: &[Symbol] = &[sym::rustc_force_inline];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
     ]);

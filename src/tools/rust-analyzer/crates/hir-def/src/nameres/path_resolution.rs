@@ -10,6 +10,7 @@
 //!
 //! `ReachedFixedPoint` signals about this.
 
+use base_db::SourceDatabase;
 use either::Either;
 use hir_expand::{
     mod_path::{ModPath, PathKind},
@@ -20,7 +21,6 @@ use stdx::TupleExt;
 
 use crate::{
     AdtId, ModuleDefId, ModuleId,
-    db::DefDatabase,
     item_scope::{BUILTIN_SCOPE, ImportOrExternCrate},
     item_tree::FieldsShape,
     nameres::{
@@ -82,7 +82,7 @@ impl ResolvePathResult {
 impl PerNs {
     pub(super) fn filter_macro(
         mut self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         expected: Option<MacroSubNs>,
     ) -> Self {
         self.macros = self.macros.filter(|def| sub_namespace_match(db, def.def, expected));
@@ -95,7 +95,7 @@ impl DefMap {
     pub(crate) fn resolve_visibility(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         // module to import to
         original_module: ModuleId,
         // pub(path)
@@ -155,7 +155,7 @@ impl DefMap {
     pub(super) fn resolve_path_fp_with_macro(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         mode: ResolveMode,
         // module to import to
         mut original_module: ModuleId,
@@ -243,7 +243,7 @@ impl DefMap {
     pub(super) fn resolve_path_fp_with_macro_single(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         mode: ResolveMode,
         original_module: ModuleId,
         path: &ModPath,
@@ -371,7 +371,7 @@ impl DefMap {
     pub(super) fn resolve_path_fp_in_all_preludes(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         mode: ResolveMode,
         original_module: ModuleId,
         path: &ModPath,
@@ -448,7 +448,7 @@ impl DefMap {
 
     fn resolve_remaining_segments<'a>(
         &self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         mode: ResolveMode,
         mut segments: impl Iterator<Item = (usize, &'a Name)>,
         mut curr_per_ns: PerNs,
@@ -632,7 +632,7 @@ impl DefMap {
     fn resolve_name_in_module(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         module: ModuleId,
         name: &Name,
         shadow: BuiltinShadowMode,
@@ -693,7 +693,7 @@ impl DefMap {
     fn resolve_name_in_all_preludes(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         name: &Name,
     ) -> PerNs {
         // Resolve in:
@@ -729,7 +729,7 @@ impl DefMap {
     fn resolve_name_in_crate_root_or_extern_prelude(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         module: ModuleId,
         name: &Name,
     ) -> PerNs {
@@ -751,7 +751,7 @@ impl DefMap {
         from_crate_root.or_else(from_extern_prelude)
     }
 
-    fn resolve_in_prelude(&self, db: &dyn DefDatabase, name: &Name) -> PerNs {
+    fn resolve_in_prelude(&self, db: &dyn SourceDatabase, name: &Name) -> PerNs {
         if let Some((prelude, _use)) = self.prelude {
             let keep;
             let def_map = if prelude.krate(db) == self.krate {
@@ -771,7 +771,7 @@ impl DefMap {
 /// Given a block module, returns its nearest non-block module and the `DefMap` it belongs to.
 #[inline]
 fn adjust_to_nearest_non_block_module<'db>(
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     mut def_map: &'db DefMap,
     mut local_id: ModuleId,
 ) -> (&'db DefMap, ModuleId) {

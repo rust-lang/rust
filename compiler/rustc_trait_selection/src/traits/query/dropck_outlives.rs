@@ -391,17 +391,17 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             constraints.dtorck_types.extend(
                 dtorck_types
                     .iter()
-                    .map(|t| EarlyBinder::bind(*t).instantiate(tcx, args).skip_norm_wip()),
+                    .map(|t| EarlyBinder::bind(tcx, *t).instantiate(tcx, args).skip_norm_wip()),
             );
             constraints.outlives.extend(
                 outlives
                     .iter()
-                    .map(|t| EarlyBinder::bind(*t).instantiate(tcx, args).skip_norm_wip()),
+                    .map(|t| EarlyBinder::bind(tcx, *t).instantiate(tcx, args).skip_norm_wip()),
             );
             constraints.overflows.extend(
                 overflows
                     .iter()
-                    .map(|t| EarlyBinder::bind(*t).instantiate(tcx, args).skip_norm_wip()),
+                    .map(|t| EarlyBinder::bind(tcx, *t).instantiate(tcx, args).skip_norm_wip()),
             );
         }
 

@@ -1,7 +1,4 @@
-use rustc_abi::CanonAbi;
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::Arch;
 
 use crate::*;
@@ -11,10 +8,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_bmi_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx, EmulateItemResult> {
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
         // Prefix should have already been checked.
@@ -33,10 +29,10 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.expect_target_feature_for_intrinsic(link_name, target_feature)?;
 
         if is_64_bit && this.tcx.sess.target.arch != Arch::X86_64 {
-            return interp_ok(EmulateItemResult::NotSupported);
+            return interp_ok(false);
         }
 
-        let [left, right] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+        let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
         let left = this.read_scalar(left)?;
         let right = this.read_scalar(right)?;
 
@@ -96,7 +92,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 result
             }
-            _ => return interp_ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(false),
         };
 
         let result = if is_64_bit {
@@ -106,6 +102,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         this.write_scalar(result, dest)?;
 
-        interp_ok(EmulateItemResult::NeedsReturn)
+        interp_ok(true)
     }
 }

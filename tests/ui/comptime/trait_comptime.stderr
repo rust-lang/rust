@@ -4,7 +4,7 @@ error: `#[rustc_comptime]` attribute cannot be used on required trait methods
 LL |     #[rustc_comptime]
    |     ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_comptime]` can only be applied to functions with a body
+   = help: `#[rustc_comptime]` can be applied to functions with a body and inherent impl blocks
 
 error: `#[rustc_comptime]` attribute cannot be used on provided trait methods
   --> $DIR/trait_comptime.rs:8:5
@@ -12,7 +12,7 @@ error: `#[rustc_comptime]` attribute cannot be used on provided trait methods
 LL |     #[rustc_comptime]
    |     ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_comptime]` can be applied to functions and inherent methods
+   = help: `#[rustc_comptime]` can be applied to functions, inherent impl blocks, and inherent methods
 
 error: `#[rustc_comptime]` attribute cannot be used on trait methods in impl blocks
   --> $DIR/trait_comptime.rs:21:5
@@ -20,7 +20,7 @@ error: `#[rustc_comptime]` attribute cannot be used on trait methods in impl blo
 LL |     #[rustc_comptime]
    |     ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_comptime]` can be applied to functions and inherent methods
+   = help: `#[rustc_comptime]` can be applied to functions, inherent impl blocks, and inherent methods
 
 error: aborting due to 3 previous errors
 

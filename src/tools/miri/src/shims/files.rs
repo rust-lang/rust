@@ -4,7 +4,6 @@ use std::fs::{Dir, File};
 use std::io::{ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::marker::CoercePointee;
 use std::ops::Deref;
-use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 use std::{fs, io};
 
@@ -127,8 +126,8 @@ impl<T: FileDescription + 'static> FileDescriptionExt for T {
     ) -> InterpResult<'tcx, io::Result<()>> {
         match Rc::into_inner(self.0) {
             Some(fd) => {
-                // There might have been epolls interested in this FD. Remove that.
-                ecx.machine.epoll_interests.remove_epolls(fd.id);
+                // There might have been readiness watchers interested in this FD. Remove them.
+                ecx.machine.readiness_interests.remove_watchers_for_fd(fd.id);
 
                 fd.inner.destroy(fd.id, communicate_allowed, ecx)
             }
@@ -232,7 +231,10 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         false
     }
 
-    fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
+    fn as_unix<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &MiriInterpCx<'tcx>,
+    ) -> FileDescriptionRef<dyn UnixFileDescription> {
         panic!("Not a unix file descriptor: {}", self.name());
     }
 
@@ -248,6 +250,11 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
+    }
+
+    /// Get the current I/O readiness of the file description.
+    fn readiness<'tcx>(&self) -> InterpResult<'tcx, Readiness> {
+        throw_unsup_format!("{}: this file description doesn't support I/O readiness", self.name());
     }
 }
 
@@ -465,7 +472,10 @@ impl FileDescription for FileHandle {
         true
     }
 
-    fn as_unix<'tcx>(&self, ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
+    fn as_unix<'tcx>(
+        self: FileDescriptionRef<Self>,
+        ecx: &MiriInterpCx<'tcx>,
+    ) -> FileDescriptionRef<dyn UnixFileDescription> {
         assert!(
             ecx.target_os_is_unix(),
             "unix file operations are only available for unix targets"
@@ -476,11 +486,7 @@ impl FileDescription for FileHandle {
 
 #[derive(Debug)]
 pub struct DirHandle {
-    #[cfg_attr(bootstrap, allow(unused))]
     pub(crate) dir: Dir,
-    /// Fallback used under `cfg(bootstrap)`.
-    #[cfg_attr(not(bootstrap), allow(unused))]
-    pub(crate) path: PathBuf,
 }
 
 impl FileDescription for DirHandle {
@@ -491,10 +497,7 @@ impl FileDescription for DirHandle {
     fn metadata<'tcx>(
         &self,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
-        #[cfg(not(bootstrap))]
         return interp_ok(Either::Left(self.dir.metadata()));
-        #[cfg(bootstrap)]
-        return interp_ok(Either::Left(std::fs::metadata(&self.path)));
     }
 
     fn destroy<'tcx>(

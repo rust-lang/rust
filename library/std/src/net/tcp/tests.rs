@@ -3,7 +3,7 @@ use rand::Rng;
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem::MaybeUninit;
-use crate::net::test::{LOCALHOST_IP4, LOCALHOST_IP6};
+use crate::net::tests::{LOCALHOST_IP4, LOCALHOST_IP6};
 use crate::net::*;
 use crate::sync::mpsc::channel;
 use crate::time::{Duration, Instant};
@@ -733,7 +733,13 @@ fn debug() {
 //        no longer has rounding errors.
 // VxWorks ignores SO_SNDTIMEO.
 #[cfg_attr(
-    any(target_os = "netbsd", target_os = "openbsd", target_os = "vxworks", target_os = "nto"),
+    any(
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "vxworks",
+        target_os = "nto",
+        target_os = "qnx"
+    ),
     ignore
 )]
 #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31

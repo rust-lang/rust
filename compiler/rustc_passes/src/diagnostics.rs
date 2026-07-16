@@ -5,31 +5,12 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level, MultiSpan, msg,
 };
-use rustc_hir::Target;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 
 use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
-
-#[derive(Diagnostic)]
-#[diag("`#[loop_match]` should be applied to a loop")]
-pub(crate) struct LoopMatchAttr {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("not a loop")]
-    pub node_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[const_continue]` should be applied to a break expression")]
-pub(crate) struct ConstContinueAttr {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("not a break expression")]
-    pub node_span: Span,
-}
 
 #[derive(Diagnostic)]
 #[diag("`{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`")]
@@ -169,13 +150,6 @@ pub(crate) struct DocMaskedNotExternCrateSelf {
     pub attr_span: Span,
     #[label("`extern crate self` defined here")]
     pub item_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
-pub(crate) struct BothFfiConstAndPure {
-    #[primary_span]
-    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -345,14 +319,6 @@ pub(crate) struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
-#[diag("unknown external lang item: `{$lang_item}`", code = E0264)]
-pub(crate) struct UnknownExternLangItem {
-    #[primary_span]
-    pub span: Span,
-    pub lang_item: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[panic_handler]` function required, but not found")]
 pub(crate) struct MissingPanicHandler;
 
@@ -394,37 +360,6 @@ pub(crate) struct LangItemWithTrackCaller {
         } function is not allowed to have `#[track_caller]`"
     )]
     pub sig_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "{$name ->
-        [panic_impl] `#[panic_handler]`
-        *[other] `{$name}` lang item
-    } function is not allowed to have `#[target_feature]`"
-)]
-pub(crate) struct LangItemWithTargetFeature {
-    #[primary_span]
-    pub attr_span: Span,
-    pub name: Symbol,
-    #[label(
-        "{$name ->
-            [panic_impl] `#[panic_handler]`
-            *[other] `{$name}` lang item
-        } function is not allowed to have `#[target_feature]`"
-    )]
-    pub sig_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`{$name}` lang item must be applied to a {$expected_target}", code = E0718)]
-pub(crate) struct LangItemOnIncorrectTarget {
-    #[primary_span]
-    #[label("attribute should be applied to a {$expected_target}, not a {$actual_target}")]
-    pub span: Span,
-    pub name: Symbol,
-    pub expected_target: Target,
-    pub actual_target: Target,
 }
 
 #[derive(Diagnostic)]
@@ -1170,35 +1105,6 @@ pub(crate) struct EiiWithoutImpl {
 }
 
 #[derive(Diagnostic)]
-#[diag("multiple implementations of `#[{$name}]`")]
-pub(crate) struct DuplicateEiiImpls {
-    pub name: Symbol,
-
-    #[primary_span]
-    #[label("first implemented here in crate `{$first_crate}`")]
-    pub first_span: Span,
-    pub first_crate: Symbol,
-
-    #[label("also implemented here in crate `{$second_crate}`")]
-    pub second_span: Span,
-    pub second_crate: Symbol,
-
-    #[note("in addition to these two, { $num_additional_crates ->
-        [one] another implementation was found in crate {$additional_crate_names}
-        *[other] more implementations were also found in the following crates: {$additional_crate_names}
-    }")]
-    pub additional_crates: Option<()>,
-
-    pub num_additional_crates: usize,
-    pub additional_crate_names: String,
-
-    #[help(
-        "an \"externally implementable item\" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict"
-    )]
-    pub help: (),
-}
-
-#[derive(Diagnostic)]
 #[diag("function doesn't have a default implementation")]
 pub(crate) struct FunctionNotHaveDefaultImplementation {
     #[primary_span]
@@ -1258,6 +1164,13 @@ pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
 #[diag("unknown parameter `{$name}`")]
 #[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
 pub(crate) struct OnMoveMalformedFormatLiterals {
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
+pub(crate) struct OnConstMalformedFormatLiterals {
     pub name: Symbol,
 }
 

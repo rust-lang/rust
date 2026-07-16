@@ -116,7 +116,7 @@ use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
-use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
@@ -608,7 +608,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 let fields =
                     fields.iter().map(|&f| self.eval_to_const(f)).collect::<Option<Vec<_>>>()?;
                 let variant = if ty.ty.is_enum() { Some(variant) } else { None };
-                let (BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)) = ty.backend_repr
+                let (BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }) = ty.backend_repr
                 else {
                     return None;
                 };
@@ -639,7 +639,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     ImmTy::from_immediate(Immediate::Uninit, ty).into()
                 } else if matches!(
                     ty.backend_repr,
-                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
+                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }
                 ) {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
                     let field_dest = self.ecx.project_field(&dest, active_field).discard_err()?;
@@ -738,11 +738,15 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                                 s1.size(&self.ecx) == s2.size(&self.ecx)
                                     && !matches!(s1.primitive(), Primitive::Pointer(..))
                             }
-                            (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
+                            (
+                                BackendRepr::ScalarPair { a: a1, b: b1, b_offset: b1_offset },
+                                BackendRepr::ScalarPair { a: a2, b: b2, b_offset: b2_offset },
+                            ) => {
                                 a1.size(&self.ecx) == a2.size(&self.ecx)
                                     && b1.size(&self.ecx) == b2.size(&self.ecx)
-                                    // The alignment of the second component determines its offset, so that also needs to match.
-                                    && b1.align(&self.ecx) == b2.align(&self.ecx)
+                                    // The first component is always at offset zero, but the offset to the second
+                                    // component needs to match as well for us to be able to transmute.
+                                    && b1_offset == b2_offset
                                     // None of the inputs may be a pointer.
                                     && !matches!(a1.primitive(), Primitive::Pointer(..))
                                     && !matches!(b1.primitive(), Primitive::Pointer(..))
@@ -834,16 +838,20 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     {
                         return Some((projection_ty, value));
                     }
-                    // DO NOT reason the pointer value.
-                    // We cannot unify two pointers that dereference same local, because they may
-                    // have different lifetimes.
+                    // We cannot unify two references produced by dereferencing the same nested reference,
+                    // because they may have different lifetimes.
                     // ```
                     // let b: &T = *a;
                     // ... `a` is allowed to be modified. `c` and `b` have different borrowing lifetime.
                     // Unifying them will extend the lifetime of `b`.
                     // let c: &T = *a;
                     // ```
-                    if projection_ty.ty.is_ref() {
+                    // Furthermore, unifying them can also violate Stacked Borrows or Tree Borrows.
+                    // We can only unify all `*b` and `*c` separately
+                    // because nested shared references are not read-only.
+                    // For more, see <https://github.com/rust-lang/rust/issues/155884> and
+                    // <https://github.com/rust-lang/rust/issues/130853>.
+                    if self.ty_may_have_ref(projection_ty.ty) {
                         return None;
                     }
 
@@ -1688,6 +1696,59 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
     }
 
+    fn ty_may_have_ref(&self, ty: Ty<'tcx>) -> bool {
+        fn ty_may_have_ref_inner<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> bool {
+            if !tcx.recursion_limit().value_within_limit(depth) {
+                return true;
+            }
+            let depth = depth + 1;
+            match ty.kind() {
+                ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Bool
+                | ty::Char
+                | ty::Str
+                | ty::Never
+                | ty::FnDef(..)
+                | ty::Error(_)
+                | ty::FnPtr(..) => false,
+                ty::Tuple(fields) => {
+                    fields.iter().any(|field| ty_may_have_ref_inner(tcx, field, depth))
+                }
+                ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => {
+                    ty_may_have_ref_inner(tcx, *ty, depth)
+                }
+                ty::Adt(adt_def, args) => {
+                    adt_def.has_param()
+                        || adt_def.has_aliases()
+                        || adt_def.all_fields().any(|field| {
+                            ty_may_have_ref_inner(
+                                tcx,
+                                field.ty(tcx, args).skip_normalization(),
+                                depth,
+                            )
+                        })
+                }
+                ty::Ref(..)
+                | ty::RawPtr(_, _)
+                | ty::Bound(..)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
+                | ty::Dynamic(..)
+                | ty::Foreign(_)
+                | ty::Coroutine(..)
+                | ty::CoroutineWitness(..)
+                | ty::UnsafeBinder(_)
+                | ty::Infer(_)
+                | ty::Alias(..)
+                | ty::Param(_)
+                | ty::Placeholder(_) => true,
+            }
+        }
+        ty_may_have_ref_inner(self.tcx, ty, 0)
+    }
+
     /// Returns `false` if we're confident that the middle type doesn't have an
     /// interesting niche so we can skip that step when transmuting.
     ///
@@ -1747,7 +1808,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     true
                 }
             }
-            BackendRepr::ScalarPair(a, b) => {
+            BackendRepr::ScalarPair { a, b, b_offset: _ } => {
+                // The offset is irrelevant to niches since it can only cause padding,
+                // which can never have a niche since it's uninitialized.
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
             }
             BackendRepr::SimdVector { .. }
@@ -1845,7 +1908,10 @@ fn op_to_prop_const<'tcx>(
     // But we *do* want to synthesize any size constant if it is entirely uninit because that
     // benefits codegen, which has special handling for them.
     if !op.is_immediate_uninit()
-        && !matches!(op.layout.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..))
+        && !matches!(
+            op.layout.backend_repr,
+            BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }
+        )
     {
         return None;
     }

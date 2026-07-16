@@ -921,7 +921,7 @@ impl<T, E> Result<T, E> {
     ///
     /// [default value]: Default::default
     #[inline]
-    #[stable(feature = "result_option_map_or_default", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "result_option_map_or_default", since = "1.98.0")]
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn map_or_default<U, F>(self, f: F) -> U
     where

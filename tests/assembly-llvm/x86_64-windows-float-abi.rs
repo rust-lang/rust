@@ -3,6 +3,9 @@
 //@ compile-flags: --target x86_64-pc-windows-msvc
 //@ needs-llvm-components: x86
 //@ add-minicore
+//@ revisions: LLVM22 LLVM23
+//@ [LLVM22] max-llvm-major-version: 22
+//@ [LLVM23] min-llvm-version: 23
 
 #![feature(f16, f128)]
 #![feature(no_core)]
@@ -37,8 +40,12 @@ pub extern "C" fn second_f64(_: f64, x: f64) -> f64 {
 }
 
 // CHECK-LABEL: second_f128
-// CHECK: movaps (%rdx), %xmm0
-// CHECK-NEXT: retq
+// LLVM22: movaps (%rdx), %xmm0
+// LLVM22-NEXT: retq
+// LLVM23: movq %rcx, %rax
+// LLVM23-NEXT: movaps (%r8), %xmm0
+// LLVM23-NEXT: movaps %xmm0, (%rcx)
+// LLVM23-NEXT: retq
 #[no_mangle]
 pub extern "C" fn second_f128(_: f128, x: f128) -> f128 {
     x

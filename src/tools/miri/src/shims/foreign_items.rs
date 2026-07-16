@@ -241,6 +241,109 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(instance) => interp_ok(Some((this.load_mir(instance.def, None)?, instance))),
         }
     }
+
+    // FIXME move this and the LLVM intrinsic impls to the intrinsics module
+    fn call_llvm_intrinsic(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OpTy<'tcx>],
+        dest: &PlaceTy<'tcx>,
+        ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let link_name = this.tcx.codegen_fn_attrs(instance.def_id()).symbol_name.unwrap();
+
+        // FIXME: avoid allocating memory
+        let dest = this.force_allocation(dest)?;
+
+        let handled = match link_name.as_str() {
+            // LLVM intrinsics
+            "llvm.prefetch.p0" => {
+                let [p, rw, loc, ty] = this.check_shim_sig_unadjusted(link_name, args)?;
+
+                let _ = this.read_pointer(p)?;
+                let rw = this.read_scalar(rw)?.to_i32()?;
+                let loc = this.read_scalar(loc)?.to_i32()?;
+                let ty = this.read_scalar(ty)?.to_i32()?;
+
+                if ty == 1 {
+                    // Data cache prefetch.
+                    // Notably, we do not have to check the pointer, this operation is never UB!
+
+                    if !matches!(rw, 0 | 1) {
+                        throw_unsup_format!("invalid `rw` value passed to `llvm.prefetch`: {}", rw);
+                    }
+                    if !matches!(loc, 0..=3) {
+                        throw_unsup_format!(
+                            "invalid `loc` value passed to `llvm.prefetch`: {}",
+                            loc
+                        );
+                    }
+                } else {
+                    throw_unsup_format!("unsupported `llvm.prefetch` type argument: {}", ty);
+                }
+
+                true
+            }
+            // Used to implement the x86 `_mm{,256,512}_popcnt_epi{8,16,32,64}` and wasm
+            // `{i,u}8x16_popcnt` functions.
+            name if name.starts_with("llvm.ctpop.v")
+                && this.tcx.sess.target.endian == Endian::Little =>
+            {
+                let [op] = this.check_shim_sig_unadjusted(link_name, args)?;
+
+                let (op, op_len) = this.project_to_simd(op)?;
+                let (dest, dest_len) = this.project_to_simd(&dest)?;
+
+                assert_eq!(dest_len, op_len);
+
+                for i in 0..dest_len {
+                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
+                    // Use `to_uint` to get a zero-extended `u128`. Those
+                    // extra zeros will not affect `count_ones`.
+                    let res = op.to_scalar().to_uint(op.layout.size)?.count_ones();
+
+                    this.write_scalar(
+                        Scalar::from_uint(res, op.layout.size),
+                        &this.project_index(&dest, i)?,
+                    )?;
+                }
+
+                true
+            }
+
+            // Target-specific shims
+            name if name.starts_with("llvm.x86.")
+                && matches!(this.tcx.sess.target.arch, Arch::X86 | Arch::X86_64)
+                && this.tcx.sess.target.endian == Endian::Little =>
+                shims::x86::EvalContextExt::emulate_x86_intrinsic(this, link_name, args, &dest)?,
+            name if name.starts_with("llvm.aarch64.")
+                && this.tcx.sess.target.arch == Arch::AArch64
+                && this.tcx.sess.target.endian == Endian::Little =>
+                shims::aarch64::EvalContextExt::emulate_aarch64_intrinsic(
+                    this, link_name, args, &dest,
+                )?,
+            name if name.starts_with("llvm.loongarch.")
+                && matches!(this.tcx.sess.target.arch, Arch::LoongArch32 | Arch::LoongArch64)
+                && this.tcx.sess.target.endian == Endian::Little =>
+                shims::loongarch::EvalContextExt::emulate_loongarch_intrinsic(
+                    this, link_name, args, &dest,
+                )?,
+            _ => false,
+        };
+
+        // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
+        if handled {
+            trace!("{:?}", this.dump_place(&dest.clone().into()));
+            this.return_to_block(ret)
+        } else {
+            throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
+                "can't call LLVM intrinsic `{link_name}` on architecture `{arch}`",
+                arch = this.tcx.sess.target.arch,
+            )));
+        }
+    }
 }
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -569,6 +672,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Aborting the process.
             "exit" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [code] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let code = this.read_scalar(code)?.to_i32()?;
                 if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
@@ -583,6 +687,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
             }
             "abort" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 throw_machine_stop!(TerminationInfo::Abort(
                     "the program aborted execution".to_owned()
@@ -644,6 +749,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // C memory handling functions
             "memcmp" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [left, right, n] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let left = this.read_pointer(left)?;
@@ -655,6 +761,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.ptr_get_alloc_id(right, 0)?;
 
                 let result = {
+                    // FIXME: It's unclear if pre-reading the entire block is correct.
+                    // See <https://github.com/rust-lang/miri/issues/5176>.
                     let left_bytes = this.read_bytes_ptr_strip_provenance(left, n)?;
                     let right_bytes = this.read_bytes_ptr_strip_provenance(right, n)?;
 
@@ -667,33 +775,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-            "memrchr" => {
-                let [ptr, val, num] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let ptr = this.read_pointer(ptr)?;
-                let val = this.read_scalar(val)?.to_i32()?;
-                let num = this.read_target_usize(num)?;
-                // The docs say val is "interpreted as unsigned char".
-                #[expect(clippy::as_conversions)]
-                let val = val as u8;
-
-                // C requires that this must always be a valid pointer (C18 §7.1.4).
-                this.ptr_get_alloc_id(ptr, 0)?;
-
-                if let Some(idx) = this
-                    .read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(num))?
-                    .iter()
-                    .rev()
-                    .position(|&c| c == val)
-                {
-                    let idx = u64::try_from(idx).unwrap();
-                    #[expect(clippy::arithmetic_side_effects)] // idx < num, so this never wraps
-                    let new_ptr = ptr.wrapping_offset(Size::from_bytes(num - idx - 1), this);
-                    this.write_pointer(new_ptr, dest)?;
-                } else {
-                    this.write_null(dest)?;
-                }
             }
             "memchr" => {
                 let [ptr, val, num] =
@@ -708,13 +789,37 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
                 this.ptr_get_alloc_id(ptr, 0)?;
 
-                let idx = this
-                    .read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(num))?
-                    .iter()
-                    .position(|&c| c == val);
-                if let Some(idx) = idx {
-                    let new_ptr = ptr.wrapping_offset(Size::from_bytes(idx), this);
-                    this.write_pointer(new_ptr, dest)?;
+                // "This function behaves as if it reads the bytes sequentially and stops as soon as
+                // a matching bytes is found: if the array pointed to by ptr is smaller than count,
+                // but the match is found within the array, the behavior is well-defined."
+                let needle_ptr = this.memchr(ptr, 0..num, val)?.map(|(_idx, ptr)| ptr);
+
+                if let Some(needle_ptr) = needle_ptr {
+                    this.write_pointer(needle_ptr, dest)?;
+                } else {
+                    this.write_null(dest)?;
+                }
+            }
+            "memrchr" => {
+                this.check_target_os(&[Os::Linux, Os::Android, Os::FreeBsd], link_name)?;
+
+                let [ptr, val, num] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let val = this.read_scalar(val)?.to_i32()?;
+                let num = this.read_target_usize(num)?;
+                // The docs say val is "interpreted as unsigned char".
+                #[expect(clippy::as_conversions)]
+                let val = val as u8;
+
+                // C requires that this must always be a valid pointer (C18 §7.1.4).
+                this.ptr_get_alloc_id(ptr, 0)?;
+
+                // We use the same early-abort search strategy as `memchr` (see above).
+                let needle_ptr = this.memchr(ptr, (0..num).rev(), val)?.map(|(_idx, ptr)| ptr);
+
+                if let Some(needle_ptr) = needle_ptr {
+                    this.write_pointer(needle_ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
                 }
@@ -728,6 +833,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Scalar::from_target_usize(u64::try_from(n).unwrap(), this),
                     dest,
                 )?;
+            }
+            "strnlen" => {
+                let [ptr, num] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let num = this.read_target_usize(num)?;
+
+                // C requires that this must always be a valid pointer (C18 §7.1.4).
+                this.ptr_get_alloc_id(ptr, 0)?;
+
+                // The docs say this behaves like memchr, which only deref's the memory it actually
+                // needs to compare.
+                let idx = this.memchr(ptr, 0..num, 0)?.map(|(idx, _ptr)| idx).unwrap_or(num);
+                this.write_scalar(Scalar::from_target_usize(idx, this), dest)?;
             }
             "wcslen" => {
                 let [ptr] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
@@ -788,84 +906,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_pointer(ptr_dest, dest)?;
             }
 
-            // LLVM intrinsics
-            "llvm.prefetch.p0" => {
-                let [p, rw, loc, ty] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                let _ = this.read_pointer(p)?;
-                let rw = this.read_scalar(rw)?.to_i32()?;
-                let loc = this.read_scalar(loc)?.to_i32()?;
-                let ty = this.read_scalar(ty)?.to_i32()?;
-
-                if ty == 1 {
-                    // Data cache prefetch.
-                    // Notably, we do not have to check the pointer, this operation is never UB!
-
-                    if !matches!(rw, 0 | 1) {
-                        throw_unsup_format!("invalid `rw` value passed to `llvm.prefetch`: {}", rw);
-                    }
-                    if !matches!(loc, 0..=3) {
-                        throw_unsup_format!(
-                            "invalid `loc` value passed to `llvm.prefetch`: {}",
-                            loc
-                        );
-                    }
-                } else {
-                    throw_unsup_format!("unsupported `llvm.prefetch` type argument: {}", ty);
-                }
-            }
-            // Used to implement the x86 `_mm{,256,512}_popcnt_epi{8,16,32,64}` and wasm
-            // `{i,u}8x16_popcnt` functions.
-            name if name.starts_with("llvm.ctpop.v")
-                && this.tcx.sess.target.endian == Endian::Little =>
-            {
-                let [op] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                let (op, op_len) = this.project_to_simd(op)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(dest_len, op_len);
-
-                for i in 0..dest_len {
-                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
-                    // Use `to_uint` to get a zero-extended `u128`. Those
-                    // extra zeros will not affect `count_ones`.
-                    let res = op.to_scalar().to_uint(op.layout.size)?.count_ones();
-
-                    this.write_scalar(
-                        Scalar::from_uint(res, op.layout.size),
-                        &this.project_index(&dest, i)?,
-                    )?;
-                }
-            }
-
-            // Target-specific shims
-            name if name.starts_with("llvm.x86.")
-                && matches!(this.tcx.sess.target.arch, Arch::X86 | Arch::X86_64)
-                && this.tcx.sess.target.endian == Endian::Little =>
-            {
-                return shims::x86::EvalContextExt::emulate_x86_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
-            }
-            name if name.starts_with("llvm.aarch64.")
-                && this.tcx.sess.target.arch == Arch::AArch64
-                && this.tcx.sess.target.endian == Endian::Little =>
-            {
-                return shims::aarch64::EvalContextExt::emulate_aarch64_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
-            }
-            name if name.starts_with("llvm.loongarch.")
-                && matches!(this.tcx.sess.target.arch, Arch::LoongArch32 | Arch::LoongArch64)
-                && this.tcx.sess.target.endian == Endian::Little =>
-            {
-                return shims::loongarch::EvalContextExt::emulate_loongarch_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
-            }
-
             // Fallback to shims in submodules.
             _ => {
                 // Math shims
@@ -893,5 +933,25 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We only fall through to here if we did *not* hit the `_` arm above,
         // i.e., if we actually emulated the function with one of the shims.
         interp_ok(EmulateItemResult::NeedsReturn)
+    }
+
+    /// For each `idx` yielded by `idxs`, check if `ptr + idx` equals `needle` and return that
+    /// index and a pointer to that element if so. Return `None` if none of the indices match.
+    fn memchr(
+        &self,
+        ptr: Pointer,
+        idxs: impl Iterator<Item = u64>,
+        needle: u8,
+    ) -> InterpResult<'tcx, Option<(u64, Pointer)>> {
+        let this = self.eval_context_ref();
+        for idx in idxs {
+            let ptr = ptr.wrapping_offset(Size::from_bytes(idx), this);
+            let place = this.ptr_to_mplace(ptr, this.machine.layouts.u8);
+            let val = this.read_scalar(&place)?.to_u8()?;
+            if val == needle {
+                return interp_ok(Some((idx, ptr)));
+            }
+        }
+        interp_ok(None)
     }
 }

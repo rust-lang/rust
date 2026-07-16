@@ -129,7 +129,13 @@ pub fn iter_exported_symbols<'tcx>(
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         };
-        if exported {
+        // FIXME: `#[no_mangle]` makes no sense on a generic item, but still causes it to be
+        // considered "extern". Remove this once `no_mangle_generic_items` is a hard error.
+        let exported_mono = exported && {
+            let generics = tcx.generics_of(def_id);
+            !generics.requires_monomorphization(tcx)
+        };
+        if exported_mono {
             f(LOCAL_CRATE, def_id.into())?;
         }
     }
@@ -193,6 +199,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
         self.eval_path_scalar(&["libc", name])
+    }
+
+    /// Helper function to get a `libc` constant as an `i16`.
+    fn eval_libc_i16(&self, name: &str) -> i16 {
+        // TODO: Cache the result.
+        self.eval_libc(name).to_i16().unwrap_or_else(|_err| {
+            panic!("required libc item has unexpected type (not `i16`): {name}")
+        })
+    }
+
+    /// Helper function to get a `libc` constant as an `u16`.
+    fn eval_libc_u16(&self, name: &str) -> u16 {
+        // TODO: Cache the result.
+        self.eval_libc(name).to_u16().unwrap_or_else(|_err| {
+            panic!("required libc item has unexpected type (not `u16`): {name}")
+        })
     }
 
     /// Helper function to get a `libc` constant as an `i32`.
@@ -406,6 +428,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let sig = this.tcx.mk_fn_sig(
             args.iter().map(|a| a.layout.ty),
             dest.layout.ty,
+            // FIXME(splat): Do we need to set splatted here?
+            // (Currently this also ignores c_variadic)
             FnSigKind::default().set_abi(caller_abi).set_safety(rustc_hir::Safety::Safe),
         );
         let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;

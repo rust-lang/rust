@@ -23,7 +23,7 @@ use super::{
     AllowConstBlockItems, AttrWrapper, BlockMode, FnContext, FnParseMode, ForceCollect, Parser,
     Restrictions, SemiColonMode, Trailing, UsePreAttrPos,
 };
-use crate::errors::{self, MalformedLoopLabel};
+use crate::diagnostics::{self, MalformedLoopLabel};
 use crate::exp;
 
 impl<'a> Parser<'a> {
@@ -67,9 +67,9 @@ impl<'a> Parser<'a> {
         if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
             self.bump();
             let mut_let_span = lo.to(self.token.span);
-            self.dcx().emit_err(errors::InvalidVariableDeclaration {
+            self.dcx().emit_err(diagnostics::InvalidVariableDeclaration {
                 span: mut_let_span,
-                sub: errors::InvalidVariableDeclarationSub::SwitchMutLetOrder(mut_let_span),
+                sub: diagnostics::InvalidVariableDeclarationSub::SwitchMutLetOrder(mut_let_span),
             });
         }
 
@@ -102,7 +102,7 @@ impl<'a> Parser<'a> {
             self.recover_stmt_local_after_let(
                 lo,
                 attrs,
-                errors::InvalidVariableDeclarationSub::MissingLet,
+                diagnostics::InvalidVariableDeclarationSub::MissingLet,
                 force_collect,
             )?
         } else if self.is_kw_followed_by_ident(kw::Auto) && self.may_recover() {
@@ -110,7 +110,7 @@ impl<'a> Parser<'a> {
             self.recover_stmt_local_after_let(
                 lo,
                 attrs,
-                errors::InvalidVariableDeclarationSub::UseLetNotAuto,
+                diagnostics::InvalidVariableDeclarationSub::UseLetNotAuto,
                 force_collect,
             )?
         } else if self.is_kw_followed_by_ident(sym::var) && self.may_recover() {
@@ -118,7 +118,7 @@ impl<'a> Parser<'a> {
             self.recover_stmt_local_after_let(
                 lo,
                 attrs,
-                errors::InvalidVariableDeclarationSub::UseLetNotVar,
+                diagnostics::InvalidVariableDeclarationSub::UseLetNotVar,
                 force_collect,
             )?
         } else if self.check_path()
@@ -181,7 +181,8 @@ impl<'a> Parser<'a> {
                 let bl = self.parse_block()?;
                 // Destructuring assignment ... else.
                 // This is not allowed, but point it out in a nice way.
-                self.dcx().emit_err(errors::AssignmentElseNotAllowed { span: e.span.to(bl.span) });
+                self.dcx()
+                    .emit_err(diagnostics::AssignmentElseNotAllowed { span: e.span.to(bl.span) });
             }
             self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         } else {
@@ -276,12 +277,13 @@ impl<'a> Parser<'a> {
             && let attrs @ [.., last] = &*attrs.take_for_recovery(self.psess)
         {
             if last.is_doc_comment() {
-                self.dcx().emit_err(errors::DocCommentDoesNotDocumentAnything {
+                self.dcx().emit_err(diagnostics::DocCommentDoesNotDocumentAnything {
                     span: last.span,
                     missing_comma: None,
                 });
             } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
-                self.dcx().emit_err(errors::ExpectedStatementAfterOuterAttr { span: last.span });
+                self.dcx()
+                    .emit_err(diagnostics::ExpectedStatementAfterOuterAttr { span: last.span });
             }
         }
     }
@@ -290,7 +292,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         attrs: AttrWrapper,
-        subdiagnostic: fn(Span) -> errors::InvalidVariableDeclarationSub,
+        subdiagnostic: fn(Span) -> diagnostics::InvalidVariableDeclarationSub,
         force_collect: ForceCollect,
     ) -> PResult<'a, Stmt> {
         let stmt = self.collect_tokens(None, attrs, force_collect, |this, attrs| {
@@ -303,7 +305,7 @@ impl<'a> Parser<'a> {
             ))
         })?;
         self.dcx()
-            .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
+            .emit_err(diagnostics::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
     }
 
@@ -312,7 +314,8 @@ impl<'a> Parser<'a> {
         let lo = super_.unwrap_or(self.prev_token.span);
 
         if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
-            self.dcx().emit_err(errors::ConstLetMutuallyExclusive { span: lo.to(self.token.span) });
+            self.dcx()
+                .emit_err(diagnostics::ConstLetMutuallyExclusive { span: lo.to(self.token.span) });
             self.bump();
         }
 
@@ -426,10 +429,10 @@ impl<'a> Parser<'a> {
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
         if let ast::ExprKind::Binary(op, ..) = init.kind {
             if op.node.is_lazy() {
-                self.dcx().emit_err(errors::InvalidExpressionInLetElse {
+                self.dcx().emit_err(diagnostics::InvalidExpressionInLetElse {
                     span: init.span,
                     operator: op.node.as_str(),
-                    sugg: errors::WrapInParentheses::Expression {
+                    sugg: diagnostics::WrapInParentheses::Expression {
                         left: init.span.shrink_to_lo(),
                         right: init.span.shrink_to_hi(),
                     },
@@ -443,20 +446,20 @@ impl<'a> Parser<'a> {
             let (span, sugg) = match trailing {
                 TrailingBrace::MacCall(mac) => (
                     mac.span(),
-                    errors::WrapInParentheses::MacroArgs {
+                    diagnostics::WrapInParentheses::MacroArgs {
                         left: mac.args.dspan.open,
                         right: mac.args.dspan.close,
                     },
                 ),
                 TrailingBrace::Expr(expr) => (
                     expr.span,
-                    errors::WrapInParentheses::Expression {
+                    diagnostics::WrapInParentheses::Expression {
                         left: expr.span.shrink_to_lo(),
                         right: expr.span.shrink_to_hi(),
                     },
                 ),
             };
-            self.dcx().emit_err(errors::InvalidCurlyInLetElse {
+            self.dcx().emit_err(diagnostics::InvalidCurlyInLetElse {
                 span: span.with_lo(span.hi() - BytePos(1)),
                 sugg,
             });
@@ -481,7 +484,7 @@ impl<'a> Parser<'a> {
                 // `➖` is a U+2796 Heavy Minus Sign Unicode Character) that was recovered as a
                 // `-=`.
                 let extra_op_span = self.psess.source_map().start_point(self.token.span);
-                self.dcx().emit_err(errors::CompoundAssignmentExpressionInLet {
+                self.dcx().emit_err(diagnostics::CompoundAssignmentExpressionInLet {
                     span: self.token.span,
                     suggestion: extra_op_span,
                 });
@@ -1165,7 +1168,7 @@ impl<'a> Parser<'a> {
         rules: BlockCheckMode,
         span: Span,
     ) -> Box<Block> {
-        Box::new(Block { stmts, id: DUMMY_NODE_ID, rules, span, tokens: None })
+        Box::new(Block { stmts, id: DUMMY_NODE_ID, rules, span })
     }
 
     pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {

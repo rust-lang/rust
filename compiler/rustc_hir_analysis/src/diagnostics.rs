@@ -1583,14 +1583,6 @@ pub(crate) struct UnsupportedDelegation<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("delegation self type is not specified")]
-#[help("consider explicitly specifying self type: `reuse </* Type */ as Trait>::function`")]
-pub(crate) struct DelegationSelfTypeNotSpecified {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("inferred lifetimes are not allowed in delegations as we need to inherit signature")]
 pub(crate) struct ElidedLifetimesAreNotAllowedInDelegations {
     #[primary_span]
@@ -2007,4 +1999,34 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for UncoveredTyParam<'_> {
 
         diag
     }
+}
+
+#[derive(Diagnostic)]
+#[diag("field `{$name}` is already part of the view")]
+pub(crate) struct ViewedFieldIsAlreadyPartOfTheView {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    #[label("field `{$name}` is declared as viewed here")]
+    pub previous_field_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("only structs can be viewed")]
+pub(crate) struct OnlyStructsCanBeViewedNonAdt<'tcx> {
+    #[primary_span]
+    #[label("type `{$ty}` cannot be viewed")]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag("only structs can be viewed")]
+pub(crate) struct OnlyStructsCanBeViewedAdt<'tcx> {
+    #[primary_span]
+    #[label("`{$ty}` is {$article} {$kind}, it cannot be viewed")]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub article: &'static str,
+    pub kind: &'static str,
 }

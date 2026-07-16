@@ -1,5 +1,5 @@
 use crate::io::ErrorKind;
-use crate::net::test::{LOCALHOST_IP4, LOCALHOST_IP6, compare_ignore_zoneid};
+use crate::net::tests::{LOCALHOST_IP4, LOCALHOST_IP6, compare_ignore_zoneid};
 use crate::net::*;
 use crate::sync::mpsc::channel;
 use crate::thread;
@@ -188,7 +188,13 @@ fn debug() {
 //        no longer has rounding errors.
 // VxWorks ignores SO_SNDTIMEO.
 #[cfg_attr(
-    any(target_os = "netbsd", target_os = "openbsd", target_os = "vxworks", target_os = "nto"),
+    any(
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "vxworks",
+        target_os = "nto",
+        target_os = "qnx"
+    ),
     ignore
 )]
 #[cfg_attr(target_os = "wasi", ignore)] // timeout not supported

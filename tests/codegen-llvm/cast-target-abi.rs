@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ add-minicore
 //@ revisions:aarch64 loongarch64 powerpc64 sparc64 x86_64
 //@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes -Zlint-llvm-ir

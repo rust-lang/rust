@@ -1,5 +1,5 @@
 //@ check-pass
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![warn(unused_mut)]
 

@@ -38,6 +38,11 @@ pub type TyKind<'tcx> = ir::TyKind<TyCtxt<'tcx>>;
 pub type TypeAndMut<'tcx> = ir::TypeAndMut<TyCtxt<'tcx>>;
 pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;
 pub type AliasTyKind<'tcx> = ir::AliasTyKind<TyCtxt<'tcx>>;
+pub type Alias<'tcx, K> = ir::Alias<TyCtxt<'tcx>, K>;
+pub type ProjectionAliasTy<'tcx> = ir::ProjectionAliasTy<TyCtxt<'tcx>>;
+pub type InherentAliasTy<'tcx> = ir::InherentAliasTy<TyCtxt<'tcx>>;
+pub type OpaqueAliasTy<'tcx> = ir::OpaqueAliasTy<TyCtxt<'tcx>>;
+pub type FreeAliasTy<'tcx> = ir::FreeAliasTy<TyCtxt<'tcx>>;
 pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
 pub type FnSigKind<'tcx> = ir::FnSigKind<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
@@ -161,7 +166,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
                 if tcx.is_async_drop_in_place_coroutine(def_id) {
                     layout.field_tys[*field].ty
                 } else {
-                    ty::EarlyBinder::bind(layout.field_tys[*field].ty)
+                    ty::EarlyBinder::bind(tcx, layout.field_tys[*field].ty)
                         .instantiate(tcx, self.args)
                         .skip_norm_wip()
                 }
@@ -476,14 +481,28 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn new_alias(tcx: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
-        debug_assert_matches!(
-            (alias_ty.kind, tcx.def_kind(alias_ty.kind.def_id())),
-            (ty::Opaque { .. }, DefKind::OpaqueTy)
-                | (ty::Projection { .. } | ty::Inherent { .. }, DefKind::AssocTy)
-                | (ty::Free { .. }, DefKind::TyAlias)
-        );
-        Ty::new(tcx, Alias(alias_ty))
+    pub fn new_alias(
+        tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        alias_ty: ty::AliasTy<'tcx>,
+    ) -> Ty<'tcx> {
+        if cfg!(debug_assertions) {
+            match alias_ty.kind {
+                ty::AliasTyKind::Projection { def_id } => {
+                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::AssocTy)
+                }
+                ty::AliasTyKind::Inherent { def_id } => {
+                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::AssocTy)
+                }
+                ty::AliasTyKind::Opaque { def_id } => {
+                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::OpaqueTy)
+                }
+                ty::AliasTyKind::Free { def_id } => {
+                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::TyAlias)
+                }
+            }
+        }
+        Ty::new(tcx, Alias(is_rigid, alias_ty))
     }
 
     #[inline]
@@ -522,8 +541,13 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     #[instrument(level = "debug", skip(tcx))]
-    pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        Ty::new_alias(tcx, AliasTy::new_from_args(tcx, ty::Opaque { def_id }, args))
+    pub fn new_opaque(
+        tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> Ty<'tcx> {
+        Ty::new_alias(tcx, is_rigid, AliasTy::new_from_args(tcx, ty::Opaque { def_id }, args))
     }
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
@@ -657,7 +681,6 @@ impl<'tcx> Ty<'tcx> {
                 | DefKind::Use
                 | DefKind::ForeignMod
                 | DefKind::AnonConst
-                | DefKind::InlineConst
                 | DefKind::OpaqueTy
                 | DefKind::Field
                 | DefKind::LifetimeParam
@@ -713,13 +736,14 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_fn_def(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+        args: ty::Binder<'tcx, impl IntoIterator<Item: Into<GenericArg<'tcx>>>>,
     ) -> Ty<'tcx> {
         debug_assert_matches!(
             tcx.def_kind(def_id),
             DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
         );
-        let args = tcx.check_and_mk_args(def_id, args);
+        // FIXME(156581): check that the binder is being used correctly (turbofishing/fndef changes)
+        let args = args.map_bound(|args| tcx.check_and_mk_args(def_id, args));
         Ty::new(tcx, FnDef(def_id, args))
     }
 
@@ -745,25 +769,22 @@ impl<'tcx> Ty<'tcx> {
                 .projection_bounds()
                 .filter(|item| !tcx.generics_require_sized_self(item.item_def_id()))
                 .count();
-            let expected_count: usize = obj
-                .principal_def_id()
-                .into_iter()
-                .flat_map(|principal_def_id| {
-                    // IMPORTANT: This has to agree with HIR ty lowering of dyn trait!
-                    elaborate::supertraits(
-                        tcx,
-                        ty::Binder::dummy(ty::TraitRef::identity(tcx, principal_def_id)),
-                    )
-                    .map(|principal| {
-                        tcx.associated_items(principal.def_id())
-                            .in_definition_order()
-                            .filter(|item| item.is_type() || item.is_type_const())
-                            .filter(|item| !item.is_impl_trait_in_trait())
-                            .filter(|item| !tcx.generics_require_sized_self(item.def_id))
-                            .count()
-                    })
+            let expected_count: usize = obj.principal_def_id().map_or(0, |principal_def_id| {
+                // IMPORTANT: This has to agree with HIR ty lowering of dyn trait!
+                elaborate::supertraits(
+                    tcx,
+                    ty::Binder::dummy(ty::TraitRef::identity(tcx, principal_def_id)),
+                )
+                .map(|principal| {
+                    tcx.associated_items(principal.def_id())
+                        .in_definition_order()
+                        .filter(|item| item.is_type() || item.is_type_const())
+                        .filter(|item| !item.is_impl_trait_in_trait())
+                        .filter(|item| !tcx.generics_require_sized_self(item.def_id))
+                        .count()
                 })
-                .sum();
+                .sum()
+            });
             assert_eq!(
                 projection_count, expected_count,
                 "expected {obj:?} to have {expected_count} projections, \
@@ -776,11 +797,13 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_projection_from_args(
         tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
         item_def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
         Ty::new_alias(
             tcx,
+            is_rigid,
             AliasTy::new_from_args(tcx, ty::Projection { def_id: item_def_id }, args),
         )
     }
@@ -788,10 +811,15 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_projection(
         tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
         item_def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
-        Ty::new_alias(tcx, AliasTy::new(tcx, ty::Projection { def_id: item_def_id }, args))
+        Ty::new_alias(
+            tcx,
+            is_rigid,
+            AliasTy::new(tcx, ty::Projection { def_id: item_def_id }, args),
+        )
     }
 
     #[inline]
@@ -967,8 +995,12 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_canonical_bound(tcx, var)
     }
 
-    fn new_alias(interner: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Self {
-        Ty::new_alias(interner, alias_ty)
+    fn new_alias(
+        interner: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        alias_ty: ty::AliasTy<'tcx>,
+    ) -> Self {
+        Ty::new_alias(interner, is_rigid, alias_ty)
     }
 
     fn new_error(interner: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
@@ -1083,7 +1115,11 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::from_coroutine_closure_kind(interner, kind)
     }
 
-    fn new_fn_def(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
+    fn new_fn_def(
+        interner: TyCtxt<'tcx>,
+        def_id: DefId,
+        args: ty::Binder<'tcx, ty::GenericArgsRef<'tcx>>,
+    ) -> Self {
         Ty::new_fn_def(interner, def_id, args)
     }
 
@@ -1607,7 +1643,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_opaque(self) -> bool {
-        matches!(self.kind(), Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }))
+        matches!(self.kind(), Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }))
     }
 
     #[inline]
@@ -1689,7 +1725,12 @@ impl<'tcx> Ty<'tcx> {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, DUMMY_SP),
                 );
-                Ty::new_projection_from_args(tcx, assoc_items[0], tcx.mk_args(&[self.into()]))
+                Ty::new_projection_from_args(
+                    tcx,
+                    ty::IsRigid::No,
+                    assoc_items[0],
+                    tcx.mk_args(&[self.into()]),
+                )
             }
 
             ty::Pat(ty, _) => ty.discriminant_ty(tcx),
@@ -1775,7 +1816,7 @@ impl<'tcx> Ty<'tcx> {
             // metadata of `tail`.
             ty::Param(_) | ty::Alias(..) => Err(tail),
 
-            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+            ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
 
             ty::Infer(ty::TyVar(_))
             | ty::Pat(..)
@@ -1822,7 +1863,7 @@ impl<'tcx> Ty<'tcx> {
                 Ok(metadata_ty) => metadata_ty,
                 Err(tail_ty) => {
                     let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, DUMMY_SP);
-                    Ty::new_projection(tcx, metadata_def_id, [tail_ty])
+                    Ty::new_projection(tcx, ty::IsRigid::No, metadata_def_id, [tail_ty])
                 }
             }
         }

@@ -10,7 +10,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
-use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, InstanceKind, ShimKind, Ty, TyCtxt, Unnormalized};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::{
@@ -38,7 +38,7 @@ fn fn_sig_for_fn_abi<'tcx>(
     instance: ty::Instance<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
 ) -> ty::FnSig<'tcx> {
-    if let InstanceKind::ThreadLocalShim(..) = instance.def {
+    if let InstanceKind::Shim(ShimKind::ThreadLocal(..)) = instance.def {
         return tcx.mk_fn_sig_safe_rust_abi([], tcx.thread_local_ptr_ty(instance.def_id()));
     }
 
@@ -46,11 +46,11 @@ fn fn_sig_for_fn_abi<'tcx>(
     match *ty.kind() {
         ty::FnDef(def_id, args) => {
             let mut sig = tcx.instantiate_bound_regions_with_erased(
-                tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip(),
+                tcx.fn_sig(def_id).instantiate(tcx, args.no_bound_vars().unwrap()).skip_norm_wip(),
             );
 
             // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
-            if let ty::InstanceKind::VTableShim(..) = instance.def {
+            if let ty::InstanceKind::Shim(ty::ShimKind::VTable(..)) = instance.def {
                 let mut inputs_and_output = sig.inputs_and_output.to_vec();
                 inputs_and_output[0] = Ty::new_mut_ptr(tcx, inputs_and_output[0]);
                 sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
@@ -82,22 +82,23 @@ fn fn_sig_for_fn_abi<'tcx>(
             // a separate def-id for these bodies.
             let mut coroutine_kind = args.as_coroutine_closure().kind();
 
-            let env_ty =
-                if let InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref, .. } =
-                    instance.def
-                {
-                    coroutine_kind = ty::ClosureKind::FnOnce;
+            let env_ty = if let InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure {
+                receiver_by_ref,
+                ..
+            }) = instance.def
+            {
+                coroutine_kind = ty::ClosureKind::FnOnce;
 
-                    // Implementations of `FnMut` and `Fn` for coroutine-closures
-                    // still take their receiver by ref.
-                    if receiver_by_ref {
-                        Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty)
-                    } else {
-                        coroutine_ty
-                    }
+                // Implementations of `FnMut` and `Fn` for coroutine-closures
+                // still take their receiver by ref.
+                if receiver_by_ref {
+                    Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty)
                 } else {
-                    tcx.closure_env_ty(coroutine_ty, coroutine_kind, tcx.lifetimes.re_erased)
-                };
+                    coroutine_ty
+                }
+            } else {
+                tcx.closure_env_ty(coroutine_ty, coroutine_kind, tcx.lifetimes.re_erased)
+            };
 
             let sig = tcx.instantiate_bound_regions_with_erased(sig);
 
@@ -264,7 +265,8 @@ impl<'tcx> FnAbiDesc<'tcx> {
     ) -> Self {
         let ty::PseudoCanonicalInput { typing_env, value: (instance, extra_args) } = query;
         let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
-        let is_tls_shim_call = matches!(instance.def, ty::InstanceKind::ThreadLocalShim(_));
+        let is_tls_shim_call =
+            matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(_)));
         Self {
             layout_cx: LayoutCx::new(tcx, typing_env),
             sig: tcx.normalize_erasing_regions(
@@ -364,11 +366,6 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
             let noalias_for_box = tcx.sess.opts.unstable_opts.box_noalias;
 
-            // LLVM prior to version 12 had known miscompiles in the presence of noalias attributes
-            // (see #54878), so it was conditionally disabled, but we don't support earlier
-            // versions at all anymore. We still support turning it off using -Zmutable-noalias.
-            let noalias_mut_ref = tcx.sess.opts.unstable_opts.mutable_noalias;
-
             // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
             // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on memory
             // dependencies rather than pointer equality. However this only applies to arguments,
@@ -377,7 +374,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             // `&mut T` and `Box<T>` where `T: Unpin` are unique and hence `noalias`.
             let no_alias = match kind {
                 PointerKind::SharedRef { frozen } => frozen,
-                PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
+                PointerKind::MutableRef { unpin } => unpin,
                 PointerKind::Box { unpin, global } => unpin && global && noalias_for_box,
             };
             // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
@@ -458,8 +455,10 @@ fn fn_abi_sanity_check<'tcx>(
                 // omitted entirely in the calling convention.
                 assert!(arg.is_ignore());
             }
-            if let PassMode::Indirect { on_stack, .. } = arg.mode {
-                assert!(!on_stack, "rust abi shouldn't use on_stack");
+            if let PassMode::Indirect { on_stack, .. } = arg.mode
+                && spec_abi != ExternAbi::RustTail
+            {
+                assert!(!on_stack, "rustic abi {spec_abi:?} shouldn't use on_stack");
             }
         } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
             assert_matches!(
@@ -482,7 +481,7 @@ fn fn_abi_sanity_check<'tcx>(
                     BackendRepr::Scalar(_)
                     | BackendRepr::SimdVector { .. }
                     | BackendRepr::SimdScalableVector { .. } => {}
-                    BackendRepr::ScalarPair(..) => {
+                    BackendRepr::ScalarPair { .. } => {
                         panic!("`PassMode::Direct` used for ScalarPair type {}", arg.layout.ty)
                     }
                     BackendRepr::Memory { sized } => {
@@ -509,7 +508,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // Similar to `Direct`, we need to make sure that backends use `layout.backend_repr`
                 // and ignore the rest of the layout.
                 assert!(
-                    matches!(arg.layout.backend_repr, BackendRepr::ScalarPair(..)),
+                    matches!(arg.layout.backend_repr, BackendRepr::ScalarPair { .. }),
                     "PassMode::Pair for type {}",
                     arg.layout.ty
                 );
@@ -608,7 +607,7 @@ fn fn_abi_new_uncached<'tcx>(
             layout
         };
 
-        Ok(ArgAbi::new(cx, layout, |scalar, offset| {
+        Ok(ArgAbi::new(layout, |scalar, offset| {
             arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, determined_fn_def_id)
         }))
     };
@@ -737,7 +736,7 @@ fn make_thin_self_ptr<'tcx>(
         Ty::new_mut_ptr(tcx, layout.ty)
     } else {
         match layout.backend_repr {
-            BackendRepr::ScalarPair(..) | BackendRepr::Scalar(..) => (),
+            BackendRepr::ScalarPair { .. } | BackendRepr::Scalar(..) => (),
             _ => bug!("receiver type has unsupported layout: {:?}", layout),
         }
 

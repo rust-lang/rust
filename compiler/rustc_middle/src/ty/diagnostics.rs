@@ -627,11 +627,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
                 return ControlFlow::Break(());
             }
 
-            Alias(AliasTy { kind: Opaque { def_id }, .. }) => {
+            Alias(_, AliasTy { kind: Opaque { def_id }, .. }) => {
                 let parent = self.tcx.parent(def_id);
                 let parent_ty = self.tcx.type_of(parent).instantiate_identity().skip_norm_wip();
                 if let DefKind::TyAlias | DefKind::AssocTy = self.tcx.def_kind(parent)
-                    && let Alias(AliasTy { kind: Opaque { def_id: parent_opaque_def_id }, .. }) =
+                    && let Alias(_, AliasTy { kind: Opaque { def_id: parent_opaque_def_id }, .. }) =
                         *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
@@ -641,7 +641,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
                 }
             }
 
-            Alias(AliasTy { kind: Projection { def_id }, .. })
+            Alias(_, AliasTy { kind: Projection { def_id }, .. })
                 if self.tcx.def_kind(def_id) != DefKind::AssocTy =>
             {
                 return ControlFlow::Break(());
@@ -698,7 +698,10 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
 
             FnDef(def_id, args) if self.placeholder.is_none() => Ty::new_fn_ptr(
                 self.tcx,
-                self.tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_norm_wip(),
+                self.tcx
+                    .fn_sig(def_id)
+                    .instantiate(self.tcx, args.no_bound_vars().unwrap())
+                    .skip_norm_wip(),
             ),
 
             Closure(..)
@@ -715,12 +718,12 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
                 placeholder
             }
 
-            Alias(AliasTy { kind: Opaque { def_id }, .. }) => {
+            Alias(_, AliasTy { kind: Opaque { def_id }, .. }) => {
                 let parent = self.tcx.parent(def_id);
                 let parent_ty = self.tcx.type_of(parent).instantiate_identity().skip_norm_wip();
                 if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy =
                     self.tcx.def_kind(parent)
-                    && let Alias(AliasTy { kind: Opaque { def_id: parent_opaque_def_id }, .. }) =
+                    && let Alias(_, AliasTy { kind: Opaque { def_id: parent_opaque_def_id }, .. }) =
                         *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {

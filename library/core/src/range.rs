@@ -20,7 +20,7 @@ use crate::hash::Hash;
 
 mod iter;
 
-#[stable(feature = "new_range_api_legacy", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api_legacy", since = "1.98.0")]
 pub mod legacy;
 
 use core::ops::Bound::{self, Excluded, Included, Unbounded};
@@ -40,7 +40,7 @@ use crate::iter::Step;
 // FIXME(range_into_bounds): Ditto. Also consider re-exporting `RangeBounds` and related.
 use crate::ops::{IntoBounds, OneSidedRange, OneSidedRangeBound, RangeBounds};
 #[doc(inline)]
-#[stable(feature = "new_range_api_exports", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api_exports", since = "1.98.0")]
 pub use crate::ops::{RangeFull, RangeTo};
 
 /// A (half-open) range bounded inclusively below and exclusively above.
@@ -398,11 +398,51 @@ const impl<T> From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T> From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
+    /// Converts from a legacy range to a non-legacy range, potentially panicking.
+    ///
+    /// # Panics
+    ///
+    /// If the legacy range iterator has been exhausted,
+    /// this function will either panic or return an empty range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::range::legacy;
+    /// use core::range::RangeInclusive;
+    ///
+    /// let single: legacy::RangeInclusive<i32> = 0..=1;
+    /// let single = RangeInclusive::from(single);
+    /// assert_eq!((single.start, single.last), (0, 1));
+    ///
+    /// let empty: legacy::RangeInclusive<i32> = 0..=0;
+    /// let empty = RangeInclusive::from(empty);
+    /// assert_eq!((empty.start, empty.last), (0, 0));
+    /// ```
+    ///
+    /// ```
+    /// # // This test requires unwinding to work.
+    /// # // Disable it when unwinding isn't available.
+    /// # #[cfg(panic = "unwind")]
+    /// # fn main() {
+    /// use core::range::legacy;
+    /// use core::range::RangeInclusive;
+    /// use std::panic::catch_unwind;
+    ///
+    /// let mut exhausted: legacy::RangeInclusive<i32> = 0..=0;
+    /// exhausted.next();
+    /// let result = catch_unwind(|| RangeInclusive::from(exhausted));
+    /// // The `from` call either panicked or returned an empty range.
+    /// assert!(result.is_err() || result.is_ok_and(|range| range.is_empty()));
+    /// # }
+    /// # #[cfg(not(panic = "unwind"))]
+    /// # fn main() {}
+    /// ```
     #[inline]
     fn from(value: legacy::RangeInclusive<T>) -> Self {
         assert!(
             !value.exhausted,
-            "attempted to convert from an exhausted `legacy::RangeInclusive` (unspecified behavior)"
+            "attempted to convert from an exhausted `legacy::RangeInclusive`"
         );
 
         let (start, last) = value.into_inner();

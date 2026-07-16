@@ -1,4 +1,4 @@
-error[E0277]: expected a `Fn(isize)` closure, found `S`
+error[E0277]: expected an `Fn(isize)` closure, found `S`
   --> $DIR/unboxed-closures-fnmut-as-fn.rs:27:21
    |
 LL |     let x = call_it(&S, 22);

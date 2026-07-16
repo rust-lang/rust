@@ -217,7 +217,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
-        self.body_id
+        self.body_def_id
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {

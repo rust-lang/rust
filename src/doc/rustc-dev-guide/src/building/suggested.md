@@ -153,8 +153,7 @@ For Neovim users, there are a few options:
 
 #### neoconf.nvim
 
-[neoconf.nvim][neoconf.nvim] allows for project-local configuration
-files with the native LSP.
+[neoconf.nvim][neoconf.nvim] allows for project-local configuration files with the native LSP.
 The steps for how to use it are below.
 Note that they require rust-analyzer to already be configured with Neovim.
 Steps for this can be [found here][r-a nvim lsp].
@@ -328,16 +327,14 @@ Sometimes just checking whether the compiler builds is not enough.
 A common example is that you need to add a `debug!` statement to inspect the value of
 some state or better understand the problem.
 In that case, you don't really need a full build.
-By bypassing bootstrap's cache invalidation, you can often get
-these builds to complete very fast (e.g., around 30 seconds). The only catch is
-this requires a bit of fudging and may produce compilers that don't work (but
+By bypassing bootstrap's cache invalidation, you can often get these builds to complete faster.
+The only catch is this requires a bit of fudging and may produce compilers that don't work (but
 that is easily detected and fixed).
 
 The sequence of commands you want is as follows:
 
 - Initial build: `./x build library`
 - Subsequent builds: `./x build library --keep-stage-std=1`
-  - Note that we added the `--keep-stage-std=1` flag here
 
 As mentioned, the effect of `--keep-stage-std=1` is that we just _assume_ that the
 old standard library can be re-used.
@@ -348,11 +345,9 @@ the compiler, which controls how the compiler encodes types and other states
 into the `rlib` files, or if you are editing things that wind up in the metadata
 (such as the definition of the MIR).
 
-**The TL;DR is that you might get weird behavior from a compile when using
-`--keep-stage-std=1`** -- for example, strange [ICEs](../appendix/glossary.html#ice)
-or other panics.
+That is, you might get weird behavior from a compile when using
+`--keep-stage-std=1`, for example, strange [ICEs](../appendix/glossary.html#ice) or other panics.
 In that case, you should simply remove the `--keep-stage-std=1` from the command and rebuild.
-That ought to fix the problem.
 
 You can also use `--keep-stage-std=1` when running tests.
 Something like this:

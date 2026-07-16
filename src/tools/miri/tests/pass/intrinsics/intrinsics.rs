@@ -37,11 +37,7 @@ fn main() {
     assert_eq!(intrinsics::likely(false), false);
     assert_eq!(intrinsics::unlikely(true), true);
 
-    // Skip this test when we use the fallback bodies, as that one is deterministic.
-    // (CI sets `--cfg force_intrinsic_fallback` together with `-Zmiri-force-intrinsic-fallback`.)
-    if !cfg!(force_intrinsic_fallback) {
-        check_nondet(|| intrinsics::is_val_statically_known(0));
-    }
+    check_nondet(|| intrinsics::is_val_statically_known(0));
 
     intrinsics::forget(Bomb);
 

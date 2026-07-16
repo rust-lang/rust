@@ -16,7 +16,7 @@ where
 }
 
 impl<'a, T> Foo for &T
-//~^ ERROR: conflicting implementations of trait `Foo` for type `&_`
+//~^ ERROR: cycle detected when computing normalized predicates of `<impl at $DIR/next-solver-region-resolution.rs:18:1: 21:21>`
 where
     Self::Item: Baz,
 {

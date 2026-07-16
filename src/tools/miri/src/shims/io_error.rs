@@ -101,6 +101,10 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("EACCES", PermissionDenied),
         ("EWOULDBLOCK", WouldBlock),
         ("EAGAIN", WouldBlock),
+        #[cfg(not(bootstrap))]
+        ("EMFILE", TooManyOpenFiles),
+        #[cfg(not(bootstrap))]
+        ("ENFILE", TooManyOpenFiles),
     ]
 };
 // On Unix hosts are can avoid round-tripping via `ErrorKind`, which can preserve more
@@ -254,6 +258,8 @@ const WINDOWS_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ERROR_RUNLEVEL_SWITCH_TIMEOUT", TimedOut),
         ("ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT", TimedOut),
         ("ERROR_TOO_MANY_LINKS", TooManyLinks),
+        #[cfg(not(bootstrap))]
+        ("ERROR_TOO_MANY_OPEN_FILES", TooManyOpenFiles),
         ("ERROR_CALL_NOT_IMPLEMENTED", Unsupported),
         ("WSAEWOULDBLOCK", WouldBlock),
     ]

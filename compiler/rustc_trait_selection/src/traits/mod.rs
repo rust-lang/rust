@@ -12,6 +12,7 @@ mod fulfill;
 pub mod misc;
 pub mod normalize;
 pub mod outlives_bounds;
+pub mod outlives_for_liveness;
 pub mod project;
 pub mod query;
 #[allow(hidden_glob_reexports)]
@@ -30,7 +31,6 @@ use rustc_errors::ErrorGuaranteed;
 pub use rustc_infer::traits::*;
 use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
-use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, Clause, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
@@ -250,6 +250,25 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
     }
 }
 
+fn set_projection_term_to_non_rigid<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: impl IntoIterator<Item = ty::Clause<'tcx>>,
+) -> impl Iterator<Item = ty::Clause<'tcx>> {
+    predicates.into_iter().map(move |clause| {
+        if let ty::ClauseKind::Projection(projection_pred) = clause.kind().skip_binder() {
+            clause
+                .kind()
+                .rebind(ty::ProjectionPredicate {
+                    projection_term: projection_pred.projection_term,
+                    term: ty::set_aliases_to_non_rigid(tcx, projection_pred.term).skip_norm_wip(),
+                })
+                .upcast(tcx)
+        } else {
+            clause
+        }
+    })
+}
+
 #[instrument(level = "debug", skip(tcx, elaborated_env))]
 fn do_normalize_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -257,12 +276,6 @@ fn do_normalize_predicates<'tcx>(
     elaborated_env: ty::ParamEnv<'tcx>,
     predicates: Vec<ty::Clause<'tcx>>,
 ) -> Result<Vec<ty::Clause<'tcx>>, ErrorGuaranteed> {
-    // Even if we move back to eager normalization elsewhere,
-    // param env normalization remains lazy in the next solver.
-    if tcx.next_trait_solver_globally() {
-        return Ok(predicates);
-    }
-
     // FIXME. We should really... do something with these region
     // obligations. But this call just continues the older
     // behavior (i.e., doesn't cause any new bugs), and it would
@@ -279,7 +292,36 @@ fn do_normalize_predicates<'tcx>(
     let span = cause.span;
     let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    // FIXME: `elaborated_env` is not really rigid. We do this to be
+    // consistent with the old solver.
+    let elaborated_env = if tcx.next_trait_solver_globally()
+        && !tcx.disable_param_env_normalization_hack()
+    {
+        let elaborated_env = ty::set_aliases_to_rigid(tcx, elaborated_env);
+        let elaborated_env = set_projection_term_to_non_rigid(tcx, elaborated_env.caller_bounds());
+        ty::ParamEnv::new(tcx.mk_clauses_from_iter(elaborated_env))
+    } else {
+        elaborated_env
+    };
     let predicates = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(predicates));
+    let predicates = if tcx.next_trait_solver_globally() {
+        if !tcx.disable_param_env_normalization_hack() {
+            let predicates: Vec<_> = set_projection_term_to_non_rigid(tcx, predicates).collect();
+            // FIXME(type_alias_impl_trait): opaque types in param env might be
+            // in defining scope but we're using non body analysis here.
+            // So the rigidness marker is wrong.
+            ty::set_opaques_to_non_rigid(tcx, predicates).skip_norm_wip()
+        } else {
+            // Param env is used in different typing modes but itself
+            // is normalized in `non_body_analysis`.
+            // That not only makes the rigidness of opaques types wrong,
+            // other aliases can be indirectly affected as well.
+            // So we conservatively set everything to be non-rigid.
+            ty::set_aliases_to_non_rigid(tcx, predicates).skip_norm_wip()
+        }
+    } else {
+        predicates
+    };
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
@@ -291,17 +333,20 @@ fn do_normalize_predicates<'tcx>(
 
     // We can use the `elaborated_env` here; the region code only
     // cares about declarations like `'a: 'b`.
+    //
     // FIXME: It's very weird that we ignore region obligations but apparently
     // still need to use `resolve_regions` as we need the resolved regions in
     // the normalized predicates.
-    let errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
-    if !errors.is_empty() {
-        tcx.dcx().span_delayed_bug(
-            span,
-            format!("failed region resolution while normalizing {elaborated_env:?}: {errors:?}"),
-        );
-    }
-
+    //
+    // FIXME(-Zhigher-ranked-assumptions): We're ignoring region errors for now.
+    // There're placeholder constraints `leaking` out. This is a hack to work around
+    // the fact that we don't support placeholder assumptions right now and is necessary
+    // for `compare_method_predicate_entailment`. We should remove this once we
+    // have proper support for implied bounds on binders.
+    //
+    // This is required by trait-system-refactor-initiative#166. The new solver encounters
+    // this more frequently as we entirely ignore outlives predicates with the old solver.
+    let _errors = infcx.resolve_regions(cause.body_def_id, elaborated_env, []);
     match infcx.fully_resolve(predicates) {
         Ok(predicates) => Ok(predicates),
         Err(fixup_err) => {
@@ -342,9 +387,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     // can be sure that no errors should occur.
     let mut predicates: Vec<_> = util::elaborate(
         tcx,
-        unnormalized_env.caller_bounds().into_iter().map(|predicate| {
+        unnormalized_env.caller_bounds().into_iter().map(|clause| {
             if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
-                return predicate;
+                return clause;
             }
 
             struct ConstNormalizer<'tcx>(TyCtxt<'tcx>);
@@ -366,8 +411,8 @@ pub fn normalize_param_env_or_error<'tcx>(
                     // should actually be okay since without `feature(generic_const_exprs)` the only
                     // const arguments that have a non-empty param env are array repeat counts. These
                     // do not appear in the type system though.
-                    if let ty::ConstKind::Unevaluated(uv) = c.kind()
-                        && matches!(uv.kind, ty::UnevaluatedConstKind::Anon { .. })
+                    if let ty::ConstKind::Alias(_, alias_const) = c.kind()
+                        && matches!(alias_const.kind, ty::AliasConstKind::Anon { .. })
                     {
                         let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
                         let c = evaluate_const(&infcx, c, ty::ParamEnv::empty());
@@ -398,17 +443,17 @@ pub fn normalize_param_env_or_error<'tcx>(
             // we cannot prove `T: Trait<u8>`.
             //
             // The same thing is true for const generics- attempting to prove
-            // `T: Trait<ConstKind::Unevaluated(...)>` with the same thing as a where clauses
+            // `T: Trait<ConstKind::Alias(...)>` with the same thing as a where clauses
             // will fail. After normalization we may be attempting to prove `T: Trait<4>` with
-            // the unnormalized where clause `T: Trait<ConstKind::Unevaluated(...)>`. In order
-            // for the obligation to hold `4` must be equal to `ConstKind::Unevaluated(...)`
+            // the unnormalized where clause `T: Trait<ConstKind::Alias(...)>`. In order
+            // for the obligation to hold `4` must be equal to `ConstKind::Alias(...)`
             // but as we do not have lazy norm implemented, equating the two consts fails outright.
             //
             // Ideally we would not normalize consts here at all but it is required for backwards
             // compatibility. Eventually when lazy norm is implemented this can just be removed.
             // We do not normalize types here as there is no backwards compatibility requirement
             // for us to do so.
-            predicate.fold_with(&mut ConstNormalizer(tcx))
+            clause.fold_with(&mut ConstNormalizer(tcx))
         }),
     )
     .collect();
@@ -478,73 +523,10 @@ pub fn normalize_param_env_or_error<'tcx>(
     ty::ParamEnv::new(tcx.mk_clauses(&predicates))
 }
 
-/// Deeply normalize the param env using the next solver ignoring
-/// region errors.
-///
-/// FIXME(-Zhigher-ranked-assumptions): this is a hack to work around
-/// the fact that we don't support placeholder assumptions right now
-/// and is necessary for `compare_method_predicate_entailment`, see the
-/// use of this function for more info. We should remove this once we
-/// have proper support for implied bounds on binders.
-#[instrument(level = "debug", skip(tcx))]
-pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    unnormalized_env: ty::ParamEnv<'tcx>,
-    cause: ObligationCause<'tcx>,
-) -> ty::ParamEnv<'tcx> {
-    let predicates: Vec<_> =
-        util::elaborate(tcx, unnormalized_env.caller_bounds().into_iter()).collect();
-
-    debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
-
-    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
-    if !elaborated_env.has_aliases() {
-        return elaborated_env;
-    }
-
-    let span = cause.span;
-    let infcx = tcx
-        .infer_ctxt()
-        .with_next_trait_solver(true)
-        .ignoring_regions()
-        .build(TypingMode::non_body_analysis());
-    let predicates = match crate::solve::deeply_normalize::<_, FulfillmentError<'tcx>>(
-        infcx.at(&cause, elaborated_env),
-        Unnormalized::new_wip(predicates),
-    ) {
-        Ok(predicates) => predicates,
-        Err(errors) => {
-            infcx.err_ctxt().report_fulfillment_errors(errors);
-            // An unnormalized env is better than nothing.
-            debug!("normalize_param_env_or_error: errored resolving predicates");
-            return elaborated_env;
-        }
-    };
-
-    debug!("do_normalize_predicates: normalized predicates = {:?}", predicates);
-    // FIXME(-Zhigher-ranked-assumptions): We're ignoring region errors for now.
-    // There're placeholder constraints `leaking` out.
-    // See the fixme in the enclosing function's docs for more.
-    let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
-
-    let predicates = match infcx.fully_resolve(predicates) {
-        Ok(predicates) => predicates,
-        Err(fixup_err) => {
-            span_bug!(
-                span,
-                "inference variables in normalized parameter environment: {}",
-                fixup_err
-            )
-        }
-    };
-    debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
-}
-
 #[derive(Debug)]
 pub enum EvaluateConstErr {
     /// The constant being evaluated was either a generic parameter or inference variable, *or*,
-    /// some unevaluated constant with either generic parameters or inference variables in its
+    /// some alias const with either generic parameters or inference variables in its
     /// generic arguments.
     HasGenericsOrInfers,
     /// The type this constant evaluated to is not valid for use in const generics. This should
@@ -557,7 +539,7 @@ pub enum EvaluateConstErr {
 }
 
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
-// FIXME(generic_const_exprs): Consider accepting a `ty::UnevaluatedConst` when we are not rolling our own
+// FIXME(generic_const_exprs): Consider accepting a `ty::AliasConst` when we are not rolling our own
 // normalization scheme
 /// Evaluates a type system constant returning a `ConstKind::Error` in cases where CTFE failed and
 /// returning the passed in constant if it was not fully concrete (i.e. depended on generic parameters
@@ -580,7 +562,7 @@ pub fn evaluate_const<'tcx>(
 }
 
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
-// FIXME(generic_const_exprs): Consider accepting a `ty::UnevaluatedConst` when we are not rolling our own
+// FIXME(generic_const_exprs): Consider accepting a `ty::AliasConst` when we are not rolling our own
 // normalization scheme
 /// Evaluates a type system constant making sure to not allow constants that depend on generic parameters
 /// or inference variables to succeed in evaluating.
@@ -605,11 +587,9 @@ pub fn try_evaluate_const<'tcx>(
         | ty::ConstKind::Bound(_, _)
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
-        ty::ConstKind::Unevaluated(uv) => {
-            let opt_anon_const_kind = match uv.kind {
-                ty::UnevaluatedConstKind::Anon { def_id } => {
-                    Some((def_id, tcx.anon_const_kind(def_id)))
-                }
+        ty::ConstKind::Alias(_, alias_const) => {
+            let opt_anon_const_kind = match alias_const.kind {
+                ty::AliasConstKind::Anon { def_id } => Some((def_id, tcx.anon_const_kind(def_id))),
                 _ => None,
             };
 
@@ -629,14 +609,14 @@ pub fn try_evaluate_const<'tcx>(
                 // completely fall apart under `generic_const_exprs` and makes this whole function Really hard to reason
                 // about if you have to consider gce whatsoever.
                 Some((def_id, ty::AnonConstKind::GCE)) => {
-                    if uv.has_non_region_infer() || uv.has_non_region_param() {
+                    if alias_const.has_non_region_infer() || alias_const.has_non_region_param() {
                         // `feature(generic_const_exprs)` causes anon consts to inherit all parent generics. This can cause
                         // inference variables and generic parameters to show up in `ty::Const` even though the anon const
                         // does not actually make use of them. We handle this case specially and attempt to evaluate anyway.
                         match tcx.thir_abstract_const(def_id) {
                             Ok(Some(ct)) => {
                                 let ct = tcx.expand_abstract_consts(
-                                    ct.instantiate(tcx, uv.args).skip_norm_wip(),
+                                    ct.instantiate(tcx, alias_const.args).skip_norm_wip(),
                                 );
                                 if let Err(e) = ct.error_reported() {
                                     return Err(EvaluateConstErr::EvaluationFailure(e));
@@ -645,8 +625,10 @@ pub fn try_evaluate_const<'tcx>(
                                     // the generic arguments provided for it, then we should *not* attempt to evaluate it.
                                     return Err(EvaluateConstErr::HasGenericsOrInfers);
                                 } else {
-                                    let args =
-                                        replace_param_and_infer_args_with_placeholder(tcx, uv.args);
+                                    let args = replace_param_and_infer_args_with_placeholder(
+                                        tcx,
+                                        alias_const.args,
+                                    );
                                     let typing_env = infcx
                                         .typing_env(tcx.erase_and_anonymize_regions(param_env))
                                         .with_post_analysis_normalized(tcx);
@@ -663,11 +645,11 @@ pub fn try_evaluate_const<'tcx>(
                         let typing_env = infcx
                             .typing_env(tcx.erase_and_anonymize_regions(param_env))
                             .with_post_analysis_normalized(tcx);
-                        (uv.args, typing_env)
+                        (alias_const.args, typing_env)
                     }
                 }
                 Some((def_id, ty::AnonConstKind::RepeatExprCount)) => {
-                    if uv.has_non_region_infer() {
+                    if alias_const.has_non_region_infer() {
                         // Diagnostics will sometimes replace the identity args of anon consts in
                         // array repeat expr counts with inference variables so we have to handle this
                         // even though it is not something we should ever actually encounter.
@@ -688,8 +670,12 @@ pub fn try_evaluate_const<'tcx>(
 
                     (args, typing_env)
                 }
-                Some((_, ty::AnonConstKind::MCG))
-                | Some((_, ty::AnonConstKind::NonTypeSystem))
+                Some((
+                    _,
+                    ty::AnonConstKind::MCG
+                    | ty::AnonConstKind::NonTypeSystemAnon
+                    | ty::AnonConstKind::NonTypeSystemInline,
+                ))
                 | None => {
                     // We are only dealing with "truly" generic/uninferred constants here:
                     // - GCEConsts have been handled separately
@@ -703,9 +689,9 @@ pub fn try_evaluate_const<'tcx>(
                     // logic does not go through type system normalization. If it did this would
                     // be a backwards compatibility problem as we do not enforce "syntactic" non-
                     // usage of generic parameters like we do here.
-                    if uv.args.has_non_region_param()
-                        || uv.args.has_non_region_infer()
-                        || uv.args.has_non_region_placeholders()
+                    if alias_const.args.has_non_region_param()
+                        || alias_const.args.has_non_region_infer()
+                        || alias_const.args.has_non_region_placeholders()
                     {
                         return Err(EvaluateConstErr::HasGenericsOrInfers);
                     }
@@ -714,19 +700,21 @@ pub fn try_evaluate_const<'tcx>(
                     // to prevent query cycle.
                     let typing_env = ty::TypingEnv::fully_monomorphized();
 
-                    (uv.args, typing_env)
+                    (alias_const.args, typing_env)
                 }
             };
 
-            let uv = ty::UnevaluatedConst::new(tcx, uv.kind, args);
-            let erased_uv = tcx.erase_and_anonymize_regions(uv);
+            let alias_const = ty::AliasConst::new(tcx, alias_const.kind, args);
+            let erased_alias_const = tcx.erase_and_anonymize_regions(alias_const);
 
             use rustc_middle::mir::interpret::ErrorHandled;
             // FIXME: `def_span` will point at the definition of this const; ideally, we'd point at
             // where it gets used as a const generic.
-            let span = uv.kind.def_span(tcx);
-            match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, span) {
-                Ok(Ok(val)) => Ok(ty::Const::new_value(tcx, val, uv.type_of(tcx).skip_norm_wip())),
+            let span = alias_const.kind.def_span(tcx);
+            match tcx.const_eval_resolve_for_typeck(typing_env, erased_alias_const, span) {
+                Ok(Ok(val)) => {
+                    Ok(ty::Const::new_value(tcx, val, alias_const.type_of(tcx).skip_norm_wip()))
+                }
                 Ok(Err(_)) => {
                     let e = tcx.dcx().delayed_bug(
                         "Type system constant with non valtree'able type evaluated but no error emitted",
@@ -923,7 +911,9 @@ fn is_impossible_associated_item(
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
-                ty::EarlyBinder::bind(*pred).instantiate(tcx, impl_trait_ref.args).skip_norm_wip(),
+                ty::EarlyBinder::bind(tcx, *pred)
+                    .instantiate(tcx, impl_trait_ref.args)
+                    .skip_norm_wip(),
             )
         })
     });
@@ -942,6 +932,10 @@ pub fn provide(providers: &mut Providers) {
         specialization_enabled_in: specialize::specialization_enabled_in,
         instantiate_and_check_impossible_predicates,
         is_impossible_associated_item,
+        live_args_for_alias_from_outlives_bounds:
+            outlives_for_liveness::live_args_for_alias_from_outlives_bounds,
+        args_known_to_outlive_alias_params:
+            outlives_for_liveness::args_known_to_outlive_alias_params,
         ..*providers
     };
 }

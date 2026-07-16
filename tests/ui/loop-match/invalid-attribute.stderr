@@ -12,7 +12,7 @@ error: `#[const_continue]` attribute cannot be used on crates
 LL | #![const_continue]
    | ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can be applied to 
+   = help: `#[const_continue]` can only be applied to break expressions
 
 error: `#[loop_match]` attribute cannot be used on foreign functions
   --> $DIR/invalid-attribute.rs:10:5
@@ -28,7 +28,7 @@ error: `#[const_continue]` attribute cannot be used on foreign functions
 LL |     #[const_continue]
    |     ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can be applied to 
+   = help: `#[const_continue]` can only be applied to break expressions
 
 error: `#[loop_match]` attribute cannot be used on structs
   --> $DIR/invalid-attribute.rs:15:1
@@ -44,7 +44,7 @@ error: `#[const_continue]` attribute cannot be used on structs
 LL | #[const_continue]
    | ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can be applied to 
+   = help: `#[const_continue]` can only be applied to break expressions
 
 error: `#[loop_match]` attribute cannot be used on required trait methods
   --> $DIR/invalid-attribute.rs:24:5
@@ -60,7 +60,7 @@ error: `#[const_continue]` attribute cannot be used on required trait methods
 LL |     #[const_continue]
    |     ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can be applied to 
+   = help: `#[const_continue]` can only be applied to break expressions
 
 error: `#[loop_match]` attribute cannot be used on functions
   --> $DIR/invalid-attribute.rs:29:1
@@ -76,7 +76,7 @@ error: `#[const_continue]` attribute cannot be used on functions
 LL | #[const_continue]
    | ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can be applied to 
+   = help: `#[const_continue]` can only be applied to break expressions
 
 error: `#[loop_match]` attribute cannot be used on closures
   --> $DIR/invalid-attribute.rs:34:5
@@ -92,7 +92,7 @@ error: `#[const_continue]` attribute cannot be used on closures
 LL |     #[const_continue]
    |     ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can be applied to 
+   = help: `#[const_continue]` can only be applied to break expressions
 
 error: `#[loop_match]` attribute cannot be used on expressions
   --> $DIR/invalid-attribute.rs:39:9
@@ -102,22 +102,13 @@ LL |         #[loop_match]
    |
    = help: `#[loop_match]` can only be applied to loops
 
-error: `#[loop_match]` should be applied to a loop
-  --> $DIR/invalid-attribute.rs:39:9
-   |
-LL |         #[loop_match]
-   |         ^^^^^^^^^^^^^
-...
-LL |         5
-   |         - not a loop
-
-error: `#[const_continue]` should be applied to a break expression
-  --> $DIR/invalid-attribute.rs:41:9
+error: `#[const_continue]` attribute cannot be used on expressions
+  --> $DIR/invalid-attribute.rs:40:9
    |
 LL |         #[const_continue]
    |         ^^^^^^^^^^^^^^^^^
-LL |         5
-   |         - not a break expression
+   |
+   = help: `#[const_continue]` can only be applied to break expressions
 
-error: aborting due to 15 previous errors
+error: aborting due to 14 previous errors
 

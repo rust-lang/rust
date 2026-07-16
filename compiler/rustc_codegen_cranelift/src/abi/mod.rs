@@ -16,9 +16,9 @@ use rustc_abi::{CanonAbi, ExternAbi, X86Call};
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_codegen_ssa::errors::CompilerBuiltinsCannotCall;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::{ShimKind, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Spanned;
 use rustc_target::callconv::{FnAbi, PassMode};
@@ -220,7 +220,7 @@ fn make_local_place<'tcx>(
         );
     }
     let place = if is_ssa {
-        if let BackendRepr::ScalarPair(_, _) = layout.backend_repr {
+        if let BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } = layout.backend_repr {
             CPlace::new_var_pair(fx, local, layout)
         } else {
             CPlace::new_var(fx, local, layout)
@@ -271,6 +271,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
         .map(|local| {
             let arg_ty = fx.monomorphize(fx.mir.local_decls[local].ty);
 
+            // FIXME(splat): un-tuple splatted arguments in codegen, for performance
             // Adapted from https://github.com/rust-lang/rust/blob/145155dc96757002c7b2e9de8489416e2fdbbd57/src/librustc_codegen_llvm/mir/mod.rs#L442-L482
             if Some(local) == fx.mir.spread_arg {
                 // This argument (e.g. the last argument in the "rust-call" ABI)
@@ -420,7 +421,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             fx.tcx,
             ty::TypingEnv::fully_monomorphized(),
             def_id,
-            fn_args,
+            fn_args.no_bound_vars().unwrap(),
             source_info.span,
         );
 
@@ -439,18 +440,6 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             }
         }
 
-        if fx.tcx.symbol_name(instance).name.starts_with("llvm.") {
-            crate::intrinsics::codegen_llvm_intrinsic_call(
-                fx,
-                fx.tcx.symbol_name(instance).name,
-                args,
-                ret_place,
-                target,
-                source_info.span,
-            );
-            return;
-        }
-
         match instance.def {
             InstanceKind::Intrinsic(_) => {
                 match crate::intrinsics::codegen_intrinsic_call(
@@ -465,9 +454,20 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     Err(instance) => Some(instance),
                 }
             }
+            InstanceKind::LlvmIntrinsic(_) => {
+                crate::intrinsics::codegen_llvm_intrinsic_call(
+                    fx,
+                    fx.tcx.symbol_name(instance).name,
+                    args,
+                    ret_place,
+                    target,
+                    source_info.span,
+                );
+                return;
+            }
             // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
             // it is `func returning noop future`
-            InstanceKind::DropGlue(_, None) => {
+            InstanceKind::Shim(ShimKind::DropGlue(_, None)) => {
                 // empty drop glue - a nop.
                 let dest = target.expect("Non terminating drop_in_place_real???");
                 let ret_block = fx.get_block(dest);
@@ -725,7 +725,7 @@ pub(crate) fn codegen_drop<'tcx>(
     let ret_block = fx.get_block(target);
 
     // AsyncDropGlueCtorShim can't be here
-    if let ty::InstanceKind::DropGlue(_, None) = drop_instance.def {
+    if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = drop_instance.def {
         // we don't actually need to drop anything
         fx.bcx.ins().jump(ret_block, &[]);
     } else {

@@ -6,9 +6,8 @@
 use crate::msrvs::{self, Msrv};
 use hir::LangItem;
 use rustc_const_eval::check_consts::ConstCx;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{RustcVersion, StableSince};
+use rustc_hir::{self as hir, HirId, RustcVersion, StableSince};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::LateContext;
@@ -87,10 +86,13 @@ fn check_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, msrv: Msrv) 
             ty::Ref(_, _, hir::Mutability::Mut) if !msrv.meets(cx, msrvs::CONST_MUT_REFS) => {
                 return Err((span, "mutable references in const fn are unstable".into()));
             },
-            ty::Alias(ty::AliasTy {
-                kind: ty::Opaque { .. },
-                ..
-            }) => return Err((span, "`impl Trait` in const fn is unstable".into())),
+            ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Opaque { .. },
+                    ..
+                },
+            ) => return Err((span, "`impl Trait` in const fn is unstable".into())),
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()));
             },
@@ -370,7 +372,12 @@ fn check_terminator<'tcx>(
                 // FIXME: when analyzing a function with generic parameters, we may not have enough information to
                 // resolve to an instance. However, we could check if a host effect predicate can guarantee that
                 // this can be made a `const` call.
-                let fn_def_id = match Instance::try_resolve(cx.tcx, cx.typing_env(), *fn_def_id, fn_substs) {
+                let fn_def_id = match Instance::try_resolve(
+                    cx.tcx,
+                    cx.typing_env(),
+                    *fn_def_id,
+                    fn_substs.no_bound_vars().unwrap(),
+                ) {
                     Ok(Some(fn_inst)) => fn_inst.def_id(),
                     Ok(None) => return Err((span, format!("cannot resolve instance for {func:?}").into())),
                     Err(_) => return Err((span, format!("error during instance resolution of {func:?}").into())),
@@ -420,14 +427,17 @@ fn check_terminator<'tcx>(
 
 /// Checks if the given `def_id` is a stable const fn, in respect to the given MSRV.
 pub fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bool {
-    cx.tcx.is_const_fn(def_id)
-        && cx
-            .tcx
+    is_stable_const_fn_at(cx.tcx, cx.last_node_with_lint_attrs, def_id, msrv)
+}
+
+/// Checks if the given `def_id` is a stable const fn, in respect to the given MSRV.
+pub fn is_stable_const_fn_at(tcx: TyCtxt<'_>, node: HirId, def_id: DefId, msrv: Msrv) -> bool {
+    tcx.is_const_fn(def_id)
+        && tcx
             .lookup_const_stability(def_id)
             .or_else(|| {
-                cx.tcx
-                    .trait_of_assoc(def_id)
-                    .and_then(|trait_def_id| cx.tcx.lookup_const_stability(trait_def_id))
+                tcx.trait_of_assoc(def_id)
+                    .and_then(|trait_def_id| tcx.lookup_const_stability(trait_def_id))
             })
             .is_none_or(|const_stab| {
                 if let rustc_hir::StabilityLevel::Stable { since, .. } = const_stab.level {
@@ -441,10 +451,10 @@ pub fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bo
                         StableSince::Err(_) => return false,
                     };
 
-                    msrv.meets(cx, const_stab_rust_version)
+                    msrv.meets_at(tcx, node, const_stab_rust_version)
                 } else {
                     // Unstable const fn, check if the feature is enabled.
-                    cx.tcx.features().enabled(const_stab.feature) && msrv.current(cx).is_none()
+                    tcx.features().enabled(const_stab.feature) && msrv.at(tcx, node).is_none()
                 }
             })
 }

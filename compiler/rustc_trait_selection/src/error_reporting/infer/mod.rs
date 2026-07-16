@@ -56,7 +56,6 @@ use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPar
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
@@ -207,40 +206,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         )
     }
 
-    pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        let (def_id, args) = match *ty.kind() {
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => (def_id, args),
-            ty::Alias(ty::AliasTy { kind, args, .. })
-                if self.tcx.is_impl_trait_in_trait(kind.def_id()) =>
-            {
-                (kind.def_id(), args)
-            }
-            _ => return None,
-        };
-
-        let future_trait = self.tcx.require_lang_item(LangItem::Future, DUMMY_SP);
-        let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
-
-        self.tcx
-            .explicit_item_self_bounds(def_id)
-            .iter_instantiated_copied(self.tcx, args)
-            .map(Unnormalized::skip_norm_wip)
-            .find_map(|(predicate, _)| {
-                predicate
-                    .kind()
-                    .map_bound(|kind| match kind {
-                        ty::ClauseKind::Projection(projection_predicate)
-                            if projection_predicate.def_id() == item_def_id =>
-                        {
-                            projection_predicate.term.as_type()
-                        }
-                        _ => None,
-                    })
-                    .no_bound_vars()
-                    .flatten()
-            })
-    }
-
     /// Adds a note if the types come from similarly named crates
     fn check_and_note_conflicting_crates(&self, err: &mut Diag<'_>, terr: TypeError<'tcx>) -> bool {
         match terr {
@@ -281,10 +246,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) {
         let (alias, &def_id, concrete) = match (expected.kind(), found.kind()) {
-            (ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }), _) => {
+            (ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }), _) => {
                 (proj, def_id, found)
             }
-            (_, ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. })) => {
+            (_, ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. })) => {
                 (proj, def_id, expected)
             }
             _ => return,
@@ -349,7 +314,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "the associated type `{}` is defined as `{}` in the implementation, \
                     but the where-bound `{}` shadows this definition\n\
                     see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information",
-                    self.ty_to_string(tcx.mk_ty_from_kind(ty::Alias(*alias))),
+                    self.ty_to_string(alias.to_ty(tcx, ty::IsRigid::No)),
                     self.ty_to_string(concrete),
                     self.ty_to_string(alias.self_ty())
                 ));
@@ -858,9 +823,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         //                                                 ^^^^^
         let len1 = sig1.inputs().len();
         let len2 = sig2.inputs().len();
+        let splatted_arg_index1 = sig1.splatted().map(usize::from);
+        let splatted_arg_index2 = sig2.splatted().map(usize::from);
         if len1 == len2 {
             for (i, (l, r)) in iter::zip(sig1.inputs(), sig2.inputs()).enumerate() {
                 self.push_comma(&mut values.0, &mut values.1, i);
+                if Some(i) == splatted_arg_index1 {
+                    values.0.push("#[splat]", splatted_arg_index1 != splatted_arg_index2);
+                    values.0.push_normal(" ");
+                }
+                if Some(i) == splatted_arg_index2 {
+                    values.1.push("#[splat]", splatted_arg_index1 != splatted_arg_index2);
+                    values.1.push_normal(" ");
+                }
                 let (x1, x2) = self.cmp(*l, *r);
                 (values.0).0.extend(x1.0);
                 (values.1).0.extend(x2.0);
@@ -1103,8 +1078,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     //         ---  ^ type argument elided
                     //         |
                     //         highlighted in output
-                    values.0.push_normal(path1);
-                    values.1.push_normal(path2);
+                    values.0.push_normal(self.tcx.item_name(did1).to_string());
+                    values.1.push_normal(self.tcx.item_name(did2).to_string());
 
                     // Avoid printing out default generic parameters that are common to both
                     // types.
@@ -1309,17 +1284,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
+                let args1 = args1.no_bound_vars().unwrap();
+                let args2 = args2.no_bound_vars().unwrap();
+
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
                 self.cmp_fn_sig(sig1, Some((*did1, Some(args1))), sig2, Some((*did2, Some(args2))))
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
+                let args1 = args1.no_bound_vars().unwrap();
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
                 self.cmp_fn_sig(sig1, Some((*did1, Some(args1))), sig_tys2.with(*hdr2), None)
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
+                let args2 = args2.no_bound_vars().unwrap();
+
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
                 self.cmp_fn_sig(sig_tys1.with(*hdr1), None, sig2, Some((*did2, Some(args2))))
             }
@@ -1706,7 +1687,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && values.expected.sort_string(self.tcx)
                             != values.found.sort_string(self.tcx);
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
-                        (true, ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. })) => {
+                        (true, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. })) => {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                             DiagStyledString::normal(format!(
@@ -1716,9 +1697,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 pos.col.to_usize() + 1,
                             ))
                         }
-                        (true, &ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, .. }))
-                            if self.tcx.is_impl_trait_in_trait(def_id) =>
-                        {
+                        (
+                            true,
+                            &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, .. }),
+                        ) if self.tcx.is_impl_trait_in_trait(def_id) => {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(def_id).lo());
                             DiagStyledString::normal(format!(
@@ -1837,7 +1819,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        let body_owner_def_id = (cause.body_id != CRATE_DEF_ID).then(|| cause.body_id.to_def_id());
+        let body_owner_def_id =
+            (cause.body_def_id != CRATE_DEF_ID).then(|| cause.body_def_id.to_def_id());
         self.note_and_explain_type_err(diag, terr, cause, span, body_owner_def_id);
         if let Some(exp_found) = exp_found
             && let exp_found = TypeError::Sorts(exp_found)
@@ -1969,7 +1952,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let TypeError::ArraySize(sz) = terr else {
             return None;
         };
-        let tykind = match self.tcx.hir_node_by_def_id(trace.cause.body_id) {
+        let tykind = match self.tcx.hir_node_by_def_id(trace.cause.body_def_id) {
             hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Fn { body: body_id, .. }, ..
             }) => {
@@ -2554,7 +2537,7 @@ impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
                 let kind =
                     if tcx.ty_is_opaque_future(ty) { Self::OpaqueFuture } else { Self::Opaque };
                 Some((kind, def_id))

@@ -1,9 +1,9 @@
-use genmc_sys::{MemOrdering, RMWBinOp};
+use genmc_sys::{GenmcHandlerResult, MemOrdering, RMWBinOp};
 use rustc_abi::Size;
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
-use rustc_middle::mir;
 use rustc_middle::mir::interpret;
 use rustc_middle::ty::ScalarInt;
+use rustc_middle::{mir, throw_ub_format};
 
 use super::GenmcScalar;
 use crate::alloc_addresses::EvalContextExt as _;
@@ -12,6 +12,17 @@ use crate::*;
 
 /// Maximum size memory access in bytes that GenMC supports.
 pub(super) const MAX_ACCESS_SIZE: u64 = 8;
+
+/// Convert a [`GenmcHandlerResult`] into an `InterpResult`, raising the matching Miri error.
+// FIXME(genmc): improve error handling.
+pub(super) fn get_outcome<'tcx, T>(result: GenmcHandlerResult<T>) -> InterpResult<'tcx, T> {
+    match result {
+        GenmcHandlerResult::Invalid => throw_machine_stop!(TerminationInfo::GenmcInvalid),
+        GenmcHandlerResult::Error(e) => throw_ub_format!("{e}"),
+        GenmcHandlerResult::Ok(outcome) => interp_ok(outcome),
+    }
+}
+
 /// Inverse function to `scalar_to_genmc_scalar`.
 ///
 /// Convert a Miri `Scalar` to a `GenmcScalar`.

@@ -12,12 +12,12 @@
 type X1 = X2;
 //[gated_old,gated_new]~^ ERROR cycle detected when expanding type alias `X1`
 //[feature_old]~^^ ERROR: overflow normalizing the type alias `X2`
-//[feature_new]~^^^ ERROR: type mismatch resolving `_ == X1`
+//[feature_new]~^^^ ERROR: overflow evaluating the requirement `X2 == _`
 type X2 = X3;
 //[feature_old]~^ ERROR: overflow normalizing the type alias `X3`
-//[feature_new]~^^ ERROR: type mismatch resolving `_ == X2`
+//[feature_new]~^^ ERROR: overflow evaluating the requirement `X3 == _`
 type X3 = X1;
 //[feature_old]~^ ERROR: overflow normalizing the type alias `X1`
-//[feature_new]~^^ ERROR: type mismatch resolving `_ == X3`
+//[feature_new]~^^ ERROR: overflow evaluating the requirement `X1 == _`
 
 fn main() {}

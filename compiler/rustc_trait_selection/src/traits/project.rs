@@ -230,7 +230,7 @@ fn project_and_unify_term<'cx, 'tcx>(
     let InferOk { value: actual, obligations: new } =
         selcx.infcx.replace_opaque_types_with_inference_vars(
             actual,
-            obligation.cause.body_id,
+            obligation.cause.body_def_id,
             obligation.cause.span,
             obligation.param_env,
         );
@@ -557,7 +557,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
 
         let nested_cause = ObligationCause::new(
             cause.span,
-            cause.body_id,
+            cause.body_def_id,
             // FIXME(inherent_associated_types): Since we can't pass along the self type to the
             // cause code, inherent projections will be printed with identity instantiation in
             // diagnostics which is not ideal.
@@ -738,7 +738,7 @@ fn project<'cx, 'tcx>(
         }
         ProjectionCandidateSet::None => {
             let tcx = selcx.tcx();
-            let term = obligation.predicate.to_term(tcx);
+            let term = obligation.predicate.to_term(tcx, ty::IsRigid::No);
             Ok(Projected::NoProgress(term))
         }
         // Error occurred while trying to processing impls.
@@ -757,7 +757,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
 ) {
-    assemble_candidates_from_predicates(
+    assemble_candidates_from_clauses(
         selcx,
         obligation,
         candidate_set,
@@ -856,39 +856,39 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         }
         _ => return,
     };
-    let env_predicates = data
+    let env_clauses = data
         .projection_bounds()
         .filter(|bound| bound.item_def_id() == obligation.predicate.expect_projection_def_id())
         .map(|p| p.with_self_ty(tcx, object_ty).upcast(tcx));
 
-    assemble_candidates_from_predicates(
+    assemble_candidates_from_clauses(
         selcx,
         obligation,
         candidate_set,
         ProjectionCandidate::Object,
-        env_predicates,
+        env_clauses,
         false,
     );
 }
 
 #[instrument(
     level = "debug",
-    skip(selcx, candidate_set, ctor, env_predicates, potentially_unnormalized_candidates)
+    skip(selcx, candidate_set, ctor, env_clauses, potentially_unnormalized_candidates)
 )]
-fn assemble_candidates_from_predicates<'cx, 'tcx>(
+fn assemble_candidates_from_clauses<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
     ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionCandidate<'tcx>,
-    env_predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+    env_clauses: impl Iterator<Item = ty::Clause<'tcx>>,
     potentially_unnormalized_candidates: bool,
 ) {
     let infcx = selcx.infcx;
     let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
-    for predicate in env_predicates {
-        let bound_predicate = predicate.kind();
-        if let ty::ClauseKind::Projection(data) = predicate.kind().skip_binder() {
-            let data = bound_predicate.rebind(data);
+    for clause in env_clauses {
+        let bound_clause = clause.kind();
+        if let ty::ClauseKind::Projection(data) = clause.kind().skip_binder() {
+            let data = bound_clause.rebind(data);
             if data.item_def_id() != obligation.predicate.expect_projection_def_id() {
                 continue;
             }
@@ -1084,7 +1084,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         // Integers and floats always have `u8` as their discriminant.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
-                        ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+                        ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
 
                         // type parameters, opaques, and unnormalized projections don't have
                         // a known discriminant and may need to be normalized further or rely
@@ -1169,7 +1169,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                 true
                             }
 
-                            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+                            ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
 
                             // FIXME(compiler-errors): are Bound and Placeholder types ever known sized?
                             ty::Param(_)
@@ -1583,7 +1583,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
             } else {
                 // We know that `self_ty` has the same metadata as `tail`. This allows us
                 // to prove predicates like `Wrapper<Tail>::Metadata == Tail::Metadata`.
-                Ty::new_projection(tcx, metadata_def_id, [tail])
+                Ty::new_projection(tcx, ty::IsRigid::No, metadata_def_id, [tail])
             }
         });
         (metadata_ty.into(), obligations)
@@ -1678,6 +1678,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                         tcx.require_lang_item(LangItem::AsyncFnKindUpvars, obligation.cause.span);
                     let tupled_upvars_ty = Ty::new_projection(
                         tcx,
+                        ty::IsRigid::No,
                         upvars_projection_def_id,
                         [
                             ty::GenericArg::from(kind_ty),
@@ -1807,6 +1808,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                         // N.B. No need to register a `AsyncFnKindHelper` goal here, it's already in `nested`.
                         let tupled_upvars_ty = Ty::new_projection(
                             tcx,
+                            ty::IsRigid::No,
                             upvars_projection_def_id,
                             [
                                 ty::GenericArg::from(kind_ty),
@@ -1855,7 +1857,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 sym::Output => {
                     let future_output_def_id =
                         tcx.require_lang_item(LangItem::FutureOutput, obligation.cause.span);
-                    Ty::new_projection(tcx, future_output_def_id, [sig.output()])
+                    Ty::new_projection(tcx, ty::IsRigid::No, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),
             };
@@ -1889,7 +1891,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 sym::Output => {
                     let future_output_def_id =
                         tcx.require_lang_item(LangItem::FutureOutput, obligation.cause.span);
-                    Ty::new_projection(tcx, future_output_def_id, [sig.output()])
+                    Ty::new_projection(tcx, ty::IsRigid::No, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),
             };
@@ -2058,7 +2060,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             // `Projected::NoProgress`. This will ensure that the projection is
             // checked for well-formedness, and it's either satisfied by a trivial
             // where clause in its env or it results in an error.
-            return Ok(Projected::NoProgress(obligation.predicate.to_term(tcx)));
+            return Ok(Projected::NoProgress(obligation.predicate.to_term(tcx, ty::IsRigid::No)));
         } else {
             return Ok(Projected::Progress(Progress {
                 term: if obligation.predicate.kind.is_type() {
@@ -2147,7 +2149,7 @@ fn assoc_term_own_obligations<'cx, 'tcx>(
         } else {
             ObligationCause::new(
                 obligation.cause.span,
-                obligation.cause.body_id,
+                obligation.cause.body_def_id,
                 ObligationCauseCode::WhereClause(def_id, span),
             )
         };

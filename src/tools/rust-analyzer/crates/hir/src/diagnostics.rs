@@ -135,6 +135,7 @@ diagnostics![AnyDiagnostic<'db> ->
     MissingMatchArms,
     MissingUnsafe,
     MovedOutOfRef<'db>,
+    MutRefInImmRefPat,
     MutableRefBinding,
     NeedMut,
     NonExhaustiveLet,
@@ -176,7 +177,10 @@ diagnostics![AnyDiagnostic<'db> ->
     ElidedLifetimesInPath,
     TypeMustBeKnown<'db>,
     UnionExprMustHaveExactlyOneField,
+    UnionPatMustHaveExactlyOneField,
+    UnionPatHasRest,
     UnimplementedTrait<'db>,
+    YieldOutsideCoroutine,
 ];
 
 #[derive(Debug)]
@@ -335,6 +339,11 @@ pub struct ExpectedFunction<'db> {
 pub struct CannotBeDereferenced<'db> {
     pub expr: InFile<ExprOrPatPtr>,
     pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct MutRefInImmRefPat {
+    pub pat: InFile<ExprOrPatPtr>,
 }
 
 #[derive(Debug)]
@@ -639,6 +648,16 @@ pub struct UnionExprMustHaveExactlyOneField {
 }
 
 #[derive(Debug)]
+pub struct UnionPatMustHaveExactlyOneField {
+    pub pat: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug)]
+pub struct UnionPatHasRest {
+    pub pat: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug)]
 pub struct InvalidLhsOfAssignment {
     pub lhs: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
 }
@@ -663,6 +682,11 @@ pub struct UnimplementedTrait<'db> {
 #[derive(Debug)]
 pub struct MutableRefBinding {
     pub pat: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug)]
+pub struct YieldOutsideCoroutine {
+    pub expr: InFile<ExprOrPatPtr>,
 }
 
 impl<'db> AnyDiagnostic<'db> {
@@ -932,6 +956,14 @@ impl<'db> AnyDiagnostic<'db> {
                 let pat = pat_syntax(pat)?.map(Into::into);
                 NonExhaustiveRecordPat { pat, variant: variant.into() }.into()
             }
+            &InferenceDiagnostic::UnionPatMustHaveExactlyOneField { pat } => {
+                let pat = pat_syntax(pat)?.map(Into::into);
+                UnionPatMustHaveExactlyOneField { pat }.into()
+            }
+            &InferenceDiagnostic::UnionPatHasRest { pat } => {
+                let pat = pat_syntax(pat)?.map(Into::into);
+                UnionPatHasRest { pat }.into()
+            }
             &InferenceDiagnostic::FunctionalRecordUpdateOnNonStruct { base_expr } => {
                 FunctionalRecordUpdateOnNonStruct { base_expr: expr_syntax(base_expr)? }.into()
             }
@@ -960,6 +992,10 @@ impl<'db> AnyDiagnostic<'db> {
                 let expr = expr_syntax(*expr)?;
                 CannotBeDereferenced { expr, found: new_ty(found.as_ref()) }.into()
             }
+            InferenceDiagnostic::MutRefInImmRefPat { pat } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                MutRefInImmRefPat { pat }.into()
+            }
             InferenceDiagnostic::CannotImplicitlyDerefTraitObject { pat, found } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);
                 CannotImplicitlyDerefTraitObject { pat, found: new_ty(found.as_ref()) }.into()
@@ -977,7 +1013,7 @@ impl<'db> AnyDiagnostic<'db> {
             }
             InferenceDiagnostic::PathDiagnostic { node, diag } => {
                 let source = expr_or_pat_syntax(*node)?;
-                let syntax = source.value.to_node(&db.parse_or_expand(source.file_id));
+                let syntax = source.value.to_node(&source.file_id.parse_or_expand(db));
                 let path = match_ast! {
                     match (syntax.syntax()) {
                         ast::RecordExpr(it) => it.path()?,
@@ -1091,6 +1127,9 @@ impl<'db> AnyDiagnostic<'db> {
             InferenceDiagnostic::MutableRefBinding { pat } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);
                 MutableRefBinding { pat }.into()
+            }
+            &InferenceDiagnostic::YieldOutsideCoroutine { expr } => {
+                YieldOutsideCoroutine { expr: expr_syntax(expr)? }.into()
             }
         })
     }
@@ -1277,7 +1316,7 @@ impl<'db> AnyDiagnostic<'db> {
         Some(match diag {
             TyLoweringDiagnostic::PathDiagnostic { source, diag } => {
                 let source = Self::type_syntax(*source, source_map)?;
-                let syntax = source.value.to_node(&db.parse_or_expand(source.file_id));
+                let syntax = source.value.to_node(&source.file_id.parse_or_expand(db));
                 let ast::Type::PathType(syntax) = syntax else { return None };
                 Self::path_diagnostic(diag, source.with_value(syntax.path()?))?
             }

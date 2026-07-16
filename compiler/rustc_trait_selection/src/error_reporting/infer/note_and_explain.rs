@@ -46,8 +46,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         );
                     }
                     (
-                        ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
-                        ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                        ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                        ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
                     ) => {
                         // Issue #63167
                         diag.note("distinct uses of `impl Trait` result in different opaque types");
@@ -89,24 +89,28 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         );
                     }
                     (
-                        ty::Alias(ty::AliasTy {
-                            kind: ty::Projection { .. } | ty::Inherent { .. },
-                            ..
-                        }),
-                        ty::Alias(ty::AliasTy {
-                            kind: ty::Projection { .. } | ty::Inherent { .. },
-                            ..
-                        }),
+                        ty::Alias(
+                            _,
+                            ty::AliasTy {
+                                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
+                            },
+                        ),
+                        ty::Alias(
+                            _,
+                            ty::AliasTy {
+                                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
+                            },
+                        ),
                     ) => {
                         diag.note("an associated type was expected, but a different one was found");
                     }
                     // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
                     (
                         ty::Param(p),
-                        ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }),
+                        ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }),
                     )
                     | (
-                        ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }),
+                        ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }),
                         ty::Param(p),
                     ) if !tcx.is_impl_trait_in_trait(def_id)
                         && let Some(generics) = body_generics =>
@@ -229,10 +233,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     (
                         ty::Param(p),
-                        ty::Dynamic(..) | ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                        ty::Dynamic(..) | ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
                     )
                     | (
-                        ty::Dynamic(..) | ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                        ty::Dynamic(..) | ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
                         ty::Param(p),
                     ) => {
                         if let Some(generics) = body_generics {
@@ -308,6 +312,7 @@ impl<T> Trait<T> for X {
                     }
                     (
                         ty::Alias(
+                            _,
                             proj_ty @ ty::AliasTy {
                                 kind: ty::Projection { def_id } | ty::Inherent { def_id },
                                 ..
@@ -328,6 +333,7 @@ impl<T> Trait<T> for X {
                     (
                         _,
                         ty::Alias(
+                            _,
                             proj_ty @ ty::AliasTy {
                                 kind: ty::Projection { def_id } | ty::Inherent { def_id },
                                 ..
@@ -368,9 +374,10 @@ impl<T> Trait<T> for X {
                     }
                     (
                         ty::Dynamic(t, _),
-                        ty::Alias(ty::AliasTy {
-                            kind: ty::Opaque { def_id: opaque_def_id }, ..
-                        }),
+                        ty::Alias(
+                            _,
+                            ty::AliasTy { kind: ty::Opaque { def_id: opaque_def_id }, .. },
+                        ),
                     ) if let Some(def_id) = t.principal_def_id()
                         && tcx
                             .explicit_item_self_bounds(opaque_def_id)
@@ -429,8 +436,8 @@ impl<T> Trait<T> for X {
                             ));
                         }
                     }
-                    (_, ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
-                    | (ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _) => {
+                    (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
+                    | (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _) => {
                         if let Some(body_owner_def_id) = body_owner_def_id
                             && def_id.is_local()
                             && matches!(
@@ -627,19 +634,19 @@ impl<T> Trait<T> for X {
         diag: &mut Diag<'_>,
         msg: impl Fn() -> String,
         body_owner_def_id: Option<DefId>,
-        proj_ty: ty::AliasTy<'tcx>,
+        alias_ty: ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
         // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
-        if !matches!(proj_ty.kind, ty::AliasTyKind::Projection { .. }) {
+        let Some(proj_ty) = alias_ty.try_to_projection() else {
             return false;
-        }
+        };
         let Some(body_owner_def_id) = body_owner_def_id else {
             return false;
         };
-        let assoc = tcx.associated_item(proj_ty.kind.def_id());
-        let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
+        let assoc = tcx.associated_item(proj_ty.kind);
+        let (trait_ref, assoc_args) = alias_ty.trait_ref_and_own_args(tcx);
         let Some(item) = tcx.hir_get_if_local(body_owner_def_id) else {
             return false;
         };
@@ -648,7 +655,7 @@ impl<T> Trait<T> for X {
         };
         // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
         // This will also work for `impl Trait`.
-        let ty::Param(param_ty) = *proj_ty.self_ty().kind() else {
+        let ty::Param(param_ty) = *alias_ty.self_ty().kind() else {
             return false;
         };
         let generics = tcx.generics_of(body_owner_def_id);
@@ -684,7 +691,7 @@ impl<T> Trait<T> for X {
             _ => return false,
         };
         let parent = tcx.hir_get_parent_item(hir_id).def_id;
-        self.suggest_constraint(diag, msg, Some(parent.into()), proj_ty, ty)
+        self.suggest_constraint(diag, msg, Some(parent.into()), alias_ty, ty)
     }
 
     /// An associated type was expected and a different type was found.
@@ -719,6 +726,10 @@ impl<T> Trait<T> for X {
             return;
         }
 
+        let (ty::Projection { def_id } | ty::Inherent { def_id }) = proj_ty.kind else {
+            panic!("expected projection or inherent alias, found {:?}", proj_ty.kind);
+        };
+
         let msg = || {
             format!(
                 "consider constraining the associated type `{}` to `{}`",
@@ -746,9 +757,9 @@ impl<T> Trait<T> for X {
             let point_at_assoc_fn = if callable_scope
                 && self.point_at_methods_that_satisfy_associated_type(
                     diag,
-                    tcx.parent(proj_ty.kind.def_id()),
+                    tcx.parent(def_id),
                     current_method_ident,
-                    proj_ty.kind.def_id(),
+                    def_id,
                     values.expected,
                 ) {
                 // If we find a suitable associated function that returns the expected type, we
@@ -821,8 +832,12 @@ fn foo(&self) -> Self::T { String::new() }
     ) -> bool {
         let tcx = self.tcx;
 
-        let assoc = tcx.associated_item(proj_ty.kind.def_id());
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
+        let (ty::Projection { def_id } | ty::Inherent { def_id }) = proj_ty.kind else {
+            panic!("expected projection or inherent alias, found {:?}", proj_ty.kind);
+        };
+
+        let assoc = tcx.associated_item(def_id);
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
             *proj_ty.self_ty().kind()
         {
             let opaque_local_def_id = def_id.as_local();
@@ -873,9 +888,10 @@ fn foo(&self) -> Self::T { String::new() }
             .filter_map(|item| {
                 let method = tcx.fn_sig(item.def_id).instantiate_identity().skip_norm_wip();
                 match *method.output().skip_binder().kind() {
-                    ty::Alias(ty::AliasTy {
-                        kind: ty::Projection { def_id: item_def_id }, ..
-                    }) if item_def_id == proj_ty_item_def_id => Some((
+                    ty::Alias(
+                        _,
+                        ty::AliasTy { kind: ty::Projection { def_id: item_def_id }, .. },
+                    ) if item_def_id == proj_ty_item_def_id => Some((
                         tcx.def_span(item.def_id),
                         format!("consider calling `{}`", tcx.def_path_str(item.def_id)),
                     )),

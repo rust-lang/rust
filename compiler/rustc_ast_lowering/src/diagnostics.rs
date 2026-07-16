@@ -365,6 +365,7 @@ pub(crate) struct MatchArmWithNoBody {
     pub span: Span,
     #[suggestion(
         "add a body after the pattern",
+        // ignore-tidy-todo
         code = " => todo!(),",
         applicability = "has-placeholders"
     )]
@@ -557,6 +558,24 @@ pub(crate) struct DelegationBlockSpecifiedWhenNoParams {
 #[derive(Diagnostic)]
 #[diag("attempted to delete delegation's target expression that contains definitions inside")]
 pub(crate) struct DelegationAttemptedBlockWithDefsDeletion {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("wrong infer used: expected {$expected}, found: {$actual}")]
+pub(crate) struct DelegationInfersMismatch {
+    #[primary_span]
+    pub span: Span,
+    pub expected: Symbol,
+    pub actual: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "attempted to lower target expression with definitions more than once while mapping argument"
+)]
+pub(crate) struct DelegationAttemptedBlockWithDefsRelowering {
     #[primary_span]
     pub span: Span,
 }

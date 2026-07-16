@@ -173,7 +173,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             exp_span, exp_found.expected, exp_found.found,
         );
 
-        match self.tcx.coroutine_kind(cause.body_id) {
+        match self.tcx.coroutine_kind(cause.body_def_id) {
             Some(hir::CoroutineKind::Desugared(
                 hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen,
                 _,
@@ -190,8 +190,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let subdiag = match (
-            self.get_impl_future_output_ty(exp_found.expected),
-            self.get_impl_future_output_ty(exp_found.found),
+            self.tcx.get_impl_future_output_ty(exp_found.expected),
+            self.tcx.get_impl_future_output_ty(exp_found.found),
         ) {
             (Some(exp), Some(found)) if self.same_type_modulo_infer(exp, found) => match cause
                 .code()
@@ -411,6 +411,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
         match (expected_inner.kind(), found_inner.kind()) {
             (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
+                let args = args.no_bound_vars().unwrap();
+
                 let sig = sig_tys.with(*hdr);
                 let expected_sig = self.normalize_fn_sig(Unnormalized::new_wip(sig));
                 let found_sig =
@@ -449,6 +451,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 diag.subdiagnostic(sugg);
             }
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
+                let args1 = args1.no_bound_vars().unwrap();
+                let args2 = args2.no_bound_vars().unwrap();
+
                 let expected_sig =
                     self.normalize_fn_sig(self.tcx.fn_sig(*did1).instantiate(self.tcx, args1));
                 let found_sig =
@@ -492,6 +497,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 diag.subdiagnostic(sug);
             }
             (ty::FnDef(did, args), ty::FnPtr(sig_tys, hdr)) => {
+                let args = args.no_bound_vars().unwrap();
+
                 let expected_sig =
                     self.normalize_fn_sig(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
                 let found_sig = self.normalize_fn_sig(Unnormalized::new_wip(sig_tys.with(*hdr)));
@@ -636,7 +643,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.hir_maybe_body_owned_by(cause.body_id).and_then(|body| {
+        self.tcx.hir_maybe_body_owned_by(cause.body_def_id).and_then(|body| {
             IfVisitor { err_span: span, found_if: false }
                 .visit_body(&body)
                 .is_break()
@@ -769,20 +776,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 StatementAsExpression::CorrectType
             }
             (
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: last_def_id }, .. }),
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: exp_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: last_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: exp_def_id }, .. }),
             ) if last_def_id == exp_def_id => StatementAsExpression::CorrectType,
             (
-                ty::Alias(ty::AliasTy {
-                    kind: ty::Opaque { def_id: last_def_id },
-                    args: last_bounds,
-                    ..
-                }),
-                ty::Alias(ty::AliasTy {
-                    kind: ty::Opaque { def_id: exp_def_id },
-                    args: exp_bounds,
-                    ..
-                }),
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Opaque { def_id: last_def_id }, args: last_bounds, ..
+                    },
+                ),
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Opaque { def_id: exp_def_id }, args: exp_bounds, ..
+                    },
+                ),
             ) => {
                 debug!(
                     "both opaque, likely future {:?} {:?} {:?} {:?}",

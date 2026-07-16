@@ -11,7 +11,7 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> =
         |items, span| AttributeKind::AllowInternalUnstable(items, span);
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::MacroDef),
         Allow(Target::Fn),
         Warn(Target::Field),
@@ -36,7 +36,7 @@ impl CombineAttributeParser for UnstableFeatureBoundParser {
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::UnstableFeatureBound(items);
     const STABILITY: AttributeStability = unstable!(staged_api);
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Impl { of_trait: true }),
         Allow(Target::Trait),
@@ -59,7 +59,7 @@ impl CombineAttributeParser for RustcAllowConstFnUnstableParser {
     type Item = Symbol;
     const CONVERT: ConvertFn<Self::Item> =
         |items, first_span| AttributeKind::RustcAllowConstFnUnstable(items, first_span);
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),

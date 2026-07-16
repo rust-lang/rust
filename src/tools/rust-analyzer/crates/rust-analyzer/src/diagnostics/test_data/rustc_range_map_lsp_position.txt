@@ -54,7 +54,10 @@
             source: Some(
                 "rustc",
             ),
-            message: "mismatched types\nexpected `u32`, found `&str`",
+            message: String(
+                "mismatched types\nexpected `u32`, found `&str`",
+            ),
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -85,7 +88,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,
@@ -145,7 +147,10 @@
             source: Some(
                 "rustc",
             ),
-            message: "expected due to this",
+            message: String(
+                "expected due to this",
+            ),
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -176,7 +181,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,

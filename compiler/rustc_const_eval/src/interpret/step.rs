@@ -483,7 +483,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
             }
             ty::FnDef(def_id, args) => {
-                let instance = self.resolve(def_id, args)?;
+                let instance = self.resolve(def_id, args.no_bound_vars().unwrap())?;
                 (
                     FnVal::Instance(instance),
                     self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?,
@@ -552,16 +552,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
 
+                // Evaluation order consistent with assignment: destination first.
+                let dest_place = self.eval_place(destination)?;
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args, &destination)?;
 
-                let destination = self.eval_place(destination)?;
                 self.init_fn_call(
                     callee,
                     (fn_sig.abi(), fn_abi),
                     &args,
                     with_caller_location,
-                    &destination,
+                    &dest_place,
                     target,
                     if fn_abi.can_unwind { unwind } else { mir::UnwindAction::Unreachable },
                 )?;
@@ -607,7 +608,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         enter_trace_span!(M, resolve::resolve_drop_glue, ty = ?place.layout.ty);
                     Instance::resolve_drop_glue(*self.tcx, place.layout.ty)
                 };
-                if let ty::InstanceKind::DropGlue(_, None) = instance.def {
+                if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = instance.def {
                     // This is the branch we enter if and only if the dropped type has no drop glue
                     // whatsoever. This can happen as a result of monomorphizing a drop of a
                     // generic. In order to make sure that generic and non-generic code behaves

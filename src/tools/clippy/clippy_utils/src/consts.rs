@@ -5,7 +5,7 @@
 #![expect(clippy::float_cmp)]
 
 use crate::res::MaybeDef;
-use crate::source::{SpanRangeExt, walk_span_to_context};
+use crate::source::{SpanExt, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, sym, unsext};
 
 use rustc_abi::Size;
@@ -522,9 +522,9 @@ pub fn eval_int(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<FullInt> {
 ///
 /// See the module level documentation for some context.
 pub struct ConstEvalCtxt<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    typing_env: ty::TypingEnv<'tcx>,
-    typeck: &'tcx TypeckResults<'tcx>,
+    pub tcx: TyCtxt<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
+    pub typeck: &'tcx TypeckResults<'tcx>,
     source: Cell<ConstantSource>,
     ctxt: Cell<SyntaxContext>,
 }
@@ -885,12 +885,22 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             _ => return None,
         };
 
+        let args = self.typeck.node_args(id);
+
+        if !args.is_empty() {
+            let owner_def_id = self.typeck.hir_owner.def_id.to_def_id();
+            let identity_args = ty::GenericArgs::identity_for_item(self.tcx, owner_def_id);
+            // Don't try to fully evaluate consts inside code whose bounds can't be satisfied.
+            if self
+                .tcx
+                .instantiate_and_check_impossible_predicates((owner_def_id, identity_args))
+            {
+                return None;
+            }
+        }
+
         self.tcx
-            .const_eval_resolve(
-                self.typing_env,
-                mir::UnevaluatedConst::new(did, self.typeck.node_args(id)),
-                qpath.span(),
-            )
+            .const_eval_resolve(self.typing_env, mir::UnevaluatedConst::new(did, args), qpath.span())
             .ok()
     }
 
@@ -934,7 +944,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 if let Some(expr_span) = walk_span_to_context(expr.span, span.ctxt)
                     && let expr_lo = expr_span.lo()
                     && expr_lo >= span.lo
-                    && let Some(src) = (span.lo..expr_lo).get_source_range(&self.tcx)
+                    && let Some(src) = (span.lo..expr_lo).get_source_range(self.tcx)
                     && let Some(src) = src.as_str()
                 {
                     use rustc_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};
@@ -969,6 +979,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         }
     }
 
+    #[expect(clippy::too_many_lines)]
     fn binop(&self, op: BinOpKind, left: &Expr<'_>, right: &Expr<'_>) -> Option<Constant> {
         let l = self.expr(left)?;
         let r = self.expr(right);
@@ -1017,6 +1028,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 },
                 ty::Uint(ity) => {
                     let bits = ity.bits();
+                    let mask = !0u128 >> (128 - bits);
 
                     match op {
                         BinOpKind::Add => l.checked_add(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
@@ -1024,8 +1036,12 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                         BinOpKind::Mul => l.checked_mul(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
                         BinOpKind::Div => l.checked_div(r).map(Constant::Int),
                         BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
-                        BinOpKind::Shr if r < bits => l.checked_shr(r.try_into().ok()?).map(Constant::Int),
-                        BinOpKind::Shl if r < bits => l.checked_shl(r.try_into().ok()?).map(Constant::Int),
+                        BinOpKind::Shr if r < bits => {
+                            l.checked_shr(r.try_into().ok()?).map(|x| Constant::Int(x & mask))
+                        },
+                        BinOpKind::Shl if r < bits => {
+                            l.checked_shl(r.try_into().ok()?).map(|x| Constant::Int(x & mask))
+                        },
                         BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
                         BinOpKind::BitOr => Some(Constant::Int(l | r)),
                         BinOpKind::BitAnd => Some(Constant::Int(l & r)),

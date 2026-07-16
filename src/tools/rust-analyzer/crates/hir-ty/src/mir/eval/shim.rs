@@ -1100,7 +1100,9 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                 let [arg] = args else {
                     return Err(MirEvalError::InternalError("cttz arg is not provided".into()));
                 };
-                let result = u128::from_le_bytes(pad16(arg.get(self)?, false)).trailing_zeros();
+                let arg: &[u8] = arg.get(self)?;
+                let bit_count = arg.len() as u32 * 8;
+                let result = u128::from_le_bytes(pad16(arg, false)).trailing_zeros().min(bit_count);
                 destination
                     .write_from_bytes(self, &(result as u128).to_le_bytes()[0..destination.size])
             }

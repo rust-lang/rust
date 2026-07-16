@@ -9,6 +9,7 @@
 #![allow(function_casts_as_integer)]
 
 use std::env;
+use std::ffi::c_void;
 use std::process::{Command, ExitStatus};
 
 fn main() {
@@ -42,7 +43,9 @@ fn vulnerable_function() {
     let bad_code_ptr = malicious_code as usize;
     // Overwrite the on-stack return address with the address of `malicious_code()`,
     // thereby jumping to that function when returning from `vulnerable_function()`.
-    unsafe { fill(stackaddr, bad_code_ptr, 20); }
+    unsafe {
+        fill(stackaddr, bad_code_ptr, 20);
+    }
     // Capture the address, so the write is not optimized away.
     std::hint::black_box(stackaddr);
 }
@@ -68,15 +71,14 @@ unsafe fn fill(addr: *mut usize, val: usize, count: usize) {
 fn malicious_code() {
     let msg = [112u8, 119u8, 110u8, 101u8, 100u8, 33u8, 0u8]; // "pwned!\0" ascii
     unsafe {
-        write(1, &msg as *const u8, msg.len());
+        write(1, &msg as *const u8 as *const c_void, msg.len());
         _exit(0);
     }
 }
 extern "C" {
-    fn write(fd: i32, buf: *const u8, count: usize) -> isize;
+    fn write(fd: i32, buf: *const c_void, count: usize) -> isize;
     fn _exit(status: i32) -> !;
 }
-
 
 fn assert_stack_smash_prevented(cmd: &mut Command) {
     let (status, stdout, stderr) = run(cmd);
@@ -91,7 +93,6 @@ fn assert_stack_smashed(cmd: &mut Command) {
     assert!(stdout.contains("pwned!"));
     assert!(stderr.is_empty());
 }
-
 
 fn run(cmd: &mut Command) -> (ExitStatus, String, String) {
     let output = cmd.output().unwrap();

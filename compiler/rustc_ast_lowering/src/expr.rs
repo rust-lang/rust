@@ -11,7 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, Target, find_attr};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::errors::report_lit_error;
+use rustc_session::diagnostics::report_lit_error;
 use rustc_span::{ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Spanned, Symbol, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 use visit::{Visitor, walk_expr};
@@ -191,7 +191,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 //
                 // This also needs special handling because the HirId of the returned `hir::Expr` will not
                 // correspond to the `e.id`, so `lower_expr_for` handles attribute lowering itself.
-                ExprKind::ForLoop { pat, iter, body, label, kind } => {
+                ExprKind::ForLoop(ForLoop { pat, iter, body, label, kind }) => {
                     return self.lower_expr_for(e, pat, iter, body, *label, *kind);
                 }
                 ExprKind::Closure(closure) => return self.lower_expr_closure_expr(e, closure),
@@ -498,6 +498,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
 
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
+
+                ExprKind::DirectConstArg(expr) => {
+                    let e = self.emit_bad_direct_const_arg(e.span, expr, "expression");
+                    hir::ExprKind::Err(e)
+                }
             };
 
             hir::Expr { hir_id: expr_hir_id, kind, span }
@@ -585,7 +590,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         for (idx, arg) in args.iter().cloned().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let node_id = self.next_node_id();
-                self.create_def(node_id, None, DefKind::AnonConst, f.span);
+                self.create_def(node_id, None, DefKind::AnonConst, arg.span);
                 let const_value =
                     if let ControlFlow::Break(span) = WillCreateDefIdsVisitor.visit_expr(&arg) {
                         Box::new(Expr {
@@ -599,11 +604,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         arg
                     };
 
-                let anon_const = AnonConst {
-                    id: node_id,
-                    value: const_value,
-                    mgca_disambiguation: MgcaDisambiguation::AnonConst,
-                };
+                let anon_const = AnonConst { id: node_id, value: const_value };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
             } else {
                 real_args.push(arg);
@@ -1636,7 +1637,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             && !self.tcx.features().coroutines()
             && !self.tcx.features().gen_blocks()
         {
-            rustc_session::errors::feature_err(
+            rustc_session::diagnostics::feature_err(
                 &self.tcx.sess,
                 sym::yield_expr,
                 span,

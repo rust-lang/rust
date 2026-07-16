@@ -779,8 +779,8 @@ PR #{number} "{title}" fixes a regression and has been nominated for backport.
 This topic will help T-compiler getting context about it.
 
 Tip: to approve or decline from this Zulip thread, use:
-@_**triagebot** backport approve beta #{number}
-@_**triagebot** backport decline beta #{number}
+@_**triagebot** backport approve
+@_**triagebot** backport decline
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -809,8 +809,8 @@ PR #{number} "{title}" fixes a regression and has been nominated for backport.
 This topic will help T-compiler getting context about it.
 
 Tip: to approve or decline from this Zulip thread, use:
-@_**triagebot** backport approve stable #{number}
-@_**triagebot** backport decline stable #{number}
+@_**triagebot** backport approve
+@_**triagebot** backport decline
 """,
     """\
 /poll Approve stable backport of #{number}?
@@ -1155,7 +1155,6 @@ otherwise, make sure you bump the `FORMAT_VERSION` constant.
 """
 cc = [
     "@CraftSpider",
-    "@aDotInTheVoid",
     "@Enselic",
     "@obi1kenobi",
 ]
@@ -1270,7 +1269,7 @@ message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x
 
 [mentions."src/tools/tidy/src/deps.rs"]
 message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
-cc = ["@davidtwco", "@wesleywiser"]
+cc = ["@davidtwco", "@boxyuwu"]
 
 [mentions."src/tools/tidy/src/extra_checks"]
 message = "`tidy` extra checks were modified."
@@ -1313,7 +1312,7 @@ Please ensure that if you've changed the output:
 - It's intentional.
 - The `FORMAT_VERSION` in `src/librustdoc-json-types` is bumped if necessary.
 """
-cc = ["@aDotInTheVoid", "@obi1kenobi"]
+cc = ["@obi1kenobi"]
 
 [mentions."tests/ui/derives/deriving-all-codegen.stdout"]
 message = "Changes to the code generated for builtin derived traits."
@@ -1517,7 +1516,7 @@ branch = "stable"
 [assign.adhoc_groups]
 compiler_leads = [
     "@davidtwco",
-    "@wesleywiser",
+    "@boxyuwu",
 ]
 libs = [
     "@Mark-Simulacrum",
@@ -1531,6 +1530,7 @@ libs = [
     "@clarfonthey",
     "@aapoalas",
     "@Darksonn",
+    "@JohnTitor",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
@@ -1560,7 +1560,8 @@ diagnostics = [
     "@davidtwco",
     "@oli-obk",
     "@chenyukang",
-    "@TaKO8Ki"
+    "@TaKO8Ki",
+    "@JohnTitor",
 ]
 parser = [
     "@davidtwco",
@@ -1696,7 +1697,7 @@ dep-bumps = [
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]
 "/tests/rustdoc-js/" =                                   ["rustdoc"]
-"/tests/rustdoc-json" =                                  ["@aDotInTheVoid"]
+"/tests/rustdoc-json" =                                  ["rustdoc"]
 "/tests/rustdoc-ui" =                                    ["rustdoc"]
 "/tests/ui" =                                            ["compiler"]
 "/tests/ui-fulldeps" =                                   ["compiler"]

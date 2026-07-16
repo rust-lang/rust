@@ -150,10 +150,10 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         };
 
         let (a, b) = match (a.kind(), b.kind()) {
-            (&ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }), _) => {
+            (&ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }), _) => {
                 (a, enable_subtyping(b, true)?)
             }
-            (_, &ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
+            (_, &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
                 (enable_subtyping(a, false)?, b)
             }
             _ => unreachable!(
@@ -386,8 +386,8 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
             }
 
             (
-                &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
-                &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
+                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
+                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
             ) if a_def_id == b_def_id || infcx.next_trait_solver() => {
                 super_combine_tys(&infcx.infcx, self, a, b).map(|_| ()).or_else(|err| {
                     // This behavior is only there for the old solver, the new solver
@@ -401,8 +401,8 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                     if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
                 })?;
             }
-            (&ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
-            | (_, &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
+            (&ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
+            | (_, &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
                 if def_id.is_local() && !self.type_checker.infcx.next_trait_solver() =>
             {
                 self.relate_opaques(a, b)?;
@@ -597,27 +597,7 @@ impl<'b, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating<'_
         );
     }
 
-    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
-        self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
-            ty::Covariant => ty::PredicateKind::AliasRelate(
-                a.into(),
-                b.into(),
-                ty::AliasRelationDirection::Subtype,
-            ),
-            // a :> b is b <: a
-            ty::Contravariant => ty::PredicateKind::AliasRelate(
-                b.into(),
-                a.into(),
-                ty::AliasRelationDirection::Subtype,
-            ),
-            ty::Invariant => ty::PredicateKind::AliasRelate(
-                a.into(),
-                b.into(),
-                ty::AliasRelationDirection::Equate,
-            ),
-            ty::Bivariant => {
-                unreachable!("cannot defer an alias-relate goal with Bivariant variance (yet?)")
-            }
-        })]);
+    fn ambient_variance(&self) -> ty::Variance {
+        self.ambient_variance
     }
 }

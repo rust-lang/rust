@@ -6,9 +6,8 @@ use rustc_feature::Features;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
-use rustc_session::errors::{feature_err, feature_warn};
+use rustc_session::diagnostics::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, Symbol, sym};
-use thin_vec::ThinVec;
 
 use crate::diagnostics;
 
@@ -188,21 +187,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::ForeignMod(_foreign_module) => {
                 // handled during lowering
             }
-            ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
-                for attr in attr::filter_by_name(&i.attrs, sym::repr) {
-                    for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
-                        if item.has_name(sym::simd) {
-                            gate!(
-                                self,
-                                repr_simd,
-                                attr.span,
-                                "SIMD types are experimental and possibly buggy"
-                            );
-                        }
-                    }
-                }
-            }
-
             ast::ItemKind::Impl(ast::Impl { of_trait: Some(of_trait), .. }) => {
                 if let ast::ImplPolarity::Negative(span) = of_trait.polarity {
                     gate!(
@@ -284,6 +268,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::TyKind::Pat(..) => {
                 gate!(self, pattern_types, ty.span, "pattern types are unstable");
+            }
+            ast::TyKind::View(..) => {
+                gate!(self, view_types, ty.span, "view types are unstable");
             }
             _ => {}
         }
@@ -466,7 +453,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     let spans = sess.psess.gated_spans.spans.borrow();
     macro_rules! gate_all {
         ($feature:ident, $explain:literal $(, $help:literal)?) => {
-            for &span in spans.get(&sym::$feature).into_iter().flatten() {
+            for &span in spans.get(&sym::$feature).into_flat_iter() {
                 gate!(visitor, $feature, span, $explain $(, $help)?);
             }
         };
@@ -527,13 +514,13 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     );
 
     // `associated_const_equality` will be stabilized as part of `min_generic_const_args`.
-    for &span in spans.get(&sym::associated_const_equality).into_iter().flatten() {
+    for &span in spans.get(&sym::associated_const_equality).into_flat_iter() {
         gate!(visitor, min_generic_const_args, span, "associated const equality is incomplete");
     }
 
     // `mgca_type_const_syntax` is part of `min_generic_const_args` so if
     // either or both are enabled we don't need to emit a feature error.
-    for &span in spans.get(&sym::mgca_type_const_syntax).into_iter().flatten() {
+    for &span in spans.get(&sym::mgca_type_const_syntax).into_flat_iter() {
         if visitor.features.min_generic_const_args()
             || visitor.features.mgca_type_const_syntax()
             || span.allows_unstable(sym::min_generic_const_args)
@@ -561,13 +548,13 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     //       it does **not** mean "`T` doesn't implement `Bound` (positively or negatively)"!
     //       The latter would be a SemVer hazard!
     if !sess.opts.unstable_opts.internal_testing_features || !visitor.features.negative_bounds() {
-        for &span in spans.get(&sym::negative_bounds).into_iter().flatten() {
+        for &span in spans.get(&sym::negative_bounds).into_flat_iter() {
             sess.dcx().emit_err(diagnostics::NegativeBoundUnsupported { span });
         }
     }
 
     if !visitor.features.never_patterns() {
-        for &span in spans.get(&sym::never_patterns).into_iter().flatten() {
+        for &span in spans.get(&sym::never_patterns).into_flat_iter() {
             if span.allows_unstable(sym::never_patterns) {
                 continue;
             }
@@ -585,7 +572,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     }
 
     // Yield exprs can be enabled either by `yield_expr`, by `coroutines` or by `gen_blocks`.
-    for &span in spans.get(&sym::yield_expr).into_iter().flatten() {
+    for &span in spans.get(&sym::yield_expr).into_flat_iter() {
         if (!visitor.features.coroutines() && !span.allows_unstable(sym::coroutines))
             && (!visitor.features.gen_blocks() && !span.allows_unstable(sym::gen_blocks))
             && (!visitor.features.yield_expr() && !span.allows_unstable(sym::yield_expr))
@@ -607,7 +594,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 
     macro_rules! soft_gate_all_legacy_dont_use {
         ($feature:ident, $explain:literal) => {
-            for &span in spans.get(&sym::$feature).into_iter().flatten() {
+            for &span in spans.get(&sym::$feature).into_flat_iter() {
                 if !visitor.features.$feature() && !span.allows_unstable(sym::$feature) {
                     feature_warn(&visitor.sess, sym::$feature, span, $explain);
                 }
@@ -625,7 +612,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     soft_gate_all_legacy_dont_use!(try_blocks, "`try` blocks are unstable");
     // tidy-alphabetical-end
 
-    for &span in spans.get(&sym::min_specialization).into_iter().flatten() {
+    for &span in spans.get(&sym::min_specialization).into_flat_iter() {
         if !visitor.features.specialization()
             && !visitor.features.min_specialization()
             && !span.allows_unstable(sym::specialization)

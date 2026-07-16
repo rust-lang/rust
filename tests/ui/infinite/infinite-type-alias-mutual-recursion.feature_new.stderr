@@ -1,21 +1,21 @@
-error[E0271]: type mismatch resolving `_ == X1`
+error[E0275]: overflow evaluating the requirement `X2 == _`
   --> $DIR/infinite-type-alias-mutual-recursion.rs:12:1
    |
 LL | type X1 = X2;
-   | ^^^^^^^ types differ
+   | ^^^^^^^
 
-error[E0271]: type mismatch resolving `_ == X2`
+error[E0275]: overflow evaluating the requirement `X3 == _`
   --> $DIR/infinite-type-alias-mutual-recursion.rs:16:1
    |
 LL | type X2 = X3;
-   | ^^^^^^^ types differ
+   | ^^^^^^^
 
-error[E0271]: type mismatch resolving `_ == X3`
+error[E0275]: overflow evaluating the requirement `X1 == _`
   --> $DIR/infinite-type-alias-mutual-recursion.rs:19:1
    |
 LL | type X3 = X1;
-   | ^^^^^^^ types differ
+   | ^^^^^^^
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0275`.

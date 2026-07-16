@@ -63,8 +63,8 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
         // Unsafety in function parameter patterns (that can only be union destructuring)
         // cannot be inserted into an unsafe block, so even with `unsafe_op_in_unsafe_fn`
         // it is turned off for unsafe functions.
-        for &param in &body.params {
-            visitor.walk_pat(param);
+        for param in &body.params {
+            visitor.walk_pat(param.formal);
         }
     }
 
@@ -112,8 +112,8 @@ pub fn unsafe_operations_for_body(
     };
     let mut visitor = UnsafeVisitor::new(db, infer, body, def.into(), &mut visitor_callback);
     visitor.walk_expr(body.root_expr());
-    for &param in &body.params {
-        visitor.walk_pat(param);
+    for param in &body.params {
+        visitor.walk_pat(param.formal);
     }
 }
 

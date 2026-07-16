@@ -141,13 +141,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }: &EiiImpl,
     ) -> hir::attrs::EiiImpl {
         let resolution = if let Some(target) = known_eii_macro_resolution
-            && let Some(decl) = self.lower_eii_decl(
-                *node_id,
-                // the expect is ok here since we always generate this path in the eii macro.
-                eii_macro_path.segments.last().expect("at least one segment").ident,
-                target,
-            ) {
-            EiiImplResolution::Known(decl)
+            && let Some(foreign_item_did) = self.lower_path_simple_eii(*node_id, target)
+        {
+            EiiImplResolution::Known(foreign_item_did)
         } else if let Some(macro_did) = self.lower_path_simple_eii(*node_id, eii_macro_path) {
             EiiImplResolution::Macro(macro_did)
         } else {
@@ -227,7 +223,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind,
             vis_span,
             span: self.lower_span(i.span),
-            has_delayed_lints: !self.delayed_lints.is_empty(),
             eii: find_attr!(attrs, EiiImpls(..) | EiiDeclaration(..)),
         };
         self.arena.alloc(item)
@@ -249,11 +244,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::Use(use_tree) => {
                 // Start with an empty prefix.
-                let prefix = Path {
-                    segments: ThinVec::new(),
-                    span: use_tree.prefix.span.shrink_to_lo(),
-                    tokens: None,
-                };
+                let prefix =
+                    Path { segments: ThinVec::new(), span: use_tree.prefix.span.shrink_to_lo() };
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, attrs)
             }
@@ -483,7 +475,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .arena
                     .alloc_from_iter(impl_items.iter().map(|item| self.lower_impl_item_ref(item)));
 
-                let constness = self.lower_constness(*constness);
+                let constness = self.lower_constness(attrs, *constness);
 
                 hir::ItemKind::Impl(hir::Impl {
                     generics,
@@ -503,7 +495,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bounds,
                 items,
             }) => {
-                let constness = self.lower_constness(*constness);
+                let constness = self.lower_constness(attrs, *constness);
                 let impl_restriction = self.lower_impl_restriction(impl_restriction);
                 let ident = self.lower_ident(*ident);
                 let (generics, (safety, items, bounds)) = self.lower_generics(
@@ -534,7 +526,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             ItemKind::TraitAlias(TraitAlias { constness, ident, generics, bounds }) => {
-                let constness = self.lower_constness(*constness);
+                let constness = self.lower_constness(attrs, *constness);
                 let ident = self.lower_ident(*ident);
                 let (generics, bounds) = self.lower_generics(
                     generics,
@@ -568,7 +560,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Macro(ident, macro_def, macro_kinds)
             }
             ItemKind::Delegation(delegation) => {
-                let delegation_results = self.lower_delegation(delegation, id);
+                let delegation_results = self.lower_delegation(delegation);
                 hir::ItemKind::Fn {
                     sig: delegation_results.sig,
                     ident: delegation_results.ident,
@@ -610,7 +602,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let mut ident = tree.ident();
 
                 // First, apply the prefix to the path.
-                let mut path = Path { segments, span: path.span, tokens: None };
+                let mut path = Path { segments, span: path.span };
 
                 // Correctly resolve `self` imports.
                 if path.segments.len() > 1
@@ -645,7 +637,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                     _ => span_bug!(path.span, "bad glob res {:?}", res),
                 };
-                let path = Path { segments, span: path.span, tokens: None };
+                let path = Path { segments, span: path.span };
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
@@ -675,7 +667,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // `ListStem`).
 
                 let span = prefix.span.to(path.span);
-                let prefix = Path { segments, span, tokens: None };
+                let prefix = Path { segments, span };
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
@@ -700,7 +692,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             kind,
                             vis_span,
                             span: this.lower_span(use_tree.span()),
-                            has_delayed_lints: !this.delayed_lints.is_empty(),
                             eii: find_attr!(attrs, EiiImpls(..) | EiiDeclaration(..)),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))
@@ -788,7 +779,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind,
             vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),
-            has_delayed_lints: !self.delayed_lints.is_empty(),
         };
         self.arena.alloc(item)
     }
@@ -903,6 +893,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None => Ident::new(sym::integer(index), self.lower_span(f.span)),
             },
             vis_span: self.lower_span(f.vis.span),
+            mut_restriction: self.lower_mut_restriction(&f.mut_restriction),
             default: f
                 .default
                 .as_ref()
@@ -1055,7 +1046,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (*ident, generics, kind, ty.is_some())
             }
             AssocItemKind::Delegation(delegation) => {
-                let delegation_results = self.lower_delegation(delegation, i.id);
+                let delegation_results = self.lower_delegation(delegation);
                 let item_kind = hir::TraitItemKind::Fn(
                     delegation_results.sig,
                     hir::TraitFn::Provided(delegation_results.body_id),
@@ -1087,7 +1078,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind,
             span: self.lower_span(i.span),
             defaultness,
-            has_delayed_lints: !self.delayed_lints.is_empty(),
         };
         self.arena.alloc(item)
     }
@@ -1268,7 +1258,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             }
             AssocItemKind::Delegation(delegation) => {
-                let delegation_results = self.lower_delegation(delegation, i.id);
+                let delegation_results = self.lower_delegation(delegation);
                 (
                     delegation.ident,
                     (
@@ -1304,7 +1294,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             impl_kind,
             kind,
             span,
-            has_delayed_lints: !self.delayed_lints.is_empty(),
         };
         self.arena.alloc(item)
     }
@@ -1709,21 +1698,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             safety.into()
         };
 
-        let mut constness = self.lower_constness(h.constness);
-        if let Some(&attr_span) = find_attr!(attrs, RustcComptime(span) => span) {
-            match std::mem::replace(&mut constness, rustc_hir::Constness::Const { always: true }) {
-                rustc_hir::Constness::Const { always: true } => {
-                    unreachable!("lower_constness cannot produce comptime")
-                }
-                // A function can't be `const` and `comptime` at the same time
-                rustc_hir::Constness::Const { always: false } => {
-                    let Const::Yes(span) = h.constness else { unreachable!() };
-                    self.dcx().emit_err(ConstComptimeFn { span, attr_span });
-                }
-                // Good
-                rustc_hir::Constness::NotConst => {}
-            }
-        }
+        let constness = self.lower_constness(attrs, h.constness);
 
         hir::FnHeader { safety, asyncness, constness, abi: self.lower_extern(h.ext) }
     }
@@ -1785,11 +1760,30 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
     }
 
-    pub(super) fn lower_constness(&mut self, c: Const) -> hir::Constness {
-        match c {
+    /// Lowers constness or comptime attribute.
+    /// Whether `const` is allowed here is checked by ast validation.
+    /// Whether `comptime` is allowed here is checked by the `comptime` attribute parser.
+    pub(super) fn lower_constness(&mut self, attrs: &[hir::Attribute], c: Const) -> hir::Constness {
+        let mut constness = match c {
             Const::Yes(_) => hir::Constness::Const { always: false },
             Const::No => hir::Constness::NotConst,
+        };
+
+        if let Some(&attr_span) = find_attr!(attrs, RustcComptime(span) => span) {
+            match std::mem::replace(&mut constness, hir::Constness::Const { always: true }) {
+                hir::Constness::Const { always: true } => {
+                    unreachable!("lower_constness cannot produce comptime")
+                }
+                // A function can't be `const` and `comptime` at the same time
+                hir::Constness::Const { always: false } => {
+                    let Const::Yes(span) = c else { unreachable!() };
+                    self.dcx().emit_err(ConstComptimeFn { span, attr_span });
+                }
+                // Good
+                hir::Constness::NotConst => {}
+            }
         }
+        constness
     }
 
     pub(super) fn lower_safety(&self, s: Safety, default: hir::Safety) -> hir::Safety {
@@ -1800,11 +1794,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_impl_restriction(
-        &mut self,
-        r: &ImplRestriction,
-    ) -> &'hir hir::ImplRestriction<'hir> {
-        let kind = match &r.kind {
+    fn lower_restriction_kind(&mut self, kind: &RestrictionKind) -> hir::RestrictionKind<'hir> {
+        match kind {
             RestrictionKind::Unrestricted => hir::RestrictionKind::Unrestricted,
             RestrictionKind::Restricted { path, id, shorthand: _ } => {
                 let res = self.get_partial_res(*id);
@@ -1828,8 +1819,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::RestrictionKind::Unrestricted
                 }
             }
-        };
+        }
+    }
+
+    pub(super) fn lower_impl_restriction(
+        &mut self,
+        r: &ImplRestriction,
+    ) -> &'hir hir::ImplRestriction<'hir> {
+        let kind = self.lower_restriction_kind(&r.kind);
         self.arena.alloc(hir::ImplRestriction { kind, span: self.lower_span(r.span) })
+    }
+
+    pub(super) fn lower_mut_restriction(
+        &mut self,
+        r: &MutRestriction,
+    ) -> &'hir hir::MutRestriction<'hir> {
+        let kind = self.lower_restriction_kind(&r.kind);
+        self.arena.alloc(hir::MutRestriction { kind, span: self.lower_span(r.span) })
     }
 
     /// Return the pair of the lowered `generics` as `hir::Generics` and the evaluation of `f` with

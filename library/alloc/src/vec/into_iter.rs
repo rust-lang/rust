@@ -446,6 +446,47 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     }
 
     #[inline]
+    fn next_chunk_back<const N: usize>(&mut self) -> Result<[T; N], core::array::IntoIter<T, N>> {
+        let mut raw_ary = [const { MaybeUninit::uninit() }; N];
+
+        let len = self.len();
+
+        if T::IS_ZST {
+            if len < N {
+                self.forget_remaining_elements();
+                // Safety: ZSTs can be conjured ex nihilo, only the amount has to be correct
+                return Err(unsafe { array::IntoIter::new_unchecked(raw_ary, N - len..N) });
+            }
+
+            self.end = self.end.wrapping_byte_sub(N);
+            // Safety: ditto
+            return Ok(unsafe { MaybeUninit::array_assume_init(raw_ary) });
+        }
+
+        if len < N {
+            // Safety: `len` indicates that this many elements are available and we just checked that
+            // it fits into the array.
+            unsafe {
+                ptr::copy_nonoverlapping(self.ptr.as_ptr(), raw_ary.as_mut_ptr() as *mut T, len);
+                self.forget_remaining_elements();
+                return Err(array::IntoIter::new_unchecked(raw_ary, 0..len));
+            }
+        }
+
+        // Safety: `len` is larger than the array size. Copy a fixed amount here to fully initialize
+        // the array.
+        unsafe {
+            ptr::copy_nonoverlapping(
+                self.ptr.add(len - N).as_ptr(),
+                raw_ary.as_mut_ptr() as *mut T,
+                N,
+            );
+            self.end = self.end.sub(N);
+            Ok(MaybeUninit::array_assume_init(raw_ary))
+        }
+    }
+
+    #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let step_size = self.len().min(n);
         if T::IS_ZST {
@@ -511,7 +552,7 @@ where
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
 #[rustc_unsafe_specialization_marker]
-pub trait NonDrop {}
+trait NonDrop {}
 
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr
 // and thus we can't implement drop-handling

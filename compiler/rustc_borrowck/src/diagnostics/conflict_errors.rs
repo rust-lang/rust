@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 
 use std::iter;
 use std::ops::ControlFlow;
@@ -46,6 +46,7 @@ use tracing::{debug, instrument};
 use super::explain_borrow::{BorrowExplanation, LaterUseKind};
 use super::{DescribePlaceOpt, RegionName, RegionNameSource, UseSpans};
 use crate::borrow_set::{BorrowData, TwoPhaseActivation};
+use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
 use crate::diagnostics::{CapturedMessageOpt, call_kind, find_all_local_uses};
 use crate::{InitializationRequiringAction, MirBorrowckCtxt, WriteKind, borrowck_errors};
@@ -680,7 +681,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             hir::ExprKind::Call(callee, _)
                 if let &ty::FnDef(_, args) = typeck.node_type(callee.hir_id).kind() =>
             {
-                args
+                args.no_bound_vars().unwrap()
             }
             _ => return None,
         };
@@ -713,8 +714,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             ));
             let can_subst = |ty: Ty<'tcx>| {
                 // Normalize before comparing to see through type aliases and projections.
-                let old_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, generic_args);
-                let new_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, new_args);
+                let old_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, generic_args);
+                let new_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, new_args);
                 if let Ok(old_ty) = tcx.try_normalize_erasing_regions(
                     self.infcx.typing_env(self.infcx.param_env),
                     old_ty,
@@ -1461,15 +1462,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let cause = ObligationCause::misc(expr.span, self.mir_def_id());
             ocx.register_bound(cause, self.infcx.param_env, ty, clone_trait);
             let errors = ocx.evaluate_obligations_error_on_ambiguity();
-            if errors.iter().all(|error| {
-                match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
-                    Some(clause) => match clause.self_ty().skip_binder().kind() {
-                        ty::Adt(def, _) => def.did().is_local() && clause.def_id() == clone_trait,
-                        _ => false,
-                    },
-                    None => false,
-                }
-            }) {
+            if !errors.is_empty()
+                && errors.iter().all(|error| {
+                    match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
+                        Some(clause) => match clause.self_ty().skip_binder().kind() {
+                            ty::Adt(def, _) => {
+                                def.did().is_local() && clause.def_id() == clone_trait
+                            }
+                            _ => false,
+                        },
+                        None => false,
+                    }
+                })
+            {
                 let mut type_spans = vec![];
                 let mut types = FxIndexSet::default();
                 for clause in errors
@@ -3072,40 +3077,48 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 ),
             (
                 Some(name),
-                BorrowExplanation::MustBeValidFor {
-                    category:
-                        category @ (ConstraintCategory::Return(_)
-                        | ConstraintCategory::CallArgument(_)
-                        | ConstraintCategory::OpaqueType),
-                    from_closure: false,
-                    ref region_name,
-                    span,
-                    ..
-                },
-            ) if borrow_spans.for_coroutine() || borrow_spans.for_closure() => self
-                .report_escaping_closure_capture(
+                BorrowExplanation::MustBeValidFor { ref best_blame, ref region_name, .. },
+            ) if let OutlivesConstraint {
+                category:
+                    category @ (ConstraintCategory::Return(_)
+                    | ConstraintCategory::CallArgument(_)
+                    | ConstraintCategory::OpaqueType),
+                from_closure: false,
+                span,
+                ..
+            } = best_blame.constraint()
+                && (borrow_spans.for_coroutine() || borrow_spans.for_closure()) =>
+            {
+                self.report_escaping_closure_capture(
                     borrow_spans,
                     borrow_span,
                     region_name,
-                    category,
-                    span,
+                    *category,
+                    *span,
                     &format!("`{name}`"),
                     "function",
-                ),
+                )
+            }
             (
                 name,
                 BorrowExplanation::MustBeValidFor {
-                    category: ConstraintCategory::Assignment,
-                    from_closure: false,
+                    ref best_blame,
                     region_name:
                         RegionName {
                             source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name),
                             ..
                         },
-                    span,
                     ..
                 },
-            ) => self.report_escaping_data(borrow_span, &name, upvar_span, upvar_name, span),
+            ) if let OutlivesConstraint {
+                category: ConstraintCategory::Assignment,
+                from_closure: false,
+                span,
+                ..
+            } = best_blame.constraint() =>
+            {
+                self.report_escaping_data(borrow_span, &name, upvar_span, upvar_name, *span)
+            }
             (Some(name), explanation) => self.report_local_value_does_not_live_long_enough(
                 location,
                 &name,
@@ -3139,18 +3152,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         explanation: BorrowExplanation<'tcx>,
     ) -> Diag<'infcx> {
         let borrow_span = borrow_spans.var_or_use_path_span();
-        if let BorrowExplanation::MustBeValidFor {
-            category,
-            span,
-            ref opt_place_desc,
-            from_closure: false,
-            ..
-        } = explanation
+        if let BorrowExplanation::MustBeValidFor { best_blame, opt_place_desc, .. } = &explanation
+            && let OutlivesConstraint { category, span, from_closure: false, .. } =
+                best_blame.constraint()
             && let Err(diag) = self.try_report_cannot_return_reference_to_local(
                 borrow,
                 borrow_span,
-                span,
-                category,
+                *span,
+                *category,
                 opt_place_desc.as_ref(),
             )
         {
@@ -3352,14 +3361,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
     ) -> Diag<'infcx> {
-        if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
-            explanation
+        if let BorrowExplanation::MustBeValidFor { ref best_blame, .. } = explanation
+            && let OutlivesConstraint { category, span, from_closure: false, .. } =
+                best_blame.constraint()
         {
             if let Err(diag) = self.try_report_cannot_return_reference_to_local(
                 borrow,
                 proper_span,
-                span,
-                category,
+                *span,
+                *category,
                 None,
             ) {
                 return diag;

@@ -1,4 +1,3 @@
-#![allow(unused, clippy::print_literal, clippy::write_literal)]
 #![warn(clippy::print_in_format_impl)]
 use std::fmt::{Debug, Display, Error, Formatter};
 //@no-rustfix

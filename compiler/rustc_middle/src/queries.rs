@@ -64,7 +64,7 @@ use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
 use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModDefId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
 use rustc_index::IndexVec;
@@ -76,7 +76,7 @@ use rustc_session::cstore::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
 use rustc_session::lint::StableLintExpectationId;
-use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::def_id::{LOCAL_CRATE, ModId};
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
@@ -236,7 +236,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by `tcx.hir_visit_item_likes_in_module`.
     /// Avoid calling this query directly.
-    query hir_module_items(key: LocalModDefId) -> &'tcx rustc_middle::hir::ModuleItems {
+    query hir_module_items(key: LocalModId) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
         desc { "getting HIR module items in `{}`", tcx.def_path_str(key) }
         cache_on_disk
@@ -541,7 +541,7 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query lints_that_dont_need_to_run(_: ()) -> &'tcx UnordSet<LintId> {
+    query skippable_lints(_: ()) -> &'tcx UnordSet<LintId> {
         arena_cache
         // This depends on the lint store, which includes internal lints when the
         // untracked `-Zunstable-options` flag is set.
@@ -1156,7 +1156,7 @@ rustc_queries! {
     }
 
     /// Performs lint checking for the module.
-    query lint_mod(key: LocalModDefId) {
+    query lint_mod(key: LocalModId) {
         desc { "linting {}", describe_as_module(key, tcx) }
     }
 
@@ -1165,16 +1165,16 @@ rustc_queries! {
     }
 
     /// Checks the attributes in the module.
-    query check_mod_attrs(key: LocalModDefId) {
+    query check_mod_attrs(key: LocalModId) {
         desc { "checking attributes in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks for uses of unstable APIs in the module.
-    query check_mod_unstable_api_usage(key: LocalModDefId) {
+    query check_mod_unstable_api_usage(key: LocalModId) {
         desc { "checking for unstable API usage in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_privacy(key: LocalModDefId) {
+    query check_mod_privacy(key: LocalModId) {
         desc { "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
 
@@ -1189,7 +1189,7 @@ rustc_queries! {
         desc { "finding live symbols in crate" }
     }
 
-    query check_mod_deathness(key: LocalModDefId) {
+    query check_mod_deathness(key: LocalModId) {
         desc { "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
 
@@ -1380,7 +1380,7 @@ rustc_queries! {
         eval_always
         desc { "checking effective visibilities" }
     }
-    query check_private_in_public(module_def_id: LocalModDefId) {
+    query check_private_in_public(module_def_id: LocalModId) {
         desc {
             "checking for private elements in public interfaces for {}",
             describe_as_module(module_def_id, tcx)
@@ -1400,10 +1400,10 @@ rustc_queries! {
     }
 
     /// Generates a MIR body for the shim.
-    query mir_shims(key: ty::InstanceKind<'tcx>) -> &'tcx mir::Body<'tcx> {
+    query mir_shims(key: ty::ShimKind<'tcx>) -> &'tcx mir::Body<'tcx> {
         arena_cache
         desc {
-            "generating MIR shim for `{}`, instance={:?}",
+            "generating MIR shim for `{}`, kind={:?}",
             tcx.def_path_str(key.def_id()),
             key
         }
@@ -2122,6 +2122,36 @@ rustc_queries! {
         desc { "listing captured lifetimes for opaque `{}`", tcx.def_path_str(def_id) }
     }
 
+    /// For an opaque type or trait associated type, return the list of potentially live
+    /// (identity) generic args from the set of outlives bounds on that alias. Callers should
+    /// instantiate the returned args with the concrete args of the alias.
+    /// ```ignore (illustrative)
+    /// // Edition 2024: all args are captured
+    /// fn foo<'a, 'b, T: 'static>(&'a &'b T) -> impl Sized + 'a {}
+    /// fn bar<'a, 'b, T: 'static>(&'a &'b T) -> impl Sized + 'static {}
+    /// fn baz<'a, 'b, T: 'static>(&'a &'b T) -> impl Sized {}
+    /// ```
+    ///
+    /// In the above:
+    ///   - `foo` outlives `'a`, but we know that `'b: 'a` holds, so `'b` is *also* potentially live
+    ///     (and so is `T`, since `T: 'static` implies `T: 'a`)
+    ///   - `bar` outlives `'static`, so we know that no args are potentially live and we can return an empty set
+    ///   - `baz` has no outlives bound, so return `None` and let the caller decide what to do
+    query live_args_for_alias_from_outlives_bounds(kind: ty::AliasTyKind<'tcx>) -> &'tcx Option<ty::EarlyBinder<'tcx, Vec<ty::GenericArg<'tcx>>>> {
+        arena_cache
+        desc { "identifying live args for alias `{:?}`", kind }
+    }
+
+    /// For each region param of an alias, the identity args that are known to
+    /// outlive it given only the alias's declared where-clauses. Used for liveness:
+    /// these are the only args whose regions the underlying type of the alias
+    /// could capture while satisfying an outlives bound on that param.
+    query args_known_to_outlive_alias_params(def_id: DefId) -> &'tcx ty::EarlyBinder<'tcx, Vec<(ty::Region<'tcx>, Vec<ty::GenericArg<'tcx>>)>> {
+        arena_cache
+        desc { "computing the args known to outlive each region param of alias `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
     /// Computes the visibility of the provided `def_id`.
     ///
     /// If the item from the `def_id` doesn't have a visibility, it will panic. For example
@@ -2134,7 +2164,7 @@ rustc_queries! {
     /// ```
     ///
     /// In here, if you call `visibility` on `T`, it'll panic.
-    query visibility(def_id: DefId) -> ty::Visibility<DefId> {
+    query visibility(def_id: DefId) -> ty::Visibility<ModId> {
         desc { "computing visibility of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
         feedable
@@ -2212,7 +2242,8 @@ rustc_queries! {
         desc { "fetch intrinsic name if `{}` is an intrinsic", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
-    /// Returns the lang items defined in another crate by loading it from metadata.
+    /// Returns the lang items defined in all crates by loading them from metadata of dependencies
+    /// and collecting the ones from the current crate.
     query get_lang_items(_: ()) -> &'tcx LanguageItems {
         arena_cache
         eval_always
@@ -2661,13 +2692,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query doc_link_resolutions(def_id: DefId) -> &'tcx DocLinkResMap {
+    query doc_link_resolutions(def_id: ModId) -> &'tcx DocLinkResMap {
         eval_always
         desc { "resolutions for documentation links for a module" }
         separate_provide_extern
     }
 
-    query doc_link_traits_in_scope(def_id: DefId) -> &'tcx [DefId] {
+    query doc_link_traits_in_scope(def_id: ModId) -> &'tcx [DefId] {
         eval_always
         desc { "traits in scope for documentation links for a module" }
         separate_provide_extern

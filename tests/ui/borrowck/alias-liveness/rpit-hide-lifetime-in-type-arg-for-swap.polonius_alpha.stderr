@@ -1,0 +1,11 @@
+error[E0515]: cannot return value referencing local variable `x`
+  --> $DIR/rpit-hide-lifetime-in-type-arg-for-swap.rs:33:5
+   |
+LL |     hide(&lock, &mut res).swap(hide(&lock, &mut &x));
+   |                                                 -- `x` is borrowed here
+LL |     res
+   |     ^^^ returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

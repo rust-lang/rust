@@ -7,6 +7,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_middle::mir::Mutability;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_session::PointerAuthSchema;
 
 use crate::consts::const_alloc_to_gcc;
 use crate::context::{CodegenCx, new_array_type};
@@ -58,13 +59,19 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
     // or is it using a more efficient representation?
     match bytes.len() % 8 {
         0 => {
+            debug_assert_eq!(
+                bytes.len() % 8,
+                0,
+                "bytes length is not a multiple of 8, so bytes.as_chunks will have a remainder"
+            );
             let context = &cx.context;
             let byte_type = context.new_type::<u64>();
             let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 8);
             let elements: Vec<_> = bytes
-                .chunks_exact(8)
-                .map(|arr| {
-                    let arr: [u8; 8] = arr.try_into().unwrap();
+                .as_chunks::<8>()
+                .0
+                .iter()
+                .map(|&arr| {
                     context.new_rvalue_from_long(
                         byte_type,
                         // Since we are representing arbitrary byte runs as integers, we need to follow the target
@@ -79,13 +86,19 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
             context.new_array_constructor(None, typ, &elements)
         }
         4 => {
+            debug_assert_eq!(
+                bytes.len() % 4,
+                0,
+                "bytes length is not a multiple of 4, so bytes.as_chunks will have a remainder"
+            );
             let context = &cx.context;
             let byte_type = context.new_type::<u32>();
             let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 4);
             let elements: Vec<_> = bytes
-                .chunks_exact(4)
-                .map(|arr| {
-                    let arr: [u8; 4] = arr.try_into().unwrap();
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|&arr| {
                     context.new_rvalue_from_int(
                         byte_type,
                         match cx.sess().target.options.endian {
@@ -229,7 +242,13 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
         None
     }
 
-    fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Type<'gcc>) -> RValue<'gcc> {
+    fn scalar_to_backend_with_pac(
+        &self,
+        cv: Scalar,
+        layout: abi::Scalar,
+        ty: Type<'gcc>,
+        _schema: Option<&PointerAuthSchema>,
+    ) -> RValue<'gcc> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
             Scalar::Int(int) => {
@@ -278,7 +297,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                         }
                         value
                     }
-                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance),
+                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance, None),
                     GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx

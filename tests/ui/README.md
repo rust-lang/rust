@@ -1083,6 +1083,10 @@ See [Tracking issue for pin ergonomics #130494](https://github.com/rust-lang/rus
 
 See [`std::pin`](https://doc.rust-lang.org/std/pin/).
 
+## `tests/ui/pointer_authentication/`
+
+Tests for `-Zpointer-authentication` compiler flag.
+
 ## `tests/ui/precondition-checks/`
 
 Exercises on some unsafe precondition checks.
@@ -1351,6 +1355,10 @@ Generic collection of tests for suggestions, when no more specific directories a
 
 **FIXME**: Some overlap with `tests/ui/did_you_mean/`, that directory should probably be moved under here.
 
+## `tests/ui/supertrait-shadowing/`
+
+Tests for supertrait item shadowing (RFC 3624).
+
 ## `tests/ui/svh/`: Strict Version Hash
 
 Tests on the *Strict Version Hash* (SVH, also known as the "crate hash").
@@ -1578,6 +1586,13 @@ See [Variance | Reference](https://doc.rust-lang.org/reference/subtyping.html#va
 Tests on `enum` variants.
 
 **FIXME**: Should be rehomed with `tests/ui/enum/`.
+
+## `tests/ui/view-types`
+
+Anything related to view types.
+
+See
+[Tracking Issue for view types](https://github.com/rust-lang/rust/issues/155938).
 
 ## `tests/ui/wasm/`
 

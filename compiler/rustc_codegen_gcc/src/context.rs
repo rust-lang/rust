@@ -16,9 +16,9 @@ use rustc_middle::ty::layout::{
     LayoutOfHelpers,
 };
 use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
-use rustc_session::Session;
 #[cfg(feature = "master")]
 use rustc_session::config::DebugInfo;
+use rustc_session::{PointerAuthSchema, Session};
 use rustc_span::{DUMMY_SP, Span, Symbol, respan};
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, TlsModel, X86Abi};
 
@@ -398,7 +398,11 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
+    fn get_fn_addr(
+        &self,
+        instance: Instance<'tcx>,
+        _pointer_auth_schema: Option<&PointerAuthSchema>,
+    ) -> RValue<'gcc> {
         let func_name = self.tcx.symbol_name(instance).name;
 
         let func = if let Some(variable) = self.get_declared_value(func_name) {

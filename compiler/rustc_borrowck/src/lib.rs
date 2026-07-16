@@ -7,6 +7,7 @@
 #![feature(file_buffered)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
@@ -48,6 +49,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_trait_selection::traits::query::type_op::{QueryTypeOp, TypeOp, TypeOpOutput};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -323,7 +325,6 @@ fn borrowck_collect_region_constraints<'tcx>(
     let input_promoted: &IndexSlice<_, _> = &promoted.borrow();
     if let Some(e) = input_body.tainted_by_errors {
         infcx.set_tainted_by_errors(e);
-        root_cx.set_tainted_by_errors(e);
     }
 
     // Replace all regions with fresh inference variables. This
@@ -571,14 +572,15 @@ fn borrowck_check_region_constraints<'tcx>(
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
     mbcx.lint_unused_mut();
-    if let Some(guar) = mbcx.emit_errors() {
-        mbcx.root_cx.set_tainted_by_errors(guar);
-    }
 
     let result = PropagatedBorrowCheckResults {
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
     };
+
+    if let Some(guar) = mbcx.diags_buffer.emit_errors().or(infcx.tainted_by_errors()) {
+        root_cx.set_tainted_by_errors(guar);
+    }
 
     if let Some(consumer) = &mut root_cx.consumer {
         consumer.insert_body(
@@ -707,6 +709,14 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
 
         next_region
     }
+
+    fn fully_perform<Q: QueryTypeOp<'tcx> + TypeVisitable<TyCtxt<'tcx>>>(
+        &self,
+        q: Q,
+        span: Span,
+    ) -> Result<TypeOpOutput<'tcx, ty::ParamEnvAnd<'tcx, Q>>, ErrorGuaranteed> {
+        self.param_env.and(q).fully_perform(&self.infcx, self.root_def_id, span)
+    }
 }
 
 impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
@@ -718,7 +728,7 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
 }
 
 pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
-    root_cx: &'a mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &'a BorrowCheckRootCtxt<'tcx>,
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
@@ -1928,7 +1938,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::Never
                     | ty::Tuple(_)
                     | ty::UnsafeBinder(_)
-                    | ty::Alias(_)
+                    | ty::Alias(_, _)
                     | ty::Param(_)
                     | ty::Bound(_, _)
                     | ty::Infer(_)
@@ -1970,7 +1980,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::UnsafeBinder(_)
-                    | ty::Alias(_)
+                    | ty::Alias(_, _)
                     | ty::Param(_)
                     | ty::Bound(_, _)
                     | ty::Infer(_)

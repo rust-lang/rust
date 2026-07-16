@@ -44,7 +44,6 @@ pub mod hardwired {
             DEPRECATED_WHERE_CLAUSE_LOCATION,
             DUPLICATE_FEATURES,
             DUPLICATE_MACRO_ATTRIBUTES,
-            ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
             ELIDED_LIFETIMES_IN_PATHS,
             EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
             EXPORTED_PRIVATE_DEPENDENCIES,
@@ -72,6 +71,7 @@ pub mod hardwired {
             MALFORMED_DIAGNOSTIC_ATTRIBUTES,
             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
             META_VARIABLE_MISUSE,
+            METHOD_CALL_ON_DIVERGING_INFER_VAR,
             MISPLACED_DIAGNOSTIC_ATTRIBUTES,
             MISSING_ABI,
             MISSING_UNSAFE_ON_EXTERN,
@@ -4763,48 +4763,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `elided_lifetimes_in_associated_constant` lint detects elided lifetimes
-    /// in associated constants when there are other lifetimes in scope. This was
-    /// accidentally supported, and this lint was later relaxed to allow eliding
-    /// lifetimes to `'static` when there are no lifetimes in scope.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(elided_lifetimes_in_associated_constant)]
-    ///
-    /// struct Foo<'a>(&'a ());
-    ///
-    /// impl<'a> Foo<'a> {
-    ///     const STR: &str = "hello, world";
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous version of Rust
-    ///
-    /// Implicit static-in-const behavior was decided [against] for associated
-    /// constants because of ambiguity. This, however, regressed and the compiler
-    /// erroneously treats elided lifetimes in associated constants as lifetime
-    /// parameters on the impl.
-    ///
-    /// This is a [future-incompatible] lint to transition this to a
-    /// hard error in the future.
-    ///
-    /// [against]: https://github.com/rust-lang/rust/issues/38831
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
-    Deny,
-    "elided lifetimes cannot be used in associated constants in impls",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #115010),
-    };
-}
-
-declare_lint! {
     /// The `private_macro_use` lint detects private macros that are imported
     /// with `#[macro_use]`.
     ///
@@ -5577,4 +5535,47 @@ declare_lint! {
     Allow,
     "usage of `unsafe` code and other potentially unsound constructs",
     @eval_always = true
+}
+
+declare_lint! {
+    /// The `method_call_on_diverging_infer_var` lint detects situations in which a method is called on a value resulting from a never-to-any coercion,
+    /// without necessary information to infer a type for it.
+    ///
+    /// ### Example
+    ///
+    #[cfg_attr(bootstrap, doc = "```rust,compile_fail")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,no_run")]
+    /// fn main() {
+    ///     let x = panic!();
+    ///     x.clone();
+    /// }
+    #[doc = "```"]
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust does not generally allow calling methods on values which do not have a known type,
+    /// such a result of a never-to-any coercion with no type specified.
+    ///
+    /// To aid with transition of code calling methods on `Infallible` after changing `Infallible` to be an alias for `!`, rustc *temporarily* allows such calls.
+    /// This will (once again) become an error in the future.
+    ///
+    /// Thanks to never-to-any coercion you can replace method calls on `!` with the use of the `!` variable, or an `as` cast to an explicit type:
+    ///
+    /// ```diff
+    /// - x.clone()
+    /// + x
+    /// ```
+    /// ```diff
+    /// - result.map(|x| x.convert_error())?;
+    /// + result.map(|x| x as ErrorType)?;
+    /// ```
+    pub METHOD_CALL_ON_DIVERGING_INFER_VAR,
+    Warn,
+    "detects method calls on a result of never-to-any coercion",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #156047),
+        report_in_deps: true,
+    };
 }

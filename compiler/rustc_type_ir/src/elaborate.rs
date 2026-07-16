@@ -53,14 +53,16 @@ pub trait Elaboratable<I: Interner> {
 
 pub struct ClauseWithSupertraitSpan<I: Interner> {
     pub clause: I::Clause,
-    // Span of the supertrait predicatae that lead to this clause.
+    // Span of the supertrait predicate that lead to this clause.
     pub supertrait_span: I::Span,
 }
+
 impl<I: Interner> ClauseWithSupertraitSpan<I> {
     pub fn new(clause: I::Clause, span: I::Span) -> Self {
         ClauseWithSupertraitSpan { clause, supertrait_span: span }
     }
 }
+
 impl<I: Interner> Elaboratable<I> for ClauseWithSupertraitSpan<I> {
     fn predicate(&self) -> <I as Interner>::Predicate {
         self.clause.as_predicate()
@@ -276,7 +278,7 @@ fn elaborate_component_to_clause<I: Interner>(
             // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
             // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
             Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
-                alias_ty.to_ty(cx),
+                alias_ty.to_ty(cx, ty::IsRigid::No),
                 outlives_region,
             )))
         }
@@ -414,7 +416,10 @@ pub fn elaborate_outlives_assumptions<I: Interner>(
                         }
 
                         Component::Alias(alias_ty) => {
-                            collected.insert(ty::OutlivesPredicate(alias_ty.to_ty(cx).into(), r2));
+                            collected.insert(ty::OutlivesPredicate(
+                                alias_ty.to_ty(cx, ty::IsRigid::No).into(),
+                                r2,
+                            ));
                         }
 
                         Component::UnresolvedInferenceVariable(_) | Component::EscapingAlias(_) => {

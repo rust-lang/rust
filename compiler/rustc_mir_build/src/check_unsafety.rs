@@ -1093,8 +1093,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         body_target_features,
         assignment_info: None,
         in_union_destructure: false,
-        // FIXME(#132279): we're clearly in a body here.
-        typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
+        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
         inside_adt: false,
         warnings: &mut warnings,
         suggest_unsafe_block: true,

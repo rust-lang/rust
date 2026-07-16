@@ -355,6 +355,30 @@ fn f() {
     }
 
     #[test]
+    fn varargs_fn_pointer() {
+        check_diagnostics(
+            r#"
+struct Funcs {
+    f: unsafe extern "C" fn(u8, u8, ...) -> i32,
+    g: unsafe extern "C" fn(...) -> i32,
+}
+
+fn f(funcs: Funcs) {
+    unsafe {
+        (funcs.f)(0, 1);
+        (funcs.f)(0, 1, 2);
+        (funcs.f)(0);
+                 //^ error: expected 2 arguments, found 1
+        (funcs.g)();
+        (funcs.g)(0);
+        (funcs.g)(0, 1);
+    }
+}
+        "#,
+        )
+    }
+
+    #[test]
     fn arg_count_lambda() {
         check_diagnostics(
             r#"
@@ -513,6 +537,23 @@ pub fn repro<T: A>() {
     Foo.confused_name();
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn cfg_inside_macro_inside_arg() {
+        check_diagnostics(
+            r#"
+fn foo() {}
+
+macro_rules! make_X {
+    () => { #[cfg(false)] X };
+}
+
+fn main() {
+    foo(make_X!());
+}
+        "#,
         );
     }
 }

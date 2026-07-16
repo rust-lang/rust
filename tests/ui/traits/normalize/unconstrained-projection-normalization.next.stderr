@@ -22,11 +22,11 @@ LL |
 LL |     type Assoc = T;
    |                  ^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `Every::Assoc`
+note: required by a bound in `Every::Assoc`
   --> $DIR/unconstrained-projection-normalization.rs:11:5
    |
 LL |     type Assoc;
-   |     ^^^^^^^^^^^ required by the implicit `Sized` requirement on this associated type in `Every::Assoc`
+   |     ^^^^^^^^^^^ required by this bound in `Every::Assoc`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<T: ?Sized> Every for Thing {

@@ -3,7 +3,7 @@ use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_context};
+use clippy_utils::source::{SpanExt, snippet, snippet_with_context};
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_and_count_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_expr_temporary_value, return_ty, sym};
@@ -217,7 +217,7 @@ fn check_into_iter_call_arg(
         && let parent_ty = cx.typeck_results().expr_ty(parent)
         && implements_trait(cx, parent_ty, iterator_trait_id, &[])
         && let Some(item_ty) = get_iterator_item_ty(cx, parent_ty)
-        && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
+        && let Some(receiver_snippet) = receiver.span.get_text(cx)
         // If the receiver is a `Cow`, we can't remove the `into_owned` generally, see https://github.com/rust-lang/rust-clippy/issues/13624.
         && !cx.typeck_results().expr_ty(receiver).is_diag_item(cx, sym::Cow)
         // Calling `iter()` on a temporary object can lead to false positives. #14242
@@ -313,8 +313,8 @@ fn check_string_from_utf8<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, 
 fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, receiver: &Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
         && let Some((sym::split, argument_expr)) = get_fn_name_and_arg(cx, parent)
-        && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
-        && let Some(arg_snippet) = argument_expr.span.get_source_text(cx)
+        && let Some(receiver_snippet) = receiver.span.get_text(cx)
+        && let Some(arg_snippet) = argument_expr.span.get_text(cx)
     {
         // We may end-up here because of an expression like `x.to_string().split(…)` where the type of `x`
         // implements `AsRef<str>` but does not implement `Deref<Target = str>`. In this case, we have to
@@ -480,8 +480,8 @@ fn get_input_traits_and_projections<'tcx>(
 ) -> (Vec<TraitPredicate<'tcx>>, Vec<ProjectionPredicate<'tcx>>) {
     let mut trait_predicates = Vec::new();
     let mut projection_predicates = Vec::new();
-    for predicate in cx.tcx.param_env(callee_def_id).caller_bounds() {
-        match predicate.kind().skip_binder() {
+    for clause in cx.tcx.param_env(callee_def_id).caller_bounds() {
+        match clause.kind().skip_binder() {
             ClauseKind::Trait(trait_predicate) if trait_predicate.trait_ref.self_ty() == input => {
                 trait_predicates.push(trait_predicate);
             },
@@ -543,20 +543,16 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             return false;
                         }
 
-                        let mut trait_predicates =
-                            cx.tcx
-                                .param_env(callee_def_id)
-                                .caller_bounds()
-                                .iter()
-                                .filter(|predicate| {
-                                    if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                                        && trait_predicate.trait_ref.self_ty() == param_ty
-                                    {
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                });
+                        let mut trait_clauses =
+                            cx.tcx.param_env(callee_def_id).caller_bounds().iter().filter(|clause| {
+                                if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
+                                    && trait_predicate.trait_ref.self_ty() == param_ty
+                                {
+                                    true
+                                } else {
+                                    false
+                                }
+                            });
 
                         let new_subst = cx
                             .tcx
@@ -568,12 +564,12 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                                 }
                             }));
 
-                        if trait_predicates.any(|predicate| {
-                            let predicate = bound_fn_sig
-                                .rebind(predicate)
+                        if trait_clauses.any(|clause| {
+                            let clause = bound_fn_sig
+                                .rebind(clause)
                                 .instantiate(cx.tcx, new_subst)
                                 .skip_norm_wip();
-                            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
+                            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, clause);
                             !cx.tcx
                                 .infer_ctxt()
                                 .build(cx.typing_mode())
@@ -712,7 +708,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
         && let arg_ty = arg_ty.peel_refs()
         // For now we limit this lint to `String` and `Vec`.
         && (is_str_and_string(cx, arg_ty, original_arg_ty) || is_slice_and_vec(cx, arg_ty, original_arg_ty))
-        && let Some(snippet) = caller.span.get_source_text(cx)
+        && let Some(snippet) = caller.span.get_text(cx)
     {
         span_lint_and_sugg(
             cx,

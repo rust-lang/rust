@@ -45,6 +45,8 @@ fn main() {
     //~[edition2021]^ manual_c_str_literals
     CStr::from_bytes_with_nul(b"foo\\0sdsd\0").unwrap();
     //~[edition2021]^ manual_c_str_literals
+    CStr::from_bytes_with_nul(b"foo\\0").unwrap();
+    CStr::from_bytes_with_nul(b"bar\\x00").unwrap();
     CStr::from_bytes_with_nul(br"foo\\0sdsd\0").unwrap();
     CStr::from_bytes_with_nul(br"foo\x00").unwrap();
     CStr::from_bytes_with_nul(br##"foo#a\0"##).unwrap();
@@ -53,8 +55,12 @@ fn main() {
     //~[edition2021]^ manual_c_str_literals
     unsafe { CStr::from_ptr(b"foo\0".as_ptr() as *const _) };
     //~[edition2021]^ manual_c_str_literals
+    unsafe { CStr::from_ptr(b"foo\\0".as_ptr().cast()) };
+    unsafe { CStr::from_ptr(b"bar\\x00".as_ptr().cast()) };
     let _: *const _ = b"foo\0".as_ptr();
     //~[edition2021]^ manual_c_str_literals
+    let _: *const _ = b"foo\\0".as_ptr();
+    let _: *const _ = b"bar\\x00".as_ptr();
     let _: *const _ = "foo\0".as_ptr();
     //~[edition2021]^ manual_c_str_literals
     let _: *const _ = "foo".as_ptr(); // not a C-string

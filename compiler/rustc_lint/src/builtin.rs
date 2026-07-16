@@ -1192,7 +1192,7 @@ impl UnreachablePub {
                 && let parent_parent = cx
                     .tcx
                     .parent_module_from_def_id(cx.tcx.parent_module_from_def_id(def_id).into())
-                && *restricted_did == parent_parent.to_local_def_id()
+                && *restricted_did == parent_parent
                 && !restricted_did.to_def_id().is_crate_root()
             {
                 "pub(super)"
@@ -1325,7 +1325,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         // FIXME(generic_const_exprs): Revisit this before stabilization.
         // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
         let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
-        if ty.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
+        if ty.has_type_flags(ty::TypeFlags::HAS_CONST_ALIAS)
             && cx.tcx.features().generic_const_exprs()
         {
             return;
@@ -2438,7 +2438,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
             // Check if this ADT has a constrained layout (like `NonNull` and friends).
             if let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(ty)) {
-                if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair { a: scalar, .. } =
                     &layout.backend_repr
                 {
                     let range = scalar.valid_range(cx);

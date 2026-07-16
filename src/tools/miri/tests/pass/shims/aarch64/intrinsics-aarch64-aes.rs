@@ -1,6 +1,7 @@
 // We're testing aarch64 AES target specific features.
 //@only-target: aarch64
 //@compile-flags: -C target-feature=+neon,+aes
+//@run-native
 
 use std::arch::aarch64::*;
 use std::arch::is_aarch64_feature_detected;

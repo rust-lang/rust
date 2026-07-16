@@ -1,10 +1,9 @@
-use rustc_abi::{CanonAbi, FieldIdx, Size};
+use rustc_abi::{FieldIdx, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::Single;
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::Arch;
 
 use self::helpers::bool_to_simd_element;
@@ -29,10 +28,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx, EmulateItemResult> {
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.").unwrap();
@@ -44,11 +42,10 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
             "addcarry.32" | "addcarry.64" | "subborrow.32" | "subborrow.64" => {
                 if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != Arch::X86_64 {
-                    return interp_ok(EmulateItemResult::NotSupported);
+                    return interp_ok(false);
                 }
 
-                let [cb_in, a, b] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [cb_in, a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
                 let op = if unprefixed_name.starts_with("add") {
                     mir::BinOp::AddWithOverflow
                 } else {
@@ -66,7 +63,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the instruction behaves like a no-op, so it is always safe to call the
             // intrinsic.
             "sse2.pause" => {
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_unadjusted(link_name, args)?;
                 // Only exhibit the spin-loop hint behavior when SSE2 is enabled.
                 if this.tcx.sess.unstable_target_features.contains(&Symbol::intern("sse2")) {
                     this.yield_active_thread();
@@ -85,83 +82,74 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     len = 8;
                 }
 
-                let [left, right, imm] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right, imm] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 pclmulqdq(this, left, right, imm, dest, len)?;
             }
 
             name if name.starts_with("bmi.") => {
-                return bmi::EvalContextExt::emulate_x86_bmi_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
+                return bmi::EvalContextExt::emulate_x86_bmi_intrinsic(this, link_name, args, dest);
             }
             // The GFNI extension does not get its own namespace.
             // Check for instruction names instead.
             name if name.starts_with("vgf2p8affine") || name.starts_with("vgf2p8mulb") => {
                 return gfni::EvalContextExt::emulate_x86_gfni_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("sha") => {
-                return sha::EvalContextExt::emulate_x86_sha_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
+                return sha::EvalContextExt::emulate_x86_sha_intrinsic(this, link_name, args, dest);
             }
             name if name.starts_with("sse.") => {
-                return sse::EvalContextExt::emulate_x86_sse_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
+                return sse::EvalContextExt::emulate_x86_sse_intrinsic(this, link_name, args, dest);
             }
             name if name.starts_with("sse2.") => {
                 return sse2::EvalContextExt::emulate_x86_sse2_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("sse3.") => {
                 return sse3::EvalContextExt::emulate_x86_sse3_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("ssse3.") => {
                 return ssse3::EvalContextExt::emulate_x86_ssse3_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("sse41.") => {
                 return sse41::EvalContextExt::emulate_x86_sse41_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("sse42.") => {
                 return sse42::EvalContextExt::emulate_x86_sse42_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("aesni.") => {
                 return aesni::EvalContextExt::emulate_x86_aesni_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("avx.") => {
-                return avx::EvalContextExt::emulate_x86_avx_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
+                return avx::EvalContextExt::emulate_x86_avx_intrinsic(this, link_name, args, dest);
             }
             name if name.starts_with("avx2.") => {
                 return avx2::EvalContextExt::emulate_x86_avx2_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
             name if name.starts_with("avx512.") => {
                 return avx512::EvalContextExt::emulate_x86_avx512_intrinsic(
-                    this, link_name, abi, args, dest,
+                    this, link_name, args, dest,
                 );
             }
 
-            _ => return interp_ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(false),
         }
-        interp_ok(EmulateItemResult::NeedsReturn)
+        interp_ok(true)
     }
 }
 
@@ -879,33 +867,39 @@ fn mpsadbw<'tcx>(
     assert_eq!(left.layout.size, dest.layout.size);
 
     let (num_chunks, op_items_per_chunk, left) = split_simd_to_128bit_chunks(ecx, left)?;
+    assert!(num_chunks <= 2);
+
     let (_, _, right) = split_simd_to_128bit_chunks(ecx, right)?;
     let (_, dest_items_per_chunk, dest) = split_simd_to_128bit_chunks(ecx, dest)?;
 
     assert_eq!(op_items_per_chunk, dest_items_per_chunk.strict_mul(2));
 
     let imm = ecx.read_scalar(imm)?.to_uint(imm.layout.size)?;
-    // Bit 2 of `imm` specifies the offset for indices of `left`.
-    // The offset is 0 when the bit is 0 or 4 when the bit is 1.
-    let left_offset = u64::try_from((imm >> 2) & 1).unwrap().strict_mul(4);
-    // Bits 0..=1 of `imm` specify the offset for indices of
-    // `right` in blocks of 4 elements.
-    let right_offset = u64::try_from(imm & 0b11).unwrap().strict_mul(4);
 
     for i in 0..num_chunks {
         let left = ecx.project_index(&left, i)?;
         let right = ecx.project_index(&right, i)?;
         let dest = ecx.project_index(&dest, i)?;
 
+        // The first 128-bit chunk uses the low 3 bits of IMM, the second chunk uses bits 3..6.
+        let lane_imm = imm.strict_shr(i.strict_mul(3).try_into().unwrap());
+
+        // Bit 2 of `lane_imm` specifies the offset for indices of `left`.
+        // The offset is 0 when the bit is 0 or 4 when the bit is 1.
+        let left_base = u64::try_from((lane_imm >> 2) & 1).unwrap().strict_mul(4);
+        // Bits 0..=1 of `lane_imm` specify the offset for indices of
+        // `right` in blocks of 4 elements.
+        let right_base = u64::try_from(lane_imm & 0b11).unwrap().strict_mul(4);
+
         for j in 0..dest_items_per_chunk {
-            let left_offset = left_offset.strict_add(j);
+            let left_offset = left_base.strict_add(j);
             let mut res: u16 = 0;
             for k in 0..4 {
                 let left = ecx
                     .read_scalar(&ecx.project_index(&left, left_offset.strict_add(k))?)?
                     .to_u8()?;
                 let right = ecx
-                    .read_scalar(&ecx.project_index(&right, right_offset.strict_add(k))?)?
+                    .read_scalar(&ecx.project_index(&right, right_base.strict_add(k))?)?
                     .to_u8()?;
                 res = res.strict_add(left.abs_diff(right).into());
             }
@@ -1110,7 +1104,8 @@ fn permute<'tcx>(
 /// Shuffle elements from *two* source registers (`left` and `right`) using
 /// the corresponding index in `indices`, and store the results in `dest`.
 ///
-/// For a vector with `N` lanes, the low `log2(N)` bits of each index select a
+/// For indexing, we basically concatenate `left` and `right`, and index into the concatenation.
+/// More precisely: For a vector with `N` lanes, the low `log2(N)` bits of each index select a
 /// lane within a source vector. Bit `log2(N)` selects the source vector (`0` =>
 /// `left`, `1` => `right`), and all higher bits are ignored.
 /// Equivalently, lane `i` of the result is copied from

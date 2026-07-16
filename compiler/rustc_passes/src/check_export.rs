@@ -56,7 +56,7 @@ impl<'tcx> ExportableItemCollector<'tcx> {
         if has_attr && !is_pub {
             let vis = visibilities.effective_vis(def_id).cloned().unwrap_or_else(|| {
                 EffectiveVisibility::from_vis(Visibility::Restricted(
-                    self.tcx.parent_module_from_def_id(def_id).to_local_def_id(),
+                    self.tcx.parent_module_from_def_id(def_id),
                 ))
             });
             let vis = vis.at_level(Level::Direct);
@@ -147,7 +147,9 @@ impl<'tcx> Visitor<'tcx> for ExportableItemCollector<'tcx> {
             hir::ItemKind::Impl(impl_) if impl_.of_trait.is_none() => {
                 unreachable!();
             }
-            _ => self.report_wrong_site(def_id),
+            _ => {
+                self.tcx.dcx().delayed_bug("Target is checked by attribute parser");
+            }
         }
     }
 
@@ -312,7 +314,7 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
             | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::UnsafeBinder(_)
-            | ty::Alias(ty::AliasTy { kind: ty::AliasTyKind::Opaque { .. }, .. }) => {
+            | ty::Alias(_, ty::AliasTy { kind: ty::AliasTyKind::Opaque { .. }, .. }) => {
                 return ControlFlow::Break(ty);
             }
 

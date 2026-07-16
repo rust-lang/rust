@@ -4,7 +4,7 @@
 //@[noopt] compile-flags: -Zmir-opt-level=0
 //@ min-llvm-version: 22
 //@ compile-flags: --check-cfg=cfg(target_has_reliable_f16)
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![cfg_attr(target_has_reliable_f16, feature(f16))]
 

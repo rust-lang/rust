@@ -17,7 +17,7 @@
 use std::{borrow::Cow, cell::OnceCell, convert::Infallible, fmt, ops::ControlFlow};
 
 use ::tt::TextRange;
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use intern::Interned;
@@ -30,7 +30,6 @@ use syntax_bridge::DocCommentDesugarMode;
 
 use crate::{
     AstId,
-    db::ExpandDatabase,
     mod_path::ModPath,
     span_map::SpanMap,
     tt::{self, TopSubtree},
@@ -293,7 +292,7 @@ impl Attr {
     /// Parses this attribute as a token tree consisting of comma separated paths.
     pub fn parse_path_comma_token_tree<'a>(
         &'a self,
-        db: &'a dyn ExpandDatabase,
+        db: &'a dyn SourceDatabase,
     ) -> Option<impl Iterator<Item = (ModPath, Span, tt::TokenTreesView<'a>)> + 'a> {
         let args = self.token_tree_value()?;
 
@@ -305,7 +304,7 @@ impl Attr {
 }
 
 fn parse_path_comma_token_tree<'a>(
-    db: &'a dyn ExpandDatabase,
+    db: &'a dyn SourceDatabase,
     args: &'a tt::TopSubtree,
 ) -> impl Iterator<Item = (ModPath, Span, tt::TokenTreesView<'a>)> {
     args.token_trees()
@@ -366,7 +365,7 @@ impl AttrId {
     /// to `cfg_attr`) and its [`ast::Meta`].
     pub fn find_attr_range<N: ast::HasAttrs>(
         self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         krate: Crate,
         owner: AstId<N>,
     ) -> (ast::Attr, ast::Meta) {
@@ -375,12 +374,28 @@ impl AttrId {
 
     /// Returns the containing `ast::Attr` (note that it may contain other attributes as well due
     /// to `cfg_attr`) and its [`ast::Meta`].
+    ///
+    /// Assumes that the attribute syntax node was present in the
+    /// original file (not speculatively expanded macro output).
     pub fn find_attr_range_with_source(
         self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         krate: Crate,
         owner: &dyn ast::HasAttrs,
     ) -> (ast::Attr, ast::Meta) {
+        self.find_attr_range_with_source_opt(db, krate, owner).unwrap_or_else(|| {
+            panic!("used an incorrect `AttrId`; crate={krate:?}, attr_id={self:?}");
+        })
+    }
+
+    /// Returns the containing `ast::Attr` (note that it may contain other attributes as well due
+    /// to `cfg_attr`) and its [`ast::Meta`].
+    pub(crate) fn find_attr_range_with_source_opt(
+        self,
+        db: &dyn SourceDatabase,
+        krate: Crate,
+        owner: &dyn ast::HasAttrs,
+    ) -> Option<(ast::Attr, ast::Meta)> {
         let cfg_options = OnceCell::new();
         let mut index = 0;
         let result = collect_item_tree_attrs(
@@ -395,16 +410,14 @@ impl AttrId {
             },
         );
         match result {
-            Some(Either::Left(it)) => it,
-            _ => {
-                panic!("used an incorrect `AttrId`; crate={krate:?}, attr_id={self:?}");
-            }
+            Some(Either::Left(it)) => Some(it),
+            _ => None,
         }
     }
 
     pub fn find_derive_range(
         self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         krate: Crate,
         owner: AstId<ast::Adt>,
         derive_index: u32,

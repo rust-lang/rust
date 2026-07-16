@@ -324,7 +324,7 @@ fn check_predicates<'tcx>(
     impl2_args: GenericArgsRef<'tcx>,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl1_predicates: Vec<_> = traits::elaborate(
+    let impl1_clauses: Vec<(ty::Clause<'_>, _)> = traits::elaborate(
         tcx,
         tcx.predicates_of(impl1_def_id)
             .instantiate(tcx, impl1_args)
@@ -333,7 +333,7 @@ fn check_predicates<'tcx>(
     )
     .collect();
 
-    let mut impl2_predicates = if impl2_node.is_from_trait() {
+    let mut impl2_clauses: Vec<ty::Clause<'_>> = if impl2_node.is_from_trait() {
         // Always applicable traits have to be always applicable without any
         // assumptions.
         Vec::new()
@@ -343,11 +343,11 @@ fn check_predicates<'tcx>(
             tcx.predicates_of(impl2_node.def_id())
                 .instantiate(tcx, impl2_args)
                 .into_iter()
-                .map(|(c, _s)| c.skip_norm_wip().as_predicate()),
+                .map(|(c, _s)| c.skip_norm_wip()),
         )
         .collect()
     };
-    debug!(?impl1_predicates, ?impl2_predicates);
+    debug!(?impl1_clauses, ?impl2_clauses);
 
     // Since impls of always applicable traits don't get to assume anything, we
     // can also assume their supertraits apply.
@@ -364,7 +364,7 @@ fn check_predicates<'tcx>(
     // which is sound because we forbid impls like the following
     //
     // impl<D: Debug> AlwaysApplicable for D { }
-    let always_applicable_traits = impl1_predicates
+    let always_applicable_traits = impl1_clauses
         .iter()
         .copied()
         .filter(|&(clause, _span)| {
@@ -373,7 +373,7 @@ fn check_predicates<'tcx>(
                 Some(TraitSpecializationKind::AlwaysApplicable)
             )
         })
-        .map(|(c, _span)| c.as_predicate());
+        .map(|(c, _span)| c);
 
     // Include the well-formed predicates of the type parameters of the impl.
     for arg in tcx.impl_trait_ref(impl1_def_id).instantiate_identity().skip_norm_wip().args {
@@ -386,15 +386,17 @@ fn check_predicates<'tcx>(
                 .unwrap();
 
         assert!(!obligations.has_infer());
-        impl2_predicates
-            .extend(traits::elaborate(tcx, obligations).map(|obligation| obligation.predicate))
+        impl2_clauses.extend(
+            traits::elaborate(tcx, obligations)
+                .filter_map(|obligation| obligation.predicate.as_clause()),
+        )
     }
-    impl2_predicates.extend(traits::elaborate(tcx, always_applicable_traits));
+    impl2_clauses.extend(traits::elaborate(tcx, always_applicable_traits));
 
     let mut res = Ok(());
-    for (clause, span) in impl1_predicates {
-        if !impl2_predicates.iter().any(|&pred2| clause.as_predicate() == pred2) {
-            res = res.and(check_specialization_on(tcx, clause, span))
+    for (clause1, span) in impl1_clauses {
+        if !impl2_clauses.iter().any(|&clause2| clause1 == clause2) {
+            res = res.and(check_specialization_on(tcx, clause1, span))
         }
     }
     res

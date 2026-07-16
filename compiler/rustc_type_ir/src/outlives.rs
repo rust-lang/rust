@@ -82,6 +82,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
         // projection).
         match ty.kind() {
             ty::FnDef(_, args) => {
+                let args = args.no_bound_vars().unwrap();
                 // HACK(eddyb) ignore lifetimes found shallowly in `args`.
                 // This is inconsistent with `ty::Adt` (including all args)
                 // and with `ty::Closure` (ignoring all args other than
@@ -148,7 +149,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Alias(alias_ty) => {
+            ty::Alias(_, alias_ty) => {
                 if !alias_ty.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
@@ -264,7 +265,14 @@ pub fn declared_bounds_from_definition<I: Interner>(
     cx: I,
     alias_ty: AliasTy<I>,
 ) -> impl Iterator<Item = I::Region> {
-    let bounds = cx.item_self_bounds(alias_ty.kind.def_id());
+    let def_id = match alias_ty.kind {
+        ty::AliasTyKind::Projection { def_id } => def_id.into(),
+        ty::AliasTyKind::Inherent { def_id } => def_id.into(),
+        ty::AliasTyKind::Opaque { def_id } => def_id.into(),
+        ty::AliasTyKind::Free { def_id } => def_id.into(),
+    };
+
+    let bounds = cx.item_self_bounds(def_id);
     bounds
         .iter_instantiated(cx, alias_ty.args)
         .map(Unnormalized::skip_norm_wip)

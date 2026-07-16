@@ -26,4 +26,5 @@ ENV RUST_CONFIGURE_ARGS="--build=aarch64-unknown-linux-gnu \
  --enable-profiler \
  --enable-compiler-docs"
 ENV SCRIPT="python3 ../x.py --stage 2 test && \
-  python3 ../x.py --stage 2 test src/tools/cargo"
+  python3 ../x.py --stage 2 test src/tools/cargo && \
+  python3 ../x.py --stage 2 test library/stdarch/crates/intrinsic-test"

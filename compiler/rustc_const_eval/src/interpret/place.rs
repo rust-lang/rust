@@ -713,7 +713,6 @@ where
         // to handle padding properly, which is only correct if we never look at this data with the
         // wrong type.
 
-        let tcx = *self.tcx;
         let will_later_validate = M::enforce_validity(self, layout);
         let Some(mut alloc) = self.get_place_alloc_mut(&MPlaceTy { mplace: dest, layout })? else {
             // zero-sized access
@@ -725,7 +724,7 @@ where
                 alloc.write_scalar(alloc_range(Size::ZERO, scalar.size()), scalar)?;
             }
             Immediate::ScalarPair(a_val, b_val) => {
-                let BackendRepr::ScalarPair(_a, b) = layout.backend_repr else {
+                let BackendRepr::ScalarPair { a: _, b: _, b_offset } = layout.backend_repr else {
                     span_bug!(
                         self.cur_span(),
                         "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
@@ -733,7 +732,7 @@ where
                     )
                 };
                 let a_size = a_val.size();
-                let b_offset = a_size.align_to(b.align(&tcx).abi);
+                let b_size = b_val.size();
                 assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
@@ -744,12 +743,12 @@ where
                 // destination now to ensure that no stray pointer fragments are being
                 // preserved (see <https://github.com/rust-lang/rust/issues/148470>).
                 // We can skip this if there is no padding (e.g. for wide pointers).
-                if !will_later_validate && a_size + b_val.size() != layout.size {
+                if !will_later_validate && a_size + b_size != layout.size {
                     alloc.write_uninit_full();
                 }
 
                 alloc.write_scalar(alloc_range(Size::ZERO, a_size), a_val)?;
-                alloc.write_scalar(alloc_range(b_offset, b_val.size()), b_val)?;
+                alloc.write_scalar(alloc_range(b_offset, b_size), b_val)?;
             }
             Immediate::Uninit => alloc.write_uninit_full(),
         }
@@ -902,17 +901,19 @@ where
         // padding in the target independent of layout choices.
         let src_has_padding = match src.layout().backend_repr {
             BackendRepr::Scalar(_) => false,
-            BackendRepr::ScalarPair(left, right)
+            BackendRepr::ScalarPair { a: left, b: right, b_offset: _ }
                 if matches!(src.layout().ty.kind(), ty::Ref(..) | ty::RawPtr(..)) =>
             {
                 // Wide pointers never have padding, so we can avoid calling `size()`.
                 debug_assert_eq!(left.size(self) + right.size(self), src.layout().size);
                 false
             }
-            BackendRepr::ScalarPair(left, right) => {
+            BackendRepr::ScalarPair { a: left, b: right, b_offset: _ } => {
                 let left_size = left.size(self);
                 let right_size = right.size(self);
                 // We have padding if the sizes don't add up to the total.
+                // (Why don't we need to check the offset?  The scalars don't overlap so no padding
+                // implies `b_offset == left_size`, which would be superfluous to check explicitly.)
                 left_size + right_size != src.layout().size
             }
             // Everything else can only exist in memory anyway, so it doesn't matter.

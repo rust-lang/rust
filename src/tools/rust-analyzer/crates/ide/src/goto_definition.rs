@@ -40,6 +40,21 @@ pub struct GotoDefinitionConfig<'a> {
 // | VS Code | <kbd>F12</kbd> |
 //
 // ![Go to Definition](https://user-images.githubusercontent.com/48062697/113065563-025fbe00-91b1-11eb-83e4-a5a703610b23.gif)
+//
+// #### Special Go to Definitions
+//
+// You can go to definition on operators and keywords as well. The behavior goes as follows:
+//
+//  - On overloadable operators, this will take you to the `impl` of the operator's trait for this type, or to the trait if
+//    the impl cannot be determined.
+//  - For `?` on `Result` that goes through a non-trivial `From` (i.e. not the blanket `impl<T> From<T> for T`), it'll take
+//    you to the `From` impl.
+//  - On control flow keywords (loops, conditions, etc.) and `fn`, it'll take you to all exit points for this construct
+//    or its entrance, the opposite of the keyword you're at (e.g. on `fn` it'll take you to all exit points, and on `return`
+//    it'll take you to the `fn`).
+//  - It'll skip known blanket impls from the standard library where possible. For example, on a `try_into()` that comes
+//    from the blanket `impl<T: TryFrom<U>, U> TryInto<T> for U`, it'll take you to the `TryFrom` impl, and if it also
+//    comes from the blanket `impl<T: From<U>, U> TryFrom<U> for T`, it'll take you to the `From` impl.
 pub(crate) fn goto_definition(
     db: &RootDatabase,
     FilePosition { file_id, offset }: FilePosition,
@@ -352,7 +367,6 @@ fn try_lookup_include_path(
         kind: None,
         container_name: None,
         description: None,
-        docs: None,
     })
 }
 
@@ -984,6 +998,21 @@ impl Trait for T {
 }"#,
         );
     }
+
+    #[test]
+    fn goto_def_array_length_prefers_value_namespace() {
+        check(
+            r#"
+struct N;
+
+trait Trait {}
+
+impl<const N: usize> Trait for [N; N$0] {}
+         //^
+"#,
+        );
+    }
+
     #[test]
     fn goto_def_in_mac_call_in_attr_invoc() {
         check(

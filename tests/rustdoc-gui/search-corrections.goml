@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 include: "utils.goml"
 
 // Checks that the search tab result tell the user about corrections

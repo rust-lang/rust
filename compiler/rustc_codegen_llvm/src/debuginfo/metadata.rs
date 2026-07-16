@@ -1044,7 +1044,7 @@ fn visibility_di_flags<'ll, 'tcx>(
     match visibility {
         Visibility::Public => DIFlags::FlagPublic,
         // Private fields have a restricted visibility of the module containing the type.
-        Visibility::Restricted(did) if did == parent_did => DIFlags::FlagPrivate,
+        Visibility::Restricted(did) if did.to_def_id() == parent_did => DIFlags::FlagPrivate,
         // `pub(crate)`/`pub(super)` visibilities are any other restricted visibility.
         Visibility::Restricted(..) => DIFlags::FlagProtected,
     }

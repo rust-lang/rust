@@ -97,7 +97,13 @@ pub(crate) fn orphan_check_impl(
     );
 
     if tcx.trait_is_auto(trait_def_id) {
-        let self_ty = trait_ref.self_ty();
+        // Expand free alias types (e.g. lazy type aliases) so that the checks below operate
+        // on the type the alias resolves to rather than the alias itself. Otherwise an impl
+        // whose self type is an alias expanding to an otherwise valid nominal type would be
+        // wrongly rejected, e.g. `unsafe impl Sync for Alias {}` where `type Alias = Local;`.
+        // Expansion also reveals genuinely problematic self types (trait objects, opaque
+        // types, type parameters), so those keep being rejected. See issue #157756.
+        let self_ty = tcx.expand_free_alias_tys(trait_ref.self_ty());
 
         // If the impl is in the same crate as the auto-trait, almost anything
         // goes.
@@ -194,7 +200,7 @@ pub(crate) fn orphan_check_impl(
                 NonlocalImpl::DisallowOther,
             ),
 
-            ty::Alias(ty::AliasTy { kind, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind, .. }) => {
                 let problematic_kind = match kind {
                     // trait Id { type This: ?Sized; }
                     // impl<T: ?Sized> Id for T {
@@ -440,7 +446,7 @@ fn emit_orphan_check_error<'tcx>(
                             });
                         }
                     }
-                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
+                    ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                         diag.subdiagnostic(diagnostics::OnlyCurrentTraitsOpaque { span });
                     }
                     ty::RawPtr(ptr_ty, mutbl) => {

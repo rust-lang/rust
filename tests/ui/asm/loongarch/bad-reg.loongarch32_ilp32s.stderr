@@ -1,62 +1,295 @@
 error: invalid register `$r0`: constant zero cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:26:18
+  --> $DIR/bad-reg.rs:28:18
    |
 LL |         asm!("", out("$r0") _);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `$tp`: reserved for TLS
-  --> $DIR/bad-reg.rs:28:18
+  --> $DIR/bad-reg.rs:30:18
    |
 LL |         asm!("", out("$tp") _);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `$sp`: the stack pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:30:18
+  --> $DIR/bad-reg.rs:32:18
    |
 LL |         asm!("", out("$sp") _);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `$r21`: reserved by the ABI
-  --> $DIR/bad-reg.rs:32:18
+  --> $DIR/bad-reg.rs:34:18
    |
 LL |         asm!("", out("$r21") _);
    |                  ^^^^^^^^^^^^^
 
 error: invalid register `$fp`: the frame pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:34:18
+  --> $DIR/bad-reg.rs:36:18
    |
 LL |         asm!("", out("$fp") _);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `$r31`: $r31 is used internally by LLVM and cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:36:18
+  --> $DIR/bad-reg.rs:38:18
    |
 LL |         asm!("", out("$r31") _);
    |                  ^^^^^^^^^^^^^
 
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:52:26
+   |
+LL |         asm!("/* {} */", in(vreg) f);
+   |                          ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:55:26
+   |
+LL |         asm!("/* {} */", out(vreg) _);
+   |                          ^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:57:26
+   |
+LL |         asm!("/* {} */", in(vreg) d);
+   |                          ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:60:26
+   |
+LL |         asm!("/* {} */", out(vreg) d);
+   |                          ^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `xreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:65:26
+   |
+LL |         asm!("/* {} */", in(xreg) f);
+   |                          ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `xreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:68:26
+   |
+LL |         asm!("/* {} */", out(xreg) _);
+   |                          ^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `xreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:70:26
+   |
+LL |         asm!("/* {} */", in(xreg) d);
+   |                          ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `xreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:73:26
+   |
+LL |         asm!("/* {} */", out(xreg) d);
+   |                          ^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:77:31
+   |
+LL |         asm!("", in("$f0") f, in("$vr0") d);
+   |                               ^^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `xreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:82:31
+   |
+LL |         asm!("", in("$f0") f, in("$xr0") d);
+   |                               ^^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:87:18
+   |
+LL |         asm!("", in("$vr0") f, in("$xr0") d);
+   |                  ^^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `xreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:87:32
+   |
+LL |         asm!("", in("$vr0") f, in("$xr0") d);
+   |                                ^^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error: register class `freg` requires at least one of the following target features: d, f
-  --> $DIR/bad-reg.rs:40:26
+  --> $DIR/bad-reg.rs:42:26
    |
 LL |         asm!("/* {} */", in(freg) f);
    |                          ^^^^^^^^^^
 
 error: register class `freg` requires at least one of the following target features: d, f
-  --> $DIR/bad-reg.rs:42:26
+  --> $DIR/bad-reg.rs:44:26
    |
 LL |         asm!("/* {} */", out(freg) _);
    |                          ^^^^^^^^^^^
 
 error: register class `freg` requires at least one of the following target features: d, f
-  --> $DIR/bad-reg.rs:44:26
+  --> $DIR/bad-reg.rs:46:26
    |
 LL |         asm!("/* {} */", in(freg) d);
    |                          ^^^^^^^^^^
 
 error: register class `freg` requires at least one of the following target features: d, f
-  --> $DIR/bad-reg.rs:46:26
+  --> $DIR/bad-reg.rs:48:26
    |
 LL |         asm!("/* {} */", out(freg) d);
    |                          ^^^^^^^^^^^
 
-error: aborting due to 10 previous errors
+error[E0658]: type `f32` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:52:35
+   |
+LL |         asm!("/* {} */", in(vreg) f);
+   |                                   ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0658]: type `f64` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:57:35
+   |
+LL |         asm!("/* {} */", in(vreg) d);
+   |                                   ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `f64` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:60:36
+   |
+LL |         asm!("/* {} */", out(vreg) d);
+   |                                    ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `f32` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:65:35
+   |
+LL |         asm!("/* {} */", in(xreg) f);
+   |                                   ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `f64` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:70:35
+   |
+LL |         asm!("/* {} */", in(xreg) d);
+   |                                   ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `f64` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:73:36
+   |
+LL |         asm!("/* {} */", out(xreg) d);
+   |                                    ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: register class `freg` requires at least one of the following target features: d, f
+  --> $DIR/bad-reg.rs:77:18
+   |
+LL |         asm!("", in("$f0") f, in("$vr0") d);
+   |                  ^^^^^^^^^^^
+
+error[E0658]: type `f64` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:77:42
+   |
+LL |         asm!("", in("$f0") f, in("$vr0") d);
+   |                                          ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: register class `freg` requires at least one of the following target features: d, f
+  --> $DIR/bad-reg.rs:82:18
+   |
+LL |         asm!("", in("$f0") f, in("$xr0") d);
+   |                  ^^^^^^^^^^^
+
+error[E0658]: type `f64` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:82:42
+   |
+LL |         asm!("", in("$f0") f, in("$xr0") d);
+   |                                          ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `f32` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:87:29
+   |
+LL |         asm!("", in("$vr0") f, in("$xr0") d);
+   |                             ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `f64` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:87:43
+   |
+LL |         asm!("", in("$vr0") f, in("$xr0") d);
+   |                                           ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 34 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

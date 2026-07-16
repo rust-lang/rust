@@ -167,13 +167,19 @@ impl<I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>> TypeVisitable<I> for
     }
 }
 
+impl<I: Interner, T: TypeVisitable<I> + ?Sized> TypeVisitable<I> for &T {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        (**self).visit_with(visitor)
+    }
+}
+
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Arc<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         (**self).visit_with(visitor)
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<T> {
+impl<I: Interner, T: TypeVisitable<I> + ?Sized> TypeVisitable<I> for Box<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         (**self).visit_with(visitor)
     }
@@ -203,14 +209,14 @@ impl<I: Interner, T: TypeVisitable<I>, const N: usize> TypeVisitable<I> for Smal
 // `TypeFoldable` isn't impl'd for `&[T]`. It doesn't make sense in the general
 // case, because we can't return a new slice. But note that there are a couple
 // of trivial impls of `TypeFoldable` for specific slice types elsewhere.
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for &[T] {
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for [T] {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
         V::Result::output()
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<[T]> {
+impl<const N: usize, I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for [T; N] {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
         V::Result::output()
@@ -362,6 +368,16 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
     /// True if a type or const error is reachable
     fn has_non_region_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_NON_REGION_ERROR)
+    }
+
+    /// True if an alias has `IsRigid::Yes`. Used for skipping normalization.
+    fn has_rigid_aliases(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RIGID_ALIAS)
+    }
+
+    /// True if an alias has `IsRigid::No`.
+    fn has_non_rigid_aliases(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_NON_RIGID_ALIAS)
     }
 }
 

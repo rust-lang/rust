@@ -402,6 +402,60 @@ LL |     #[no_mangle] b: i32,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:195:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+   |
+   = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[no_mangle]` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:201:9
+   |
+LL |         #[no_mangle] b: i32
+   |         ^^^^^^^^^^^^
+   |
+   = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[must_use]` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:131:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+   |
+   = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[no_mangle]` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:137:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+   |
+   = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[must_use]` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:150:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+   |
+   = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[no_mangle]` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:156:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+   |
+   = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[must_use]` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:64:9
    |
 LL |         #[must_use]
@@ -456,42 +510,6 @@ LL |         #[no_mangle] b: i32,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:131:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-   |
-   = help: `#[must_use]` can be applied to data types, functions, and traits
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-warning: `#[no_mangle]` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:137:9
-   |
-LL |         #[no_mangle] b: i32,
-   |         ^^^^^^^^^^^^
-   |
-   = help: `#[no_mangle]` can be applied to functions and statics
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-warning: `#[must_use]` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:150:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-   |
-   = help: `#[must_use]` can be applied to data types, functions, and traits
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-warning: `#[no_mangle]` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:156:9
-   |
-LL |         #[no_mangle] b: i32,
-   |         ^^^^^^^^^^^^
-   |
-   = help: `#[no_mangle]` can be applied to functions and statics
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-warning: `#[must_use]` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:174:9
    |
 LL |         #[must_use]
@@ -504,24 +522,6 @@ warning: `#[no_mangle]` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:180:9
    |
 LL |         #[no_mangle] b: i32,
-   |         ^^^^^^^^^^^^
-   |
-   = help: `#[no_mangle]` can be applied to functions and statics
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-warning: `#[must_use]` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:195:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-   |
-   = help: `#[must_use]` can be applied to data types, functions, and traits
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-warning: `#[no_mangle]` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:201:9
-   |
-LL |         #[no_mangle] b: i32
    |         ^^^^^^^^^^^^
    |
    = help: `#[no_mangle]` can be applied to functions and statics

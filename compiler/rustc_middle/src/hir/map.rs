@@ -10,19 +10,19 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
-use rustc_span::def_id::StableCrateId;
+use rustc_span::def_id::{CRATE_MOD_ID, StableCrateId};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
 use crate::hir::{ModuleItems, ProjectedMaybeOwner, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::{IntoQueryKey, LocalCrate};
-use crate::ty::TyCtxt;
+use crate::ty::{self, TyCtxt};
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
 /// Constructed using `tcx.hir_parent_iter(hir_id)`.
@@ -207,7 +207,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn hir_module_free_items(self, module: LocalModDefId) -> impl Iterator<Item = ItemId> {
+    pub fn hir_module_free_items(self, module: LocalModId) -> impl Iterator<Item = ItemId> {
         self.hir_module_items(module).free_items()
     }
 
@@ -322,10 +322,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir_body_owner_kind(self, def_id: impl Into<DefId>) -> BodyOwnerKind {
         let def_id = def_id.into();
         match self.def_kind(def_id) {
-            DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::AnonConst => {
+            DefKind::Const { .. } | DefKind::AssocConst { .. } => {
                 BodyOwnerKind::Const { inline: false }
             }
-            DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
+            DefKind::AnonConst => BodyOwnerKind::Const {
+                inline: self.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline,
+            },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
             DefKind::Closure | DefKind::SyntheticCoroutineBody => BodyOwnerKind::Closure,
             DefKind::Static { safety: _, mutability, nested: false } => {
@@ -410,7 +412,7 @@ impl<'tcx> TyCtxt<'tcx> {
         find_attr!(self.hir_krate_attrs(), RustcCoherenceIsCore)
     }
 
-    pub fn hir_get_module(self, module: LocalModDefId) -> (&'tcx Mod<'tcx>, Span, HirId) {
+    pub fn hir_get_module(self, module: LocalModId) -> (&'tcx Mod<'tcx>, Span, HirId) {
         let hir_id = HirId::make_owner(module.to_local_def_id());
         match self.hir_owner_node(hir_id.owner) {
             OwnerNode::Item(&Item { span, kind: ItemKind::Mod(_, m), .. }) => (m, span, hir_id),
@@ -424,7 +426,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         V: Visitor<'tcx>,
     {
-        let (top_mod, span, hir_id) = self.hir_get_module(LocalModDefId::CRATE_DEF_ID);
+        let (top_mod, span, hir_id) = self.hir_get_module(CRATE_MOD_ID);
         visitor.visit_mod(top_mod, span, hir_id)
     }
 
@@ -475,11 +477,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// This method is the equivalent of `visit_all_item_likes_in_crate` but restricted to
     /// item-likes in a single module.
-    pub fn hir_visit_item_likes_in_module<V>(
-        self,
-        module: LocalModDefId,
-        visitor: &mut V,
-    ) -> V::Result
+    pub fn hir_visit_item_likes_in_module<V>(self, module: LocalModId, visitor: &mut V) -> V::Result
     where
         V: Visitor<'tcx>,
     {
@@ -499,30 +497,26 @@ impl<'tcx> TyCtxt<'tcx> {
         V::Result::output()
     }
 
-    pub fn hir_for_each_module(self, mut f: impl FnMut(LocalModDefId)) {
+    pub fn hir_for_each_module(self, mut f: impl FnMut(LocalModId)) {
         let crate_items = self.hir_crate_items(());
-        for module in crate_items.submodules.iter() {
-            f(LocalModDefId::new_unchecked(module.def_id))
+        for &module in crate_items.submodules.iter() {
+            f(module)
         }
     }
 
     #[inline]
-    pub fn par_hir_for_each_module(self, f: impl Fn(LocalModDefId) + DynSend + DynSync) {
+    pub fn par_hir_for_each_module(self, f: impl Fn(LocalModId) + DynSend + DynSync) {
         let crate_items = self.hir_crate_items(());
-        par_for_each_in(&crate_items.submodules[..], |module| {
-            f(LocalModDefId::new_unchecked(module.def_id))
-        })
+        par_for_each_in(&crate_items.submodules[..], |&&module| f(module));
     }
 
     #[inline]
     pub fn try_par_hir_for_each_module(
         self,
-        f: impl Fn(LocalModDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+        f: impl Fn(LocalModId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         let crate_items = self.hir_crate_items(());
-        try_par_for_each_in(&crate_items.submodules[..], |module| {
-            f(LocalModDefId::new_unchecked(module.def_id))
-        })
+        try_par_for_each_in(&crate_items.submodules[..], |&&module| f(module))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
@@ -1259,7 +1253,7 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
     upstream_crates
 }
 
-pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> ModuleItems {
+pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModId) -> ModuleItems {
     let mut collector = ItemCollector::new(tcx, false);
 
     let (hir_mod, span, hir_id) = tcx.hir_get_module(module_id);
@@ -1275,8 +1269,10 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         opaques,
         nested_bodies,
         eiis,
+        proc_macro_decls,
         ..
     } = collector;
+
     ModuleItems {
         add_root: false,
         submodules: submodules.into_boxed_slice(),
@@ -1287,8 +1283,8 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         body_owners: body_owners.into_boxed_slice(),
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
-        delayed_lint_items: Box::new([]),
         eiis: eiis.into_boxed_slice(),
+        proc_macro_decls,
     }
 }
 
@@ -1298,7 +1294,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
     // A "crate collector" and "module collector" start at a
     // module item (the former starts at the crate root) but only
     // the former needs to collect it. ItemCollector does not do this for us.
-    collector.submodules.push(CRATE_OWNER_ID);
+    collector.submodules.push(CRATE_MOD_ID);
     tcx.hir_walk_toplevel_module(&mut collector);
 
     let ItemCollector {
@@ -1310,18 +1306,10 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         body_owners,
         opaques,
         nested_bodies,
-        mut delayed_lint_items,
         eiis,
+        proc_macro_decls,
         ..
     } = collector;
-
-    // The crate could have delayed lints too, but would not be picked up by the visitor.
-    // The `delayed_lint_items` list is smart - it only contains items which we know from
-    // earlier passes is guaranteed to contain lints. It's a little harder to determine that
-    // for sure here, so we simply always add the crate to the list. If it has no lints,
-    // we'll discover that later. The cost of this should be low, there's only one crate
-    // after all compared to the many items we have we wouldn't want to iterate over later.
-    delayed_lint_items.push(CRATE_OWNER_ID);
 
     ModuleItems {
         add_root: true,
@@ -1333,44 +1321,33 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         body_owners: body_owners.into_boxed_slice(),
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
-        delayed_lint_items: delayed_lint_items.into_boxed_slice(),
         eiis: eiis.into_boxed_slice(),
+        proc_macro_decls,
     }
 }
 
 struct ItemCollector<'tcx> {
     // When true, it collects all items in the create,
     // otherwise it collects items in some module.
+    // Converting this to generic const didn't lead to significant perf improvements
+    // (see <https://github.com/rust-lang/rust/pull/158119#issuecomment-4751513679>).
     crate_collector: bool,
     tcx: TyCtxt<'tcx>,
-    submodules: Vec<OwnerId>,
-    items: Vec<ItemId>,
-    trait_items: Vec<TraitItemId>,
-    impl_items: Vec<ImplItemId>,
-    foreign_items: Vec<ForeignItemId>,
-    body_owners: Vec<LocalDefId>,
-    opaques: Vec<LocalDefId>,
-    nested_bodies: Vec<LocalDefId>,
-    delayed_lint_items: Vec<OwnerId>,
-    eiis: Vec<LocalDefId>,
+    submodules: Vec<LocalModId> = vec![],
+    items: Vec<ItemId> = vec![],
+    trait_items: Vec<TraitItemId> = vec![],
+    impl_items: Vec<ImplItemId> = vec![],
+    foreign_items: Vec<ForeignItemId> = vec![],
+    body_owners: Vec<LocalDefId> = vec![],
+    opaques: Vec<LocalDefId> = vec![],
+    nested_bodies: Vec<LocalDefId> = vec![],
+    eiis: Vec<LocalDefId> = vec![],
+    proc_macro_decls: Option<LocalDefId> = None,
 }
 
 impl<'tcx> ItemCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, crate_collector: bool) -> ItemCollector<'tcx> {
-        ItemCollector {
-            crate_collector,
-            tcx,
-            submodules: Vec::default(),
-            items: Vec::default(),
-            trait_items: Vec::default(),
-            impl_items: Vec::default(),
-            foreign_items: Vec::default(),
-            body_owners: Vec::default(),
-            opaques: Vec::default(),
-            nested_bodies: Vec::default(),
-            delayed_lint_items: Vec::default(),
-            eiis: Vec::default(),
-        }
+        ItemCollector { crate_collector, tcx, .. }
     }
 }
 
@@ -1386,10 +1363,16 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
             self.body_owners.push(item.owner_id.def_id);
         }
 
-        self.items.push(item.item_id());
-        if self.crate_collector && item.has_delayed_lints {
-            self.delayed_lint_items.push(item.item_id().owner_id);
+        let item_id = item.item_id();
+
+        if self.crate_collector
+            && self.proc_macro_decls.is_none()
+            && find_attr!(self.tcx, item_id.hir_id(), RustcProcMacroDecls)
+        {
+            self.proc_macro_decls = Some(item_id.owner_id.def_id);
         }
+
+        self.items.push(item_id);
 
         if let ItemKind::Static(..) | ItemKind::Fn { .. } | ItemKind::Macro(..) = &item.kind
             && item.eii
@@ -1399,7 +1382,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
         // Items that are modules are handled here instead of in visit_mod.
         if let ItemKind::Mod(_, module) = &item.kind {
-            self.submodules.push(item.owner_id);
+            self.submodules.push(LocalModId::new_unchecked(item.owner_id.def_id));
             // A module collector does not recurse inside nested modules.
             if self.crate_collector {
                 intravisit::walk_mod(self, module);
@@ -1411,9 +1394,6 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
         self.foreign_items.push(item.foreign_item_id());
-        if self.crate_collector && item.has_delayed_lints {
-            self.delayed_lint_items.push(item.foreign_item_id().owner_id);
-        }
         intravisit::walk_foreign_item(self, item)
     }
 
@@ -1447,9 +1427,6 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.trait_items.push(item.trait_item_id());
-        if self.crate_collector && item.has_delayed_lints {
-            self.delayed_lint_items.push(item.trait_item_id().owner_id);
-        }
 
         intravisit::walk_trait_item(self, item)
     }
@@ -1460,9 +1437,6 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.impl_items.push(item.impl_item_id());
-        if self.crate_collector && item.has_delayed_lints {
-            self.delayed_lint_items.push(item.impl_item_id().owner_id);
-        }
 
         intravisit::walk_impl_item(self, item)
     }

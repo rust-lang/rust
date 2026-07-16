@@ -4,8 +4,8 @@ use either::Either;
 use crate::{
     AstNode, Edition, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{
-        self, HasArgList, HasAttrs, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
-        HasTypeBounds, HasVisibility, Lifetime, Param, RangeItem, make,
+        self, HasArgList, HasAttrs, HasGenericArgs, HasGenericParams, HasLoopBody, HasModuleItem,
+        HasName, HasTypeBounds, HasVisibility, Lifetime, Param, RangeItem, make,
     },
     syntax_editor::SyntaxMappingBuilder,
 };
@@ -608,6 +608,18 @@ impl SyntaxFactory {
         }
 
         ast
+    }
+
+    pub fn ty_paren(&self, ty: ast::Type) -> ast::Type {
+        let ast::Type::ParenType(paren_ty) = make::ty_paren(ty.clone()) else { unreachable!() };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(paren_ty.syntax().clone());
+            builder.map_node(ty.syntax().clone(), paren_ty.ty().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        paren_ty.into()
     }
 
     pub fn path_segment_generics(
@@ -2013,6 +2025,35 @@ impl SyntaxFactory {
 
     pub fn assoc_item_list_empty(&self) -> ast::AssocItemList {
         make::assoc_item_list(None).clone_for_update()
+    }
+
+    pub fn item_list(&self, items: impl IntoIterator<Item = ast::Item>) -> ast::ItemList {
+        let (items, input) = iterator_input(items);
+        let items_vec: Vec<_> = items.into_iter().collect();
+        let ast = make::item_list(Some(items_vec)).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input, ast.items().map(|item: ast::Item| item.syntax().clone()));
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn mod_(&self, name: ast::Name, body: Option<ast::ItemList>) -> ast::Module {
+        let ast = make::mod_(name.clone(), body.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(name.syntax().clone(), ast.name().unwrap().syntax().clone());
+            if let Some(body) = body {
+                builder.map_node(body.syntax().clone(), ast.item_list().unwrap().syntax().clone());
+            }
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn attr_outer(&self, meta: ast::Meta) -> ast::Attr {

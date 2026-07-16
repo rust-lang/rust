@@ -1,11 +1,6 @@
 #![warn(clippy::redundant_pattern_matching)]
-#![allow(
-    clippy::needless_bool,
-    clippy::needless_ifs,
-    clippy::match_like_matches_macro,
-    clippy::equatable_if_let,
-    clippy::if_same_then_else
-)]
+#![allow(clippy::needless_bool)]
+#![expect(clippy::match_like_matches_macro, clippy::needless_ifs)]
 
 fn issue_11174<T>(boolean: bool, maybe_some: Option<T>) -> bool {
     matches!(maybe_some, None if !boolean)
@@ -138,7 +133,7 @@ const fn issue6067() {
     };
 }
 
-#[allow(clippy::deref_addrof, dead_code, clippy::needless_borrow)]
+#[allow(clippy::deref_addrof, clippy::needless_borrow)]
 fn issue7921() {
     if let None = *(&None::<()>) {}
     //~^ redundant_pattern_matching

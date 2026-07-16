@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, first_node_in_macro, matching_root_macro_call};
-use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::source::{SpanExt, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use rustc_ast::{FormatArgsPiece, FormatOptions, FormatTrait};
 use rustc_errors::Applicability;
@@ -69,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                 ([], []) => span_useless_format_empty(cx, call_site, "String::new()".to_owned(), applicability),
                 ([], [_]) => {
                     // Simulate macro expansion, converting {{ and }} to { and }.
-                    let Some(snippet) = format_args.span.get_source_text(cx) else {
+                    let Some(snippet) = format_args.span.get_text(cx) else {
                         return;
                     };
                     let s_expand = snippet.replace("{{", "{").replace("}}", "}");

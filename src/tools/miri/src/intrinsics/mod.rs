@@ -10,7 +10,7 @@ pub use self::atomic::AtomicRmwOp;
 use rand::RngExt;
 use rustc_abi::Size;
 use rustc_middle::{mir, ty};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, sym};
 
 use self::atomic::EvalContextExt as _;
 use self::math::EvalContextExt as _;
@@ -45,16 +45,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let this = self.eval_context_mut();
-
-        // Force use of fallback body, if available.
-        if this.machine.force_intrinsic_fallback
-            && !this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden
-        {
-            return interp_ok(Some(ty::Instance {
-                def: ty::InstanceKind::Item(instance.def_id()),
-                args: instance.args,
-            }));
-        }
 
         // See if the core engine can handle this intrinsic.
         if this.eval_intrinsic(instance, args, dest, ret)? {
@@ -133,23 +123,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.handle_catch_unwind(try_fn, data, catch_fn, dest, ret)?;
                 // This pushed a stack frame, don't jump to `ret`.
                 return interp_ok(EmulateItemResult::AlreadyJumped);
-            }
-
-            // Raw memory accesses
-            "volatile_load" => {
-                let [place] = check_intrinsic_arg_count(args)?;
-                let place = this.deref_pointer(place)?;
-                this.copy_op(&place, dest)?;
-            }
-            "volatile_store" => {
-                let [place, dest] = check_intrinsic_arg_count(args)?;
-                let place = this.deref_pointer(place)?;
-                this.copy_op(dest, &place)?;
-            }
-
-            "volatile_set_memory" => {
-                let [ptr, val_byte, count] = check_intrinsic_arg_count(args)?;
-                this.write_bytes_intrinsic(ptr, val_byte, count, "volatile_set_memory")?;
             }
 
             // Memory model / provenance manipulation

@@ -1,7 +1,4 @@
-use rustc_abi::CanonAbi;
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -10,10 +7,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_sse3_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx, EmulateItemResult> {
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "sse3")?;
         // Prefix should have already been checked.
@@ -26,14 +22,14 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the data crosses a cache line, but for Miri this is just a regular
             // unaligned read.
             "ldu.dq" => {
-                let [src_ptr] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [src_ptr] = this.check_shim_sig_unadjusted(link_name, args)?;
                 let src_ptr = this.read_pointer(src_ptr)?;
                 let dest = dest.force_mplace(this)?;
 
                 this.mem_copy(src_ptr, dest.ptr(), dest.layout.size, /*nonoverlapping*/ true)?;
             }
-            _ => return interp_ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(false),
         }
-        interp_ok(EmulateItemResult::NeedsReturn)
+        interp_ok(true)
     }
 }

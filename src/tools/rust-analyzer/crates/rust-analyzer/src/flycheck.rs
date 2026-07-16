@@ -51,6 +51,7 @@ pub(crate) struct CargoOptions {
     pub(crate) extra_args: Vec<String>,
     pub(crate) extra_test_bin_args: Vec<String>,
     pub(crate) extra_env: FxHashMap<String, Option<String>>,
+    pub(crate) config_path: Option<AbsPathBuf>,
     pub(crate) target_dir_config: TargetDirectoryConfig,
 }
 
@@ -107,6 +108,9 @@ impl CargoOptions {
                 cmd.arg("--features");
                 cmd.arg(features);
             }
+        }
+        if let Some(config_path) = &self.config_path {
+            cmd.arg("--config").arg(config_path);
         }
         if let Some(target_dir) = self.target_dir_config.target_dir(ws_target_dir) {
             cmd.arg("--target-dir").arg(target_dir.as_ref());
@@ -490,33 +494,24 @@ impl<'a> Substitutions<'a> {
         let mut cmd = toolchain::command(&template.program, &template.cwd, extra_env);
         for arg in &template.args {
             if let Some(ix) = arg.find(LABEL_INLINE) {
-                if let Some(label) = self.label {
-                    let mut arg = arg.to_string();
-                    arg.replace_range(ix..ix + LABEL_INLINE.len(), label);
-                    cmd.arg(arg);
-                    continue;
-                } else {
-                    return None;
-                }
+                let label = self.label?;
+                let mut arg = arg.to_string();
+                arg.replace_range(ix..ix + LABEL_INLINE.len(), label);
+                cmd.arg(arg);
+                continue;
             }
             if let Some(ix) = arg.find(SAVED_FILE_INLINE) {
-                if let Some(saved_file) = self.saved_file {
-                    let mut arg = arg.to_string();
-                    arg.replace_range(ix..ix + SAVED_FILE_INLINE.len(), saved_file);
-                    cmd.arg(arg);
-                    continue;
-                } else {
-                    return None;
-                }
+                let saved_file = self.saved_file?;
+                let mut arg = arg.to_string();
+                arg.replace_range(ix..ix + SAVED_FILE_INLINE.len(), saved_file);
+                cmd.arg(arg);
+                continue;
             }
             // Legacy syntax: full argument match
             if arg == SAVED_FILE_PLACEHOLDER_DOLLAR {
-                if let Some(saved_file) = self.saved_file {
-                    cmd.arg(saved_file);
-                    continue;
-                } else {
-                    return None;
-                }
+                let saved_file = self.saved_file?;
+                cmd.arg(saved_file);
+                continue;
             }
             cmd.arg(arg);
         }
@@ -1169,6 +1164,7 @@ mod tests {
                 extra_args: vec![],
                 extra_test_bin_args: vec![],
                 extra_env: FxHashMap::default(),
+                config_path: None,
                 target_dir_config: TargetDirectoryConfig::default(),
             },
             ansi_color_output: true,

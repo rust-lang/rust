@@ -14,11 +14,12 @@ use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::queries::ExternProviders;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_middle::util::Providers;
 use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
 use rustc_session::cstore::{CrateStore, ExternCrate};
+use rustc_span::def_id::ModId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::{Span, Symbol, kw};
 
@@ -39,10 +40,11 @@ impl<T> ProcessQueryValue<'_, T> for T {
     }
 }
 
-impl<'tcx, T> ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, T>> for T {
+// The `TypeVisitable` bound here is merely for `EarlyBinder`'s rigidness check.
+impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, T>> for T {
     #[inline(always)]
     fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> ty::EarlyBinder<'tcx, T> {
-        ty::EarlyBinder::bind(self)
+        ty::EarlyBinder::bind_no_rigid_aliases(self)
     }
 }
 
@@ -187,6 +189,13 @@ impl IntoArgs for DefId {
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self, ())
+    }
+}
+
+impl IntoArgs for ModId {
+    type Other = ();
+    fn into_args(self) -> (DefId, ()) {
+        (self.to_def_id(), ())
     }
 }
 
@@ -416,6 +425,7 @@ provide! { tcx, def_id, other, cdata,
     }
     anon_const_kind => { table }
     const_of_item => { table }
+    args_known_to_outlive_alias_params => { table }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
@@ -555,15 +565,15 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             )
         },
         crates: |tcx, ()| {
-            // The list of loaded crates is now frozen in query cache,
-            // so make sure cstore is not mutably accessed from here on.
-            tcx.untracked().cstore.freeze();
+            // The loaded-crate list is now frozen in the query cache; stop
+            // mutating the cstore and stable crate id map from here on.
+            tcx.untracked().freeze_cstore();
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
         },
         used_crates: |tcx, ()| {
-            // The list of loaded crates is now frozen in query cache,
-            // so make sure cstore is not mutably accessed from here on.
-            tcx.untracked().cstore.freeze();
+            // The loaded-crate list is now frozen in the query cache; stop
+            // mutating the cstore and stable crate id map from here on.
+            tcx.untracked().freeze_cstore();
             tcx.arena.alloc_from_iter(
                 CStore::from_tcx(tcx)
                     .iter_crate_data()

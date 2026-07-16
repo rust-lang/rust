@@ -1,14 +1,12 @@
 use rustc_hir::attrs::AttributeKind;
-use rustc_lint_defs::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::sym;
 
 use crate::attributes::AttributeStability;
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
 use crate::context::AcceptContext;
-use crate::diagnostics::DiagnosticOnTypeErrorOnlyForAdt;
 use crate::parser::ArgParser;
-use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use crate::target_checking::AllowedTargets;
 use crate::template;
 
 #[derive(Default)]
@@ -20,16 +18,13 @@ pub(crate) struct OnTypeErrorParser {
 impl OnTypeErrorParser {
     fn parse<'sess>(&mut self, cx: &mut AcceptContext<'_, 'sess>, args: &ArgParser, mode: Mode) {
         if !cx.features().diagnostic_on_type_error() {
+            // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
+            args.ignore_args();
             return;
         }
 
         let span = cx.attr_span;
         self.span = Some(span);
-
-        if !matches!(cx.target, Target::Enum | Target::Struct | Target::Union) {
-            cx.emit_lint(MISPLACED_DIAGNOSTIC_ATTRIBUTES, DiagnosticOnTypeErrorOnlyForAdt, span);
-            return;
-        }
 
         let Some(items) = parse_list(cx, args, mode) else { return };
 
@@ -49,7 +44,11 @@ impl AttributeParser for OnTypeErrorParser {
         },
     )];
 
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Enum),
+        Allow(Target::Struct),
+        Allow(Target::Union),
+    ]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(span) = self.span {

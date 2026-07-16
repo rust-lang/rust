@@ -21,3 +21,6 @@ expression: test library
 [Test] test::StdarchVerify
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::library/stdarch/crates/stdarch-verify})
+[Test] test::IntrinsicTest
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({test::library/stdarch/crates/intrinsic-test})

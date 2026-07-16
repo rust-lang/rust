@@ -1,5 +1,6 @@
 #![warn(clippy::ptr_offset_by_literal)]
-#![allow(clippy::inconsistent_digit_grouping, clippy::byte_char_slices)]
+#![allow(clippy::inconsistent_digit_grouping)]
+#![expect(clippy::byte_char_slices)]
 
 fn main() {
     let arr = [b'a', b'b', b'c'];

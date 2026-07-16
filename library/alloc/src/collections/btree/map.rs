@@ -2594,7 +2594,8 @@ impl<K: Hash, V: Hash, A: Allocator + Clone> Hash for BTreeMap<K, V, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V> Default for BTreeMap<K, V> {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+const impl<K, V> Default for BTreeMap<K, V> {
     /// Creates an empty `BTreeMap`.
     fn default() -> BTreeMap<K, V> {
         BTreeMap::new()
