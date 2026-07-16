@@ -56,7 +56,11 @@ fn main() {
         rfs::symlink_file(rlib, &link_name);
 
         // Check that no distributed rlib leaks the checkout/source root path.
-        let completed = llvm_dwarfdump().input(&link_name).run();
+        let completed = llvm_dwarfdump().input(&link_name).run_unchecked();
+        if !completed.status().success() {
+            eprintln!("dwarfdump failed on {link_name}: exit status {:?}", completed.status());
+            panic!("llvm-dwarfdump failed for {link_name}");
+        }
 
         let stdout = completed.stdout_utf8();
         let source_root = source_root();
