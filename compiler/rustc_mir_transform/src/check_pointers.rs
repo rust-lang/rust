@@ -4,6 +4,7 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use smallvec::SmallVec;
 use tracing::{debug, trace};
 
 /// Details of a pointer check, the condition on which we decide whether to
@@ -128,7 +129,7 @@ struct PointerFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a mut LocalDecls<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    pointers: Vec<(Place<'tcx>, Ty<'tcx>, PlaceContext)>,
+    pointers: SmallVec<[(Place<'tcx>, Ty<'tcx>, PlaceContext); 2]>,
     excluded_pointees: &'a [Ty<'tcx>],
     field_projection_mode: BorrowedFieldProjectionMode,
 }
@@ -146,12 +147,12 @@ impl<'a, 'tcx> PointerFinder<'a, 'tcx> {
             local_decls,
             typing_env,
             excluded_pointees,
-            pointers: Vec::new(),
+            pointers: SmallVec::new(),
             field_projection_mode,
         }
     }
 
-    fn into_found_pointers(self) -> Vec<(Place<'tcx>, Ty<'tcx>, PlaceContext)> {
+    fn into_found_pointers(self) -> SmallVec<[(Place<'tcx>, Ty<'tcx>, PlaceContext); 2]> {
         self.pointers
     }
 

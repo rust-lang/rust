@@ -60,14 +60,7 @@ fn insert_null_check<'tcx>(
         PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
         | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => {
             // Pointer should be checked unconditionally.
-            (
-                Operand::Constant(Box::new(ConstOperand {
-                    span: source_info.span,
-                    user_ty: None,
-                    const_: Const::from_bool(tcx, true),
-                })),
-                AssertKind::NullReferenceConstructed,
-            )
+            (None, AssertKind::NullReferenceConstructed)
         }
         // Other usages of null pointers only are UB if the pointee is not a ZST.
         _ => {
@@ -82,7 +75,7 @@ fn insert_null_check<'tcx>(
                 source_info,
                 StatementKind::Assign(Box::new((pointee_should_be_checked, rvalue))),
             ));
-            (Operand::Copy(pointee_should_be_checked), AssertKind::NullPointerDereference)
+            (Some(Operand::Copy(pointee_should_be_checked)), AssertKind::NullPointerDereference)
         }
     };
 
@@ -97,19 +90,26 @@ fn insert_null_check<'tcx>(
     ));
 
     // We want to throw an exception if the pointer is null and the pointee is not unconditionally
-    // allowed (which for all non-borrow place uses, is when the pointee is ZST).
-    let should_throw_exception =
-        local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    stmts.push(Statement::new(
-        source_info,
-        StatementKind::Assign(Box::new((
-            should_throw_exception,
-            Rvalue::BinaryOp(
-                BinOp::BitAnd,
-                Box::new((Operand::Copy(is_null), pointee_should_be_checked)),
-            ),
-        ))),
-    ));
+    // allowed (which for all non-borrow place uses, is when the pointee is a ZST). Borrows are
+    // checked unconditionally, so their condition is simply `is_null`.
+    let should_throw_exception = if let Some(pointee_should_be_checked) = pointee_should_be_checked
+    {
+        let should_throw_exception =
+            local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
+        stmts.push(Statement::new(
+            source_info,
+            StatementKind::Assign(Box::new((
+                should_throw_exception,
+                Rvalue::BinaryOp(
+                    BinOp::BitAnd,
+                    Box::new((Operand::Copy(is_null), pointee_should_be_checked)),
+                ),
+            ))),
+        ));
+        Operand::Copy(should_throw_exception)
+    } else {
+        Operand::Copy(is_null)
+    };
 
     // The final condition whether this pointer usage is ok or not.
     let is_ok = local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
@@ -117,7 +117,7 @@ fn insert_null_check<'tcx>(
         source_info,
         StatementKind::Assign(Box::new((
             is_ok,
-            Rvalue::UnaryOp(UnOp::Not, Operand::Copy(should_throw_exception)),
+            Rvalue::UnaryOp(UnOp::Not, should_throw_exception),
         ))),
     ));
 

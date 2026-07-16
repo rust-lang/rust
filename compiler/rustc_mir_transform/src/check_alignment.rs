@@ -131,7 +131,7 @@ fn insert_alignment_check<'tcx>(
         source_info,
         StatementKind::Assign(Box::new((
             is_ok,
-            Rvalue::BinaryOp(BinOp::Eq, Box::new((Operand::Copy(alignment_bits), zero.clone()))),
+            Rvalue::BinaryOp(BinOp::Eq, Box::new((Operand::Copy(alignment_bits), zero))),
         ))),
     ));
 
