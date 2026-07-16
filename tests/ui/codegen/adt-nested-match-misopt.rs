@@ -1,4 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/41888>.
+//! This used to segfault with `opt-level>0`, drop flag for ADT wasn't
+//! cleared properly in nested match.
 //@ run-pass
+
 fn main() { let _ = g(Some(E::F(K))); }
 
 type R = Result<(), ()>;
