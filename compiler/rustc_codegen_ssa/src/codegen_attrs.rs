@@ -402,6 +402,8 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             //   get the same symbol name as the *mangled* foreign item they refer to so that's all good.
         } else if codegen_fn_attrs.symbol_name.is_some() {
             // * This can be overridden with the `#[link_name]` attribute
+        } else if codegen_fn_attrs.link_ordinal.is_some() {
+            // * `#[link_ordinal]` and `#[link_name]` are incompatible with each other
         } else {
             // NOTE: there's one more exception that we cannot apply here. On wasm,
             // some items cannot be `no_mangle`.
