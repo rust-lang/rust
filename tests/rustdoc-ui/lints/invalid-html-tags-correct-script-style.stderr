@@ -1,0 +1,55 @@
+error: improperly nested Markdown emphasis in HTML `script` tag
+  --> $DIR/invalid-html-tags-correct-script-style.rs:6:10
+   |
+LL | //! like *this: <script>1*2</script>
+   |          ^^^^^^^^^^^^^^^^^ Markdown translates this into HTML, but the browser parses it as JavaScript
+   |
+note: the lint level is defined here
+  --> $DIR/invalid-html-tags-correct-script-style.rs:2:9
+   |
+LL | #![deny(rustdoc::invalid_html_tags)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to turn off Markdown parsing, put the tag at the start of the line
+   |
+LL ~ //! like *this: 
+LL ~ //! <script>1*2</script>
+   |
+
+error: nested Markdown emphasis in HTML `script` tag
+  --> $DIR/invalid-html-tags-correct-script-style.rs:11:17
+   |
+LL | //! Or <script>1*2</script> this*
+   |                 ^^^^^^^^^^^^^^^^^ Markdown translates this into HTML, but the browser parses it as JavaScript
+   |
+help: to turn off Markdown parsing, put the tag at the start of the line
+   |
+LL ~ //! Or 
+LL ~ //! <script>1*2</script> this*
+   |
+
+error: nested Markdown emphasis in HTML `script` tag
+  --> $DIR/invalid-html-tags-correct-script-style.rs:16:17
+   |
+LL | /// One <SCRIPT>*emph*</SCRIPT>
+   |                 ^^^^^^ Markdown translates this into HTML, but the browser parses it as JavaScript
+   |
+help: to turn off Markdown parsing, put the tag at the start of the line
+   |
+LL ~ /// One 
+LL ~ /// <SCRIPT>*emph*</SCRIPT>
+   |
+
+error: nested Markdown emphasis in HTML `style` tag
+  --> $DIR/invalid-html-tags-correct-script-style.rs:22:16
+   |
+LL | /// One <STYLE>*emph*</STYLE>
+   |                ^^^^^^ Markdown translates this into HTML, but the browser parses it as CSS
+   |
+help: to turn off Markdown parsing, put the tag at the start of the line
+   |
+LL ~ /// One 
+LL ~ /// <STYLE>*emph*</STYLE>
+   |
+
+error: aborting due to 4 previous errors
+

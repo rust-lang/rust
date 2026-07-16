@@ -250,14 +250,14 @@ pub fn no_error_8() {}
 
 /// <script>
 ///
-/// <span>Improperly *nested </span> HTML*
+/// <span>Not actually *Markdown </span> syntax*
 ///
 /// </script>
 pub fn no_error_9() {}
 
 /// <script>
 ///
-/// <em>Improperly <span> nested</em> HTML</span>
+/// <em>Not <span>actually Markdown</em> syntax</span>
 ///
 /// </script>
 pub fn no_error_10() {}

@@ -6,6 +6,9 @@ use std::ops::Range;
 use std::str::CharIndices;
 
 use itertools::Itertools as _;
+use rustc_ast::AttrStyle;
+use rustc_ast::attr::AttributeExt;
+use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_hir::HirId;
 use rustc_resolve::rustdoc::pulldown_cmark::{BrokenLink, Event, LinkType, Parser, Tag, TagEnd};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
@@ -150,6 +153,35 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     ) {
                         lint.span_label(reason_span, reason_display_text);
                     }
+                } else if let HtmlDiagMode::MarkdownNestedInRawText(html_tag_range, html_tag) = mode {
+                    lint.span_label(sp, format!("Markdown translates this into HTML, but the browser parses it as {language}", language = html_tag.language()));
+                    if
+                        // get the span for this diagnostic, if possible
+                        let Some((html_tag_span, _)) = source_span_for_markdown_range(
+                            tcx,
+                            dox,
+                            &html_tag_range,
+                            &item.attrs.doc_strings,
+                        ) &&
+                        // this suggestion is only implemented for line doc comments
+                        item.attrs.doc_strings.iter().all(|f| f.kind == DocFragmentKind::Sugared(CommentKind::Line)) &&
+                        // this suggestion is only implemented if every line doc comment has the same position (either outer or inner)
+                        let Some(def_id) = item.def_id() &&
+                        let mut style_iter = inline::load_attrs(cx.tcx, def_id).iter().filter_map(|attr| attr.doc_resolution_scope()) &&
+                        let Some(doc_attr_style) = style_iter.next() &&
+                        style_iter.all(|style| style == doc_attr_style)
+                    {
+                        let mark = match doc_attr_style {
+                            AttrStyle::Outer => "/// ",
+                            AttrStyle::Inner => "//! ",
+                        };
+                        lint.span_suggestion(
+                            html_tag_span,
+                            "to turn off Markdown parsing, put the tag at the start of the line",
+                            format!("\n{mark}{doc}", doc=&dox[html_tag_range.clone()]),
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 }
             }),
         );
@@ -199,7 +231,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
             }
             Event::Start(Tag::HtmlBlock) | Event::End(TagEnd::HtmlBlock) => {}
             Event::Start(tag) => {
-                tagp.push_markdown_tag(tag.into(), range);
+                tagp.push_markdown_tag(tag.into(), range, &report_diag);
             }
             Event::End(tag) => {
                 tagp.pop_markdown_tag(tag, range, &report_diag);
@@ -332,10 +364,47 @@ enum HtmlOrMarkdownTag {
     Markdown(TagEnd, Range<usize>),
 }
 
+impl HtmlOrMarkdownTag {
+    fn range(&self) -> Range<usize> {
+        match self {
+            HtmlOrMarkdownTag::Html(_, range) => range.clone(),
+            HtmlOrMarkdownTag::Markdown(_, range) => range.clone(),
+        }
+    }
+}
+
 #[derive(Eq, PartialEq, Debug, Clone)]
 struct BufferedUnclosedTag {
     unclosed_tag: HtmlOrMarkdownTag,
     reason: HtmlOrMarkdownTag,
+}
+
+#[derive(Eq, PartialEq, Debug, Clone, Copy)]
+enum HtmlRawTextTag {
+    Script,
+    Style,
+}
+
+impl HtmlRawTextTag {
+    fn name(self) -> &'static str {
+        match self {
+            HtmlRawTextTag::Script => "script",
+            HtmlRawTextTag::Style => "style",
+        }
+    }
+    fn language(self) -> &'static str {
+        match self {
+            HtmlRawTextTag::Script => "JavaScript",
+            HtmlRawTextTag::Style => "CSS",
+        }
+    }
+    fn from_tag(tag: &str) -> Option<HtmlRawTextTag> {
+        match &tag.to_ascii_lowercase() {
+            "script" => Some(HtmlRawTextTag::Script),
+            "style" => Some(HtmlRawTextTag::Style),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Debug, Clone)]
@@ -343,6 +412,7 @@ enum HtmlDiagMode {
     Unclosed,
     Unopened { possible_pair: Option<BufferedUnclosedTag> },
     Incomplete,
+    MarkdownNestedInRawText(Range<usize>, HtmlRawTextTag),
 }
 
 /// Parse html tags to ensure they are well-formed
@@ -392,14 +462,18 @@ impl TagParser {
             // If the tag is nested inside a "<script>" or a "<style>" tag, no warning should
             // be emitted.
             let should_not_warn = self.tags.iter().take(pos + 1).any(|tag| match tag {
-                HtmlOrMarkdownTag::Html(at, _span) => {
-                    let at = at.to_lowercase();
-                    at == "script" || at == "style"
-                }
+                HtmlOrMarkdownTag::Html(at, _span) => HtmlRawTextTag::from_tag(at).is_some(),
                 HtmlOrMarkdownTag::Markdown(..) => false,
             });
             if should_not_warn {
-                self.tags.truncate(pos);
+                // HTML tags nested within <script> should just be ignored.
+                //
+                // Markdown tags already produce a warning when added as children of
+                // raw text HTML elements, so we want to avoid producing a redundant
+                // warning for improper nesting.
+                self.tags
+                    .extract_if(pos.., |tag| matches!(tag, HtmlOrMarkdownTag::Html(..)))
+                    .for_each(|_| ());
             } else {
                 let (HtmlOrMarkdownTag::Html(_, start_range)
                 | HtmlOrMarkdownTag::Markdown(_, start_range)) = &self.tags[pos];
@@ -417,10 +491,7 @@ impl TagParser {
                 self.tags.pop();
             }
         } else if !self.tags.iter().any(|tag| match tag {
-            HtmlOrMarkdownTag::Html(at, _span) => {
-                let at = at.to_lowercase();
-                at == "script" || at == "style"
-            }
+            HtmlOrMarkdownTag::Html(at, _span) => HtmlRawTextTag::from_tag(at).is_some(),
             HtmlOrMarkdownTag::Markdown(..) => false,
         }) {
             // It can happen for example in this case: `<h2></script></h2>` (the `h2` tag isn't required
@@ -664,7 +735,30 @@ impl TagParser {
         }
     }
 
-    fn push_markdown_tag(&mut self, tag: TagEnd, range: Range<usize>) {
+    fn push_markdown_tag(
+        &mut self,
+        tag: TagEnd,
+        range: Range<usize>,
+        f: &impl Fn(String, &Range<usize>, HtmlDiagMode),
+    ) {
+        // If the tag is nested inside a "<script>" or a "<style>" tag, unconditionally warn.
+        let script_or_style_tag = self.tags.iter().find_map(|tag| match tag {
+            HtmlOrMarkdownTag::Html(at, _span) => {
+                Some((HtmlRawTextTag::from_tag(at)?, tag.range()))
+            }
+            HtmlOrMarkdownTag::Markdown(..) => None,
+        });
+        if let Some((html_tag, tag_range)) = script_or_style_tag {
+            f(
+                format!(
+                    "nested Markdown {} in HTML `{}` tag",
+                    markdown_tag_name(tag),
+                    html_tag.name()
+                ),
+                &range,
+                HtmlDiagMode::MarkdownNestedInRawText(tag_range.clone(), html_tag),
+            );
+        }
         self.tags.push(HtmlOrMarkdownTag::Markdown(tag, range));
     }
 
@@ -679,17 +773,34 @@ impl TagParser {
             HtmlOrMarkdownTag::Markdown(last_tag, _span) => *last_tag == tag_end,
         };
         if let Some(pos) = self.tags.iter().rposition(tag_is_match) {
-            // If the tag is nested inside a "<script>" or a "<style>" tag, no warning should
-            // be emitted.
-            let should_not_warn = self.tags.iter().take(pos + 1).any(|tag| match tag {
+            // If the tag is interleaved with a "<script>" or a "<style>" tag,
+            // give a different warning.
+            //
+            // Notice the `skip(pos + 1)` is here to catch `*a <script> b*`:
+            // the case where an MD is *properly* nested within the tag is already
+            // covered by `push_markdown_tag`.
+            let script_or_style_tag = self.tags.iter().skip(pos + 1).find_map(|tag| match tag {
                 HtmlOrMarkdownTag::Html(at, _span) => {
-                    let at = at.to_lowercase();
-                    at == "script" || at == "style"
+                    Some((HtmlRawTextTag::from_tag(at)?, tag.range()))
                 }
-                HtmlOrMarkdownTag::Markdown(..) => false,
+                HtmlOrMarkdownTag::Markdown(..) => None,
             });
-            if should_not_warn {
+            if let Some((tag, tag_range)) = script_or_style_tag {
+                f(
+                    format!(
+                        "improperly nested Markdown {} in HTML `{}` tag",
+                        markdown_tag_name(tag_end),
+                        tag.name()
+                    ),
+                    &range,
+                    HtmlDiagMode::MarkdownNestedInRawText(tag_range.clone(), tag),
+                );
                 self.tags.truncate(pos);
+                // Do not implicitly close a raw text tag when its nesting Markdown closes it.
+                // This silences the "unopened script tag" warning that you would get from:
+                //
+                //     <script>a *b c</script> d*
+                self.tags.push(HtmlOrMarkdownTag::Html(tag.name().to_owned(), tag_range));
             } else {
                 // `tags` is used as a queue, meaning that everything after `pos` is included inside it.
                 // So `*<span>*` will look like `["*", "span"]`. So when closing `*`, we will still
