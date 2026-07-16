@@ -24,7 +24,7 @@ use super::diagnostics::{
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
     FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
-    RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
+    RelaxedBoundForbiddenReason, RelaxedBoundPolicy,
 };
 use crate::diagnostics::ConstComptimeFn;
 
@@ -1878,7 +1878,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .collect();
 
         // Introduce extra lifetimes if late resolution tells us to.
-        let extra_lifetimes = self.resolver.extra_lifetime_params(self.owner.id);
+        let extra_lifetimes = self.owner.extra_lifetime_params(self.owner.id);
         params.extend(extra_lifetimes.into_iter().map(|&(ident, node_id, kind)| {
             self.lifetime_res_to_generic_param(
                 ident,

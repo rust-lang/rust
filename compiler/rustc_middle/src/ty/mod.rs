@@ -28,7 +28,7 @@ use rustc_abi::{
     Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
 };
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::{self as ast};
+use rustc_ast::{self as ast, NodeId};
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -224,6 +224,8 @@ pub struct PerOwnerResolverData<'tcx> {
 
     /// Resolution for import nodes, which have multiple resolutions in different namespaces.
     pub import_res: hir::def::PerNS<Option<Res<ast::NodeId>>> = Default::default(),
+    /// Lifetime parameters that lowering will have to introduce.
+    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>> = Default::default(),
 
     /// The id of the owner
     pub id: ast::NodeId,
@@ -245,6 +247,17 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
     pub fn get_lifetime_res(&self, id: ast::NodeId) -> Option<LifetimeRes> {
         self.lifetimes_res_map.get(&id).copied()
     }
+
+    /// Obtain the list of lifetimes parameters to add to an item.
+    ///
+    /// Extra lifetime parameters should only be added in places that can appear
+    /// as a `binder` in `LifetimeRes`.
+    ///
+    /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
+    /// should appear at the enclosing `PolyTraitRef`.
+    pub fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
+        self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
+    }
 }
 
 /// Resolutions that should only be used for lowering.
@@ -253,8 +266,6 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
 pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
-    /// Lifetime parameters that lowering will have to introduce.
-    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>>,
 
     pub next_node_id: ast::NodeId,
 
