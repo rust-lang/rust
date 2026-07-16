@@ -829,6 +829,7 @@ impl GlobalState {
                 health @ (lsp_ext::Health::Warning | lsp_ext::Health::Error),
                 Some(message),
             ) = (status.health, &status.message)
+                && self.last_reported_status.message != status.message
             {
                 let open_log_button = tracing::enabled!(tracing::Level::ERROR)
                     && (self.fetch_build_data_error().is_err()
