@@ -40,6 +40,7 @@ struct FdIdWith<T: ?Sized> {
 /// globally unique ID of this file description.
 #[repr(transparent)]
 #[derive(CoercePointee, Debug)]
+// Sadly `CoercePointee` does not let us keep the `FdId` *outside* the `Rc`.
 pub struct FileDescriptionRef<T: ?Sized>(Rc<FdIdWith<T>>);
 
 impl<T: ?Sized> Clone for FileDescriptionRef<T> {
@@ -108,43 +109,16 @@ impl<T> VisitProvenance for FileDescriptionRef<T> {
 /// but that does not allow upcasting.
 pub trait FileDescriptionExt: 'static {
     fn into_rc_any(self: FileDescriptionRef<Self>) -> Rc<dyn Any>;
-
-    /// We wrap the regular `close` function generically, to both handle `Rc::into_inner`
-    /// and epoll interest management.
-    fn close_ref<'tcx>(
-        self: FileDescriptionRef<Self>,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>>;
 }
 
 impl<T: FileDescription + 'static> FileDescriptionExt for T {
     fn into_rc_any(self: FileDescriptionRef<Self>) -> Rc<dyn Any> {
         self.0
     }
-
-    fn close_ref<'tcx>(
-        self: FileDescriptionRef<Self>,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        match Rc::into_inner(self.0) {
-            Some(fd) => {
-                // This was the last strong reference.
-                // There might have been readiness watchers interested in this FD. Remove them.
-                // FIXME: this isn't actually reliable, we don't always call `close_ref` when
-                // a FileDescriptionRef gets dropped!
-                ecx.machine.readiness_interests.remove_watchers_for_fd(fd.id);
-
-                interp_ok(Ok(()))
-            }
-            None => {
-                // Not the last reference.
-                interp_ok(Ok(()))
-            }
-        }
-    }
 }
 
 pub type DynFileDescriptionRef = FileDescriptionRef<dyn FileDescription>;
+pub type WeakDynFileDescriptionRef = WeakFileDescriptionRef<dyn FileDescription>;
 
 impl FileDescriptionRef<dyn FileDescription> {
     pub fn downcast<T: FileDescription + 'static>(self) -> Option<FileDescriptionRef<T>> {

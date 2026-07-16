@@ -80,7 +80,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         // We are not in GenMC mode, so we control the scheduling.
         let thread_manager = &this.machine.threads;
-        // This thread and the program can keep going.
+        // Check if we can just keep running the current thread.
         if thread_manager.active_thread_ref().is_enabled() && !thread_manager.yield_active_thread {
             // The currently active thread is still enabled, just continue with it.
             return interp_ok(SchedulingAction::ExecuteStep);
@@ -89,7 +89,9 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         // The active thread yielded or got terminated. Let's see if there are any I/O events
         // or timeouts to take care of.
 
-        // There may be delayed readiness updates we have to process.
+        // There may be delayed readiness updates we have to process. We only care about this
+        // if it may unblock other threads, or if someone calls `epoll_wait`, and for the latter
+        // case there is another call in `ReadinessWatcher::get_ready_interests`.
         DelayedReadinessUpdates::process(this)?;
 
         if this.machine.communicate() {

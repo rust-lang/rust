@@ -60,10 +60,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        let fd = this
-            .machine
-            .fds
-            .insert_new(Epoll { watcher: Rc::new(this.machine.readiness_interests.new_watcher()) });
+        let fd =
+            this.machine.fds.insert_new(Epoll { watcher: Rc::new(ReadinessWatcher::default()) });
         interp_ok(Scalar::from_i32(fd))
     }
 

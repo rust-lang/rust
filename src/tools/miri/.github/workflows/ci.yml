@@ -65,13 +65,14 @@ jobs:
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
+          set -x
           # armhf, s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
           sudo bash -c "echo 'https://ports.ubuntu.com/	priority:4' >> /etc/apt/apt-mirrors.txt"
           # Add architecture
           sudo dpkg --add-architecture ${{ matrix.multiarch }}
           # Ubuntu Ports often has outdated mirrors so try a few times to get the apt repo
           for TRY in $(seq 3); do
-            { sudo apt update && break; } || sleep 60
+            { sudo apt update -o APT::Update::Error-Mode=any && break; } || sleep 60
           done
           # Install needed packages
           sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed 's/:/:${{ matrix.multiarch }}/g')

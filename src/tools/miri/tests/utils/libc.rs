@@ -164,7 +164,7 @@ pub mod epoll {
         epoll_ctl(epfd, EPOLL_CTL_ADD, fd, Ev { events, data: fd })
     }
 
-    /// Call `epoll_wait` on `epfd` with the provided `timeout`.
+    /// Call `epoll_wait` on `epfd` with the provided `timeout` (in milliseconds).
     /// It fetches at most `max_events` events from `epfd` and
     /// ensures that the returned events match the `expected` events.
     #[track_caller]
@@ -182,7 +182,7 @@ pub mod epoll {
         assert_eq!(got, expected, "got wrong ready events");
     }
 
-    /// Call `epoll_wait` on `epfd` with the provided `timeout` and ensure
+    /// Call `epoll_wait` on `epfd` with the provided `timeout` (in milliseconds) and ensure
     /// that the set of *all* ready events matches `expected`.
     #[track_caller]
     pub fn check_epoll_wait(epfd: i32, expected: &[Ev], timeout: i32) {
