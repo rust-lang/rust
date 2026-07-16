@@ -102,25 +102,6 @@ static T_ARR_4: fn_arr_4 = f_arr_4;
 #[used]
 static T_ARR2: fn_arr2 = f_arr2;
 
-// Complex types.
-extern "C" {
-    fn f_cf(x: (f32, f32)) -> (f32, f32);
-    fn f_cd(x: (f64, f64)) -> (f64, f64);
-    // RUST does not have built int long double
-}
-type fn_cf = unsafe extern "C" fn((f32, f32)) -> (f32, f32);
-type fn_cd = unsafe extern "C" fn((f64, f64)) -> (f64, f64);
-// discriminator: 19255 (0x4B37), encoding: FCfCfE
-// DISC: @{{.*}}T_CF = constant ptr ptrauth (ptr @f_cf, i32 0, i64 19255), align 8
-// NO_DISC: @{{.*}}T_CF = constant ptr ptrauth (ptr @f_cf, i32 0), align 8
-#[used]
-static T_CF: fn_cf = f_cf;
-// discriminator: 2553 (0x09F9), encoding: FCdCdE
-// DISC: @{{.*}}T_CD = constant ptr ptrauth (ptr @f_cd, i32 0, i64 2553), align 8
-// NO_DISC: @{{.*}}T_CD = constant ptr ptrauth (ptr @f_cd, i32 0), align 8
-#[used]
-static T_CD: fn_cd = f_cd;
-
 // Function types.
 extern "C" {
     fn f_nested(g: extern "C" fn(i32) -> i32, x: i32) -> i32;
@@ -203,11 +184,11 @@ static T_VEC: FnVec = f_vec;
 // Mixed.
 type fn_i32_f = unsafe extern "C" fn(f32) -> i32;
 extern "C" {
-    fn f_mixed(g: fn_i32_f, arr: *mut *mut f32, c: (f64, f64)) -> i32;
+    fn f_mixed(g: fn_i32_f, arr: *mut *mut f32, d: f64) -> i32;
 }
-type fn_mixed = unsafe extern "C" fn(fn_i32_f, *mut *mut f32, (f64, f64)) -> i32;
-// discriminator: 26381 (0x670D), encoding: FiPPCdE
-// DISC: @{{.*}}T_MIXED = constant ptr ptrauth (ptr @f_mixed, i32 0, i64 26381), align 8
+type fn_mixed = unsafe extern "C" fn(fn_i32_f, *mut *mut f32, f64) -> i32;
+// discriminator: 36791 (0x8FB7), encoding: FiPPdE
+// DISC: @{{.*}}T_MIXED = constant ptr ptrauth (ptr @f_mixed, i32 0, i64 36791), align 8
 // NO_DISC: @{{.*}}T_MIXED = constant ptr ptrauth (ptr @f_mixed, i32 0), align 8
 #[used]
 static T_MIXED: fn_mixed = f_mixed;
@@ -293,14 +274,6 @@ pub fn main() {
         // NO_DISC-DAG: call i32 ptrauth (ptr @f_arr2, i32 0)(ptr %arrn) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         let _ = T_ARR2((&mut arrn) as *mut [i32; 3] as *mut i32);
 
-        // Complex types.
-        // DISC: call [2 x float] ptrauth (ptr @f_cf, i32 0, i64 19255){{.*}} [ "ptrauth"(i32 0, i64 19255) ]
-        // NO_DISC: call [2 x float] ptrauth (ptr @f_cf, i32 0){{.*}} [ "ptrauth"(i32 0, i64 0) ]
-        let _ = T_CF((1.0f32, 2.0f32));
-        //; DISC: call [2 x double] ptrauth (ptr @f_cd, i32 0, i64 2553){{.*}} [ "ptrauth"(i32 0, i64 2553) ]
-        //; NO_DISC: call [2 x double] ptrauth (ptr @f_cd, i32 0){{.*}} [ "ptrauth"(i32 0, i64 0) ]
-        let _ = T_CD((1.0f64, 2.0f64));
-
         // Function argument.
         // DISC: call i32 ptrauth (ptr @f_nested, i32 0, i64 20679)(ptr ptrauth (ptr @{{.*}}callback_i32, i32 0, i64 2981), i32 123) {{.*}} [ "ptrauth"(i32 0, i64 20679) ]
         // NO_DISC: call i32 ptrauth (ptr @f_nested, i32 0)(ptr ptrauth (ptr @{{.*}}callback_i32, i32 0), i32 123) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
@@ -334,9 +307,9 @@ pub fn main() {
         // Mixed case.
         let mut value = 1.0f32;
         let mut ptr = &mut value as *mut f32;
-        // DISC: call i32 ptrauth (ptr @f_mixed, i32 0, i64 26381)(ptr ptrauth (ptr @{{.*}}callback_f32_to_i32, i32 0, i64 48468), {{.*}} [ "ptrauth"(i32 0, i64 26381) ]
+        // DISC: call i32 ptrauth (ptr @f_mixed, i32 0, i64 36791)(ptr ptrauth (ptr @{{.*}}callback_f32_to_i32, i32 0, i64 48468), {{.*}} [ "ptrauth"(i32 0, i64 36791) ]
         // NO_DISC: call i32 ptrauth (ptr @f_mixed, i32 0)(ptr ptrauth (ptr @{{.*}}callback_f32_to_i32, i32 0), {{.*}} [ "ptrauth"(i32 0, i64 0) ]
-        let _ = T_MIXED(callback_f32_to_i32, &mut ptr, (1.0, 2.0));
+        let _ = T_MIXED(callback_f32_to_i32, &mut ptr, 2.0);
 
         // Comparator.
         let lhs = 1i32;
@@ -366,7 +339,6 @@ pub fn main() {
 
 // Equivalent C code:
 //
-// #include <complex.h>
 // #include <stdint.h>
 // #include <stdlib.h>
 //
@@ -412,16 +384,6 @@ pub fn main() {
 // typedef int32_t (*fn_arr2)(int32_t[]);
 //
 // __attribute__((used)) static fn_arr2 T_ARR2 = f_arr2;
-//
-// // Complex types.
-// _Complex float f_cf(_Complex float x);
-// _Complex double f_cd(_Complex double x);
-//
-// typedef _Complex float (*fn_f_cf)(_Complex float);
-// typedef _Complex double (*fn_f_cd)(_Complex double);
-//
-// __attribute__((used)) static fn_f_cf T_CF = f_cf;
-// __attribute__((used)) static fn_f_cd T_CD = f_cd;
 //
 // // Function types.
 // int32_t f_nested(int32_t (*g)(int32_t), int32_t x);
@@ -476,9 +438,9 @@ pub fn main() {
 // __attribute__((used)) static fn_vec T_VEC = f_vec;
 //
 // // Mix.
-// int32_t f_mixed(int32_t (*g)(float), float *arr[4], _Complex double c);
+// int32_t f_mixed(int32_t (*g)(float), float *arr[4], double d);
 //
-// typedef int32_t (*fn_mixed)(int32_t (*)(float), float *[4], _Complex double);
+// typedef int32_t (*fn_mixed)(int32_t (*)(float), float *[4], double);
 //
 // __attribute__((used)) static fn_mixed T_MIXED = f_mixed;
 //
@@ -524,10 +486,6 @@ pub fn main() {
 //   (void)T_ARR_4(arr4);
 //   (void)T_ARR2(arrn);
 //
-//   /* Complex types. */
-//   (void)T_CF(1.0f + 2.0f * I);
-//   (void)T_CD(1.0 + 2.0 * I);
-//
 //   /* Function argument. */
 //   (void)T_NESTED(callback_i32, 123);
 //
@@ -555,7 +513,7 @@ pub fn main() {
 //
 //   float *arrp[4] = {&value0, &value1, &value2, &value3};
 //
-//   (void)T_MIXED(callback_f32_to_i32, arrp, 1.0 + 2.0 * I);
+//   (void)T_MIXED(callback_f32_to_i32, arrp, 1.0);
 //
 //   /* Comparator. */
 //   int32_t lhs = 1;

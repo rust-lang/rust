@@ -24,6 +24,12 @@ The computation is structured into three conceptual stages:
    function pointer discriminators. This includes canonicalization such as
    treating all pointer-like types uniformly and mapping Rust constructs onto
    their closest C equivalents.
+   One notable exception is C `_Complex`. Rust has no corresponding native type,
+   so there is no canonical Rust representation to map onto Clang's `_Complex`
+   type category. Rather than infer one (for example, by treating `(f32, f32)`
+   or `(f64, f64)` as complex numbers), this implementation leaves such
+   representation choices to users and does not provide dedicated `_Complex`
+   encoding.
 
 ### 2. Type encoding
    The lowered representation is serialized into a byte stream using rules
@@ -298,34 +304,16 @@ enum ClangDiscTy<'tcx> {
 
     Array { elem: Ty<'tcx> },
 
-    // FIXME(jchlands) Decide if to support Complex types. Clang has dedicated node for this
-    // `Type::Complex`, Rust does not. So we match against a Tuple(FP_TYPE, FP_TYPE), that should
-    // not be a problem for extern "C".
-    Complex(Ty<'tcx>),
-
+    // FIXME(jchlands) Decide if to support Complex types in future. Clang has
+    // dedicated node for this `Type::Complex`, Rust does not. So we could match
+    // against a Tuple(FP_TYPE, FP_TYPE).
+    // Complex(Ty<'tcx>),
     Vector { bytes: u64 },
 
     EnumLikeInt,
     AdtName(String),
     Opaque,
     Void,
-}
-
-// Lowering (Rust Ty -> ClangDiscTy)
-fn is_representing_c_complex(fields: &[Ty<'_>]) -> bool {
-    fields.len() == 2 && fields[0] == fields[1] && is_complex_compatible_float(fields[0])
-}
-
-fn is_complex_compatible_float(ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Float(f) => match f.bit_width() {
-            32 => true,
-            64 => true,
-            128 => true,
-            _ => false,
-        },
-        _ => false,
-    }
 }
 
 // Canonicalize `Option<fn ptr>` to `fn ptr`. This is so that we can express C's null ptr argument.
@@ -350,6 +338,13 @@ fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 /// This is not a full semantic translation of Rust types. It is a lossy mapping
 /// that intentionally matches Clang's function pointer authentication encoding
 /// rules.
+/// This is not a full semantic translation of Rust types. It is a lossy mapping
+/// that intentionally matches Clang's function pointer authentication encoding
+/// rules where Rust has a direct language-level equivalent.
+///
+/// In particular C `_Complex`, without a canonical Rust equivalent, is not
+/// recognized. This avoids introducing heuristics for user-defined
+/// representations that may vary across codebases.
 ///
 /// Important invariants:
 /// - All pointer-like types (Rust refs, raw pointers, fn pointers) collapse to
@@ -357,15 +352,14 @@ fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 /// - Struct/union types are encoded using name only, not layout.
 /// - Enums are treated as integers.
 /// - SIMD types are encoded only by total byte size (no lane semantics).
+/// - No attempt is made to recognize user-defined representations of C
+///   `_Complex` types.
 /// This must remain in sync with Clang's `encodeTypeForFunctionPointerAuth`.
 fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> {
     let ty = canonicalize_c_type(tcx, ty);
     match ty.kind() {
         // C void / Rust ()
         ty::Tuple(list) if list.is_empty() => ClangDiscTy::Void,
-
-        // Complex
-        ty::Tuple(fields) if is_representing_c_complex(fields) => ClangDiscTy::Complex(fields[0]),
 
         // scalars
         ty::Bool => ClangDiscTy::Bool,
@@ -477,10 +471,6 @@ fn encode_ty<'tcx>(enc: &mut PtrauthEncoder, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
 
         ClangDiscTy::Opaque => enc.push(b'?'),
 
-        ClangDiscTy::Complex(t) => {
-            enc.push(b'C');
-            encode_ty(enc, tcx, t);
-        }
         ClangDiscTy::Vector { bytes } => {
             enc.push_str("Dv");
             enc.push_str(&bytes.to_string());
