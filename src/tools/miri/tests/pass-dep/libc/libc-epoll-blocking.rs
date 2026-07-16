@@ -158,7 +158,7 @@ fn test_epoll_race() {
         // Write to the static mut variable.
         unsafe { VAL = 1 };
         // Write to the eventfd instance.
-        write_all(fd, &1_u64.to_ne_bytes()).unwrap();
+        eventfd::write_val(fd, 1).unwrap();
     });
     thread::sleep(Duration::from_millis(10));
     // epoll_wait for EPOLLIN.
@@ -217,6 +217,7 @@ fn multiple_events_wake_multiple_threads() {
     check_epoll_wait(epfd, &expected, -1);
 
     // Block two threads on the epoll, both wanting to get just one event.
+    // (Can't use helper because we are gathering the events from both threads before comparing.)
     let t1 = thread::spawn(move || {
         let mut e = libc::epoll_event { events: 0, u64: 0 };
         let res = unsafe { libc::epoll_wait(epfd, &raw mut e, 1, -1) };
@@ -233,7 +234,7 @@ fn multiple_events_wake_multiple_threads() {
     thread::sleep(Duration::from_millis(10));
 
     // Trigger the eventfd. This triggers two events at once!
-    write_all(fd1, &0_u64.to_ne_bytes()).unwrap();
+    eventfd::write_val(fd1, 0).unwrap();
 
     // Both threads should have been woken up so that both events can be consumed.
     let e1 = t1.join().unwrap();
