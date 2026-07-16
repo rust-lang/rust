@@ -743,7 +743,7 @@ pub(crate) struct FieldlessUnion {
 pub(crate) struct WhereClauseAfterTypeAlias {
     #[primary_span]
     pub span: Span,
-    #[help("add `#![feature(lazy_type_alias)]` to the crate attributes to enable")]
+    #[help("add `#![feature(checked_type_aliases)]` to the crate attributes to enable")]
     pub help: bool,
 }
 

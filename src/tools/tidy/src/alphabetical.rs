@@ -9,6 +9,8 @@
 //! // tidy-alphabetical-end
 //! ```
 //!
+//! Numeric sequences are parsed as `u64` values, so each sequence must fit within `u64`.
+//!
 //! Empty lines and lines starting (ignoring spaces) with `//` or `#` (except those starting with
 //! `#!`) are considered comments are are sorted together with the next line (but do not affect
 //! sorting).

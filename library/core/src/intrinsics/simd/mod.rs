@@ -371,8 +371,8 @@ pub const unsafe fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
 /// `val`.
 ///
 /// # Safety
-/// Unmasked values in `T` must be readable as if by `<ptr>::read` (e.g. aligned to the element
-/// type).
+/// Each pointer in `ptr` whose corresponding value in `mask` is `!0` must be readable as if by
+/// [`ptr::read`][crate::ptr::read] (e.g. aligned to the element type).
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
@@ -395,8 +395,8 @@ pub const unsafe fn simd_gather<T, U, V>(val: T, ptr: U, mask: V) -> T;
 /// (This is relevant in case two of the stores overlap.)
 ///
 /// # Safety
-/// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the element
-/// type).
+/// Each pointer in `ptr` whose corresponding value in `mask` is `!0` must be writable as if by
+/// [`ptr::write`][crate::ptr::write] (e.g. aligned to the element type).
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]

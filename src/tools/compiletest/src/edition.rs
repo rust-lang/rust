@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::fatal;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -23,13 +25,21 @@ impl From<u32> for Edition {
     }
 }
 
-pub(crate) fn parse_edition(mut input: &str) -> Edition {
-    input = input.trim();
-    if input == "future" {
-        Edition::Future
-    } else {
-        Edition::Year(input.parse().unwrap_or_else(|_| {
-            fatal!("`{input}` doesn't look like an edition");
-        }))
+impl FromStr for Edition {
+    type Err = String;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let input = input.trim();
+        if input == "future" {
+            Ok(Edition::Future)
+        } else {
+            let year: u32 =
+                input.parse().map_err(|v| format!("{input} is not a valid edition year: {v}"))?;
+            Ok(Edition::Year(year))
+        }
     }
+}
+
+pub(crate) fn parse_edition(input: &str) -> Edition {
+    input.parse().unwrap_or_else(|_| fatal!("`{input}` doesn't look like an edition"))
 }

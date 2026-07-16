@@ -3,7 +3,7 @@
 //!
 //! Regression test for <https://github.com/rust-lang/rust/issues/152633>.
 
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 #![feature(min_generic_const_args)]
 
 trait Trait {
