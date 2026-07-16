@@ -1,4 +1,4 @@
-//@ compile-flags: -Z unstable-options --show-coverage --output-format=json
+//@ compile-flags: -Z unstable-options --show-coverage --output-format=json -o -
 //@ check-pass
 
 mod bar {

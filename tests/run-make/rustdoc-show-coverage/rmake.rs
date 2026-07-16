@@ -1,8 +1,8 @@
 // This test ensures that `-o` option works as expected with `--show-coverage`.
 // Regression test for <https://github.com/rust-lang/rust/issues/158929>.
 
-use run_make_support::{path, rustdoc};
 use run_make_support::rfs::{read_to_string, remove_file};
+use run_make_support::{path, rustdoc};
 
 fn run_rustdoc(extra_args: &[&str]) -> String {
     rustdoc()
@@ -34,7 +34,8 @@ fn check_generate_file(ext: &str, extra_args: &[&str], file_check: &str) {
     let file = format!("doc/foo.{ext}");
     assert!(path(&file).exists());
 
-    assert!(out.is_empty(), "Shouldn't display anything to stdout and yet we got {out:?}");
+    let expected = format!("Generated output into {file:?}\n");
+    assert_eq!(out, expected, "Expected {expected:?}, got {out:?}");
 
     let content = read_to_string(&file);
     assert!(content.starts_with(file_check), "{content:?} doesn't start with {file_check:?}");
