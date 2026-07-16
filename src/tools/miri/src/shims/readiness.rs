@@ -137,7 +137,8 @@ impl Drop for ReadinessWatcher {
             if let Some(fd) = interest.watched_fd.upgrade() {
                 // We can't easily figure out who in that list is us, but we can just remove
                 // everything that has no more strong refs.
-                fd.readiness_watched().unwrap().run_gc();
+                let mut watchers = fd.readiness_watched().unwrap().watchers.borrow_mut();
+                watchers.retain(|w| w.strong_count() > 0);
             }
         }
     }
@@ -253,10 +254,7 @@ impl ReadinessWatcher {
             // We did not have interest in this.
             return None;
         };
-        let Some(fd_ref) = interest.watched_fd.upgrade() else {
-            // The FD is already gone, nothing to do.
-            return None;
-        };
+        let fd_ref = interest.watched_fd.upgrade().expect("dead watched");
 
         // Remove the ready event for this key, should one exist.
         let mut ready_events = self.ready.borrow_mut();
@@ -321,8 +319,8 @@ impl ReadinessWatcher {
         // Sanity-check to ensure that all event info is up-to-date.
         if cfg!(debug_assertions) {
             for interest in interests.values() {
-                // Ensure this matches the latest readiness of this FD, if the FD is still open.
-                let Some(fd) = interest.watched_fd.upgrade() else { continue };
+                // Ensure this matches the latest readiness of this FD.
+                let fd = interest.watched_fd.upgrade().expect("dead watched");
                 let current_active = fd.readiness();
                 assert_eq!(interest.active(), &(current_active & interest.relevant.clone()));
             }
@@ -336,14 +334,7 @@ impl ReadinessWatcher {
             && let Some(key) = ready.pop_front()
         {
             let interest = interests.get(&key).expect("non-existing interest in ready set");
-            let Some(fd) = interest.watched_fd.upgrade() else {
-                // "A file descriptor is removed from an interest list only after all the file
-                // descriptors referring to the underlying open file description have been closed."
-                // So, we should have removed this FD from the interest list, we just didn't get
-                // around to that yet. Pretend it does not exist. It will not be re-added to the
-                // ready list, and it will eventually be cleaned up by the GC.
-                continue;
-            };
+            let fd = interest.watched_fd.upgrade().expect("dead watched");
 
             if !interest.is_edge_triggered {
                 // This is a level-triggered interest, so we need to re-add the event:
@@ -378,6 +369,32 @@ pub struct ReadinessWatched {
     ready_clock: RefCell<VClock>,
 }
 
+impl Drop for ReadinessWatched {
+    fn drop(&mut self) {
+        // "A file descriptor is removed from an interest list only after all the file
+        // descriptors referring to the underlying open file description have been closed."
+        // So, remove ourselves from all interest lists.
+        for watcher in self.watchers.borrow().iter() {
+            // If the watcher still exists, remove ourselves from it.
+            let Some(watcher) = watcher.upgrade() else { continue };
+            // We can't easily figure out who in that list is us, but we can just remove everything
+            // that has no more strong refs.
+            let mut ready_events = watcher.ready.borrow_mut();
+            watcher.interests.borrow_mut().retain(|key, interest| {
+                if interest.watched_fd.is_closed() {
+                    // We'll remove this one. Also remove it from the ready queue if applicable!
+                    if let Some(idx) = ready_events.iter().position(|k| k == key) {
+                        ready_events.remove(idx);
+                    }
+                    false // do not retain
+                } else {
+                    true // do retain
+                }
+            });
+        }
+    }
+}
+
 impl ReadinessWatched {
     fn insert(&self, watcher: &Rc<ReadinessWatcher>) {
         let mut watchers = self.watchers.borrow_mut();
@@ -408,13 +425,7 @@ impl ReadinessWatched {
     pub fn has_watcher_with_blocked_thread(&self) -> bool {
         let watchers = self.watchers.borrow();
         // See if any of those watchers has a blocked thread.
-        watchers.iter().any(|w| w.upgrade().expect("dead watcher?").queue.borrow().len() > 0)
-    }
-
-    /// Cleans up references to dead watchers.
-    pub fn run_gc(&self) {
-        let mut watchers = self.watchers.borrow_mut();
-        watchers.retain(|w| w.strong_count() > 0);
+        watchers.iter().any(|w| w.upgrade().expect("dead watcher").queue.borrow().len() > 0)
     }
 }
 
@@ -471,7 +482,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let watchers_ref = watched.watchers.borrow();
         // Need to make a copy so below we can unblock threads which may need the same `RefCell`.
         let watchers =
-            watchers_ref.iter().map(|w| w.upgrade().expect("dead watcher?")).collect::<Vec<_>>();
+            watchers_ref.iter().map(|w| w.upgrade().expect("dead watcher")).collect::<Vec<_>>();
         if watchers.is_empty() {
             return interp_ok(());
         };
