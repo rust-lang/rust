@@ -31,15 +31,13 @@ use rustc_target::spec::{
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel,
 };
 
-use crate::interface::{initialize_checked_jobserver, parse_cfg};
+use crate::interface::parse_cfg;
 
 fn sess_and_cfg<F>(args: &[&'static str], f: F)
 where
     F: FnOnce(Session, Cfg),
 {
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
-    initialize_checked_jobserver(&early_dcx);
-
     let matches = optgroups().parse(args).unwrap();
     let sessopts = build_session_options(&mut early_dcx, &matches);
     let target = rustc_session::config::build_target_config(
