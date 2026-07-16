@@ -73,7 +73,7 @@ impl ByteString {
     #[rustc_allow_incoherent_impl]
     #[expect(clippy::inherent_to_string_shadow_display)]
     pub fn to_string(&self) -> Result<String, FromUtf8Error> {
-        String::from_utf8(self.0)
+        String::from_utf8(self.0.clone())
     }
 }
 

@@ -71,14 +71,8 @@ fn test_to_string() {
     let b1 = ByteStr::new("abc");
     let b2 = ByteStr::new(b"\xf0\x28\x8c\xbc");
 
-    assert_eq!(
-        Ok("abc".to_string()),
-        b1.to_string()
-    );
-    assert_matches!(
-        b2.to_string(),
-        Err(std::string::FromUtf8Error { .. })
-    );
+    assert_eq!(Ok("abc".to_string()), b1.to_string());
+    assert_matches!(b2.to_string(), Err(std::string::FromUtf8Error { .. }));
 
     // Can still directly use the trait
     assert_eq!("abc".to_string(), ToString::to_string(b1));
