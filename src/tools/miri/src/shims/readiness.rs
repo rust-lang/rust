@@ -1,5 +1,5 @@
 use std::assert_matches;
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::collections::{BTreeMap, VecDeque};
 use std::rc::{Rc, Weak};
 
@@ -145,12 +145,6 @@ impl Drop for ReadinessWatcher {
 }
 
 impl ReadinessWatcher {
-    /// Get a reference to the map of registered interests of the watcher
-    /// together with their keys.
-    pub fn interests(&self) -> Ref<'_, BTreeMap<ReadinessInterestKey, ReadinessInterest>> {
-        self.interests.borrow()
-    }
-
     /// Add an interest for the file description to which the file descriptor
     /// `fd_num` belongs.
     /// `relevant` contains the readiness mask of relevant events.
@@ -426,6 +420,19 @@ impl ReadinessWatched {
         let watchers = self.watchers.borrow();
         // See if any of those watchers has a blocked thread.
         watchers.iter().any(|w| w.upgrade().expect("dead watcher").queue.borrow().len() > 0)
+    }
+
+    /// Remove all interes in the given file descriptor, which must refer to the file description
+    /// that contains `self`.
+    pub fn remove_file_num_interests(&self, fd_id: FdId, fd_num: FdNum) {
+        // We make a copy since `remove_interest` may want to mutate `watchers`. This is not
+        // very efficient, but this code anyway only runs on `close` on Illumos.
+        let watchers = self.watchers.borrow().clone();
+        for watcher in watchers.iter() {
+            let watcher = watcher.upgrade().expect("dead watcher");
+            // Remove this interest, if it exists.
+            watcher.remove_interest((fd_id, fd_num));
+        }
     }
 }
 
