@@ -7,7 +7,7 @@
 use std::convert::TryInto;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
@@ -29,6 +29,7 @@ fn main() {
     multiple_events_wake_multiple_threads();
     waiting_threads_unblocked_after_epoll_close();
     waiting_threads_unblocked_after_socketpair_close();
+    epoll_blocking_watching_fd_that_is_being_closed();
 }
 
 // This test allows edge-triggered epoll_wait to block and then unblock
@@ -42,6 +43,16 @@ fn test_epoll_block_without_notification() {
     let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
     let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
+    // Wait for EPOLLIN (it will not happen).
+    epoll_ctl_add(epfd, fd, EPOLLIN | EPOLLET_OR_ZERO).unwrap();
+    let start = Instant::now();
+    check_epoll_wait(epfd, &[], 10);
+    assert!(start.elapsed() >= Duration::from_millis(10));
+
+    // The second test behaves differently between level- and edge-triggered epoll.
+    // We get a new epoll instance for this.
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
+
     // Register eventfd with epoll.
     epoll_ctl_add(epfd, fd, EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO).unwrap();
 
@@ -50,7 +61,9 @@ fn test_epoll_block_without_notification() {
 
     if cfg!(edge_triggered) {
         // This epoll wait blocks, and timeout without notification.
-        check_epoll_wait(epfd, &[], 5);
+        let start = Instant::now();
+        check_epoll_wait(epfd, &[], 10);
+        assert!(start.elapsed() >= Duration::from_millis(10));
     } else {
         // In level-triggered mode we should receive the same events
         // as before without timing out.
@@ -327,4 +340,31 @@ fn waiting_threads_unblocked_after_socketpair_close() {
             }
         });
     }
+}
+
+/// Ensure correct behavior when we block on epoll watching an FD that is being closed.
+fn epoll_blocking_watching_fd_that_is_being_closed() {
+    // Create an epoll instance.
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
+
+    // Create an eventfd instance and register it with epoll.
+    let fd = errno_result(unsafe { libc::eventfd(0, 0) }).unwrap();
+    epoll_ctl_add(epfd, fd, EPOLLIN | EPOLLET_OR_ZERO).unwrap();
+
+    thread::scope(|s| {
+        s.spawn(|| {
+            // Block on the epoll.
+            let start = Instant::now();
+            check_epoll_wait(epfd, &[], 10);
+            assert!(start.elapsed() >= Duration::from_millis(10));
+        });
+
+        // Let the thread go and do its setup.
+        thread::sleep(Duration::from_millis(10));
+
+        // Now that the thread is blocked, close the eventfd.
+        unsafe { errno_check(libc::close(fd)) };
+
+        // The epoll_wait above should time out. Being closed does not generate any events.
+    });
 }
