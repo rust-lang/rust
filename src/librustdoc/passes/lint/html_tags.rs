@@ -157,7 +157,6 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
 
     let mut tagp = TagParser::new();
     let mut is_in_comment = None;
-    let mut in_code_block = false;
 
     let link_names = item.link_names(&cx.cache);
 
@@ -195,18 +194,16 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
 
     for (event, range) in p {
         match event {
-            Event::Start(Tag::CodeBlock(_)) => in_code_block = true,
-            Event::Html(text) | Event::InlineHtml(text) if !in_code_block => {
+            Event::Html(text) | Event::InlineHtml(text) => {
                 tagp.extract_tags(&text, range, &mut is_in_comment, &report_diag)
             }
             Event::Start(Tag::HtmlBlock) | Event::End(TagEnd::HtmlBlock) => {}
-            Event::Start(tag) if !in_code_block => {
+            Event::Start(tag) => {
                 tagp.push_markdown_tag(tag.into(), range);
             }
-            Event::End(tag) if !in_code_block => {
+            Event::End(tag) => {
                 tagp.pop_markdown_tag(tag, range, &report_diag);
             }
-            Event::End(TagEnd::CodeBlock) => in_code_block = false,
             _ => {}
         }
     }
