@@ -93,6 +93,13 @@ fn check_validity_requirement_lax<'tcx>(
     cx: &LayoutCx<'tcx>,
     init_kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
+    // TODO: we shouldn't lie here but should instead either figure out a way to check
+    // validity for erased types' fields properly, or should avoid calling this function
+    // in the first place.
+    if this.ty.is_erased() {
+        return Ok(true);
+    }
+
     let scalar_allows_raw_init = move |s: Scalar| -> bool {
         match init_kind {
             ValidityRequirement::Inhabited => {

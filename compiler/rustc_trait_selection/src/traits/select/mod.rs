@@ -2196,6 +2196,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
+            // TODO: this is a bit sketchy since we checked sizedness of the layout before creating ty::Erased
+            // rather than whether the type implements Sized
+            | ty::Erased(..)
             | ty::Error(_) => ty::Binder::dummy(vec![]),
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
@@ -2223,7 +2226,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             ty::Alias(..)
             | ty::Param(_)
-            | ty::Erased(..)
             | ty::Placeholder(..)
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => {

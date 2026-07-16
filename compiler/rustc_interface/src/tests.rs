@@ -869,6 +869,7 @@ fn test_unstable_options_tracking_hash() {
     );
     tracked!(plt, Some(true));
     tracked!(polonius, Polonius::Legacy);
+    tracked!(polymorphize, true);
     tracked!(precise_enum_drop_elaboration, false);
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profiler_runtime, "abc".to_string());

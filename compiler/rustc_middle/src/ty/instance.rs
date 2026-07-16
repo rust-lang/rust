@@ -986,6 +986,9 @@ impl<'tcx> Instance<'tcx> {
     // TODO: this and/or is_ty_param_polymorphizable should probably be queries,
     // used less ad hoc, and located somewhere else
     pub fn polymorphize(&self, tcx: TyCtxt<'tcx>) -> Self {
+        if !tcx.sess.opts.unstable_opts.polymorphize {
+            return *self;
+        }
         let InstanceKind::Item(def_id) = self.def else {
             return *self;
         };
@@ -1016,12 +1019,17 @@ impl<'tcx> Instance<'tcx> {
                 |(idx, arg)| match arg.kind() {
                     ty::GenericArgKind::Type(ty) => {
                         let param_ty = ParamTy::for_def(generics.param_at(idx, tcx));
+                        let layout = tcx
+                            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+                            .unwrap()
+                            .layout;
                         if is_ty_param_polymorphizable(tcx, &clauses, param_ty)
+                            // FIXME: pass drop glue in sidecar to relax this
                             && !ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized())
+                            // FIXME: track metadata layout in ParamLayout to relax this
+                            && layout.is_sized()
                         {
-                            let layout_result = tcx
-                                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty));
-                            let param_layout = ty::ParamLayout(layout_result.unwrap().layout);
+                            let param_layout = ty::ParamLayout(layout);
                             let erased_ty = tcx.mk_ty_from_kind(ty::Erased(param_layout));
                             erased_ty.into()
                         } else {
