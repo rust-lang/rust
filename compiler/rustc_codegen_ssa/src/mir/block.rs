@@ -215,6 +215,17 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             unwind = mir::UnwindAction::Unreachable;
         }
 
+        // After monomorphization, a landing pad may turn out to be a no-op
+        // (e.g. when the only thing it would drop is a type that doesn't
+        // actually need dropping); skip it and let unwinding continue past
+        // this frame instead. This is the monomorphization-aware counterpart
+        // of what `RemoveNoopLandingPads` does on generic MIR.
+        if let mir::UnwindAction::Cleanup(cleanup) = unwind
+            && fx.nop_landing_pads.contains(cleanup)
+        {
+            unwind = mir::UnwindAction::Continue;
+        }
+
         let unwind_block = match unwind {
             mir::UnwindAction::Cleanup(cleanup) => Some(self.llbb_with_cleanup(fx, cleanup)),
             mir::UnwindAction::Continue => None,
@@ -319,10 +330,15 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         mergeable_succ: bool,
     ) -> MergingSucc {
         let unwind_target = match unwind {
-            mir::UnwindAction::Cleanup(cleanup) => Some(self.llbb_with_cleanup(fx, cleanup)),
+            // As in `do_call`, skip landing pads that are no-ops after
+            // monomorphization.
+            mir::UnwindAction::Cleanup(cleanup) if !fx.nop_landing_pads.contains(cleanup) => {
+                Some(self.llbb_with_cleanup(fx, cleanup))
+            }
             mir::UnwindAction::Terminate(reason) => Some(fx.terminate_block(reason, None)),
-            mir::UnwindAction::Continue => None,
-            mir::UnwindAction::Unreachable => None,
+            mir::UnwindAction::Cleanup(_)
+            | mir::UnwindAction::Continue
+            | mir::UnwindAction::Unreachable => None,
         };
 
         if operands.iter().any(|x| matches!(x, InlineAsmOperandRef::Label { .. })) {

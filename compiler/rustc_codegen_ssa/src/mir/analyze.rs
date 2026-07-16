@@ -7,6 +7,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind, traversal};
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::{bug, span_bug, ty};
 use tracing::debug;
@@ -271,6 +272,79 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
     fn visit_statement_debuginfo(&mut self, _: &mir::StmtDebugInfo<'tcx>, _: Location) {
         // Debuginfo does not generate actual code.
     }
+}
+
+/// Finds cleanup blocks that turn out to be no-op landing pads after
+/// monomorphization: on the unwind path they do nothing except (transitively)
+/// "drop" types that don't actually need dropping, before resuming unwinding.
+///
+/// Unwind edges to such blocks are replaced with `UnwindAction::Continue`
+/// during codegen, so no useless `invoke` + landing pad is emitted for them.
+/// This is the monomorphization-aware counterpart of the
+/// `RemoveNoopLandingPads` MIR pass, which runs on generic MIR and so has to
+/// conservatively treat drops of generic types as needing drop.
+pub(crate) fn nop_landing_pads<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: ty::Instance<'tcx>,
+    mir: &mir::Body<'tcx>,
+) -> DenseBitSet<mir::BasicBlock> {
+    let mut nop_landing_pads = DenseBitSet::new_empty(mir.basic_blocks.len());
+    if !mir.basic_blocks.iter().any(|bb| bb.is_cleanup) {
+        return nop_landing_pads;
+    }
+
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    // Postorder, so that a block's successors are visited before the block.
+    for (bb, data) in traversal::postorder(mir) {
+        if !data.is_cleanup {
+            continue;
+        }
+
+        let nop_statements = data.statements.iter().all(|stmt| match &stmt.kind {
+            mir::StatementKind::StorageLive(_)
+            | mir::StatementKind::StorageDead(_)
+            | mir::StatementKind::Coverage(..)
+            | mir::StatementKind::ConstEvalCounter
+            | mir::StatementKind::BackwardIncompatibleDropHint { .. }
+            | mir::StatementKind::Nop => true,
+
+            // Writing to a local (e.g., a drop flag) cannot be observed once
+            // the landing pad is skipped.
+            mir::StatementKind::Assign(assign) => {
+                matches!(assign.1, mir::Rvalue::Use(..) | mir::Rvalue::Discriminant(_))
+                    && assign.0.as_local().is_some()
+            }
+
+            _ => false,
+        });
+        if !nop_statements {
+            continue;
+        }
+
+        let terminator = data.terminator();
+        let nop_terminator = match terminator.kind {
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::SwitchInt { .. } => {
+                terminator.successors().all(|succ| nop_landing_pads.contains(succ))
+            }
+            // A drop of a type without drop glue is a no-op. Its unwind
+            // successor doesn't matter as the drop is never actually called.
+            TerminatorKind::Drop { place, target, .. } => {
+                let ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    typing_env,
+                    ty::EarlyBinder::bind(tcx, place.ty(mir, tcx).ty),
+                );
+                !ty.needs_drop(tcx, typing_env) && nop_landing_pads.contains(target)
+            }
+            _ => false,
+        };
+        if nop_terminator {
+            nop_landing_pads.insert(bb);
+        }
+    }
+    nop_landing_pads
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

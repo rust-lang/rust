@@ -80,6 +80,11 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// The funclet status of each basic block
     cleanup_kinds: Option<IndexVec<mir::BasicBlock, analyze::CleanupKind>>,
 
+    /// Cleanup blocks that turned out to be no-op landing pads after
+    /// monomorphization; unwind edges to them are replaced with
+    /// `UnwindAction::Continue` (see [`analyze::nop_landing_pads`]).
+    nop_landing_pads: DenseBitSet<mir::BasicBlock>,
+
     /// When targeting MSVC, this stores the cleanup info for each funclet BB.
     /// This is initialized at the same time as the `landing_pads` entry for the
     /// funclets' head block, i.e. when needed by an unwind / `cleanup_ret` edge.
@@ -227,8 +232,41 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut start_bx = Bx::build(cx, start_llbb);
 
-    if mir.basic_blocks.iter().any(|bb| {
-        bb.is_cleanup || matches!(bb.terminator().unwind(), Some(mir::UnwindAction::Terminate(_)))
+    let nop_landing_pads = analyze::nop_landing_pads(tcx, instance, mir);
+
+    let mut traversal_order = traversal::mono_reachable_reverse_postorder(mir, tcx, instance);
+    if !nop_landing_pads.is_empty() {
+        // Skipping the unwind edges to no-op landing pads can make (parts of)
+        // the cleanup path unreachable; don't codegen unreachable blocks.
+        let mut reachable = DenseBitSet::new_empty(mir.basic_blocks.len());
+        reachable.insert(mir::START_BLOCK);
+        let mut stack = vec![mir::START_BLOCK];
+        while let Some(bb) = stack.pop() {
+            let data = &mir.basic_blocks[bb];
+            let skipped_unwind = match data.terminator().unwind() {
+                Some(&mir::UnwindAction::Cleanup(cleanup))
+                    if nop_landing_pads.contains(cleanup) =>
+                {
+                    Some(cleanup)
+                }
+                _ => None,
+            };
+            for succ in data.mono_successors(tcx, instance) {
+                if Some(succ) != skipped_unwind && reachable.insert(succ) {
+                    stack.push(succ);
+                }
+            }
+        }
+        traversal_order.retain(|bb| reachable.contains(*bb));
+    }
+
+    // The personality function is only needed if some codegenned block is a
+    // landing pad (all cleanup blocks are potential landing pads, and contain
+    // `resume`s) or calls the terminate block upon unwinding.
+    if traversal_order.iter().any(|&bb| {
+        let data = &mir.basic_blocks[bb];
+        data.is_cleanup
+            || matches!(data.terminator().unwind(), Some(mir::UnwindAction::Terminate(_)))
     }) {
         start_bx.set_personality_fn(cx.eh_personality());
     }
@@ -255,6 +293,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         unreachable_block: None,
         terminate_blocks: IndexVec::from_elem(None, &mir.basic_blocks),
         cleanup_kinds,
+        nop_landing_pads,
         landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
         funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
         cold_blocks: find_cold_blocks(tcx, mir),
@@ -275,7 +314,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
     fx.per_local_var_debug_info = per_local_var_debug_info;
 
-    let traversal_order = traversal::mono_reachable_reverse_postorder(mir, tcx, instance);
     let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order);
 
     // Allocate variable and temp allocas
